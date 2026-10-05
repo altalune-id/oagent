@@ -12,6 +12,8 @@ import (
 
 	"github.com/pressly/goose/v3"
 	"github.com/pressly/goose/v3/database"
+
+	"altalune.id/auth-server/pg"
 )
 
 // Migrator runs migrations from an fs.FS.
@@ -46,13 +48,29 @@ func (m *Migrator) provider(sqldb *sql.DB) (*goose.Provider, error) {
 	tpl := newTemplatedFS(m.fsys, templateVars(cfg))
 	store := m.store
 	if store == nil {
-		var err error
-		store, err = database.NewStore(database.DialectPostgres, cfg.TablePrefix+"goose_db_version")
+		table, err := gooseTableName(cfg)
+		if err != nil {
+			return nil, err
+		}
+		store, err = database.NewStore(database.DialectPostgres, table)
 		if err != nil {
 			return nil, fmt.Errorf("migrator: store: %w", err)
 		}
 	}
 	return goose.NewProvider("", sqldb, tpl, goose.WithStore(store))
+}
+
+// gooseTableName qualifies goose's bookkeeping table with the configured schema.
+func gooseTableName(cfg Config) (string, error) {
+	cfg = cfg.withDefaults()
+	table := cfg.TablePrefix + "goose_db_version"
+	if err := pg.ValidateIdentifier(cfg.Schema); err != nil {
+		return "", fmt.Errorf("migrator: schema: %w", err)
+	}
+	if err := pg.ValidateIdentifier(table); err != nil {
+		return "", fmt.Errorf("migrator: tablePrefix: %w", err)
+	}
+	return cfg.Schema + "." + table, nil
 }
 
 // Up applies pending migrations up to VERSION.

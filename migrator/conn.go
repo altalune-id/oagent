@@ -11,7 +11,7 @@ import (
 	"altalune.id/auth-server/pg"
 )
 
-// Open opens a single-session *sql.DB and applies SET ROLE when cfg.Role is set.
+// Open opens a two-session migrator *sql.DB (lock + goose/upgrades) and applies SET ROLE when cfg.Role is set.
 func Open(ctx context.Context, dsn string, cfg Config) (*sql.DB, error) {
 	connCfg, err := pgx.ParseConfig(dsn)
 	if err != nil {
@@ -33,7 +33,7 @@ func Open(ctx context.Context, dsn string, cfg Config) (*sql.DB, error) {
 		}
 		db = stdlib.OpenDB(*connCfg, stdlib.OptionAfterConnect(afterConnect))
 	}
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
+	db.SetMaxOpenConns(2)
+	db.SetMaxIdleConns(2)
 	return db, nil
 }

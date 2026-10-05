@@ -32,7 +32,7 @@ var (
 	withLock     withLockFunc     = db.RunWithAdvisoryLock
 )
 
-// migrate runs goose on a dedicated migrator connection under a per-prefix advisory lock.
+// migrate runs goose and any registered upgrades under a session advisory lock.
 func migrate(ctx context.Context, cfg config.DBConfig) error {
 	migCfg := migrator.Config{
 		Schema:      cfg.Schema,

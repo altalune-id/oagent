@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"io/fs"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -180,6 +181,22 @@ func TestProvider_DefaultStore(t *testing.T) {
 	p, err := New(testFS, Config{}).provider(db)
 	require.NoError(t, err)
 	assert.NotNil(t, p)
+}
+
+func TestGooseTableName(t *testing.T) {
+	table, err := gooseTableName(Config{Schema: "app", TablePrefix: "t_"})
+	require.NoError(t, err)
+	assert.Equal(t, "app.t_goose_db_version", table)
+
+	table, err = gooseTableName(Config{})
+	require.NoError(t, err)
+	assert.Equal(t, "public.goose_db_version", table)
+
+	_, err = gooseTableName(Config{Schema: strings.Repeat("a", 64)})
+	assert.Error(t, err)
+
+	_, err = gooseTableName(Config{TablePrefix: strings.Repeat("a", 64)})
+	assert.Error(t, err)
 }
 
 func TestStatus_ProviderError(t *testing.T) {

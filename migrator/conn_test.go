@@ -15,6 +15,7 @@ func TestOpen_NoRole(t *testing.T) {
 	db, err := Open(context.Background(), testDSN, Config{})
 	require.NoError(t, err)
 	require.NotNil(t, db)
+	assert.Equal(t, 2, db.Stats().MaxOpenConnections)
 	assert.NoError(t, db.Close())
 }
 
