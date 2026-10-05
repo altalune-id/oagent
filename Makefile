@@ -19,6 +19,10 @@ vet: ## run go vet
 test: ## run tests with the race detector
 	$(GO) test -race ./...
 
+.PHONY: cover
+cover: ## run tests with coverage
+	$(GO) test ./... -cover
+
 .PHONY: tidy
 tidy: ## run go mod tidy
 	$(GO) mod tidy

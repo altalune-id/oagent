@@ -7,7 +7,9 @@ run:
 linters:
   default: standard
   enable:
+    - errorlint
     - gochecknoglobals
+    - nilerr
 
   exclusions:
     generated: strict
