@@ -15,6 +15,10 @@ fmt: ## format all Go files
 vet: ## run go vet
 	$(GO) vet ./...
 
+.PHONY: test
+test: ## run tests with the race detector
+	$(GO) test -race ./...
+
 .PHONY: tidy
 tidy: ## run go mod tidy
 	$(GO) mod tidy
