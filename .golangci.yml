@@ -6,9 +6,22 @@ run:
 
 linters:
   default: standard
+  enable:
+    - gochecknoglobals
 
   exclusions:
     generated: strict
+    rules:
+      - path: version/version\.go
+        linters:
+          - gochecknoglobals
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gochecknoglobals
+          - gocritic
+          - gosec
+          - unparam
 
 formatters:
   enable:
