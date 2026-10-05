@@ -17,11 +17,26 @@ type Config struct {
 	Telemetry TelemetryConfig `yaml:"telemetry" mapstructure:"telemetry"`
 	Scheduler SchedulerConfig `yaml:"scheduler" mapstructure:"scheduler"`
 	Queue     QueueConfig     `yaml:"queue"     mapstructure:"queue"`
+	API       APIConfig       `yaml:"api"       mapstructure:"api"`
 }
 
 // HTTPConfig configures the web-facing HTTP server.
 type HTTPConfig struct {
-	Addr string `yaml:"addr" mapstructure:"addr" validate:"required"`
+	Addr     string `yaml:"addr"     mapstructure:"addr"     validate:"required"`
+	BasePath string `yaml:"basePath" mapstructure:"basePath"`
+}
+
+// APIConfig configures the Connect-RPC controlplane.
+type APIConfig struct {
+	OpenAPI OpenAPIConfig `yaml:"openapi" mapstructure:"openapi"`
+}
+
+// OpenAPIConfig configures the OpenAPI documentation endpoints.
+type OpenAPIConfig struct {
+	Enabled           bool   `yaml:"enabled"           mapstructure:"enabled"`
+	RequireBasicAuth  bool   `yaml:"requireBasicAuth"  mapstructure:"requireBasicAuth"`
+	BasicAuthUser     string `yaml:"basicAuthUser"     mapstructure:"basicAuthUser"`
+	BasicAuthPassword string `yaml:"basicAuthPassword" mapstructure:"basicAuthPassword"`
 }
 
 // SchedulerConfig configures the periodic-job runner.

@@ -1,0 +1,35 @@
+openapi: 3.1.0
+info:
+  title: apperror.v1
+paths: {}
+components:
+  schemas:
+    apperror.v1.ErrorDetail:
+      type: object
+      properties:
+        code:
+          type: string
+          title: code
+        meta:
+          type: object
+          title: meta
+          additionalProperties:
+            type: string
+            title: value
+        requestId:
+          type: string
+          title: request_id
+      title: ErrorDetail
+      additionalProperties: false
+    apperror.v1.ErrorDetail.MetaEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: MetaEntry
+      additionalProperties: false
+security: []

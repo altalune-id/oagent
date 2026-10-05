@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
+	orgv1 "altalune.id/auth-server/gen/go/org/v1"
 	"altalune.id/auth-server/nanoid"
 )
 
@@ -84,4 +86,38 @@ func ValidateName(n string) error {
 		return &InvalidNameError{Reason: "length out of range"}
 	}
 	return nil
+}
+
+// orgRow is the jet scan target for the orgs table.
+type orgRow struct {
+	ID        uuid.UUID     `alias:"orgs.id"`
+	PublicID  string        `alias:"orgs.public_id"`
+	Slug      string        `alias:"orgs.slug"`
+	Name      string        `alias:"orgs.name"`
+	CreatedBy uuid.NullUUID `alias:"orgs.created_by"`
+	CreatedAt time.Time     `alias:"orgs.created_at"`
+	UpdatedAt time.Time     `alias:"orgs.updated_at"`
+}
+
+func (r *orgRow) toOrg() *Org {
+	return &Org{
+		ID:        r.ID,
+		PublicID:  r.PublicID,
+		Slug:      r.Slug,
+		Name:      r.Name,
+		CreatedBy: r.CreatedBy,
+		CreatedAt: r.CreatedAt,
+		UpdatedAt: r.UpdatedAt,
+	}
+}
+
+func orgToProto(o *Org) *orgv1.Org {
+	return &orgv1.Org{
+		Id:        o.ID.String(),
+		PublicId:  o.PublicID,
+		Slug:      o.Slug,
+		Name:      o.Name,
+		CreatedAt: timestamppb.New(o.CreatedAt),
+		UpdatedAt: timestamppb.New(o.UpdatedAt),
+	}
 }

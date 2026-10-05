@@ -27,6 +27,18 @@ func TestLoad_Defaults(t *testing.T) {
 	assert.Equal(t, ModeSelfhosted, c.Mode) // default
 	assert.Equal(t, EnvDevelopment, c.Env)  // default
 	assert.False(t, c.Env.IsProduction())
+	assert.Empty(t, c.HTTP.BasePath)               // default
+	assert.True(t, c.API.OpenAPI.Enabled)          // default
+	assert.True(t, c.API.OpenAPI.RequireBasicAuth) // default
+}
+
+func TestLoad_BasePathOverride(t *testing.T) {
+	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
+	t.Setenv("AUTH_HTTP_BASE_PATH", "/app")
+
+	c, err := Load(missingPath(t))
+	require.NoError(t, err)
+	assert.Equal(t, "/app", c.HTTP.BasePath)
 }
 
 func TestLoad_ModeAndEnvOverride(t *testing.T) {

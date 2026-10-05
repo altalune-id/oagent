@@ -67,9 +67,10 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 
 	svcs := buildServices(k, cfg)
 	health := buildDBHealth(k, cfg, log)
+	apiHandler := buildAPIHandler(svcs, k.Reporter.Unexpected, cfg.API, cfg.HTTP.BasePath)
 
 	sup := worker.New(log)
-	sup.Register(httpserver.New(httpConfig(cfg.HTTP), buildHTTPHandler(log, k.Reporter.Unexpected, health.Ready), log))
+	sup.Register(httpserver.New(httpConfig(cfg.HTTP), buildHTTPHandler(log, k.Reporter.Unexpected, health.Ready, cfg.HTTP.BasePath, apiHandler), log))
 	sup.Register(health)
 
 	var runner *scheduler.Runner

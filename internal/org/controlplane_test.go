@@ -1,0 +1,68 @@
+package org_test
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"connectrpc.com/connect"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	orgv1 "altalune.id/auth-server/gen/go/org/v1"
+	orgv1connect "altalune.id/auth-server/gen/go/org/v1/orgv1connect"
+	"altalune.id/auth-server/internal/org"
+	"altalune.id/auth-server/internal/testutil/fakes"
+)
+
+func newOrgServiceClient(t *testing.T, store org.Store) orgv1connect.OrgServiceClient {
+	t.Helper()
+	_, handler := orgv1connect.NewOrgServiceHandler(org.NewOrgService(org.NewService(store, nil)))
+	ts := httptest.NewServer(handler)
+	t.Cleanup(ts.Close)
+	return orgv1connect.NewOrgServiceClient(http.DefaultClient, ts.URL)
+}
+
+func TestOrgService_CreateOrg(t *testing.T) {
+	c := newOrgServiceClient(t, &fakes.OrgStore{})
+
+	resp, err := c.CreateOrg(context.Background(), connect.NewRequest(&orgv1.CreateOrgRequest{Slug: "acme", Name: "Acme"}))
+	require.NoError(t, err)
+	assert.Equal(t, "acme", resp.Msg.GetOrg().GetSlug())
+	assert.Equal(t, "Acme", resp.Msg.GetOrg().GetName())
+	assert.NotEmpty(t, resp.Msg.GetOrg().GetPublicId())
+	assert.NotNil(t, resp.Msg.GetOrg().GetCreatedAt())
+}
+
+func TestOrgService_CreateOrg_InvalidSlug(t *testing.T) {
+	c := newOrgServiceClient(t, &fakes.OrgStore{})
+
+	_, err := c.CreateOrg(context.Background(), connect.NewRequest(&orgv1.CreateOrgRequest{Slug: "A", Name: "Acme"}))
+	assert.Error(t, err)
+}
+
+func TestOrgService_GetOrg(t *testing.T) {
+	store := &fakes.OrgStore{Org: &org.Org{ID: uuid.New(), PublicID: "pub", Slug: "acme", Name: "Acme"}}
+	c := newOrgServiceClient(t, store)
+
+	resp, err := c.GetOrg(context.Background(), connect.NewRequest(&orgv1.GetOrgRequest{Id: store.Org.ID.String()}))
+	require.NoError(t, err)
+	assert.Equal(t, "acme", resp.Msg.GetOrg().GetSlug())
+	assert.Equal(t, "pub", resp.Msg.GetOrg().GetPublicId())
+}
+
+func TestOrgService_GetOrg_InvalidID(t *testing.T) {
+	c := newOrgServiceClient(t, &fakes.OrgStore{})
+
+	_, err := c.GetOrg(context.Background(), connect.NewRequest(&orgv1.GetOrgRequest{Id: "not-a-uuid"}))
+	assert.Error(t, err)
+}
+
+func TestOrgService_GetOrg_StoreError(t *testing.T) {
+	c := newOrgServiceClient(t, &fakes.OrgStore{Err: &org.NotFoundError{Slug: "acme"}})
+
+	_, err := c.GetOrg(context.Background(), connect.NewRequest(&orgv1.GetOrgRequest{Id: uuid.New().String()}))
+	assert.Error(t, err)
+}

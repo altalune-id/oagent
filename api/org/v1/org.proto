@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package org.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "altalune.id/auth-server/gen/go/org/v1;orgv1";
+
+service OrgService {
+  rpc CreateOrg(CreateOrgRequest) returns (CreateOrgResponse);
+  rpc GetOrg(GetOrgRequest) returns (GetOrgResponse);
+}
+
+message Org {
+  string id = 1;
+  string public_id = 2;
+  string slug = 3;
+  string name = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+message CreateOrgRequest {
+  string slug = 1;
+  string name = 2;
+}
+
+message CreateOrgResponse {
+  Org org = 1;
+}
+
+message GetOrgRequest {
+  string id = 1;
+}
+
+message GetOrgResponse {
+  Org org = 1;
+}

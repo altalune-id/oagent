@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package apperror.v1;
+
+option go_package = "altalune.id/auth-server/gen/go/apperror/v1;apperrorv1";
+
+message ErrorDetail {
+  string code = 1;
+  map<string, string> meta = 2;
+  string request_id = 3;
+}

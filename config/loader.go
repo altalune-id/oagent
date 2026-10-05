@@ -32,7 +32,7 @@ func Load(path string, opts ...Option) (*Config, error) {
 	setDefaults(v)
 
 	var cfg Config
-	bindEnv(v, "", reflect.TypeOf(cfg))
+	bindEnv(v, "", reflect.TypeFor[Config]())
 
 	v.SetEnvPrefix(EnvPrefix)
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
@@ -49,9 +49,9 @@ func Load(path string, opts ...Option) (*Config, error) {
 	}
 
 	if err := v.ReadInConfig(); err != nil {
-		var notFound viper.ConfigFileNotFoundError
+		_, fileNotFound := errors.AsType[viper.ConfigFileNotFoundError](err)
 		switch {
-		case errors.As(err, &notFound), os.IsNotExist(err):
+		case fileNotFound, os.IsNotExist(err):
 			if o.requireFile {
 				return nil, fmt.Errorf("config: file required but not found (path=%q)", path)
 			}
@@ -82,6 +82,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("scheduler.shutdownGrace", "30s")
 	v.SetDefault("queue.enabled", false)
 	v.SetDefault("queue.connectTimeout", "10s")
+	v.SetDefault("api.openapi.enabled", true)
+	v.SetDefault("api.openapi.requireBasicAuth", true)
 	v.SetDefault("db.schema", "public")
 	v.SetDefault("db.autoMigrate", true)
 	v.SetDefault("db.health.interval", "30s")
