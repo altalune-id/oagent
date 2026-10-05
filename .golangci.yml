@@ -14,6 +14,8 @@ linters:
     - gosec
     - nilerr
     - revive
+    - unconvert
+    - unparam
 
   settings:
     gocritic:
