@@ -1,0 +1,12 @@
+{
+  "editor.tabSize": 2,
+  "go.toolsEnvVars": {
+    "GOROOT": "",
+    "GOTOOLCHAIN": "auto"
+  },
+  "[go]": {
+    "editor.tabSize": 4,
+    "editor.insertSpaces": false,
+    "editor.formatOnSave": true
+  }
+}
