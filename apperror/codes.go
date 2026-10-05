@@ -7,5 +7,12 @@ type Code string
 const (
 	CodeTenantMissing Code = "GEN001"
 	CodeValidation    Code = "GEN004"
+	CodeNotFound      Code = "GEN005"
+	CodeAlreadyExists Code = "GEN006"
 	CodeUnexpected    Code = "GEN900"
+
+	CodeOrgNotFound      Code = "ORG001"
+	CodeOrgAlreadyExists Code = "ORG002"
+	CodeOrgInvalidSlug   Code = "ORG003"
+	CodeOrgInvalidName   Code = "ORG004"
 )
