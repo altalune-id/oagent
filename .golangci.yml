@@ -7,6 +7,7 @@ run:
 linters:
   default: standard
   enable:
+    - depguard      # keeps migrator app-agnostic
     - errorlint
     - gochecknoglobals
     - gocritic
@@ -22,6 +23,18 @@ linters:
         - ifElseChain
         - hugeParam
         - rangeValCopy
+    depguard:
+      rules:
+        migrator-purity:
+          list-mode: strict
+          files:
+            - "**/migrator/*.go"
+            - "!**/migrator/*_test.go"
+          allow:
+            - $gostd
+            - github.com/jackc/pgx/v5
+            - github.com/pressly/goose/v3
+            - altalune.id/auth-server/pg
 
   exclusions:
     generated: strict

@@ -15,6 +15,10 @@ fmt: ## format all Go files
 vet: ## run go vet
 	$(GO) vet ./...
 
+.PHONY: lint
+lint: ## run golangci-lint
+	env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) golangci-lint run --timeout=3m ./...
+
 .PHONY: test
 test: ## run tests with the race detector
 	$(GO) test -race ./...
