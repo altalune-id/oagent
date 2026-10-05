@@ -4,6 +4,7 @@ go 1.26.1
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
+	github.com/go-jet/jet/v2 v2.13.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/pressly/goose/v3 v3.24.3
 	github.com/prometheus/client_golang v1.24.1
