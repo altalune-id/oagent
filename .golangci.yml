@@ -17,6 +17,7 @@ linters:
     - revive
     - unconvert
     - unparam
+    - whitespace
 
   settings:
     gocritic:

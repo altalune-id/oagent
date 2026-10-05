@@ -30,3 +30,6 @@ cover: ## run tests with coverage
 .PHONY: tidy
 tidy: ## run go mod tidy
 	$(GO) mod tidy
+
+.PHONY: check
+check: vet lint test ## vet + lint + test
