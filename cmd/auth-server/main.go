@@ -11,6 +11,7 @@ import (
 	"altalune.id/auth-server/config"
 	"altalune.id/auth-server/internal/boot"
 	"altalune.id/auth-server/internal/cli"
+	"altalune.id/auth-server/internal/controlplane"
 )
 
 func main() {
@@ -21,9 +22,9 @@ func run() int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	root := cli.NewRootCmd(bootApp)
+	root := cli.NewRootCmd(bootApp, remoteApp)
 	if err := root.ExecuteContext(ctx); err != nil {
-		slog.ErrorContext(ctx, "auth-server", "error", err)
+		cli.RenderError(root, err)
 		return cli.ExitCodeFor(err)
 	}
 	return cli.ExitOK
@@ -31,4 +32,12 @@ func run() int {
 
 func bootApp(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...boot.Option) (cli.App, error) {
 	return boot.Boot(ctx, cfg, log, opts...)
+}
+
+func remoteApp(ctx context.Context, cfg config.Config, log *slog.Logger, baseURL, token string) (*controlplane.Client, error) {
+	r, err := boot.BootRemote(ctx, cfg, log, baseURL, token)
+	if err != nil {
+		return nil, err
+	}
+	return r.Conn, nil
 }

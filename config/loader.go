@@ -18,11 +18,15 @@ import (
 type Option func(*loadOptions)
 
 type loadOptions struct {
-	requireFile bool
+	requireFile    bool
+	skipValidation bool
 }
 
 // WithRequireFile makes Load fail when the config file is missing.
 func WithRequireFile() Option { return func(o *loadOptions) { o.requireFile = true } }
+
+// WithoutValidation skips Validate, for CLI commands that do not boot the server (e.g. remote admin).
+func WithoutValidation() Option { return func(o *loadOptions) { o.skipValidation = true } }
 
 // Loader accumulates config sources (defaults, AUTH_* env, bound flags) and decodes them.
 type Loader struct {
@@ -86,6 +90,9 @@ func (l *Loader) Load(path string, opts ...Option) (*Config, error) {
 		return nil, fmt.Errorf("config: unmarshal: %w", err)
 	}
 
+	if o.skipValidation {
+		return &cfg, nil
+	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}

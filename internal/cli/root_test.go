@@ -25,7 +25,7 @@ func (f fakeApp) Close(context.Context) error { return nil }
 func runRoot(t *testing.T, bootFn cli.ServerBootFn, args ...string) (*bytes.Buffer, error) {
 	t.Helper()
 	buf := new(bytes.Buffer)
-	root := cli.NewRootCmd(bootFn)
+	root := cli.NewRootCmd(bootFn, nil)
 	root.SetOut(buf)
 	root.SetErr(buf)
 	root.SetArgs(args)

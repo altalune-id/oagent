@@ -11,12 +11,15 @@ import (
 	"github.com/spf13/pflag"
 
 	"altalune.id/auth-server/config"
+	orgv1connect "altalune.id/auth-server/gen/go/org/v1/orgv1connect"
 	"altalune.id/auth-server/internal/boot"
+	"altalune.id/auth-server/internal/controlplane"
+	"altalune.id/auth-server/internal/org"
 	"altalune.id/auth-server/reqid"
 	"altalune.id/auth-server/version"
 )
 
-// App is the running application the serve command drives.
+// App is the running server the serve command drives.
 type App interface {
 	Run(ctx context.Context) error
 	Close(ctx context.Context) error
@@ -25,17 +28,23 @@ type App interface {
 // ServerBootFn boots the fully-wired server graph (DB, migrations, services).
 type ServerBootFn func(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...boot.Option) (App, error)
 
+// ClientBootFn builds the remote client graph admin commands use (no DB).
+type ClientBootFn func(ctx context.Context, cfg config.Config, log *slog.Logger, baseURL, token string) (*controlplane.Client, error)
+
 type ctxKey int
 
 const ctxKeyRuntime ctxKey = iota + 1
+
+// clientAnnotation marks remote commands; their config is loaded without validation (no DB required).
+const clientAnnotation = "auth-server/client"
 
 type runtime struct {
 	cfg *config.Config
 	log *slog.Logger
 }
 
-// NewRootCmd builds a fresh command tree bound to bootServer.
-func NewRootCmd(bootServer ServerBootFn) *cobra.Command {
+// NewRootCmd builds a fresh command tree bound to the given boot fns.
+func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command {
 	var configPath, logLevel, logFormat string
 
 	root := &cobra.Command{
@@ -50,6 +59,10 @@ func NewRootCmd(bootServer ServerBootFn) *cobra.Command {
 	p.StringVarP(&configPath, "config", "c", "", "config file (yaml); default search: $XDG_CONFIG_HOME/auth-server, /etc/auth-server, cwd")
 	p.StringVar(&logLevel, "log-level", "info", "log level: debug|info|warn|error")
 	p.StringVar(&logFormat, "log-format", "text", "log format: json|text")
+	p.String("url", "", "remote auth-server base URL (also: AUTH_URL)")
+	p.String("token", "", "bearer token (also: AUTH_TOKEN)")
+	p.String("token-file", "", "read the bearer token from a file")
+	p.String("output", "", "output format: text|json|ndjson (also: AUTH_OUTPUT)")
 	registerConfigFlags(p)
 
 	root.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
@@ -60,6 +73,9 @@ func NewRootCmd(bootServer ServerBootFn) *cobra.Command {
 		var cfgOpts []config.Option
 		if configPath != "" {
 			cfgOpts = append(cfgOpts, config.WithRequireFile())
+		}
+		if cmd.Annotations[clientAnnotation] == "true" {
+			cfgOpts = append(cfgOpts, config.WithoutValidation())
 		}
 		loader := config.NewLoader()
 		if err := bindConfigFlags(loader, cmd); err != nil {
@@ -80,11 +96,18 @@ func NewRootCmd(bootServer ServerBootFn) *cobra.Command {
 
 	root.AddGroup(
 		&cobra.Group{ID: "runtime", Title: "Runtime:"},
+		&cobra.Group{ID: "auth", Title: "Auth:"},
+		&cobra.Group{ID: "tenancy", Title: "Tenancy:"},
+		&cobra.Group{ID: "domain", Title: "Domain:"},
 		&cobra.Group{ID: "meta", Title: "Meta:"},
 	)
 
+	orgCmd := org.NewCmd(orgClientFn(bootClient))
+	markClientTree(orgCmd)
+
 	root.AddCommand(
 		newServeCmd(bootServer),
+		orgCmd,
 		newVersionCmd(),
 	)
 	return root
@@ -96,6 +119,49 @@ func runtimeFromCtx(ctx context.Context) (*runtime, error) {
 		return nil, errors.New("cli: runtime not initialized")
 	}
 	return rt, nil
+}
+
+func configFromCtx(ctx context.Context) *config.Config {
+	rt, _ := ctx.Value(ctxKeyRuntime).(*runtime)
+	if rt == nil {
+		return nil
+	}
+	return rt.cfg
+}
+
+// connectClient resolves URL, token and config, then builds the remote client.
+func connectClient(cmd *cobra.Command, bootClient ClientBootFn) (*controlplane.Client, error) {
+	rt, err := runtimeFromCtx(cmd.Context())
+	if err != nil {
+		return nil, err
+	}
+	token, err := resolveToken(cmd)
+	if err != nil {
+		return nil, err
+	}
+	return bootClient(cmd.Context(), *rt.cfg, rt.log, resolveURL(cmd), token)
+}
+
+// orgClientFn adapts the resolved remote client to the org package's ClientFn.
+func orgClientFn(bootClient ClientBootFn) org.ClientFn {
+	return func(cmd *cobra.Command) (orgv1connect.OrgServiceClient, error) {
+		client, err := connectClient(cmd, bootClient)
+		if err != nil {
+			return nil, err
+		}
+		return client.Org, nil
+	}
+}
+
+// markClientTree marks a command subtree as remote so its config loads without validation.
+func markClientTree(cmd *cobra.Command) {
+	if cmd.Annotations == nil {
+		cmd.Annotations = map[string]string{}
+	}
+	cmd.Annotations[clientAnnotation] = "true"
+	for _, sub := range cmd.Commands() {
+		markClientTree(sub)
+	}
 }
 
 // registerConfigFlags declares the flags that override config keys.

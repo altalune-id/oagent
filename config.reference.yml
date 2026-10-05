@@ -76,6 +76,8 @@ http:
   addr: ":5150"
   # env: AUTH_HTTP_BASE_PATH
   basePath: ""
+  # env: AUTH_HTTP_BASE_URL
+  baseURL: ""
 
 # [required, bootstrap] env: AUTH_MODE
 mode: selfhosted

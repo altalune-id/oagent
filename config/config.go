@@ -24,6 +24,7 @@ type Config struct {
 type HTTPConfig struct {
 	Addr     string `yaml:"addr"     mapstructure:"addr"     awareness:"required" validate:"required"`
 	BasePath string `yaml:"basePath" mapstructure:"basePath"`
+	BaseURL  string `yaml:"baseURL"  mapstructure:"baseURL"  validate:"omitempty,url"`
 }
 
 // APIConfig configures the Connect-RPC controlplane.
