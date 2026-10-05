@@ -9,7 +9,19 @@ linters:
   enable:
     - errorlint
     - gochecknoglobals
+    - gocritic
     - nilerr
+
+  settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+      disabled-checks:
+        - ifElseChain
+        - hugeParam
+        - rangeValCopy
 
   exclusions:
     generated: strict
