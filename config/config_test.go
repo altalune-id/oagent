@@ -25,8 +25,8 @@ func TestLoad_Defaults(t *testing.T) {
 	assert.True(t, c.DB.AutoMigrate) // default
 	assert.Equal(t, 5*time.Second, c.DB.ConnectTimeout)
 	assert.Equal(t, ModeSelfhosted, c.Mode) // default
-	assert.Equal(t, EnvDevelopment, c.Env)  // default
-	assert.False(t, c.Env.IsProduction())
+	assert.Equal(t, EnvProduction, c.Env)   // default
+	assert.True(t, c.Env.IsProduction())
 	assert.Empty(t, c.HTTP.BasePath)               // default
 	assert.True(t, c.API.OpenAPI.Enabled)          // default
 	assert.True(t, c.API.OpenAPI.RequireBasicAuth) // default

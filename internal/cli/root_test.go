@@ -1,0 +1,141 @@
+package cli_test
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"log/slog"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"altalune.id/auth-server/config"
+	"altalune.id/auth-server/internal/boot"
+	"altalune.id/auth-server/internal/cli"
+	"altalune.id/auth-server/reqid"
+)
+
+type fakeApp struct{ runErr error }
+
+func (f fakeApp) Run(context.Context) error   { return f.runErr }
+func (f fakeApp) Close(context.Context) error { return nil }
+
+func runRoot(t *testing.T, bootFn cli.ServerBootFn, args ...string) (*bytes.Buffer, error) {
+	t.Helper()
+	buf := new(bytes.Buffer)
+	root := cli.NewRootCmd(bootFn)
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs(args)
+	return buf, root.ExecuteContext(t.Context())
+}
+
+func TestVersion(t *testing.T) {
+	buf, err := runRoot(t, nil, "version")
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "auth-server")
+}
+
+func TestServe_InvokesBoot(t *testing.T) {
+	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
+	var gotCfg config.Config
+	var gotOpts int
+	var gotReqID string
+	bootFn := func(ctx context.Context, cfg config.Config, _ *slog.Logger, opts ...boot.Option) (cli.App, error) {
+		gotCfg = cfg
+		gotOpts = len(opts)
+		gotReqID = reqid.FromContext(ctx)
+		return fakeApp{}, nil
+	}
+
+	buf, err := runRoot(t, bootFn, "serve")
+
+	require.NoError(t, err)
+	assert.Equal(t, "postgres://localhost/db", gotCfg.DB.DSN)
+	assert.Equal(t, 4, gotOpts)
+	assert.NotEmpty(t, gotReqID)
+	assert.Contains(t, buf.String(), "listening")
+}
+
+func TestServe_RunError(t *testing.T) {
+	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
+	bootFn := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
+		return fakeApp{runErr: errors.New("boom")}, nil
+	}
+
+	_, err := runRoot(t, bootFn, "serve")
+	assert.Error(t, err)
+}
+
+func TestServe_BootError(t *testing.T) {
+	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
+	bootFn := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
+		return nil, errors.New("boot failed")
+	}
+
+	_, err := runRoot(t, bootFn, "serve")
+	assert.Error(t, err)
+}
+
+func TestServe_ConfigError(t *testing.T) {
+	t.Setenv("AUTH_DB_DSN", "")
+	noop := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
+		return fakeApp{}, nil
+	}
+
+	_, err := runRoot(t, noop, "serve")
+	assert.Error(t, err)
+}
+
+func TestServe_InvalidLogLevel(t *testing.T) {
+	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
+	noop := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
+		return fakeApp{}, nil
+	}
+
+	_, err := runRoot(t, noop, "serve", "--log-level", "bogus")
+	assert.Error(t, err)
+}
+
+func TestServe_MutuallyExclusiveFlags(t *testing.T) {
+	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
+	noop := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
+		return fakeApp{}, nil
+	}
+
+	_, err := runRoot(t, noop, "serve", "--scheduler-only", "--consumer-only")
+	assert.Error(t, err)
+}
+
+func TestUnknownFlag(t *testing.T) {
+	_, err := runRoot(t, nil, "--bogus")
+	assert.Error(t, err)
+}
+
+func TestServe_ConfigFileMissing(t *testing.T) {
+	noop := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
+		return fakeApp{}, nil
+	}
+
+	_, err := runRoot(t, noop, "serve", "--config", filepath.Join(t.TempDir(), "none.yaml"))
+	assert.Error(t, err)
+}
+
+func TestServe_FlagOverridesConfig(t *testing.T) {
+	t.Setenv("AUTH_MODE", "selfhosted")
+	t.Setenv("AUTH_DB_DSN", "postgres://env/db")
+	var gotCfg config.Config
+	bootFn := func(_ context.Context, cfg config.Config, _ *slog.Logger, _ ...boot.Option) (cli.App, error) {
+		gotCfg = cfg
+		return fakeApp{}, nil
+	}
+
+	_, err := runRoot(t, bootFn, "serve", "--mode", "cloud", "--http-base-path", "/app", "--db-dsn", "postgres://flag/db")
+
+	require.NoError(t, err)
+	assert.Equal(t, config.ModeCloud, gotCfg.Mode)
+	assert.Equal(t, "/app", gotCfg.HTTP.BasePath)
+	assert.Equal(t, "postgres://flag/db", gotCfg.DB.DSN)
+}
