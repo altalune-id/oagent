@@ -45,7 +45,7 @@ type envSample struct {
 
 func TestBindEnv_PointerAndTimeLeaf(t *testing.T) {
 	v := viper.NewWithOptions(viper.KeyDelimiter("."))
-	bindEnv(v, "", reflect.TypeOf(envSample{}))
+	bindEnv(v, "", reflect.TypeFor[envSample]())
 
 	assert.Contains(t, v.AllKeys(), "sub.value")
 	assert.Contains(t, v.AllKeys(), "when")

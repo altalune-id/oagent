@@ -13,6 +13,7 @@ linters:
     - gocritic
     - gosec
     - misspell
+    - modernize
     - nilerr
     - revive
     - unconvert

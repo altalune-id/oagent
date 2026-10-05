@@ -47,7 +47,7 @@ func TestNewInviteToken_Deterministic(t *testing.T) {
 
 func TestNewInviteToken_Unique(t *testing.T) {
 	seen := map[string]bool{}
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		raw, _, err := NewInviteToken()
 		require.NoError(t, err)
 		assert.False(t, seen[raw], "collision at iter %d", i)

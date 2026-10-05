@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -326,9 +327,9 @@ func (c *logCapture) last(t *testing.T, msg string) logRecord {
 	t.Helper()
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	for i := len(c.recs) - 1; i >= 0; i-- {
-		if c.recs[i].msg == msg {
-			return c.recs[i]
+	for _, rec := range slices.Backward(c.recs) {
+		if rec.msg == msg {
+			return rec
 		}
 	}
 	t.Fatalf("no %q log record captured", msg)
