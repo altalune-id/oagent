@@ -10,8 +10,8 @@ import (
 
 // Config is the full runtime configuration.
 type Config struct {
-	Mode      Mode            `yaml:"mode"      mapstructure:"mode"      validate:"required,oneof=selfhosted cloud"`
-	Env       Env             `yaml:"env"       mapstructure:"env"       validate:"required,oneof=development production"`
+	Mode      Mode            `yaml:"mode"      mapstructure:"mode"      awareness:"required,bootstrap" validate:"required,oneof=selfhosted cloud"`
+	Env       Env             `yaml:"env"       mapstructure:"env"       awareness:"required,bootstrap" validate:"required,oneof=development production"`
 	HTTP      HTTPConfig      `yaml:"http"      mapstructure:"http"`
 	DB        DBConfig        `yaml:"db"        mapstructure:"db"`
 	Telemetry TelemetryConfig `yaml:"telemetry" mapstructure:"telemetry"`
@@ -22,7 +22,7 @@ type Config struct {
 
 // HTTPConfig configures the web-facing HTTP server.
 type HTTPConfig struct {
-	Addr     string `yaml:"addr"     mapstructure:"addr"     validate:"required"`
+	Addr     string `yaml:"addr"     mapstructure:"addr"     awareness:"required" validate:"required"`
 	BasePath string `yaml:"basePath" mapstructure:"basePath"`
 }
 
@@ -36,7 +36,7 @@ type OpenAPIConfig struct {
 	Enabled           bool   `yaml:"enabled"           mapstructure:"enabled"`
 	RequireBasicAuth  bool   `yaml:"requireBasicAuth"  mapstructure:"requireBasicAuth"`
 	BasicAuthUser     string `yaml:"basicAuthUser"     mapstructure:"basicAuthUser"`
-	BasicAuthPassword string `yaml:"basicAuthPassword" mapstructure:"basicAuthPassword"`
+	BasicAuthPassword string `yaml:"basicAuthPassword" mapstructure:"basicAuthPassword" awareness:"secret"`
 }
 
 // SchedulerConfig configures the periodic-job runner.
@@ -49,7 +49,7 @@ type SchedulerConfig struct {
 type QueueConfig struct {
 	Enabled        bool          `yaml:"enabled"        mapstructure:"enabled"`
 	URL            string        `yaml:"url"            mapstructure:"url"`
-	Token          string        `yaml:"token"          mapstructure:"token"`
+	Token          string        `yaml:"token"          mapstructure:"token"          awareness:"secret"`
 	ConnectTimeout time.Duration `yaml:"connectTimeout" mapstructure:"connectTimeout" validate:"gte=0"`
 }
 
@@ -74,9 +74,9 @@ func (e Env) IsProduction() bool { return e == EnvProduction }
 
 // DBConfig is the Postgres connection configuration.
 type DBConfig struct {
-	DSN             string         `yaml:"dsn"             mapstructure:"dsn"             validate:"required"`
-	Schema          string         `yaml:"schema"          mapstructure:"schema"`
-	TablePrefix     string         `yaml:"tablePrefix"     mapstructure:"tablePrefix"`
+	DSN             string         `yaml:"dsn"             mapstructure:"dsn"             awareness:"required,secret" validate:"required"`
+	Schema          string         `yaml:"schema"          mapstructure:"schema"          awareness:"bootstrap"`
+	TablePrefix     string         `yaml:"tablePrefix"     mapstructure:"tablePrefix"     awareness:"bootstrap"`
 	Role            string         `yaml:"role"            mapstructure:"role"`
 	AutoMigrate     bool           `yaml:"autoMigrate"     mapstructure:"autoMigrate"`
 	Reader          ReaderConfig   `yaml:"reader"          mapstructure:"reader"`
@@ -92,7 +92,7 @@ type DBConfig struct {
 
 // ReaderConfig points reads at a replica; an empty DSN falls back to the writer.
 type ReaderConfig struct {
-	DSN             string        `yaml:"dsn"             mapstructure:"dsn"`
+	DSN             string        `yaml:"dsn"             mapstructure:"dsn"             awareness:"secret"`
 	Role            string        `yaml:"role"            mapstructure:"role"`
 	MaxOpenConns    int           `yaml:"maxOpenConns"    mapstructure:"maxOpenConns"    validate:"gte=0"`
 	MaxIdleConns    int           `yaml:"maxIdleConns"    mapstructure:"maxIdleConns"    validate:"gte=0"`
@@ -102,7 +102,7 @@ type ReaderConfig struct {
 
 // MigratorConfig is a separate credential used only to run migrations.
 type MigratorConfig struct {
-	DSN  string `yaml:"dsn"  mapstructure:"dsn"`
+	DSN  string `yaml:"dsn"  mapstructure:"dsn"  awareness:"secret"`
 	Role string `yaml:"role" mapstructure:"role"`
 }
 

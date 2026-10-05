@@ -1,0 +1,2 @@
+db:
+  dsn: postgres://postgres:postgres@localhost:5432/auth_server?sslmode=disable

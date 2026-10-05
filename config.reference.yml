@@ -1,0 +1,125 @@
+# auth-server — auto-generated from config struct tags.
+# DO NOT edit by hand. Run `go run ./cmd/gen-config-example --format=yaml` to regenerate.
+#
+# Copy to config.yml, uncomment what you need to set, and the app picks it up.
+# Every field maps to an env var (shown as `env: AUTH_*` in the per-field comment).
+# Env vars override YAML.
+#
+# Awareness markers (in [brackets] on the per-field comment):
+#   required   — must be non-empty for the app to boot
+#   bootstrap  — set once at first-run; changing later has no effect or breaks things
+#   secret     — never commit; use env vars or a secret store
+
+api:
+  openapi:
+    # [secret] env: AUTH_API_OPENAPI_BASIC_AUTH_PASSWORD
+    basicAuthPassword: ""
+    # env: AUTH_API_OPENAPI_BASIC_AUTH_USER
+    basicAuthUser: ""
+    # env: AUTH_API_OPENAPI_ENABLED
+    enabled: true
+    # env: AUTH_API_OPENAPI_REQUIRE_BASIC_AUTH
+    requireBasicAuth: true
+
+db:
+  # env: AUTH_DB_AUTO_MIGRATE
+  autoMigrate: true
+  # env: AUTH_DB_CONN_MAX_IDLE_TIME
+  connMaxIdleTime: ""
+  # env: AUTH_DB_CONN_MAX_LIFETIME
+  connMaxLifetime: ""
+  # env: AUTH_DB_CONNECT_BACKOFF
+  connectBackoff: 250ms
+  # env: AUTH_DB_CONNECT_TIMEOUT
+  connectTimeout: 5s
+  # [required, secret] env: AUTH_DB_DSN
+  dsn: ""
+  health:
+    # env: AUTH_DB_HEALTH_INTERVAL
+    interval: 30s
+    # env: AUTH_DB_HEALTH_TIMEOUT
+    timeout: 2s
+  # env: AUTH_DB_MAX_IDLE_CONNS
+  maxIdleConns: ""
+  # env: AUTH_DB_MAX_OPEN_CONNS
+  maxOpenConns: ""
+  migrator:
+    # [secret] env: AUTH_DB_MIGRATOR_DSN
+    dsn: ""
+    # env: AUTH_DB_MIGRATOR_ROLE
+    role: ""
+  reader:
+    # env: AUTH_DB_READER_CONN_MAX_IDLE_TIME
+    connMaxIdleTime: ""
+    # env: AUTH_DB_READER_CONN_MAX_LIFETIME
+    connMaxLifetime: ""
+    # [secret] env: AUTH_DB_READER_DSN
+    dsn: ""
+    # env: AUTH_DB_READER_MAX_IDLE_CONNS
+    maxIdleConns: ""
+    # env: AUTH_DB_READER_MAX_OPEN_CONNS
+    maxOpenConns: ""
+    # env: AUTH_DB_READER_ROLE
+    role: ""
+  # env: AUTH_DB_ROLE
+  role: ""
+  # [bootstrap] env: AUTH_DB_SCHEMA
+  schema: public
+  # [bootstrap] env: AUTH_DB_TABLE_PREFIX
+  tablePrefix: ""
+
+# [required, bootstrap] env: AUTH_ENV
+env: production
+
+http:
+  # [required] env: AUTH_HTTP_ADDR
+  addr: ":5150"
+  # env: AUTH_HTTP_BASE_PATH
+  basePath: ""
+
+# [required, bootstrap] env: AUTH_MODE
+mode: selfhosted
+
+queue:
+  # env: AUTH_QUEUE_CONNECT_TIMEOUT
+  connectTimeout: 10s
+  # env: AUTH_QUEUE_ENABLED
+  enabled: false
+  # [secret] env: AUTH_QUEUE_TOKEN
+  token: ""
+  # env: AUTH_QUEUE_URL
+  url: ""
+
+scheduler:
+  # env: AUTH_SCHEDULER_ENABLED
+  enabled: true
+  # env: AUTH_SCHEDULER_SHUTDOWN_GRACE
+  shutdownGrace: 30s
+
+telemetry:
+  metrics:
+    # env: AUTH_TELEMETRY_METRICS_ENABLED
+    enabled: ""
+    # env: AUTH_TELEMETRY_METRICS_EXPORT_INTERVAL
+    exportInterval: 30s
+    prometheus:
+      # env: AUTH_TELEMETRY_METRICS_PROMETHEUS_ADDR
+      addr: ":9090"
+      # env: AUTH_TELEMETRY_METRICS_PROMETHEUS_ENABLED
+      enabled: ""
+      # env: AUTH_TELEMETRY_METRICS_PROMETHEUS_PATH
+      path: /metrics
+  otlp:
+    # env: AUTH_TELEMETRY_OTLP_ENDPOINT
+    endpoint: ""
+    # env: AUTH_TELEMETRY_OTLP_HEADERS
+    headers: ""
+    # env: AUTH_TELEMETRY_OTLP_INSECURE
+    insecure: ""
+    # env: AUTH_TELEMETRY_OTLP_PROTOCOL
+    protocol: ""
+  tracing:
+    # env: AUTH_TELEMETRY_TRACING_ENABLED
+    enabled: ""
+    # env: AUTH_TELEMETRY_TRACING_SAMPLE_RATIO
+    sampleRatio: ""
