@@ -12,6 +12,7 @@ linters:
     - gochecknoglobals
     - gocritic
     - gosec
+    - misspell
     - nilerr
     - revive
     - unconvert
