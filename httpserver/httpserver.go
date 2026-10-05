@@ -44,9 +44,15 @@ func (w *httpServer) Run(ctx context.Context) error {
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	// Serve HTTP/1.1 and unencrypted HTTP/2 (h2c) so the controlplane speaks Connect and gRPC on one port.
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	protocols.SetUnencryptedHTTP2(true)
+
 	srv := &http.Server{
 		Addr:              w.addr,
 		Handler:           w.handler,
+		Protocols:         protocols,
 		ReadTimeout:       10 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,
 		WriteTimeout:      30 * time.Second,
