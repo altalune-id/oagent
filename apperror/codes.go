@@ -5,6 +5,7 @@ type Code string
 
 // Error codes: <DOM><NNN>, append-only; 900-999 is reserved for internal failures.
 const (
-	CodeValidation Code = "GEN004"
-	CodeUnexpected Code = "GEN900"
+	CodeTenantMissing Code = "GEN001"
+	CodeValidation    Code = "GEN004"
+	CodeUnexpected    Code = "GEN900"
 )

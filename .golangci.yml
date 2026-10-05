@@ -12,6 +12,7 @@ linters:
     - gochecknoglobals
     - gocritic
     - nilerr
+    - revive
 
   settings:
     gocritic:
@@ -23,6 +24,14 @@ linters:
         - ifElseChain
         - hugeParam
         - rangeValCopy
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+        - name: unexported-return
+          disabled: true
     depguard:
       rules:
         migrator-purity:
