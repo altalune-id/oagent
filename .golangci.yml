@@ -11,6 +11,7 @@ linters:
     - errorlint
     - gochecknoglobals
     - gocritic
+    - gosec
     - nilerr
     - revive
 
@@ -24,6 +25,10 @@ linters:
         - ifElseChain
         - hugeParam
         - rangeValCopy
+    gosec:
+      excludes:
+        - G104    # duplicates errcheck
+        - G404    # weak random OK for non-crypto uses
     revive:
       rules:
         - name: exported
