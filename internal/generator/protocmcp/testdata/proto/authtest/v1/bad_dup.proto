@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package authtest.v1;
+
+import "mcp/v1/annotations.proto";
+
+option go_package = "altalune.id/auth-server/internal/generator/protocmcp/testdata/gen/authtest/v1;authtestv1";
+
+service BadDupService {
+  // FirstTwin claims the twin_tool name.
+  rpc FirstTwin(BadDupRequest) returns (BadDupResponse) {
+    option (mcp.v1.tool) = {name: "twin_tool"};
+  }
+  // SecondTwin claims the same name a second time.
+  rpc SecondTwin(BadDupRequest) returns (BadDupResponse) {
+    option (mcp.v1.tool) = {name: "twin_tool"};
+  }
+}
+
+message BadDupRequest {}
+
+message BadDupResponse {}

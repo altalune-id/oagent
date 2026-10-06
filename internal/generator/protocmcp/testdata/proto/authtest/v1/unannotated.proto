@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package authtest.v1;
+
+option go_package = "altalune.id/auth-server/internal/generator/protocmcp/testdata/gen/authtest/v1;authtestv1";
+
+service PlainService {
+  rpc Plain(PlainRequest) returns (PlainResponse);
+}
+
+message PlainRequest {}
+
+message PlainResponse {}

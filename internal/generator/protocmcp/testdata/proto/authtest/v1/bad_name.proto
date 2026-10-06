@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package authtest.v1;
+
+import "mcp/v1/annotations.proto";
+
+option go_package = "altalune.id/auth-server/internal/generator/protocmcp/testdata/gen/authtest/v1;authtestv1";
+
+service BadNameService {
+  rpc ShoutLoudly(BadNameRequest) returns (BadNameResponse) {
+    option (mcp.v1.tool) = {name: "Shout-Loudly"};
+  }
+}
+
+message BadNameRequest {}
+
+message BadNameResponse {}

@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package authtest.v1;
+
+import "mcp/v1/annotations.proto";
+
+option go_package = "altalune.id/auth-server/internal/generator/protocmcp/testdata/gen/authtest/v1;authtestv1";
+
+service BadUIService {
+  rpc BadUI(BadUIRequest) returns (BadUIResponse) {
+    option (mcp.v1.tool) = {
+      name: "bad_ui"
+      ui: "App_1"
+    };
+  }
+}
+
+message BadUIRequest {}
+
+message BadUIResponse {}
