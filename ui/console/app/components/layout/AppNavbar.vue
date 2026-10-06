@@ -1,3 +1,10 @@
+<script setup lang="ts">
+import NavbarShell from '~/components/ui/NavbarShell.vue'
+import OrgSelector from '~/components/org/OrgSelector.vue'
+import ProjectSelector from '~/components/project/ProjectSelector.vue'
+import ThemeSwitcher from '~/components/layout/ThemeSwitcher.vue'
+</script>
+
 <template>
   <NavbarShell>
     <template #brand>

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite'
 import AppStats from './AppStats.vue'
 
 const meta = {
-  title: 'Primitives/AppStats',
+  title: 'UI/AppStats',
   component: AppStats,
   args: {
     items: [

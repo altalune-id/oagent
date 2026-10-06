@@ -12,6 +12,7 @@ import (
 func TestScopeFor(t *testing.T) {
 	assert.Equal(t, ScopeOrgWrite, ScopeFor(orgv1mcp.OrgCreateToolName))
 	assert.Equal(t, ScopeOrgRead, ScopeFor(orgv1mcp.OrgGetToolName))
+	assert.Equal(t, ScopeOrgRead, ScopeFor(orgv1mcp.OrgListToolName))
 	assert.Equal(t, "", ScopeFor("unknown"))
 }
 

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite'
 import NavbarShell from './NavbarShell.vue'
 
 const meta = {
-  title: 'Primitives/NavbarShell',
+  title: 'UI/NavbarShell',
   component: NavbarShell,
 } satisfies Meta<typeof NavbarShell>
 

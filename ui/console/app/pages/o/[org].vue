@@ -1,8 +1,15 @@
 <script setup lang="ts">
+import AppSidebar from '~/components/layout/AppSidebar.vue'
 import { useOrgsStore } from '~/stores/orgs'
 
 const route = useRoute()
 const orgs = useOrgsStore()
+await orgs.ensureLoaded()
+
+if (orgs.error) {
+  throw createError({ statusCode: 502, statusMessage: 'Failed to load organizations', fatal: true })
+}
+
 const org = computed(() => orgs.bySlug(route.params.org as string))
 
 if (!org.value) {

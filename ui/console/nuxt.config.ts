@@ -4,13 +4,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-10-06',
   devtools: { enabled: true },
   modules: ['@pinia/nuxt', '@vueuse/nuxt'],
-  pinia: { storesDirs: ['./app/stores/**'] },
-  components: {
-    dirs: [
-      { path: '~/components', pathPrefix: true },
-      { path: '~/components/primitives', pathPrefix: false },
-    ],
-  },
+  components: { dirs: [] },
   imports: { scan: false },
   css: ['~/assets/css/main.css'],
   vite: { plugins: [tailwindcss() as any] },

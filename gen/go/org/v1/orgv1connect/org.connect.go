@@ -37,12 +37,15 @@ const (
 	OrgServiceCreateOrgProcedure = "/org.v1.OrgService/CreateOrg"
 	// OrgServiceGetOrgProcedure is the fully-qualified name of the OrgService's GetOrg RPC.
 	OrgServiceGetOrgProcedure = "/org.v1.OrgService/GetOrg"
+	// OrgServiceListOrgsProcedure is the fully-qualified name of the OrgService's ListOrgs RPC.
+	OrgServiceListOrgsProcedure = "/org.v1.OrgService/ListOrgs"
 )
 
 // OrgServiceClient is a client for the org.v1.OrgService service.
 type OrgServiceClient interface {
 	CreateOrg(context.Context, *connect.Request[v1.CreateOrgRequest]) (*connect.Response[v1.CreateOrgResponse], error)
 	GetOrg(context.Context, *connect.Request[v1.GetOrgRequest]) (*connect.Response[v1.GetOrgResponse], error)
+	ListOrgs(context.Context, *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error)
 }
 
 // NewOrgServiceClient constructs a client for the org.v1.OrgService service. By default, it uses
@@ -68,6 +71,12 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(orgServiceMethods.ByName("GetOrg")),
 			connect.WithClientOptions(opts...),
 		),
+		listOrgs: connect.NewClient[v1.ListOrgsRequest, v1.ListOrgsResponse](
+			httpClient,
+			baseURL+OrgServiceListOrgsProcedure,
+			connect.WithSchema(orgServiceMethods.ByName("ListOrgs")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -75,6 +84,7 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 type orgServiceClient struct {
 	createOrg *connect.Client[v1.CreateOrgRequest, v1.CreateOrgResponse]
 	getOrg    *connect.Client[v1.GetOrgRequest, v1.GetOrgResponse]
+	listOrgs  *connect.Client[v1.ListOrgsRequest, v1.ListOrgsResponse]
 }
 
 // CreateOrg calls org.v1.OrgService.CreateOrg.
@@ -87,10 +97,16 @@ func (c *orgServiceClient) GetOrg(ctx context.Context, req *connect.Request[v1.G
 	return c.getOrg.CallUnary(ctx, req)
 }
 
+// ListOrgs calls org.v1.OrgService.ListOrgs.
+func (c *orgServiceClient) ListOrgs(ctx context.Context, req *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error) {
+	return c.listOrgs.CallUnary(ctx, req)
+}
+
 // OrgServiceHandler is an implementation of the org.v1.OrgService service.
 type OrgServiceHandler interface {
 	CreateOrg(context.Context, *connect.Request[v1.CreateOrgRequest]) (*connect.Response[v1.CreateOrgResponse], error)
 	GetOrg(context.Context, *connect.Request[v1.GetOrgRequest]) (*connect.Response[v1.GetOrgResponse], error)
+	ListOrgs(context.Context, *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error)
 }
 
 // NewOrgServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -112,12 +128,20 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(orgServiceMethods.ByName("GetOrg")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orgServiceListOrgsHandler := connect.NewUnaryHandler(
+		OrgServiceListOrgsProcedure,
+		svc.ListOrgs,
+		connect.WithSchema(orgServiceMethods.ByName("ListOrgs")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/org.v1.OrgService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrgServiceCreateOrgProcedure:
 			orgServiceCreateOrgHandler.ServeHTTP(w, r)
 		case OrgServiceGetOrgProcedure:
 			orgServiceGetOrgHandler.ServeHTTP(w, r)
+		case OrgServiceListOrgsProcedure:
+			orgServiceListOrgsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -133,4 +157,8 @@ func (UnimplementedOrgServiceHandler) CreateOrg(context.Context, *connect.Reques
 
 func (UnimplementedOrgServiceHandler) GetOrg(context.Context, *connect.Request[v1.GetOrgRequest]) (*connect.Response[v1.GetOrgResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("org.v1.OrgService.GetOrg is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) ListOrgs(context.Context, *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("org.v1.OrgService.ListOrgs is not implemented"))
 }

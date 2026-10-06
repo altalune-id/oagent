@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import AppSelect from '~/components/ui/AppSelect.vue'
 import { useOrgsStore } from '~/stores/orgs'
 import { useProjectsStore } from '~/stores/projects'
-import type { SelectOption } from '~/components/primitives/types'
+import type { SelectOption } from '~/components/ui/types'
 
 const orgs = useOrgsStore()
 const projects = useProjectsStore()

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { NavItem } from '~/components/primitives/types'
+import SidebarNav from '~/components/ui/SidebarNav.vue'
+import type { NavItem } from '~/components/ui/types'
 
 const route = useRoute()
 const org = computed(() => route.params.org as string)

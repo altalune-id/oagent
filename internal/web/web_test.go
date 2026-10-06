@@ -42,33 +42,6 @@ func TestProbesStayRootAnchoredUnderBasePath(t *testing.T) {
 	}
 }
 
-func TestBareBasePathRedirects(t *testing.T) {
-	srv := NewServer(ServerOpts{BasePath: "/app/"})
-
-	rec := httptest.NewRecorder()
-	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/app", nil))
-
-	assert.Equal(t, http.StatusMovedPermanently, rec.Code)
-	assert.Equal(t, "/app/", rec.Header().Get("Location"))
-}
-
-func TestBasePathMountsAppWithStrippedPrefix(t *testing.T) {
-	app := http.NewServeMux()
-	app.HandleFunc("GET /ping", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(r.URL.Path))
-	})
-	srv := NewServer(ServerOpts{BasePath: "/app", App: app})
-
-	rec := httptest.NewRecorder()
-	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/app/ping", nil))
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "/ping", rec.Body.String())
-
-	rec = httptest.NewRecorder()
-	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/ping", nil))
-	assert.Equal(t, http.StatusNotFound, rec.Code)
-}
-
 func TestAPIHandlerMountsUnderBasePath(t *testing.T) {
 	api := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(r.URL.Path))
@@ -93,15 +66,40 @@ func TestMCPHandlerMountsUnderBasePath(t *testing.T) {
 	assert.Equal(t, "/app/mcp", rec.Body.String())
 }
 
-func TestRootAppWithEmptyBasePath(t *testing.T) {
-	app := http.NewServeMux()
-	app.HandleFunc("GET /ping", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("pong"))
+func TestConsoleMountsAtRootConsole(t *testing.T) {
+	app := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(r.URL.Path))
 	})
-	srv := NewServer(ServerOpts{App: app})
+	srv := NewServer(ServerOpts{Console: app})
 
 	rec := httptest.NewRecorder()
-	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/ping", nil))
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/console/o/acme", nil))
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "pong", rec.Body.String())
+	assert.Equal(t, "/o/acme", rec.Body.String())
+
+	rec = httptest.NewRecorder()
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/console", nil))
+	assert.Equal(t, http.StatusMovedPermanently, rec.Code)
+	assert.Equal(t, "/console/", rec.Header().Get("Location"))
+}
+
+func TestConsoleMountsUnderBasePath(t *testing.T) {
+	app := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(r.URL.Path))
+	})
+	srv := NewServer(ServerOpts{BasePath: "/app", Console: app})
+
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/app/console/ping", nil))
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "/ping", rec.Body.String())
+}
+
+func TestRootStaysNotFoundWithConsole(t *testing.T) {
+	app := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
+	srv := NewServer(ServerOpts{Console: app})
+
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
 }

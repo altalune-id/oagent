@@ -16,6 +16,9 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "^2.16.0",
+    "@connectrpc/connect": "^2.2.0",
+    "@connectrpc/connect-web": "^2.2.0",
     "@pinia/nuxt": "^1.0.2",
     "@vueuse/nuxt": "^15.0.0",
     "daisyui": "^5.7.47",

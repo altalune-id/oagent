@@ -291,6 +291,86 @@ func (x *GetOrgResponse) GetOrg() *Org {
 	return nil
 }
 
+type ListOrgsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListOrgsRequest) Reset() {
+	*x = ListOrgsRequest{}
+	mi := &file_org_v1_org_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListOrgsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListOrgsRequest) ProtoMessage() {}
+
+func (x *ListOrgsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_org_v1_org_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListOrgsRequest.ProtoReflect.Descriptor instead.
+func (*ListOrgsRequest) Descriptor() ([]byte, []int) {
+	return file_org_v1_org_proto_rawDescGZIP(), []int{5}
+}
+
+type ListOrgsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Orgs          []*Org                 `protobuf:"bytes,1,rep,name=orgs,proto3" json:"orgs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListOrgsResponse) Reset() {
+	*x = ListOrgsResponse{}
+	mi := &file_org_v1_org_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListOrgsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListOrgsResponse) ProtoMessage() {}
+
+func (x *ListOrgsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_org_v1_org_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListOrgsResponse.ProtoReflect.Descriptor instead.
+func (*ListOrgsResponse) Descriptor() ([]byte, []int) {
+	return file_org_v1_org_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ListOrgsResponse) GetOrgs() []*Org {
+	if x != nil {
+		return x.Orgs
+	}
+	return nil
+}
+
 var File_org_v1_org_proto protoreflect.FileDescriptor
 
 const file_org_v1_org_proto_rawDesc = "" +
@@ -313,14 +393,19 @@ const file_org_v1_org_proto_rawDesc = "" +
 	"\rGetOrgRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"/\n" +
 	"\x0eGetOrgResponse\x12\x1d\n" +
-	"\x03org\x18\x01 \x01(\v2\v.org.v1.OrgR\x03org2\x97\x02\n" +
+	"\x03org\x18\x01 \x01(\v2\v.org.v1.OrgR\x03org\"\x11\n" +
+	"\x0fListOrgsRequest\"3\n" +
+	"\x10ListOrgsResponse\x12\x1f\n" +
+	"\x04orgs\x18\x01 \x03(\v2\v.org.v1.OrgR\x04orgs2\x9b\x03\n" +
 	"\n" +
 	"OrgService\x12\x9b\x01\n" +
 	"\tCreateOrg\x12\x18.org.v1.CreateOrgRequest\x1a\x19.org.v1.CreateOrgResponse\"Y\xca\xf3\x18U\n" +
 	"\n" +
 	"org_create\x12@Create an organization, minting a slug when one is not supplied. \x01*\x03app\x12k\n" +
 	"\x06GetOrg\x12\x15.org.v1.GetOrgRequest\x1a\x16.org.v1.GetOrgResponse\"2\xca\xf3\x18.\n" +
-	"\aorg_get\x12\x1aGet an organization by id.\x1a\x02id*\x03appBw\n" +
+	"\aorg_get\x12\x1aGet an organization by id.\x1a\x02id*\x03app\x12\x81\x01\n" +
+	"\bListOrgs\x12\x17.org.v1.ListOrgsRequest\x1a\x18.org.v1.ListOrgsResponse\"B\xca\xf3\x18>\n" +
+	"\borg_list\x12-List organizations, ordered by creation time.*\x03appBw\n" +
 	"\n" +
 	"com.org.v1B\bOrgProtoP\x01Z&altalune.id/oagent/gen/go/org/v1;orgv1\xa2\x02\x03OXX\xaa\x02\x06Org.V1\xca\x02\x06Org\\V1\xe2\x02\x12Org\\V1\\GPBMetadata\xea\x02\aOrg::V1b\x06proto3"
 
@@ -336,29 +421,34 @@ func file_org_v1_org_proto_rawDescGZIP() []byte {
 	return file_org_v1_org_proto_rawDescData
 }
 
-var file_org_v1_org_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_org_v1_org_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_org_v1_org_proto_goTypes = []any{
 	(*Org)(nil),                   // 0: org.v1.Org
 	(*CreateOrgRequest)(nil),      // 1: org.v1.CreateOrgRequest
 	(*CreateOrgResponse)(nil),     // 2: org.v1.CreateOrgResponse
 	(*GetOrgRequest)(nil),         // 3: org.v1.GetOrgRequest
 	(*GetOrgResponse)(nil),        // 4: org.v1.GetOrgResponse
-	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
+	(*ListOrgsRequest)(nil),       // 5: org.v1.ListOrgsRequest
+	(*ListOrgsResponse)(nil),      // 6: org.v1.ListOrgsResponse
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
 }
 var file_org_v1_org_proto_depIdxs = []int32{
-	5, // 0: org.v1.Org.created_at:type_name -> google.protobuf.Timestamp
-	5, // 1: org.v1.Org.updated_at:type_name -> google.protobuf.Timestamp
+	7, // 0: org.v1.Org.created_at:type_name -> google.protobuf.Timestamp
+	7, // 1: org.v1.Org.updated_at:type_name -> google.protobuf.Timestamp
 	0, // 2: org.v1.CreateOrgResponse.org:type_name -> org.v1.Org
 	0, // 3: org.v1.GetOrgResponse.org:type_name -> org.v1.Org
-	1, // 4: org.v1.OrgService.CreateOrg:input_type -> org.v1.CreateOrgRequest
-	3, // 5: org.v1.OrgService.GetOrg:input_type -> org.v1.GetOrgRequest
-	2, // 6: org.v1.OrgService.CreateOrg:output_type -> org.v1.CreateOrgResponse
-	4, // 7: org.v1.OrgService.GetOrg:output_type -> org.v1.GetOrgResponse
-	6, // [6:8] is the sub-list for method output_type
-	4, // [4:6] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0, // 4: org.v1.ListOrgsResponse.orgs:type_name -> org.v1.Org
+	1, // 5: org.v1.OrgService.CreateOrg:input_type -> org.v1.CreateOrgRequest
+	3, // 6: org.v1.OrgService.GetOrg:input_type -> org.v1.GetOrgRequest
+	5, // 7: org.v1.OrgService.ListOrgs:input_type -> org.v1.ListOrgsRequest
+	2, // 8: org.v1.OrgService.CreateOrg:output_type -> org.v1.CreateOrgResponse
+	4, // 9: org.v1.OrgService.GetOrg:output_type -> org.v1.GetOrgResponse
+	6, // 10: org.v1.OrgService.ListOrgs:output_type -> org.v1.ListOrgsResponse
+	8, // [8:11] is the sub-list for method output_type
+	5, // [5:8] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_org_v1_org_proto_init() }
@@ -372,7 +462,7 @@ func file_org_v1_org_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_org_v1_org_proto_rawDesc), len(file_org_v1_org_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

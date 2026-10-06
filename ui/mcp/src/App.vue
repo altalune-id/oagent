@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { onMounted, provide, ref, shallowRef } from "vue";
 import { App } from "@modelcontextprotocol/ext-apps";
 import { resolveView } from "./views";
 
@@ -70,4 +69,7 @@ pre { margin: 0; overflow: auto; font-family: ui-monospace, SFMono-Regular, mono
 .stack button:disabled { opacity: 0.6; cursor: default; }
 .ghost { margin-top: 12px; padding: 6px 12px; border: 1px solid rgba(128, 128, 128, 0.4); border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .mono { font-family: ui-monospace, SFMono-Regular, monospace; }
+.list { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13px; }
+.list th { text-align: left; font-weight: 600; opacity: 0.6; padding: 4px 8px 4px 0; }
+.list td { padding: 4px 8px 4px 0; border-top: 1px solid rgba(128, 128, 128, 0.2); }
 </style>

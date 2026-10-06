@@ -25,6 +25,13 @@ service OrgService {
       ui: "app"
     };
   }
+  rpc ListOrgs(ListOrgsRequest) returns (ListOrgsResponse) {
+    option (mcp.v1.tool) = {
+      name: "org_list"
+      description: "List organizations, ordered by creation time."
+      ui: "app"
+    };
+  }
 }
 
 message Org {
@@ -51,4 +58,10 @@ message GetOrgRequest {
 
 message GetOrgResponse {
   Org org = 1;
+}
+
+message ListOrgsRequest {}
+
+message ListOrgsResponse {
+  repeated Org orgs = 1;
 }

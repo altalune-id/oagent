@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite'
 import SidebarNav from './SidebarNav.vue'
 
 const meta = {
-  title: 'Primitives/SidebarNav',
+  title: 'UI/SidebarNav',
   component: SidebarNav,
   args: {
     label: 'acme',

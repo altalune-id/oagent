@@ -19,3 +19,9 @@ plugins:
     opt:
       - paths=source_relative
       - ui_prefix=ui://oagent
+  - remote: buf.build/bufbuild/es:v2.6.3
+    out: ui/console/gen
+    include_imports: true
+    opt:
+      - target=ts
+      - import_extension=js

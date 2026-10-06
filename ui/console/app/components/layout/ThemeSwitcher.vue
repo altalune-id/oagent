@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import AppButton from '~/components/ui/AppButton.vue'
+
 const theme = useState<'light' | 'dark'>('theme', () => 'light')
 
 function apply(value: 'light' | 'dark') {

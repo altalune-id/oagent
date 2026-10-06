@@ -66,3 +66,24 @@ func TestOrgService_GetOrg_StoreError(t *testing.T) {
 	_, err := c.GetOrg(context.Background(), connect.NewRequest(&orgv1.GetOrgRequest{Id: uuid.New().String()}))
 	assert.Error(t, err)
 }
+
+func TestOrgService_ListOrgs(t *testing.T) {
+	store := &fakes.OrgStore{Orgs: []*org.Org{
+		{ID: uuid.New(), PublicID: "pub1", Slug: "acme", Name: "Acme"},
+		{ID: uuid.New(), PublicID: "pub2", Slug: "globex", Name: "Globex"},
+	}}
+	c := newOrgServiceClient(t, store)
+
+	resp, err := c.ListOrgs(context.Background(), connect.NewRequest(&orgv1.ListOrgsRequest{}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.GetOrgs(), 2)
+	assert.Equal(t, "acme", resp.Msg.GetOrgs()[0].GetSlug())
+	assert.Equal(t, "globex", resp.Msg.GetOrgs()[1].GetSlug())
+}
+
+func TestOrgService_ListOrgs_StoreError(t *testing.T) {
+	c := newOrgServiceClient(t, &fakes.OrgStore{Err: &org.NotFoundError{Slug: "acme"}})
+
+	_, err := c.ListOrgs(context.Background(), connect.NewRequest(&orgv1.ListOrgsRequest{}))
+	assert.Error(t, err)
+}

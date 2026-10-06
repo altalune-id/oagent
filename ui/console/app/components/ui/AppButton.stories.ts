@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite'
 import AppButton from './AppButton.vue'
 
 const meta = {
-  title: 'Primitives/AppButton',
+  title: 'UI/AppButton',
   component: AppButton,
   args: { variant: 'primary', size: 'md' },
   argTypes: {

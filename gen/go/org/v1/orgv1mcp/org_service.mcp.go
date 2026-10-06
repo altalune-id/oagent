@@ -21,9 +21,12 @@ const OrgCreateToolName = "org_create"
 // OrgGetToolName is the MCP tool name for OrgService.GetOrg.
 const OrgGetToolName = "org_get"
 
+// OrgListToolName is the MCP tool name for OrgService.ListOrgs.
+const OrgListToolName = "org_list"
+
 // OrgServiceToolNames returns every MCP tool name generated for OrgService.
 func OrgServiceToolNames() []string {
-	return []string{OrgCreateToolName, OrgGetToolName}
+	return []string{OrgCreateToolName, OrgGetToolName, OrgListToolName}
 }
 
 // RegisterOrgServiceTools registers every MCP-annotated OrgService method on reg, against h and under the scope scopeFor resolves for each tool name.
@@ -79,6 +82,33 @@ func RegisterOrgServiceTools(reg *mcp.Registry, h orgv1connect.OrgServiceHandler
 			body, err := protojson.Marshal(resp.Msg)
 			if err != nil {
 				return nil, fmt.Errorf("mcp: %s: encode result: %w", OrgGetToolName, err)
+			}
+			return json.RawMessage(body), nil
+		},
+	}, h)
+	reg.Register(mcp.ToolSpec{
+		Name:        OrgListToolName,
+		Description: "List organizations, ordered by creation time.",
+		Scope:       scopeFor(OrgListToolName),
+		Mutation:    false,
+		Destructive: false,
+		UI:          "ui://oagent/app",
+		InputSchema: json.RawMessage(`{"type":"object","properties":{},"additionalProperties":false}`),
+		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
+			if len(input) == 0 {
+				input = json.RawMessage(`{}`)
+			}
+			var req v1.ListOrgsRequest
+			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
+				return nil, mcp.NewInvalidArgumentsError(OrgListToolName, err)
+			}
+			resp, err := h.ListOrgs(ctx, connect.NewRequest(&req))
+			if err != nil {
+				return nil, err
+			}
+			body, err := protojson.Marshal(resp.Msg)
+			if err != nil {
+				return nil, fmt.Errorf("mcp: %s: encode result: %w", OrgListToolName, err)
 			}
 			return json.RawMessage(body), nil
 		},

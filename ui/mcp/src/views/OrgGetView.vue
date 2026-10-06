@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, ref, type Ref } from "vue";
+import type { Ref } from "vue";
 
 const props = defineProps<{ data: Record<string, unknown> }>();
 const app = inject<any>("mcpApp");

@@ -42,6 +42,20 @@ ui-mcp: ## build the MCP App (Vue) and embed it
 	pnpm --filter @oagent/mcp-ui build
 	cp ui/mcp/dist/index.html internal/mcp/ui/assets/app.html
 
+.PHONY: ui-console
+ui-console: ## build the console SPA and embed it
+	pnpm --filter @oagent/console generate
+	@mkdir -p internal/web/console/public
+	@find internal/web/console/public -mindepth 1 ! -name .gitkeep -exec rm -rf {} +
+	@cp -R ui/console/.output/public/. internal/web/console/public/
+
+.PHONY: ui
+ui: ui-mcp ui-console ## build all embedded web assets
+
+.PHONY: build-all
+build-all: ui ## build embedded web assets, then the oagent binary
+	@$(MAKE) build
+
 .PHONY: fmt
 fmt: ## format all Go files
 	$(GO) fmt ./...

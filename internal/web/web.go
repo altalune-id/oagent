@@ -13,14 +13,14 @@ import (
 type ServerOpts struct {
 	APIHandler http.Handler // optional Connect-RPC surface mounted at BasePath+"/api"
 	MCPHandler http.Handler // optional MCP surface mounted at BasePath+"/mcp"
-	App        http.Handler // optional app surface mounted under BasePath
+	Console    http.Handler // optional console SPA mounted at BasePath+"/console"
 	BasePath   string
 	Log        *slog.Logger
 	Unexpected apperror.UnexpectedFunc
 	Ready      func() bool
 }
 
-// NewServer builds the root http.Handler: probes stay at the root, the app mounts under BasePath.
+// NewServer builds the root http.Handler.
 func NewServer(opts ServerOpts) http.Handler {
 	outer := http.NewServeMux()
 	outer.HandleFunc("GET /healthz", healthz)
@@ -29,31 +29,17 @@ func NewServer(opts ServerOpts) http.Handler {
 		outer.Handle(Path(opts.BasePath, "/api")+"/", opts.APIHandler)
 	}
 	if opts.MCPHandler != nil {
-		outer.Handle(Path(opts.BasePath, "/mcp"), opts.MCPHandler)
-		outer.Handle(Path(opts.BasePath, "/mcp")+"/", opts.MCPHandler)
+		mcp := Path(opts.BasePath, "/mcp")
+		outer.Handle(mcp, opts.MCPHandler)
+		outer.Handle(mcp+"/", opts.MCPHandler)
 	}
-
-	app := opts.App
-	if app == nil {
-		app = http.NewServeMux()
-	}
-	mountApp(outer, opts.BasePath, app)
-
-	return middleware.Recoverer(opts.Log, opts.Unexpected, middleware.RequestID(outer))
-}
-
-// mountApp serves app at BasePath, or at the root when BasePath is empty.
-func mountApp(outer *http.ServeMux, basePath string, app http.Handler) {
-	base := Path(basePath, "")
-	if base == "/" {
-		outer.Handle("/", app)
-		return
+	if opts.Console != nil {
+		console := Path(opts.BasePath, "/console")
+		outer.Handle(console, http.RedirectHandler(console+"/", http.StatusMovedPermanently))
+		outer.Handle(console+"/", http.StripPrefix(console, opts.Console))
 	}
 	outer.Handle("/", http.NotFoundHandler())
-	outer.Handle(base+"/", http.StripPrefix(base, app))
-	outer.HandleFunc(base, func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, base+"/", http.StatusMovedPermanently)
-	})
+	return middleware.Recoverer(opts.Log, opts.Unexpected, middleware.RequestID(outer))
 }
 
 func healthz(w http.ResponseWriter, _ *http.Request) {

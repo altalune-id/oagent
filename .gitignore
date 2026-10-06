@@ -8,3 +8,5 @@ coverage.*
 node_modules/
 ui/*/dist/
 internal/mcp/ui/assets/app.html
+internal/web/console/public/*
+!internal/web/console/public/.gitkeep

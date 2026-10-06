@@ -29,10 +29,11 @@ func buildAPIHandler(svcs *Services, unexpected apperror.UnexpectedFunc, cfg con
 }
 
 // buildHTTPHandler builds the web surface's handler.
-func buildHTTPHandler(log *slog.Logger, unexpected apperror.UnexpectedFunc, ready func() bool, basePath string, api, mcpHandler http.Handler) http.Handler {
+func buildHTTPHandler(log *slog.Logger, unexpected apperror.UnexpectedFunc, ready func() bool, basePath string, api, consoleHandler, mcpHandler http.Handler) http.Handler {
 	return web.NewServer(web.ServerOpts{
 		APIHandler: api,
 		MCPHandler: mcpHandler,
+		Console:    consoleHandler,
 		BasePath:   basePath,
 		Log:        log,
 		Unexpected: unexpected,

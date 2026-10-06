@@ -19,6 +19,7 @@ func ScopeTable() map[string]string {
 	return map[string]string{
 		orgv1mcp.OrgCreateToolName: ScopeOrgWrite,
 		orgv1mcp.OrgGetToolName:    ScopeOrgRead,
+		orgv1mcp.OrgListToolName:   ScopeOrgRead,
 	}
 }
 

@@ -7,7 +7,7 @@ const options = [
 ]
 
 const meta = {
-  title: 'Primitives/AppSelect',
+  title: 'UI/AppSelect',
   component: AppSelect,
   args: {
     modelValue: 'acme',

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import AppStats from '~/components/ui/AppStats.vue'
 import { useOrgsStore } from '~/stores/orgs'
 import { useProjectsStore } from '~/stores/projects'
-import type { StatItem } from '~/components/primitives/types'
+import type { StatItem } from '~/components/ui/types'
 
 const route = useRoute()
 const orgs = useOrgsStore()

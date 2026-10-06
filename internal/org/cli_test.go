@@ -73,3 +73,26 @@ func TestOrgGet_InvalidID(t *testing.T) {
 	_, err := runOrg(t, orgClient(t, &fakes.OrgStore{}), "get", "not-a-uuid")
 	assert.Error(t, err)
 }
+
+func TestOrgList_JSON(t *testing.T) {
+	store := &fakes.OrgStore{Orgs: []*org.Org{
+		{ID: uuid.New(), PublicID: "pub", Slug: "acme", Name: "Acme"},
+	}}
+
+	buf, err := runOrg(t, orgClient(t, store), "list", "--output", "json")
+
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), `"slug": "acme"`)
+}
+
+func TestOrgList_Text(t *testing.T) {
+	store := &fakes.OrgStore{Orgs: []*org.Org{
+		{ID: uuid.New(), PublicID: "pub", Slug: "acme", Name: "Acme"},
+	}}
+
+	buf, err := runOrg(t, orgClient(t, store), "list", "--output", "text")
+
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "SLUG")
+	assert.Contains(t, buf.String(), "acme")
+}

@@ -72,6 +72,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/org.v1.GetOrgResponse'
+  /org.v1.OrgService/ListOrgs:
+    post:
+      tags:
+        - org.v1.OrgService
+      summary: ListOrgs
+      operationId: org.v1.OrgService.ListOrgs
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/org.v1.ListOrgsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/org.v1.ListOrgsResponse'
 components:
   schemas:
     connect-protocol-version:
@@ -273,6 +308,20 @@ components:
           title: org
           $ref: '#/components/schemas/org.v1.Org'
       title: GetOrgResponse
+      additionalProperties: false
+    org.v1.ListOrgsRequest:
+      type: object
+      title: ListOrgsRequest
+      additionalProperties: false
+    org.v1.ListOrgsResponse:
+      type: object
+      properties:
+        orgs:
+          type: array
+          items:
+            $ref: '#/components/schemas/org.v1.Org'
+          title: orgs
+      title: ListOrgsResponse
       additionalProperties: false
     org.v1.Org:
       type: object

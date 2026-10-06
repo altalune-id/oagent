@@ -44,3 +44,16 @@ func (s *OrgService) GetOrg(ctx context.Context, req *connect.Request[orgv1.GetO
 	}
 	return connect.NewResponse(&orgv1.GetOrgResponse{Org: orgToProto(o)}), nil
 }
+
+// ListOrgs lists organizations, ordered by creation time.
+func (s *OrgService) ListOrgs(ctx context.Context, _ *connect.Request[orgv1.ListOrgsRequest]) (*connect.Response[orgv1.ListOrgsResponse], error) {
+	orgs, err := s.orgs.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*orgv1.Org, 0, len(orgs))
+	for _, o := range orgs {
+		out = append(out, orgToProto(o))
+	}
+	return connect.NewResponse(&orgv1.ListOrgsResponse{Orgs: out}), nil
+}
