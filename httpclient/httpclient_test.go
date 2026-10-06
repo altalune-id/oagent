@@ -138,7 +138,10 @@ func TestNew_RetriesTransportError(t *testing.T) {
 	c := New(WithAllowPrivateHosts(true), WithOtel(false), WithRetry(RetryPolicy{
 		MaxAttempts: 2, BaseDelay: time.Millisecond, MaxDelay: 2 * time.Millisecond,
 	}))
-	_, err := c.Get("http://127.0.0.1:1")
+	resp, err := c.Get("http://127.0.0.1:1")
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
 	assert.Error(t, err)
 }
 

@@ -39,7 +39,7 @@ func TestRun_ServesAndDrainsOnCancel(t *testing.T) {
 
 	var resp *http.Response
 	require.Eventually(t, func() bool {
-		r, getErr := http.Get("http://" + addr + "/") //nolint:noctx
+		r, getErr := http.Get("http://" + addr + "/") //nolint:noctx,bodyclose // body closed below once captured
 		if getErr != nil {
 			return false
 		}

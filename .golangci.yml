@@ -7,20 +7,27 @@ run:
 linters:
   default: standard
   enable:
-    - depguard      # keeps migrator app-agnostic
+    - bodyclose
+    - depguard
     - errorlint
+    - forbidigo
     - gochecknoglobals
     - gocritic
     - gosec
     - misspell
     - modernize
     - nilerr
+    - prealloc
     - revive
     - unconvert
     - unparam
     - whitespace
 
   settings:
+    errorlint:
+      errorf: true
+      asserts: true
+      comparison: true
     gocritic:
       enabled-tags:
         - diagnostic
@@ -42,6 +49,14 @@ linters:
           disabled: true
         - name: unexported-return
           disabled: true
+    forbidigo:
+      forbid:
+        - pattern: 'fmt\.Print(f|ln|)\('
+          msg: "use cmd.OutOrStdout() or slog for output"
+        - pattern: 'slog\.(Info|Warn|Error|Debug)Context\('
+          msg: "use an injected *slog.Logger, not the slog default"
+      exclude-godoc-examples: true
+      analyze-types: true
     depguard:
       rules:
         migrator-purity:
@@ -54,19 +69,64 @@ linters:
             - github.com/jackc/pgx/v5
             - github.com/pressly/goose/v3
             - altalune.id/auth-server/pg
+        httpclient-purity:
+          list-mode: strict
+          files:
+            - "**/httpclient/*.go"
+            - "!**/httpclient/*_test.go"
+          allow:
+            - $gostd
+            - go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+        mcp-purity:
+          list-mode: strict
+          files:
+            - "**/mcp/*.go"
+            - "!**/internal/mcp/*.go"
+            - "!**/mcp/*_test.go"
+          allow:
+            - $gostd
+            - github.com/modelcontextprotocol/go-sdk
+            - github.com/google/jsonschema-go
+            - altalune.id/auth-server/apperror
+        root-boundary:
+          list-mode: lax
+          files:
+            - "**/apperror/**"
+            - "**/config/**"
+            - "**/httpclient/**"
+            - "**/mcp/**"
+            - "**/nanoid/**"
+            - "**/pg/**"
+            - "**/reqid/**"
+            - "**/slug/**"
+            - "**/telemetry/**"
+            - "**/version/**"
+            - "**/worker/**"
+            - "!**/internal/mcp/**"
+          deny:
+            - pkg: "altalune.id/auth-server/internal"
+              desc: "root-level shared packages must NOT depend on any internal/ package (import inversion)"
 
   exclusions:
     generated: strict
+    warn-unused: false
     rules:
       - path: version/version\.go
         linters:
           - gochecknoglobals
+      - path: httpclient/safe\.go
+        linters:
+          - gochecknoglobals
+      - path: gen/
+        linters:
+          - all
       - path: _test\.go
         linters:
           - errcheck
           - gochecknoglobals
           - gocritic
           - gosec
+          - prealloc
           - unparam
 
 formatters:
