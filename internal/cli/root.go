@@ -22,6 +22,7 @@ import (
 // App is the running server the serve command drives.
 type App interface {
 	Run(ctx context.Context) error
+	RunMCP(ctx context.Context) error
 	Close(ctx context.Context) error
 }
 
@@ -107,6 +108,7 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 
 	root.AddCommand(
 		newServeCmd(bootServer),
+		newMCPCmd(bootServer),
 		orgCmd,
 		newVersionCmd(),
 	)

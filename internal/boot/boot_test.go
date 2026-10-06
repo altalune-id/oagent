@@ -20,6 +20,8 @@ import (
 	"altalune.id/auth-server/internal/kernel"
 	"altalune.id/auth-server/internal/kernel/db"
 	"altalune.id/auth-server/internal/kernel/queue"
+	"altalune.id/auth-server/internal/org"
+	"altalune.id/auth-server/internal/testutil/fakes"
 	"altalune.id/auth-server/migrator"
 	"altalune.id/auth-server/reqid"
 	"altalune.id/auth-server/telemetry"
@@ -419,4 +421,18 @@ func TestTelemetryConfig(t *testing.T) {
 	assert.InDelta(t, 0.5, out.Tracing.SampleRatio, 0.0001)
 	assert.Equal(t, ":1", out.Metrics.Prometheus.Addr)
 	assert.Equal(t, "/m", out.Metrics.Prometheus.Path)
+}
+
+func TestBuildMCPServer(t *testing.T) {
+	svcs := &Services{Orgs: org.NewService(&fakes.OrgStore{}, nil)}
+
+	assert.Nil(t, buildMCPServer(config.MCPConfig{}, svcs, nil))
+	srv := buildMCPServer(config.MCPConfig{Enabled: true}, svcs, nil)
+	require.NotNil(t, srv)
+	assert.NotNil(t, mcpHTTPHandler(srv))
+	assert.Nil(t, mcpHTTPHandler(nil))
+}
+
+func TestApp_RunMCP_Disabled(t *testing.T) {
+	assert.Error(t, (&App{}).RunMCP(context.Background()))
 }

@@ -114,6 +114,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("queue.connectTimeout", "10s")
 	v.SetDefault("api.openapi.enabled", true)
 	v.SetDefault("api.openapi.requireBasicAuth", true)
+	v.SetDefault("mcp.enabled", false)
 	v.SetDefault("db.schema", "public")
 	v.SetDefault("db.autoMigrate", true)
 	v.SetDefault("db.health.interval", "30s")

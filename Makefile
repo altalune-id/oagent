@@ -30,8 +30,12 @@ run: ## run the auth-server serve command
 
 .PHONY: config-examples
 config-examples: ## regenerate .env.reference and config.reference.yml from struct tags
-	$(GO) run ./cmd/gen-config-example
-	$(GO) run ./cmd/gen-config-example --format=yaml
+	$(GO) tool gen-config-example
+	$(GO) tool gen-config-example --format=yaml
+
+.PHONY: generate
+generate: ## regenerate protos (connect, openapi, mcp tools)
+	env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) buf generate
 
 .PHONY: fmt
 fmt: ## format all Go files

@@ -81,6 +81,18 @@ func TestAPIHandlerMountsUnderBasePath(t *testing.T) {
 	assert.Equal(t, "/app/api/org.v1.OrgService/CreateOrg", rec.Body.String())
 }
 
+func TestMCPHandlerMountsUnderBasePath(t *testing.T) {
+	mcp := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(r.URL.Path))
+	})
+	srv := NewServer(ServerOpts{BasePath: "/app", MCPHandler: mcp})
+
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/app/mcp", nil))
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "/app/mcp", rec.Body.String())
+}
+
 func TestRootAppWithEmptyBasePath(t *testing.T) {
 	app := http.NewServeMux()
 	app.HandleFunc("GET /ping", func(w http.ResponseWriter, _ *http.Request) {

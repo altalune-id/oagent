@@ -79,6 +79,20 @@ http:
   # env: AUTH_HTTP_BASE_URL
   baseURL: ""
 
+mcp:
+  # env: AUTH_MCP_APPS_UI
+  appsUI: ""
+  # env: AUTH_MCP_AUDIENCE
+  audience: ""
+  # env: AUTH_MCP_AUDIENCE_OVERRIDE
+  audienceOverride: ""
+  # env: AUTH_MCP_CHALLENGE_PREFIX
+  challengePrefix: ""
+  # env: AUTH_MCP_CHALLENGE_TOKEN
+  challengeToken: ""
+  # env: AUTH_MCP_ENABLED
+  enabled: false
+
 # [required, bootstrap] env: AUTH_MODE
 mode: selfhosted
 

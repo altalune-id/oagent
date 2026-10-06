@@ -19,8 +19,9 @@ import (
 
 type fakeApp struct{ runErr error }
 
-func (f fakeApp) Run(context.Context) error   { return f.runErr }
-func (f fakeApp) Close(context.Context) error { return nil }
+func (f fakeApp) Run(context.Context) error    { return f.runErr }
+func (f fakeApp) RunMCP(context.Context) error { return f.runErr }
+func (f fakeApp) Close(context.Context) error  { return nil }
 
 func runRoot(t *testing.T, bootFn cli.ServerBootFn, args ...string) (*bytes.Buffer, error) {
 	t.Helper()

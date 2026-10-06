@@ -18,6 +18,17 @@ type Config struct {
 	Scheduler SchedulerConfig `yaml:"scheduler" mapstructure:"scheduler"`
 	Queue     QueueConfig     `yaml:"queue"     mapstructure:"queue"`
 	API       APIConfig       `yaml:"api"       mapstructure:"api"`
+	MCP       MCPConfig       `yaml:"mcp"       mapstructure:"mcp"`
+}
+
+// MCPConfig configures the Model Context Protocol surface mounted at BasePath+"/mcp".
+type MCPConfig struct {
+	Enabled          bool   `yaml:"enabled"          mapstructure:"enabled"`
+	AppsUI           bool   `yaml:"appsUI"           mapstructure:"appsUI"`
+	Audience         string `yaml:"audience"         mapstructure:"audience"`
+	AudienceOverride bool   `yaml:"audienceOverride" mapstructure:"audienceOverride"`
+	ChallengeToken   string `yaml:"challengeToken"   mapstructure:"challengeToken"`
+	ChallengePrefix  string `yaml:"challengePrefix"  mapstructure:"challengePrefix"`
 }
 
 // HTTPConfig configures the web-facing HTTP server.

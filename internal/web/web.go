@@ -12,6 +12,7 @@ import (
 // ServerOpts configures the web server handler.
 type ServerOpts struct {
 	APIHandler http.Handler // optional Connect-RPC surface mounted at BasePath+"/api"
+	MCPHandler http.Handler // optional MCP surface mounted at BasePath+"/mcp"
 	App        http.Handler // optional app surface mounted under BasePath
 	BasePath   string
 	Log        *slog.Logger
@@ -26,6 +27,10 @@ func NewServer(opts ServerOpts) http.Handler {
 	outer.HandleFunc("GET /readyz", readyz(opts.Ready))
 	if opts.APIHandler != nil {
 		outer.Handle(Path(opts.BasePath, "/api")+"/", opts.APIHandler)
+	}
+	if opts.MCPHandler != nil {
+		outer.Handle(Path(opts.BasePath, "/mcp"), opts.MCPHandler)
+		outer.Handle(Path(opts.BasePath, "/mcp")+"/", opts.MCPHandler)
 	}
 
 	app := opts.App
