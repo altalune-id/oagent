@@ -3,12 +3,26 @@ syntax = "proto3";
 package org.v1;
 
 import "google/protobuf/timestamp.proto";
+import "mcp/v1/annotations.proto";
 
 option go_package = "altalune.id/auth-server/gen/go/org/v1;orgv1";
 
 service OrgService {
-  rpc CreateOrg(CreateOrgRequest) returns (CreateOrgResponse);
-  rpc GetOrg(GetOrgRequest) returns (GetOrgResponse);
+  rpc CreateOrg(CreateOrgRequest) returns (CreateOrgResponse) {
+    option (mcp.v1.tool) = {
+      name: "org_create"
+      description: "Create an organization, minting a slug when one is not supplied."
+      mutation: true
+      destructive: false
+    };
+  }
+  rpc GetOrg(GetOrgRequest) returns (GetOrgResponse) {
+    option (mcp.v1.tool) = {
+      name: "org_get"
+      description: "Get an organization by id."
+      required: ["id"]
+    };
+  }
 }
 
 message Org {

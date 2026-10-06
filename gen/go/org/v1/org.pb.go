@@ -7,6 +7,7 @@
 package orgv1
 
 import (
+	_ "altalune.id/auth-server/gen/go/mcp/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -294,7 +295,7 @@ var File_org_v1_org_proto protoreflect.FileDescriptor
 
 const file_org_v1_org_proto_rawDesc = "" +
 	"\n" +
-	"\x10org/v1/org.proto\x12\x06org.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd0\x01\n" +
+	"\x10org/v1/org.proto\x12\x06org.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\"\xd0\x01\n" +
 	"\x03Org\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tpublic_id\x18\x02 \x01(\tR\bpublicId\x12\x12\n" +
@@ -312,11 +313,14 @@ const file_org_v1_org_proto_rawDesc = "" +
 	"\rGetOrgRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"/\n" +
 	"\x0eGetOrgResponse\x12\x1d\n" +
-	"\x03org\x18\x01 \x01(\v2\v.org.v1.OrgR\x03org2\x87\x01\n" +
+	"\x03org\x18\x01 \x01(\v2\v.org.v1.OrgR\x03org2\x8d\x02\n" +
 	"\n" +
-	"OrgService\x12@\n" +
-	"\tCreateOrg\x12\x18.org.v1.CreateOrgRequest\x1a\x19.org.v1.CreateOrgResponse\x127\n" +
-	"\x06GetOrg\x12\x15.org.v1.GetOrgRequest\x1a\x16.org.v1.GetOrgResponseB|\n" +
+	"OrgService\x12\x96\x01\n" +
+	"\tCreateOrg\x12\x18.org.v1.CreateOrgRequest\x1a\x19.org.v1.CreateOrgResponse\"T\xca\xf3\x18P\n" +
+	"\n" +
+	"org_create\x12@Create an organization, minting a slug when one is not supplied. \x01\x12f\n" +
+	"\x06GetOrg\x12\x15.org.v1.GetOrgRequest\x1a\x16.org.v1.GetOrgResponse\"-\xca\xf3\x18)\n" +
+	"\aorg_get\x12\x1aGet an organization by id.\x1a\x02idB|\n" +
 	"\n" +
 	"com.org.v1B\bOrgProtoP\x01Z+altalune.id/auth-server/gen/go/org/v1;orgv1\xa2\x02\x03OXX\xaa\x02\x06Org.V1\xca\x02\x06Org\\V1\xe2\x02\x12Org\\V1\\GPBMetadata\xea\x02\aOrg::V1b\x06proto3"
 
