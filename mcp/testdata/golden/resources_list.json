@@ -1,0 +1,12 @@
+[
+  {
+    "_meta": {
+      "ui": {
+        "prefersBorder": false
+      }
+    },
+    "mimeType": "text/html;profile=mcp-app",
+    "name": "auth-server app",
+    "uri": "ui://auth-server/app"
+  }
+]
