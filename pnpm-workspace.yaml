@@ -1,2 +1,5 @@
 packages:
   - "ui/*"
+
+minimumReleaseAge: 4320
+minimumReleaseAgeStrict: true

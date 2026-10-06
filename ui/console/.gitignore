@@ -1,0 +1,5 @@
+.nuxt
+.output
+dist
+.data
+storybook-static
