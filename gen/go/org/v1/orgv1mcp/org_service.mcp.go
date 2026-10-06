@@ -35,6 +35,7 @@ func RegisterOrgServiceTools(reg *mcp.Registry, h orgv1connect.OrgServiceHandler
 		Scope:       scopeFor(OrgCreateToolName),
 		Mutation:    true,
 		Destructive: false,
+		UI:          "ui://auth-server/app",
 		InputSchema: json.RawMessage(`{"type":"object","properties":{"slug":{"type":"string"},"name":{"type":"string"}},"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {
@@ -61,6 +62,7 @@ func RegisterOrgServiceTools(reg *mcp.Registry, h orgv1connect.OrgServiceHandler
 		Scope:       scopeFor(OrgGetToolName),
 		Mutation:    false,
 		Destructive: false,
+		UI:          "ui://auth-server/app",
 		InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {

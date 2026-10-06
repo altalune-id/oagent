@@ -115,6 +115,16 @@ func TestUnknownFlag(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestMCPCmd_InvokesRunMCP(t *testing.T) {
+	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
+	noop := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
+		return fakeApp{}, nil
+	}
+
+	_, err := runRoot(t, noop, "mcp")
+	assert.NoError(t, err)
+}
+
 func TestServe_ConfigFileMissing(t *testing.T) {
 	noop := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
 		return fakeApp{}, nil

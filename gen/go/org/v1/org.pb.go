@@ -313,14 +313,14 @@ const file_org_v1_org_proto_rawDesc = "" +
 	"\rGetOrgRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"/\n" +
 	"\x0eGetOrgResponse\x12\x1d\n" +
-	"\x03org\x18\x01 \x01(\v2\v.org.v1.OrgR\x03org2\x8d\x02\n" +
+	"\x03org\x18\x01 \x01(\v2\v.org.v1.OrgR\x03org2\x97\x02\n" +
 	"\n" +
-	"OrgService\x12\x96\x01\n" +
-	"\tCreateOrg\x12\x18.org.v1.CreateOrgRequest\x1a\x19.org.v1.CreateOrgResponse\"T\xca\xf3\x18P\n" +
+	"OrgService\x12\x9b\x01\n" +
+	"\tCreateOrg\x12\x18.org.v1.CreateOrgRequest\x1a\x19.org.v1.CreateOrgResponse\"Y\xca\xf3\x18U\n" +
 	"\n" +
-	"org_create\x12@Create an organization, minting a slug when one is not supplied. \x01\x12f\n" +
-	"\x06GetOrg\x12\x15.org.v1.GetOrgRequest\x1a\x16.org.v1.GetOrgResponse\"-\xca\xf3\x18)\n" +
-	"\aorg_get\x12\x1aGet an organization by id.\x1a\x02idB|\n" +
+	"org_create\x12@Create an organization, minting a slug when one is not supplied. \x01*\x03app\x12k\n" +
+	"\x06GetOrg\x12\x15.org.v1.GetOrgRequest\x1a\x16.org.v1.GetOrgResponse\"2\xca\xf3\x18.\n" +
+	"\aorg_get\x12\x1aGet an organization by id.\x1a\x02id*\x03appB|\n" +
 	"\n" +
 	"com.org.v1B\bOrgProtoP\x01Z+altalune.id/auth-server/gen/go/org/v1;orgv1\xa2\x02\x03OXX\xaa\x02\x06Org.V1\xca\x02\x06Org\\V1\xe2\x02\x12Org\\V1\\GPBMetadata\xea\x02\aOrg::V1b\x06proto3"
 

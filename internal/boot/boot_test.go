@@ -433,6 +433,14 @@ func TestBuildMCPServer(t *testing.T) {
 	assert.Nil(t, mcpHTTPHandler(nil))
 }
 
+func TestBuildMCPServer_AppsUI(t *testing.T) {
+	svcs := &Services{Orgs: org.NewService(&fakes.OrgStore{}, nil)}
+	srv := buildMCPServer(config.MCPConfig{Enabled: true, AppsUI: true}, svcs, nil)
+	require.NotNil(t, srv)
+
+	assert.NotNil(t, srv.SDK()) // seals the registry and resolves the tool -> UI resource link
+}
+
 func TestApp_RunMCP_Disabled(t *testing.T) {
 	assert.Error(t, (&App{}).RunMCP(context.Background()))
 }

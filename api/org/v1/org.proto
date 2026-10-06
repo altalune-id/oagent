@@ -14,6 +14,7 @@ service OrgService {
       description: "Create an organization, minting a slug when one is not supplied."
       mutation: true
       destructive: false
+      ui: "app"
     };
   }
   rpc GetOrg(GetOrgRequest) returns (GetOrgResponse) {
@@ -21,6 +22,7 @@ service OrgService {
       name: "org_get"
       description: "Get an organization by id."
       required: ["id"]
+      ui: "app"
     };
   }
 }

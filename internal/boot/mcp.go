@@ -7,6 +7,7 @@ import (
 	"altalune.id/auth-server/config"
 	orgv1mcp "altalune.id/auth-server/gen/go/org/v1/orgv1mcp"
 	mcpinternal "altalune.id/auth-server/internal/mcp"
+	mcpui "altalune.id/auth-server/internal/mcp/ui"
 	"altalune.id/auth-server/internal/org"
 	rootmcp "altalune.id/auth-server/mcp"
 	"altalune.id/auth-server/version"
@@ -21,7 +22,7 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger) *roo
 	registry := rootmcp.NewRegistry()
 	orgv1mcp.RegisterOrgServiceTools(registry, org.NewOrgService(svcs.Orgs), mcpinternal.ScopeFor)
 
-	return rootmcp.NewServer(
+	srv := rootmcp.NewServer(
 		rootmcp.WithImplementation("auth-server", version.Default()),
 		rootmcp.WithRegistry(registry),
 		rootmcp.WithScopes(mcpinternal.AllScopes),
@@ -29,6 +30,16 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger) *roo
 		rootmcp.WithLogger(log),
 		rootmcp.WithUI(cfg.AppsUI),
 	)
+	if cfg.AppsUI {
+		srv.AddUIResource(rootmcp.UIResource{
+			URI:           mcpui.ResourceURI,
+			Name:          "auth-server app",
+			MIMEType:      rootmcp.MIMEApp,
+			Body:          mcpui.Document(),
+			PrefersBorder: new(bool),
+		})
+	}
+	return srv
 }
 
 // mcpHTTPHandler returns srv's streamable-HTTP handler, or nil.
