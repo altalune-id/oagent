@@ -1,12 +1,17 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useOrgsStore } from '~/stores/orgs'
+import type { SelectOption } from '~/components/primitives/types'
 
 const orgs = useOrgsStore()
 const route = useRoute()
 const org = computed(() => route.params.org as string | undefined)
 
-function onChange(event: Event) {
-  const slug = (event.target as HTMLSelectElement).value
+const options = computed<SelectOption[]>(() =>
+  orgs.items.map(item => ({ value: item.slug, label: item.name })),
+)
+
+function onChange(slug: string) {
   if (slug && slug !== org.value) {
     return navigateTo(`/o/${slug}`)
   }
@@ -14,17 +19,11 @@ function onChange(event: Event) {
 </script>
 
 <template>
-  <select
-    class="select select-sm w-44 border-base-300"
-    :value="org ?? ''"
+  <AppSelect
+    :model-value="org ?? ''"
+    :options="options"
+    placeholder="Select organization"
     aria-label="Organization"
     @change="onChange"
-  >
-    <option value="" disabled>
-      Select organization
-    </option>
-    <option v-for="item in orgs.items" :key="item.slug" :value="item.slug">
-      {{ item.name }}
-    </option>
-  </select>
+  />
 </template>

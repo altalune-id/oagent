@@ -1,29 +1,27 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import type { NavItem } from '~/components/primitives/types'
+
 const route = useRoute()
 const org = computed(() => route.params.org as string)
 
-const items = computed(() => [
-  { label: 'Overview', to: `/o/${org.value}` },
-  { label: 'Projects', to: `/o/${org.value}/projects` },
-  { label: 'Settings', to: `/o/${org.value}/settings` },
+const targets: Record<string, string> = {
+  overview: '',
+  projects: '/projects',
+  settings: '/settings',
+}
+
+const items = computed<NavItem[]>(() => [
+  { key: 'overview', label: 'Overview', active: route.path === `/o/${org.value}` },
+  { key: 'projects', label: 'Projects', active: route.path.startsWith(`/o/${org.value}/projects`) },
+  { key: 'settings', label: 'Settings', active: route.path.startsWith(`/o/${org.value}/settings`) },
 ])
 
-function isActive(to: string) {
-  return to === `/o/${org.value}` ? route.path === to : route.path.startsWith(to)
+function onSelect(key: string) {
+  return navigateTo(`/o/${org.value}${targets[key] ?? ''}`)
 }
 </script>
 
 <template>
-  <aside class="hidden w-60 shrink-0 flex-col border-r border-base-300 bg-base-200/40 md:flex">
-    <div class="px-4 pt-5 pb-2 text-xs font-semibold tracking-widest text-base-content/50 uppercase">
-      {{ org }}
-    </div>
-    <ul class="menu w-full gap-0.5 px-2">
-      <li v-for="item in items" :key="item.to">
-        <NuxtLink :to="item.to" :class="{ 'menu-active': isActive(item.to) }">
-          {{ item.label }}
-        </NuxtLink>
-      </li>
-    </ul>
-  </aside>
+  <SidebarNav :label="org" :items="items" @select="onSelect" />
 </template>

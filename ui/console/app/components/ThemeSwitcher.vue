@@ -16,7 +16,7 @@ onMounted(() => apply(theme.value))
 </script>
 
 <template>
-  <button class="btn btn-ghost btn-sm" type="button" @click="toggle">
+  <AppButton variant="ghost" size="sm" @click="toggle">
     {{ theme === 'light' ? 'Dark' : 'Light' }}
-  </button>
+  </AppButton>
 </template>

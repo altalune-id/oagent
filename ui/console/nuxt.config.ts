@@ -5,9 +5,15 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: ['@pinia/nuxt', '@vueuse/nuxt'],
   pinia: { storesDirs: ['./app/stores/**'] },
+  components: {
+    dirs: [
+      { path: '~/components', pathPrefix: true },
+      { path: '~/components/primitives', pathPrefix: false },
+    ],
+  },
   imports: { scan: false },
   css: ['~/assets/css/main.css'],
-  vite: { plugins: [tailwindcss()] },
+  vite: { plugins: [tailwindcss() as any] },
   app: {
     head: {
       title: 'oagent',

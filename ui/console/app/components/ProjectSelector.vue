@@ -1,16 +1,20 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useOrgsStore } from '~/stores/orgs'
 import { useProjectsStore } from '~/stores/projects'
+import type { SelectOption } from '~/components/primitives/types'
 
 const orgs = useOrgsStore()
 const projects = useProjectsStore()
 const route = useRoute()
 const org = computed(() => route.params.org as string | undefined)
 const project = computed(() => route.params.project as string | undefined)
-const items = computed(() => (org.value ? projects.forOrg(org.value) : []))
 
-function onChange(event: Event) {
-  const slug = (event.target as HTMLSelectElement).value
+const options = computed<SelectOption[]>(() =>
+  org.value ? projects.forOrg(org.value).map(item => ({ value: item.slug, label: item.name })) : [],
+)
+
+function onChange(slug: string) {
   if (org.value && slug) {
     return navigateTo(`/o/${org.value}/projects/${slug}`)
   }
@@ -18,18 +22,12 @@ function onChange(event: Event) {
 </script>
 
 <template>
-  <select
+  <AppSelect
     v-if="org && orgs.bySlug(org)"
-    class="select select-sm w-44 border-base-300"
-    :value="project ?? ''"
+    :model-value="project ?? ''"
+    :options="options"
+    placeholder="Select project"
     aria-label="Project"
     @change="onChange"
-  >
-    <option value="" disabled>
-      Select project
-    </option>
-    <option v-for="item in items" :key="item.slug" :value="item.slug">
-      {{ item.name }}
-    </option>
-  </select>
+  />
 </template>
