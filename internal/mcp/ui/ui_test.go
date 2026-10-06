@@ -11,8 +11,8 @@ func TestDocument(t *testing.T) {
 	doc := Document()
 
 	assert.Contains(t, doc, "<!doctype html>")
-	assert.Contains(t, doc, "auth-server")
-	assert.Equal(t, "ui://auth-server/app", ResourceURI)
+	assert.Contains(t, doc, "oagent")
+	assert.Equal(t, "ui://oagent/app", ResourceURI)
 }
 
 func TestDocument_FallbackWhenUnbuilt(t *testing.T) {

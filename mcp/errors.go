@@ -8,7 +8,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"altalune.id/auth-server/apperror"
+	"altalune.id/oagent/apperror"
 )
 
 // DefaultUnmappedCode is the Code for a tool failure no ErrorMapper claimed.

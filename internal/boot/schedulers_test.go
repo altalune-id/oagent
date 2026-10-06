@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 	noopmetric "go.opentelemetry.io/otel/metric/noop"
 
-	"altalune.id/auth-server/apperror"
-	"altalune.id/auth-server/config"
-	"altalune.id/auth-server/internal/kernel"
+	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/kernel"
 )
 
 func testLogger() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }

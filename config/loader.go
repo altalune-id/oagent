@@ -28,12 +28,12 @@ func WithRequireFile() Option { return func(o *loadOptions) { o.requireFile = tr
 // WithoutValidation skips Validate, for CLI commands that do not boot the server (e.g. remote admin).
 func WithoutValidation() Option { return func(o *loadOptions) { o.skipValidation = true } }
 
-// Loader accumulates config sources (defaults, AUTH_* env, bound flags) and decodes them.
+// Loader accumulates config sources (defaults, OAGENT_* env, bound flags) and decodes them.
 type Loader struct {
 	v *viper.Viper
 }
 
-// NewLoader returns a Loader seeded with defaults and AUTH_* env bindings.
+// NewLoader returns a Loader seeded with defaults and OAGENT_* env bindings.
 func NewLoader() *Loader {
 	v := viper.NewWithOptions(viper.KeyDelimiter("."))
 	setDefaults(v)
@@ -99,7 +99,7 @@ func (l *Loader) Load(path string, opts ...Option) (*Config, error) {
 	return &cfg, nil
 }
 
-// Load resolves defaults <- file <- AUTH_* env <- bound flags. An empty path searches standard locations.
+// Load resolves defaults <- file <- OAGENT_* env <- bound flags. An empty path searches standard locations.
 func Load(path string, opts ...Option) (*Config, error) {
 	return NewLoader().Load(path, opts...)
 }
@@ -143,7 +143,7 @@ func configCandidates() []string {
 		out = append(out, filepath.Join(dir, "config.yaml"), filepath.Join(dir, "config.yml"))
 	}
 	if runtime.GOOS != "windows" {
-		out = append(out, "/etc/auth-server/config.yaml", "/etc/auth-server/config.yml")
+		out = append(out, "/etc/oagent/config.yaml", "/etc/oagent/config.yml")
 	}
 	if wd, err := os.Getwd(); err == nil {
 		out = append(out, filepath.Join(wd, "config.yaml"), filepath.Join(wd, "config.yml"))
@@ -151,13 +151,13 @@ func configCandidates() []string {
 	return out
 }
 
-// userConfigDir returns $XDG_CONFIG_HOME/auth-server, falling back to ~/.config/auth-server.
+// userConfigDir returns $XDG_CONFIG_HOME/oagent, falling back to ~/.config/oagent.
 func userConfigDir() string {
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
-		return filepath.Join(xdg, "auth-server")
+		return filepath.Join(xdg, "oagent")
 	}
 	if home, err := os.UserHomeDir(); err == nil {
-		return filepath.Join(home, ".config", "auth-server")
+		return filepath.Join(home, ".config", "oagent")
 	}
 	return ""
 }

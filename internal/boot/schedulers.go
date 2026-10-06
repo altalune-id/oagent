@@ -4,11 +4,11 @@ import (
 	"context"
 	"log/slog"
 
-	"altalune.id/auth-server/apperror"
-	"altalune.id/auth-server/config"
-	"altalune.id/auth-server/internal/kernel"
-	"altalune.id/auth-server/scheduler"
-	"altalune.id/auth-server/worker"
+	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/scheduler"
+	"altalune.id/oagent/worker"
 )
 
 // schedulerOff returns the reason the scheduler is disabled, or "" when it should run.

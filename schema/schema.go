@@ -1,4 +1,4 @@
-// Package schema embeds the auth-server migrations and wires them to migrator.
+// Package schema embeds the oagent migrations and wires them to migrator.
 package schema
 
 import (
@@ -7,7 +7,7 @@ import (
 	"embed"
 	"io/fs"
 
-	"altalune.id/auth-server/migrator"
+	"altalune.id/oagent/migrator"
 )
 
 //go:embed migrations

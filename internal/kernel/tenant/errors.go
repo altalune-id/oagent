@@ -3,7 +3,7 @@ package tenant
 import (
 	"errors"
 
-	"altalune.id/auth-server/apperror"
+	"altalune.id/oagent/apperror"
 )
 
 // MissingError signals that the tenant Context is absent from ctx.

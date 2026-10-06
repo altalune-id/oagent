@@ -8,9 +8,9 @@ import (
 
 	"connectrpc.com/connect"
 
-	"altalune.id/auth-server/apperror"
-	orgv1connect "altalune.id/auth-server/gen/go/org/v1/orgv1connect"
-	"altalune.id/auth-server/internal/org"
+	"altalune.id/oagent/apperror"
+	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
+	"altalune.id/oagent/internal/org"
 )
 
 // Options configures the optional parts of the controlplane surface.

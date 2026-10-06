@@ -6,9 +6,9 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"altalune.id/auth-server/internal/kernel"
-	rootmcp "altalune.id/auth-server/mcp"
-	"altalune.id/auth-server/worker"
+	"altalune.id/oagent/internal/kernel"
+	rootmcp "altalune.id/oagent/mcp"
+	"altalune.id/oagent/worker"
 )
 
 // App is the wired runtime graph.

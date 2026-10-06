@@ -1,4 +1,4 @@
-// Command auth-server is the authentication and organization service. See `auth-server --help`.
+// Command oagent is the authentication and organization service. See `oagent --help`.
 package main
 
 import (
@@ -8,10 +8,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"altalune.id/auth-server/config"
-	"altalune.id/auth-server/internal/boot"
-	"altalune.id/auth-server/internal/cli"
-	"altalune.id/auth-server/internal/controlplane"
+	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/boot"
+	"altalune.id/oagent/internal/cli"
+	"altalune.id/oagent/internal/controlplane"
 )
 
 func main() {

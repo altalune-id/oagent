@@ -1,7 +1,7 @@
 {
   "_meta": {
     "io.modelcontextprotocol/serverInfo": {
-      "name": "auth-server",
+      "name": "oagent",
       "version": "wirefreeze"
     }
   },

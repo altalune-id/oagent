@@ -4,7 +4,7 @@ package main
 import (
 	"google.golang.org/protobuf/compiler/protogen"
 
-	"altalune.id/auth-server/internal/generator/protocmcp"
+	"altalune.id/oagent/internal/generator/protocmcp"
 )
 
 func main() {

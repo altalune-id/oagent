@@ -3,8 +3,8 @@ package boot
 import (
 	"context"
 
-	"altalune.id/auth-server/config"
-	"altalune.id/auth-server/internal/kernel/queue"
+	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/kernel/queue"
 )
 
 type (

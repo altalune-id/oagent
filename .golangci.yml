@@ -68,7 +68,7 @@ linters:
             - $gostd
             - github.com/jackc/pgx/v5
             - github.com/pressly/goose/v3
-            - altalune.id/auth-server/pg
+            - altalune.id/oagent/pg
         httpclient-purity:
           list-mode: strict
           files:
@@ -87,7 +87,7 @@ linters:
             - $gostd
             - github.com/modelcontextprotocol/go-sdk
             - github.com/google/jsonschema-go
-            - altalune.id/auth-server/apperror
+            - altalune.id/oagent/apperror
         root-boundary:
           list-mode: lax
           files:
@@ -104,7 +104,7 @@ linters:
             - "**/worker/**"
             - "!**/internal/mcp/**"
           deny:
-            - pkg: "altalune.id/auth-server/internal"
+            - pkg: "altalune.id/oagent/internal"
               desc: "root-level shared packages must NOT depend on any internal/ package (import inversion)"
 
   exclusions:
@@ -136,7 +136,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - altalune.id/auth-server
+        - altalune.id/oagent
 
 issues:
   max-issues-per-linter: 0

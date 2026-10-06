@@ -1,4 +1,4 @@
-module altalune.id/auth-server
+module altalune.id/oagent
 
 go 1.26.1
 
@@ -97,6 +97,6 @@ require (
 )
 
 tool (
-	altalune.id/auth-server/cmd/gen-config-example
-	altalune.id/auth-server/cmd/protoc-gen-mcp
+	altalune.id/oagent/cmd/gen-config-example
+	altalune.id/oagent/cmd/protoc-gen-mcp
 )

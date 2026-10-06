@@ -5,8 +5,8 @@ import (
 
 	"github.com/go-jet/jet/v2/qrm"
 
-	"altalune.id/auth-server/internal/kernel/db"
-	"altalune.id/auth-server/schema/entity"
+	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/schema/entity"
 )
 
 type postgresStore struct {

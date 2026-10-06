@@ -8,11 +8,11 @@ import (
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 
-	"altalune.id/auth-server/internal/kernel/tenant"
+	"altalune.id/oagent/internal/kernel/tenant"
 )
 
 const (
-	connectionName        = "auth-server"
+	connectionName        = "oagent"
 	defaultConnectTimeout = 10 * time.Second
 	connectBackoffBase    = 250 * time.Millisecond
 	connectBackoffMax     = 2 * time.Second

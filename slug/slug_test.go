@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"altalune.id/auth-server/slug"
+	"altalune.id/oagent/slug"
 )
 
 var shape = regexp.MustCompile(`^[a-z]{3,12}-[a-z]{3,12}-[1-9][0-9]{3}$`)

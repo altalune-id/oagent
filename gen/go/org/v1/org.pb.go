@@ -7,7 +7,7 @@
 package orgv1
 
 import (
-	_ "altalune.id/auth-server/gen/go/mcp/v1"
+	_ "altalune.id/oagent/gen/go/mcp/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -320,9 +320,9 @@ const file_org_v1_org_proto_rawDesc = "" +
 	"\n" +
 	"org_create\x12@Create an organization, minting a slug when one is not supplied. \x01*\x03app\x12k\n" +
 	"\x06GetOrg\x12\x15.org.v1.GetOrgRequest\x1a\x16.org.v1.GetOrgResponse\"2\xca\xf3\x18.\n" +
-	"\aorg_get\x12\x1aGet an organization by id.\x1a\x02id*\x03appB|\n" +
+	"\aorg_get\x12\x1aGet an organization by id.\x1a\x02id*\x03appBw\n" +
 	"\n" +
-	"com.org.v1B\bOrgProtoP\x01Z+altalune.id/auth-server/gen/go/org/v1;orgv1\xa2\x02\x03OXX\xaa\x02\x06Org.V1\xca\x02\x06Org\\V1\xe2\x02\x12Org\\V1\\GPBMetadata\xea\x02\aOrg::V1b\x06proto3"
+	"com.org.v1B\bOrgProtoP\x01Z&altalune.id/oagent/gen/go/org/v1;orgv1\xa2\x02\x03OXX\xaa\x02\x06Org.V1\xca\x02\x06Org\\V1\xe2\x02\x12Org\\V1\\GPBMetadata\xea\x02\aOrg::V1b\x06proto3"
 
 var (
 	file_org_v1_org_proto_rawDescOnce sync.Once

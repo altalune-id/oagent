@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"altalune.id/auth-server/scheduler"
+	"altalune.id/oagent/scheduler"
 )
 
 func TestDailyAt_Validation(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"context"
 	"net/http"
 
-	"altalune.id/auth-server/nanoid"
+	"altalune.id/oagent/nanoid"
 )
 
 // Header is the canonical wire name across HTTP, Connect, and future gRPC.

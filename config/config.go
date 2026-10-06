@@ -1,4 +1,4 @@
-// Package config loads runtime configuration from defaults, a YAML file and AUTH_* env vars.
+// Package config loads runtime configuration from defaults, a YAML file and OAGENT_* env vars.
 package config
 
 import (

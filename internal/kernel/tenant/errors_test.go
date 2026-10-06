@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"altalune.id/auth-server/apperror"
-	"altalune.id/auth-server/internal/kernel/tenant"
+	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/tenant"
 )
 
 func TestErrors(t *testing.T) {

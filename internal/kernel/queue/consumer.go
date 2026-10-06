@@ -19,9 +19,9 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 
-	"altalune.id/auth-server/apperror"
-	"altalune.id/auth-server/internal/kernel/tenant"
-	"altalune.id/auth-server/worker"
+	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/worker"
 )
 
 // WorkerName is the name the consumer worker registers under.

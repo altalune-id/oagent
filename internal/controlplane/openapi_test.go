@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"altalune.id/auth-server/internal/org"
-	"altalune.id/auth-server/internal/testutil/fakes"
+	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/testutil/fakes"
 )
 
 func openAPIServer(t *testing.T, enabled bool, auth *BasicAuth) *httptest.Server {
@@ -65,7 +65,7 @@ func TestOpenAPI_BasicAuth(t *testing.T) {
 	require.NoError(t, err)
 	_ = resp.Body.Close()
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-	assert.Contains(t, resp.Header.Get("WWW-Authenticate"), `Basic realm="auth-server openapi"`)
+	assert.Contains(t, resp.Header.Get("WWW-Authenticate"), `Basic realm="oagent openapi"`)
 
 	for _, creds := range []string{basicHeader("docs", "s3cret")} {
 		req, _ := http.NewRequest(http.MethodGet, ts.URL+"/api/openapi.yaml", nil)

@@ -4,11 +4,11 @@ import (
 	"log/slog"
 	"net/http"
 
-	"altalune.id/auth-server/apperror"
-	"altalune.id/auth-server/config"
-	"altalune.id/auth-server/httpserver"
-	"altalune.id/auth-server/internal/controlplane"
-	"altalune.id/auth-server/internal/web"
+	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/config"
+	"altalune.id/oagent/httpserver"
+	"altalune.id/oagent/internal/controlplane"
+	"altalune.id/oagent/internal/web"
 )
 
 // httpConfig maps the operator config onto the HTTP server worker's config.

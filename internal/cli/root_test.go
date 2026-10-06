@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"altalune.id/auth-server/config"
-	"altalune.id/auth-server/internal/boot"
-	"altalune.id/auth-server/internal/cli"
-	"altalune.id/auth-server/reqid"
+	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/boot"
+	"altalune.id/oagent/internal/cli"
+	"altalune.id/oagent/reqid"
 )
 
 type fakeApp struct{ runErr error }
@@ -36,11 +36,11 @@ func runRoot(t *testing.T, bootFn cli.ServerBootFn, args ...string) (*bytes.Buff
 func TestVersion(t *testing.T) {
 	buf, err := runRoot(t, nil, "version")
 	require.NoError(t, err)
-	assert.Contains(t, buf.String(), "auth-server")
+	assert.Contains(t, buf.String(), "oagent")
 }
 
 func TestServe_InvokesBoot(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
 	var gotCfg config.Config
 	var gotOpts int
 	var gotReqID string
@@ -61,7 +61,7 @@ func TestServe_InvokesBoot(t *testing.T) {
 }
 
 func TestServe_RunError(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
 	bootFn := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
 		return fakeApp{runErr: errors.New("boom")}, nil
 	}
@@ -71,7 +71,7 @@ func TestServe_RunError(t *testing.T) {
 }
 
 func TestServe_BootError(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
 	bootFn := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
 		return nil, errors.New("boot failed")
 	}
@@ -81,7 +81,7 @@ func TestServe_BootError(t *testing.T) {
 }
 
 func TestServe_ConfigError(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "")
+	t.Setenv("OAGENT_DB_DSN", "")
 	noop := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
 		return fakeApp{}, nil
 	}
@@ -91,7 +91,7 @@ func TestServe_ConfigError(t *testing.T) {
 }
 
 func TestServe_InvalidLogLevel(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
 	noop := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
 		return fakeApp{}, nil
 	}
@@ -101,7 +101,7 @@ func TestServe_InvalidLogLevel(t *testing.T) {
 }
 
 func TestServe_MutuallyExclusiveFlags(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
 	noop := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
 		return fakeApp{}, nil
 	}
@@ -116,7 +116,7 @@ func TestUnknownFlag(t *testing.T) {
 }
 
 func TestMCPCmd_InvokesRunMCP(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
 	noop := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
 		return fakeApp{}, nil
 	}
@@ -135,8 +135,8 @@ func TestServe_ConfigFileMissing(t *testing.T) {
 }
 
 func TestServe_FlagOverridesConfig(t *testing.T) {
-	t.Setenv("AUTH_MODE", "selfhosted")
-	t.Setenv("AUTH_DB_DSN", "postgres://env/db")
+	t.Setenv("OAGENT_MODE", "selfhosted")
+	t.Setenv("OAGENT_DB_DSN", "postgres://env/db")
 	var gotCfg config.Config
 	bootFn := func(_ context.Context, cfg config.Config, _ *slog.Logger, _ ...boot.Option) (cli.App, error) {
 		gotCfg = cfg

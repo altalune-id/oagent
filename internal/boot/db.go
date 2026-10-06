@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"log/slog"
 
-	"altalune.id/auth-server/config"
-	"altalune.id/auth-server/internal/kernel"
-	"altalune.id/auth-server/internal/kernel/db"
-	"altalune.id/auth-server/migrator"
-	"altalune.id/auth-server/schema"
+	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/migrator"
+	"altalune.id/oagent/schema"
 )
 
 // buildDBHealth builds the db-health monitor worker.

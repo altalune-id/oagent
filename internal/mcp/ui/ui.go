@@ -1,4 +1,4 @@
-// Package ui embeds the built MCP App bundle, published at ui://auth-server/app.
+// Package ui embeds the built MCP App bundle, published at ui://oagent/app.
 package ui
 
 import (
@@ -7,7 +7,7 @@ import (
 )
 
 // ResourceURI is the ui:// URI the bundle is published at; it must match buf.gen.yaml's ui_prefix plus the tool's ui name.
-const ResourceURI = "ui://auth-server/app"
+const ResourceURI = "ui://oagent/app"
 
 //go:embed all:assets
 //nolint:gochecknoglobals // embedded asset dir.
@@ -15,8 +15,8 @@ var assets embed.FS
 
 const fallback = `<!doctype html>
 <html lang="en">
-  <head><meta charset="utf-8" /><title>auth-server</title></head>
-  <body><p>auth-server MCP app not built. Run: make ui-mcp</p></body>
+  <head><meta charset="utf-8" /><title>oagent</title></head>
+  <body><p>oagent MCP app not built. Run: make ui-mcp</p></body>
 </html>
 `
 

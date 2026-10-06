@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"altalune.id/auth-server/internal/kernel/tenant"
+	"altalune.id/oagent/internal/kernel/tenant"
 )
 
 func TestFrom_Missing(t *testing.T) {

@@ -10,13 +10,13 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 
-	"altalune.id/auth-server/apperror"
-	"altalune.id/auth-server/internal/kernel/db"
-	"altalune.id/auth-server/internal/kernel/queue"
+	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/queue"
 )
 
 // Scope is the instrumentation scope for the kernel's tracer and meter.
-const Scope = "altalune.id/auth-server"
+const Scope = "altalune.id/oagent"
 
 // Kernel is the platform bag handed to every service.
 type Kernel struct {

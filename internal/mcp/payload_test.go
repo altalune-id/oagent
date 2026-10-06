@@ -7,9 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"altalune.id/auth-server/apperror"
-	rootmcp "altalune.id/auth-server/mcp"
-	"altalune.id/auth-server/reqid"
+	"altalune.id/oagent/apperror"
+	rootmcp "altalune.id/oagent/mcp"
+	"altalune.id/oagent/reqid"
 )
 
 func TestErrorPayload_App(t *testing.T) {

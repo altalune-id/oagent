@@ -6,7 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	"altalune.id/auth-server/reqid"
+	"altalune.id/oagent/reqid"
 )
 
 // RequestID extracts (or mints) an X-Request-Id and threads it through ctx and response metadata.

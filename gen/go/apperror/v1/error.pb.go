@@ -93,9 +93,9 @@ const file_apperror_v1_error_proto_rawDesc = "" +
 	"request_id\x18\x03 \x01(\tR\trequestId\x1a7\n" +
 	"\tMetaEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xa1\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x9c\x01\n" +
 	"\x0fcom.apperror.v1B\n" +
-	"ErrorProtoP\x01Z5altalune.id/auth-server/gen/go/apperror/v1;apperrorv1\xa2\x02\x03AXX\xaa\x02\vApperror.V1\xca\x02\vApperror\\V1\xe2\x02\x17Apperror\\V1\\GPBMetadata\xea\x02\fApperror::V1b\x06proto3"
+	"ErrorProtoP\x01Z0altalune.id/oagent/gen/go/apperror/v1;apperrorv1\xa2\x02\x03AXX\xaa\x02\vApperror.V1\xca\x02\vApperror\\V1\xe2\x02\x17Apperror\\V1\\GPBMetadata\xea\x02\fApperror::V1b\x06proto3"
 
 var (
 	file_apperror_v1_error_proto_rawDescOnce sync.Once

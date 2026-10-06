@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"altalune.id/auth-server/apperror"
+	"altalune.id/oagent/apperror"
 )
 
 // NotFoundError signals a missing org row.

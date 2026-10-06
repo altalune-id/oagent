@@ -4,13 +4,13 @@ import (
 	"log/slog"
 	"net/http"
 
-	"altalune.id/auth-server/config"
-	orgv1mcp "altalune.id/auth-server/gen/go/org/v1/orgv1mcp"
-	mcpinternal "altalune.id/auth-server/internal/mcp"
-	mcpui "altalune.id/auth-server/internal/mcp/ui"
-	"altalune.id/auth-server/internal/org"
-	rootmcp "altalune.id/auth-server/mcp"
-	"altalune.id/auth-server/version"
+	"altalune.id/oagent/config"
+	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
+	mcpinternal "altalune.id/oagent/internal/mcp"
+	mcpui "altalune.id/oagent/internal/mcp/ui"
+	"altalune.id/oagent/internal/org"
+	rootmcp "altalune.id/oagent/mcp"
+	"altalune.id/oagent/version"
 )
 
 // buildMCPServer builds the MCP server, or nil when disabled.
@@ -23,7 +23,7 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger) *roo
 	orgv1mcp.RegisterOrgServiceTools(registry, org.NewOrgService(svcs.Orgs), mcpinternal.ScopeFor)
 
 	srv := rootmcp.NewServer(
-		rootmcp.WithImplementation("auth-server", version.Default()),
+		rootmcp.WithImplementation("oagent", version.Default()),
 		rootmcp.WithRegistry(registry),
 		rootmcp.WithScopes(mcpinternal.AllScopes),
 		rootmcp.WithErrorMapper(mcpinternal.ErrorPayload),
@@ -33,7 +33,7 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger) *roo
 	if cfg.AppsUI {
 		srv.AddUIResource(rootmcp.UIResource{
 			URI:           mcpui.ResourceURI,
-			Name:          "auth-server app",
+			Name:          "oagent app",
 			MIMEType:      rootmcp.MIMEApp,
 			Body:          mcpui.Document(),
 			PrefersBorder: new(bool),

@@ -4,9 +4,9 @@ import (
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 
-	orgv1 "altalune.id/auth-server/gen/go/org/v1"
-	orgv1connect "altalune.id/auth-server/gen/go/org/v1/orgv1connect"
-	"altalune.id/auth-server/internal/render"
+	orgv1 "altalune.id/oagent/gen/go/org/v1"
+	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
+	"altalune.id/oagent/internal/render"
 )
 
 // ClientFn returns the Org Connect client for a command; the caller resolves URL and token.

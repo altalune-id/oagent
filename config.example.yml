@@ -1,2 +1,2 @@
 db:
-  dsn: postgres://postgres:postgres@localhost:5432/auth_server?sslmode=disable
+  dsn: postgres://postgres:postgres@localhost:5432/oagent?sslmode=disable

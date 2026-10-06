@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"altalune.id/auth-server/config"
+	"altalune.id/oagent/config"
 )
 
 const (
@@ -246,7 +246,7 @@ func topSegment(yaml string) string {
 }
 
 func envHeader() string {
-	return `# auth-server — auto-generated from config struct tags.
+	return `# oagent — auto-generated from config struct tags.
 # DO NOT edit by hand. Run ` + "`go run ./cmd/gen-config-example`" + ` to regenerate.
 #
 # Awareness markers on each field (in [brackets] above the env var):
@@ -274,7 +274,7 @@ func envBootstrapPreamble() string {
 #   - Changing them after first boot has NO effect on already-persisted data
 #     (e.g. db.schema and db.tablePrefix require SQL-level intervention).
 #
-# Read every line here BEFORE first ` + "`auth-server serve`" + `. Set them deliberately.
+# Read every line here BEFORE first ` + "`oagent serve`" + `. Set them deliberately.
 #
 # ────────────────────────────────────────────────────────────────────
 `
@@ -295,11 +295,11 @@ func envRuntimePreamble() string {
 }
 
 func yamlHeader() string {
-	return `# auth-server — auto-generated from config struct tags.
+	return `# oagent — auto-generated from config struct tags.
 # DO NOT edit by hand. Run ` + "`go run ./cmd/gen-config-example --format=yaml`" + ` to regenerate.
 #
 # Copy to config.yml, uncomment what you need to set, and the app picks it up.
-# Every field maps to an env var (shown as ` + "`env: AUTH_*`" + ` in the per-field comment).
+# Every field maps to an env var (shown as ` + "`env: OAGENT_*`" + ` in the per-field comment).
 # Env vars override YAML.
 #
 # Awareness markers (in [brackets] on the per-field comment):

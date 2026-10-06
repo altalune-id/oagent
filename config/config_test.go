@@ -16,7 +16,7 @@ func missingPath(t *testing.T) string {
 }
 
 func TestLoad_Defaults(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
 
 	c, err := Load(missingPath(t))
 	require.NoError(t, err)
@@ -33,8 +33,8 @@ func TestLoad_Defaults(t *testing.T) {
 }
 
 func TestLoad_BasePathOverride(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
-	t.Setenv("AUTH_HTTP_BASE_PATH", "/app")
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_HTTP_BASE_PATH", "/app")
 
 	c, err := Load(missingPath(t))
 	require.NoError(t, err)
@@ -42,9 +42,9 @@ func TestLoad_BasePathOverride(t *testing.T) {
 }
 
 func TestLoad_ModeAndEnvOverride(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
-	t.Setenv("AUTH_MODE", "cloud")
-	t.Setenv("AUTH_ENV", "production")
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_MODE", "cloud")
+	t.Setenv("OAGENT_ENV", "production")
 
 	c, err := Load(missingPath(t))
 	require.NoError(t, err)
@@ -53,24 +53,24 @@ func TestLoad_ModeAndEnvOverride(t *testing.T) {
 }
 
 func TestLoad_InvalidMode(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
-	t.Setenv("AUTH_MODE", "bogus")
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_MODE", "bogus")
 
 	_, err := Load(missingPath(t))
 	assert.Error(t, err)
 }
 
 func TestLoad_InvalidEnv(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
-	t.Setenv("AUTH_ENV", "bogus")
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_ENV", "bogus")
 
 	_, err := Load(missingPath(t))
 	assert.Error(t, err)
 }
 
 func TestLoad_AutoMigrateOverride(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
-	t.Setenv("AUTH_DB_AUTO_MIGRATE", "false")
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_DB_AUTO_MIGRATE", "false")
 
 	c, err := Load(missingPath(t))
 	require.NoError(t, err)
@@ -78,7 +78,7 @@ func TestLoad_AutoMigrateOverride(t *testing.T) {
 }
 
 func TestLoad_DefaultPath(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
 
 	c, err := Load("")
 	require.NoError(t, err)
@@ -86,25 +86,25 @@ func TestLoad_DefaultPath(t *testing.T) {
 }
 
 func TestLoad_InvalidTelemetry(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
-	t.Setenv("AUTH_TELEMETRY_OTLP_PROTOCOL", "bogus")
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_TELEMETRY_OTLP_PROTOCOL", "bogus")
 
 	_, err := Load(missingPath(t))
 	assert.Error(t, err)
 }
 
 func TestLoad_MissingDSN(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "")
+	t.Setenv("OAGENT_DB_DSN", "")
 
 	_, err := Load(missingPath(t))
 	assert.Error(t, err)
 }
 
 func TestLoad_EnvOverride(t *testing.T) {
-	t.Setenv("AUTH_DB_DSN", "postgres://localhost/db")
-	t.Setenv("AUTH_DB_SCHEMA", "auth")
-	t.Setenv("AUTH_DB_TABLE_PREFIX", "t_")
-	t.Setenv("AUTH_TELEMETRY_TRACING_ENABLED", "true")
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_DB_SCHEMA", "auth")
+	t.Setenv("OAGENT_DB_TABLE_PREFIX", "t_")
+	t.Setenv("OAGENT_TELEMETRY_TRACING_ENABLED", "true")
 
 	c, err := Load(missingPath(t))
 	require.NoError(t, err)
@@ -114,9 +114,9 @@ func TestLoad_EnvOverride(t *testing.T) {
 }
 
 func TestLoad_File(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "auth-server.yaml")
+	path := filepath.Join(t.TempDir(), "oagent.yaml")
 	require.NoError(t, os.WriteFile(path, []byte("db:\n  dsn: postgres://file/db\n  tablePrefix: f_\n"), 0o600))
-	t.Setenv("AUTH_DB_DSN", "") // no env override; take the file value
+	t.Setenv("OAGENT_DB_DSN", "") // no env override; take the file value
 
 	c, err := Load(path)
 	require.NoError(t, err)

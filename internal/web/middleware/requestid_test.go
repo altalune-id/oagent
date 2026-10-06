@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"altalune.id/auth-server/reqid"
+	"altalune.id/oagent/reqid"
 )
 
 func TestRequestID(t *testing.T) {

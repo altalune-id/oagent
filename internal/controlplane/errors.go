@@ -5,9 +5,9 @@ import (
 
 	"connectrpc.com/connect"
 
-	"altalune.id/auth-server/apperror"
-	apperrorv1 "altalune.id/auth-server/gen/go/apperror/v1"
-	"altalune.id/auth-server/reqid"
+	"altalune.id/oagent/apperror"
+	apperrorv1 "altalune.id/oagent/gen/go/apperror/v1"
+	"altalune.id/oagent/reqid"
 )
 
 // Wrap converts handler errors into the canonical connect.Error envelope.

@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	orgv1connect "altalune.id/auth-server/gen/go/org/v1/orgv1connect"
-	"altalune.id/auth-server/internal/controlplane"
-	"altalune.id/auth-server/internal/org"
-	"altalune.id/auth-server/internal/testutil/fakes"
+	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
+	"altalune.id/oagent/internal/controlplane"
+	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/testutil/fakes"
 )
 
 func orgClient(t *testing.T, store org.Store) orgv1connect.OrgServiceClient {

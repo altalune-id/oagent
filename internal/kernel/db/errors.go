@@ -3,7 +3,7 @@ package db
 import (
 	"errors"
 
-	"altalune.id/auth-server/pg"
+	"altalune.id/oagent/pg"
 )
 
 // IsInvalidRoleError reports whether err wraps a pg.InvalidIdentifierError.

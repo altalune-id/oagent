@@ -6,7 +6,7 @@
       }
     },
     "mimeType": "text/html;profile=mcp-app",
-    "name": "auth-server app",
-    "uri": "ui://auth-server/app"
+    "name": "oagent app",
+    "uri": "ui://oagent/app"
   }
 ]

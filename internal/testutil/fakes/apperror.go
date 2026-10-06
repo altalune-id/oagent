@@ -3,7 +3,7 @@ package fakes
 import (
 	"context"
 
-	"altalune.id/auth-server/apperror"
+	"altalune.id/oagent/apperror"
 )
 
 // ReportSink records incidents for assertions.

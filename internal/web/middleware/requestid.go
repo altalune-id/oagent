@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	"altalune.id/auth-server/reqid"
+	"altalune.id/oagent/reqid"
 )
 
 // RequestID sanitizes the inbound X-Request-Id (or mints one), echoes it, and puts it on the context.

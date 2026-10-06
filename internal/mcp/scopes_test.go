@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	orgv1mcp "altalune.id/auth-server/gen/go/org/v1/orgv1mcp"
+	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
 )
 
 func TestScopeFor(t *testing.T) {

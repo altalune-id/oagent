@@ -16,16 +16,16 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	nooptrace "go.opentelemetry.io/otel/trace/noop"
 
-	"altalune.id/auth-server/config"
-	"altalune.id/auth-server/internal/kernel"
-	"altalune.id/auth-server/internal/kernel/db"
-	"altalune.id/auth-server/internal/kernel/queue"
-	"altalune.id/auth-server/internal/org"
-	"altalune.id/auth-server/internal/testutil/fakes"
-	"altalune.id/auth-server/migrator"
-	"altalune.id/auth-server/reqid"
-	"altalune.id/auth-server/telemetry"
-	"altalune.id/auth-server/worker"
+	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/queue"
+	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/testutil/fakes"
+	"altalune.id/oagent/migrator"
+	"altalune.id/oagent/reqid"
+	"altalune.id/oagent/telemetry"
+	"altalune.id/oagent/worker"
 )
 
 func restoreSeams(t *testing.T) {

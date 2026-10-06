@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"altalune.id/auth-server/pg"
+	"altalune.id/oagent/pg"
 )
 
 func TestIsInvalidRoleError(t *testing.T) {

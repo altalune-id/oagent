@@ -2,7 +2,7 @@
   {
     "_meta": {
       "ui": {
-        "resourceUri": "ui://auth-server/app"
+        "resourceUri": "ui://oagent/app"
       }
     },
     "annotations": {

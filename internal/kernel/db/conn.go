@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/stdlib"
 
-	"altalune.id/auth-server/pg"
+	"altalune.id/oagent/pg"
 )
 
 //nolint:gochecknoglobals // test seam.

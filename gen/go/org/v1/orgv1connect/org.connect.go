@@ -5,7 +5,7 @@
 package orgv1connect
 
 import (
-	v1 "altalune.id/auth-server/gen/go/org/v1"
+	v1 "altalune.id/oagent/gen/go/org/v1"
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"

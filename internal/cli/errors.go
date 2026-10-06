@@ -7,8 +7,8 @@ import (
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
 
-	"altalune.id/auth-server/apperror"
-	"altalune.id/auth-server/internal/render"
+	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/render"
 )
 
 // RenderError writes err to the command's stderr in the selected output format.

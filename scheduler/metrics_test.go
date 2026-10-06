@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 
-	"altalune.id/auth-server/scheduler"
+	"altalune.id/oagent/scheduler"
 )
 
 func discardLogger() *slog.Logger {

@@ -7,14 +7,14 @@ import (
 
 	"connectrpc.com/connect"
 
-	orgv1connect "altalune.id/auth-server/gen/go/org/v1/orgv1connect"
-	"altalune.id/auth-server/httpclient"
+	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
+	"altalune.id/oagent/httpclient"
 )
 
 // DefaultClientTimeout bounds every remote CLI request.
 const DefaultClientTimeout = 30 * time.Second
 
-// Client bundles the Connect clients the CLI uses to reach a remote auth-server.
+// Client bundles the Connect clients the CLI uses to reach a remote oagent.
 type Client struct {
 	Org orgv1connect.OrgServiceClient
 }

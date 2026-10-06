@@ -10,13 +10,13 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"altalune.id/auth-server/config"
-	orgv1connect "altalune.id/auth-server/gen/go/org/v1/orgv1connect"
-	"altalune.id/auth-server/internal/boot"
-	"altalune.id/auth-server/internal/controlplane"
-	"altalune.id/auth-server/internal/org"
-	"altalune.id/auth-server/reqid"
-	"altalune.id/auth-server/version"
+	"altalune.id/oagent/config"
+	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
+	"altalune.id/oagent/internal/boot"
+	"altalune.id/oagent/internal/controlplane"
+	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/reqid"
+	"altalune.id/oagent/version"
 )
 
 // App is the running server the serve command drives.
@@ -37,7 +37,7 @@ type ctxKey int
 const ctxKeyRuntime ctxKey = iota + 1
 
 // clientAnnotation marks remote commands; their config is loaded without validation (no DB required).
-const clientAnnotation = "auth-server/client"
+const clientAnnotation = "oagent/client"
 
 type runtime struct {
 	cfg *config.Config
@@ -49,21 +49,21 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 	var configPath, logLevel, logFormat string
 
 	root := &cobra.Command{
-		Use:           "auth-server",
-		Short:         "auth-server — authentication and organization service",
+		Use:           "oagent",
+		Short:         "oagent — authentication and organization service",
 		Version:       version.String(),
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
 
 	p := root.PersistentFlags()
-	p.StringVarP(&configPath, "config", "c", "", "config file (yaml); default search: $XDG_CONFIG_HOME/auth-server, /etc/auth-server, cwd")
+	p.StringVarP(&configPath, "config", "c", "", "config file (yaml); default search: $XDG_CONFIG_HOME/oagent, /etc/oagent, cwd")
 	p.StringVar(&logLevel, "log-level", "info", "log level: debug|info|warn|error")
 	p.StringVar(&logFormat, "log-format", "text", "log format: json|text")
-	p.String("url", "", "remote auth-server base URL (also: AUTH_URL)")
-	p.String("token", "", "bearer token (also: AUTH_TOKEN)")
+	p.String("url", "", "remote oagent base URL (also: OAGENT_URL)")
+	p.String("token", "", "bearer token (also: OAGENT_TOKEN)")
 	p.String("token-file", "", "read the bearer token from a file")
-	p.String("output", "", "output format: text|json|ndjson (also: AUTH_OUTPUT)")
+	p.String("output", "", "output format: text|json|ndjson (also: OAGENT_OUTPUT)")
 	registerConfigFlags(p)
 
 	root.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {

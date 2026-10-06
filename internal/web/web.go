@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"altalune.id/auth-server/apperror"
-	"altalune.id/auth-server/internal/web/middleware"
+	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/web/middleware"
 )
 
 // ServerOpts configures the web server handler.

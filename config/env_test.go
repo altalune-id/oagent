@@ -10,9 +10,9 @@ import (
 )
 
 func TestEnvVar(t *testing.T) {
-	assert.Equal(t, "AUTH_DB_TABLE_PREFIX", EnvVar("db.tablePrefix"))
-	assert.Equal(t, "AUTH_DB_MAX_IDLE_CONNS", EnvVar("db.maxIdleConns"))
-	assert.Equal(t, "AUTH_HTTP_BASE_URL", EnvVar("http.baseURL"))
+	assert.Equal(t, "OAGENT_DB_TABLE_PREFIX", EnvVar("db.tablePrefix"))
+	assert.Equal(t, "OAGENT_DB_MAX_IDLE_CONNS", EnvVar("db.maxIdleConns"))
+	assert.Equal(t, "OAGENT_HTTP_BASE_URL", EnvVar("http.baseURL"))
 }
 
 func TestSegmentFor(t *testing.T) {

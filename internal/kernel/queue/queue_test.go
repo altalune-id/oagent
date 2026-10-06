@@ -18,8 +18,8 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 
-	"altalune.id/auth-server/apperror"
-	"altalune.id/auth-server/internal/kernel/tenant"
+	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/tenant"
 )
 
 func testJob() Job { return Job{Name: "test.run", Version: 1} }
@@ -179,13 +179,13 @@ func TestSubmit_PublishesWithHeaders(t *testing.T) {
 
 	_, err := uuid.Parse(m.Header.Get("Nats-Msg-Id"))
 	require.NoError(t, err)
-	assert.Equal(t, "test.run", m.Header.Get("Authserver-Job"))
-	assert.Equal(t, "1", m.Header.Get("Authserver-Job-Version"))
-	_, err = time.Parse(time.RFC3339, m.Header.Get("Authserver-Created-At"))
+	assert.Equal(t, "test.run", m.Header.Get("Oagent-Job"))
+	assert.Equal(t, "1", m.Header.Get("Oagent-Job-Version"))
+	_, err = time.Parse(time.RFC3339, m.Header.Get("Oagent-Created-At"))
 	require.NoError(t, err)
-	assert.Equal(t, tc.OrgID.String(), m.Header.Get("Authserver-Org-Id"))
-	assert.Equal(t, tc.ProjectID.String(), m.Header.Get("Authserver-Project-Id"))
-	assert.Equal(t, tc.UserID.String(), m.Header.Get("Authserver-User-Id"))
+	assert.Equal(t, tc.OrgID.String(), m.Header.Get("Oagent-Org-Id"))
+	assert.Equal(t, tc.ProjectID.String(), m.Header.Get("Oagent-Project-Id"))
+	assert.Equal(t, tc.UserID.String(), m.Header.Get("Oagent-User-Id"))
 }
 
 func TestSubmit_Unscoped(t *testing.T) {
@@ -195,7 +195,7 @@ func TestSubmit_Unscoped(t *testing.T) {
 	require.NoError(t, c.Submit(t.Context(), testJob(), testPayload{}))
 
 	m := lastMsg(t, c, streamWork, "jobs.test.run.v1")
-	assert.Empty(t, m.Header.Values("Authserver-Org-Id"))
+	assert.Empty(t, m.Header.Values("Oagent-Org-Id"))
 }
 
 func TestSubmit_UndeclaredJob(t *testing.T) {
@@ -266,11 +266,11 @@ func TestEmit(t *testing.T) {
 
 	assert.Equal(t, uint64(1), streamInfo(t, c, streamBroadcast).State.Msgs)
 	m := lastMsg(t, c, streamBroadcast, "broadcast.test.ping.v1")
-	assert.Equal(t, "test.ping", m.Header.Get("Authserver-Broadcast"))
-	assert.Equal(t, "1", m.Header.Get("Authserver-Broadcast-Version"))
+	assert.Equal(t, "test.ping", m.Header.Get("Oagent-Broadcast"))
+	assert.Equal(t, "1", m.Header.Get("Oagent-Broadcast-Version"))
 	_, err := uuid.Parse(m.Header.Get("Nats-Msg-Id"))
 	require.NoError(t, err)
-	assert.Empty(t, m.Header.Values("Authserver-Job"))
+	assert.Empty(t, m.Header.Values("Oagent-Job"))
 }
 
 func TestEmit_UndeclaredBroadcast(t *testing.T) {

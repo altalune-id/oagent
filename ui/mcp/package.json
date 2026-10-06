@@ -1,5 +1,5 @@
 {
-  "name": "@auth-server/mcp-ui",
+  "name": "@oagent/mcp-ui",
   "private": true,
   "type": "module",
   "scripts": {

@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"altalune.id/auth-server/internal/kernel/db"
-	"altalune.id/auth-server/schema/entity"
+	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/schema/entity"
 )
 
 func TestOrgRow_ToOrg(t *testing.T) {

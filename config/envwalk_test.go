@@ -17,13 +17,13 @@ func TestWalkEnvKeys(t *testing.T) {
 
 	dsn, ok := byYAML["db.dsn"]
 	require.True(t, ok)
-	assert.Equal(t, "AUTH_DB_DSN", dsn.Key)
+	assert.Equal(t, "OAGENT_DB_DSN", dsn.Key)
 	assert.Contains(t, dsn.Awareness, "required")
 	assert.Contains(t, dsn.Awareness, "secret")
 
 	addr, ok := byYAML["http.addr"]
 	require.True(t, ok)
-	assert.Equal(t, "AUTH_HTTP_ADDR", addr.Key)
+	assert.Equal(t, "OAGENT_HTTP_ADDR", addr.Key)
 	assert.Equal(t, ":5150", addr.FormatDefault())
 
 	assert.Contains(t, byYAML["mode"].Awareness, "bootstrap")
@@ -57,7 +57,7 @@ type envWalkSample struct {
 
 func TestWalkForEnvKeys(t *testing.T) {
 	var out []EnvKey
-	walkForEnvKeys(&out, "AUTH", "", reflect.TypeFor[envWalkSample](), []string{"parent"})
+	walkForEnvKeys(&out, "OAGENT", "", reflect.TypeFor[envWalkSample](), []string{"parent"})
 
 	byYAML := map[string]EnvKey{}
 	for _, k := range out {
@@ -81,6 +81,6 @@ func TestWalkForEnvKeys(t *testing.T) {
 
 func TestWalkForEnvKeys_NonStruct(t *testing.T) {
 	var out []EnvKey
-	walkForEnvKeys(&out, "AUTH", "", reflect.TypeFor[string](), nil)
+	walkForEnvKeys(&out, "OAGENT", "", reflect.TypeFor[string](), nil)
 	assert.Empty(t, out)
 }

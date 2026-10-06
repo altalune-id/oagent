@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"log/slog"
 
-	"altalune.id/auth-server/apperror"
-	"altalune.id/auth-server/config"
-	"altalune.id/auth-server/httpserver"
-	"altalune.id/auth-server/internal/kernel"
-	"altalune.id/auth-server/internal/kernel/queue"
-	"altalune.id/auth-server/scheduler"
-	"altalune.id/auth-server/worker"
+	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/config"
+	"altalune.id/oagent/httpserver"
+	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/kernel/queue"
+	"altalune.id/oagent/scheduler"
+	"altalune.id/oagent/worker"
 )
 
 // Boot builds the runtime graph from cfg: telemetry, the DB pool, migrations, and the services.

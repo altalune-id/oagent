@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"altalune.id/auth-server/apperror"
-	"altalune.id/auth-server/config"
-	"altalune.id/auth-server/internal/kernel"
+	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/kernel"
 )
 
 func TestQueueConfig(t *testing.T) {

@@ -18,8 +18,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	tracenoop "go.opentelemetry.io/otel/trace/noop"
 
-	"altalune.id/auth-server/apperror"
-	"altalune.id/auth-server/internal/kernel/tenant"
+	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/tenant"
 )
 
 // Client publishes jobs and broadcasts; a disabled Client accepts every call and publishes nothing.

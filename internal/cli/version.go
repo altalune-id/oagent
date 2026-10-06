@@ -3,13 +3,13 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
-	"altalune.id/auth-server/version"
+	"altalune.id/oagent/version"
 )
 
 func newVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "version",
-		Short:   "Print auth-server version info",
+		Short:   "Print oagent version info",
 		GroupID: "meta",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {

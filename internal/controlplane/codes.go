@@ -3,7 +3,7 @@ package controlplane
 import (
 	"connectrpc.com/connect"
 
-	"altalune.id/auth-server/apperror"
+	"altalune.id/oagent/apperror"
 )
 
 // connectCodeOf maps a stable apperror code onto the Connect status code clients see.

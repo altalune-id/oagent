@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"altalune.id/auth-server/apperror"
-	"altalune.id/auth-server/reqid"
+	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/reqid"
 )
 
 // Recoverer turns a handler panic into a 500, reporting it through unexpected when set.

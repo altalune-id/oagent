@@ -3,7 +3,7 @@ import { onMounted, provide, ref, shallowRef } from "vue";
 import { App } from "@modelcontextprotocol/ext-apps";
 import { resolveView } from "./views";
 
-const app = new App({ name: "auth-server", version: "0.1.0" });
+const app = new App({ name: "oagent", version: "0.1.0" });
 provide("mcpApp", app);
 
 const input = ref<Record<string, unknown>>({});
@@ -44,7 +44,7 @@ onMounted(async () => {
 <template>
   <component :is="view" v-if="state === 'ready'" :data="data" />
   <main v-else class="card">
-    <header><span class="dot" /><strong>auth-server</strong></header>
+    <header><span class="dot" /><strong>oagent</strong></header>
     <p v-if="state === 'connecting'" class="muted">Connecting…</p>
     <p v-else-if="state === 'error'" class="error">{{ message }}</p>
     <p v-else class="muted">Waiting for a tool result…</p>

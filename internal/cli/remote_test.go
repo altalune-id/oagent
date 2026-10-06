@@ -28,12 +28,12 @@ func TestResolveURL_Flag(t *testing.T) {
 }
 
 func TestResolveURL_Env(t *testing.T) {
-	t.Setenv("AUTH_URL", "http://env")
+	t.Setenv("OAGENT_URL", "http://env")
 	assert.Equal(t, "http://env", resolveURL(parsedRoot(t, "y")))
 }
 
 func TestResolveURL_Default(t *testing.T) {
-	t.Setenv("AUTH_URL", "")
+	t.Setenv("OAGENT_URL", "")
 	assert.Equal(t, DefaultURL, resolveURL(parsedRoot(t, "y")))
 }
 
@@ -58,7 +58,7 @@ func TestResolveToken_FileError(t *testing.T) {
 }
 
 func TestResolveToken_Env(t *testing.T) {
-	t.Setenv("AUTH_TOKEN", "envtok")
+	t.Setenv("OAGENT_TOKEN", "envtok")
 	tok, err := resolveToken(parsedRoot(t, "y"))
 	require.NoError(t, err)
 	assert.Equal(t, "envtok", tok)

@@ -1,9 +1,9 @@
 package boot
 
 import (
-	"altalune.id/auth-server/config"
-	"altalune.id/auth-server/internal/kernel"
-	"altalune.id/auth-server/internal/org"
+	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/org"
 )
 
 // Services is every store and service the composition root wires.

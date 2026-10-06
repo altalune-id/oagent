@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	defaultName    = "auth-server"
+	defaultName    = "oagent"
 	defaultVersion = "0.0.0"
 )
 

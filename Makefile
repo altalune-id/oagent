@@ -1,14 +1,14 @@
 GOTOOLCHAIN ?= auto
 GO := env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) go
 
-BIN     := bin/auth-server
+BIN     := bin/oagent
 VERSION := $(shell cat version/VERSION 2>/dev/null || echo dev)
 COMMIT  := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 BUILD   := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS := -s -w \
-	-X altalune.id/auth-server/version.Version=$(VERSION) \
-	-X altalune.id/auth-server/version.Commit=$(COMMIT) \
-	-X altalune.id/auth-server/version.BuildTime=$(BUILD)
+	-X altalune.id/oagent/version.Version=$(VERSION) \
+	-X altalune.id/oagent/version.Commit=$(COMMIT) \
+	-X altalune.id/oagent/version.BuildTime=$(BUILD)
 
 .DEFAULT_GOAL := help
 
@@ -17,16 +17,16 @@ help: ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  make %-8s %s\n", $$1, $$2}'
 
 .PHONY: build
-build: ## build the auth-server binary into bin/
-	CGO_ENABLED=0 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/auth-server
+build: ## build the oagent binary into bin/
+	CGO_ENABLED=0 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/oagent
 
 .PHONY: install
-install: ## install auth-server into GOBIN/GOPATH/bin
-	CGO_ENABLED=0 $(GO) install -trimpath -ldflags "$(LDFLAGS)" ./cmd/auth-server
+install: ## install oagent into GOBIN/GOPATH/bin
+	CGO_ENABLED=0 $(GO) install -trimpath -ldflags "$(LDFLAGS)" ./cmd/oagent
 
 .PHONY: run
-run: ## run the auth-server serve command
-	$(GO) run ./cmd/auth-server serve
+run: ## run the oagent serve command
+	$(GO) run ./cmd/oagent serve
 
 .PHONY: config-examples
 config-examples: ## regenerate .env.reference and config.reference.yml from struct tags
@@ -39,7 +39,7 @@ generate: ## regenerate protos (connect, openapi, mcp tools)
 
 .PHONY: ui-mcp
 ui-mcp: ## build the MCP App (Vue) and embed it
-	pnpm --filter @auth-server/mcp-ui build
+	pnpm --filter @oagent/mcp-ui build
 	cp ui/mcp/dist/index.html internal/mcp/ui/assets/app.html
 
 .PHONY: fmt

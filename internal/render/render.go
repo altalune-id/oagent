@@ -23,9 +23,9 @@ const (
 )
 
 // EnvVar is read when --output is unset.
-const EnvVar = "AUTH_OUTPUT"
+const EnvVar = "OAGENT_OUTPUT"
 
-// Detect picks the output format: --output flag > AUTH_OUTPUT env > TTY heuristic.
+// Detect picks the output format: --output flag > OAGENT_OUTPUT env > TTY heuristic.
 func Detect(cmd *cobra.Command) Format {
 	if raw := flagValue(cmd, "output"); raw != "" {
 		return normalize(raw)

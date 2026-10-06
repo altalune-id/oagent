@@ -11,7 +11,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
-	"altalune.id/auth-server/internal/kernel/tenant"
+	"altalune.id/oagent/internal/kernel/tenant"
 )
 
 func TestTenantHeaders_RoundTrip(t *testing.T) {
@@ -105,18 +105,18 @@ func TestHeaderNames(t *testing.T) {
 		want string
 	}{
 		{headerMsgID, "Nats-Msg-Id"},
-		{headerJob, "Authserver-Job"},
-		{headerJobVersion, "Authserver-Job-Version"},
-		{headerBroadcast, "Authserver-Broadcast"},
-		{headerBroadcastVersion, "Authserver-Broadcast-Version"},
-		{headerCreatedAt, "Authserver-Created-At"},
-		{headerOrgID, "Authserver-Org-Id"},
-		{headerProjectID, "Authserver-Project-Id"},
-		{headerUserID, "Authserver-User-Id"},
-		{headerDlqReason, "Authserver-Dlq-Reason"},
-		{headerDlqError, "Authserver-Dlq-Error"},
-		{headerDlqAttempts, "Authserver-Dlq-Attempts"},
-		{headerDlqStreamSeq, "Authserver-Dlq-Stream-Seq"},
+		{headerJob, "Oagent-Job"},
+		{headerJobVersion, "Oagent-Job-Version"},
+		{headerBroadcast, "Oagent-Broadcast"},
+		{headerBroadcastVersion, "Oagent-Broadcast-Version"},
+		{headerCreatedAt, "Oagent-Created-At"},
+		{headerOrgID, "Oagent-Org-Id"},
+		{headerProjectID, "Oagent-Project-Id"},
+		{headerUserID, "Oagent-User-Id"},
+		{headerDlqReason, "Oagent-Dlq-Reason"},
+		{headerDlqError, "Oagent-Dlq-Error"},
+		{headerDlqAttempts, "Oagent-Dlq-Attempts"},
+		{headerDlqStreamSeq, "Oagent-Dlq-Stream-Seq"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {

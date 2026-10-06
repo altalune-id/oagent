@@ -4,9 +4,9 @@ import (
 	"context"
 	"log/slog"
 
-	"altalune.id/auth-server/config"
-	"altalune.id/auth-server/internal/kernel"
-	"altalune.id/auth-server/internal/kernel/queue"
+	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/kernel/queue"
 )
 
 // queueConfig maps the operator config onto the queue's options.

@@ -7,10 +7,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// DefaultURL is the hosted auth-server API used when nothing else is configured.
-const DefaultURL = "https://auth-server.altalune.id"
+// DefaultURL is the hosted oagent API used when nothing else is configured.
+const DefaultURL = "https://oagent.altalune.id"
 
-// resolveURL precedence: --url > AUTH_URL > config http.baseURL > DefaultURL.
+// resolveURL precedence: --url > OAGENT_URL > config http.baseURL > DefaultURL.
 func resolveURL(cmd *cobra.Command) string {
 	if v := explicitURL(cmd); v != "" {
 		return v
@@ -25,5 +25,5 @@ func explicitURL(cmd *cobra.Command) string {
 	if f := cmd.Root().PersistentFlags().Lookup("url"); f != nil && f.Changed {
 		return strings.TrimSpace(f.Value.String())
 	}
-	return strings.TrimSpace(os.Getenv("AUTH_URL"))
+	return strings.TrimSpace(os.Getenv("OAGENT_URL"))
 }

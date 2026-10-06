@@ -4,7 +4,7 @@ defineProps<{ data: Record<string, unknown> }>();
 
 <template>
   <main class="card">
-    <header><span class="dot" /><strong>auth-server</strong></header>
+    <header><span class="dot" /><strong>oagent</strong></header>
     <pre>{{ JSON.stringify(data, null, 2) }}</pre>
   </main>
 </template>

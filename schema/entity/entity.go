@@ -1,2 +1,2 @@
-// Package entity holds go-jet table bindings for the auth-server schema.
+// Package entity holds go-jet table bindings for the oagent schema.
 package entity

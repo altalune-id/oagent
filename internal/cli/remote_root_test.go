@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"altalune.id/auth-server/config"
-	"altalune.id/auth-server/internal/cli"
-	"altalune.id/auth-server/internal/controlplane"
-	"altalune.id/auth-server/internal/org"
-	"altalune.id/auth-server/internal/testutil/fakes"
+	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/cli"
+	"altalune.id/oagent/internal/controlplane"
+	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/testutil/fakes"
 )
 
 // Exercises the real root tree for a remote command: config (no validation), client boot, org.ClientFn.
