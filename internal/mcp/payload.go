@@ -1,0 +1,47 @@
+package mcp
+
+import (
+	"context"
+	"errors"
+
+	"go.opentelemetry.io/otel/trace"
+
+	"altalune.id/auth-server/apperror"
+	rootmcp "altalune.id/auth-server/mcp"
+	"altalune.id/auth-server/reqid"
+)
+
+// ErrorPayload maps a tool failure onto the caller-visible payload; an empty Code leaves it unmapped.
+func ErrorPayload(ctx context.Context, err error) rootmcp.ErrorPayload {
+	if denied, ok := errors.AsType[*rootmcp.ScopeDeniedError](err); ok {
+		return AttachContext(ctx, rootmcp.ErrorPayload{
+			Code:    "FORBIDDEN",
+			Message: denied.Error(),
+			Meta:    map[string]string{"tool": denied.Tool, "scope": denied.Scope},
+		})
+	}
+	if invalid, ok := errors.AsType[*rootmcp.InvalidArgumentsError](err); ok {
+		meta := map[string]string{"tool": invalid.Tool}
+		if invalid.Field != "" {
+			meta["field"] = invalid.Field
+		}
+		return AttachContext(ctx, rootmcp.ErrorPayload{Code: "INVALID_ARGUMENT", Message: invalid.Error(), Meta: meta})
+	}
+	if ae, ok := apperror.AsAppError(err); ok {
+		return AttachContext(ctx, rootmcp.ErrorPayload{Code: string(ae.Code()), Message: ae.Message(), Meta: ae.Meta()})
+	}
+	return rootmcp.ErrorPayload{}
+}
+
+// AttachContext fills the request and trace ids when absent.
+func AttachContext(ctx context.Context, p rootmcp.ErrorPayload) rootmcp.ErrorPayload {
+	if p.RequestID == "" {
+		p.RequestID = reqid.FromContext(ctx)
+	}
+	if p.TraceID == "" {
+		if sc := trace.SpanContextFromContext(ctx); sc.IsValid() {
+			p.TraceID = sc.TraceID().String()
+		}
+	}
+	return p
+}
