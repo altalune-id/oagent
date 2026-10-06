@@ -37,6 +37,11 @@ config-examples: ## regenerate .env.reference and config.reference.yml from stru
 generate: ## regenerate protos (connect, openapi, mcp tools)
 	env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) buf generate
 
+.PHONY: ui-mcp
+ui-mcp: ## build the MCP App (Vue) and embed it
+	pnpm --filter @auth-server/mcp-ui build
+	cp ui/mcp/dist/index.html internal/mcp/ui/assets/app.html
+
 .PHONY: fmt
 fmt: ## format all Go files
 	$(GO) fmt ./...

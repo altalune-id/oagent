@@ -4,3 +4,7 @@
 *.test
 coverage.*
 .DS_Store
+
+node_modules/
+ui/*/dist/
+internal/mcp/ui/assets/app.html

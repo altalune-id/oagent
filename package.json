@@ -1,0 +1,11 @@
+{
+  "name": "auth-server",
+  "private": true,
+  "packageManager": "pnpm@10.34.4",
+  "scripts": {
+    "ui:mcp": "pnpm --filter @auth-server/mcp-ui build"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}
