@@ -16,8 +16,8 @@ type OrgService struct {
 	orgs *Service
 }
 
-// NewOrgService binds the handler to the org service.
-func NewOrgService(orgs *Service) *OrgService {
+// NewControlPlane binds the handler to the org service.
+func NewControlPlane(orgs *Service) *OrgService {
 	return &OrgService{orgs: orgs}
 }
 

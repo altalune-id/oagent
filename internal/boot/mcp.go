@@ -22,8 +22,8 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger) *roo
 		return nil
 	}
 	registry := rootmcp.NewRegistry()
-	orgv1mcp.RegisterOrgServiceTools(registry, org.NewOrgService(svcs.Orgs), mcpinternal.ScopeFor)
-	projectv1mcp.RegisterProjectServiceTools(registry, project.NewProjectService(svcs.Projects), mcpinternal.ScopeFor)
+	orgv1mcp.RegisterOrgServiceTools(registry, org.NewControlPlane(svcs.Orgs), mcpinternal.ScopeFor)
+	projectv1mcp.RegisterProjectServiceTools(registry, project.NewControlPlane(svcs.Projects), mcpinternal.ScopeFor)
 
 	srv := rootmcp.NewServer(
 		rootmcp.WithImplementation("oagent", version.Default()),

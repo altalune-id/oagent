@@ -46,13 +46,13 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 	s := &Server{
 		Orgs:             svcs.Orgs,
 		Projects:         svcs.Projects,
-		OrgSvc:           org.NewOrgService(svcs.Orgs),
+		OrgSvc:           org.NewControlPlane(svcs.Orgs),
 		OpenAPIEnabled:   opts.OpenAPIEnabled,
 		OpenAPIBasicAuth: opts.OpenAPIBasicAuth,
 		unexpected:       unexpected,
 	}
 	if svcs.Projects != nil {
-		s.ProjectSvc = project.NewProjectService(svcs.Projects)
+		s.ProjectSvc = project.NewControlPlane(svcs.Projects)
 	}
 	return s
 }

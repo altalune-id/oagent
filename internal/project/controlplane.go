@@ -16,8 +16,8 @@ type ProjectService struct {
 	projects *Service
 }
 
-// NewProjectService binds the handler to the project service.
-func NewProjectService(projects *Service) *ProjectService {
+// NewControlPlane binds the handler to the project service.
+func NewControlPlane(projects *Service) *ProjectService {
 	return &ProjectService{projects: projects}
 }
 
