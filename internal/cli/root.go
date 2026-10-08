@@ -12,9 +12,11 @@ import (
 
 	"altalune.id/oagent/config"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
+	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
 	"altalune.id/oagent/internal/boot"
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/reqid"
 	"altalune.id/oagent/version"
 )
@@ -106,10 +108,14 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 	orgCmd := org.NewCmd(orgClientFn(bootClient))
 	markClientTree(orgCmd)
 
+	projectCmd := project.NewCmd(projectClientFn(bootClient))
+	markClientTree(projectCmd)
+
 	root.AddCommand(
 		newServeCmd(bootServer),
 		newMCPCmd(bootServer),
 		orgCmd,
+		projectCmd,
 		newVersionCmd(),
 	)
 	return root
@@ -152,6 +158,17 @@ func orgClientFn(bootClient ClientBootFn) org.ClientFn {
 			return nil, err
 		}
 		return client.Org, nil
+	}
+}
+
+// projectClientFn adapts the resolved remote client to the project package's ClientFn.
+func projectClientFn(bootClient ClientBootFn) project.ClientFn {
+	return func(cmd *cobra.Command) (projectv1connect.ProjectServiceClient, error) {
+		client, err := connectClient(cmd, bootClient)
+		if err != nil {
+			return nil, err
+		}
+		return client.Projects, nil
 	}
 }
 

@@ -18,7 +18,7 @@ import (
 
 func orgClient(t *testing.T, store org.Store) orgv1connect.OrgServiceClient {
 	t.Helper()
-	srv := controlplane.New(org.NewService(store, nil), nil, controlplane.Options{})
+	srv := controlplane.New(controlplane.Services{Orgs: org.NewService(store, nil)}, nil, controlplane.Options{})
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
 	return controlplane.NewClient(ts.URL, "").Org

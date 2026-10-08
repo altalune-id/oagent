@@ -7,7 +7,7 @@ const orgs = useOrgsStore()
 const projects = useProjectsStore()
 const org = computed(() => orgs.bySlug(route.params.org as string))
 const project = computed(() =>
-  projects.items.find(item => item.org === org.value?.slug && item.slug === route.params.project),
+  projects.items.find(item => item.orgId === org.value?.id && item.slug === route.params.project),
 )
 
 if (!project.value) {

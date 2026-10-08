@@ -7,11 +7,14 @@ import (
 	"slices"
 
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
+	projectv1mcp "altalune.id/oagent/gen/go/project/v1/projectv1mcp"
 )
 
 const (
-	ScopeOrgRead  = "org:read"
-	ScopeOrgWrite = "org:write"
+	ScopeOrgRead      = "org:read"
+	ScopeOrgWrite     = "org:write"
+	ScopeProjectRead  = "project:read"
+	ScopeProjectWrite = "project:write"
 )
 
 // ScopeTable maps every published tool to the scope its caller must hold.
@@ -20,6 +23,10 @@ func ScopeTable() map[string]string {
 		orgv1mcp.OrgCreateToolName: ScopeOrgWrite,
 		orgv1mcp.OrgGetToolName:    ScopeOrgRead,
 		orgv1mcp.OrgListToolName:   ScopeOrgRead,
+
+		projectv1mcp.ProjectCreateToolName: ScopeProjectWrite,
+		projectv1mcp.ProjectGetToolName:    ScopeProjectRead,
+		projectv1mcp.ProjectListToolName:   ScopeProjectRead,
 	}
 }
 

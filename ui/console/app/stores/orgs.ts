@@ -1,6 +1,7 @@
 import { useOrgClient } from '~/composables/org/useOrgClient'
 
 export interface Org {
+  id: string
   slug: string
   name: string
 }
@@ -29,7 +30,7 @@ export const useOrgsStore = defineStore('orgs', () => {
     error.value = ''
     try {
       const res = await client.listOrgs({})
-      items.value = (res.orgs ?? []).map(org => ({ slug: org.slug, name: org.name }))
+      items.value = (res.orgs ?? []).map(org => ({ id: org.id, slug: org.slug, name: org.name }))
       loaded.value = true
     }
     catch (e) {

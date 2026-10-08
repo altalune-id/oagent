@@ -10,7 +10,7 @@ const projects = useProjectsStore()
 const org = computed(() => orgs.bySlug(route.params.org as string))
 
 const stats = computed<StatItem[]>(() => [
-  { label: 'Projects', value: org.value ? projects.forOrg(org.value.slug).length : 0 },
+  { label: 'Projects', value: org.value ? projects.forOrg(org.value.id).length : 0 },
   { label: 'Agents', value: 0 },
   { label: 'Members', value: 1 },
 ])

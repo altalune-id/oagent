@@ -17,7 +17,7 @@ import (
 )
 
 func TestHandler_MountsUnderBasePathAndTranslatesErrors(t *testing.T) {
-	srv := New(org.NewService(&fakes.OrgStore{}, nil), nil, Options{})
+	srv := New(Services{Orgs: org.NewService(&fakes.OrgStore{}, nil)}, nil, Options{})
 	ts := httptest.NewServer(srv.Handler("/app"))
 	t.Cleanup(ts.Close)
 	c := orgv1connect.NewOrgServiceClient(http.DefaultClient, ts.URL+"/app/api")
@@ -31,13 +31,13 @@ func TestHandler_MountsUnderBasePathAndTranslatesErrors(t *testing.T) {
 }
 
 func TestRecoverPanic(t *testing.T) {
-	s := New(org.NewService(&fakes.OrgStore{}, nil), nil, Options{})
+	s := New(Services{Orgs: org.NewService(&fakes.OrgStore{}, nil)}, nil, Options{})
 	err := s.recoverPanic(context.Background(), connect.Spec{}, nil, "boom")
 	assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 }
 
 func TestRecoverHTTP(t *testing.T) {
-	s := New(org.NewService(&fakes.OrgStore{}, nil), nil, Options{})
+	s := New(Services{Orgs: org.NewService(&fakes.OrgStore{}, nil)}, nil, Options{})
 	h := s.recoverHTTP(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("boom") }))
 
 	rec := httptest.NewRecorder()

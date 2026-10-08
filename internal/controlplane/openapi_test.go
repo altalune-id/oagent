@@ -18,7 +18,7 @@ import (
 
 func openAPIServer(t *testing.T, enabled bool, auth *BasicAuth) *httptest.Server {
 	t.Helper()
-	srv := New(org.NewService(&fakes.OrgStore{}, nil), nil, Options{OpenAPIEnabled: enabled, OpenAPIBasicAuth: auth})
+	srv := New(Services{Orgs: org.NewService(&fakes.OrgStore{}, nil)}, nil, Options{OpenAPIEnabled: enabled, OpenAPIBasicAuth: auth})
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
 	return ts

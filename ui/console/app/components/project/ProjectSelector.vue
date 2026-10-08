@@ -10,8 +10,13 @@ const route = useRoute()
 const org = computed(() => route.params.org as string | undefined)
 const project = computed(() => route.params.project as string | undefined)
 
+const orgId = computed(() => {
+  const o = org.value ? orgs.bySlug(org.value) : undefined
+  return o?.id ?? ''
+})
+
 const options = computed<SelectOption[]>(() =>
-  org.value ? projects.forOrg(org.value).map(item => ({ value: item.slug, label: item.name })) : [],
+  orgId.value ? projects.forOrg(orgId.value).map(item => ({ value: item.slug, label: item.name })) : [],
 )
 
 function onChange(slug: string) {

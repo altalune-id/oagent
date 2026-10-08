@@ -6,9 +6,11 @@ import (
 
 	"altalune.id/oagent/config"
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
+	projectv1mcp "altalune.id/oagent/gen/go/project/v1/projectv1mcp"
 	mcpinternal "altalune.id/oagent/internal/mcp"
 	mcpui "altalune.id/oagent/internal/mcp/ui"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/project"
 	rootmcp "altalune.id/oagent/mcp"
 	"altalune.id/oagent/version"
 )
@@ -21,6 +23,7 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger) *roo
 	}
 	registry := rootmcp.NewRegistry()
 	orgv1mcp.RegisterOrgServiceTools(registry, org.NewOrgService(svcs.Orgs), mcpinternal.ScopeFor)
+	projectv1mcp.RegisterProjectServiceTools(registry, project.NewProjectService(svcs.Projects), mcpinternal.ScopeFor)
 
 	srv := rootmcp.NewServer(
 		rootmcp.WithImplementation("oagent", version.Default()),

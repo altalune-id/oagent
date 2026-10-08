@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import AppSidebar from '~/components/layout/AppSidebar.vue'
 import { useOrgsStore } from '~/stores/orgs'
+import { useProjectsStore } from '~/stores/projects'
 
 const route = useRoute()
 const orgs = useOrgsStore()
+const projects = useProjectsStore()
 await orgs.ensureLoaded()
 
 if (orgs.error) {
@@ -15,6 +17,8 @@ const org = computed(() => orgs.bySlug(route.params.org as string))
 if (!org.value) {
   throw createError({ statusCode: 404, statusMessage: 'Organization not found', fatal: true })
 }
+
+await projects.ensureLoaded(org.value.id)
 </script>
 
 <template>

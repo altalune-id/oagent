@@ -12,13 +12,20 @@ import (
 
 // Service is the org application service: the driving port surfaces call.
 type Service struct {
-	store      Store
-	unexpected apperror.UnexpectedFunc
+	store       Store
+	unexpected  apperror.UnexpectedFunc
+	afterCreate func(ctx context.Context, o *Org) error
 }
 
 // NewService builds a Service over store.
 func NewService(store Store, unexpected apperror.UnexpectedFunc) *Service {
 	return &Service{store: store, unexpected: unexpected}
+}
+
+// WithAfterCreate registers a hook run after an org is created (e.g. to seed a default project).
+func (s *Service) WithAfterCreate(hook func(ctx context.Context, o *Org) error) *Service {
+	s.afterCreate = hook
+	return s
 }
 
 // CreateRequest is the input to Create.
@@ -30,6 +37,20 @@ type CreateRequest struct {
 
 // Create validates and persists a new org. An empty slug is generated, retrying on collision.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (*Org, error) {
+	o, err := s.create(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if s.afterCreate != nil {
+		if herr := s.afterCreate(ctx, o); herr != nil {
+			return nil, s.errOrReport(ctx, "org: after create", herr)
+		}
+	}
+	return o, nil
+}
+
+// create persists a new org; Create applies the afterCreate hook on success.
+func (s *Service) create(ctx context.Context, req CreateRequest) (*Org, error) {
 	if strings.TrimSpace(req.Slug) == "" {
 		return s.createGenerated(ctx, req)
 	}

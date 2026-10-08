@@ -15,4 +15,9 @@ const (
 	CodeOrgAlreadyExists Code = "ORG002"
 	CodeOrgInvalidSlug   Code = "ORG003"
 	CodeOrgInvalidName   Code = "ORG004"
+
+	CodeProjectNotFound      Code = "PRJ001"
+	CodeProjectAlreadyExists Code = "PRJ002"
+	CodeProjectInvalidSlug   Code = "PRJ003"
+	CodeProjectInvalidName   Code = "PRJ004"
 )

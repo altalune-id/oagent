@@ -140,3 +140,24 @@ func TestService_Rename_InvalidName(t *testing.T) {
 	_, err = org.NewService(&fakes.OrgStore{Org: o}, testUnexpected()).Rename(context.Background(), o.ID, "")
 	assert.True(t, org.IsInvalidNameError(err))
 }
+
+func TestService_Create_AfterCreateHook(t *testing.T) {
+	var hooked *org.Org
+	svc := org.NewService(&fakes.OrgStore{}, testUnexpected()).WithAfterCreate(func(_ context.Context, o *org.Org) error {
+		hooked = o
+		return nil
+	})
+
+	o, err := svc.Create(context.Background(), org.CreateRequest{Slug: "acme", Name: "Acme"})
+	require.NoError(t, err)
+	assert.Equal(t, o, hooked)
+}
+
+func TestService_Create_AfterCreateHookError(t *testing.T) {
+	svc := org.NewService(&fakes.OrgStore{}, testUnexpected()).WithAfterCreate(func(context.Context, *org.Org) error {
+		return &org.AlreadyExistsError{Slug: "default"}
+	})
+
+	_, err := svc.Create(context.Background(), org.CreateRequest{Slug: "acme", Name: "Acme"})
+	assert.True(t, org.IsAlreadyExistsError(err))
+}

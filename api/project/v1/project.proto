@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package project.v1;
+
+import "google/protobuf/timestamp.proto";
+import "mcp/v1/annotations.proto";
+
+option go_package = "altalune.id/oagent/gen/go/project/v1;projectv1";
+
+service ProjectService {
+  rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse) {
+    option (mcp.v1.tool) = {
+      name: "project_create"
+      description: "Create a project within an organization, minting a slug when one is not supplied."
+      mutation: true
+      destructive: false
+      ui: "app"
+    };
+  }
+  rpc GetProject(GetProjectRequest) returns (GetProjectResponse) {
+    option (mcp.v1.tool) = {
+      name: "project_get"
+      description: "Get a project by id."
+      required: ["id"]
+      ui: "app"
+    };
+  }
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse) {
+    option (mcp.v1.tool) = {
+      name: "project_list"
+      description: "List projects in an organization."
+      required: ["org_id"]
+      ui: "app"
+    };
+  }
+}
+
+message Project {
+  string id = 1;
+  string public_id = 2;
+  string org_id = 3;
+  string slug = 4;
+  string name = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message CreateProjectRequest {
+  string org_id = 1;
+  string slug = 2;
+  string name = 3;
+}
+
+message CreateProjectResponse {
+  Project project = 1;
+}
+
+message GetProjectRequest {
+  string id = 1;
+}
+
+message GetProjectResponse {
+  Project project = 1;
+}
+
+message ListProjectsRequest {
+  string org_id = 1;
+}
+
+message ListProjectsResponse {
+  repeated Project projects = 1;
+}
