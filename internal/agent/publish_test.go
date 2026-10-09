@@ -37,7 +37,7 @@ func TestService_CreatePublishes(t *testing.T) {
 
 	payload, ok := pub.data[0].(events.AgentCreatedV1)
 	require.True(t, ok)
-	assert.Equal(t, a.ID, payload.ID)
+	assert.Equal(t, a.PublicID, payload.ID)
 }
 
 func TestService_CreateGeneratedPublishes(t *testing.T) {

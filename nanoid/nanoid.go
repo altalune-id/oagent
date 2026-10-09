@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const alphabet = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789-_"
+const alphabet = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"
 const alphabetLen = byte(len(alphabet))
 
 var ErrInvalidLength = errors.New("nanoid: length must be > 0")

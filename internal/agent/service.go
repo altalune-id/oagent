@@ -126,8 +126,7 @@ func (s *Service) publish(ctx context.Context, t events.Type, a *Agent) {
 		return
 	}
 	snapshot := events.AgentSnapshotV1{
-		ID: a.ID, PublicID: a.PublicID, OrgID: a.OrgID, ProjectID: a.ProjectID,
-		Slug: a.Slug, Name: a.Name, Description: a.Description, UpdatedAt: a.UpdatedAt,
+		ID: a.PublicID, Slug: a.Slug, Name: a.Name, Description: a.Description, UpdatedAt: a.UpdatedAt,
 	}
 	var payload any = events.AgentUpdatedV1(snapshot)
 	if t == events.AgentCreated {

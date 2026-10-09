@@ -1,17 +1,10 @@
 package events
 
-import (
-	"time"
+import "time"
 
-	"github.com/google/uuid"
-)
-
-// AgentSnapshotV1 is the agent shape shared by the agent event payloads.
+// AgentSnapshotV1 is the agent shape shared by the agent event payloads; the id is the public (nanoid) id.
 type AgentSnapshotV1 struct {
-	ID          uuid.UUID `json:"id"`
-	PublicID    string    `json:"public_id"`
-	OrgID       uuid.UUID `json:"org_id"`
-	ProjectID   uuid.UUID `json:"project_id"`
+	ID          string    `json:"id"`
 	Slug        string    `json:"slug"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
