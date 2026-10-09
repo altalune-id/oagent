@@ -1,0 +1,364 @@
+package webhook
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"slices"
+	"time"
+
+	"github.com/google/uuid"
+
+	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/events"
+	"altalune.id/oagent/internal/kernel/outbox"
+	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/sealer"
+)
+
+const eventIDPrefix = "evt_"
+
+// ProjectSlugs resolves a project's current slug for the envelope.
+type ProjectSlugs interface {
+	SlugOf(ctx context.Context, projectID uuid.UUID) (string, error)
+}
+
+// Envelope is the JSON body every delivery of one event carries; it is the public wire contract.
+type Envelope struct {
+	ID         string         `json:"id"`
+	Type       events.Type    `json:"type"`
+	APIVersion string         `json:"api_version"`
+	CreatedAt  time.Time      `json:"created_at"`
+	Tenant     EnvelopeTenant `json:"tenant"`
+	Data       any            `json:"data"`
+}
+
+// EnvelopeTenant names the org and project an event belongs to.
+type EnvelopeTenant struct {
+	OrgID       uuid.UUID `json:"org_id"`
+	ProjectID   uuid.UUID `json:"project_id"`
+	ProjectSlug string    `json:"project_slug"`
+}
+
+func envelopeType(payload []byte) (events.Type, error) {
+	var env struct {
+		Type events.Type `json:"type"`
+	}
+	if err := json.Unmarshal(payload, &env); err != nil {
+		return "", fmt.Errorf("decode envelope type: %w", err)
+	}
+	if env.Type == "" {
+		return "", errors.New("decode envelope type: type is empty")
+	}
+	return env.Type, nil
+}
+
+// Service is the webhooks driving port.
+type Service struct {
+	store      Store
+	log        *slog.Logger
+	unexpected apperror.UnexpectedFunc
+	sealer     sealer.Sealer
+	outbox     outbox.Store
+	projects   ProjectSlugs
+
+	allowInsecureURL bool
+}
+
+// ServiceOption tunes a Service at construction.
+type ServiceOption func(*Service)
+
+// WithAllowInsecureURL lets endpoints use http:// URLs; self-hosted dev only.
+func WithAllowInsecureURL() ServiceOption { return func(s *Service) { s.allowInsecureURL = true } }
+
+func (s *Service) validateOpts() []ValidateOption {
+	if s.allowInsecureURL {
+		return []ValidateOption{AllowInsecureURL()}
+	}
+	return nil
+}
+
+// NewService binds the service to its dependencies.
+func NewService(
+	store Store, log *slog.Logger, unexpected apperror.UnexpectedFunc,
+	sl sealer.Sealer, ob outbox.Store, projects ProjectSlugs, opts ...ServiceOption,
+) *Service {
+	if log == nil {
+		log = slog.Default()
+	}
+	svc := &Service{
+		store:      store,
+		log:        log.With("module", "webhook"),
+		unexpected: unexpected,
+		sealer:     sl,
+		outbox:     ob,
+		projects:   projects,
+	}
+	for _, opt := range opts {
+		opt(svc)
+	}
+	return svc
+}
+
+// Enqueue fans t out to every active endpoint of the caller's project subscribed to it.
+func (s *Service) Enqueue(ctx context.Context, t events.Type, data any) error {
+	spec, ok := events.Lookup(t)
+	if !ok {
+		return &events.UnknownTypeError{Type: t}
+	}
+	if err := events.CheckPayload(t, data); err != nil {
+		return err
+	}
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return err
+	}
+	endpoints, err := s.store.List(ctx, tc.OrgID, tc.ProjectID)
+	if err != nil {
+		return fmt.Errorf("webhook.Enqueue: %w", err)
+	}
+	targets := slices.DeleteFunc(endpoints, func(e *Endpoint) bool { return !e.Active || !e.Subscribes(t) })
+	if len(targets) == 0 {
+		return nil
+	}
+	if err := s.fanOut(ctx, tc.OrgID, tc.ProjectID, spec, data, targets); err != nil {
+		return fmt.Errorf("webhook.Enqueue: %w", err)
+	}
+	return nil
+}
+
+// Create persists a new endpoint in the caller's project and returns its signing secret, shown only this once.
+func (s *Service) Create(ctx context.Context, rawURL, description string, types []events.Type) (*Endpoint, string, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, "", err
+	}
+	e, err := New(tc.OrgID, tc.ProjectID, rawURL, description, types, s.validateOpts()...)
+	if err != nil {
+		return nil, "", err
+	}
+	existing, err := s.store.List(ctx, tc.OrgID, tc.ProjectID)
+	if err != nil {
+		return nil, "", s.unexpected(ctx, "webhook.Create: list", err, "org_id", tc.OrgID, "project_id", tc.ProjectID)
+	}
+	if len(existing) >= MaxEndpointsPerProject {
+		return nil, "", &EndpointLimitError{Limit: MaxEndpointsPerProject}
+	}
+	secret, err := newSecret()
+	if err != nil {
+		return nil, "", s.unexpected(ctx, "webhook.Create: new secret", err, "endpoint_id", e.ID)
+	}
+	if e.Secrets.Primary, err = sealSecret(s.sealer, e.ID, slotPrimary, secret); err != nil {
+		return nil, "", s.sealFailure(ctx, "webhook.Create: seal", err, e.ID)
+	}
+	if err := s.save(ctx, "webhook.Create", e); err != nil {
+		return nil, "", err
+	}
+	return e, secret, nil
+}
+
+// Update replaces the editable fields of the identified endpoint.
+func (s *Service) Update(
+	ctx context.Context, id uuid.UUID, rawURL, description string, types []events.Type, active bool,
+) (*Endpoint, error) {
+	e, err := s.load(ctx, "webhook.Update", id)
+	if err != nil {
+		return nil, err
+	}
+	if err := e.Update(rawURL, description, types, active, s.validateOpts()...); err != nil {
+		return nil, err
+	}
+	if err := s.save(ctx, "webhook.Update", e); err != nil {
+		return nil, err
+	}
+	return e, nil
+}
+
+// Delete removes the identified endpoint; its pending deliveries settle as no-ops.
+func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
+	if _, err := s.load(ctx, "webhook.Delete", id); err != nil {
+		return err
+	}
+	if err := s.store.Delete(ctx, id); err != nil {
+		if IsNotFoundError(err) {
+			return err
+		}
+		return s.unexpected(ctx, "webhook.Delete: delete", err, "endpoint_id", id)
+	}
+	return nil
+}
+
+// ByID returns the identified endpoint when it belongs to the caller's tenant scope.
+func (s *Service) ByID(ctx context.Context, id uuid.UUID) (*Endpoint, error) {
+	return s.load(ctx, "webhook.ByID", id)
+}
+
+// List returns the endpoints of the caller's project, newest first.
+func (s *Service) List(ctx context.Context) ([]*Endpoint, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.store.List(ctx, tc.OrgID, tc.ProjectID)
+	if err != nil {
+		return nil, s.unexpected(ctx, "webhook.List: list", err, "org_id", tc.OrgID, "project_id", tc.ProjectID)
+	}
+	return out, nil
+}
+
+// Rotate issues a new primary secret, keeping the old one as the secondary when it can still be opened.
+func (s *Service) Rotate(ctx context.Context, id uuid.UUID) (string, error) {
+	e, err := s.load(ctx, "webhook.Rotate", id)
+	if err != nil {
+		return "", err
+	}
+	secret, err := newSecret()
+	if err != nil {
+		return "", s.unexpected(ctx, "webhook.Rotate: new secret", err, "endpoint_id", id)
+	}
+	primary, err := sealSecret(s.sealer, e.ID, slotPrimary, secret)
+	if err != nil {
+		return "", s.sealFailure(ctx, "webhook.Rotate: seal primary", err, id)
+	}
+	var secondary []byte
+	if old, ok := s.openPrimary(ctx, e); ok {
+		if secondary, err = sealSecret(s.sealer, e.ID, slotSecondary, old); err != nil {
+			return "", s.sealFailure(ctx, "webhook.Rotate: seal secondary", err, id)
+		}
+	}
+	if err := s.saveSecrets(ctx, "webhook.Rotate", e, SealedSecrets{Primary: primary, Secondary: secondary}); err != nil {
+		return "", err
+	}
+	return secret, nil
+}
+
+// RetireSecondary drops the secondary secret, ending a rotation.
+func (s *Service) RetireSecondary(ctx context.Context, id uuid.UUID) error {
+	e, err := s.load(ctx, "webhook.RetireSecondary", id)
+	if err != nil {
+		return err
+	}
+	if e.Secrets.Secondary == nil {
+		return nil
+	}
+	return s.saveSecrets(ctx, "webhook.RetireSecondary", e, SealedSecrets{Primary: e.Secrets.Primary})
+}
+
+// SendTest queues one webhook.ping to the identified endpoint, whatever it subscribes to.
+func (s *Service) SendTest(ctx context.Context, id uuid.UUID) error {
+	e, err := s.load(ctx, "webhook.SendTest", id)
+	if err != nil {
+		return err
+	}
+	if !e.Active {
+		return &EndpointInactiveError{ID: id.String()}
+	}
+	spec, ok := events.Lookup(events.WebhookPing)
+	if !ok {
+		err := &events.UnknownTypeError{Type: events.WebhookPing}
+		return s.unexpected(ctx, "webhook.SendTest: lookup", err, "endpoint_id", id)
+	}
+	if err := s.fanOut(ctx, e.OrgID, e.ProjectID, spec, events.WebhookPingV1{EndpointID: e.ID}, []*Endpoint{e}); err != nil {
+		return s.unexpected(ctx, "webhook.SendTest: enqueue", err, "endpoint_id", id)
+	}
+	return nil
+}
+
+func (s *Service) fanOut(ctx context.Context, orgID, projectID uuid.UUID, spec events.Spec, data any, targets []*Endpoint) error {
+	slug, err := s.projects.SlugOf(ctx, projectID)
+	if err != nil {
+		return fmt.Errorf("project slug: %w", err)
+	}
+	eventID, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("event id: %w", err)
+	}
+	body, err := json.Marshal(Envelope{
+		ID:         eventIDPrefix + eventID.String(),
+		Type:       spec.Type,
+		APIVersion: spec.APIVersion(),
+		CreatedAt:  time.Now().UTC().Truncate(time.Second),
+		Tenant:     EnvelopeTenant{OrgID: orgID, ProjectID: projectID, ProjectSlug: slug},
+		Data:       data,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal envelope: %w", err)
+	}
+	for _, e := range targets {
+		entryID, err := uuid.NewV7()
+		if err != nil {
+			return fmt.Errorf("entry id: %w", err)
+		}
+		if err := s.outbox.Enqueue(ctx, outbox.Entry{
+			ID:        entryID,
+			EventID:   eventID,
+			OrgID:     orgID,
+			ProjectID: projectID,
+			Target:    e.ID.String(),
+			Payload:   body,
+		}); err != nil {
+			return fmt.Errorf("outbox enqueue: endpoint_id=%s: %w", e.ID, err)
+		}
+	}
+	return nil
+}
+
+// SECURITY: the store filters by org, so the project check here is what keeps a sibling project's endpoint out of reach.
+func (s *Service) load(ctx context.Context, method string, id uuid.UUID) (*Endpoint, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	e, err := s.store.ByID(ctx, id)
+	if err != nil {
+		if IsNotFoundError(err) {
+			return nil, err
+		}
+		return nil, s.unexpected(ctx, method+": byID", err, "endpoint_id", id)
+	}
+	if e.OrgID != tc.OrgID || e.ProjectID != tc.ProjectID {
+		return nil, &NotFoundError{ID: id.String()}
+	}
+	return e, nil
+}
+
+func (s *Service) save(ctx context.Context, method string, e *Endpoint) error {
+	if err := s.store.Save(ctx, e); err != nil {
+		if IsNotFoundError(err) {
+			return err
+		}
+		return s.unexpected(ctx, method+": save", err, "endpoint_id", e.ID)
+	}
+	return nil
+}
+
+func (s *Service) saveSecrets(ctx context.Context, method string, e *Endpoint, next SealedSecrets) error {
+	err := s.store.SaveSecrets(ctx, e.ID, e.Secrets, next)
+	if err == nil {
+		e.SetSecrets(next)
+		return nil
+	}
+	if IsNotFoundError(err) || IsSecretConflictError(err) {
+		return err
+	}
+	return s.unexpected(ctx, method+": save secrets", err, "endpoint_id", e.ID)
+}
+
+func (s *Service) sealFailure(ctx context.Context, msg string, err error, id uuid.UUID) error {
+	if sealer.IsUnavailableError(err) {
+		return err
+	}
+	return s.unexpected(ctx, msg, err, "endpoint_id", id)
+}
+
+func (s *Service) openPrimary(ctx context.Context, e *Endpoint) (string, bool) {
+	old, err := openSecret(s.sealer, e.ID, slotPrimary, e.Secrets.Primary)
+	if err != nil {
+		s.log.WarnContext(ctx, "webhook: old primary secret cannot be opened, rotating without a secondary",
+			"endpoint_id", e.ID, "err", err)
+		return "", false
+	}
+	return old, true
+}
