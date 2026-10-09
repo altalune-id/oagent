@@ -30,9 +30,10 @@ func ScopeTable() map[string]string {
 		agentv1mcp.AgentUpdateToolName: scope.AgentWrite,
 		agentv1mcp.AgentDeleteToolName: scope.AgentWrite,
 
-		webhookv1mcp.WebhookCreateToolName:     scope.ProjectWrite,
-		webhookv1mcp.WebhookListToolName:       scope.ProjectRead,
-		webhookv1mcp.WebhookDeliveriesToolName: scope.ProjectRead,
+		webhookv1mcp.WebhookCreateToolName:      scope.ProjectWrite,
+		webhookv1mcp.WebhookListToolName:        scope.ProjectRead,
+		webhookv1mcp.WebhookDeliveriesToolName:  scope.ProjectRead,
+		webhookv1mcp.WebhookRetryFailedToolName: scope.ProjectWrite,
 	}
 }
 
