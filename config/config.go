@@ -19,6 +19,12 @@ type Config struct {
 	Queue     QueueConfig     `yaml:"queue"     mapstructure:"queue"`
 	API       APIConfig       `yaml:"api"       mapstructure:"api"`
 	MCP       MCPConfig       `yaml:"mcp"       mapstructure:"mcp"`
+	Secrets   SecretsConfig   `yaml:"secrets"   mapstructure:"secrets"`
+}
+
+// SecretsConfig configures at-rest secret sealing (webhook signing secrets).
+type SecretsConfig struct {
+	EncryptionKey string `yaml:"encryptionKey" mapstructure:"encryptionKey"` // 32-byte key as hex or base64
 }
 
 // MCPConfig configures the Model Context Protocol surface mounted at BasePath+"/mcp".

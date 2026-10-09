@@ -9,8 +9,11 @@ import (
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/kernel/outbox"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
+	"altalune.id/oagent/internal/webhook"
+	"altalune.id/oagent/sealer"
 )
 
 // Services is every store and service the composition root wires.
@@ -23,6 +26,10 @@ type Services struct {
 	Agents       *agent.Service
 	APIKeyStore  apikey.Store
 	APIKeys      *apikey.Service
+	Outbox       outbox.Store
+	WebhookStore webhook.Store
+	Webhooks     *webhook.Service
+	Sealer       sealer.Sealer
 }
 
 func buildServices(k kernel.Kernel, cfg config.Config) *Services {
@@ -41,6 +48,11 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	})
 	apiKeys := apikey.NewService(apiKeyStore, apikey.NewScheme(""), projectIDs{projects: projects}, k.Reporter.Unexpected)
 
+	sl := buildSealer(cfg.Secrets)
+	outboxStore := outbox.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
+	webhookStore := webhook.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
+	webhooks := webhook.NewService(webhookStore, k.Log, k.Reporter.Unexpected, sl, outboxStore, projectSlugs{projects: projects})
+
 	return &Services{
 		OrgStore:     orgStore,
 		Orgs:         orgs,
@@ -50,7 +62,22 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Agents:       agents,
 		APIKeyStore:  apiKeyStore,
 		APIKeys:      apiKeys,
+		Outbox:       outboxStore,
+		WebhookStore: webhookStore,
+		Webhooks:     webhooks,
+		Sealer:       sl,
 	}
+}
+
+// projectSlugs adapts the project service to webhook.ProjectSlugs.
+type projectSlugs struct{ projects *project.Service }
+
+func (p projectSlugs) SlugOf(ctx context.Context, projectID uuid.UUID) (string, error) {
+	pr, err := p.projects.Get(ctx, projectID)
+	if err != nil {
+		return "", err
+	}
+	return pr.Slug, nil
 }
 
 // projectIDs adapts the project service to apikey.Projects.

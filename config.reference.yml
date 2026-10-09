@@ -112,6 +112,10 @@ scheduler:
   # env: OAGENT_SCHEDULER_SHUTDOWN_GRACE
   shutdownGrace: 30s
 
+secrets:
+  # env: OAGENT_SECRETS_ENCRYPTION_KEY
+  encryptionKey: ""
+
 telemetry:
   metrics:
     # env: OAGENT_TELEMETRY_METRICS_ENABLED
