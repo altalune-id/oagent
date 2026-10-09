@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppButton from '~/components/ui/AppButton.vue'
 import AppModal from '~/components/ui/AppModal.vue'
+import SecretField from '~/components/ui/SecretField.vue'
 import { webhookEvents } from '~/components/webhook/events'
 import { useWebhookCreate } from './useWebhookCreate'
 
@@ -8,13 +9,7 @@ const { orgId, projectId } = defineProps<{ orgId: string, projectId: string }>()
 
 const { t } = useI18n()
 const create = useWebhookCreate(orgId, projectId)
-const { open, url, description, eventTypes, busy, error, secret } = create
-
-async function copy() {
-  if (import.meta.client) {
-    await navigator.clipboard.writeText(secret.value)
-  }
-}
+const { open, url, description, eventTypes, busy, error, secret, pingBusy, pingError, pinged } = create
 </script>
 
 <template>
@@ -28,10 +23,16 @@ async function copy() {
       <p class="text-sm text-warning">
         {{ t('webhooks.secret_warning') }}
       </p>
-      <code class="block rounded-box bg-base-200 p-3 text-xs break-all">{{ secret }}</code>
-      <button class="btn btn-sm" type="button" @click="copy">
-        {{ t('common.copy') }}
-      </button>
+      <SecretField :value="secret" :label="t('common.copy')" />
+      <div class="flex items-center gap-2">
+        <button class="btn btn-outline btn-sm" type="button" :disabled="pingBusy" @click="create.ping()">
+          <Icon name="lucide:send" size="16" />
+          {{ pinged ? t('webhooks.tested') : t('webhooks.test') }}
+        </button>
+      </div>
+      <p v-if="pingError" class="text-sm text-error">
+        {{ pingError }}
+      </p>
     </div>
 
     <form v-else class="space-y-3" @submit.prevent="create.submit()">

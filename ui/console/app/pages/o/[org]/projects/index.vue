@@ -41,7 +41,7 @@ function edit(project: Project) {
         <thead>
           <tr>
             <th>{{ t('common.name') }}</th>
-            <th>{{ t('common.public_id') }}</th>
+            <th>{{ t('common.id') }}</th>
             <th>{{ t('common.slug') }}</th>
             <th />
           </tr>

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import AppModal from '~/components/ui/AppModal.vue'
+import SecretField from '~/components/ui/SecretField.vue'
 import { webhookEvents } from '~/components/webhook/events'
 import type { Webhook } from '~/stores/webhooks'
 import { toWebhook, useWebhooksStore } from '~/stores/webhooks'
 
 const { orgId, projectId } = defineProps<{ orgId: string, projectId: string }>()
 
+const route = useRoute()
 const { t } = useI18n()
 const webhooks = useWebhooksStore()
 const { $webhookClient: client } = useNuxtApp()
@@ -88,12 +90,6 @@ function closeRotate() {
   rotating.value = null
   rotatedSecret.value = ''
 }
-
-async function copySecret() {
-  if (import.meta.client) {
-    await navigator.clipboard.writeText(rotatedSecret.value)
-  }
-}
 </script>
 
 <template>
@@ -125,6 +121,10 @@ async function copySecret() {
             </span>
           </td>
           <td class="whitespace-nowrap text-right">
+            <NuxtLink :to="`/o/${route.params.org}/projects/${route.params.project}/webhooks/${webhook.id}`" class="btn btn-ghost btn-xs">
+              <Icon name="lucide:scroll-text" size="14" />
+              {{ t('webhooks.logs') }}
+            </NuxtLink>
             <button class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="ping(webhook)">
               <Icon name="lucide:send" size="14" />
               {{ t('webhooks.ping') }}
@@ -152,15 +152,10 @@ async function copySecret() {
       <p class="text-sm text-warning">
         {{ t('webhooks.secret_warning') }}
       </p>
-      <code class="block rounded-box bg-base-200 p-3 text-xs break-all">{{ rotatedSecret }}</code>
-      <div class="flex items-center gap-2">
-        <button class="btn btn-sm" type="button" @click="copySecret()">
-          {{ t('common.copy') }}
-        </button>
-        <button class="btn btn-ghost btn-sm" type="button" @click="closeRotate()">
-          {{ t('common.done') }}
-        </button>
-      </div>
+      <SecretField :value="rotatedSecret" :label="t('common.copy')" />
+      <button class="btn btn-ghost btn-sm" type="button" @click="closeRotate()">
+        {{ t('common.done') }}
+      </button>
     </div>
   </AppModal>
 </template>

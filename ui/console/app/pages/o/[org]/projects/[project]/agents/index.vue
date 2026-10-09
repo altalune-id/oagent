@@ -62,7 +62,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
         <thead>
           <tr>
             <th>{{ t('common.name') }}</th>
-            <th>{{ t('common.public_id') }}</th>
+            <th>{{ t('common.id') }}</th>
             <th>{{ t('common.slug') }}</th>
             <th>{{ t('common.description') }}</th>
             <th />

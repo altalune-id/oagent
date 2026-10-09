@@ -8,6 +8,10 @@ export function useWebhookCreate(orgId: string, projectId: string) {
   const busy = ref(false)
   const error = ref('')
   const secret = ref('')
+  const id = ref('')
+  const pingBusy = ref(false)
+  const pingError = ref('')
+  const pinged = ref(false)
 
   const webhooks = useWebhooksStore()
   const { $webhookClient: client } = useNuxtApp()
@@ -19,6 +23,9 @@ export function useWebhookCreate(orgId: string, projectId: string) {
     eventTypes.value = []
     error.value = ''
     secret.value = ''
+    id.value = ''
+    pingError.value = ''
+    pinged.value = false
     open.value = true
   }
 
@@ -41,6 +48,7 @@ export function useWebhookCreate(orgId: string, projectId: string) {
       const res = await client.createWebhook({ orgId, projectId, url: value, description: description.value, eventTypes: eventTypes.value })
       if (res.webhook) {
         webhooks.add(toWebhook(res.webhook))
+        id.value = res.webhook.id
       }
       secret.value = res.secret
     }
@@ -52,5 +60,23 @@ export function useWebhookCreate(orgId: string, projectId: string) {
     }
   }
 
-  return { open, url, description, eventTypes, busy, error, secret, show, hide, submit }
+  async function ping() {
+    if (!id.value || pingBusy.value) {
+      return
+    }
+    pingBusy.value = true
+    pingError.value = ''
+    try {
+      await client.pingWebhook({ orgId, projectId, id: id.value })
+      pinged.value = true
+    }
+    catch (e) {
+      pingError.value = e instanceof Error ? e.message : t('error.ping_webhook')
+    }
+    finally {
+      pingBusy.value = false
+    }
+  }
+
+  return { open, url, description, eventTypes, busy, error, secret, pingBusy, pingError, pinged, show, hide, submit, ping }
 }

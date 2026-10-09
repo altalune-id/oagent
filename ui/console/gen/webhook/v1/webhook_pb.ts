@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file webhook/v1/webhook.proto.
  */
 export const file_webhook_v1_webhook: GenFile = /*@__PURE__*/
-  fileDesc("Chh3ZWJob29rL3YxL3dlYmhvb2sucHJvdG8SCndlYmhvb2sudjEi4AEKB1dlYmhvb2sSCgoCaWQYASABKAkSDgoGb3JnX2lkGAIgASgJEhIKCnByb2plY3RfaWQYAyABKAkSCwoDdXJsGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEhMKC2V2ZW50X3R5cGVzGAYgAygJEg4KBmFjdGl2ZRgHIAEoCBIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJxChRDcmVhdGVXZWJob29rUmVxdWVzdBIOCgZvcmdfaWQYASABKAkSEgoKcHJvamVjdF9pZBgCIAEoCRILCgN1cmwYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSEwoLZXZlbnRfdHlwZXMYBSADKAkiTQoVQ3JlYXRlV2ViaG9va1Jlc3BvbnNlEiQKB3dlYmhvb2sYASABKAsyEy53ZWJob29rLnYxLldlYmhvb2sSDgoGc2VjcmV0GAIgASgJIkMKEUdldFdlYmhvb2tSZXF1ZXN0Eg4KBm9yZ19pZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEgoKAmlkGAMgASgJIjoKEkdldFdlYmhvb2tSZXNwb25zZRIkCgd3ZWJob29rGAEgASgLMhMud2ViaG9vay52MS5XZWJob29rIjkKE0xpc3RXZWJob29rc1JlcXVlc3QSDgoGb3JnX2lkGAEgASgJEhIKCnByb2plY3RfaWQYAiABKAkiPQoUTGlzdFdlYmhvb2tzUmVzcG9uc2USJQoId2ViaG9va3MYASADKAsyEy53ZWJob29rLnYxLldlYmhvb2sijQEKFFVwZGF0ZVdlYmhvb2tSZXF1ZXN0Eg4KBm9yZ19pZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEgoKAmlkGAMgASgJEgsKA3VybBgEIAEoCRITCgtkZXNjcmlwdGlvbhgFIAEoCRITCgtldmVudF90eXBlcxgGIAMoCRIOCgZhY3RpdmUYByABKAgiPQoVVXBkYXRlV2ViaG9va1Jlc3BvbnNlEiQKB3dlYmhvb2sYASABKAsyEy53ZWJob29rLnYxLldlYmhvb2siRgoURGVsZXRlV2ViaG9va1JlcXVlc3QSDgoGb3JnX2lkGAEgASgJEhIKCnByb2plY3RfaWQYAiABKAkSCgoCaWQYAyABKAkiFwoVRGVsZXRlV2ViaG9va1Jlc3BvbnNlIkwKGlJvdGF0ZVdlYmhvb2tTZWNyZXRSZXF1ZXN0Eg4KBm9yZ19pZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEgoKAmlkGAMgASgJIi0KG1JvdGF0ZVdlYmhvb2tTZWNyZXRSZXNwb25zZRIOCgZzZWNyZXQYASABKAkiRAoSUGluZ1dlYmhvb2tSZXF1ZXN0Eg4KBm9yZ19pZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEgoKAmlkGAMgASgJIhUKE1BpbmdXZWJob29rUmVzcG9uc2UyqAYKDldlYmhvb2tTZXJ2aWNlEr4BCg1DcmVhdGVXZWJob29rEiAud2ViaG9vay52MS5DcmVhdGVXZWJob29rUmVxdWVzdBohLndlYmhvb2sudjEuQ3JlYXRlV2ViaG9va1Jlc3BvbnNlImjK8xhkCg53ZWJob29rX2NyZWF0ZRJLQ3JlYXRlIGEgd2ViaG9vayBlbmRwb2ludCBmb3IgYSBwcm9qZWN0LCByZXR1cm5pbmcgaXRzIHNpZ25pbmcgc2VjcmV0IG9uY2UuIAEqA2FwcBJLCgpHZXRXZWJob29rEh0ud2ViaG9vay52MS5HZXRXZWJob29rUmVxdWVzdBoeLndlYmhvb2sudjEuR2V0V2ViaG9va1Jlc3BvbnNlEqMBCgxMaXN0V2ViaG9va3MSHy53ZWJob29rLnYxLkxpc3RXZWJob29rc1JlcXVlc3QaIC53ZWJob29rLnYxLkxpc3RXZWJob29rc1Jlc3BvbnNlIlDK8xhMCgx3ZWJob29rX2xpc3QSI0xpc3QgYSBwcm9qZWN0J3Mgd2ViaG9vayBlbmRwb2ludHMuGgZvcmdfaWQaCnByb2plY3RfaWQqA2FwcBJUCg1VcGRhdGVXZWJob29rEiAud2ViaG9vay52MS5VcGRhdGVXZWJob29rUmVxdWVzdBohLndlYmhvb2sudjEuVXBkYXRlV2ViaG9va1Jlc3BvbnNlElQKDURlbGV0ZVdlYmhvb2sSIC53ZWJob29rLnYxLkRlbGV0ZVdlYmhvb2tSZXF1ZXN0GiEud2ViaG9vay52MS5EZWxldGVXZWJob29rUmVzcG9uc2USZgoTUm90YXRlV2ViaG9va1NlY3JldBImLndlYmhvb2sudjEuUm90YXRlV2ViaG9va1NlY3JldFJlcXVlc3QaJy53ZWJob29rLnYxLlJvdGF0ZVdlYmhvb2tTZWNyZXRSZXNwb25zZRJOCgtQaW5nV2ViaG9vaxIeLndlYmhvb2sudjEuUGluZ1dlYmhvb2tSZXF1ZXN0Gh8ud2ViaG9vay52MS5QaW5nV2ViaG9va1Jlc3BvbnNlQpcBCg5jb20ud2ViaG9vay52MUIMV2ViaG9va1Byb3RvUAFaLmFsdGFsdW5lLmlkL29hZ2VudC9nZW4vZ28vd2ViaG9vay92MTt3ZWJob29rdjGiAgNXWFiqAgpXZWJob29rLlYxygIKV2ViaG9va1xWMeICFldlYmhvb2tcVjFcR1BCTWV0YWRhdGHqAgtXZWJob29rOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_mcp_v1_annotations]);
+  fileDesc("Chh3ZWJob29rL3YxL3dlYmhvb2sucHJvdG8SCndlYmhvb2sudjEi8wEKB1dlYmhvb2sSCgoCaWQYASABKAkSEQoJcHVibGljX2lkGAogASgJEg4KBm9yZ19pZBgCIAEoCRISCgpwcm9qZWN0X2lkGAMgASgJEgsKA3VybBgEIAEoCRITCgtkZXNjcmlwdGlvbhgFIAEoCRITCgtldmVudF90eXBlcxgGIAMoCRIOCgZhY3RpdmUYByABKAgSLgoKY3JlYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAicQoUQ3JlYXRlV2ViaG9va1JlcXVlc3QSDgoGb3JnX2lkGAEgASgJEhIKCnByb2plY3RfaWQYAiABKAkSCwoDdXJsGAMgASgJEhMKC2Rlc2NyaXB0aW9uGAQgASgJEhMKC2V2ZW50X3R5cGVzGAUgAygJIk0KFUNyZWF0ZVdlYmhvb2tSZXNwb25zZRIkCgd3ZWJob29rGAEgASgLMhMud2ViaG9vay52MS5XZWJob29rEg4KBnNlY3JldBgCIAEoCSJDChFHZXRXZWJob29rUmVxdWVzdBIOCgZvcmdfaWQYASABKAkSEgoKcHJvamVjdF9pZBgCIAEoCRIKCgJpZBgDIAEoCSI6ChJHZXRXZWJob29rUmVzcG9uc2USJAoHd2ViaG9vaxgBIAEoCzITLndlYmhvb2sudjEuV2ViaG9vayI5ChNMaXN0V2ViaG9va3NSZXF1ZXN0Eg4KBm9yZ19pZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJIj0KFExpc3RXZWJob29rc1Jlc3BvbnNlEiUKCHdlYmhvb2tzGAEgAygLMhMud2ViaG9vay52MS5XZWJob29rIu4BCg9XZWJob29rRGVsaXZlcnkSCgoCaWQYASABKAkSEAoIZXZlbnRfaWQYAiABKAkSEgoKZXZlbnRfdHlwZRgDIAEoCRIPCgdhdHRlbXB0GAQgASgFEg4KBnN0YXR1cxgFIAEoCRISCgpsYXN0X2Vycm9yGAYgASgJEjMKD25leHRfYXR0ZW1wdF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKY3JlYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDwoHcGF5bG9hZBgJIAEoCSJdChxMaXN0V2ViaG9va0RlbGl2ZXJpZXNSZXF1ZXN0Eg4KBm9yZ19pZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEgoKAmlkGAMgASgJEg0KBWxpbWl0GAQgASgFIlAKHUxpc3RXZWJob29rRGVsaXZlcmllc1Jlc3BvbnNlEi8KCmRlbGl2ZXJpZXMYASADKAsyGy53ZWJob29rLnYxLldlYmhvb2tEZWxpdmVyeSL6AQoOV2ViaG9va0F0dGVtcHQSDwoHYXR0ZW1wdBgBIAEoBRITCgtzdGF0dXNfY29kZRgCIAEoBRINCgVlcnJvchgDIAEoCRIVCg1yZXNwb25zZV9ib2R5GAQgASgJEhoKEnJlc3BvbnNlX3RydW5jYXRlZBgFIAEoCBITCgtkdXJhdGlvbl9tcxgGIAEoBRIuCgpjcmVhdGVkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI7ChByZXNwb25zZV9oZWFkZXJzGAggAygLMiEud2ViaG9vay52MS5XZWJob29rUmVzcG9uc2VIZWFkZXIiNAoVV2ViaG9va1Jlc3BvbnNlSGVhZGVyEgwKBG5hbWUYASABKAkSDQoFdmFsdWUYAiABKAkiaQoiTGlzdFdlYmhvb2tEZWxpdmVyeUF0dGVtcHRzUmVxdWVzdBIOCgZvcmdfaWQYASABKAkSEgoKcHJvamVjdF9pZBgCIAEoCRIKCgJpZBgDIAEoCRITCgtkZWxpdmVyeV9pZBgEIAEoCSJTCiNMaXN0V2ViaG9va0RlbGl2ZXJ5QXR0ZW1wdHNSZXNwb25zZRIsCghhdHRlbXB0cxgBIAMoCzIaLndlYmhvb2sudjEuV2ViaG9va0F0dGVtcHQijQEKFFVwZGF0ZVdlYmhvb2tSZXF1ZXN0Eg4KBm9yZ19pZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEgoKAmlkGAMgASgJEgsKA3VybBgEIAEoCRITCgtkZXNjcmlwdGlvbhgFIAEoCRITCgtldmVudF90eXBlcxgGIAMoCRIOCgZhY3RpdmUYByABKAgiPQoVVXBkYXRlV2ViaG9va1Jlc3BvbnNlEiQKB3dlYmhvb2sYASABKAsyEy53ZWJob29rLnYxLldlYmhvb2siRgoURGVsZXRlV2ViaG9va1JlcXVlc3QSDgoGb3JnX2lkGAEgASgJEhIKCnByb2plY3RfaWQYAiABKAkSCgoCaWQYAyABKAkiFwoVRGVsZXRlV2ViaG9va1Jlc3BvbnNlIkwKGlJvdGF0ZVdlYmhvb2tTZWNyZXRSZXF1ZXN0Eg4KBm9yZ19pZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEgoKAmlkGAMgASgJIi0KG1JvdGF0ZVdlYmhvb2tTZWNyZXRSZXNwb25zZRIOCgZzZWNyZXQYASABKAkiRAoSUGluZ1dlYmhvb2tSZXF1ZXN0Eg4KBm9yZ19pZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEgoKAmlkGAMgASgJIhUKE1BpbmdXZWJob29rUmVzcG9uc2UyiwkKDldlYmhvb2tTZXJ2aWNlEr4BCg1DcmVhdGVXZWJob29rEiAud2ViaG9vay52MS5DcmVhdGVXZWJob29rUmVxdWVzdBohLndlYmhvb2sudjEuQ3JlYXRlV2ViaG9va1Jlc3BvbnNlImjK8xhkCg53ZWJob29rX2NyZWF0ZRJLQ3JlYXRlIGEgd2ViaG9vayBlbmRwb2ludCBmb3IgYSBwcm9qZWN0LCByZXR1cm5pbmcgaXRzIHNpZ25pbmcgc2VjcmV0IG9uY2UuIAEqA2FwcBJLCgpHZXRXZWJob29rEh0ud2ViaG9vay52MS5HZXRXZWJob29rUmVxdWVzdBoeLndlYmhvb2sudjEuR2V0V2ViaG9va1Jlc3BvbnNlEqMBCgxMaXN0V2ViaG9va3MSHy53ZWJob29rLnYxLkxpc3RXZWJob29rc1JlcXVlc3QaIC53ZWJob29rLnYxLkxpc3RXZWJob29rc1Jlc3BvbnNlIlDK8xhMCgx3ZWJob29rX2xpc3QSI0xpc3QgYSBwcm9qZWN0J3Mgd2ViaG9vayBlbmRwb2ludHMuGgZvcmdfaWQaCnByb2plY3RfaWQqA2FwcBLgAQoVTGlzdFdlYmhvb2tEZWxpdmVyaWVzEigud2ViaG9vay52MS5MaXN0V2ViaG9va0RlbGl2ZXJpZXNSZXF1ZXN0Gikud2ViaG9vay52MS5MaXN0V2ViaG9va0RlbGl2ZXJpZXNSZXNwb25zZSJyyvMYbgoSd2ViaG9va19kZWxpdmVyaWVzEjtMaXN0IHJlY2VudCBkZWxpdmVyaWVzIG9mIGEgd2ViaG9vayBlbmRwb2ludCwgbmV3ZXN0IGZpcnN0LhoGb3JnX2lkGgpwcm9qZWN0X2lkGgJpZCoDYXBwEn4KG0xpc3RXZWJob29rRGVsaXZlcnlBdHRlbXB0cxIuLndlYmhvb2sudjEuTGlzdFdlYmhvb2tEZWxpdmVyeUF0dGVtcHRzUmVxdWVzdBovLndlYmhvb2sudjEuTGlzdFdlYmhvb2tEZWxpdmVyeUF0dGVtcHRzUmVzcG9uc2USVAoNVXBkYXRlV2ViaG9vaxIgLndlYmhvb2sudjEuVXBkYXRlV2ViaG9va1JlcXVlc3QaIS53ZWJob29rLnYxLlVwZGF0ZVdlYmhvb2tSZXNwb25zZRJUCg1EZWxldGVXZWJob29rEiAud2ViaG9vay52MS5EZWxldGVXZWJob29rUmVxdWVzdBohLndlYmhvb2sudjEuRGVsZXRlV2ViaG9va1Jlc3BvbnNlEmYKE1JvdGF0ZVdlYmhvb2tTZWNyZXQSJi53ZWJob29rLnYxLlJvdGF0ZVdlYmhvb2tTZWNyZXRSZXF1ZXN0Gicud2ViaG9vay52MS5Sb3RhdGVXZWJob29rU2VjcmV0UmVzcG9uc2USTgoLUGluZ1dlYmhvb2sSHi53ZWJob29rLnYxLlBpbmdXZWJob29rUmVxdWVzdBofLndlYmhvb2sudjEuUGluZ1dlYmhvb2tSZXNwb25zZUKXAQoOY29tLndlYmhvb2sudjFCDFdlYmhvb2tQcm90b1ABWi5hbHRhbHVuZS5pZC9vYWdlbnQvZ2VuL2dvL3dlYmhvb2svdjE7d2ViaG9va3YxogIDV1hYqgIKV2ViaG9vay5WMcoCCldlYmhvb2tcVjHiAhZXZWJob29rXFYxXEdQQk1ldGFkYXRh6gILV2ViaG9vazo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_mcp_v1_annotations]);
 
 /**
  * @generated from message webhook.v1.Webhook
@@ -23,6 +23,11 @@ export type Webhook = Message<"webhook.v1.Webhook"> & {
    * @generated from field: string id = 1;
    */
   id: string;
+
+  /**
+   * @generated from field: string public_id = 10;
+   */
+  publicId: string;
 
   /**
    * @generated from field: string org_id = 2;
@@ -215,6 +220,235 @@ export const ListWebhooksResponseSchema: GenMessage<ListWebhooksResponse> = /*@_
   messageDesc(file_webhook_v1_webhook, 6);
 
 /**
+ * @generated from message webhook.v1.WebhookDelivery
+ */
+export type WebhookDelivery = Message<"webhook.v1.WebhookDelivery"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string event_id = 2;
+   */
+  eventId: string;
+
+  /**
+   * @generated from field: string event_type = 3;
+   */
+  eventType: string;
+
+  /**
+   * @generated from field: int32 attempt = 4;
+   */
+  attempt: number;
+
+  /**
+   * @generated from field: string status = 5;
+   */
+  status: string;
+
+  /**
+   * @generated from field: string last_error = 6;
+   */
+  lastError: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp next_attempt_at = 7;
+   */
+  nextAttemptAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 8;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: string payload = 9;
+   */
+  payload: string;
+};
+
+/**
+ * Describes the message webhook.v1.WebhookDelivery.
+ * Use `create(WebhookDeliverySchema)` to create a new message.
+ */
+export const WebhookDeliverySchema: GenMessage<WebhookDelivery> = /*@__PURE__*/
+  messageDesc(file_webhook_v1_webhook, 7);
+
+/**
+ * @generated from message webhook.v1.ListWebhookDeliveriesRequest
+ */
+export type ListWebhookDeliveriesRequest = Message<"webhook.v1.ListWebhookDeliveriesRequest"> & {
+  /**
+   * @generated from field: string org_id = 1;
+   */
+  orgId: string;
+
+  /**
+   * @generated from field: string project_id = 2;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string id = 3;
+   */
+  id: string;
+
+  /**
+   * @generated from field: int32 limit = 4;
+   */
+  limit: number;
+};
+
+/**
+ * Describes the message webhook.v1.ListWebhookDeliveriesRequest.
+ * Use `create(ListWebhookDeliveriesRequestSchema)` to create a new message.
+ */
+export const ListWebhookDeliveriesRequestSchema: GenMessage<ListWebhookDeliveriesRequest> = /*@__PURE__*/
+  messageDesc(file_webhook_v1_webhook, 8);
+
+/**
+ * @generated from message webhook.v1.ListWebhookDeliveriesResponse
+ */
+export type ListWebhookDeliveriesResponse = Message<"webhook.v1.ListWebhookDeliveriesResponse"> & {
+  /**
+   * @generated from field: repeated webhook.v1.WebhookDelivery deliveries = 1;
+   */
+  deliveries: WebhookDelivery[];
+};
+
+/**
+ * Describes the message webhook.v1.ListWebhookDeliveriesResponse.
+ * Use `create(ListWebhookDeliveriesResponseSchema)` to create a new message.
+ */
+export const ListWebhookDeliveriesResponseSchema: GenMessage<ListWebhookDeliveriesResponse> = /*@__PURE__*/
+  messageDesc(file_webhook_v1_webhook, 9);
+
+/**
+ * @generated from message webhook.v1.WebhookAttempt
+ */
+export type WebhookAttempt = Message<"webhook.v1.WebhookAttempt"> & {
+  /**
+   * @generated from field: int32 attempt = 1;
+   */
+  attempt: number;
+
+  /**
+   * @generated from field: int32 status_code = 2;
+   */
+  statusCode: number;
+
+  /**
+   * @generated from field: string error = 3;
+   */
+  error: string;
+
+  /**
+   * @generated from field: string response_body = 4;
+   */
+  responseBody: string;
+
+  /**
+   * @generated from field: bool response_truncated = 5;
+   */
+  responseTruncated: boolean;
+
+  /**
+   * @generated from field: int32 duration_ms = 6;
+   */
+  durationMs: number;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 7;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: repeated webhook.v1.WebhookResponseHeader response_headers = 8;
+   */
+  responseHeaders: WebhookResponseHeader[];
+};
+
+/**
+ * Describes the message webhook.v1.WebhookAttempt.
+ * Use `create(WebhookAttemptSchema)` to create a new message.
+ */
+export const WebhookAttemptSchema: GenMessage<WebhookAttempt> = /*@__PURE__*/
+  messageDesc(file_webhook_v1_webhook, 10);
+
+/**
+ * @generated from message webhook.v1.WebhookResponseHeader
+ */
+export type WebhookResponseHeader = Message<"webhook.v1.WebhookResponseHeader"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string value = 2;
+   */
+  value: string;
+};
+
+/**
+ * Describes the message webhook.v1.WebhookResponseHeader.
+ * Use `create(WebhookResponseHeaderSchema)` to create a new message.
+ */
+export const WebhookResponseHeaderSchema: GenMessage<WebhookResponseHeader> = /*@__PURE__*/
+  messageDesc(file_webhook_v1_webhook, 11);
+
+/**
+ * @generated from message webhook.v1.ListWebhookDeliveryAttemptsRequest
+ */
+export type ListWebhookDeliveryAttemptsRequest = Message<"webhook.v1.ListWebhookDeliveryAttemptsRequest"> & {
+  /**
+   * @generated from field: string org_id = 1;
+   */
+  orgId: string;
+
+  /**
+   * @generated from field: string project_id = 2;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string id = 3;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string delivery_id = 4;
+   */
+  deliveryId: string;
+};
+
+/**
+ * Describes the message webhook.v1.ListWebhookDeliveryAttemptsRequest.
+ * Use `create(ListWebhookDeliveryAttemptsRequestSchema)` to create a new message.
+ */
+export const ListWebhookDeliveryAttemptsRequestSchema: GenMessage<ListWebhookDeliveryAttemptsRequest> = /*@__PURE__*/
+  messageDesc(file_webhook_v1_webhook, 12);
+
+/**
+ * @generated from message webhook.v1.ListWebhookDeliveryAttemptsResponse
+ */
+export type ListWebhookDeliveryAttemptsResponse = Message<"webhook.v1.ListWebhookDeliveryAttemptsResponse"> & {
+  /**
+   * @generated from field: repeated webhook.v1.WebhookAttempt attempts = 1;
+   */
+  attempts: WebhookAttempt[];
+};
+
+/**
+ * Describes the message webhook.v1.ListWebhookDeliveryAttemptsResponse.
+ * Use `create(ListWebhookDeliveryAttemptsResponseSchema)` to create a new message.
+ */
+export const ListWebhookDeliveryAttemptsResponseSchema: GenMessage<ListWebhookDeliveryAttemptsResponse> = /*@__PURE__*/
+  messageDesc(file_webhook_v1_webhook, 13);
+
+/**
  * @generated from message webhook.v1.UpdateWebhookRequest
  */
 export type UpdateWebhookRequest = Message<"webhook.v1.UpdateWebhookRequest"> & {
@@ -259,7 +493,7 @@ export type UpdateWebhookRequest = Message<"webhook.v1.UpdateWebhookRequest"> & 
  * Use `create(UpdateWebhookRequestSchema)` to create a new message.
  */
 export const UpdateWebhookRequestSchema: GenMessage<UpdateWebhookRequest> = /*@__PURE__*/
-  messageDesc(file_webhook_v1_webhook, 7);
+  messageDesc(file_webhook_v1_webhook, 14);
 
 /**
  * @generated from message webhook.v1.UpdateWebhookResponse
@@ -276,7 +510,7 @@ export type UpdateWebhookResponse = Message<"webhook.v1.UpdateWebhookResponse"> 
  * Use `create(UpdateWebhookResponseSchema)` to create a new message.
  */
 export const UpdateWebhookResponseSchema: GenMessage<UpdateWebhookResponse> = /*@__PURE__*/
-  messageDesc(file_webhook_v1_webhook, 8);
+  messageDesc(file_webhook_v1_webhook, 15);
 
 /**
  * @generated from message webhook.v1.DeleteWebhookRequest
@@ -303,7 +537,7 @@ export type DeleteWebhookRequest = Message<"webhook.v1.DeleteWebhookRequest"> & 
  * Use `create(DeleteWebhookRequestSchema)` to create a new message.
  */
 export const DeleteWebhookRequestSchema: GenMessage<DeleteWebhookRequest> = /*@__PURE__*/
-  messageDesc(file_webhook_v1_webhook, 9);
+  messageDesc(file_webhook_v1_webhook, 16);
 
 /**
  * @generated from message webhook.v1.DeleteWebhookResponse
@@ -316,7 +550,7 @@ export type DeleteWebhookResponse = Message<"webhook.v1.DeleteWebhookResponse"> 
  * Use `create(DeleteWebhookResponseSchema)` to create a new message.
  */
 export const DeleteWebhookResponseSchema: GenMessage<DeleteWebhookResponse> = /*@__PURE__*/
-  messageDesc(file_webhook_v1_webhook, 10);
+  messageDesc(file_webhook_v1_webhook, 17);
 
 /**
  * @generated from message webhook.v1.RotateWebhookSecretRequest
@@ -343,7 +577,7 @@ export type RotateWebhookSecretRequest = Message<"webhook.v1.RotateWebhookSecret
  * Use `create(RotateWebhookSecretRequestSchema)` to create a new message.
  */
 export const RotateWebhookSecretRequestSchema: GenMessage<RotateWebhookSecretRequest> = /*@__PURE__*/
-  messageDesc(file_webhook_v1_webhook, 11);
+  messageDesc(file_webhook_v1_webhook, 18);
 
 /**
  * @generated from message webhook.v1.RotateWebhookSecretResponse
@@ -360,7 +594,7 @@ export type RotateWebhookSecretResponse = Message<"webhook.v1.RotateWebhookSecre
  * Use `create(RotateWebhookSecretResponseSchema)` to create a new message.
  */
 export const RotateWebhookSecretResponseSchema: GenMessage<RotateWebhookSecretResponse> = /*@__PURE__*/
-  messageDesc(file_webhook_v1_webhook, 12);
+  messageDesc(file_webhook_v1_webhook, 19);
 
 /**
  * @generated from message webhook.v1.PingWebhookRequest
@@ -387,7 +621,7 @@ export type PingWebhookRequest = Message<"webhook.v1.PingWebhookRequest"> & {
  * Use `create(PingWebhookRequestSchema)` to create a new message.
  */
 export const PingWebhookRequestSchema: GenMessage<PingWebhookRequest> = /*@__PURE__*/
-  messageDesc(file_webhook_v1_webhook, 13);
+  messageDesc(file_webhook_v1_webhook, 20);
 
 /**
  * @generated from message webhook.v1.PingWebhookResponse
@@ -400,7 +634,7 @@ export type PingWebhookResponse = Message<"webhook.v1.PingWebhookResponse"> & {
  * Use `create(PingWebhookResponseSchema)` to create a new message.
  */
 export const PingWebhookResponseSchema: GenMessage<PingWebhookResponse> = /*@__PURE__*/
-  messageDesc(file_webhook_v1_webhook, 14);
+  messageDesc(file_webhook_v1_webhook, 21);
 
 /**
  * @generated from service webhook.v1.WebhookService
@@ -429,6 +663,22 @@ export const WebhookService: GenService<{
     methodKind: "unary";
     input: typeof ListWebhooksRequestSchema;
     output: typeof ListWebhooksResponseSchema;
+  },
+  /**
+   * @generated from rpc webhook.v1.WebhookService.ListWebhookDeliveries
+   */
+  listWebhookDeliveries: {
+    methodKind: "unary";
+    input: typeof ListWebhookDeliveriesRequestSchema;
+    output: typeof ListWebhookDeliveriesResponseSchema;
+  },
+  /**
+   * @generated from rpc webhook.v1.WebhookService.ListWebhookDeliveryAttempts
+   */
+  listWebhookDeliveryAttempts: {
+    methodKind: "unary";
+    input: typeof ListWebhookDeliveryAttemptsRequestSchema;
+    output: typeof ListWebhookDeliveryAttemptsResponseSchema;
   },
   /**
    * @generated from rpc webhook.v1.WebhookService.UpdateWebhook

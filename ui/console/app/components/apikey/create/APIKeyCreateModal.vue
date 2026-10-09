@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppButton from '~/components/ui/AppButton.vue'
 import AppModal from '~/components/ui/AppModal.vue'
+import SecretField from '~/components/ui/SecretField.vue'
 import scopes from '@shared/scope/scopes.json'
 import { useProjectsStore } from '~/stores/projects'
 import { useScopeLabel } from '~/components/apikey/useScopeLabel'
@@ -23,12 +24,6 @@ const expiryOptions = computed(() => [
   { value: 2160, label: t('apikeys.days_90') },
   { value: 8760, label: t('apikeys.days_365') },
 ])
-
-async function copy() {
-  if (import.meta.client) {
-    await navigator.clipboard.writeText(plaintext.value)
-  }
-}
 </script>
 
 <template>
@@ -42,10 +37,7 @@ async function copy() {
       <p class="text-sm text-warning">
         {{ t('apikeys.secret_warning') }}
       </p>
-      <code class="block rounded-box bg-base-200 p-3 text-xs break-all">{{ plaintext }}</code>
-      <button class="btn btn-sm" type="button" @click="copy">
-        {{ t('apikeys.copy') }}
-      </button>
+      <SecretField :value="plaintext" :label="t('apikeys.copy')" />
     </div>
 
     <form v-else class="space-y-3" @submit.prevent="create.submit()">
