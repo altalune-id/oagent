@@ -102,6 +102,51 @@ function closeAttempts() {
   attemptsError.value = ''
 }
 
+const retrying = ref(false)
+const retryError = ref('')
+const requeued = ref('')
+const retryOneError = ref('')
+
+async function retryFailed() {
+  retrying.value = true
+  retryError.value = ''
+  requeued.value = ''
+  try {
+    const res = await client.retryFailedWebhookDeliveries({
+      orgId: org.value?.id ?? '', projectId: project.value?.id ?? '', id: webhookId.value,
+    })
+    requeued.value = t('webhooks.requeued', { n: res.requeued })
+    await load()
+  }
+  catch (e) {
+    retryError.value = e instanceof Error ? e.message : t('error.retry_deliveries')
+  }
+  finally {
+    retrying.value = false
+  }
+}
+
+async function retryOne() {
+  if (!selected.value) {
+    return
+  }
+  retrying.value = true
+  retryOneError.value = ''
+  try {
+    await client.retryWebhookDelivery({
+      orgId: org.value?.id ?? '', projectId: project.value?.id ?? '', id: webhookId.value, deliveryId: selected.value.id,
+    })
+    closeAttempts()
+    await load()
+  }
+  catch (e) {
+    retryOneError.value = e instanceof Error ? e.message : t('error.retry_deliveries')
+  }
+  finally {
+    retrying.value = false
+  }
+}
+
 const prettyPayload = computed(() => {
   const raw = selected.value?.payload ?? ''
   try {
@@ -127,11 +172,24 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
           {{ t('webhooks.deliveries') }}
         </h1>
       </div>
-      <button class="btn btn-ghost btn-sm" :disabled="busy" @click="load">
-        <Icon name="lucide:refresh-cw" size="14" />
-        {{ t('common.refresh') }}
-      </button>
+      <div class="flex items-center gap-2">
+        <button class="btn btn-ghost btn-sm" :disabled="retrying" @click="retryFailed">
+          <Icon name="lucide:rotate-cw" size="14" />
+          {{ t('webhooks.retry_failed') }}
+        </button>
+        <button class="btn btn-ghost btn-sm" :disabled="busy" @click="load">
+          <Icon name="lucide:refresh-cw" size="14" />
+          {{ t('common.refresh') }}
+        </button>
+      </div>
     </div>
+
+    <p v-if="retryError" class="text-sm text-error">
+      {{ retryError }}
+    </p>
+    <p v-if="requeued" class="text-sm text-success">
+      {{ requeued }}
+    </p>
 
     <p v-if="error" class="text-sm text-error">
       {{ error }}
@@ -205,6 +263,20 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
           </dl>
         </div>
       </div>
+      <template #footer>
+        <p v-if="retryOneError" class="mr-auto text-sm text-error">{{ retryOneError }}</p>
+        <button
+          v-if="selected?.status === 'failed'"
+          class="btn btn-primary btn-sm"
+          :disabled="retrying"
+          @click="retryOne"
+        >
+          {{ t('webhooks.retry') }}
+        </button>
+        <button class="btn btn-ghost btn-sm" @click="closeAttempts()">
+          {{ t('common.close') }}
+        </button>
+      </template>
     </AppModal>
   </div>
 </template>
