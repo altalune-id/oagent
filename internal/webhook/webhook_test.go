@@ -20,6 +20,7 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, "https://example.com/hook", e.URL)
 	assert.Equal(t, "desc", e.Description)
 	assert.True(t, e.Active)
+	assert.NotEmpty(t, e.PublicID)
 	assert.True(t, e.Subscribes(events.AgentCreated))
 	assert.False(t, e.Subscribes(events.AgentUpdated))
 }

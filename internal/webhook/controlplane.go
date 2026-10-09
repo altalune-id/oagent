@@ -142,6 +142,50 @@ func (s *WebhookControlPlane) PingWebhook(
 	return connect.NewResponse(&webhookv1.PingWebhookResponse{}), nil
 }
 
+// ListWebhookDeliveries lists an endpoint's recent deliveries, newest first.
+func (s *WebhookControlPlane) ListWebhookDeliveries(
+	ctx context.Context,
+	req *connect.Request[webhookv1.ListWebhookDeliveriesRequest],
+) (*connect.Response[webhookv1.ListWebhookDeliveriesResponse], error) {
+	ctx, id, err := scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
+	if err != nil {
+		return nil, err
+	}
+	deliveries, err := s.webhooks.Deliveries(ctx, id, int(req.Msg.GetLimit()))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*webhookv1.WebhookDelivery, 0, len(deliveries))
+	for _, d := range deliveries {
+		out = append(out, deliveryToProto(d))
+	}
+	return connect.NewResponse(&webhookv1.ListWebhookDeliveriesResponse{Deliveries: out}), nil
+}
+
+// ListWebhookDeliveryAttempts lists the attempts of one delivery to an endpoint.
+func (s *WebhookControlPlane) ListWebhookDeliveryAttempts(
+	ctx context.Context,
+	req *connect.Request[webhookv1.ListWebhookDeliveryAttemptsRequest],
+) (*connect.Response[webhookv1.ListWebhookDeliveryAttemptsResponse], error) {
+	ctx, id, err := scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
+	if err != nil {
+		return nil, err
+	}
+	deliveryID, err := uuid.Parse(req.Msg.GetDeliveryId())
+	if err != nil {
+		return nil, apperror.New(apperror.CodeValidation, "invalid delivery id").WithCause(err)
+	}
+	attempts, err := s.webhooks.Attempts(ctx, id, deliveryID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*webhookv1.WebhookAttempt, 0, len(attempts))
+	for _, a := range attempts {
+		out = append(out, attemptToProto(a))
+	}
+	return connect.NewResponse(&webhookv1.ListWebhookDeliveryAttemptsResponse{Attempts: out}), nil
+}
+
 // scopeCtx parses the org and project ids and carries them as the tenant scope.
 func scopeCtx(ctx context.Context, orgID, projectID string) (context.Context, error) {
 	org, err := uuid.Parse(orgID)
@@ -183,6 +227,7 @@ func webhookToProto(e *Endpoint) *webhookv1.Webhook {
 	}
 	return &webhookv1.Webhook{
 		Id:          e.ID.String(),
+		PublicId:    e.PublicID,
 		OrgId:       e.OrgID.String(),
 		ProjectId:   e.ProjectID.String(),
 		Url:         e.URL,
@@ -191,5 +236,36 @@ func webhookToProto(e *Endpoint) *webhookv1.Webhook {
 		Active:      e.Active,
 		CreatedAt:   timestamppb.New(e.CreatedAt),
 		UpdatedAt:   timestamppb.New(e.UpdatedAt),
+	}
+}
+
+func deliveryToProto(d Delivery) *webhookv1.WebhookDelivery {
+	return &webhookv1.WebhookDelivery{
+		Id:            d.ID.String(),
+		EventId:       d.EventID.String(),
+		EventType:     string(d.EventType),
+		Attempt:       int32(d.Attempt), //nolint:gosec // G115: bounded
+		Status:        string(d.Status),
+		LastError:     d.LastError,
+		NextAttemptAt: timestamppb.New(d.NextAttemptAt),
+		CreatedAt:     timestamppb.New(d.CreatedAt),
+		Payload:       string(d.Payload),
+	}
+}
+
+func attemptToProto(a Attempt) *webhookv1.WebhookAttempt {
+	headers := make([]*webhookv1.WebhookResponseHeader, len(a.ResponseHeaders))
+	for i, h := range a.ResponseHeaders {
+		headers[i] = &webhookv1.WebhookResponseHeader{Name: h.Name, Value: h.Value}
+	}
+	return &webhookv1.WebhookAttempt{
+		Attempt:           int32(a.Attempt),    //nolint:gosec // G115: bounded
+		StatusCode:        int32(a.StatusCode), //nolint:gosec // G115: bounded
+		Error:             a.Error,
+		ResponseBody:      a.ResponseBody,
+		ResponseTruncated: a.ResponseTruncated,
+		DurationMs:        int32(a.Duration.Milliseconds()), //nolint:gosec // G115: bounded
+		CreatedAt:         timestamppb.New(a.CreatedAt),
+		ResponseHeaders:   headers,
 	}
 }

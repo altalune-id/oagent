@@ -35,7 +35,7 @@ func (s *postgresStore) save(ctx context.Context, tx *sql.Tx, tc tenant.Context,
 	}
 	stmt := s.endpoints.INSERT(s.endpoints.AllColumns).
 		VALUES(
-			e.ID, e.OrgID, e.ProjectID,
+			e.ID, e.PublicID, e.OrgID, e.ProjectID,
 			e.URL, e.Description, types,
 			postgres.Bytea(e.Secrets.Primary),
 			pgSecondary(e.Secrets.Secondary),

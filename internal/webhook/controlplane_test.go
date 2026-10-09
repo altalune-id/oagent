@@ -11,6 +11,7 @@ import (
 
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
 	"altalune.id/oagent/internal/kernel/events"
+	"altalune.id/oagent/internal/kernel/outbox"
 )
 
 func controlPlane(t *testing.T, store *fakeStore) (*WebhookControlPlane, uuid.UUID, uuid.UUID) {
@@ -106,5 +107,32 @@ func TestControlPlaneErrors(t *testing.T) {
 func TestControlPlaneBadProject(t *testing.T) {
 	cp, org, _ := controlPlane(t, &fakeStore{})
 	_, err := cp.ListWebhooks(context.Background(), connect.NewRequest(&webhookv1.ListWebhooksRequest{OrgId: org.String(), ProjectId: "bad"}))
+	assert.Error(t, err)
+}
+
+func TestControlPlaneDeliveryLogs(t *testing.T) {
+	org, project := uuid.New(), uuid.New()
+	e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project}
+	ob := &fakeOutbox{entries: []outbox.Entry{{ID: uuid.New(), Payload: []byte(`{"type":"agent.created"}`)}}}
+	store := &fakeStore{endpoints: []*Endpoint{e}, attempts: []Attempt{{Attempt: 1, StatusCode: 200}}}
+	cp := NewControlPlane(testService(t, store, ob))
+	ctx := context.Background()
+
+	resp, err := cp.ListWebhookDeliveries(ctx, connect.NewRequest(&webhookv1.ListWebhookDeliveriesRequest{
+		OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String(),
+	}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.GetDeliveries(), 1)
+	assert.Equal(t, string(events.AgentCreated), resp.Msg.GetDeliveries()[0].GetEventType())
+
+	ar, err := cp.ListWebhookDeliveryAttempts(ctx, connect.NewRequest(&webhookv1.ListWebhookDeliveryAttemptsRequest{
+		OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String(), DeliveryId: uuid.New().String(),
+	}))
+	require.NoError(t, err)
+	require.Len(t, ar.Msg.GetAttempts(), 1)
+
+	_, err = cp.ListWebhookDeliveryAttempts(ctx, connect.NewRequest(&webhookv1.ListWebhookDeliveryAttemptsRequest{
+		OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String(), DeliveryId: "bad",
+	}))
 	assert.Error(t, err)
 }

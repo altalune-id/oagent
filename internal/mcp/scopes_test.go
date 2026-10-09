@@ -37,6 +37,7 @@ func TestScopeFor(t *testing.T) {
 
 	assert.Equal(t, scope.ProjectWrite, ScopeFor(webhookv1mcp.WebhookCreateToolName))
 	assert.Equal(t, scope.ProjectRead, ScopeFor(webhookv1mcp.WebhookListToolName))
+	assert.Equal(t, scope.ProjectRead, ScopeFor(webhookv1mcp.WebhookDeliveriesToolName))
 
 	assert.Equal(t, "", ScopeFor("unknown"))
 }

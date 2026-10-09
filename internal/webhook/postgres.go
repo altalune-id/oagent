@@ -75,6 +75,7 @@ func (s *postgresStore) endTx(tx *sql.Tx, owned bool, err error) error {
 
 type pgEndpointRow struct {
 	ID              uuid.UUID `alias:"webhook_endpoints.id"`
+	PublicID        string    `alias:"webhook_endpoints.public_id"`
 	OrgID           uuid.UUID `alias:"webhook_endpoints.org_id"`
 	ProjectID       uuid.UUID `alias:"webhook_endpoints.project_id"`
 	URL             string    `alias:"webhook_endpoints.url"`
@@ -94,6 +95,7 @@ func (r *pgEndpointRow) toEndpoint() (*Endpoint, error) {
 	}
 	return &Endpoint{
 		ID:          r.ID,
+		PublicID:    r.PublicID,
 		OrgID:       r.OrgID,
 		ProjectID:   r.ProjectID,
 		URL:         r.URL,

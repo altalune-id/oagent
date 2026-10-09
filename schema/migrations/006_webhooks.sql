@@ -3,6 +3,7 @@
 
 CREATE TABLE {{.Schema}}.{{.TablePrefix}}webhook_endpoints (
   id                  UUID PRIMARY KEY,
+  public_id           TEXT NOT NULL,
   org_id              UUID NOT NULL REFERENCES {{.Schema}}.{{.TablePrefix}}orgs (id) ON DELETE CASCADE,
   project_id          UUID NOT NULL REFERENCES {{.Schema}}.{{.TablePrefix}}projects (id) ON DELETE CASCADE,
   url                 TEXT NOT NULL,
@@ -13,6 +14,7 @@ CREATE TABLE {{.Schema}}.{{.TablePrefix}}webhook_endpoints (
   active              BOOLEAN NOT NULL,
   created_at          TIMESTAMPTZ NOT NULL,
   updated_at          TIMESTAMPTZ NOT NULL,
+  CONSTRAINT {{.TablePrefix}}webhook_endpoints_public_id_key UNIQUE (public_id),
   CONSTRAINT {{.TablePrefix}}webhook_endpoints_secondary_nonempty CHECK (secret_secondary IS NULL OR length(secret_secondary) > 0)
 );
 

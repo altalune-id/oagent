@@ -1,7 +1,9 @@
 package webhook
 
 import (
+	"strconv"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
@@ -29,6 +31,8 @@ func NewCmd(clientFn ClientFn) *cobra.Command {
 		newDeleteCmd(clientFn),
 		newRotateCmd(clientFn),
 		newPingCmd(clientFn),
+		newDeliveriesCmd(clientFn),
+		newAttemptsCmd(clientFn),
 	)
 	return cmd
 }
@@ -270,6 +274,93 @@ func newPingCmd(clientFn ClientFn) *cobra.Command {
 	return cmd
 }
 
+func newDeliveriesCmd(clientFn ClientFn) *cobra.Command {
+	var orgID, projectID string
+	var limit int
+	cmd := &cobra.Command{
+		Use:   "deliveries <id>",
+		Short: "List a webhook endpoint's recent deliveries",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := clientFn(cmd)
+			if err != nil {
+				return err
+			}
+			req := &webhookv1.ListWebhookDeliveriesRequest{
+				OrgId: orgID, ProjectId: projectID, Id: args[0],
+				Limit: int32(limit), //nolint:gosec // G115: bounded by the flag
+			}
+			resp, err := client.ListWebhookDeliveries(cmd.Context(), connect.NewRequest(req))
+			if err != nil {
+				return err
+			}
+			items := resp.Msg.GetDeliveries()
+			if isJSON(cmd) {
+				out := make([]map[string]any, 0, len(items))
+				for _, d := range items {
+					out = append(out, deliveryMap(d))
+				}
+				return render.JSON(cmd.OutOrStdout(), out)
+			}
+			rows := make([][]string, 0, len(items))
+			for _, d := range items {
+				rows = append(rows, []string{
+					d.GetId(), d.GetEventType(), d.GetStatus(),
+					strconv.Itoa(int(d.GetAttempt())), d.GetCreatedAt().AsTime().Format(time.RFC3339),
+				})
+			}
+			return render.Table(cmd.OutOrStdout(), []string{"ID", "EVENT", "STATUS", "ATTEMPT", "CREATED_AT"}, rows)
+		},
+	}
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	cmd.Flags().IntVar(&limit, "limit", 20, "Max deliveries")
+	_ = cmd.MarkFlagRequired("org-id")
+	_ = cmd.MarkFlagRequired("project-id")
+	return cmd
+}
+
+func newAttemptsCmd(clientFn ClientFn) *cobra.Command {
+	var orgID, projectID string
+	cmd := &cobra.Command{
+		Use:   "attempts <id> <delivery-id>",
+		Short: "List the attempts of one delivery",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := clientFn(cmd)
+			if err != nil {
+				return err
+			}
+			req := &webhookv1.ListWebhookDeliveryAttemptsRequest{OrgId: orgID, ProjectId: projectID, Id: args[0], DeliveryId: args[1]}
+			resp, err := client.ListWebhookDeliveryAttempts(cmd.Context(), connect.NewRequest(req))
+			if err != nil {
+				return err
+			}
+			items := resp.Msg.GetAttempts()
+			if isJSON(cmd) {
+				out := make([]map[string]any, 0, len(items))
+				for _, a := range items {
+					out = append(out, attemptMap(a))
+				}
+				return render.JSON(cmd.OutOrStdout(), out)
+			}
+			rows := make([][]string, 0, len(items))
+			for _, a := range items {
+				rows = append(rows, []string{
+					strconv.Itoa(int(a.GetAttempt())), strconv.Itoa(int(a.GetStatusCode())),
+					strconv.Itoa(int(a.GetDurationMs())) + "ms", a.GetError(),
+				})
+			}
+			return render.Table(cmd.OutOrStdout(), []string{"ATTEMPT", "STATUS", "DURATION", "ERROR"}, rows)
+		},
+	}
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	_ = cmd.MarkFlagRequired("org-id")
+	_ = cmd.MarkFlagRequired("project-id")
+	return cmd
+}
+
 func webhookColumns() []string { return []string{"ID", "PROJECT_ID", "URL", "ACTIVE", "EVENT_TYPES"} }
 
 func webhookRow(e *webhookv1.Webhook) []string {
@@ -285,6 +376,36 @@ func webhookMap(e *webhookv1.Webhook) map[string]any {
 		"description": e.GetDescription(),
 		"eventTypes":  e.GetEventTypes(),
 		"active":      e.GetActive(),
+	}
+}
+
+func deliveryMap(d *webhookv1.WebhookDelivery) map[string]any {
+	return map[string]any{
+		"id":        d.GetId(),
+		"eventId":   d.GetEventId(),
+		"eventType": d.GetEventType(),
+		"status":    d.GetStatus(),
+		"attempt":   d.GetAttempt(),
+		"lastError": d.GetLastError(),
+		"payload":   d.GetPayload(),
+		"createdAt": d.GetCreatedAt().AsTime().Format(time.RFC3339),
+	}
+}
+
+func attemptMap(a *webhookv1.WebhookAttempt) map[string]any {
+	headers := make([]map[string]string, 0, len(a.GetResponseHeaders()))
+	for _, h := range a.GetResponseHeaders() {
+		headers = append(headers, map[string]string{"name": h.GetName(), "value": h.GetValue()})
+	}
+	return map[string]any{
+		"attempt":           a.GetAttempt(),
+		"statusCode":        a.GetStatusCode(),
+		"error":             a.GetError(),
+		"durationMs":        a.GetDurationMs(),
+		"responseBody":      a.GetResponseBody(),
+		"responseTruncated": a.GetResponseTruncated(),
+		"responseHeaders":   headers,
+		"createdAt":         a.GetCreatedAt().AsTime().Format(time.RFC3339),
 	}
 }
 

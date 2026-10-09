@@ -107,6 +107,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/webhook.v1.GetWebhookResponse'
+  /webhook.v1.WebhookService/ListWebhookDeliveries:
+    post:
+      tags:
+        - webhook.v1.WebhookService
+      summary: ListWebhookDeliveries
+      operationId: webhook.v1.WebhookService.ListWebhookDeliveries
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/webhook.v1.ListWebhookDeliveriesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/webhook.v1.ListWebhookDeliveriesResponse'
+  /webhook.v1.WebhookService/ListWebhookDeliveryAttempts:
+    post:
+      tags:
+        - webhook.v1.WebhookService
+      summary: ListWebhookDeliveryAttempts
+      operationId: webhook.v1.WebhookService.ListWebhookDeliveryAttempts
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/webhook.v1.ListWebhookDeliveryAttemptsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/webhook.v1.ListWebhookDeliveryAttemptsResponse'
   /webhook.v1.WebhookService/ListWebhooks:
     post:
       tags:
@@ -487,6 +557,61 @@ components:
           $ref: '#/components/schemas/webhook.v1.Webhook'
       title: GetWebhookResponse
       additionalProperties: false
+    webhook.v1.ListWebhookDeliveriesRequest:
+      type: object
+      properties:
+        orgId:
+          type: string
+          title: org_id
+        projectId:
+          type: string
+          title: project_id
+        id:
+          type: string
+          title: id
+        limit:
+          type: integer
+          title: limit
+          format: int32
+      title: ListWebhookDeliveriesRequest
+      additionalProperties: false
+    webhook.v1.ListWebhookDeliveriesResponse:
+      type: object
+      properties:
+        deliveries:
+          type: array
+          items:
+            $ref: '#/components/schemas/webhook.v1.WebhookDelivery'
+          title: deliveries
+      title: ListWebhookDeliveriesResponse
+      additionalProperties: false
+    webhook.v1.ListWebhookDeliveryAttemptsRequest:
+      type: object
+      properties:
+        orgId:
+          type: string
+          title: org_id
+        projectId:
+          type: string
+          title: project_id
+        id:
+          type: string
+          title: id
+        deliveryId:
+          type: string
+          title: delivery_id
+      title: ListWebhookDeliveryAttemptsRequest
+      additionalProperties: false
+    webhook.v1.ListWebhookDeliveryAttemptsResponse:
+      type: object
+      properties:
+        attempts:
+          type: array
+          items:
+            $ref: '#/components/schemas/webhook.v1.WebhookAttempt'
+          title: attempts
+      title: ListWebhookDeliveryAttemptsResponse
+      additionalProperties: false
     webhook.v1.ListWebhooksRequest:
       type: object
       properties:
@@ -590,6 +715,9 @@ components:
         id:
           type: string
           title: id
+        publicId:
+          type: string
+          title: public_id
         orgId:
           type: string
           title: org_id
@@ -617,6 +745,84 @@ components:
           title: updated_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: Webhook
+      additionalProperties: false
+    webhook.v1.WebhookAttempt:
+      type: object
+      properties:
+        attempt:
+          type: integer
+          title: attempt
+          format: int32
+        statusCode:
+          type: integer
+          title: status_code
+          format: int32
+        error:
+          type: string
+          title: error
+        responseBody:
+          type: string
+          title: response_body
+        responseTruncated:
+          type: boolean
+          title: response_truncated
+        durationMs:
+          type: integer
+          title: duration_ms
+          format: int32
+        createdAt:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        responseHeaders:
+          type: array
+          items:
+            $ref: '#/components/schemas/webhook.v1.WebhookResponseHeader'
+          title: response_headers
+      title: WebhookAttempt
+      additionalProperties: false
+    webhook.v1.WebhookDelivery:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        eventId:
+          type: string
+          title: event_id
+        eventType:
+          type: string
+          title: event_type
+        attempt:
+          type: integer
+          title: attempt
+          format: int32
+        status:
+          type: string
+          title: status
+        lastError:
+          type: string
+          title: last_error
+        nextAttemptAt:
+          title: next_attempt_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        createdAt:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        payload:
+          type: string
+          title: payload
+      title: WebhookDelivery
+      additionalProperties: false
+    webhook.v1.WebhookResponseHeader:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        value:
+          type: string
+          title: value
+      title: WebhookResponseHeader
       additionalProperties: false
 security: []
 tags:

@@ -7,6 +7,7 @@ type WebhookEndpoints struct {
 	postgres.Table
 
 	ID              postgres.ColumnString
+	PublicID        postgres.ColumnString
 	OrgID           postgres.ColumnString
 	ProjectID       postgres.ColumnString
 	URL             postgres.ColumnString
@@ -28,6 +29,7 @@ func NewWebhookEndpoints(schema, tablePrefix string) *WebhookEndpoints {
 	}
 	var (
 		id              = postgres.StringColumn("id")
+		publicID        = postgres.StringColumn("public_id")
 		orgID           = postgres.StringColumn("org_id")
 		projectID       = postgres.StringColumn("project_id")
 		url             = postgres.StringColumn("url")
@@ -39,13 +41,14 @@ func NewWebhookEndpoints(schema, tablePrefix string) *WebhookEndpoints {
 		createdAt       = postgres.TimestampzColumn("created_at")
 		updatedAt       = postgres.TimestampzColumn("updated_at")
 		all             = postgres.ColumnList{
-			id, orgID, projectID, url, description, eventTypes,
+			id, publicID, orgID, projectID, url, description, eventTypes,
 			secretPrimary, secretSecondary, active, createdAt, updatedAt,
 		}
 	)
 	return &WebhookEndpoints{
 		Table:           postgres.NewTable(schema, tablePrefix+"webhook_endpoints", "webhook_endpoints", all...),
 		ID:              id,
+		PublicID:        publicID,
 		OrgID:           orgID,
 		ProjectID:       projectID,
 		URL:             url,

@@ -12,7 +12,7 @@ import (
 
 func TestByID(t *testing.T) {
 	org := uuid.New()
-	rows := sqlmock.NewRows(endpointColumns()).AddRow(uuid.New(), org, uuid.New(), "u", "d", "[]", []byte("p"), nil, true, time.Now(), time.Now())
+	rows := sqlmock.NewRows(endpointColumns()).AddRow(uuid.New(), "pub", org, uuid.New(), "u", "d", "[]", []byte("p"), nil, true, time.Now(), time.Now())
 
 	t.Run("found", func(t *testing.T) {
 		s, mock := newStoreTest(t)
@@ -32,7 +32,7 @@ func TestByID(t *testing.T) {
 
 func TestList(t *testing.T) {
 	org, project := uuid.New(), uuid.New()
-	rows := sqlmock.NewRows(endpointColumns()).AddRow(uuid.New(), org, project, "u", "", "[]", []byte("p"), nil, true, time.Now(), time.Now())
+	rows := sqlmock.NewRows(endpointColumns()).AddRow(uuid.New(), "pub", org, project, "u", "", "[]", []byte("p"), nil, true, time.Now(), time.Now())
 	s, mock := newStoreTest(t)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 	got, err := s.List(storeCtx(org, project), org, project)

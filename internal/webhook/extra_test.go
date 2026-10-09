@@ -51,7 +51,7 @@ func TestTrimPartialRune(t *testing.T) {
 
 func TestServiceInsecureURL(t *testing.T) {
 	org, project := uuid.New(), uuid.New()
-	svc := NewService(&fakeStore{}, nil, unexpectedStub, testSealer(t), &fakeOutbox{}, fakeSlugs{}, WithAllowInsecureURL())
+	svc := NewService(&fakeStore{}, nil, unexpectedStub, testSealer(t), &fakeOutbox{}, fakeResolver{}, WithAllowInsecureURL())
 	_, _, err := svc.Create(tenantCtx(org, project), "http://localhost:9999/hook", "", []events.Type{events.AgentCreated})
 	require.NoError(t, err)
 }

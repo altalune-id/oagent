@@ -39,21 +39,22 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	apiKeyStore := apikey.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
 
 	projects := project.NewService(projectStore, k.Reporter.Unexpected)
-
-	sl := buildSealer(cfg.Secrets)
-	outboxStore := outbox.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
-	webhookStore := webhook.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
-	webhooks := webhook.NewService(
-		webhookStore, k.Log, k.Reporter.Unexpected, sl, outboxStore, projectSlugs{projects: projects}, webhookServiceOpts(cfg)...,
-	)
-
-	agents := agent.NewService(agentStore, k.Reporter.Unexpected).WithPublisher(webhooks)
 	orgs := org.NewService(orgStore, k.Reporter.Unexpected).WithAfterCreate(func(ctx context.Context, o *org.Org) error {
 		if _, err := projects.Create(ctx, project.CreateRequest{OrgID: o.ID, Slug: project.DefaultSlug, Name: project.DefaultName}); err != nil {
 			_ = k.Reporter.Unexpected(ctx, "org: default project", err)
 		}
 		return nil
 	})
+
+	sl := buildSealer(cfg.Secrets)
+	outboxStore := outbox.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
+	webhookStore := webhook.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
+	webhooks := webhook.NewService(
+		webhookStore, k.Log, k.Reporter.Unexpected, sl, outboxStore,
+		refResolver{projects: projects, orgs: orgs}, webhookServiceOpts(cfg)...,
+	)
+
+	agents := agent.NewService(agentStore, k.Reporter.Unexpected).WithPublisher(webhooks)
 	apiKeys := apikey.NewService(apiKeyStore, apikey.NewScheme(""), projectIDs{projects: projects}, k.Reporter.Unexpected)
 
 	return &Services{
@@ -80,15 +81,26 @@ func webhookServiceOpts(cfg config.Config) []webhook.ServiceOption {
 	return []webhook.ServiceOption{webhook.WithAllowInsecureURL()}
 }
 
-// projectSlugs adapts the project service to webhook.ProjectSlugs.
-type projectSlugs struct{ projects *project.Service }
+// refResolver adapts the project and org services to webhook.Resolver, exposing public ids and slug.
+type refResolver struct {
+	projects *project.Service
+	orgs     *org.Service
+}
 
-func (p projectSlugs) SlugOf(ctx context.Context, projectID uuid.UUID) (string, error) {
-	pr, err := p.projects.Get(ctx, projectID)
+func (r refResolver) ProjectRef(ctx context.Context, projectID uuid.UUID) (slug, publicID string, err error) {
+	pr, err := r.projects.Get(ctx, projectID)
+	if err != nil {
+		return "", "", err
+	}
+	return pr.Slug, pr.PublicID, nil
+}
+
+func (r refResolver) OrgRef(ctx context.Context, orgID uuid.UUID) (publicID string, err error) {
+	o, err := r.orgs.Get(ctx, orgID)
 	if err != nil {
 		return "", err
 	}
-	return pr.Slug, nil
+	return o.PublicID, nil
 }
 
 // projectIDs adapts the project service to apikey.Projects.

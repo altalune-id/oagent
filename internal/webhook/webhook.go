@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/events"
+	"altalune.id/oagent/nanoid"
 )
 
 // MaxEndpointsPerProject bounds the fan-out of one event.
@@ -35,6 +36,7 @@ const (
 // Endpoint is the aggregate root: one tenant URL subscribed to a set of event types.
 type Endpoint struct {
 	ID, OrgID, ProjectID uuid.UUID
+	PublicID             string
 	URL, Description     string
 	EventTypes           []events.Type
 	Secrets              SealedSecrets
@@ -88,8 +90,13 @@ func New(orgID, projectID uuid.UUID, rawURL, description string, types []events.
 		return nil, err
 	}
 	now := time.Now().UTC()
+	publicID, err := nanoid.New(21)
+	if err != nil {
+		return nil, err
+	}
 	return &Endpoint{
 		ID:          uuid.Must(uuid.NewV7()),
+		PublicID:    publicID,
 		OrgID:       orgID,
 		ProjectID:   projectID,
 		URL:         u,

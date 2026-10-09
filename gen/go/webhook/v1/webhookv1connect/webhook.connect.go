@@ -42,6 +42,12 @@ const (
 	// WebhookServiceListWebhooksProcedure is the fully-qualified name of the WebhookService's
 	// ListWebhooks RPC.
 	WebhookServiceListWebhooksProcedure = "/webhook.v1.WebhookService/ListWebhooks"
+	// WebhookServiceListWebhookDeliveriesProcedure is the fully-qualified name of the WebhookService's
+	// ListWebhookDeliveries RPC.
+	WebhookServiceListWebhookDeliveriesProcedure = "/webhook.v1.WebhookService/ListWebhookDeliveries"
+	// WebhookServiceListWebhookDeliveryAttemptsProcedure is the fully-qualified name of the
+	// WebhookService's ListWebhookDeliveryAttempts RPC.
+	WebhookServiceListWebhookDeliveryAttemptsProcedure = "/webhook.v1.WebhookService/ListWebhookDeliveryAttempts"
 	// WebhookServiceUpdateWebhookProcedure is the fully-qualified name of the WebhookService's
 	// UpdateWebhook RPC.
 	WebhookServiceUpdateWebhookProcedure = "/webhook.v1.WebhookService/UpdateWebhook"
@@ -61,6 +67,8 @@ type WebhookServiceClient interface {
 	CreateWebhook(context.Context, *connect.Request[v1.CreateWebhookRequest]) (*connect.Response[v1.CreateWebhookResponse], error)
 	GetWebhook(context.Context, *connect.Request[v1.GetWebhookRequest]) (*connect.Response[v1.GetWebhookResponse], error)
 	ListWebhooks(context.Context, *connect.Request[v1.ListWebhooksRequest]) (*connect.Response[v1.ListWebhooksResponse], error)
+	ListWebhookDeliveries(context.Context, *connect.Request[v1.ListWebhookDeliveriesRequest]) (*connect.Response[v1.ListWebhookDeliveriesResponse], error)
+	ListWebhookDeliveryAttempts(context.Context, *connect.Request[v1.ListWebhookDeliveryAttemptsRequest]) (*connect.Response[v1.ListWebhookDeliveryAttemptsResponse], error)
 	UpdateWebhook(context.Context, *connect.Request[v1.UpdateWebhookRequest]) (*connect.Response[v1.UpdateWebhookResponse], error)
 	DeleteWebhook(context.Context, *connect.Request[v1.DeleteWebhookRequest]) (*connect.Response[v1.DeleteWebhookResponse], error)
 	RotateWebhookSecret(context.Context, *connect.Request[v1.RotateWebhookSecretRequest]) (*connect.Response[v1.RotateWebhookSecretResponse], error)
@@ -96,6 +104,18 @@ func NewWebhookServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(webhookServiceMethods.ByName("ListWebhooks")),
 			connect.WithClientOptions(opts...),
 		),
+		listWebhookDeliveries: connect.NewClient[v1.ListWebhookDeliveriesRequest, v1.ListWebhookDeliveriesResponse](
+			httpClient,
+			baseURL+WebhookServiceListWebhookDeliveriesProcedure,
+			connect.WithSchema(webhookServiceMethods.ByName("ListWebhookDeliveries")),
+			connect.WithClientOptions(opts...),
+		),
+		listWebhookDeliveryAttempts: connect.NewClient[v1.ListWebhookDeliveryAttemptsRequest, v1.ListWebhookDeliveryAttemptsResponse](
+			httpClient,
+			baseURL+WebhookServiceListWebhookDeliveryAttemptsProcedure,
+			connect.WithSchema(webhookServiceMethods.ByName("ListWebhookDeliveryAttempts")),
+			connect.WithClientOptions(opts...),
+		),
 		updateWebhook: connect.NewClient[v1.UpdateWebhookRequest, v1.UpdateWebhookResponse](
 			httpClient,
 			baseURL+WebhookServiceUpdateWebhookProcedure,
@@ -125,13 +145,15 @@ func NewWebhookServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // webhookServiceClient implements WebhookServiceClient.
 type webhookServiceClient struct {
-	createWebhook       *connect.Client[v1.CreateWebhookRequest, v1.CreateWebhookResponse]
-	getWebhook          *connect.Client[v1.GetWebhookRequest, v1.GetWebhookResponse]
-	listWebhooks        *connect.Client[v1.ListWebhooksRequest, v1.ListWebhooksResponse]
-	updateWebhook       *connect.Client[v1.UpdateWebhookRequest, v1.UpdateWebhookResponse]
-	deleteWebhook       *connect.Client[v1.DeleteWebhookRequest, v1.DeleteWebhookResponse]
-	rotateWebhookSecret *connect.Client[v1.RotateWebhookSecretRequest, v1.RotateWebhookSecretResponse]
-	pingWebhook         *connect.Client[v1.PingWebhookRequest, v1.PingWebhookResponse]
+	createWebhook               *connect.Client[v1.CreateWebhookRequest, v1.CreateWebhookResponse]
+	getWebhook                  *connect.Client[v1.GetWebhookRequest, v1.GetWebhookResponse]
+	listWebhooks                *connect.Client[v1.ListWebhooksRequest, v1.ListWebhooksResponse]
+	listWebhookDeliveries       *connect.Client[v1.ListWebhookDeliveriesRequest, v1.ListWebhookDeliveriesResponse]
+	listWebhookDeliveryAttempts *connect.Client[v1.ListWebhookDeliveryAttemptsRequest, v1.ListWebhookDeliveryAttemptsResponse]
+	updateWebhook               *connect.Client[v1.UpdateWebhookRequest, v1.UpdateWebhookResponse]
+	deleteWebhook               *connect.Client[v1.DeleteWebhookRequest, v1.DeleteWebhookResponse]
+	rotateWebhookSecret         *connect.Client[v1.RotateWebhookSecretRequest, v1.RotateWebhookSecretResponse]
+	pingWebhook                 *connect.Client[v1.PingWebhookRequest, v1.PingWebhookResponse]
 }
 
 // CreateWebhook calls webhook.v1.WebhookService.CreateWebhook.
@@ -147,6 +169,16 @@ func (c *webhookServiceClient) GetWebhook(ctx context.Context, req *connect.Requ
 // ListWebhooks calls webhook.v1.WebhookService.ListWebhooks.
 func (c *webhookServiceClient) ListWebhooks(ctx context.Context, req *connect.Request[v1.ListWebhooksRequest]) (*connect.Response[v1.ListWebhooksResponse], error) {
 	return c.listWebhooks.CallUnary(ctx, req)
+}
+
+// ListWebhookDeliveries calls webhook.v1.WebhookService.ListWebhookDeliveries.
+func (c *webhookServiceClient) ListWebhookDeliveries(ctx context.Context, req *connect.Request[v1.ListWebhookDeliveriesRequest]) (*connect.Response[v1.ListWebhookDeliveriesResponse], error) {
+	return c.listWebhookDeliveries.CallUnary(ctx, req)
+}
+
+// ListWebhookDeliveryAttempts calls webhook.v1.WebhookService.ListWebhookDeliveryAttempts.
+func (c *webhookServiceClient) ListWebhookDeliveryAttempts(ctx context.Context, req *connect.Request[v1.ListWebhookDeliveryAttemptsRequest]) (*connect.Response[v1.ListWebhookDeliveryAttemptsResponse], error) {
+	return c.listWebhookDeliveryAttempts.CallUnary(ctx, req)
 }
 
 // UpdateWebhook calls webhook.v1.WebhookService.UpdateWebhook.
@@ -174,6 +206,8 @@ type WebhookServiceHandler interface {
 	CreateWebhook(context.Context, *connect.Request[v1.CreateWebhookRequest]) (*connect.Response[v1.CreateWebhookResponse], error)
 	GetWebhook(context.Context, *connect.Request[v1.GetWebhookRequest]) (*connect.Response[v1.GetWebhookResponse], error)
 	ListWebhooks(context.Context, *connect.Request[v1.ListWebhooksRequest]) (*connect.Response[v1.ListWebhooksResponse], error)
+	ListWebhookDeliveries(context.Context, *connect.Request[v1.ListWebhookDeliveriesRequest]) (*connect.Response[v1.ListWebhookDeliveriesResponse], error)
+	ListWebhookDeliveryAttempts(context.Context, *connect.Request[v1.ListWebhookDeliveryAttemptsRequest]) (*connect.Response[v1.ListWebhookDeliveryAttemptsResponse], error)
 	UpdateWebhook(context.Context, *connect.Request[v1.UpdateWebhookRequest]) (*connect.Response[v1.UpdateWebhookResponse], error)
 	DeleteWebhook(context.Context, *connect.Request[v1.DeleteWebhookRequest]) (*connect.Response[v1.DeleteWebhookResponse], error)
 	RotateWebhookSecret(context.Context, *connect.Request[v1.RotateWebhookSecretRequest]) (*connect.Response[v1.RotateWebhookSecretResponse], error)
@@ -203,6 +237,18 @@ func NewWebhookServiceHandler(svc WebhookServiceHandler, opts ...connect.Handler
 		WebhookServiceListWebhooksProcedure,
 		svc.ListWebhooks,
 		connect.WithSchema(webhookServiceMethods.ByName("ListWebhooks")),
+		connect.WithHandlerOptions(opts...),
+	)
+	webhookServiceListWebhookDeliveriesHandler := connect.NewUnaryHandler(
+		WebhookServiceListWebhookDeliveriesProcedure,
+		svc.ListWebhookDeliveries,
+		connect.WithSchema(webhookServiceMethods.ByName("ListWebhookDeliveries")),
+		connect.WithHandlerOptions(opts...),
+	)
+	webhookServiceListWebhookDeliveryAttemptsHandler := connect.NewUnaryHandler(
+		WebhookServiceListWebhookDeliveryAttemptsProcedure,
+		svc.ListWebhookDeliveryAttempts,
+		connect.WithSchema(webhookServiceMethods.ByName("ListWebhookDeliveryAttempts")),
 		connect.WithHandlerOptions(opts...),
 	)
 	webhookServiceUpdateWebhookHandler := connect.NewUnaryHandler(
@@ -237,6 +283,10 @@ func NewWebhookServiceHandler(svc WebhookServiceHandler, opts ...connect.Handler
 			webhookServiceGetWebhookHandler.ServeHTTP(w, r)
 		case WebhookServiceListWebhooksProcedure:
 			webhookServiceListWebhooksHandler.ServeHTTP(w, r)
+		case WebhookServiceListWebhookDeliveriesProcedure:
+			webhookServiceListWebhookDeliveriesHandler.ServeHTTP(w, r)
+		case WebhookServiceListWebhookDeliveryAttemptsProcedure:
+			webhookServiceListWebhookDeliveryAttemptsHandler.ServeHTTP(w, r)
 		case WebhookServiceUpdateWebhookProcedure:
 			webhookServiceUpdateWebhookHandler.ServeHTTP(w, r)
 		case WebhookServiceDeleteWebhookProcedure:
@@ -264,6 +314,14 @@ func (UnimplementedWebhookServiceHandler) GetWebhook(context.Context, *connect.R
 
 func (UnimplementedWebhookServiceHandler) ListWebhooks(context.Context, *connect.Request[v1.ListWebhooksRequest]) (*connect.Response[v1.ListWebhooksResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("webhook.v1.WebhookService.ListWebhooks is not implemented"))
+}
+
+func (UnimplementedWebhookServiceHandler) ListWebhookDeliveries(context.Context, *connect.Request[v1.ListWebhookDeliveriesRequest]) (*connect.Response[v1.ListWebhookDeliveriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("webhook.v1.WebhookService.ListWebhookDeliveries is not implemented"))
+}
+
+func (UnimplementedWebhookServiceHandler) ListWebhookDeliveryAttempts(context.Context, *connect.Request[v1.ListWebhookDeliveryAttemptsRequest]) (*connect.Response[v1.ListWebhookDeliveryAttemptsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("webhook.v1.WebhookService.ListWebhookDeliveryAttempts is not implemented"))
 }
 
 func (UnimplementedWebhookServiceHandler) UpdateWebhook(context.Context, *connect.Request[v1.UpdateWebhookRequest]) (*connect.Response[v1.UpdateWebhookResponse], error) {

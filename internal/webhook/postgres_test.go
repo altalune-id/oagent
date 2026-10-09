@@ -22,7 +22,7 @@ var errBoom = context.DeadlineExceeded
 
 func endpointColumns() []string {
 	return []string{
-		"webhook_endpoints.id", "webhook_endpoints.org_id", "webhook_endpoints.project_id",
+		"webhook_endpoints.id", "webhook_endpoints.public_id", "webhook_endpoints.org_id", "webhook_endpoints.project_id",
 		"webhook_endpoints.url", "webhook_endpoints.description", "webhook_endpoints.event_types",
 		"webhook_endpoints.secret_primary", "webhook_endpoints.secret_secondary", "webhook_endpoints.active",
 		"webhook_endpoints.created_at", "webhook_endpoints.updated_at",
@@ -56,10 +56,11 @@ func storeCtx(org, project uuid.UUID) context.Context {
 
 func TestPgEndpointRowToEndpoint(t *testing.T) {
 	raw, _ := marshalEventTypes([]events.Type{events.AgentCreated})
-	row := pgEndpointRow{ID: uuid.New(), OrgID: uuid.New(), ProjectID: uuid.New(), URL: "u", EventTypes: raw, Active: true}
+	row := pgEndpointRow{ID: uuid.New(), PublicID: "pub", OrgID: uuid.New(), ProjectID: uuid.New(), URL: "u", EventTypes: raw, Active: true}
 	e, err := row.toEndpoint()
 	require.NoError(t, err)
 	assert.Equal(t, "u", e.URL)
+	assert.Equal(t, "pub", e.PublicID)
 	assert.Equal(t, []events.Type{events.AgentCreated}, e.EventTypes)
 
 	_, err = (&pgEndpointRow{EventTypes: "nope"}).toEndpoint()

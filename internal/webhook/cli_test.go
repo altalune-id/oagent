@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
@@ -66,6 +67,24 @@ func (f *fakeClient) PingWebhook(context.Context, *connect.Request[webhookv1.Pin
 	return connect.NewResponse(&webhookv1.PingWebhookResponse{}), nil
 }
 
+func (f *fakeClient) ListWebhookDeliveries(context.Context, *connect.Request[webhookv1.ListWebhookDeliveriesRequest]) (*connect.Response[webhookv1.ListWebhookDeliveriesResponse], error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return connect.NewResponse(&webhookv1.ListWebhookDeliveriesResponse{
+		Deliveries: []*webhookv1.WebhookDelivery{{Id: "d1", EventType: "agent.created", Status: "delivered", Attempt: 1, CreatedAt: timestamppb.Now()}},
+	}), nil
+}
+
+func (f *fakeClient) ListWebhookDeliveryAttempts(context.Context, *connect.Request[webhookv1.ListWebhookDeliveryAttemptsRequest]) (*connect.Response[webhookv1.ListWebhookDeliveryAttemptsResponse], error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return connect.NewResponse(&webhookv1.ListWebhookDeliveryAttemptsResponse{
+		Attempts: []*webhookv1.WebhookAttempt{{Attempt: 1, StatusCode: 200, DurationMs: 3, CreatedAt: timestamppb.Now()}},
+	}), nil
+}
+
 var _ webhookv1connect.WebhookServiceClient = (*fakeClient)(nil)
 
 func runCmd(t *testing.T, client *fakeClient, args ...string) error {
@@ -88,6 +107,8 @@ func TestCLICommands(t *testing.T) {
 	require.NoError(t, runCmd(t, c, "delete", "w1", "--org-id", "o", "--project-id", "p"))
 	require.NoError(t, runCmd(t, c, "rotate", "w1", "--org-id", "o", "--project-id", "p"))
 	require.NoError(t, runCmd(t, c, "ping", "w1", "--org-id", "o", "--project-id", "p"))
+	require.NoError(t, runCmd(t, c, "deliveries", "w1", "--org-id", "o", "--project-id", "p"))
+	require.NoError(t, runCmd(t, c, "attempts", "w1", "d1", "--org-id", "o", "--project-id", "p"))
 }
 
 func TestCLIJSON(t *testing.T) {
@@ -108,4 +129,6 @@ func TestCLIErrors(t *testing.T) {
 	assert.Error(t, runCmd(t, c, "delete", "w1", "--org-id", "o", "--project-id", "p"))
 	assert.Error(t, runCmd(t, c, "rotate", "w1", "--org-id", "o", "--project-id", "p"))
 	assert.Error(t, runCmd(t, c, "ping", "w1", "--org-id", "o", "--project-id", "p"))
+	assert.Error(t, runCmd(t, c, "deliveries", "w1", "--org-id", "o", "--project-id", "p"))
+	assert.Error(t, runCmd(t, c, "attempts", "w1", "d1", "--org-id", "o", "--project-id", "p"))
 }

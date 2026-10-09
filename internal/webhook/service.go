@@ -15,14 +15,16 @@ import (
 	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/kernel/outbox"
 	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/nanoid"
 	"altalune.id/oagent/sealer"
 )
 
 const eventIDPrefix = "evt_"
 
-// ProjectSlugs resolves a project's current slug for the envelope.
-type ProjectSlugs interface {
-	SlugOf(ctx context.Context, projectID uuid.UUID) (string, error)
+// Resolver resolves the public identifiers and slug the envelope carries; internal UUIDs are never exposed.
+type Resolver interface {
+	ProjectRef(ctx context.Context, projectID uuid.UUID) (slug, publicID string, err error)
+	OrgRef(ctx context.Context, orgID uuid.UUID) (publicID string, err error)
 }
 
 // Envelope is the JSON body every delivery of one event carries; it is the public wire contract.
@@ -35,11 +37,11 @@ type Envelope struct {
 	Data       any            `json:"data"`
 }
 
-// EnvelopeTenant names the org and project an event belongs to.
+// EnvelopeTenant names the org and project an event belongs to, by their public ids and slug.
 type EnvelopeTenant struct {
-	OrgID       uuid.UUID `json:"org_id"`
-	ProjectID   uuid.UUID `json:"project_id"`
-	ProjectSlug string    `json:"project_slug"`
+	OrgID       string `json:"org_id"`
+	ProjectID   string `json:"project_id"`
+	ProjectSlug string `json:"project_slug"`
 }
 
 func envelopeType(payload []byte) (events.Type, error) {
@@ -62,7 +64,7 @@ type Service struct {
 	unexpected apperror.UnexpectedFunc
 	sealer     sealer.Sealer
 	outbox     outbox.Store
-	projects   ProjectSlugs
+	resolver   Resolver
 
 	allowInsecureURL bool
 }
@@ -83,7 +85,7 @@ func (s *Service) validateOpts() []ValidateOption {
 // NewService binds the service to its dependencies.
 func NewService(
 	store Store, log *slog.Logger, unexpected apperror.UnexpectedFunc,
-	sl sealer.Sealer, ob outbox.Store, projects ProjectSlugs, opts ...ServiceOption,
+	sl sealer.Sealer, ob outbox.Store, resolver Resolver, opts ...ServiceOption,
 ) *Service {
 	if log == nil {
 		log = slog.Default()
@@ -94,7 +96,7 @@ func NewService(
 		unexpected: unexpected,
 		sealer:     sl,
 		outbox:     ob,
-		projects:   projects,
+		resolver:   resolver,
 	}
 	for _, opt := range opts {
 		opt(svc)
@@ -260,27 +262,83 @@ func (s *Service) SendTest(ctx context.Context, id uuid.UUID) error {
 		err := &events.UnknownTypeError{Type: events.WebhookPing}
 		return s.unexpected(ctx, "webhook.SendTest: lookup", err, "endpoint_id", id)
 	}
-	if err := s.fanOut(ctx, e.OrgID, e.ProjectID, spec, events.WebhookPingV1{EndpointID: e.ID}, []*Endpoint{e}); err != nil {
+	if err := s.fanOut(ctx, e.OrgID, e.ProjectID, spec, events.WebhookPingV1{EndpointID: e.PublicID}, []*Endpoint{e}); err != nil {
 		return s.unexpected(ctx, "webhook.SendTest: enqueue", err, "endpoint_id", id)
 	}
 	return nil
 }
 
-func (s *Service) fanOut(ctx context.Context, orgID, projectID uuid.UUID, spec events.Spec, data any, targets []*Endpoint) error {
-	slug, err := s.projects.SlugOf(ctx, projectID)
-	if err != nil {
-		return fmt.Errorf("project slug: %w", err)
+// MaxDeliveriesListed caps one Deliveries call.
+const MaxDeliveriesListed = 50
+
+// Delivery is one outbox delivery to an endpoint, with the event type read from its envelope.
+type Delivery struct {
+	outbox.Entry
+	EventType events.Type
+}
+
+// Deliveries returns up to limit deliveries of the identified endpoint, newest first.
+func (s *Service) Deliveries(ctx context.Context, id uuid.UUID, limit int) ([]Delivery, error) {
+	if _, err := s.load(ctx, "webhook.Deliveries", id); err != nil {
+		return nil, err
 	}
-	eventID, err := uuid.NewV7()
+	entries, err := s.outbox.ListByTarget(ctx, id.String(), min(limit, MaxDeliveriesListed))
+	if err != nil {
+		return nil, s.unexpected(ctx, "webhook.Deliveries: list", err, "endpoint_id", id)
+	}
+	out := make([]Delivery, len(entries))
+	for i, e := range entries {
+		out[i] = s.toDelivery(ctx, id, e)
+	}
+	return out, nil
+}
+
+// Attempts returns the recorded attempts of one delivery to the identified endpoint, newest first.
+func (s *Service) Attempts(ctx context.Context, id, deliveryID uuid.UUID) ([]Attempt, error) {
+	if _, err := s.load(ctx, "webhook.Attempts", id); err != nil {
+		return nil, err
+	}
+	out, err := s.store.ListAttempts(ctx, id, deliveryID)
+	if err != nil {
+		return nil, s.unexpected(ctx, "webhook.Attempts: list", err, "endpoint_id", id, "delivery_id", deliveryID)
+	}
+	return out, nil
+}
+
+func (s *Service) toDelivery(ctx context.Context, endpointID uuid.UUID, e outbox.Entry) Delivery {
+	typ, err := envelopeType(e.Payload)
+	if err != nil {
+		s.log.WarnContext(ctx, "webhook: delivery envelope has no readable type",
+			"endpoint_id", endpointID, "delivery_id", e.ID, "err", err)
+		return Delivery{Entry: e}
+	}
+	return Delivery{Entry: e, EventType: typ}
+}
+
+func (s *Service) fanOut(ctx context.Context, orgID, projectID uuid.UUID, spec events.Spec, data any, targets []*Endpoint) error {
+	slug, projectPublicID, err := s.resolver.ProjectRef(ctx, projectID)
+	if err != nil {
+		return fmt.Errorf("project ref: %w", err)
+	}
+	orgPublicID, err := s.resolver.OrgRef(ctx, orgID)
+	if err != nil {
+		return fmt.Errorf("org ref: %w", err)
+	}
+	eventPublicID, err := nanoid.New(21)
+	if err != nil {
+		return fmt.Errorf("event id: %w", err)
+	}
+	// NOTE: the outbox dedup key stays an internal uuid; only the envelope exposes the public id.
+	eventUUID, err := uuid.NewV7()
 	if err != nil {
 		return fmt.Errorf("event id: %w", err)
 	}
 	body, err := json.Marshal(Envelope{
-		ID:         eventIDPrefix + eventID.String(),
+		ID:         eventIDPrefix + eventPublicID,
 		Type:       spec.Type,
 		APIVersion: spec.APIVersion(),
 		CreatedAt:  time.Now().UTC().Truncate(time.Second),
-		Tenant:     EnvelopeTenant{OrgID: orgID, ProjectID: projectID, ProjectSlug: slug},
+		Tenant:     EnvelopeTenant{OrgID: orgPublicID, ProjectID: projectPublicID, ProjectSlug: slug},
 		Data:       data,
 	})
 	if err != nil {
@@ -293,7 +351,7 @@ func (s *Service) fanOut(ctx context.Context, orgID, projectID uuid.UUID, spec e
 		}
 		if err := s.outbox.Enqueue(ctx, outbox.Entry{
 			ID:        entryID,
-			EventID:   eventID,
+			EventID:   eventUUID,
 			OrgID:     orgID,
 			ProjectID: projectID,
 			Target:    e.ID.String(),

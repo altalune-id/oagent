@@ -94,9 +94,18 @@ func (s *fakeStore) SaveAttempt(_ context.Context, a Attempt) error {
 	return nil
 }
 
+func (s *fakeStore) ListAttempts(context.Context, uuid.UUID, uuid.UUID) ([]Attempt, error) {
+	if s.attemptErr != nil {
+		return nil, s.attemptErr
+	}
+	return s.attempts, nil
+}
+
 type fakeOutbox struct {
 	outbox.Store
 	enqueued []outbox.Entry
+	entries  []outbox.Entry
+	listErr  error
 }
 
 func (f *fakeOutbox) Enqueue(_ context.Context, e outbox.Entry) error {
@@ -104,13 +113,27 @@ func (f *fakeOutbox) Enqueue(_ context.Context, e outbox.Entry) error {
 	return nil
 }
 
-type fakeSlugs struct{ err error }
+func (f *fakeOutbox) ListByTarget(context.Context, string, int) ([]outbox.Entry, error) {
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	return f.entries, nil
+}
 
-func (f fakeSlugs) SlugOf(context.Context, uuid.UUID) (string, error) {
+type fakeResolver struct{ err error }
+
+func (f fakeResolver) ProjectRef(context.Context, uuid.UUID) (string, string, error) {
+	if f.err != nil {
+		return "", "", f.err
+	}
+	return "proj", "prj_pub", nil
+}
+
+func (f fakeResolver) OrgRef(context.Context, uuid.UUID) (string, error) {
 	if f.err != nil {
 		return "", f.err
 	}
-	return "proj", nil
+	return "org_pub", nil
 }
 
 func unexpectedStub(_ context.Context, message string, cause error, _ ...any) *apperror.AppError {
@@ -120,7 +143,7 @@ func unexpectedStub(_ context.Context, message string, cause error, _ ...any) *a
 func testService(t *testing.T, store Store, ob outbox.Store) *Service {
 	t.Helper()
 	sl := testSealer(t)
-	return NewService(store, nil, unexpectedStub, sl, ob, fakeSlugs{})
+	return NewService(store, nil, unexpectedStub, sl, ob, fakeResolver{})
 }
 
 func tenantCtx(org, project uuid.UUID) context.Context {
@@ -159,7 +182,7 @@ func TestServiceCreateListError(t *testing.T) {
 }
 
 func TestServiceCreateSealerUnavailable(t *testing.T) {
-	svc := NewService(&fakeStore{}, nil, unexpectedStub, sealer.Disabled(), &fakeOutbox{}, fakeSlugs{})
+	svc := NewService(&fakeStore{}, nil, unexpectedStub, sealer.Disabled(), &fakeOutbox{}, fakeResolver{})
 	_, _, err := svc.Create(tenantCtx(uuid.New(), uuid.New()), "https://example.com", "", []events.Type{events.AgentCreated})
 	assert.True(t, sealer.IsUnavailableError(err))
 }
@@ -224,7 +247,7 @@ func TestServiceRotate(t *testing.T) {
 	require.NoError(t, err)
 	e.Secrets = SealedSecrets{Primary: primary}
 	store := &fakeStore{endpoints: []*Endpoint{e}}
-	svc := NewService(store, nil, unexpectedStub, sl, &fakeOutbox{}, fakeSlugs{})
+	svc := NewService(store, nil, unexpectedStub, sl, &fakeOutbox{}, fakeResolver{})
 
 	secret, err := svc.Rotate(tenantCtx(org, project), e.ID)
 	require.NoError(t, err)
@@ -238,7 +261,7 @@ func TestServiceRotateConflict(t *testing.T) {
 	sl := testSealer(t)
 	e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project, Secrets: SealedSecrets{Primary: []byte("junk")}}
 	store := &fakeStore{endpoints: []*Endpoint{e}, secretsErr: &SecretConflictError{ID: e.ID.String()}}
-	svc := NewService(store, nil, unexpectedStub, sl, &fakeOutbox{}, fakeSlugs{})
+	svc := NewService(store, nil, unexpectedStub, sl, &fakeOutbox{}, fakeResolver{})
 
 	_, err := svc.Rotate(tenantCtx(org, project), e.ID)
 	assert.True(t, IsSecretConflictError(err))
@@ -249,7 +272,7 @@ func TestServiceRetireSecondary(t *testing.T) {
 	sl := testSealer(t)
 	e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project, Secrets: SealedSecrets{Primary: []byte("p"), Secondary: []byte("s")}}
 	store := &fakeStore{endpoints: []*Endpoint{e}}
-	svc := NewService(store, nil, unexpectedStub, sl, &fakeOutbox{}, fakeSlugs{})
+	svc := NewService(store, nil, unexpectedStub, sl, &fakeOutbox{}, fakeResolver{})
 
 	require.NoError(t, svc.RetireSecondary(tenantCtx(org, project), e.ID))
 	require.Len(t, store.savedSecrets, 1)
@@ -291,7 +314,7 @@ func TestServiceEnqueueSlugError(t *testing.T) {
 	org, project := uuid.New(), uuid.New()
 	e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project, Active: true, EventTypes: []events.Type{events.AgentCreated}}
 	store := &fakeStore{endpoints: []*Endpoint{e}}
-	svc := NewService(store, nil, unexpectedStub, testSealer(t), &fakeOutbox{}, fakeSlugs{err: errors.New("boom")})
+	svc := NewService(store, nil, unexpectedStub, testSealer(t), &fakeOutbox{}, fakeResolver{err: errors.New("boom")})
 	assert.Error(t, svc.Enqueue(tenantCtx(org, project), events.AgentCreated, events.AgentCreatedV1{}))
 }
 

@@ -21,9 +21,12 @@ const WebhookCreateToolName = "webhook_create"
 // WebhookListToolName is the MCP tool name for WebhookService.ListWebhooks.
 const WebhookListToolName = "webhook_list"
 
+// WebhookDeliveriesToolName is the MCP tool name for WebhookService.ListWebhookDeliveries.
+const WebhookDeliveriesToolName = "webhook_deliveries"
+
 // WebhookServiceToolNames returns every MCP tool name generated for WebhookService.
 func WebhookServiceToolNames() []string {
-	return []string{WebhookCreateToolName, WebhookListToolName}
+	return []string{WebhookCreateToolName, WebhookListToolName, WebhookDeliveriesToolName}
 }
 
 // RegisterWebhookServiceTools registers every MCP-annotated WebhookService method on reg, against h and under the scope scopeFor resolves for each tool name.
@@ -79,6 +82,33 @@ func RegisterWebhookServiceTools(reg *mcp.Registry, h webhookv1connect.WebhookSe
 			body, err := protojson.Marshal(resp.Msg)
 			if err != nil {
 				return nil, fmt.Errorf("mcp: %s: encode result: %w", WebhookListToolName, err)
+			}
+			return json.RawMessage(body), nil
+		},
+	}, h)
+	reg.Register(mcp.ToolSpec{
+		Name:        WebhookDeliveriesToolName,
+		Description: "List recent deliveries of a webhook endpoint, newest first.",
+		Scope:       scopeFor(WebhookDeliveriesToolName),
+		Mutation:    false,
+		Destructive: false,
+		UI:          "ui://oagent/app",
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string"},"projectId":{"type":"string"},"id":{"type":"string"},"limit":{"type":"integer"}},"required":["orgId","projectId","id"],"additionalProperties":false}`),
+		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
+			if len(input) == 0 {
+				input = json.RawMessage(`{}`)
+			}
+			var req v1.ListWebhookDeliveriesRequest
+			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
+				return nil, mcp.NewInvalidArgumentsError(WebhookDeliveriesToolName, err)
+			}
+			resp, err := h.ListWebhookDeliveries(ctx, connect.NewRequest(&req))
+			if err != nil {
+				return nil, err
+			}
+			body, err := protojson.Marshal(resp.Msg)
+			if err != nil {
+				return nil, fmt.Errorf("mcp: %s: encode result: %w", WebhookDeliveriesToolName, err)
 			}
 			return json.RawMessage(body), nil
 		},
