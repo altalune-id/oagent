@@ -11,6 +11,7 @@ import (
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
+	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
 	"altalune.id/oagent/httpclient"
 )
 
@@ -23,6 +24,7 @@ type Client struct {
 	Projects projectv1connect.ProjectServiceClient
 	Agents   agentv1connect.AgentServiceClient
 	APIKeys  apikeyv1connect.APIKeyServiceClient
+	Webhooks webhookv1connect.WebhookServiceClient
 }
 
 // NewClient points every client at baseURL+"/api"; a non-empty token becomes the Bearer header.
@@ -38,6 +40,7 @@ func NewClient(baseURL, token string) *Client {
 		Projects: projectv1connect.NewProjectServiceClient(httpClient, base, opts...),
 		Agents:   agentv1connect.NewAgentServiceClient(httpClient, base, opts...),
 		APIKeys:  apikeyv1connect.NewAPIKeyServiceClient(httpClient, base, opts...),
+		Webhooks: webhookv1connect.NewWebhookServiceClient(httpClient, base, opts...),
 	}
 }
 

@@ -13,10 +13,12 @@ import (
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
+	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
+	"altalune.id/oagent/internal/webhook"
 )
 
 // Options configures the optional parts of the controlplane surface.
@@ -31,6 +33,7 @@ type Services struct {
 	Projects *project.Service
 	Agents   *agent.Service
 	APIKeys  *apikey.Service
+	Webhooks *webhook.Service
 }
 
 // Server holds the wired Connect handlers.
@@ -39,11 +42,13 @@ type Server struct {
 	Projects *project.Service
 	Agents   *agent.Service
 	APIKeys  *apikey.Service
+	Webhooks *webhook.Service
 
 	OrgSvc     *org.OrgService
 	ProjectSvc *project.ProjectService
 	AgentSvc   *agent.AgentService
 	APIKeySvc  *apikey.APIKeyService
+	WebhookSvc *webhook.WebhookControlPlane
 
 	OpenAPIEnabled   bool
 	OpenAPIBasicAuth *BasicAuth
@@ -58,6 +63,7 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 		Projects:         svcs.Projects,
 		Agents:           svcs.Agents,
 		APIKeys:          svcs.APIKeys,
+		Webhooks:         svcs.Webhooks,
 		OrgSvc:           org.NewControlPlane(svcs.Orgs),
 		OpenAPIEnabled:   opts.OpenAPIEnabled,
 		OpenAPIBasicAuth: opts.OpenAPIBasicAuth,
@@ -71,6 +77,9 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 	}
 	if svcs.APIKeys != nil {
 		s.APIKeySvc = apikey.NewControlPlane(svcs.APIKeys)
+	}
+	if svcs.Webhooks != nil {
+		s.WebhookSvc = webhook.NewControlPlane(svcs.Webhooks)
 	}
 	return s
 }
@@ -91,6 +100,10 @@ func (s *Server) Handler(basePath string) http.Handler {
 	if s.APIKeySvc != nil {
 		keyPath, keyHandler := apikeyv1connect.NewAPIKeyServiceHandler(s.APIKeySvc, s.handlerOptions()...)
 		inner.Handle(keyPath, keyHandler)
+	}
+	if s.WebhookSvc != nil {
+		hookPath, hookHandler := webhookv1connect.NewWebhookServiceHandler(s.WebhookSvc, s.handlerOptions()...)
+		inner.Handle(hookPath, hookHandler)
 	}
 
 	if s.OpenAPIEnabled {

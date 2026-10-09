@@ -15,12 +15,14 @@ import (
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
+	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/boot"
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
+	"altalune.id/oagent/internal/webhook"
 	"altalune.id/oagent/reqid"
 	"altalune.id/oagent/version"
 )
@@ -121,6 +123,9 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 	apiKeyCmd := apikey.NewCmd(apiKeyClientFn(bootClient))
 	markClientTree(apiKeyCmd)
 
+	webhookCmd := webhook.NewCmd(webhookClientFn(bootClient))
+	markClientTree(webhookCmd)
+
 	root.AddCommand(
 		newServeCmd(bootServer),
 		newMCPCmd(bootServer),
@@ -128,6 +133,7 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 		projectCmd,
 		agentCmd,
 		apiKeyCmd,
+		webhookCmd,
 		newVersionCmd(),
 	)
 	return root
@@ -203,6 +209,17 @@ func apiKeyClientFn(bootClient ClientBootFn) apikey.ClientFn {
 			return nil, err
 		}
 		return client.APIKeys, nil
+	}
+}
+
+// webhookClientFn adapts the resolved remote client to the webhook package's ClientFn.
+func webhookClientFn(bootClient ClientBootFn) webhook.ClientFn {
+	return func(cmd *cobra.Command) (webhookv1connect.WebhookServiceClient, error) {
+		client, err := connectClient(cmd, bootClient)
+		if err != nil {
+			return nil, err
+		}
+		return client.Webhooks, nil
 	}
 }
 
