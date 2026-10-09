@@ -18,12 +18,14 @@ const base = computed(() => `/o/${route.params.org}/projects/${projectSlug.value
 const items = computed<NavItem[]>(() => [
   { key: 'overview', label: t('nav.overview'), icon: 'lucide:layout-dashboard', active: route.path === base.value },
   { key: 'agents', label: t('nav.agents'), icon: 'lucide:bot', active: route.path === `${base.value}/agents` },
+  { key: 'webhooks', label: t('webhooks.title'), icon: 'lucide:webhook', active: route.path === `${base.value}/webhooks` },
   { key: 'settings', label: t('nav.settings'), icon: 'lucide:settings', active: route.path.startsWith(`${base.value}/settings`) },
 ])
 
 const targets: Record<string, string> = {
   overview: '',
   agents: '/agents',
+  webhooks: '/webhooks',
   settings: '/settings',
 }
 
