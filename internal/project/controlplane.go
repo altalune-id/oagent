@@ -24,7 +24,10 @@ func NewControlPlane(projects *Service) *ProjectService {
 var _ projectv1connect.ProjectServiceHandler = (*ProjectService)(nil)
 
 // CreateProject creates a project within an organization, minting a slug when one is not supplied.
-func (s *ProjectService) CreateProject(ctx context.Context, req *connect.Request[projectv1.CreateProjectRequest]) (*connect.Response[projectv1.CreateProjectResponse], error) {
+func (s *ProjectService) CreateProject(
+	ctx context.Context,
+	req *connect.Request[projectv1.CreateProjectRequest],
+) (*connect.Response[projectv1.CreateProjectResponse], error) {
 	orgID, err := uuid.Parse(req.Msg.GetOrgId())
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
@@ -37,7 +40,10 @@ func (s *ProjectService) CreateProject(ctx context.Context, req *connect.Request
 }
 
 // GetProject loads a project by id.
-func (s *ProjectService) GetProject(ctx context.Context, req *connect.Request[projectv1.GetProjectRequest]) (*connect.Response[projectv1.GetProjectResponse], error) {
+func (s *ProjectService) GetProject(
+	ctx context.Context,
+	req *connect.Request[projectv1.GetProjectRequest],
+) (*connect.Response[projectv1.GetProjectResponse], error) {
 	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid project id").WithCause(err)
@@ -50,7 +56,10 @@ func (s *ProjectService) GetProject(ctx context.Context, req *connect.Request[pr
 }
 
 // ListProjects lists an organization's projects, ordered by creation time.
-func (s *ProjectService) ListProjects(ctx context.Context, req *connect.Request[projectv1.ListProjectsRequest]) (*connect.Response[projectv1.ListProjectsResponse], error) {
+func (s *ProjectService) ListProjects(
+	ctx context.Context,
+	req *connect.Request[projectv1.ListProjectsRequest],
+) (*connect.Response[projectv1.ListProjectsResponse], error) {
 	orgID, err := uuid.Parse(req.Msg.GetOrgId())
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)

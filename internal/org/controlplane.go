@@ -24,7 +24,10 @@ func NewControlPlane(orgs *Service) *OrgService {
 var _ orgv1connect.OrgServiceHandler = (*OrgService)(nil)
 
 // CreateOrg creates an organization, minting a slug when one is not supplied.
-func (s *OrgService) CreateOrg(ctx context.Context, req *connect.Request[orgv1.CreateOrgRequest]) (*connect.Response[orgv1.CreateOrgResponse], error) {
+func (s *OrgService) CreateOrg(
+	ctx context.Context,
+	req *connect.Request[orgv1.CreateOrgRequest],
+) (*connect.Response[orgv1.CreateOrgResponse], error) {
 	o, err := s.orgs.Create(ctx, CreateRequest{Slug: req.Msg.GetSlug(), Name: req.Msg.GetName()})
 	if err != nil {
 		return nil, err
@@ -33,7 +36,10 @@ func (s *OrgService) CreateOrg(ctx context.Context, req *connect.Request[orgv1.C
 }
 
 // GetOrg loads an organization by id.
-func (s *OrgService) GetOrg(ctx context.Context, req *connect.Request[orgv1.GetOrgRequest]) (*connect.Response[orgv1.GetOrgResponse], error) {
+func (s *OrgService) GetOrg(
+	ctx context.Context,
+	req *connect.Request[orgv1.GetOrgRequest],
+) (*connect.Response[orgv1.GetOrgResponse], error) {
 	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
@@ -46,7 +52,10 @@ func (s *OrgService) GetOrg(ctx context.Context, req *connect.Request[orgv1.GetO
 }
 
 // ListOrgs lists organizations, ordered by creation time.
-func (s *OrgService) ListOrgs(ctx context.Context, _ *connect.Request[orgv1.ListOrgsRequest]) (*connect.Response[orgv1.ListOrgsResponse], error) {
+func (s *OrgService) ListOrgs(
+	ctx context.Context,
+	_ *connect.Request[orgv1.ListOrgsRequest],
+) (*connect.Response[orgv1.ListOrgsResponse], error) {
 	orgs, err := s.orgs.List(ctx)
 	if err != nil {
 		return nil, err

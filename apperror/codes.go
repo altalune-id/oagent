@@ -20,4 +20,10 @@ const (
 	CodeProjectAlreadyExists Code = "PRJ002"
 	CodeProjectInvalidSlug   Code = "PRJ003"
 	CodeProjectInvalidName   Code = "PRJ004"
+
+	CodeAgentNotFound           Code = "AGT001"
+	CodeAgentAlreadyExists      Code = "AGT002"
+	CodeAgentInvalidSlug        Code = "AGT003"
+	CodeAgentInvalidName        Code = "AGT004"
+	CodeAgentInvalidDescription Code = "AGT005"
 )

@@ -152,7 +152,10 @@ func newTool(method *protogen.Method, spec *mcpv1.Tool, opts Options) (tool, err
 
 	description := cmp.Or(spec.GetDescription(), comment(method.Comments.Leading))
 	if description == "" {
-		return tool{}, fmt.Errorf("%s: tool %q has no description; set the tool option's description or give the rpc a leading comment", full, name)
+		return tool{}, fmt.Errorf(
+			"%s: tool %q has no description; set the tool option's description or give the rpc a leading comment",
+			full, name,
+		)
 	}
 
 	schema, err := inputSchema(method.Input, required)

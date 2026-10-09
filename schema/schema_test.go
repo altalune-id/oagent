@@ -14,7 +14,7 @@ import (
 func TestNew_TargetVersion(t *testing.T) {
 	v, err := New(migrator.Config{}).TargetVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(2), v)
+	assert.Equal(t, int64(3), v)
 }
 
 func TestMigrationsFS(t *testing.T) {

@@ -11,8 +11,10 @@ import (
 	"github.com/spf13/pflag"
 
 	"altalune.id/oagent/config"
+	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
+	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/boot"
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/org"
@@ -111,11 +113,15 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 	projectCmd := project.NewCmd(projectClientFn(bootClient))
 	markClientTree(projectCmd)
 
+	agentCmd := agent.NewCmd(agentClientFn(bootClient))
+	markClientTree(agentCmd)
+
 	root.AddCommand(
 		newServeCmd(bootServer),
 		newMCPCmd(bootServer),
 		orgCmd,
 		projectCmd,
+		agentCmd,
 		newVersionCmd(),
 	)
 	return root
@@ -169,6 +175,17 @@ func projectClientFn(bootClient ClientBootFn) project.ClientFn {
 			return nil, err
 		}
 		return client.Projects, nil
+	}
+}
+
+// agentClientFn adapts the resolved remote client to the agent package's ClientFn.
+func agentClientFn(bootClient ClientBootFn) agent.ClientFn {
+	return func(cmd *cobra.Command) (agentv1connect.AgentServiceClient, error) {
+		client, err := connectClient(cmd, bootClient)
+		if err != nil {
+			return nil, err
+		}
+		return client.Agents, nil
 	}
 }
 

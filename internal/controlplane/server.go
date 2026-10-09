@@ -9,8 +9,10 @@ import (
 	"connectrpc.com/connect"
 
 	"altalune.id/oagent/apperror"
+	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
+	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
 )
@@ -25,15 +27,18 @@ type Options struct {
 type Services struct {
 	Orgs     *org.Service
 	Projects *project.Service
+	Agents   *agent.Service
 }
 
 // Server holds the wired Connect handlers.
 type Server struct {
 	Orgs     *org.Service
 	Projects *project.Service
+	Agents   *agent.Service
 
 	OrgSvc     *org.OrgService
 	ProjectSvc *project.ProjectService
+	AgentSvc   *agent.AgentService
 
 	OpenAPIEnabled   bool
 	OpenAPIBasicAuth *BasicAuth
@@ -46,6 +51,7 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 	s := &Server{
 		Orgs:             svcs.Orgs,
 		Projects:         svcs.Projects,
+		Agents:           svcs.Agents,
 		OrgSvc:           org.NewControlPlane(svcs.Orgs),
 		OpenAPIEnabled:   opts.OpenAPIEnabled,
 		OpenAPIBasicAuth: opts.OpenAPIBasicAuth,
@@ -53,6 +59,9 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 	}
 	if svcs.Projects != nil {
 		s.ProjectSvc = project.NewControlPlane(svcs.Projects)
+	}
+	if svcs.Agents != nil {
+		s.AgentSvc = agent.NewControlPlane(svcs.Agents)
 	}
 	return s
 }
@@ -65,6 +74,10 @@ func (s *Server) Handler(basePath string) http.Handler {
 	if s.ProjectSvc != nil {
 		projectPath, projectHandler := projectv1connect.NewProjectServiceHandler(s.ProjectSvc, s.handlerOptions()...)
 		inner.Handle(projectPath, projectHandler)
+	}
+	if s.AgentSvc != nil {
+		agentPath, agentHandler := agentv1connect.NewAgentServiceHandler(s.AgentSvc, s.handlerOptions()...)
+		inner.Handle(agentPath, agentHandler)
 	}
 
 	if s.OpenAPIEnabled {

@@ -28,7 +28,7 @@ func WithDialTimeout(d time.Duration) Option {
 	return func(s *settings) { s.dialTimeout = d }
 }
 
-// WithTimeout bounds the whole request, including redirects, body reads, and every retry attempt plus the backoff between them; zero keeps DefaultTimeout.
+// WithTimeout bounds the whole request including redirects, body reads and retries; zero keeps DefaultTimeout.
 func WithTimeout(d time.Duration) Option {
 	return func(s *settings) {
 		s.timeout = cmp.Or(d, DefaultTimeout)

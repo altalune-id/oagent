@@ -38,7 +38,10 @@ func newCreateCmd(clientFn ClientFn) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			resp, err := client.CreateProject(cmd.Context(), connect.NewRequest(&projectv1.CreateProjectRequest{OrgId: orgID, Slug: slug, Name: name}))
+			resp, err := client.CreateProject(
+				cmd.Context(),
+				connect.NewRequest(&projectv1.CreateProjectRequest{OrgId: orgID, Slug: slug, Name: name}),
+			)
 			if err != nil {
 				return err
 			}

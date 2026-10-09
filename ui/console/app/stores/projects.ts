@@ -1,6 +1,7 @@
 import { useProjectClient } from '~/composables/project/useProjectClient'
 
 export interface Project {
+  id: string
   orgId: string
   slug: string
   name: string
@@ -30,7 +31,7 @@ export const useProjectsStore = defineStore('projects', () => {
     error.value = ''
     try {
       const res = await client.listProjects({ orgId })
-      items.value = (res.projects ?? []).map(p => ({ orgId: p.orgId, slug: p.slug, name: p.name }))
+      items.value = (res.projects ?? []).map(p => ({ id: p.id, orgId: p.orgId, slug: p.slug, name: p.name }))
       loadedFor = orgId
     }
     catch (e) {

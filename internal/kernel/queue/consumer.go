@@ -296,7 +296,11 @@ func (c *Client) safely(ctx context.Context, subject string, timeout time.Durati
 	defer cancel()
 	defer func() {
 		if r := recover(); r != nil {
-			c.log.ErrorContext(ctx, "queue: handler panicked", slog.String("subject", subject), slog.Any("panic", r), slog.String("stack", string(debug.Stack())))
+			c.log.ErrorContext(ctx, "queue: handler panicked",
+				slog.String("subject", subject),
+				slog.Any("panic", r),
+				slog.String("stack", string(debug.Stack())),
+			)
 			err = fmt.Errorf("queue: handler panicked: %v", r)
 		}
 	}()
@@ -332,7 +336,15 @@ func decodeMessage(p publication, msg jetstream.Msg, n int) (Message, tenant.Con
 	return m, tc, scoped, errors.Join(errs...)
 }
 
-func (c *Consumer) deadLetter(ctx context.Context, h Handler, msg jetstream.Msg, m Message, meta *jetstream.MsgMetadata, reason string, cause error) {
+func (c *Consumer) deadLetter(
+	ctx context.Context,
+	h Handler,
+	msg jetstream.Msg,
+	m Message,
+	meta *jetstream.MsgMetadata,
+	reason string,
+	cause error,
+) {
 	subject := h.Job.Subject()
 	attempts := strconv.FormatUint(meta.NumDelivered, 10)
 	causeText := apperror.TruncateCause(cause.Error(), dlqErrorMaxLen)

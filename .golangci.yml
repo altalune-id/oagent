@@ -14,6 +14,7 @@ linters:
     - gochecknoglobals
     - gocritic
     - gosec
+    - lll
     - misspell
     - modernize
     - nilerr
@@ -24,6 +25,9 @@ linters:
     - whitespace
 
   settings:
+    lll:
+      line-length: 140
+      tab-width: 1
     errorlint:
       errorf: true
       asserts: true
@@ -120,8 +124,12 @@ linters:
       - path: gen/
         linters:
           - all
+      - path: cmd/gen-config-example/
+        linters:
+          - lll
       - path: _test\.go
         linters:
+          - lll
           - errcheck
           - gochecknoglobals
           - gocritic

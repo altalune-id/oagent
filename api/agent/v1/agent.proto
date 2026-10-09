@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package agent.v1;
+
+import "google/protobuf/timestamp.proto";
+import "mcp/v1/annotations.proto";
+
+option go_package = "altalune.id/oagent/gen/go/agent/v1;agentv1";
+
+service AgentService {
+  rpc CreateAgent(CreateAgentRequest) returns (CreateAgentResponse) {
+    option (mcp.v1.tool) = {
+      name: "agent_create"
+      description: "Create an agent within a project, minting a slug when one is not supplied."
+      mutation: true
+      destructive: false
+      ui: "app"
+    };
+  }
+  rpc GetAgent(GetAgentRequest) returns (GetAgentResponse) {
+    option (mcp.v1.tool) = {
+      name: "agent_get"
+      description: "Get an agent by id."
+      required: ["id"]
+      ui: "app"
+    };
+  }
+  rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse) {
+    option (mcp.v1.tool) = {
+      name: "agent_list"
+      description: "List agents in a project."
+      required: ["project_id"]
+      ui: "app"
+    };
+  }
+  rpc UpdateAgent(UpdateAgentRequest) returns (UpdateAgentResponse) {
+    option (mcp.v1.tool) = {
+      name: "agent_update"
+      description: "Update an agent's name and description."
+      required: ["id", "name"]
+      mutation: true
+      destructive: false
+      ui: "app"
+    };
+  }
+  rpc DeleteAgent(DeleteAgentRequest) returns (DeleteAgentResponse) {
+    option (mcp.v1.tool) = {
+      name: "agent_delete"
+      description: "Delete an agent by id."
+      required: ["id"]
+      mutation: true
+      destructive: true
+      ui: "app"
+    };
+  }
+}
+
+message Agent {
+  string id = 1;
+  string public_id = 2;
+  string org_id = 3;
+  string project_id = 4;
+  string slug = 5;
+  string name = 6;
+  string description = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message CreateAgentRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string slug = 3;
+  string name = 4;
+  string description = 5;
+}
+
+message CreateAgentResponse {
+  Agent agent = 1;
+}
+
+message GetAgentRequest {
+  string id = 1;
+}
+
+message GetAgentResponse {
+  Agent agent = 1;
+}
+
+message ListAgentsRequest {
+  string project_id = 1;
+}
+
+message ListAgentsResponse {
+  repeated Agent agents = 1;
+}
+
+message UpdateAgentRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message UpdateAgentResponse {
+  Agent agent = 1;
+}
+
+message DeleteAgentRequest {
+  string id = 1;
+}
+
+message DeleteAgentResponse {}

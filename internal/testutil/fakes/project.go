@@ -8,7 +8,8 @@ import (
 	"altalune.id/oagent/internal/project"
 )
 
-// ProjectStore is a project.Store test double. ByID/BySlug/List return Project/Projects (or Err); Save records the project and returns SaveFn/Err.
+// ProjectStore is a project.Store test double. ByID/BySlug/List return Project/Projects (or Err);
+// Save records the project and returns SaveFn/Err.
 type ProjectStore struct {
 	Err      error
 	Project  *project.Project

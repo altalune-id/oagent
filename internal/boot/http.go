@@ -25,11 +25,21 @@ func buildAPIHandler(svcs *Services, unexpected apperror.UnexpectedFunc, cfg con
 	if cfg.OpenAPI.RequireBasicAuth {
 		opts.OpenAPIBasicAuth = &controlplane.BasicAuth{User: cfg.OpenAPI.BasicAuthUser, Password: cfg.OpenAPI.BasicAuthPassword}
 	}
-	return controlplane.New(controlplane.Services{Orgs: svcs.Orgs, Projects: svcs.Projects}, unexpected, opts).Handler(basePath)
+	return controlplane.New(controlplane.Services{
+		Orgs:     svcs.Orgs,
+		Projects: svcs.Projects,
+		Agents:   svcs.Agents,
+	}, unexpected, opts).Handler(basePath)
 }
 
 // buildHTTPHandler builds the web surface's handler.
-func buildHTTPHandler(log *slog.Logger, unexpected apperror.UnexpectedFunc, ready func() bool, basePath string, api, consoleHandler, mcpHandler http.Handler) http.Handler {
+func buildHTTPHandler(
+	log *slog.Logger,
+	unexpected apperror.UnexpectedFunc,
+	ready func() bool,
+	basePath string,
+	api, consoleHandler, mcpHandler http.Handler,
+) http.Handler {
 	return web.NewServer(web.ServerOpts{
 		APIHandler: api,
 		MCPHandler: mcpHandler,

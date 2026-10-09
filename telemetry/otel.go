@@ -19,7 +19,11 @@ import (
 )
 
 // Setup wires OTel tracer + meter providers per cfg and returns a drain func for both.
-func Setup(ctx context.Context, cfg Config, log *slog.Logger) (trace.TracerProvider, metric.MeterProvider, func(context.Context) error, error) {
+func Setup(
+	ctx context.Context,
+	cfg Config,
+	log *slog.Logger,
+) (trace.TracerProvider, metric.MeterProvider, func(context.Context) error, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, nil, nil, err
 	}

@@ -10,8 +10,8 @@ import (
 
 // Config is the full runtime configuration.
 type Config struct {
-	Mode      Mode            `yaml:"mode"      mapstructure:"mode"      awareness:"required,bootstrap" validate:"required,oneof=selfhosted cloud"`
-	Env       Env             `yaml:"env"       mapstructure:"env"       awareness:"required,bootstrap" validate:"required,oneof=development production"`
+	Mode      Mode            `yaml:"mode"      mapstructure:"mode"      awareness:"required,bootstrap" validate:"required,oneof=selfhosted cloud"`       //nolint:lll // struct tags are single-line
+	Env       Env             `yaml:"env"       mapstructure:"env"       awareness:"required,bootstrap" validate:"required,oneof=development production"` //nolint:lll // struct tags are single-line
 	HTTP      HTTPConfig      `yaml:"http"      mapstructure:"http"`
 	DB        DBConfig        `yaml:"db"        mapstructure:"db"`
 	Telemetry TelemetryConfig `yaml:"telemetry" mapstructure:"telemetry"`

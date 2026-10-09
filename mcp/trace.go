@@ -31,7 +31,12 @@ func (s *Server) trace(next sdkmcp.MethodHandler) sdkmcp.MethodHandler {
 
 // NOTE: /mcp is one path; this is the only per-tool usage record.
 // SECURITY: tools/call runs on an unrecovered SDK goroutine, so a tool panic must be recovered here.
-func (s *Server) traceToolCall(ctx context.Context, next sdkmcp.MethodHandler, method string, req sdkmcp.Request) (res sdkmcp.Result, err error) {
+func (s *Server) traceToolCall(
+	ctx context.Context,
+	next sdkmcp.MethodHandler,
+	method string,
+	req sdkmcp.Request,
+) (res sdkmcp.Result, err error) {
 	tool := toolNameOf(req)
 	s.logger.InfoContext(ctx, "mcp: tool call", "method", method, "tool", tool)
 	outcome := outcomePanic

@@ -33,7 +33,11 @@ func requestMeta(ctx context.Context) map[string]string {
 	return nil
 }
 
-type telemetrySetupFunc func(context.Context, telemetry.Config, *slog.Logger) (trace.TracerProvider, metric.MeterProvider, func(context.Context) error, error)
+type telemetrySetupFunc func(
+	context.Context,
+	telemetry.Config,
+	*slog.Logger,
+) (trace.TracerProvider, metric.MeterProvider, func(context.Context) error, error)
 
 //nolint:gochecknoglobals // test seam.
 var setupTelemetry telemetrySetupFunc = telemetry.Setup

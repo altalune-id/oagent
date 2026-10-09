@@ -4,6 +4,8 @@ import OrgGetView from "./OrgGetView.vue";
 import OrgListView from "./OrgListView.vue";
 import ProjectCreateView from "./ProjectCreateView.vue";
 import ProjectListView from "./ProjectListView.vue";
+import AgentCreateView from "./AgentCreateView.vue";
+import AgentListView from "./AgentListView.vue";
 import DefaultView from "./DefaultView.vue";
 
 const registry: Record<string, Component> = {
@@ -12,6 +14,8 @@ const registry: Record<string, Component> = {
   org_list: OrgListView,
   project_create: ProjectCreateView,
   project_list: ProjectListView,
+  agent_create: AgentCreateView,
+  agent_list: AgentListView,
 };
 
 // resolveView picks the view for the calling tool, falling back to a generic renderer.

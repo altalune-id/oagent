@@ -7,6 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
 	"altalune.id/oagent/httpclient"
@@ -19,6 +20,7 @@ const DefaultClientTimeout = 30 * time.Second
 type Client struct {
 	Org      orgv1connect.OrgServiceClient
 	Projects projectv1connect.ProjectServiceClient
+	Agents   agentv1connect.AgentServiceClient
 }
 
 // NewClient points every client at baseURL+"/api"; a non-empty token becomes the Bearer header.
@@ -32,6 +34,7 @@ func NewClient(baseURL, token string) *Client {
 	return &Client{
 		Org:      orgv1connect.NewOrgServiceClient(httpClient, base, opts...),
 		Projects: projectv1connect.NewProjectServiceClient(httpClient, base, opts...),
+		Agents:   agentv1connect.NewAgentServiceClient(httpClient, base, opts...),
 	}
 }
 
