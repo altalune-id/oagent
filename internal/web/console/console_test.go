@@ -11,13 +11,13 @@ import (
 
 func testFS() fstest.MapFS {
 	return fstest.MapFS{
-		"index.html":   {Data: []byte(`<script>window.__NUXT__.config={public:{apiUrl:""},app:{baseURL:"/",buildAssetsDir:"/_nuxt/"}}</script><script src="/_nuxt/app.js"></script>`)},
+		"index.html":   {Data: []byte(`<script>window.__NUXT__.config={public:{apiUrl:"",appVersion:""},app:{baseURL:"/",buildAssetsDir:"/_nuxt/"}}</script><script src="/_nuxt/app.js"></script>`)},
 		"_nuxt/app.js": {Data: []byte("console.log(1)")},
 	}
 }
 
 func newSPA(fsys fstest.MapFS) *spa {
-	return &spa{fs: fsys, base: "/console/", apiBase: "/api"}
+	return &spa{fs: fsys, base: "/console/", apiBase: "/api", appVersion: "1.2.3"}
 }
 
 func TestSPA(t *testing.T) {
@@ -31,6 +31,7 @@ func TestSPA(t *testing.T) {
 		assert.Contains(t, rec.Body.String(), `"/console/_nuxt/`)
 		assert.Contains(t, rec.Body.String(), `baseURL:"/console/"`)
 		assert.Contains(t, rec.Body.String(), `apiUrl:"/api"`)
+		assert.Contains(t, rec.Body.String(), `appVersion:"1.2.3"`)
 		assert.Equal(t, "no-cache", rec.Header().Get("Cache-Control"))
 	})
 
@@ -66,5 +67,5 @@ func TestRebaseNoopAtRoot(t *testing.T) {
 
 func TestHandlerReturnsHandler(t *testing.T) {
 	t.Parallel()
-	assert.NotNil(t, Handler("/console/", "/api"))
+	assert.NotNil(t, Handler("/console/", "/api", "1.2.3"))
 }

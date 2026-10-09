@@ -1,25 +1,24 @@
 import { useOrgsStore } from '~/stores/orgs'
+import { useUIStore } from '~/stores/ui'
 
 export function useOrgCreate() {
-  const open = ref(false)
   const name = ref('')
   const slug = ref('')
   const busy = ref(false)
   const error = ref('')
 
   const orgs = useOrgsStore()
+  const ui = useUIStore()
+  const { t } = useI18n()
   const { $orgClient: client } = useNuxtApp()
 
-  function show() {
-    error.value = ''
-    open.value = true
-  }
+  const open = computed(() => ui.orgCreateOpen)
 
   function hide() {
     if (busy.value) {
       return
     }
-    open.value = false
+    ui.closeOrgCreate()
     error.value = ''
   }
 
@@ -35,19 +34,19 @@ export function useOrgCreate() {
       const org = res.org
       if (org) {
         orgs.add({ id: org.id, slug: org.slug, name: org.name })
-        open.value = false
+        ui.closeOrgCreate()
         name.value = ''
         slug.value = ''
         await navigateTo(`/o/${org.slug}`)
       }
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to create organization'
+      error.value = e instanceof Error ? e.message : t('error.create_org')
     }
     finally {
       busy.value = false
     }
   }
 
-  return { open, name, slug, busy, error, show, hide, submit }
+  return { open, name, slug, busy, error, show: ui.openOrgCreate, hide, submit }
 }

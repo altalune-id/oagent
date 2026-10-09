@@ -3,6 +3,7 @@ import { useAPIKeysStore } from '~/stores/apiKeys'
 
 const { orgId } = defineProps<{ orgId: string }>()
 
+const { t } = useI18n()
 const keys = useAPIKeysStore()
 const { $apiKeyClient: client } = useNuxtApp()
 
@@ -14,7 +15,7 @@ async function revoke(id: string) {
     keys.markRevoked(id)
   }
   catch (e) {
-    keys.error = e instanceof Error ? e.message : 'Failed to revoke API key'
+    keys.error = e instanceof Error ? e.message : t('error.revoke_apikey')
   }
 }
 </script>
@@ -24,17 +25,17 @@ async function revoke(id: string) {
     {{ keys.error }}
   </p>
   <p v-else-if="keys.items.length === 0" class="text-sm text-base-content/60">
-    No API keys yet.
+    {{ t('apikeys.empty') }}
   </p>
   <div v-else class="overflow-x-auto">
     <table class="table table-sm">
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Kind</th>
-          <th>Scopes</th>
-          <th>Hint</th>
-          <th>Status</th>
+          <th>{{ t('common.name') }}</th>
+          <th>{{ t('apikeys.col_kind') }}</th>
+          <th>{{ t('apikeys.col_scopes') }}</th>
+          <th>{{ t('apikeys.col_hint') }}</th>
+          <th>{{ t('apikeys.col_status') }}</th>
           <th />
         </tr>
       </thead>
@@ -50,12 +51,12 @@ async function revoke(id: string) {
           </td>
           <td>
             <span class="badge badge-sm" :class="k.revokedAt ? 'badge-error' : 'badge-success'">
-              {{ k.revokedAt ? 'revoked' : 'active' }}
+              {{ k.revokedAt ? t('apikeys.revoked') : t('apikeys.active') }}
             </span>
           </td>
           <td class="text-right">
             <button v-if="!k.revokedAt" class="btn btn-ghost btn-xs text-error" @click="revoke(k.id)">
-              Revoke
+              {{ t('common.revoke') }}
             </button>
           </td>
         </tr>

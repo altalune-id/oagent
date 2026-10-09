@@ -24,3 +24,11 @@ export const Default: Story = {
     template: '<div class="flex h-64"><SidebarNav v-bind="args" /></div>',
   }),
 }
+
+export const WithFooter: Story = {
+  render: args => ({
+    components: { SidebarNav },
+    setup: () => ({ args }),
+    template: '<div class="flex h-64"><SidebarNav v-bind="args"><template #footer>oagent v0.1.0-dev</template></SidebarNav></div>',
+  }),
+}

@@ -1,24 +1,17 @@
 <script setup lang="ts">
-import AppButton from '~/components/ui/AppButton.vue'
+import ThemeToggle from '~/components/ui/ThemeToggle.vue'
+import { useTheme } from '~/components/layout/useTheme'
 
-const theme = useState<'light' | 'dark'>('theme', () => 'light')
-
-function apply(value: 'light' | 'dark') {
-  theme.value = value
-  if (import.meta.client) {
-    document.documentElement.setAttribute('data-theme', value)
-  }
-}
-
-function toggle() {
-  apply(theme.value === 'light' ? 'dark' : 'light')
-}
-
-onMounted(() => apply(theme.value))
+const { t } = useI18n()
+const { mode, supportsMode, toggle } = useTheme()
 </script>
 
 <template>
-  <AppButton variant="ghost" size="sm" @click="toggle">
-    {{ theme === 'light' ? 'Dark' : 'Light' }}
-  </AppButton>
+  <ThemeToggle
+    v-if="supportsMode"
+    :mode="mode"
+    :light-label="t('theme.light')"
+    :dark-label="t('theme.dark')"
+    @toggle="toggle"
+  />
 </template>

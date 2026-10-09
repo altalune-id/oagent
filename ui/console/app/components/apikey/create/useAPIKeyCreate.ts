@@ -15,6 +15,7 @@ export function useAPIKeyCreate(orgId: string) {
   const plaintext = ref('')
 
   const keys = useAPIKeysStore()
+  const { t } = useI18n()
   const { $apiKeyClient: client } = useNuxtApp()
 
   function show() {
@@ -61,7 +62,7 @@ export function useAPIKeyCreate(orgId: string) {
       plaintext.value = res.plaintext
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to create API key'
+      error.value = e instanceof Error ? e.message : t('error.create_apikey')
     }
     finally {
       busy.value = false

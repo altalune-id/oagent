@@ -9,6 +9,7 @@ export function useAgentCreate(orgId: string, projectId: string) {
   const error = ref('')
 
   const agents = useAgentsStore()
+  const { t } = useI18n()
   const { $agentClient: client } = useNuxtApp()
 
   function show() {
@@ -43,7 +44,7 @@ export function useAgentCreate(orgId: string, projectId: string) {
       }
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to create agent'
+      error.value = e instanceof Error ? e.message : t('error.create_agent')
     }
     finally {
       busy.value = false

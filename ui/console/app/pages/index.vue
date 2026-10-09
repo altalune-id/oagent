@@ -1,40 +1,39 @@
 <script setup lang="ts">
-import OrgCreateModal from '~/components/org/create/OrgCreateModal.vue'
+import AppButton from '~/components/ui/AppButton.vue'
+import { useLanding } from '~/components/layout/useLanding'
 import { useOrgsStore } from '~/stores/orgs'
+import { useUIStore } from '~/stores/ui'
 
-useHead({ title: 'Organizations · oagent' })
+const { t } = useI18n()
 const orgs = useOrgsStore()
+const ui = useUIStore()
+const { resolve } = useLanding()
+
 await orgs.ensureLoaded()
+
+if (orgs.items.length) {
+  await navigateTo(await resolve(), { replace: true })
+}
 </script>
 
 <template>
   <div class="mx-auto w-full max-w-3xl px-6 py-10">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold">Organizations</h1>
-        <p class="mt-1 text-sm text-base-content/60">Pick an organization to manage its agents.</p>
+        <h1 class="text-2xl font-bold">{{ t('org.title') }}</h1>
+        <p class="mt-1 text-sm text-base-content/60">{{ t('org.subtitle') }}</p>
       </div>
-      <OrgCreateModal />
+      <AppButton size="sm" @click="ui.openOrgCreate()">
+        <Icon name="lucide:plus" size="16" />
+        {{ t('org.new') }}
+      </AppButton>
     </div>
 
     <p v-if="orgs.error" class="mt-6 text-sm text-error">
       {{ orgs.error }}
     </p>
-    <p v-else-if="orgs.items.length === 0" class="mt-6 text-sm text-base-content/60">
-      No organizations yet.
+    <p v-else class="mt-6 text-sm text-base-content/60">
+      {{ t('org.empty') }}
     </p>
-    <div v-else class="mt-6 grid gap-3 sm:grid-cols-2">
-      <NuxtLink
-        v-for="org in orgs.items"
-        :key="org.slug"
-        :to="`/o/${org.slug}`"
-        class="card border border-base-300 bg-base-100 transition-colors hover:border-primary"
-      >
-        <div class="card-body">
-          <h2 class="card-title text-base">{{ org.name }}</h2>
-          <p class="text-sm text-base-content/60">/{{ org.slug }}</p>
-        </div>
-      </NuxtLink>
-    </div>
   </div>
 </template>

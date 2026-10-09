@@ -11,6 +11,7 @@ export const useOrgsStore = defineStore('orgs', () => {
   const error = ref('')
 
   const { $orgClient: client } = useNuxtApp()
+  const { t } = useI18n()
   let inflight: Promise<void> | null = null
 
   function bySlug(slug: string) {
@@ -32,7 +33,7 @@ export const useOrgsStore = defineStore('orgs', () => {
       loaded.value = true
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to load organizations'
+      error.value = e instanceof Error ? e.message : t('error.load_orgs')
     }
     finally {
       loading.value = false

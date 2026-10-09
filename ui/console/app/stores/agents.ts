@@ -12,6 +12,7 @@ export const useAgentsStore = defineStore('agents', () => {
   const error = ref('')
 
   const { $agentClient: client } = useNuxtApp()
+  const { t } = useI18n()
   let loadedFor = ''
   let inflight: Promise<void> | null = null
 
@@ -38,7 +39,7 @@ export const useAgentsStore = defineStore('agents', () => {
       loadedFor = projectId
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to load agents'
+      error.value = e instanceof Error ? e.message : t('error.load_agents')
     }
     finally {
       loading.value = false

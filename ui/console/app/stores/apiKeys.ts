@@ -35,6 +35,7 @@ export const useAPIKeysStore = defineStore('apiKeys', () => {
   const error = ref('')
 
   const { $apiKeyClient: client } = useNuxtApp()
+  const { t } = useI18n()
   let loadedFor = ''
   let inflight: Promise<void> | null = null
 
@@ -56,7 +57,7 @@ export const useAPIKeysStore = defineStore('apiKeys', () => {
       loadedFor = orgId
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to load API keys'
+      error.value = e instanceof Error ? e.message : t('error.load_apikeys')
     }
     finally {
       loading.value = false

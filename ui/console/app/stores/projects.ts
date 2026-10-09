@@ -11,6 +11,7 @@ export const useProjectsStore = defineStore('projects', () => {
   const error = ref('')
 
   const { $projectClient: client } = useNuxtApp()
+  const { t } = useI18n()
   let loadedFor = ''
   let inflight: Promise<void> | null = null
 
@@ -33,7 +34,7 @@ export const useProjectsStore = defineStore('projects', () => {
       loadedFor = orgId
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to load projects'
+      error.value = e instanceof Error ? e.message : t('error.load_projects')
     }
     finally {
       loading.value = false

@@ -5,6 +5,7 @@ import { useOrgsStore } from '~/stores/orgs'
 import { useProjectsStore } from '~/stores/projects'
 
 const route = useRoute()
+const { t } = useI18n()
 const orgs = useOrgsStore()
 const projects = useProjectsStore()
 const agents = useAgentsStore()
@@ -16,7 +17,7 @@ const project = computed(() =>
 )
 
 if (!project.value) {
-  throw createError({ statusCode: 404, statusMessage: 'Project not found', fatal: true })
+  throw createError({ statusCode: 404, statusMessage: t('error.project_not_found'), fatal: true })
 }
 
 await agents.ensureLoaded(project.value.id)
@@ -29,21 +30,20 @@ async function destroy(id: string) {
     agents.remove(id)
   }
   catch (e) {
-    agents.error = e instanceof Error ? e.message : 'Failed to delete agent'
+    agents.error = e instanceof Error ? e.message : t('error.delete_agent')
   }
 }
 
-useHead({ title: () => `${project.value?.name ?? 'Project'} · oagent` })
+useHead({ title: () => `${project.value?.name ?? t('project.title')} · oagent` })
 </script>
 
 <template>
   <div v-if="project" class="space-y-6">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <NuxtLink :to="`/o/${org?.slug}/projects`" class="link text-sm text-base-content/60">
-          Projects
-        </NuxtLink>
-        <h1 class="text-2xl font-bold">{{ project.name }}</h1>
+        <h1 class="text-2xl font-bold">
+          {{ t('nav.agents') }}
+        </h1>
         <p class="text-sm text-base-content/60">{{ project.slug }}</p>
       </div>
       <AgentCreateModal :org-id="org?.id ?? ''" :project-id="project.id" />
@@ -56,9 +56,9 @@ useHead({ title: () => `${project.value?.name ?? 'Project'} · oagent` })
       <table class="table table-sm">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Slug</th>
-            <th>Description</th>
+            <th>{{ t('common.name') }}</th>
+            <th>{{ t('common.slug') }}</th>
+            <th>{{ t('common.description') }}</th>
             <th />
           </tr>
         </thead>
@@ -69,7 +69,7 @@ useHead({ title: () => `${project.value?.name ?? 'Project'} · oagent` })
             <td class="text-base-content/60">{{ agent.description }}</td>
             <td class="text-right">
               <button class="btn btn-ghost btn-xs text-error" @click="destroy(agent.id)">
-                Delete
+                {{ t('common.delete') }}
               </button>
             </td>
           </tr>
@@ -77,7 +77,7 @@ useHead({ title: () => `${project.value?.name ?? 'Project'} · oagent` })
       </table>
     </div>
     <p v-else class="text-sm text-base-content/60">
-      No agents yet.
+      {{ t('agent.empty') }}
     </p>
   </div>
 </template>

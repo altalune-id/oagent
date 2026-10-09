@@ -1,25 +1,24 @@
 import { useProjectsStore } from '~/stores/projects'
+import { useUIStore } from '~/stores/ui'
 
 export function useProjectCreate(orgId: string) {
-  const open = ref(false)
   const name = ref('')
   const slug = ref('')
   const busy = ref(false)
   const error = ref('')
 
   const projects = useProjectsStore()
+  const ui = useUIStore()
+  const { t } = useI18n()
   const { $projectClient: client } = useNuxtApp()
 
-  function show() {
-    error.value = ''
-    open.value = true
-  }
+  const open = computed(() => ui.projectCreateOpen)
 
   function hide() {
     if (busy.value) {
       return
     }
-    open.value = false
+    ui.closeProjectCreate()
     error.value = ''
   }
 
@@ -35,18 +34,18 @@ export function useProjectCreate(orgId: string) {
       const project = res.project
       if (project) {
         projects.add({ id: project.id, orgId: project.orgId, slug: project.slug, name: project.name })
-        open.value = false
+        ui.closeProjectCreate()
         name.value = ''
         slug.value = ''
       }
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to create project'
+      error.value = e instanceof Error ? e.message : t('error.create_project')
     }
     finally {
       busy.value = false
     }
   }
 
-  return { open, name, slug, busy, error, show, hide, submit }
+  return { open, name, slug, busy, error, show: ui.openProjectCreate, hide, submit }
 }

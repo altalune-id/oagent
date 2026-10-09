@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import LanguageSwitcher from '~/components/layout/LanguageSwitcher.vue'
 import NavbarShell from '~/components/ui/NavbarShell.vue'
 import OrgSelector from '~/components/org/OrgSelector.vue'
 import ProjectSelector from '~/components/project/ProjectSelector.vue'
+import ThemeFamilySwitcher from '~/components/layout/ThemeFamilySwitcher.vue'
 import ThemeSwitcher from '~/components/layout/ThemeSwitcher.vue'
 </script>
 
@@ -13,6 +15,8 @@ import ThemeSwitcher from '~/components/layout/ThemeSwitcher.vue'
     <OrgSelector />
     <ProjectSelector />
     <template #end>
+      <LanguageSwitcher />
+      <ThemeFamilySwitcher />
       <ThemeSwitcher />
     </template>
   </NavbarShell>

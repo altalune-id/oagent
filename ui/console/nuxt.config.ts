@@ -3,8 +3,27 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-10-06',
-  devtools: { enabled: true },
-  modules: ['@pinia/nuxt', '@vueuse/nuxt'],
+  modules: ['@nuxt/icon', '@pinia/nuxt', '@vueuse/nuxt', '@nuxtjs/i18n'],
+  icon: {
+    mode: 'svg',
+    clientBundle: { scan: true, icons: ['circle-flags:us', 'circle-flags:id'] },
+    serverBundle: false,
+  },
+  i18n: {
+    strategy: 'no_prefix',
+    defaultLocale: 'en-US',
+    langDir: 'locales',
+    locales: [
+      { code: 'en-US', name: 'English (US)', file: 'en-US.json' },
+      { code: 'id-ID', name: 'Bahasa Indonesia', file: 'id-ID.json' },
+    ],
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'oagent_lang',
+      redirectOn: 'root',
+      fallbackLocale: 'en-US',
+    },
+  },
   alias: {
     '@shared/scope': fileURLToPath(new URL('../../scope', import.meta.url)),
   },
@@ -20,10 +39,14 @@ export default defineNuxtConfig({
     },
   },
   runtimeConfig: {
-    public: { apiUrl: '' },
+    public: { apiUrl: '', appVersion: '' },
   },
   $development: {
     ssr: false,
+    devtools: {
+      enabled: true,
+      vscode: {},
+    },
     devServer: { port: 8280, host: '0.0.0.0' },
     nitro: {
       devProxy: { '/api': { target: 'http://localhost:5150/api', changeOrigin: true } },
