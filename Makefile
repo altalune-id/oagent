@@ -20,6 +20,10 @@ help: ## list targets
 build: ## build the oagent binary into bin/
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/oagent
 
+.PHONY: webhook-pong
+webhook-pong: ## build the webhook-pong example into bin/
+	CGO_ENABLED=0 $(GO) build -trimpath -o bin/webhook-pong ./examples/webhook-pong
+
 .PHONY: install
 install: ## install oagent into GOBIN/GOPATH/bin
 	CGO_ENABLED=0 $(GO) install -trimpath -ldflags "$(LDFLAGS)" ./cmd/oagent
