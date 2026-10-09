@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useAgentsStore } from '~/stores/agents'
+import CopyButton from '~/components/ui/CopyButton.vue'
 import { useOrgsStore } from '~/stores/orgs'
 import { useProjectsStore } from '~/stores/projects'
 
@@ -30,6 +31,10 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · oagent` 
     <div>
       <h1 class="text-2xl font-bold">{{ project.name }}</h1>
       <p class="text-sm text-base-content/60">{{ t('nav.overview') }}</p>
+      <div class="mt-1 flex items-center gap-1 text-xs text-base-content/60">
+        <span class="font-mono">{{ project.publicId }}</span>
+        <CopyButton :value="project.publicId" :label="t('common.copy')" />
+      </div>
     </div>
 
     <section class="space-y-3">

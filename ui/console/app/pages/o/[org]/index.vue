@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppStats from '~/components/ui/AppStats.vue'
+import CopyButton from '~/components/ui/CopyButton.vue'
 import { useOrgsStore } from '~/stores/orgs'
 import { useProjectsStore } from '~/stores/projects'
 import type { StatItem } from '~/components/ui/types'
@@ -25,6 +26,10 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · oagent` })
     <div>
       <h1 class="text-2xl font-bold">{{ org.name }}</h1>
       <p class="text-sm text-base-content/60">{{ t('nav.overview') }}</p>
+      <div class="mt-1 flex items-center gap-1 text-xs text-base-content/60">
+        <span class="font-mono">{{ org.publicId }}</span>
+        <CopyButton :value="org.publicId" :label="t('common.copy')" />
+      </div>
     </div>
 
     <AppStats :items="stats" />
