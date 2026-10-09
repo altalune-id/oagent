@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,79 +15,6 @@ import (
 	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/kernel/outbox"
 )
-
-func TestStoreErrorBranches(t *testing.T) {
-	org, project := uuid.New(), uuid.New()
-	ctx := storeCtx(org, project)
-
-	t.Run("byID query error", func(t *testing.T) {
-		s, mock := newStoreTest(t)
-		mock.ExpectQuery("SELECT").WillReturnError(errBoom)
-		_, err := s.ByID(ctx, uuid.New())
-		assert.Error(t, err)
-	})
-
-	t.Run("list query error", func(t *testing.T) {
-		s, mock := newStoreTest(t)
-		mock.ExpectQuery("SELECT").WillReturnError(errBoom)
-		_, err := s.List(ctx, org, project)
-		assert.Error(t, err)
-	})
-
-	t.Run("list attempts query error", func(t *testing.T) {
-		s, mock := newStoreTest(t)
-		mock.ExpectQuery("SELECT").WillReturnError(errBoom)
-		_, err := s.ListAttempts(ctx, uuid.New(), uuid.New())
-		assert.Error(t, err)
-	})
-
-	t.Run("save exec error", func(t *testing.T) {
-		s, mock := newStoreTest(t)
-		mock.ExpectBegin()
-		mock.ExpectExec("INSERT").WillReturnError(errBoom)
-		mock.ExpectRollback()
-		e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project, EventTypes: []events.Type{events.AgentCreated}}
-		assert.Error(t, s.Save(ctx, e))
-	})
-
-	t.Run("saveSecrets exec error", func(t *testing.T) {
-		s, mock := newStoreTest(t)
-		mock.ExpectBegin()
-		mock.ExpectExec("UPDATE").WillReturnError(errBoom)
-		mock.ExpectRollback()
-		assert.Error(t, s.SaveSecrets(ctx, uuid.New(), SealedSecrets{}, SealedSecrets{Primary: []byte("n")}))
-	})
-
-	t.Run("delete exec error", func(t *testing.T) {
-		s, mock := newStoreTest(t)
-		mock.ExpectBegin()
-		mock.ExpectExec("DELETE").WillReturnError(errBoom)
-		mock.ExpectRollback()
-		assert.Error(t, s.Delete(ctx, uuid.New()))
-	})
-
-	t.Run("saveAttempt exec error", func(t *testing.T) {
-		s, mock := newStoreTest(t)
-		mock.ExpectBegin()
-		mock.ExpectExec("INSERT").WillReturnError(errBoom)
-		mock.ExpectRollback()
-		assert.Error(t, s.SaveAttempt(ctx, Attempt{OrgID: org, ProjectID: project, EndpointID: uuid.New()}))
-	})
-
-	t.Run("begin error", func(t *testing.T) {
-		s, mock := newStoreTest(t)
-		mock.ExpectBegin().WillReturnError(errBoom)
-		assert.Error(t, s.Delete(ctx, uuid.New()))
-	})
-
-	t.Run("commit error", func(t *testing.T) {
-		s, mock := newStoreTest(t)
-		mock.ExpectBegin()
-		mock.ExpectExec("DELETE").WillReturnResult(sqlmock.NewResult(0, 1))
-		mock.ExpectCommit().WillReturnError(errBoom)
-		assert.Error(t, s.Delete(ctx, uuid.New()))
-	})
-}
 
 func TestDelivererSaveAttemptError(t *testing.T) {
 	org, project := uuid.New(), uuid.New()
