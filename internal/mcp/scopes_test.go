@@ -9,6 +9,7 @@ import (
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
 	projectv1mcp "altalune.id/oagent/gen/go/project/v1/projectv1mcp"
+	webhookv1mcp "altalune.id/oagent/gen/go/webhook/v1/webhookv1mcp"
 	"altalune.id/oagent/scope"
 )
 
@@ -33,6 +34,9 @@ func TestScopeFor(t *testing.T) {
 	assert.Equal(t, scope.AgentRead, ScopeFor(agentv1mcp.AgentListToolName))
 	assert.Equal(t, scope.AgentWrite, ScopeFor(agentv1mcp.AgentUpdateToolName))
 	assert.Equal(t, scope.AgentWrite, ScopeFor(agentv1mcp.AgentDeleteToolName))
+
+	assert.Equal(t, scope.ProjectWrite, ScopeFor(webhookv1mcp.WebhookCreateToolName))
+	assert.Equal(t, scope.ProjectRead, ScopeFor(webhookv1mcp.WebhookListToolName))
 
 	assert.Equal(t, "", ScopeFor("unknown"))
 }

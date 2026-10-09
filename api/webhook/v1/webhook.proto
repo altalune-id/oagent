@@ -3,13 +3,29 @@ syntax = "proto3";
 package webhook.v1;
 
 import "google/protobuf/timestamp.proto";
+import "mcp/v1/annotations.proto";
 
 option go_package = "altalune.id/oagent/gen/go/webhook/v1;webhookv1";
 
 service WebhookService {
-  rpc CreateWebhook(CreateWebhookRequest) returns (CreateWebhookResponse);
+  rpc CreateWebhook(CreateWebhookRequest) returns (CreateWebhookResponse) {
+    option (mcp.v1.tool) = {
+      name: "webhook_create"
+      description: "Create a webhook endpoint for a project, returning its signing secret once."
+      mutation: true
+      destructive: false
+      ui: "app"
+    };
+  }
   rpc GetWebhook(GetWebhookRequest) returns (GetWebhookResponse);
-  rpc ListWebhooks(ListWebhooksRequest) returns (ListWebhooksResponse);
+  rpc ListWebhooks(ListWebhooksRequest) returns (ListWebhooksResponse) {
+    option (mcp.v1.tool) = {
+      name: "webhook_list"
+      description: "List a project's webhook endpoints."
+      required: ["org_id", "project_id"]
+      ui: "app"
+    };
+  }
   rpc UpdateWebhook(UpdateWebhookRequest) returns (UpdateWebhookResponse);
   rpc DeleteWebhook(DeleteWebhookRequest) returns (DeleteWebhookResponse);
   rpc RotateWebhookSecret(RotateWebhookSecretRequest) returns (RotateWebhookSecretResponse);

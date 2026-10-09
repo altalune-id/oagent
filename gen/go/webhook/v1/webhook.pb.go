@@ -7,6 +7,7 @@
 package webhookv1
 
 import (
+	_ "altalune.id/oagent/gen/go/mcp/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -895,7 +896,7 @@ var File_webhook_v1_webhook_proto protoreflect.FileDescriptor
 const file_webhook_v1_webhook_proto_rawDesc = "" +
 	"\n" +
 	"\x18webhook/v1/webhook.proto\x12\n" +
-	"webhook.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb2\x02\n" +
+	"webhook.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\"\xb2\x02\n" +
 	"\aWebhook\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06org_id\x18\x02 \x01(\tR\x05orgId\x12\x1d\n" +
@@ -964,12 +965,15 @@ const file_webhook_v1_webhook_proto_rawDesc = "" +
 	"\n" +
 	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x0e\n" +
 	"\x02id\x18\x03 \x01(\tR\x02id\"\x15\n" +
-	"\x13PingWebhookResponse2\xea\x04\n" +
-	"\x0eWebhookService\x12T\n" +
-	"\rCreateWebhook\x12 .webhook.v1.CreateWebhookRequest\x1a!.webhook.v1.CreateWebhookResponse\x12K\n" +
+	"\x13PingWebhookResponse2\xa8\x06\n" +
+	"\x0eWebhookService\x12\xbe\x01\n" +
+	"\rCreateWebhook\x12 .webhook.v1.CreateWebhookRequest\x1a!.webhook.v1.CreateWebhookResponse\"h\xca\xf3\x18d\n" +
+	"\x0ewebhook_create\x12KCreate a webhook endpoint for a project, returning its signing secret once. \x01*\x03app\x12K\n" +
 	"\n" +
-	"GetWebhook\x12\x1d.webhook.v1.GetWebhookRequest\x1a\x1e.webhook.v1.GetWebhookResponse\x12Q\n" +
-	"\fListWebhooks\x12\x1f.webhook.v1.ListWebhooksRequest\x1a .webhook.v1.ListWebhooksResponse\x12T\n" +
+	"GetWebhook\x12\x1d.webhook.v1.GetWebhookRequest\x1a\x1e.webhook.v1.GetWebhookResponse\x12\xa3\x01\n" +
+	"\fListWebhooks\x12\x1f.webhook.v1.ListWebhooksRequest\x1a .webhook.v1.ListWebhooksResponse\"P\xca\xf3\x18L\n" +
+	"\fwebhook_list\x12#List a project's webhook endpoints.\x1a\x06org_id\x1a\n" +
+	"project_id*\x03app\x12T\n" +
 	"\rUpdateWebhook\x12 .webhook.v1.UpdateWebhookRequest\x1a!.webhook.v1.UpdateWebhookResponse\x12T\n" +
 	"\rDeleteWebhook\x12 .webhook.v1.DeleteWebhookRequest\x1a!.webhook.v1.DeleteWebhookResponse\x12f\n" +
 	"\x13RotateWebhookSecret\x12&.webhook.v1.RotateWebhookSecretRequest\x1a'.webhook.v1.RotateWebhookSecretResponse\x12N\n" +

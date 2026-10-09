@@ -8,11 +8,13 @@ import (
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
 	projectv1mcp "altalune.id/oagent/gen/go/project/v1/projectv1mcp"
+	webhookv1mcp "altalune.id/oagent/gen/go/webhook/v1/webhookv1mcp"
 	"altalune.id/oagent/internal/agent"
 	mcpinternal "altalune.id/oagent/internal/mcp"
 	mcpui "altalune.id/oagent/internal/mcp/ui"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
+	"altalune.id/oagent/internal/webhook"
 	rootmcp "altalune.id/oagent/mcp"
 	"altalune.id/oagent/version"
 )
@@ -27,6 +29,7 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger) *roo
 	orgv1mcp.RegisterOrgServiceTools(registry, org.NewControlPlane(svcs.Orgs), mcpinternal.ScopeFor)
 	projectv1mcp.RegisterProjectServiceTools(registry, project.NewControlPlane(svcs.Projects), mcpinternal.ScopeFor)
 	agentv1mcp.RegisterAgentServiceTools(registry, agent.NewControlPlane(svcs.Agents), mcpinternal.ScopeFor)
+	webhookv1mcp.RegisterWebhookServiceTools(registry, webhook.NewControlPlane(svcs.Webhooks), mcpinternal.ScopeFor)
 
 	srv := rootmcp.NewServer(
 		rootmcp.WithImplementation("oagent", version.Default()),

@@ -9,6 +9,7 @@ import (
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
 	projectv1mcp "altalune.id/oagent/gen/go/project/v1/projectv1mcp"
+	webhookv1mcp "altalune.id/oagent/gen/go/webhook/v1/webhookv1mcp"
 	"altalune.id/oagent/scope"
 )
 
@@ -28,6 +29,9 @@ func ScopeTable() map[string]string {
 		agentv1mcp.AgentListToolName:   scope.AgentRead,
 		agentv1mcp.AgentUpdateToolName: scope.AgentWrite,
 		agentv1mcp.AgentDeleteToolName: scope.AgentWrite,
+
+		webhookv1mcp.WebhookCreateToolName: scope.ProjectWrite,
+		webhookv1mcp.WebhookListToolName:   scope.ProjectRead,
 	}
 }
 
