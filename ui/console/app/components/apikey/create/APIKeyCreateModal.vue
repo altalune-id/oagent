@@ -3,11 +3,13 @@ import AppButton from '~/components/ui/AppButton.vue'
 import AppModal from '~/components/ui/AppModal.vue'
 import scopes from '@shared/scope/scopes.json'
 import { useProjectsStore } from '~/stores/projects'
+import { useScopeLabel } from '~/components/apikey/useScopeLabel'
 import { useAPIKeyCreate } from './useAPIKeyCreate'
 
 const { orgId } = defineProps<{ orgId: string }>()
 
 const { t } = useI18n()
+const scopeLabel = useScopeLabel()
 const projects = useProjectsStore()
 const create = useAPIKeyCreate(orgId)
 const { open, kind, name, scopes: selectedScopes, allProjects, projectId, projectIds, expiresInHours, busy, error, plaintext } = create
@@ -26,12 +28,6 @@ async function copy() {
   if (import.meta.client) {
     await navigator.clipboard.writeText(plaintext.value)
   }
-}
-
-const scopeLabelKeys = new Map(scopes.map(s => [s.name, s.labelKey] as const))
-
-function scopeLabel(name: string) {
-  return t(scopeLabelKeys.get(name) ?? name)
 }
 </script>
 

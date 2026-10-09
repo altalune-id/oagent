@@ -107,6 +107,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/project.v1.ListProjectsResponse'
+  /project.v1.ProjectService/UpdateProject:
+    post:
+      tags:
+        - project.v1.ProjectService
+      summary: UpdateProject
+      operationId: project.v1.ProjectService.UpdateProject
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/project.v1.UpdateProjectRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/project.v1.UpdateProjectResponse'
 components:
   schemas:
     connect-protocol-version:
@@ -355,6 +390,28 @@ components:
           title: updated_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: Project
+      additionalProperties: false
+    project.v1.UpdateProjectRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        slug:
+          type: string
+          title: slug
+      title: UpdateProjectRequest
+      additionalProperties: false
+    project.v1.UpdateProjectResponse:
+      type: object
+      properties:
+        project:
+          title: project
+          $ref: '#/components/schemas/project.v1.Project'
+      title: UpdateProjectResponse
       additionalProperties: false
 security: []
 tags:

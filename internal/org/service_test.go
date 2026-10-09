@@ -115,30 +115,39 @@ func TestService_Unexpected(t *testing.T) {
 	assert.True(t, ok)
 }
 
-func TestService_Rename(t *testing.T) {
+func TestService_Update(t *testing.T) {
 	o, err := org.NewOrg("acme", "Acme", uuid.New())
 	require.NoError(t, err)
 	store := &fakes.OrgStore{Org: o}
 
-	got, err := org.NewService(store, testUnexpected()).Rename(context.Background(), o.ID, "Acme Two")
+	got, err := org.NewService(store, testUnexpected()).Update(context.Background(), o.ID, "Acme Two", "acme-two")
 	require.NoError(t, err)
 	assert.Equal(t, "Acme Two", got.Name)
+	assert.Equal(t, "acme-two", got.Slug)
 	assert.Equal(t, got, store.Saved)
 }
 
-func TestService_Rename_NotFound(t *testing.T) {
+func TestService_Update_NotFound(t *testing.T) {
 	store := &fakes.OrgStore{Err: &org.NotFoundError{ID: "x"}}
 
-	_, err := org.NewService(store, testUnexpected()).Rename(context.Background(), uuid.New(), "Acme Two")
+	_, err := org.NewService(store, testUnexpected()).Update(context.Background(), uuid.New(), "Acme Two", "acme-two")
 	assert.Error(t, err)
 }
 
-func TestService_Rename_InvalidName(t *testing.T) {
+func TestService_Update_InvalidName(t *testing.T) {
 	o, err := org.NewOrg("acme", "Acme", uuid.New())
 	require.NoError(t, err)
 
-	_, err = org.NewService(&fakes.OrgStore{Org: o}, testUnexpected()).Rename(context.Background(), o.ID, "")
+	_, err = org.NewService(&fakes.OrgStore{Org: o}, testUnexpected()).Update(context.Background(), o.ID, "", "acme-two")
 	assert.True(t, org.IsInvalidNameError(err))
+}
+
+func TestService_Update_InvalidSlug(t *testing.T) {
+	o, err := org.NewOrg("acme", "Acme", uuid.New())
+	require.NoError(t, err)
+
+	_, err = org.NewService(&fakes.OrgStore{Org: o}, testUnexpected()).Update(context.Background(), o.ID, "Acme", "Bad_Slug")
+	assert.True(t, org.IsInvalidSlugError(err))
 }
 
 func TestService_Create_AfterCreateHook(t *testing.T) {

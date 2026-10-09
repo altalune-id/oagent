@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useAPIKeysStore } from '~/stores/apiKeys'
+import { useScopeLabel } from '~/components/apikey/useScopeLabel'
 
 const { orgId } = defineProps<{ orgId: string }>()
 
 const { t } = useI18n()
+const scopeLabel = useScopeLabel()
 const keys = useAPIKeysStore()
 const { $apiKeyClient: client } = useNuxtApp()
 
@@ -27,7 +29,7 @@ async function revoke(id: string) {
   <p v-else-if="keys.items.length === 0" class="text-sm text-base-content/60">
     {{ t('apikeys.empty') }}
   </p>
-  <div v-else class="overflow-x-auto">
+  <div v-else class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
     <table class="table table-sm">
       <thead>
         <tr>
@@ -40,11 +42,11 @@ async function revoke(id: string) {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="k in keys.items" :key="k.id">
+        <tr v-for="k in keys.items" :key="k.id" class="hover:bg-base-200">
           <td>{{ k.name }}</td>
-          <td>{{ k.kind }}</td>
+          <td>{{ k.kind === 'org' ? t('apikeys.kind_org') : t('apikeys.kind_project') }}</td>
           <td class="text-base-content/60">
-            {{ k.scopes.join(', ') }}
+            {{ k.scopes.map(scopeLabel).join(', ') }}
           </td>
           <td class="text-base-content/60">
             …{{ k.secretHint }}
@@ -54,8 +56,9 @@ async function revoke(id: string) {
               {{ k.revokedAt ? t('apikeys.revoked') : t('apikeys.active') }}
             </span>
           </td>
-          <td class="text-right">
+          <td class="whitespace-nowrap text-right">
             <button v-if="!k.revokedAt" class="btn btn-ghost btn-xs text-error" @click="revoke(k.id)">
+              <Icon name="lucide:ban" size="14" />
               {{ t('common.revoke') }}
             </button>
           </td>

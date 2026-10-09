@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import AppButton from '~/components/ui/AppButton.vue'
+import CopyButton from '~/components/ui/CopyButton.vue'
+import ProjectEditModal from '~/components/project/edit/ProjectEditModal.vue'
+import type { Project } from '~/stores/projects'
 import { useOrgsStore } from '~/stores/orgs'
 import { useProjectsStore } from '~/stores/projects'
 import { useUIStore } from '~/stores/ui'
@@ -11,6 +14,11 @@ const projects = useProjectsStore()
 const ui = useUIStore()
 const org = computed(() => orgs.bySlug(route.params.org as string))
 const items = computed(() => (org.value ? projects.forOrg(org.value.id) : []))
+
+const editModal = ref<InstanceType<typeof ProjectEditModal>>()
+function edit(project: Project) {
+  editModal.value?.show(project)
+}
 </script>
 
 <template>
@@ -28,21 +36,48 @@ const items = computed(() => (org.value ? projects.forOrg(org.value.id) : []))
     <p v-if="projects.error" class="text-sm text-error">
       {{ projects.error }}
     </p>
-    <div v-else-if="items.length" class="grid gap-3 sm:grid-cols-2">
-      <NuxtLink
-        v-for="project in items"
-        :key="project.slug"
-        :to="`/o/${org?.slug}/projects/${project.slug}`"
-        class="card border border-base-300 bg-base-100 transition-colors hover:border-primary"
-      >
-        <div class="card-body">
-          <h2 class="card-title text-base">{{ project.name }}</h2>
-          <p class="text-sm text-base-content/60">{{ project.slug }}</p>
-        </div>
-      </NuxtLink>
+    <div v-else-if="items.length" class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>{{ t('common.name') }}</th>
+            <th>{{ t('common.public_id') }}</th>
+            <th>{{ t('common.slug') }}</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="project in items" :key="project.id" class="hover:bg-base-200">
+            <td>
+              <NuxtLink :to="`/o/${org?.slug}/projects/${project.slug}`" class="link">
+                {{ project.name }}
+              </NuxtLink>
+            </td>
+            <td>
+              <span class="inline-flex items-center gap-1">
+                <span class="font-mono text-xs text-base-content/60">{{ project.publicId }}</span>
+                <CopyButton :value="project.publicId" :label="t('common.copy')" />
+              </span>
+            </td>
+            <td class="text-base-content/60">{{ project.slug }}</td>
+            <td class="whitespace-nowrap text-right">
+              <NuxtLink :to="`/o/${org?.slug}/projects/${project.slug}`" class="btn btn-ghost btn-xs">
+                <Icon name="lucide:external-link" size="14" />
+                {{ t('common.open') }}
+              </NuxtLink>
+              <button class="btn btn-ghost btn-xs" @click="edit(project)">
+                <Icon name="lucide:pencil" size="14" />
+                {{ t('common.edit') }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
     <p v-else class="text-sm text-base-content/60">
       {{ t('project.empty') }}
     </p>
+
+    <ProjectEditModal ref="editModal" />
   </div>
 </template>

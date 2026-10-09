@@ -39,6 +39,8 @@ const (
 	OrgServiceGetOrgProcedure = "/org.v1.OrgService/GetOrg"
 	// OrgServiceListOrgsProcedure is the fully-qualified name of the OrgService's ListOrgs RPC.
 	OrgServiceListOrgsProcedure = "/org.v1.OrgService/ListOrgs"
+	// OrgServiceUpdateOrgProcedure is the fully-qualified name of the OrgService's UpdateOrg RPC.
+	OrgServiceUpdateOrgProcedure = "/org.v1.OrgService/UpdateOrg"
 )
 
 // OrgServiceClient is a client for the org.v1.OrgService service.
@@ -46,6 +48,7 @@ type OrgServiceClient interface {
 	CreateOrg(context.Context, *connect.Request[v1.CreateOrgRequest]) (*connect.Response[v1.CreateOrgResponse], error)
 	GetOrg(context.Context, *connect.Request[v1.GetOrgRequest]) (*connect.Response[v1.GetOrgResponse], error)
 	ListOrgs(context.Context, *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error)
+	UpdateOrg(context.Context, *connect.Request[v1.UpdateOrgRequest]) (*connect.Response[v1.UpdateOrgResponse], error)
 }
 
 // NewOrgServiceClient constructs a client for the org.v1.OrgService service. By default, it uses
@@ -77,6 +80,12 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(orgServiceMethods.ByName("ListOrgs")),
 			connect.WithClientOptions(opts...),
 		),
+		updateOrg: connect.NewClient[v1.UpdateOrgRequest, v1.UpdateOrgResponse](
+			httpClient,
+			baseURL+OrgServiceUpdateOrgProcedure,
+			connect.WithSchema(orgServiceMethods.ByName("UpdateOrg")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -85,6 +94,7 @@ type orgServiceClient struct {
 	createOrg *connect.Client[v1.CreateOrgRequest, v1.CreateOrgResponse]
 	getOrg    *connect.Client[v1.GetOrgRequest, v1.GetOrgResponse]
 	listOrgs  *connect.Client[v1.ListOrgsRequest, v1.ListOrgsResponse]
+	updateOrg *connect.Client[v1.UpdateOrgRequest, v1.UpdateOrgResponse]
 }
 
 // CreateOrg calls org.v1.OrgService.CreateOrg.
@@ -102,11 +112,17 @@ func (c *orgServiceClient) ListOrgs(ctx context.Context, req *connect.Request[v1
 	return c.listOrgs.CallUnary(ctx, req)
 }
 
+// UpdateOrg calls org.v1.OrgService.UpdateOrg.
+func (c *orgServiceClient) UpdateOrg(ctx context.Context, req *connect.Request[v1.UpdateOrgRequest]) (*connect.Response[v1.UpdateOrgResponse], error) {
+	return c.updateOrg.CallUnary(ctx, req)
+}
+
 // OrgServiceHandler is an implementation of the org.v1.OrgService service.
 type OrgServiceHandler interface {
 	CreateOrg(context.Context, *connect.Request[v1.CreateOrgRequest]) (*connect.Response[v1.CreateOrgResponse], error)
 	GetOrg(context.Context, *connect.Request[v1.GetOrgRequest]) (*connect.Response[v1.GetOrgResponse], error)
 	ListOrgs(context.Context, *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error)
+	UpdateOrg(context.Context, *connect.Request[v1.UpdateOrgRequest]) (*connect.Response[v1.UpdateOrgResponse], error)
 }
 
 // NewOrgServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -134,6 +150,12 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(orgServiceMethods.ByName("ListOrgs")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orgServiceUpdateOrgHandler := connect.NewUnaryHandler(
+		OrgServiceUpdateOrgProcedure,
+		svc.UpdateOrg,
+		connect.WithSchema(orgServiceMethods.ByName("UpdateOrg")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/org.v1.OrgService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrgServiceCreateOrgProcedure:
@@ -142,6 +164,8 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 			orgServiceGetOrgHandler.ServeHTTP(w, r)
 		case OrgServiceListOrgsProcedure:
 			orgServiceListOrgsHandler.ServeHTTP(w, r)
+		case OrgServiceUpdateOrgProcedure:
+			orgServiceUpdateOrgHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -161,4 +185,8 @@ func (UnimplementedOrgServiceHandler) GetOrg(context.Context, *connect.Request[v
 
 func (UnimplementedOrgServiceHandler) ListOrgs(context.Context, *connect.Request[v1.ListOrgsRequest]) (*connect.Response[v1.ListOrgsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("org.v1.OrgService.ListOrgs is not implemented"))
+}
+
+func (UnimplementedOrgServiceHandler) UpdateOrg(context.Context, *connect.Request[v1.UpdateOrgRequest]) (*connect.Response[v1.UpdateOrgResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("org.v1.OrgService.UpdateOrg is not implemented"))
 }

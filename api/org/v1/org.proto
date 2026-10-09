@@ -32,6 +32,7 @@ service OrgService {
       ui: "app"
     };
   }
+  rpc UpdateOrg(UpdateOrgRequest) returns (UpdateOrgResponse);
 }
 
 message Org {
@@ -64,4 +65,14 @@ message ListOrgsRequest {}
 
 message ListOrgsResponse {
   repeated Org orgs = 1;
+}
+
+message UpdateOrgRequest {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+}
+
+message UpdateOrgResponse {
+  Org org = 1;
 }

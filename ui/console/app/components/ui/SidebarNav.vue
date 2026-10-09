@@ -4,8 +4,10 @@ import type { NavItem } from './types'
 withDefaults(defineProps<{
   label?: string
   items: NavItem[]
+  version?: string
 }>(), {
   label: '',
+  version: '',
 })
 
 const emit = defineEmits<{ select: [key: string] }>()
@@ -13,7 +15,7 @@ const slots = useSlots()
 </script>
 
 <template>
-  <aside class="hidden w-60 shrink-0 flex-col border-r border-base-300 bg-base-200/40 md:flex">
+  <aside class="flex w-60 shrink-0 flex-col border-r border-base-300 bg-base-200/40">
     <div v-if="slots.back" class="px-4 pt-4">
       <slot name="back" />
     </div>
@@ -28,8 +30,10 @@ const slots = useSlots()
         </button>
       </li>
     </ul>
-    <div v-if="slots.footer" class="mt-auto px-4 py-3 text-xs text-base-content/40">
-      <slot name="footer" />
+    <div v-if="slots.footer || version" data-sidebar-footer class="mt-auto px-4 py-3 text-xs text-base-content/40">
+      <slot name="footer">
+        <span v-if="version">oagent v{{ version }}</span>
+      </slot>
     </div>
   </aside>
 </template>

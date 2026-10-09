@@ -28,15 +28,12 @@ function onSelect(key: string) {
 </script>
 
 <template>
-  <SidebarNav :label="label" :items="items" @select="onSelect">
+  <SidebarNav :label="label" :items="items" :version="appVersion" @select="onSelect">
     <template #back>
       <NuxtLink to="/orgs" class="inline-flex items-center gap-1 text-xs text-base-content/60 transition-colors hover:text-base-content">
         <Icon name="lucide:chevron-left" size="14" />
         {{ t('org.all') }}
       </NuxtLink>
-    </template>
-    <template v-if="appVersion" #footer>
-      oagent v{{ appVersion }}
     </template>
   </SidebarNav>
 </template>

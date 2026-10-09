@@ -106,17 +106,17 @@ func (s *Service) List(ctx context.Context) ([]*Org, error) {
 	return orgs, nil
 }
 
-// Rename changes an org's display name.
-func (s *Service) Rename(ctx context.Context, id uuid.UUID, name string) (*Org, error) {
+// Update changes an org's display name and slug.
+func (s *Service) Update(ctx context.Context, id uuid.UUID, name, slug string) (*Org, error) {
 	o, err := s.store.ByID(ctx, id)
 	if err != nil {
-		return nil, s.errOrReport(ctx, "org: rename", err)
+		return nil, s.errOrReport(ctx, "org: update", err)
 	}
-	if err := o.Rename(name); err != nil {
+	if err := o.Update(name, slug); err != nil {
 		return nil, err
 	}
 	if err := s.store.Save(ctx, o); err != nil {
-		return nil, s.errOrReport(ctx, "org: rename", err)
+		return nil, s.errOrReport(ctx, "org: update", err)
 	}
 	return o, nil
 }

@@ -371,6 +371,110 @@ func (x *ListOrgsResponse) GetOrgs() []*Org {
 	return nil
 }
 
+type UpdateOrgRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Slug          string                 `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateOrgRequest) Reset() {
+	*x = UpdateOrgRequest{}
+	mi := &file_org_v1_org_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateOrgRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateOrgRequest) ProtoMessage() {}
+
+func (x *UpdateOrgRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_org_v1_org_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateOrgRequest.ProtoReflect.Descriptor instead.
+func (*UpdateOrgRequest) Descriptor() ([]byte, []int) {
+	return file_org_v1_org_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *UpdateOrgRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateOrgRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateOrgRequest) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+type UpdateOrgResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Org           *Org                   `protobuf:"bytes,1,opt,name=org,proto3" json:"org,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateOrgResponse) Reset() {
+	*x = UpdateOrgResponse{}
+	mi := &file_org_v1_org_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateOrgResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateOrgResponse) ProtoMessage() {}
+
+func (x *UpdateOrgResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_org_v1_org_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateOrgResponse.ProtoReflect.Descriptor instead.
+func (*UpdateOrgResponse) Descriptor() ([]byte, []int) {
+	return file_org_v1_org_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *UpdateOrgResponse) GetOrg() *Org {
+	if x != nil {
+		return x.Org
+	}
+	return nil
+}
+
 var File_org_v1_org_proto protoreflect.FileDescriptor
 
 const file_org_v1_org_proto_rawDesc = "" +
@@ -396,7 +500,13 @@ const file_org_v1_org_proto_rawDesc = "" +
 	"\x03org\x18\x01 \x01(\v2\v.org.v1.OrgR\x03org\"\x11\n" +
 	"\x0fListOrgsRequest\"3\n" +
 	"\x10ListOrgsResponse\x12\x1f\n" +
-	"\x04orgs\x18\x01 \x03(\v2\v.org.v1.OrgR\x04orgs2\x9b\x03\n" +
+	"\x04orgs\x18\x01 \x03(\v2\v.org.v1.OrgR\x04orgs\"J\n" +
+	"\x10UpdateOrgRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04slug\x18\x03 \x01(\tR\x04slug\"2\n" +
+	"\x11UpdateOrgResponse\x12\x1d\n" +
+	"\x03org\x18\x01 \x01(\v2\v.org.v1.OrgR\x03org2\xdd\x03\n" +
 	"\n" +
 	"OrgService\x12\x9b\x01\n" +
 	"\tCreateOrg\x12\x18.org.v1.CreateOrgRequest\x1a\x19.org.v1.CreateOrgResponse\"Y\xca\xf3\x18U\n" +
@@ -405,7 +515,8 @@ const file_org_v1_org_proto_rawDesc = "" +
 	"\x06GetOrg\x12\x15.org.v1.GetOrgRequest\x1a\x16.org.v1.GetOrgResponse\"2\xca\xf3\x18.\n" +
 	"\aorg_get\x12\x1aGet an organization by id.\x1a\x02id*\x03app\x12\x81\x01\n" +
 	"\bListOrgs\x12\x17.org.v1.ListOrgsRequest\x1a\x18.org.v1.ListOrgsResponse\"B\xca\xf3\x18>\n" +
-	"\borg_list\x12-List organizations, ordered by creation time.*\x03appBw\n" +
+	"\borg_list\x12-List organizations, ordered by creation time.*\x03app\x12@\n" +
+	"\tUpdateOrg\x12\x18.org.v1.UpdateOrgRequest\x1a\x19.org.v1.UpdateOrgResponseBw\n" +
 	"\n" +
 	"com.org.v1B\bOrgProtoP\x01Z&altalune.id/oagent/gen/go/org/v1;orgv1\xa2\x02\x03OXX\xaa\x02\x06Org.V1\xca\x02\x06Org\\V1\xe2\x02\x12Org\\V1\\GPBMetadata\xea\x02\aOrg::V1b\x06proto3"
 
@@ -421,7 +532,7 @@ func file_org_v1_org_proto_rawDescGZIP() []byte {
 	return file_org_v1_org_proto_rawDescData
 }
 
-var file_org_v1_org_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_org_v1_org_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_org_v1_org_proto_goTypes = []any{
 	(*Org)(nil),                   // 0: org.v1.Org
 	(*CreateOrgRequest)(nil),      // 1: org.v1.CreateOrgRequest
@@ -430,25 +541,30 @@ var file_org_v1_org_proto_goTypes = []any{
 	(*GetOrgResponse)(nil),        // 4: org.v1.GetOrgResponse
 	(*ListOrgsRequest)(nil),       // 5: org.v1.ListOrgsRequest
 	(*ListOrgsResponse)(nil),      // 6: org.v1.ListOrgsResponse
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*UpdateOrgRequest)(nil),      // 7: org.v1.UpdateOrgRequest
+	(*UpdateOrgResponse)(nil),     // 8: org.v1.UpdateOrgResponse
+	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
 }
 var file_org_v1_org_proto_depIdxs = []int32{
-	7, // 0: org.v1.Org.created_at:type_name -> google.protobuf.Timestamp
-	7, // 1: org.v1.Org.updated_at:type_name -> google.protobuf.Timestamp
-	0, // 2: org.v1.CreateOrgResponse.org:type_name -> org.v1.Org
-	0, // 3: org.v1.GetOrgResponse.org:type_name -> org.v1.Org
-	0, // 4: org.v1.ListOrgsResponse.orgs:type_name -> org.v1.Org
-	1, // 5: org.v1.OrgService.CreateOrg:input_type -> org.v1.CreateOrgRequest
-	3, // 6: org.v1.OrgService.GetOrg:input_type -> org.v1.GetOrgRequest
-	5, // 7: org.v1.OrgService.ListOrgs:input_type -> org.v1.ListOrgsRequest
-	2, // 8: org.v1.OrgService.CreateOrg:output_type -> org.v1.CreateOrgResponse
-	4, // 9: org.v1.OrgService.GetOrg:output_type -> org.v1.GetOrgResponse
-	6, // 10: org.v1.OrgService.ListOrgs:output_type -> org.v1.ListOrgsResponse
-	8, // [8:11] is the sub-list for method output_type
-	5, // [5:8] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	9,  // 0: org.v1.Org.created_at:type_name -> google.protobuf.Timestamp
+	9,  // 1: org.v1.Org.updated_at:type_name -> google.protobuf.Timestamp
+	0,  // 2: org.v1.CreateOrgResponse.org:type_name -> org.v1.Org
+	0,  // 3: org.v1.GetOrgResponse.org:type_name -> org.v1.Org
+	0,  // 4: org.v1.ListOrgsResponse.orgs:type_name -> org.v1.Org
+	0,  // 5: org.v1.UpdateOrgResponse.org:type_name -> org.v1.Org
+	1,  // 6: org.v1.OrgService.CreateOrg:input_type -> org.v1.CreateOrgRequest
+	3,  // 7: org.v1.OrgService.GetOrg:input_type -> org.v1.GetOrgRequest
+	5,  // 8: org.v1.OrgService.ListOrgs:input_type -> org.v1.ListOrgsRequest
+	7,  // 9: org.v1.OrgService.UpdateOrg:input_type -> org.v1.UpdateOrgRequest
+	2,  // 10: org.v1.OrgService.CreateOrg:output_type -> org.v1.CreateOrgResponse
+	4,  // 11: org.v1.OrgService.GetOrg:output_type -> org.v1.GetOrgResponse
+	6,  // 12: org.v1.OrgService.ListOrgs:output_type -> org.v1.ListOrgsResponse
+	8,  // 13: org.v1.OrgService.UpdateOrg:output_type -> org.v1.UpdateOrgResponse
+	10, // [10:14] is the sub-list for method output_type
+	6,  // [6:10] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_org_v1_org_proto_init() }
@@ -462,7 +578,7 @@ func file_org_v1_org_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_org_v1_org_proto_rawDesc), len(file_org_v1_org_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

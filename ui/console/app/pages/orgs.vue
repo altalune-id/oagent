@@ -13,7 +13,7 @@ useHead({ title: () => `${t('org.all')} · oagent` })
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-3xl px-6 py-10">
+  <div class="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
     <div class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold">{{ t('org.title') }}</h1>

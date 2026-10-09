@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file org/v1/org.proto.
  */
 export const file_org_v1_org: GenFile = /*@__PURE__*/
-  fileDesc("ChBvcmcvdjEvb3JnLnByb3RvEgZvcmcudjEioAEKA09yZxIKCgJpZBgBIAEoCRIRCglwdWJsaWNfaWQYAiABKAkSDAoEc2x1ZxgDIAEoCRIMCgRuYW1lGAQgASgJEi4KCmNyZWF0ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIi4KEENyZWF0ZU9yZ1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRIMCgRuYW1lGAIgASgJIi0KEUNyZWF0ZU9yZ1Jlc3BvbnNlEhgKA29yZxgBIAEoCzILLm9yZy52MS5PcmciGwoNR2V0T3JnUmVxdWVzdBIKCgJpZBgBIAEoCSIqCg5HZXRPcmdSZXNwb25zZRIYCgNvcmcYASABKAsyCy5vcmcudjEuT3JnIhEKD0xpc3RPcmdzUmVxdWVzdCItChBMaXN0T3Jnc1Jlc3BvbnNlEhkKBG9yZ3MYASADKAsyCy5vcmcudjEuT3JnMpsDCgpPcmdTZXJ2aWNlEpsBCglDcmVhdGVPcmcSGC5vcmcudjEuQ3JlYXRlT3JnUmVxdWVzdBoZLm9yZy52MS5DcmVhdGVPcmdSZXNwb25zZSJZyvMYVQoKb3JnX2NyZWF0ZRJAQ3JlYXRlIGFuIG9yZ2FuaXphdGlvbiwgbWludGluZyBhIHNsdWcgd2hlbiBvbmUgaXMgbm90IHN1cHBsaWVkLiABKgNhcHASawoGR2V0T3JnEhUub3JnLnYxLkdldE9yZ1JlcXVlc3QaFi5vcmcudjEuR2V0T3JnUmVzcG9uc2UiMsrzGC4KB29yZ19nZXQSGkdldCBhbiBvcmdhbml6YXRpb24gYnkgaWQuGgJpZCoDYXBwEoEBCghMaXN0T3JncxIXLm9yZy52MS5MaXN0T3Jnc1JlcXVlc3QaGC5vcmcudjEuTGlzdE9yZ3NSZXNwb25zZSJCyvMYPgoIb3JnX2xpc3QSLUxpc3Qgb3JnYW5pemF0aW9ucywgb3JkZXJlZCBieSBjcmVhdGlvbiB0aW1lLioDYXBwQncKCmNvbS5vcmcudjFCCE9yZ1Byb3RvUAFaJmFsdGFsdW5lLmlkL29hZ2VudC9nZW4vZ28vb3JnL3YxO29yZ3YxogIDT1hYqgIGT3JnLlYxygIGT3JnXFYx4gIST3JnXFYxXEdQQk1ldGFkYXRh6gIHT3JnOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_mcp_v1_annotations]);
+  fileDesc("ChBvcmcvdjEvb3JnLnByb3RvEgZvcmcudjEioAEKA09yZxIKCgJpZBgBIAEoCRIRCglwdWJsaWNfaWQYAiABKAkSDAoEc2x1ZxgDIAEoCRIMCgRuYW1lGAQgASgJEi4KCmNyZWF0ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIi4KEENyZWF0ZU9yZ1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRIMCgRuYW1lGAIgASgJIi0KEUNyZWF0ZU9yZ1Jlc3BvbnNlEhgKA29yZxgBIAEoCzILLm9yZy52MS5PcmciGwoNR2V0T3JnUmVxdWVzdBIKCgJpZBgBIAEoCSIqCg5HZXRPcmdSZXNwb25zZRIYCgNvcmcYASABKAsyCy5vcmcudjEuT3JnIhEKD0xpc3RPcmdzUmVxdWVzdCItChBMaXN0T3Jnc1Jlc3BvbnNlEhkKBG9yZ3MYASADKAsyCy5vcmcudjEuT3JnIjoKEFVwZGF0ZU9yZ1JlcXVlc3QSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIMCgRzbHVnGAMgASgJIi0KEVVwZGF0ZU9yZ1Jlc3BvbnNlEhgKA29yZxgBIAEoCzILLm9yZy52MS5Pcmcy3QMKCk9yZ1NlcnZpY2USmwEKCUNyZWF0ZU9yZxIYLm9yZy52MS5DcmVhdGVPcmdSZXF1ZXN0Ghkub3JnLnYxLkNyZWF0ZU9yZ1Jlc3BvbnNlIlnK8xhVCgpvcmdfY3JlYXRlEkBDcmVhdGUgYW4gb3JnYW5pemF0aW9uLCBtaW50aW5nIGEgc2x1ZyB3aGVuIG9uZSBpcyBub3Qgc3VwcGxpZWQuIAEqA2FwcBJrCgZHZXRPcmcSFS5vcmcudjEuR2V0T3JnUmVxdWVzdBoWLm9yZy52MS5HZXRPcmdSZXNwb25zZSIyyvMYLgoHb3JnX2dldBIaR2V0IGFuIG9yZ2FuaXphdGlvbiBieSBpZC4aAmlkKgNhcHASgQEKCExpc3RPcmdzEhcub3JnLnYxLkxpc3RPcmdzUmVxdWVzdBoYLm9yZy52MS5MaXN0T3Jnc1Jlc3BvbnNlIkLK8xg+CghvcmdfbGlzdBItTGlzdCBvcmdhbml6YXRpb25zLCBvcmRlcmVkIGJ5IGNyZWF0aW9uIHRpbWUuKgNhcHASQAoJVXBkYXRlT3JnEhgub3JnLnYxLlVwZGF0ZU9yZ1JlcXVlc3QaGS5vcmcudjEuVXBkYXRlT3JnUmVzcG9uc2VCdwoKY29tLm9yZy52MUIIT3JnUHJvdG9QAVomYWx0YWx1bmUuaWQvb2FnZW50L2dlbi9nby9vcmcvdjE7b3JndjGiAgNPWFiqAgZPcmcuVjHKAgZPcmdcVjHiAhJPcmdcVjFcR1BCTWV0YWRhdGHqAgdPcmc6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_mcp_v1_annotations]);
 
 /**
  * @generated from message org.v1.Org
@@ -161,6 +161,50 @@ export const ListOrgsResponseSchema: GenMessage<ListOrgsResponse> = /*@__PURE__*
   messageDesc(file_org_v1_org, 6);
 
 /**
+ * @generated from message org.v1.UpdateOrgRequest
+ */
+export type UpdateOrgRequest = Message<"org.v1.UpdateOrgRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string slug = 3;
+   */
+  slug: string;
+};
+
+/**
+ * Describes the message org.v1.UpdateOrgRequest.
+ * Use `create(UpdateOrgRequestSchema)` to create a new message.
+ */
+export const UpdateOrgRequestSchema: GenMessage<UpdateOrgRequest> = /*@__PURE__*/
+  messageDesc(file_org_v1_org, 7);
+
+/**
+ * @generated from message org.v1.UpdateOrgResponse
+ */
+export type UpdateOrgResponse = Message<"org.v1.UpdateOrgResponse"> & {
+  /**
+   * @generated from field: org.v1.Org org = 1;
+   */
+  org?: Org;
+};
+
+/**
+ * Describes the message org.v1.UpdateOrgResponse.
+ * Use `create(UpdateOrgResponseSchema)` to create a new message.
+ */
+export const UpdateOrgResponseSchema: GenMessage<UpdateOrgResponse> = /*@__PURE__*/
+  messageDesc(file_org_v1_org, 8);
+
+/**
  * @generated from service org.v1.OrgService
  */
 export const OrgService: GenService<{
@@ -187,6 +231,14 @@ export const OrgService: GenService<{
     methodKind: "unary";
     input: typeof ListOrgsRequestSchema;
     output: typeof ListOrgsResponseSchema;
+  },
+  /**
+   * @generated from rpc org.v1.OrgService.UpdateOrg
+   */
+  updateOrg: {
+    methodKind: "unary";
+    input: typeof UpdateOrgRequestSchema;
+    output: typeof UpdateOrgResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_org_v1_org, 0);

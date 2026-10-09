@@ -42,6 +42,9 @@ const (
 	// ProjectServiceListProjectsProcedure is the fully-qualified name of the ProjectService's
 	// ListProjects RPC.
 	ProjectServiceListProjectsProcedure = "/project.v1.ProjectService/ListProjects"
+	// ProjectServiceUpdateProjectProcedure is the fully-qualified name of the ProjectService's
+	// UpdateProject RPC.
+	ProjectServiceUpdateProjectProcedure = "/project.v1.ProjectService/UpdateProject"
 )
 
 // ProjectServiceClient is a client for the project.v1.ProjectService service.
@@ -49,6 +52,7 @@ type ProjectServiceClient interface {
 	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
 	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
+	UpdateProject(context.Context, *connect.Request[v1.UpdateProjectRequest]) (*connect.Response[v1.UpdateProjectResponse], error)
 }
 
 // NewProjectServiceClient constructs a client for the project.v1.ProjectService service. By
@@ -80,6 +84,12 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(projectServiceMethods.ByName("ListProjects")),
 			connect.WithClientOptions(opts...),
 		),
+		updateProject: connect.NewClient[v1.UpdateProjectRequest, v1.UpdateProjectResponse](
+			httpClient,
+			baseURL+ProjectServiceUpdateProjectProcedure,
+			connect.WithSchema(projectServiceMethods.ByName("UpdateProject")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -88,6 +98,7 @@ type projectServiceClient struct {
 	createProject *connect.Client[v1.CreateProjectRequest, v1.CreateProjectResponse]
 	getProject    *connect.Client[v1.GetProjectRequest, v1.GetProjectResponse]
 	listProjects  *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
+	updateProject *connect.Client[v1.UpdateProjectRequest, v1.UpdateProjectResponse]
 }
 
 // CreateProject calls project.v1.ProjectService.CreateProject.
@@ -105,11 +116,17 @@ func (c *projectServiceClient) ListProjects(ctx context.Context, req *connect.Re
 	return c.listProjects.CallUnary(ctx, req)
 }
 
+// UpdateProject calls project.v1.ProjectService.UpdateProject.
+func (c *projectServiceClient) UpdateProject(ctx context.Context, req *connect.Request[v1.UpdateProjectRequest]) (*connect.Response[v1.UpdateProjectResponse], error) {
+	return c.updateProject.CallUnary(ctx, req)
+}
+
 // ProjectServiceHandler is an implementation of the project.v1.ProjectService service.
 type ProjectServiceHandler interface {
 	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
 	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
+	UpdateProject(context.Context, *connect.Request[v1.UpdateProjectRequest]) (*connect.Response[v1.UpdateProjectResponse], error)
 }
 
 // NewProjectServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -137,6 +154,12 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 		connect.WithSchema(projectServiceMethods.ByName("ListProjects")),
 		connect.WithHandlerOptions(opts...),
 	)
+	projectServiceUpdateProjectHandler := connect.NewUnaryHandler(
+		ProjectServiceUpdateProjectProcedure,
+		svc.UpdateProject,
+		connect.WithSchema(projectServiceMethods.ByName("UpdateProject")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/project.v1.ProjectService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProjectServiceCreateProjectProcedure:
@@ -145,6 +168,8 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 			projectServiceGetProjectHandler.ServeHTTP(w, r)
 		case ProjectServiceListProjectsProcedure:
 			projectServiceListProjectsHandler.ServeHTTP(w, r)
+		case ProjectServiceUpdateProjectProcedure:
+			projectServiceUpdateProjectHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -164,4 +189,8 @@ func (UnimplementedProjectServiceHandler) GetProject(context.Context, *connect.R
 
 func (UnimplementedProjectServiceHandler) ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("project.v1.ProjectService.ListProjects is not implemented"))
+}
+
+func (UnimplementedProjectServiceHandler) UpdateProject(context.Context, *connect.Request[v1.UpdateProjectRequest]) (*connect.Response[v1.UpdateProjectResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("project.v1.ProjectService.UpdateProject is not implemented"))
 }

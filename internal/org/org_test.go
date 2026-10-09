@@ -38,13 +38,15 @@ func TestNewOrg_Invalid(t *testing.T) {
 	assert.True(t, IsInvalidNameError(err))
 }
 
-func TestOrg_Rename(t *testing.T) {
+func TestOrg_Update(t *testing.T) {
 	o, err := NewOrg("acme", "Acme", uuid.New())
 	require.NoError(t, err)
 
-	require.NoError(t, o.Rename("  Acme Two  "))
+	require.NoError(t, o.Update("  Acme Two  ", "acme-two"))
 	assert.Equal(t, "Acme Two", o.Name)
-	assert.True(t, IsInvalidNameError(o.Rename("")))
+	assert.Equal(t, "acme-two", o.Slug)
+	assert.True(t, IsInvalidNameError(o.Update("", "acme-two")))
+	assert.True(t, IsInvalidSlugError(o.Update("Acme", "Bad_Slug")))
 }
 
 func TestValidateSlug(t *testing.T) {

@@ -89,17 +89,17 @@ func (s *Service) List(ctx context.Context, orgID uuid.UUID) ([]*Project, error)
 	return projects, nil
 }
 
-// Rename changes a project's display name.
-func (s *Service) Rename(ctx context.Context, id uuid.UUID, name string) (*Project, error) {
+// Update changes a project's display name and slug.
+func (s *Service) Update(ctx context.Context, id uuid.UUID, name, slug string) (*Project, error) {
 	p, err := s.store.ByID(ctx, id)
 	if err != nil {
-		return nil, s.errOrReport(ctx, "project: rename", err)
+		return nil, s.errOrReport(ctx, "project: update", err)
 	}
-	if err := p.Rename(name); err != nil {
+	if err := p.Update(name, slug); err != nil {
 		return nil, err
 	}
 	if err := s.store.Save(ctx, p); err != nil {
-		return nil, s.errOrReport(ctx, "project: rename", err)
+		return nil, s.errOrReport(ctx, "project: update", err)
 	}
 	return p, nil
 }

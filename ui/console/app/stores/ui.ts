@@ -1,6 +1,7 @@
 export const useUIStore = defineStore('ui', () => {
   const orgCreateOpen = ref(false)
   const projectCreateOpen = ref(false)
+  const navOpen = ref(false)
 
   function openOrgCreate() {
     orgCreateOpen.value = true
@@ -18,5 +19,5 @@ export const useUIStore = defineStore('ui', () => {
     projectCreateOpen.value = false
   }
 
-  return { orgCreateOpen, projectCreateOpen, openOrgCreate, closeOrgCreate, openProjectCreate, closeProjectCreate }
+  return { orgCreateOpen, projectCreateOpen, navOpen, openOrgCreate, closeOrgCreate, openProjectCreate, closeProjectCreate }
 })

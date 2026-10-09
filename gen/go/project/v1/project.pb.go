@@ -395,6 +395,110 @@ func (x *ListProjectsResponse) GetProjects() []*Project {
 	return nil
 }
 
+type UpdateProjectRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Slug          string                 `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateProjectRequest) Reset() {
+	*x = UpdateProjectRequest{}
+	mi := &file_project_v1_project_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateProjectRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateProjectRequest) ProtoMessage() {}
+
+func (x *UpdateProjectRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_project_v1_project_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateProjectRequest.ProtoReflect.Descriptor instead.
+func (*UpdateProjectRequest) Descriptor() ([]byte, []int) {
+	return file_project_v1_project_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *UpdateProjectRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateProjectRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateProjectRequest) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+type UpdateProjectResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Project       *Project               `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateProjectResponse) Reset() {
+	*x = UpdateProjectResponse{}
+	mi := &file_project_v1_project_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateProjectResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateProjectResponse) ProtoMessage() {}
+
+func (x *UpdateProjectResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_project_v1_project_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateProjectResponse.ProtoReflect.Descriptor instead.
+func (*UpdateProjectResponse) Descriptor() ([]byte, []int) {
+	return file_project_v1_project_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *UpdateProjectResponse) GetProject() *Project {
+	if x != nil {
+		return x.Project
+	}
+	return nil
+}
+
 var File_project_v1_project_proto protoreflect.FileDescriptor
 
 const file_project_v1_project_proto_rawDesc = "" +
@@ -424,7 +528,13 @@ const file_project_v1_project_proto_rawDesc = "" +
 	"\x13ListProjectsRequest\x12\x15\n" +
 	"\x06org_id\x18\x01 \x01(\tR\x05orgId\"G\n" +
 	"\x14ListProjectsResponse\x12/\n" +
-	"\bprojects\x18\x01 \x03(\v2\x13.project.v1.ProjectR\bprojects2\xee\x03\n" +
+	"\bprojects\x18\x01 \x03(\v2\x13.project.v1.ProjectR\bprojects\"N\n" +
+	"\x14UpdateProjectRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04slug\x18\x03 \x01(\tR\x04slug\"F\n" +
+	"\x15UpdateProjectResponse\x12-\n" +
+	"\aproject\x18\x01 \x01(\v2\x13.project.v1.ProjectR\aproject2\xc4\x04\n" +
 	"\x0eProjectService\x12\xc4\x01\n" +
 	"\rCreateProject\x12 .project.v1.CreateProjectRequest\x1a!.project.v1.CreateProjectResponse\"n\xca\xf3\x18j\n" +
 	"\x0eproject_create\x12QCreate a project within an organization, minting a slug when one is not supplied. \x01*\x03app\x12}\n" +
@@ -432,7 +542,8 @@ const file_project_v1_project_proto_rawDesc = "" +
 	"GetProject\x12\x1d.project.v1.GetProjectRequest\x1a\x1e.project.v1.GetProjectResponse\"0\xca\xf3\x18,\n" +
 	"\vproject_get\x12\x14Get a project by id.\x1a\x02id*\x03app\x12\x95\x01\n" +
 	"\fListProjects\x12\x1f.project.v1.ListProjectsRequest\x1a .project.v1.ListProjectsResponse\"B\xca\xf3\x18>\n" +
-	"\fproject_list\x12!List projects in an organization.\x1a\x06org_id*\x03appB\x97\x01\n" +
+	"\fproject_list\x12!List projects in an organization.\x1a\x06org_id*\x03app\x12T\n" +
+	"\rUpdateProject\x12 .project.v1.UpdateProjectRequest\x1a!.project.v1.UpdateProjectResponseB\x97\x01\n" +
 	"\x0ecom.project.v1B\fProjectProtoP\x01Z.altalune.id/oagent/gen/go/project/v1;projectv1\xa2\x02\x03PXX\xaa\x02\n" +
 	"Project.V1\xca\x02\n" +
 	"Project\\V1\xe2\x02\x16Project\\V1\\GPBMetadata\xea\x02\vProject::V1b\x06proto3"
@@ -449,7 +560,7 @@ func file_project_v1_project_proto_rawDescGZIP() []byte {
 	return file_project_v1_project_proto_rawDescData
 }
 
-var file_project_v1_project_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_project_v1_project_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_project_v1_project_proto_goTypes = []any{
 	(*Project)(nil),               // 0: project.v1.Project
 	(*CreateProjectRequest)(nil),  // 1: project.v1.CreateProjectRequest
@@ -458,25 +569,30 @@ var file_project_v1_project_proto_goTypes = []any{
 	(*GetProjectResponse)(nil),    // 4: project.v1.GetProjectResponse
 	(*ListProjectsRequest)(nil),   // 5: project.v1.ListProjectsRequest
 	(*ListProjectsResponse)(nil),  // 6: project.v1.ListProjectsResponse
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*UpdateProjectRequest)(nil),  // 7: project.v1.UpdateProjectRequest
+	(*UpdateProjectResponse)(nil), // 8: project.v1.UpdateProjectResponse
+	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
 }
 var file_project_v1_project_proto_depIdxs = []int32{
-	7, // 0: project.v1.Project.created_at:type_name -> google.protobuf.Timestamp
-	7, // 1: project.v1.Project.updated_at:type_name -> google.protobuf.Timestamp
-	0, // 2: project.v1.CreateProjectResponse.project:type_name -> project.v1.Project
-	0, // 3: project.v1.GetProjectResponse.project:type_name -> project.v1.Project
-	0, // 4: project.v1.ListProjectsResponse.projects:type_name -> project.v1.Project
-	1, // 5: project.v1.ProjectService.CreateProject:input_type -> project.v1.CreateProjectRequest
-	3, // 6: project.v1.ProjectService.GetProject:input_type -> project.v1.GetProjectRequest
-	5, // 7: project.v1.ProjectService.ListProjects:input_type -> project.v1.ListProjectsRequest
-	2, // 8: project.v1.ProjectService.CreateProject:output_type -> project.v1.CreateProjectResponse
-	4, // 9: project.v1.ProjectService.GetProject:output_type -> project.v1.GetProjectResponse
-	6, // 10: project.v1.ProjectService.ListProjects:output_type -> project.v1.ListProjectsResponse
-	8, // [8:11] is the sub-list for method output_type
-	5, // [5:8] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	9,  // 0: project.v1.Project.created_at:type_name -> google.protobuf.Timestamp
+	9,  // 1: project.v1.Project.updated_at:type_name -> google.protobuf.Timestamp
+	0,  // 2: project.v1.CreateProjectResponse.project:type_name -> project.v1.Project
+	0,  // 3: project.v1.GetProjectResponse.project:type_name -> project.v1.Project
+	0,  // 4: project.v1.ListProjectsResponse.projects:type_name -> project.v1.Project
+	0,  // 5: project.v1.UpdateProjectResponse.project:type_name -> project.v1.Project
+	1,  // 6: project.v1.ProjectService.CreateProject:input_type -> project.v1.CreateProjectRequest
+	3,  // 7: project.v1.ProjectService.GetProject:input_type -> project.v1.GetProjectRequest
+	5,  // 8: project.v1.ProjectService.ListProjects:input_type -> project.v1.ListProjectsRequest
+	7,  // 9: project.v1.ProjectService.UpdateProject:input_type -> project.v1.UpdateProjectRequest
+	2,  // 10: project.v1.ProjectService.CreateProject:output_type -> project.v1.CreateProjectResponse
+	4,  // 11: project.v1.ProjectService.GetProject:output_type -> project.v1.GetProjectResponse
+	6,  // 12: project.v1.ProjectService.ListProjects:output_type -> project.v1.ListProjectsResponse
+	8,  // 13: project.v1.ProjectService.UpdateProject:output_type -> project.v1.UpdateProjectResponse
+	10, // [10:14] is the sub-list for method output_type
+	6,  // [6:10] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_project_v1_project_proto_init() }
@@ -490,7 +606,7 @@ func file_project_v1_project_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_project_v1_project_proto_rawDesc), len(file_project_v1_project_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

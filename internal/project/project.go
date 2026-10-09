@@ -63,13 +63,18 @@ func NewProject(orgID uuid.UUID, slug, name string, createdBy uuid.UUID) (*Proje
 	return p, nil
 }
 
-// Rename applies a new display name; slug is immutable.
-func (p *Project) Rename(name string) error {
+// Update applies a new display name and slug.
+func (p *Project) Update(name, slug string) error {
 	n := strings.TrimSpace(name)
 	if err := ValidateName(n); err != nil {
 		return err
 	}
+	s := strings.TrimSpace(slug)
+	if err := ValidateSlug(s); err != nil {
+		return err
+	}
 	p.Name = n
+	p.Slug = s
 	return nil
 }
 

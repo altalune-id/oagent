@@ -33,6 +33,7 @@ service ProjectService {
       ui: "app"
     };
   }
+  rpc UpdateProject(UpdateProjectRequest) returns (UpdateProjectResponse);
 }
 
 message Project {
@@ -69,4 +70,14 @@ message ListProjectsRequest {
 
 message ListProjectsResponse {
   repeated Project projects = 1;
+}
+
+message UpdateProjectRequest {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+}
+
+message UpdateProjectResponse {
+  Project project = 1;
 }

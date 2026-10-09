@@ -35,13 +35,15 @@ func TestNewProject_Invalid(t *testing.T) {
 	assert.True(t, IsInvalidNameError(err))
 }
 
-func TestProject_Rename(t *testing.T) {
+func TestProject_Update(t *testing.T) {
 	p, err := NewProject(uuid.New(), "acme", "Acme", uuid.New())
 	require.NoError(t, err)
 
-	require.NoError(t, p.Rename("  Acme Two  "))
+	require.NoError(t, p.Update("  Acme Two  ", "acme-two"))
 	assert.Equal(t, "Acme Two", p.Name)
-	assert.True(t, IsInvalidNameError(p.Rename("")))
+	assert.Equal(t, "acme-two", p.Slug)
+	assert.True(t, IsInvalidNameError(p.Update("", "acme-two")))
+	assert.True(t, IsInvalidSlugError(p.Update("Acme", "Bad_Slug")))
 }
 
 func TestValidateSlug(t *testing.T) {

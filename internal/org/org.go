@@ -56,13 +56,18 @@ func NewOrg(slug, name string, createdBy uuid.UUID) (*Org, error) {
 	return o, nil
 }
 
-// Rename applies a new display name; slug is immutable.
-func (o *Org) Rename(name string) error {
+// Update applies a new display name and slug.
+func (o *Org) Update(name, slug string) error {
 	n := strings.TrimSpace(name)
 	if err := ValidateName(n); err != nil {
 		return err
 	}
+	s := strings.TrimSpace(slug)
+	if err := ValidateSlug(s); err != nil {
+		return err
+	}
 	o.Name = n
+	o.Slug = s
 	return nil
 }
 

@@ -1,5 +1,6 @@
 export interface Agent {
   id: string
+  publicId: string
   projectId: string
   slug: string
   name: string
@@ -30,12 +31,16 @@ export const useAgentsStore = defineStore('agents', () => {
     items.value = items.value.filter(a => a.id !== id)
   }
 
+  function update(patch: Pick<Agent, 'id' | 'name' | 'description'>) {
+    items.value = items.value.map(a => (a.id === patch.id ? { ...a, name: patch.name, description: patch.description } : a))
+  }
+
   async function load(projectId: string) {
     loading.value = true
     error.value = ''
     try {
       const res = await client.listAgents({ projectId })
-      items.value = (res.agents ?? []).map(a => ({ id: a.id, projectId: a.projectId, slug: a.slug, name: a.name, description: a.description }))
+      items.value = (res.agents ?? []).map(a => ({ id: a.id, publicId: a.publicId, projectId: a.projectId, slug: a.slug, name: a.name, description: a.description }))
       loadedFor = projectId
     }
     catch (e) {
@@ -56,5 +61,5 @@ export const useAgentsStore = defineStore('agents', () => {
     return inflight
   }
 
-  return { items, loading, error, forProject, add, remove, load, ensureLoaded }
+  return { items, loading, error, forProject, add, remove, update, load, ensureLoaded }
 })

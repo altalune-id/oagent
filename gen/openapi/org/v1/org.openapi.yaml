@@ -107,6 +107,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/org.v1.ListOrgsResponse'
+  /org.v1.OrgService/UpdateOrg:
+    post:
+      tags:
+        - org.v1.OrgService
+      summary: UpdateOrg
+      operationId: org.v1.OrgService.UpdateOrg
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/org.v1.UpdateOrgRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/org.v1.UpdateOrgResponse'
 components:
   schemas:
     connect-protocol-version:
@@ -345,6 +380,28 @@ components:
           title: updated_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: Org
+      additionalProperties: false
+    org.v1.UpdateOrgRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        slug:
+          type: string
+          title: slug
+      title: UpdateOrgRequest
+      additionalProperties: false
+    org.v1.UpdateOrgResponse:
+      type: object
+      properties:
+        org:
+          title: org
+          $ref: '#/components/schemas/org.v1.Org'
+      title: UpdateOrgResponse
       additionalProperties: false
 security: []
 tags:

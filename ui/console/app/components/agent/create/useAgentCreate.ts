@@ -36,7 +36,7 @@ export function useAgentCreate(orgId: string, projectId: string) {
       const res = await client.createAgent({ orgId, projectId, slug: slug.value.trim(), name: value, description: description.value })
       const agent = res.agent
       if (agent) {
-        agents.add({ id: agent.id, projectId: agent.projectId, slug: agent.slug, name: agent.name, description: agent.description })
+        agents.add({ id: agent.id, publicId: agent.publicId, projectId: agent.projectId, slug: agent.slug, name: agent.name, description: agent.description })
         open.value = false
         name.value = ''
         slug.value = ''

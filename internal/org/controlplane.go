@@ -66,3 +66,19 @@ func (s *OrgService) ListOrgs(
 	}
 	return connect.NewResponse(&orgv1.ListOrgsResponse{Orgs: out}), nil
 }
+
+// UpdateOrg changes an organization's display name and slug.
+func (s *OrgService) UpdateOrg(
+	ctx context.Context,
+	req *connect.Request[orgv1.UpdateOrgRequest],
+) (*connect.Response[orgv1.UpdateOrgResponse], error) {
+	id, err := uuid.Parse(req.Msg.GetId())
+	if err != nil {
+		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
+	}
+	o, err := s.orgs.Update(ctx, id, req.Msg.GetName(), req.Msg.GetSlug())
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&orgv1.UpdateOrgResponse{Org: orgToProto(o)}), nil
+}

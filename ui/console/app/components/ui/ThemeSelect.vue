@@ -19,10 +19,10 @@ const current = computed(() => props.families.find(family => family.id === props
 
 <template>
   <div class="dropdown dropdown-end" :class="{ 'dropdown-open': open }">
-    <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2" :aria-label="label">
+    <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2 max-sm:px-2" :aria-label="label">
       <Icon name="lucide:palette" size="16" />
       <span v-if="current" class="hidden sm:inline">{{ current.label }}</span>
-      <Icon name="lucide:chevron-down" size="14" />
+      <Icon name="lucide:chevron-down" size="14" class="max-sm:hidden" />
     </div>
     <ul tabindex="0" class="dropdown-content menu z-50 mt-1 w-56 rounded-box border border-base-300 bg-base-100 p-2 shadow">
       <li v-for="family in families" :key="family.id">

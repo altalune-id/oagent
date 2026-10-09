@@ -74,3 +74,19 @@ func (s *ProjectService) ListProjects(
 	}
 	return connect.NewResponse(&projectv1.ListProjectsResponse{Projects: out}), nil
 }
+
+// UpdateProject renames a project and/or changes its slug.
+func (s *ProjectService) UpdateProject(
+	ctx context.Context,
+	req *connect.Request[projectv1.UpdateProjectRequest],
+) (*connect.Response[projectv1.UpdateProjectResponse], error) {
+	id, err := uuid.Parse(req.Msg.GetId())
+	if err != nil {
+		return nil, apperror.New(apperror.CodeValidation, "invalid project id").WithCause(err)
+	}
+	p, err := s.projects.Update(ctx, id, req.Msg.GetName(), req.Msg.GetSlug())
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&projectv1.UpdateProjectResponse{Project: projectToProto(p)}), nil
+}

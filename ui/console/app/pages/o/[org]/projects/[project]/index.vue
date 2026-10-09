@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import AgentCreateModal from '~/components/agent/create/AgentCreateModal.vue'
 import { useAgentsStore } from '~/stores/agents'
 import { useOrgsStore } from '~/stores/orgs'
 import { useProjectsStore } from '~/stores/projects'
@@ -9,7 +8,6 @@ const { t } = useI18n()
 const orgs = useOrgsStore()
 const projects = useProjectsStore()
 const agents = useAgentsStore()
-const { $agentClient: client } = useNuxtApp()
 
 const org = computed(() => orgs.bySlug(route.params.org as string))
 const project = computed(() =>
@@ -24,60 +22,39 @@ await agents.ensureLoaded(project.value.id)
 
 const items = computed(() => (project.value ? agents.forProject(project.value.id) : []))
 
-async function destroy(id: string) {
-  try {
-    await client.deleteAgent({ id })
-    agents.remove(id)
-  }
-  catch (e) {
-    agents.error = e instanceof Error ? e.message : t('error.delete_agent')
-  }
-}
-
 useHead({ title: () => `${project.value?.name ?? t('project.title')} · oagent` })
 </script>
 
 <template>
   <div v-if="project" class="space-y-6">
-    <div class="flex items-start justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold">
-          {{ t('nav.agents') }}
-        </h1>
-        <p class="text-sm text-base-content/60">{{ project.slug }}</p>
-      </div>
-      <AgentCreateModal :org-id="org?.id ?? ''" :project-id="project.id" />
+    <div>
+      <h1 class="text-2xl font-bold">{{ project.name }}</h1>
+      <p class="text-sm text-base-content/60">{{ t('nav.overview') }}</p>
     </div>
 
-    <p v-if="agents.error" class="text-sm text-error">
-      {{ agents.error }}
-    </p>
-    <div v-else-if="items.length" class="overflow-x-auto">
-      <table class="table table-sm">
-        <thead>
-          <tr>
-            <th>{{ t('common.name') }}</th>
-            <th>{{ t('common.slug') }}</th>
-            <th>{{ t('common.description') }}</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="agent in items" :key="agent.id">
-            <td>{{ agent.name }}</td>
-            <td class="text-base-content/60">{{ agent.slug }}</td>
-            <td class="text-base-content/60">{{ agent.description }}</td>
-            <td class="text-right">
-              <button class="btn btn-ghost btn-xs text-error" @click="destroy(agent.id)">
-                {{ t('common.delete') }}
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p v-else class="text-sm text-base-content/60">
-      {{ t('agent.empty') }}
-    </p>
+    <section class="space-y-3">
+      <h2 class="text-lg font-semibold">
+        {{ t('nav.agents') }}
+      </h2>
+      <div v-if="items.length" class="grid gap-3 sm:grid-cols-2">
+        <NuxtLink
+          v-for="agent in items"
+          :key="agent.id"
+          :to="`/o/${org?.slug}/projects/${project.slug}/agents/${agent.slug}`"
+          class="card border border-base-300 bg-base-100 transition-colors hover:border-primary"
+        >
+          <div class="card-body">
+            <h3 class="card-title text-base">{{ agent.name }}</h3>
+            <p class="text-sm text-base-content/60">{{ agent.slug }}</p>
+            <p v-if="agent.description" class="text-sm text-base-content/50">
+              {{ agent.description }}
+            </p>
+          </div>
+        </NuxtLink>
+      </div>
+      <p v-else class="text-sm text-base-content/60">
+        {{ t('agent.empty') }}
+      </p>
+    </section>
   </div>
 </template>

@@ -1,5 +1,6 @@
 export interface Org {
   id: string
+  publicId: string
   slug: string
   name: string
 }
@@ -24,12 +25,16 @@ export const useOrgsStore = defineStore('orgs', () => {
     }
   }
 
+  function update(id: string, patch: { name: string, slug: string }) {
+    items.value = items.value.map(org => (org.id === id ? { ...org, name: patch.name, slug: patch.slug } : org))
+  }
+
   async function load() {
     loading.value = true
     error.value = ''
     try {
       const res = await client.listOrgs({})
-      items.value = (res.orgs ?? []).map(org => ({ id: org.id, slug: org.slug, name: org.name }))
+      items.value = (res.orgs ?? []).map(org => ({ id: org.id, publicId: org.publicId, slug: org.slug, name: org.name }))
       loaded.value = true
     }
     catch (e) {
@@ -50,5 +55,5 @@ export const useOrgsStore = defineStore('orgs', () => {
     return inflight
   }
 
-  return { items, loaded, loading, error, bySlug, add, load, ensureLoaded }
+  return { items, loaded, loading, error, bySlug, add, update, load, ensureLoaded }
 })

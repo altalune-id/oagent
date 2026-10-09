@@ -123,28 +123,37 @@ func TestService_Unexpected(t *testing.T) {
 	assert.True(t, ok)
 }
 
-func TestService_Rename(t *testing.T) {
+func TestService_Update(t *testing.T) {
 	p, err := project.NewProject(uuid.New(), "acme", "Acme", uuid.New())
 	require.NoError(t, err)
 	store := &fakes.ProjectStore{Project: p}
 
-	got, err := project.NewService(store, testUnexpected()).Rename(context.Background(), p.ID, "Acme Two")
+	got, err := project.NewService(store, testUnexpected()).Update(context.Background(), p.ID, "Acme Two", "acme-two")
 	require.NoError(t, err)
 	assert.Equal(t, "Acme Two", got.Name)
+	assert.Equal(t, "acme-two", got.Slug)
 	assert.Equal(t, got, store.Saved)
 }
 
-func TestService_Rename_NotFound(t *testing.T) {
+func TestService_Update_NotFound(t *testing.T) {
 	store := &fakes.ProjectStore{Err: &project.NotFoundError{ID: "x"}}
 
-	_, err := project.NewService(store, testUnexpected()).Rename(context.Background(), uuid.New(), "Acme Two")
+	_, err := project.NewService(store, testUnexpected()).Update(context.Background(), uuid.New(), "Acme Two", "acme-two")
 	assert.Error(t, err)
 }
 
-func TestService_Rename_InvalidName(t *testing.T) {
+func TestService_Update_InvalidName(t *testing.T) {
 	p, err := project.NewProject(uuid.New(), "acme", "Acme", uuid.New())
 	require.NoError(t, err)
 
-	_, err = project.NewService(&fakes.ProjectStore{Project: p}, testUnexpected()).Rename(context.Background(), p.ID, "")
+	_, err = project.NewService(&fakes.ProjectStore{Project: p}, testUnexpected()).Update(context.Background(), p.ID, "", "acme-two")
 	assert.True(t, project.IsInvalidNameError(err))
+}
+
+func TestService_Update_InvalidSlug(t *testing.T) {
+	p, err := project.NewProject(uuid.New(), "acme", "Acme", uuid.New())
+	require.NoError(t, err)
+
+	_, err = project.NewService(&fakes.ProjectStore{Project: p}, testUnexpected()).Update(context.Background(), p.ID, "Acme", "Bad_Slug")
+	assert.True(t, project.IsInvalidSlugError(err))
 }

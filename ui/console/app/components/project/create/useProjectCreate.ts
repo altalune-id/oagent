@@ -33,7 +33,7 @@ export function useProjectCreate(orgId: string) {
       const res = await client.createProject({ orgId, name: value, slug: slug.value.trim() })
       const project = res.project
       if (project) {
-        projects.add({ id: project.id, orgId: project.orgId, slug: project.slug, name: project.name })
+        projects.add({ id: project.id, publicId: project.publicId, orgId: project.orgId, slug: project.slug, name: project.name })
         ui.closeProjectCreate()
         name.value = ''
         slug.value = ''

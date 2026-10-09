@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file project/v1/project.proto.
  */
 export const file_project_v1_project: GenFile = /*@__PURE__*/
-  fileDesc("Chhwcm9qZWN0L3YxL3Byb2plY3QucHJvdG8SCnByb2plY3QudjEitAEKB1Byb2plY3QSCgoCaWQYASABKAkSEQoJcHVibGljX2lkGAIgASgJEg4KBm9yZ19pZBgDIAEoCRIMCgRzbHVnGAQgASgJEgwKBG5hbWUYBSABKAkSLgoKY3JlYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiQgoUQ3JlYXRlUHJvamVjdFJlcXVlc3QSDgoGb3JnX2lkGAEgASgJEgwKBHNsdWcYAiABKAkSDAoEbmFtZRgDIAEoCSI9ChVDcmVhdGVQcm9qZWN0UmVzcG9uc2USJAoHcHJvamVjdBgBIAEoCzITLnByb2plY3QudjEuUHJvamVjdCIfChFHZXRQcm9qZWN0UmVxdWVzdBIKCgJpZBgBIAEoCSI6ChJHZXRQcm9qZWN0UmVzcG9uc2USJAoHcHJvamVjdBgBIAEoCzITLnByb2plY3QudjEuUHJvamVjdCIlChNMaXN0UHJvamVjdHNSZXF1ZXN0Eg4KBm9yZ19pZBgBIAEoCSI9ChRMaXN0UHJvamVjdHNSZXNwb25zZRIlCghwcm9qZWN0cxgBIAMoCzITLnByb2plY3QudjEuUHJvamVjdDLuAwoOUHJvamVjdFNlcnZpY2USxAEKDUNyZWF0ZVByb2plY3QSIC5wcm9qZWN0LnYxLkNyZWF0ZVByb2plY3RSZXF1ZXN0GiEucHJvamVjdC52MS5DcmVhdGVQcm9qZWN0UmVzcG9uc2UibsrzGGoKDnByb2plY3RfY3JlYXRlElFDcmVhdGUgYSBwcm9qZWN0IHdpdGhpbiBhbiBvcmdhbml6YXRpb24sIG1pbnRpbmcgYSBzbHVnIHdoZW4gb25lIGlzIG5vdCBzdXBwbGllZC4gASoDYXBwEn0KCkdldFByb2plY3QSHS5wcm9qZWN0LnYxLkdldFByb2plY3RSZXF1ZXN0Gh4ucHJvamVjdC52MS5HZXRQcm9qZWN0UmVzcG9uc2UiMMrzGCwKC3Byb2plY3RfZ2V0EhRHZXQgYSBwcm9qZWN0IGJ5IGlkLhoCaWQqA2FwcBKVAQoMTGlzdFByb2plY3RzEh8ucHJvamVjdC52MS5MaXN0UHJvamVjdHNSZXF1ZXN0GiAucHJvamVjdC52MS5MaXN0UHJvamVjdHNSZXNwb25zZSJCyvMYPgoMcHJvamVjdF9saXN0EiFMaXN0IHByb2plY3RzIGluIGFuIG9yZ2FuaXphdGlvbi4aBm9yZ19pZCoDYXBwQpcBCg5jb20ucHJvamVjdC52MUIMUHJvamVjdFByb3RvUAFaLmFsdGFsdW5lLmlkL29hZ2VudC9nZW4vZ28vcHJvamVjdC92MTtwcm9qZWN0djGiAgNQWFiqAgpQcm9qZWN0LlYxygIKUHJvamVjdFxWMeICFlByb2plY3RcVjFcR1BCTWV0YWRhdGHqAgtQcm9qZWN0OjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_mcp_v1_annotations]);
+  fileDesc("Chhwcm9qZWN0L3YxL3Byb2plY3QucHJvdG8SCnByb2plY3QudjEitAEKB1Byb2plY3QSCgoCaWQYASABKAkSEQoJcHVibGljX2lkGAIgASgJEg4KBm9yZ19pZBgDIAEoCRIMCgRzbHVnGAQgASgJEgwKBG5hbWUYBSABKAkSLgoKY3JlYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiQgoUQ3JlYXRlUHJvamVjdFJlcXVlc3QSDgoGb3JnX2lkGAEgASgJEgwKBHNsdWcYAiABKAkSDAoEbmFtZRgDIAEoCSI9ChVDcmVhdGVQcm9qZWN0UmVzcG9uc2USJAoHcHJvamVjdBgBIAEoCzITLnByb2plY3QudjEuUHJvamVjdCIfChFHZXRQcm9qZWN0UmVxdWVzdBIKCgJpZBgBIAEoCSI6ChJHZXRQcm9qZWN0UmVzcG9uc2USJAoHcHJvamVjdBgBIAEoCzITLnByb2plY3QudjEuUHJvamVjdCIlChNMaXN0UHJvamVjdHNSZXF1ZXN0Eg4KBm9yZ19pZBgBIAEoCSI9ChRMaXN0UHJvamVjdHNSZXNwb25zZRIlCghwcm9qZWN0cxgBIAMoCzITLnByb2plY3QudjEuUHJvamVjdCI+ChRVcGRhdGVQcm9qZWN0UmVxdWVzdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHNsdWcYAyABKAkiPQoVVXBkYXRlUHJvamVjdFJlc3BvbnNlEiQKB3Byb2plY3QYASABKAsyEy5wcm9qZWN0LnYxLlByb2plY3QyxAQKDlByb2plY3RTZXJ2aWNlEsQBCg1DcmVhdGVQcm9qZWN0EiAucHJvamVjdC52MS5DcmVhdGVQcm9qZWN0UmVxdWVzdBohLnByb2plY3QudjEuQ3JlYXRlUHJvamVjdFJlc3BvbnNlIm7K8xhqCg5wcm9qZWN0X2NyZWF0ZRJRQ3JlYXRlIGEgcHJvamVjdCB3aXRoaW4gYW4gb3JnYW5pemF0aW9uLCBtaW50aW5nIGEgc2x1ZyB3aGVuIG9uZSBpcyBub3Qgc3VwcGxpZWQuIAEqA2FwcBJ9CgpHZXRQcm9qZWN0Eh0ucHJvamVjdC52MS5HZXRQcm9qZWN0UmVxdWVzdBoeLnByb2plY3QudjEuR2V0UHJvamVjdFJlc3BvbnNlIjDK8xgsCgtwcm9qZWN0X2dldBIUR2V0IGEgcHJvamVjdCBieSBpZC4aAmlkKgNhcHASlQEKDExpc3RQcm9qZWN0cxIfLnByb2plY3QudjEuTGlzdFByb2plY3RzUmVxdWVzdBogLnByb2plY3QudjEuTGlzdFByb2plY3RzUmVzcG9uc2UiQsrzGD4KDHByb2plY3RfbGlzdBIhTGlzdCBwcm9qZWN0cyBpbiBhbiBvcmdhbml6YXRpb24uGgZvcmdfaWQqA2FwcBJUCg1VcGRhdGVQcm9qZWN0EiAucHJvamVjdC52MS5VcGRhdGVQcm9qZWN0UmVxdWVzdBohLnByb2plY3QudjEuVXBkYXRlUHJvamVjdFJlc3BvbnNlQpcBCg5jb20ucHJvamVjdC52MUIMUHJvamVjdFByb3RvUAFaLmFsdGFsdW5lLmlkL29hZ2VudC9nZW4vZ28vcHJvamVjdC92MTtwcm9qZWN0djGiAgNQWFiqAgpQcm9qZWN0LlYxygIKUHJvamVjdFxWMeICFlByb2plY3RcVjFcR1BCTWV0YWRhdGHqAgtQcm9qZWN0OjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_mcp_v1_annotations]);
 
 /**
  * @generated from message project.v1.Project
@@ -175,6 +175,50 @@ export const ListProjectsResponseSchema: GenMessage<ListProjectsResponse> = /*@_
   messageDesc(file_project_v1_project, 6);
 
 /**
+ * @generated from message project.v1.UpdateProjectRequest
+ */
+export type UpdateProjectRequest = Message<"project.v1.UpdateProjectRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string slug = 3;
+   */
+  slug: string;
+};
+
+/**
+ * Describes the message project.v1.UpdateProjectRequest.
+ * Use `create(UpdateProjectRequestSchema)` to create a new message.
+ */
+export const UpdateProjectRequestSchema: GenMessage<UpdateProjectRequest> = /*@__PURE__*/
+  messageDesc(file_project_v1_project, 7);
+
+/**
+ * @generated from message project.v1.UpdateProjectResponse
+ */
+export type UpdateProjectResponse = Message<"project.v1.UpdateProjectResponse"> & {
+  /**
+   * @generated from field: project.v1.Project project = 1;
+   */
+  project?: Project;
+};
+
+/**
+ * Describes the message project.v1.UpdateProjectResponse.
+ * Use `create(UpdateProjectResponseSchema)` to create a new message.
+ */
+export const UpdateProjectResponseSchema: GenMessage<UpdateProjectResponse> = /*@__PURE__*/
+  messageDesc(file_project_v1_project, 8);
+
+/**
  * @generated from service project.v1.ProjectService
  */
 export const ProjectService: GenService<{
@@ -201,6 +245,14 @@ export const ProjectService: GenService<{
     methodKind: "unary";
     input: typeof ListProjectsRequestSchema;
     output: typeof ListProjectsResponseSchema;
+  },
+  /**
+   * @generated from rpc project.v1.ProjectService.UpdateProject
+   */
+  updateProject: {
+    methodKind: "unary";
+    input: typeof UpdateProjectRequestSchema;
+    output: typeof UpdateProjectResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_project_v1_project, 0);
