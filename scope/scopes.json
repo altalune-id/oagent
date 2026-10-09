@@ -1,0 +1,8 @@
+[
+  { "name": "org:read", "level": "org" },
+  { "name": "org:write", "level": "org" },
+  { "name": "project:read", "level": "project" },
+  { "name": "project:write", "level": "project" },
+  { "name": "agent:read", "level": "project" },
+  { "name": "agent:write", "level": "project" }
+]

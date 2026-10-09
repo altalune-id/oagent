@@ -98,5 +98,6 @@ require (
 
 tool (
 	altalune.id/oagent/cmd/gen-config-example
+	altalune.id/oagent/cmd/gen-scope
 	altalune.id/oagent/cmd/protoc-gen-mcp
 )

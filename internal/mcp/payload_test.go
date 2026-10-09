@@ -10,6 +10,7 @@ import (
 	"altalune.id/oagent/apperror"
 	rootmcp "altalune.id/oagent/mcp"
 	"altalune.id/oagent/reqid"
+	"altalune.id/oagent/scope"
 )
 
 func TestErrorPayload_App(t *testing.T) {
@@ -19,7 +20,7 @@ func TestErrorPayload_App(t *testing.T) {
 }
 
 func TestErrorPayload_ScopeDenied(t *testing.T) {
-	p := ErrorPayload(context.Background(), &rootmcp.ScopeDeniedError{Tool: "org_get", Scope: ScopeOrgRead})
+	p := ErrorPayload(context.Background(), &rootmcp.ScopeDeniedError{Tool: "org_get", Scope: scope.OrgRead})
 	assert.Equal(t, "FORBIDDEN", p.Code)
 	assert.Equal(t, "org_get", p.Meta["tool"])
 }

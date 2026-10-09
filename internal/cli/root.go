@@ -12,9 +12,11 @@ import (
 
 	"altalune.id/oagent/config"
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
+	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
 	"altalune.id/oagent/internal/agent"
+	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/boot"
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/org"
@@ -116,12 +118,16 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 	agentCmd := agent.NewCmd(agentClientFn(bootClient))
 	markClientTree(agentCmd)
 
+	apiKeyCmd := apikey.NewCmd(apiKeyClientFn(bootClient))
+	markClientTree(apiKeyCmd)
+
 	root.AddCommand(
 		newServeCmd(bootServer),
 		newMCPCmd(bootServer),
 		orgCmd,
 		projectCmd,
 		agentCmd,
+		apiKeyCmd,
 		newVersionCmd(),
 	)
 	return root
@@ -186,6 +192,17 @@ func agentClientFn(bootClient ClientBootFn) agent.ClientFn {
 			return nil, err
 		}
 		return client.Agents, nil
+	}
+}
+
+// apiKeyClientFn adapts the resolved remote client to the apikey package's ClientFn.
+func apiKeyClientFn(bootClient ClientBootFn) apikey.ClientFn {
+	return func(cmd *cobra.Command) (apikeyv1connect.APIKeyServiceClient, error) {
+		client, err := connectClient(cmd, bootClient)
+		if err != nil {
+			return nil, err
+		}
+		return client.APIKeys, nil
 	}
 }
 

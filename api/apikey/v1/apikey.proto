@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package apikey.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "altalune.id/oagent/gen/go/apikey/v1;apikeyv1";
+
+service APIKeyService {
+  rpc CreateAPIKey(CreateAPIKeyRequest) returns (CreateAPIKeyResponse);
+  rpc ListAPIKeys(ListAPIKeysRequest) returns (ListAPIKeysResponse);
+  rpc RevokeAPIKey(RevokeAPIKeyRequest) returns (RevokeAPIKeyResponse);
+}
+
+message APIKey {
+  string id = 1;
+  string org_id = 2;
+  string project_id = 3;
+  string kind = 4;
+  string name = 5;
+  repeated string scopes = 6;
+  repeated string project_ids = 7;
+  bool all_projects = 8;
+  repeated string resource_ids = 9;
+  string secret_hint = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp expires_at = 12;
+  google.protobuf.Timestamp revoked_at = 13;
+  google.protobuf.Timestamp last_used_at = 14;
+}
+
+message CreateAPIKeyRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string kind = 3;
+  string name = 4;
+  repeated string scopes = 5;
+  repeated string project_ids = 6;
+  bool all_projects = 7;
+  repeated string resource_ids = 8;
+  // Required: when the key stops working, in the future and at most one year away.
+  google.protobuf.Timestamp expires_at = 9;
+}
+
+message CreateAPIKeyResponse {
+  APIKey key = 1;
+  // plaintext is the one-time secret. It is never present on any other response.
+  string plaintext = 2;
+}
+
+message ListAPIKeysRequest {
+  string org_id = 1;
+}
+
+message ListAPIKeysResponse {
+  repeated APIKey keys = 1;
+}
+
+message RevokeAPIKeyRequest {
+  string org_id = 1;
+  string id = 2;
+}
+
+message RevokeAPIKeyResponse {}

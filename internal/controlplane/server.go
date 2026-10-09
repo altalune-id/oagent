@@ -10,9 +10,11 @@ import (
 
 	"altalune.id/oagent/apperror"
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
+	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
 	"altalune.id/oagent/internal/agent"
+	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
 )
@@ -28,6 +30,7 @@ type Services struct {
 	Orgs     *org.Service
 	Projects *project.Service
 	Agents   *agent.Service
+	APIKeys  *apikey.Service
 }
 
 // Server holds the wired Connect handlers.
@@ -35,10 +38,12 @@ type Server struct {
 	Orgs     *org.Service
 	Projects *project.Service
 	Agents   *agent.Service
+	APIKeys  *apikey.Service
 
 	OrgSvc     *org.OrgService
 	ProjectSvc *project.ProjectService
 	AgentSvc   *agent.AgentService
+	APIKeySvc  *apikey.APIKeyService
 
 	OpenAPIEnabled   bool
 	OpenAPIBasicAuth *BasicAuth
@@ -52,6 +57,7 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 		Orgs:             svcs.Orgs,
 		Projects:         svcs.Projects,
 		Agents:           svcs.Agents,
+		APIKeys:          svcs.APIKeys,
 		OrgSvc:           org.NewControlPlane(svcs.Orgs),
 		OpenAPIEnabled:   opts.OpenAPIEnabled,
 		OpenAPIBasicAuth: opts.OpenAPIBasicAuth,
@@ -62,6 +68,9 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 	}
 	if svcs.Agents != nil {
 		s.AgentSvc = agent.NewControlPlane(svcs.Agents)
+	}
+	if svcs.APIKeys != nil {
+		s.APIKeySvc = apikey.NewControlPlane(svcs.APIKeys)
 	}
 	return s
 }
@@ -78,6 +87,10 @@ func (s *Server) Handler(basePath string) http.Handler {
 	if s.AgentSvc != nil {
 		agentPath, agentHandler := agentv1connect.NewAgentServiceHandler(s.AgentSvc, s.handlerOptions()...)
 		inner.Handle(agentPath, agentHandler)
+	}
+	if s.APIKeySvc != nil {
+		keyPath, keyHandler := apikeyv1connect.NewAPIKeyServiceHandler(s.APIKeySvc, s.handlerOptions()...)
+		inner.Handle(keyPath, keyHandler)
 	}
 
 	if s.OpenAPIEnabled {

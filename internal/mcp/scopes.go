@@ -9,33 +9,25 @@ import (
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
 	projectv1mcp "altalune.id/oagent/gen/go/project/v1/projectv1mcp"
-)
-
-const (
-	ScopeOrgRead      = "org:read"
-	ScopeOrgWrite     = "org:write"
-	ScopeProjectRead  = "project:read"
-	ScopeProjectWrite = "project:write"
-	ScopeAgentRead    = "agent:read"
-	ScopeAgentWrite   = "agent:write"
+	"altalune.id/oagent/scope"
 )
 
 // ScopeTable maps every published tool to the scope its caller must hold.
 func ScopeTable() map[string]string {
 	return map[string]string{
-		orgv1mcp.OrgCreateToolName: ScopeOrgWrite,
-		orgv1mcp.OrgGetToolName:    ScopeOrgRead,
-		orgv1mcp.OrgListToolName:   ScopeOrgRead,
+		orgv1mcp.OrgCreateToolName: scope.OrgWrite,
+		orgv1mcp.OrgGetToolName:    scope.OrgRead,
+		orgv1mcp.OrgListToolName:   scope.OrgRead,
 
-		projectv1mcp.ProjectCreateToolName: ScopeProjectWrite,
-		projectv1mcp.ProjectGetToolName:    ScopeProjectRead,
-		projectv1mcp.ProjectListToolName:   ScopeProjectRead,
+		projectv1mcp.ProjectCreateToolName: scope.ProjectWrite,
+		projectv1mcp.ProjectGetToolName:    scope.ProjectRead,
+		projectv1mcp.ProjectListToolName:   scope.ProjectRead,
 
-		agentv1mcp.AgentCreateToolName: ScopeAgentWrite,
-		agentv1mcp.AgentGetToolName:    ScopeAgentRead,
-		agentv1mcp.AgentListToolName:   ScopeAgentRead,
-		agentv1mcp.AgentUpdateToolName: ScopeAgentWrite,
-		agentv1mcp.AgentDeleteToolName: ScopeAgentWrite,
+		agentv1mcp.AgentCreateToolName: scope.AgentWrite,
+		agentv1mcp.AgentGetToolName:    scope.AgentRead,
+		agentv1mcp.AgentListToolName:   scope.AgentRead,
+		agentv1mcp.AgentUpdateToolName: scope.AgentWrite,
+		agentv1mcp.AgentDeleteToolName: scope.AgentWrite,
 	}
 }
 

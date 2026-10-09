@@ -34,8 +34,9 @@ config-examples: ## regenerate .env.reference and config.reference.yml from stru
 	$(GO) tool gen-config-example --format=yaml
 
 .PHONY: generate
-generate: ## regenerate protos (connect, openapi, mcp tools)
+generate: ## regenerate protos (connect, openapi, mcp tools) and scope names
 	env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) buf generate
+	$(GO) tool gen-scope
 
 .PHONY: ui-mcp
 ui-mcp: ## build the MCP App (Vue) and embed it
