@@ -7,6 +7,7 @@ import ProjectListView from "./ProjectListView.vue";
 import AgentCreateView from "./AgentCreateView.vue";
 import AgentListView from "./AgentListView.vue";
 import WebhookCreateView from "./WebhookCreateView.vue";
+import WebhookDeliveriesView from "./WebhookDeliveriesView.vue";
 import WebhookListView from "./WebhookListView.vue";
 import DefaultView from "./DefaultView.vue";
 
@@ -20,6 +21,7 @@ const registry: Record<string, Component> = {
   agent_list: AgentListView,
   webhook_create: WebhookCreateView,
   webhook_list: WebhookListView,
+  webhook_deliveries: WebhookDeliveriesView,
 };
 
 // resolveView picks the view for the calling tool, falling back to a generic renderer.
