@@ -1,9 +1,13 @@
+import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-10-06',
   devtools: { enabled: true },
   modules: ['@pinia/nuxt', '@vueuse/nuxt'],
+  alias: {
+    '@shared/scope': fileURLToPath(new URL('../../scope', import.meta.url)),
+  },
   components: { dirs: [] },
   imports: { scan: false },
   css: ['~/assets/css/main.css'],

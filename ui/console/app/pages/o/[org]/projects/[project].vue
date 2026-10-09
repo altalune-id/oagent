@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import AgentCreateModal from '~/components/agent/create/AgentCreateModal.vue'
-import { useAgentClient } from '~/composables/agent/useAgentClient'
 import { useAgentsStore } from '~/stores/agents'
 import { useOrgsStore } from '~/stores/orgs'
 import { useProjectsStore } from '~/stores/projects'
@@ -9,7 +8,7 @@ const route = useRoute()
 const orgs = useOrgsStore()
 const projects = useProjectsStore()
 const agents = useAgentsStore()
-const client = useAgentClient()
+const { $agentClient: client } = useNuxtApp()
 
 const org = computed(() => orgs.bySlug(route.params.org as string))
 const project = computed(() =>

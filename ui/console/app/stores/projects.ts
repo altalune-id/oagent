@@ -1,5 +1,3 @@
-import { useProjectClient } from '~/composables/project/useProjectClient'
-
 export interface Project {
   id: string
   orgId: string
@@ -12,7 +10,7 @@ export const useProjectsStore = defineStore('projects', () => {
   const loading = ref(false)
   const error = ref('')
 
-  const client = useProjectClient()
+  const { $projectClient: client } = useNuxtApp()
   let loadedFor = ''
   let inflight: Promise<void> | null = null
 

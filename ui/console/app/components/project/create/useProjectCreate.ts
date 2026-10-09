@@ -1,4 +1,3 @@
-import { useProjectClient } from '~/composables/project/useProjectClient'
 import { useProjectsStore } from '~/stores/projects'
 
 export function useProjectCreate(orgId: string) {
@@ -9,7 +8,7 @@ export function useProjectCreate(orgId: string) {
   const error = ref('')
 
   const projects = useProjectsStore()
-  const client = useProjectClient()
+  const { $projectClient: client } = useNuxtApp()
 
   function show() {
     error.value = ''

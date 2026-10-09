@@ -1,5 +1,3 @@
-import { useAgentClient } from '~/composables/agent/useAgentClient'
-
 export interface Agent {
   id: string
   projectId: string
@@ -13,7 +11,7 @@ export const useAgentsStore = defineStore('agents', () => {
   const loading = ref(false)
   const error = ref('')
 
-  const client = useAgentClient()
+  const { $agentClient: client } = useNuxtApp()
   let loadedFor = ''
   let inflight: Promise<void> | null = null
 

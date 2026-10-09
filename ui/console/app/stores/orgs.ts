@@ -1,5 +1,3 @@
-import { useOrgClient } from '~/composables/org/useOrgClient'
-
 export interface Org {
   id: string
   slug: string
@@ -12,7 +10,7 @@ export const useOrgsStore = defineStore('orgs', () => {
   const loading = ref(false)
   const error = ref('')
 
-  const client = useOrgClient()
+  const { $orgClient: client } = useNuxtApp()
   let inflight: Promise<void> | null = null
 
   function bySlug(slug: string) {

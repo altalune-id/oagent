@@ -1,4 +1,3 @@
-import { useOrgClient } from '~/composables/org/useOrgClient'
 import { useOrgsStore } from '~/stores/orgs'
 
 export function useOrgCreate() {
@@ -9,7 +8,7 @@ export function useOrgCreate() {
   const error = ref('')
 
   const orgs = useOrgsStore()
-  const client = useOrgClient()
+  const { $orgClient: client } = useNuxtApp()
 
   function show() {
     error.value = ''

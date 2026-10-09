@@ -1,4 +1,3 @@
-import { useAgentClient } from '~/composables/agent/useAgentClient'
 import { useAgentsStore } from '~/stores/agents'
 
 export function useAgentCreate(orgId: string, projectId: string) {
@@ -10,7 +9,7 @@ export function useAgentCreate(orgId: string, projectId: string) {
   const error = ref('')
 
   const agents = useAgentsStore()
-  const client = useAgentClient()
+  const { $agentClient: client } = useNuxtApp()
 
   function show() {
     error.value = ''
