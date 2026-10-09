@@ -7,6 +7,8 @@ import (
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/events"
+	"altalune.id/oagent/internal/kernel/tenant"
 	slugpkg "altalune.id/oagent/slug"
 )
 
@@ -14,11 +16,18 @@ import (
 type Service struct {
 	store      Store
 	unexpected apperror.UnexpectedFunc
+	publisher  Publisher
 }
 
 // NewService builds a Service over store.
 func NewService(store Store, unexpected apperror.UnexpectedFunc) *Service {
 	return &Service{store: store, unexpected: unexpected}
+}
+
+// WithPublisher emits agent.created/agent.updated events through p; nil disables emission.
+func (s *Service) WithPublisher(p Publisher) *Service {
+	s.publisher = p
+	return s
 }
 
 // CreateRequest is the input to Create.
@@ -49,6 +58,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*Agent, error)
 	if err := s.store.Save(ctx, a); err != nil {
 		return nil, s.errOrReport(ctx, "agent: create", err)
 	}
+	s.publish(ctx, events.AgentCreated, a)
 	return a, nil
 }
 
@@ -64,6 +74,7 @@ func (s *Service) createGenerated(ctx context.Context, req CreateRequest) (*Agen
 	if err != nil {
 		return nil, s.errOrReport(ctx, "agent: create", err)
 	}
+	s.publish(ctx, events.AgentCreated, a)
 	return a, nil
 }
 
@@ -97,6 +108,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, name, description st
 	if err := s.store.Save(ctx, a); err != nil {
 		return nil, s.errOrReport(ctx, "agent: update", err)
 	}
+	s.publish(ctx, events.AgentUpdated, a)
 	return a, nil
 }
 
@@ -106,6 +118,25 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 		return s.errOrReport(ctx, "agent: delete", err)
 	}
 	return nil
+}
+
+// publish emits t for a as a best-effort side effect; it never fails the mutation.
+func (s *Service) publish(ctx context.Context, t events.Type, a *Agent) {
+	if s.publisher == nil {
+		return
+	}
+	snapshot := events.AgentSnapshotV1{
+		ID: a.ID, PublicID: a.PublicID, OrgID: a.OrgID, ProjectID: a.ProjectID,
+		Slug: a.Slug, Name: a.Name, Description: a.Description, UpdatedAt: a.UpdatedAt,
+	}
+	var payload any = events.AgentUpdatedV1(snapshot)
+	if t == events.AgentCreated {
+		payload = events.AgentCreatedV1(snapshot)
+	}
+	ctx = tenant.Into(ctx, tenant.Context{OrgID: a.OrgID, ProjectID: a.ProjectID})
+	if err := s.publisher.Enqueue(ctx, t, payload); err != nil {
+		_ = s.unexpected(ctx, "agent: publish "+string(t), err)
+	}
 }
 
 // errOrReport returns err unchanged when it is an expected domain error, else reports it and returns an AppError.

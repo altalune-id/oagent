@@ -81,10 +81,10 @@ func runCmd(t *testing.T, client *fakeClient, args ...string) error {
 func TestCLICommands(t *testing.T) {
 	t.Setenv("OAGENT_OUTPUT", "text")
 	c := &fakeClient{}
-	require.NoError(t, runCmd(t, c, "create", "--org-id", "o", "--project-id", "p", "--url", "https://e.com", "--event", "agent.created"))
+	require.NoError(t, runCmd(t, c, "create", "--org-id", "o", "--project-id", "p", "--endpoint-url", "https://e.com", "--event", "agent.created"))
 	require.NoError(t, runCmd(t, c, "get", "w1", "--org-id", "o", "--project-id", "p"))
 	require.NoError(t, runCmd(t, c, "list", "--org-id", "o", "--project-id", "p"))
-	require.NoError(t, runCmd(t, c, "update", "w1", "--org-id", "o", "--project-id", "p", "--url", "https://e.com", "--event", "agent.updated"))
+	require.NoError(t, runCmd(t, c, "update", "w1", "--org-id", "o", "--project-id", "p", "--endpoint-url", "https://e.com", "--event", "agent.updated"))
 	require.NoError(t, runCmd(t, c, "delete", "w1", "--org-id", "o", "--project-id", "p"))
 	require.NoError(t, runCmd(t, c, "rotate", "w1", "--org-id", "o", "--project-id", "p"))
 	require.NoError(t, runCmd(t, c, "ping", "w1", "--org-id", "o", "--project-id", "p"))
@@ -93,18 +93,18 @@ func TestCLICommands(t *testing.T) {
 func TestCLIJSON(t *testing.T) {
 	t.Setenv("OAGENT_OUTPUT", "json")
 	c := &fakeClient{}
-	require.NoError(t, runCmd(t, c, "create", "--org-id", "o", "--project-id", "p", "--url", "https://e.com", "--event", "agent.created"))
+	require.NoError(t, runCmd(t, c, "create", "--org-id", "o", "--project-id", "p", "--endpoint-url", "https://e.com", "--event", "agent.created"))
 	require.NoError(t, runCmd(t, c, "get", "w1", "--org-id", "o", "--project-id", "p"))
 	require.NoError(t, runCmd(t, c, "list", "--org-id", "o", "--project-id", "p"))
-	require.NoError(t, runCmd(t, c, "update", "w1", "--org-id", "o", "--project-id", "p", "--url", "https://e.com", "--event", "agent.updated"))
+	require.NoError(t, runCmd(t, c, "update", "w1", "--org-id", "o", "--project-id", "p", "--endpoint-url", "https://e.com", "--event", "agent.updated"))
 }
 
 func TestCLIErrors(t *testing.T) {
 	c := &fakeClient{err: errors.New("boom")}
-	assert.Error(t, runCmd(t, c, "create", "--org-id", "o", "--project-id", "p", "--url", "https://e.com", "--event", "agent.created"))
+	assert.Error(t, runCmd(t, c, "create", "--org-id", "o", "--project-id", "p", "--endpoint-url", "https://e.com", "--event", "agent.created"))
 	assert.Error(t, runCmd(t, c, "get", "w1", "--org-id", "o", "--project-id", "p"))
 	assert.Error(t, runCmd(t, c, "list", "--org-id", "o", "--project-id", "p"))
-	assert.Error(t, runCmd(t, c, "update", "w1", "--org-id", "o", "--project-id", "p", "--url", "https://e.com", "--event", "agent.updated"))
+	assert.Error(t, runCmd(t, c, "update", "w1", "--org-id", "o", "--project-id", "p", "--endpoint-url", "https://e.com", "--event", "agent.updated"))
 	assert.Error(t, runCmd(t, c, "delete", "w1", "--org-id", "o", "--project-id", "p"))
 	assert.Error(t, runCmd(t, c, "rotate", "w1", "--org-id", "o", "--project-id", "p"))
 	assert.Error(t, runCmd(t, c, "ping", "w1", "--org-id", "o", "--project-id", "p"))

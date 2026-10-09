@@ -39,7 +39,15 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	apiKeyStore := apikey.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
 
 	projects := project.NewService(projectStore, k.Reporter.Unexpected)
-	agents := agent.NewService(agentStore, k.Reporter.Unexpected)
+
+	sl := buildSealer(cfg.Secrets)
+	outboxStore := outbox.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
+	webhookStore := webhook.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
+	webhooks := webhook.NewService(
+		webhookStore, k.Log, k.Reporter.Unexpected, sl, outboxStore, projectSlugs{projects: projects}, webhookServiceOpts(cfg)...,
+	)
+
+	agents := agent.NewService(agentStore, k.Reporter.Unexpected).WithPublisher(webhooks)
 	orgs := org.NewService(orgStore, k.Reporter.Unexpected).WithAfterCreate(func(ctx context.Context, o *org.Org) error {
 		if _, err := projects.Create(ctx, project.CreateRequest{OrgID: o.ID, Slug: project.DefaultSlug, Name: project.DefaultName}); err != nil {
 			_ = k.Reporter.Unexpected(ctx, "org: default project", err)
@@ -47,11 +55,6 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		return nil
 	})
 	apiKeys := apikey.NewService(apiKeyStore, apikey.NewScheme(""), projectIDs{projects: projects}, k.Reporter.Unexpected)
-
-	sl := buildSealer(cfg.Secrets)
-	outboxStore := outbox.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
-	webhookStore := webhook.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
-	webhooks := webhook.NewService(webhookStore, k.Log, k.Reporter.Unexpected, sl, outboxStore, projectSlugs{projects: projects})
 
 	return &Services{
 		OrgStore:     orgStore,
@@ -67,6 +70,14 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Webhooks:     webhooks,
 		Sealer:       sl,
 	}
+}
+
+// webhookServiceOpts allows http:// endpoint URLs outside production (dev/self-hosted).
+func webhookServiceOpts(cfg config.Config) []webhook.ServiceOption {
+	if cfg.Env.IsProduction() {
+		return nil
+	}
+	return []webhook.ServiceOption{webhook.WithAllowInsecureURL()}
 }
 
 // projectSlugs adapts the project service to webhook.ProjectSlugs.

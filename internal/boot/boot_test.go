@@ -87,7 +87,7 @@ func TestBoot(t *testing.T) {
 	assert.NotNil(t, app.Kernel.Meter)
 	assert.NotNil(t, app.Kernel.Queue) // always non-nil; Disabled when queue.enabled=false
 	require.NotNil(t, app.Supervisor)
-	assert.Len(t, app.Supervisor.Workers(), 2) // http + db-health
+	assert.Len(t, app.Supervisor.Workers(), 3) // http + db-health + outbox
 
 	require.NoError(t, app.Close(context.Background()))
 	assert.True(t, called)
@@ -107,7 +107,7 @@ func TestBoot_SchedulerEnabled(t *testing.T) {
 		Scheduler: config.SchedulerConfig{Enabled: true},
 	}, testLogger())
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 3) // http + db-health + scheduler
+	assert.Len(t, app.Supervisor.Workers(), 4) // http + db-health + outbox + scheduler
 	require.NoError(t, app.Close(context.Background()))
 }
 
@@ -123,7 +123,7 @@ func TestBoot_WithSchedulerFalse(t *testing.T) {
 		config.Config{DB: config.DBConfig{DSN: "x"}, Scheduler: config.SchedulerConfig{Enabled: true}},
 		testLogger(), WithScheduler(false))
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 2) // http + db-health
+	assert.Len(t, app.Supervisor.Workers(), 3) // http + db-health + outbox
 	require.NoError(t, app.Close(context.Background()))
 }
 
@@ -176,7 +176,7 @@ func TestBoot_ConsumerEnabled(t *testing.T) {
 		Queue: config.QueueConfig{Enabled: true},
 	}, testLogger())
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 4) // http + db-health + consumer + listener
+	assert.Len(t, app.Supervisor.Workers(), 5) // http + db-health + outbox + consumer + listener
 	assert.False(t, app.Kernel.Queue.Enabled())
 	require.NoError(t, app.Close(context.Background()))
 }

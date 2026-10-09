@@ -30,6 +30,7 @@ func buildAPIHandler(svcs *Services, unexpected apperror.UnexpectedFunc, cfg con
 		Projects: svcs.Projects,
 		Agents:   svcs.Agents,
 		APIKeys:  svcs.APIKeys,
+		Webhooks: svcs.Webhooks,
 	}, unexpected, opts).Handler(basePath)
 }
 

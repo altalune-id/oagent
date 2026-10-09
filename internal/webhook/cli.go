@@ -34,7 +34,7 @@ func NewCmd(clientFn ClientFn) *cobra.Command {
 }
 
 func newCreateCmd(clientFn ClientFn) *cobra.Command {
-	var orgID, projectID, url, description string
+	var orgID, projectID, endpointURL, description string
 	var types []string
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -48,7 +48,7 @@ func newCreateCmd(clientFn ClientFn) *cobra.Command {
 			resp, err := client.CreateWebhook(cmd.Context(), connect.NewRequest(&webhookv1.CreateWebhookRequest{
 				OrgId:       orgID,
 				ProjectId:   projectID,
-				Url:         url,
+				Url:         endpointURL,
 				Description: description,
 				EventTypes:  types,
 			}))
@@ -67,7 +67,7 @@ func newCreateCmd(clientFn ClientFn) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
 	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
-	cmd.Flags().StringVar(&url, "url", "", "HTTPS endpoint URL")
+	cmd.Flags().StringVar(&endpointURL, "endpoint-url", "", "HTTPS endpoint URL")
 	cmd.Flags().StringVar(&description, "description", "", "Description")
 	cmd.Flags().StringSliceVar(&types, "event", nil, "Event type (repeatable), e.g. agent.created")
 	_ = cmd.MarkFlagRequired("org-id")
@@ -145,7 +145,7 @@ func newListCmd(clientFn ClientFn) *cobra.Command {
 }
 
 func newUpdateCmd(clientFn ClientFn) *cobra.Command {
-	var orgID, projectID, url, description string
+	var orgID, projectID, endpointURL, description string
 	var types []string
 	var active bool
 	cmd := &cobra.Command{
@@ -161,7 +161,7 @@ func newUpdateCmd(clientFn ClientFn) *cobra.Command {
 				OrgId:       orgID,
 				ProjectId:   projectID,
 				Id:          args[0],
-				Url:         url,
+				Url:         endpointURL,
 				Description: description,
 				EventTypes:  types,
 				Active:      active,
@@ -178,7 +178,7 @@ func newUpdateCmd(clientFn ClientFn) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
 	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
-	cmd.Flags().StringVar(&url, "url", "", "HTTPS endpoint URL")
+	cmd.Flags().StringVar(&endpointURL, "endpoint-url", "", "HTTPS endpoint URL")
 	cmd.Flags().StringVar(&description, "description", "", "Description")
 	cmd.Flags().StringSliceVar(&types, "event", nil, "Event type (repeatable)")
 	cmd.Flags().BoolVar(&active, "active", true, "Whether the endpoint is active")
