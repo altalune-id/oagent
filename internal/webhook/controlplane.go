@@ -142,6 +142,41 @@ func (s *WebhookControlPlane) PingWebhook(
 	return connect.NewResponse(&webhookv1.PingWebhookResponse{}), nil
 }
 
+// RetryWebhookDelivery requeues one failed delivery of an endpoint.
+func (s *WebhookControlPlane) RetryWebhookDelivery(
+	ctx context.Context,
+	req *connect.Request[webhookv1.RetryWebhookDeliveryRequest],
+) (*connect.Response[webhookv1.RetryWebhookDeliveryResponse], error) {
+	ctx, id, err := scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
+	if err != nil {
+		return nil, err
+	}
+	deliveryID, err := uuid.Parse(req.Msg.GetDeliveryId())
+	if err != nil {
+		return nil, apperror.New(apperror.CodeValidation, "invalid delivery id").WithCause(err)
+	}
+	if err := s.webhooks.Retry(ctx, id, deliveryID); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&webhookv1.RetryWebhookDeliveryResponse{}), nil
+}
+
+// RetryFailedWebhookDeliveries requeues every failed delivery of an endpoint and returns the count.
+func (s *WebhookControlPlane) RetryFailedWebhookDeliveries(
+	ctx context.Context,
+	req *connect.Request[webhookv1.RetryFailedWebhookDeliveriesRequest],
+) (*connect.Response[webhookv1.RetryFailedWebhookDeliveriesResponse], error) {
+	ctx, id, err := scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
+	if err != nil {
+		return nil, err
+	}
+	n, err := s.webhooks.RetryFailed(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&webhookv1.RetryFailedWebhookDeliveriesResponse{Requeued: int32(n)}), nil //nolint:gosec // G115: bounded
+}
+
 // ListWebhookDeliveries lists an endpoint's recent deliveries, newest first.
 func (s *WebhookControlPlane) ListWebhookDeliveries(
 	ctx context.Context,

@@ -247,6 +247,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/webhook.v1.PingWebhookResponse'
+  /webhook.v1.WebhookService/RetryFailedWebhookDeliveries:
+    post:
+      tags:
+        - webhook.v1.WebhookService
+      summary: RetryFailedWebhookDeliveries
+      operationId: webhook.v1.WebhookService.RetryFailedWebhookDeliveries
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/webhook.v1.RetryFailedWebhookDeliveriesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/webhook.v1.RetryFailedWebhookDeliveriesResponse'
+  /webhook.v1.WebhookService/RetryWebhookDelivery:
+    post:
+      tags:
+        - webhook.v1.WebhookService
+      summary: RetryWebhookDelivery
+      operationId: webhook.v1.WebhookService.RetryWebhookDelivery
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/webhook.v1.RetryWebhookDeliveryRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/webhook.v1.RetryWebhookDeliveryResponse'
   /webhook.v1.WebhookService/RotateWebhookSecret:
     post:
       tags:
@@ -650,6 +720,50 @@ components:
     webhook.v1.PingWebhookResponse:
       type: object
       title: PingWebhookResponse
+      additionalProperties: false
+    webhook.v1.RetryFailedWebhookDeliveriesRequest:
+      type: object
+      properties:
+        orgId:
+          type: string
+          title: org_id
+        projectId:
+          type: string
+          title: project_id
+        id:
+          type: string
+          title: id
+      title: RetryFailedWebhookDeliveriesRequest
+      additionalProperties: false
+    webhook.v1.RetryFailedWebhookDeliveriesResponse:
+      type: object
+      properties:
+        requeued:
+          type: integer
+          title: requeued
+          format: int32
+      title: RetryFailedWebhookDeliveriesResponse
+      additionalProperties: false
+    webhook.v1.RetryWebhookDeliveryRequest:
+      type: object
+      properties:
+        orgId:
+          type: string
+          title: org_id
+        projectId:
+          type: string
+          title: project_id
+        id:
+          type: string
+          title: id
+        deliveryId:
+          type: string
+          title: delivery_id
+      title: RetryWebhookDeliveryRequest
+      additionalProperties: false
+    webhook.v1.RetryWebhookDeliveryResponse:
+      type: object
+      title: RetryWebhookDeliveryResponse
       additionalProperties: false
     webhook.v1.RotateWebhookSecretRequest:
       type: object

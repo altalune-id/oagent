@@ -24,9 +24,12 @@ const WebhookListToolName = "webhook_list"
 // WebhookDeliveriesToolName is the MCP tool name for WebhookService.ListWebhookDeliveries.
 const WebhookDeliveriesToolName = "webhook_deliveries"
 
+// WebhookRetryFailedToolName is the MCP tool name for WebhookService.RetryFailedWebhookDeliveries.
+const WebhookRetryFailedToolName = "webhook_retry_failed"
+
 // WebhookServiceToolNames returns every MCP tool name generated for WebhookService.
 func WebhookServiceToolNames() []string {
-	return []string{WebhookCreateToolName, WebhookListToolName, WebhookDeliveriesToolName}
+	return []string{WebhookCreateToolName, WebhookListToolName, WebhookDeliveriesToolName, WebhookRetryFailedToolName}
 }
 
 // RegisterWebhookServiceTools registers every MCP-annotated WebhookService method on reg, against h and under the scope scopeFor resolves for each tool name.
@@ -109,6 +112,33 @@ func RegisterWebhookServiceTools(reg *mcp.Registry, h webhookv1connect.WebhookSe
 			body, err := protojson.Marshal(resp.Msg)
 			if err != nil {
 				return nil, fmt.Errorf("mcp: %s: encode result: %w", WebhookDeliveriesToolName, err)
+			}
+			return json.RawMessage(body), nil
+		},
+	}, h)
+	reg.Register(mcp.ToolSpec{
+		Name:        WebhookRetryFailedToolName,
+		Description: "Requeue every failed delivery of a webhook endpoint.",
+		Scope:       scopeFor(WebhookRetryFailedToolName),
+		Mutation:    true,
+		Destructive: false,
+		UI:          "ui://oagent/app",
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string"},"projectId":{"type":"string"},"id":{"type":"string"}},"required":["orgId","projectId","id"],"additionalProperties":false}`),
+		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
+			if len(input) == 0 {
+				input = json.RawMessage(`{}`)
+			}
+			var req v1.RetryFailedWebhookDeliveriesRequest
+			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
+				return nil, mcp.NewInvalidArgumentsError(WebhookRetryFailedToolName, err)
+			}
+			resp, err := h.RetryFailedWebhookDeliveries(ctx, connect.NewRequest(&req))
+			if err != nil {
+				return nil, err
+			}
+			body, err := protojson.Marshal(resp.Msg)
+			if err != nil {
+				return nil, fmt.Errorf("mcp: %s: encode result: %w", WebhookRetryFailedToolName, err)
 			}
 			return json.RawMessage(body), nil
 		},

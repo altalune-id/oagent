@@ -39,6 +39,17 @@ service WebhookService {
   rpc DeleteWebhook(DeleteWebhookRequest) returns (DeleteWebhookResponse);
   rpc RotateWebhookSecret(RotateWebhookSecretRequest) returns (RotateWebhookSecretResponse);
   rpc PingWebhook(PingWebhookRequest) returns (PingWebhookResponse);
+  rpc RetryWebhookDelivery(RetryWebhookDeliveryRequest) returns (RetryWebhookDeliveryResponse);
+  rpc RetryFailedWebhookDeliveries(RetryFailedWebhookDeliveriesRequest) returns (RetryFailedWebhookDeliveriesResponse) {
+    option (mcp.v1.tool) = {
+      name: "webhook_retry_failed"
+      description: "Requeue every failed delivery of a webhook endpoint."
+      required: ["org_id", "project_id", "id"]
+      mutation: true
+      destructive: false
+      ui: "app"
+    };
+  }
 }
 
 message Webhook {
@@ -175,3 +186,22 @@ message PingWebhookRequest {
 }
 
 message PingWebhookResponse {}
+
+message RetryWebhookDeliveryRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string id = 3;
+  string delivery_id = 4;
+}
+
+message RetryWebhookDeliveryResponse {}
+
+message RetryFailedWebhookDeliveriesRequest {
+  string org_id = 1;
+  string project_id = 2;
+  string id = 3;
+}
+
+message RetryFailedWebhookDeliveriesResponse {
+  int32 requeued = 1;
+}

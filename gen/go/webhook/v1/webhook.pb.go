@@ -1383,6 +1383,214 @@ func (*PingWebhookResponse) Descriptor() ([]byte, []int) {
 	return file_webhook_v1_webhook_proto_rawDescGZIP(), []int{21}
 }
 
+type RetryWebhookDeliveryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OrgId         string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	ProjectId     string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Id            string                 `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
+	DeliveryId    string                 `protobuf:"bytes,4,opt,name=delivery_id,json=deliveryId,proto3" json:"delivery_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RetryWebhookDeliveryRequest) Reset() {
+	*x = RetryWebhookDeliveryRequest{}
+	mi := &file_webhook_v1_webhook_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RetryWebhookDeliveryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RetryWebhookDeliveryRequest) ProtoMessage() {}
+
+func (x *RetryWebhookDeliveryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_webhook_v1_webhook_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RetryWebhookDeliveryRequest.ProtoReflect.Descriptor instead.
+func (*RetryWebhookDeliveryRequest) Descriptor() ([]byte, []int) {
+	return file_webhook_v1_webhook_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *RetryWebhookDeliveryRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *RetryWebhookDeliveryRequest) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *RetryWebhookDeliveryRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *RetryWebhookDeliveryRequest) GetDeliveryId() string {
+	if x != nil {
+		return x.DeliveryId
+	}
+	return ""
+}
+
+type RetryWebhookDeliveryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RetryWebhookDeliveryResponse) Reset() {
+	*x = RetryWebhookDeliveryResponse{}
+	mi := &file_webhook_v1_webhook_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RetryWebhookDeliveryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RetryWebhookDeliveryResponse) ProtoMessage() {}
+
+func (x *RetryWebhookDeliveryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_webhook_v1_webhook_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RetryWebhookDeliveryResponse.ProtoReflect.Descriptor instead.
+func (*RetryWebhookDeliveryResponse) Descriptor() ([]byte, []int) {
+	return file_webhook_v1_webhook_proto_rawDescGZIP(), []int{23}
+}
+
+type RetryFailedWebhookDeliveriesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OrgId         string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	ProjectId     string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Id            string                 `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RetryFailedWebhookDeliveriesRequest) Reset() {
+	*x = RetryFailedWebhookDeliveriesRequest{}
+	mi := &file_webhook_v1_webhook_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RetryFailedWebhookDeliveriesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RetryFailedWebhookDeliveriesRequest) ProtoMessage() {}
+
+func (x *RetryFailedWebhookDeliveriesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_webhook_v1_webhook_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RetryFailedWebhookDeliveriesRequest.ProtoReflect.Descriptor instead.
+func (*RetryFailedWebhookDeliveriesRequest) Descriptor() ([]byte, []int) {
+	return file_webhook_v1_webhook_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *RetryFailedWebhookDeliveriesRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *RetryFailedWebhookDeliveriesRequest) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *RetryFailedWebhookDeliveriesRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type RetryFailedWebhookDeliveriesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Requeued      int32                  `protobuf:"varint,1,opt,name=requeued,proto3" json:"requeued,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RetryFailedWebhookDeliveriesResponse) Reset() {
+	*x = RetryFailedWebhookDeliveriesResponse{}
+	mi := &file_webhook_v1_webhook_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RetryFailedWebhookDeliveriesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RetryFailedWebhookDeliveriesResponse) ProtoMessage() {}
+
+func (x *RetryFailedWebhookDeliveriesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_webhook_v1_webhook_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RetryFailedWebhookDeliveriesResponse.ProtoReflect.Descriptor instead.
+func (*RetryFailedWebhookDeliveriesResponse) Descriptor() ([]byte, []int) {
+	return file_webhook_v1_webhook_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *RetryFailedWebhookDeliveriesResponse) GetRequeued() int32 {
+	if x != nil {
+		return x.Requeued
+	}
+	return 0
+}
+
 var File_webhook_v1_webhook_proto protoreflect.FileDescriptor
 
 const file_webhook_v1_webhook_proto_rawDesc = "" +
@@ -1506,7 +1714,22 @@ const file_webhook_v1_webhook_proto_rawDesc = "" +
 	"\n" +
 	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x0e\n" +
 	"\x02id\x18\x03 \x01(\tR\x02id\"\x15\n" +
-	"\x13PingWebhookResponse2\x8b\t\n" +
+	"\x13PingWebhookResponse\"\x84\x01\n" +
+	"\x1bRetryWebhookDeliveryRequest\x12\x15\n" +
+	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x0e\n" +
+	"\x02id\x18\x03 \x01(\tR\x02id\x12\x1f\n" +
+	"\vdelivery_id\x18\x04 \x01(\tR\n" +
+	"deliveryId\"\x1e\n" +
+	"\x1cRetryWebhookDeliveryResponse\"k\n" +
+	"#RetryFailedWebhookDeliveriesRequest\x12\x15\n" +
+	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x0e\n" +
+	"\x02id\x18\x03 \x01(\tR\x02id\"B\n" +
+	"$RetryFailedWebhookDeliveriesResponse\x12\x1a\n" +
+	"\brequeued\x18\x01 \x01(\x05R\brequeued2\xeb\v\n" +
 	"\x0eWebhookService\x12\xbe\x01\n" +
 	"\rCreateWebhook\x12 .webhook.v1.CreateWebhookRequest\x1a!.webhook.v1.CreateWebhookResponse\"h\xca\xf3\x18d\n" +
 	"\x0ewebhook_create\x12KCreate a webhook endpoint for a project, returning its signing secret once. \x01*\x03app\x12K\n" +
@@ -1522,7 +1745,11 @@ const file_webhook_v1_webhook_proto_rawDesc = "" +
 	"\rUpdateWebhook\x12 .webhook.v1.UpdateWebhookRequest\x1a!.webhook.v1.UpdateWebhookResponse\x12T\n" +
 	"\rDeleteWebhook\x12 .webhook.v1.DeleteWebhookRequest\x1a!.webhook.v1.DeleteWebhookResponse\x12f\n" +
 	"\x13RotateWebhookSecret\x12&.webhook.v1.RotateWebhookSecretRequest\x1a'.webhook.v1.RotateWebhookSecretResponse\x12N\n" +
-	"\vPingWebhook\x12\x1e.webhook.v1.PingWebhookRequest\x1a\x1f.webhook.v1.PingWebhookResponseB\x97\x01\n" +
+	"\vPingWebhook\x12\x1e.webhook.v1.PingWebhookRequest\x1a\x1f.webhook.v1.PingWebhookResponse\x12i\n" +
+	"\x14RetryWebhookDelivery\x12'.webhook.v1.RetryWebhookDeliveryRequest\x1a(.webhook.v1.RetryWebhookDeliveryResponse\x12\xf2\x01\n" +
+	"\x1cRetryFailedWebhookDeliveries\x12/.webhook.v1.RetryFailedWebhookDeliveriesRequest\x1a0.webhook.v1.RetryFailedWebhookDeliveriesResponse\"o\xca\xf3\x18k\n" +
+	"\x14webhook_retry_failed\x124Requeue every failed delivery of a webhook endpoint.\x1a\x06org_id\x1a\n" +
+	"project_id\x1a\x02id \x01*\x03appB\x97\x01\n" +
 	"\x0ecom.webhook.v1B\fWebhookProtoP\x01Z.altalune.id/oagent/gen/go/webhook/v1;webhookv1\xa2\x02\x03WXX\xaa\x02\n" +
 	"Webhook.V1\xca\x02\n" +
 	"Webhook\\V1\xe2\x02\x16Webhook\\V1\\GPBMetadata\xea\x02\vWebhook::V1b\x06proto3"
@@ -1539,42 +1766,46 @@ func file_webhook_v1_webhook_proto_rawDescGZIP() []byte {
 	return file_webhook_v1_webhook_proto_rawDescData
 }
 
-var file_webhook_v1_webhook_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_webhook_v1_webhook_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_webhook_v1_webhook_proto_goTypes = []any{
-	(*Webhook)(nil),                             // 0: webhook.v1.Webhook
-	(*CreateWebhookRequest)(nil),                // 1: webhook.v1.CreateWebhookRequest
-	(*CreateWebhookResponse)(nil),               // 2: webhook.v1.CreateWebhookResponse
-	(*GetWebhookRequest)(nil),                   // 3: webhook.v1.GetWebhookRequest
-	(*GetWebhookResponse)(nil),                  // 4: webhook.v1.GetWebhookResponse
-	(*ListWebhooksRequest)(nil),                 // 5: webhook.v1.ListWebhooksRequest
-	(*ListWebhooksResponse)(nil),                // 6: webhook.v1.ListWebhooksResponse
-	(*WebhookDelivery)(nil),                     // 7: webhook.v1.WebhookDelivery
-	(*ListWebhookDeliveriesRequest)(nil),        // 8: webhook.v1.ListWebhookDeliveriesRequest
-	(*ListWebhookDeliveriesResponse)(nil),       // 9: webhook.v1.ListWebhookDeliveriesResponse
-	(*WebhookAttempt)(nil),                      // 10: webhook.v1.WebhookAttempt
-	(*WebhookResponseHeader)(nil),               // 11: webhook.v1.WebhookResponseHeader
-	(*ListWebhookDeliveryAttemptsRequest)(nil),  // 12: webhook.v1.ListWebhookDeliveryAttemptsRequest
-	(*ListWebhookDeliveryAttemptsResponse)(nil), // 13: webhook.v1.ListWebhookDeliveryAttemptsResponse
-	(*UpdateWebhookRequest)(nil),                // 14: webhook.v1.UpdateWebhookRequest
-	(*UpdateWebhookResponse)(nil),               // 15: webhook.v1.UpdateWebhookResponse
-	(*DeleteWebhookRequest)(nil),                // 16: webhook.v1.DeleteWebhookRequest
-	(*DeleteWebhookResponse)(nil),               // 17: webhook.v1.DeleteWebhookResponse
-	(*RotateWebhookSecretRequest)(nil),          // 18: webhook.v1.RotateWebhookSecretRequest
-	(*RotateWebhookSecretResponse)(nil),         // 19: webhook.v1.RotateWebhookSecretResponse
-	(*PingWebhookRequest)(nil),                  // 20: webhook.v1.PingWebhookRequest
-	(*PingWebhookResponse)(nil),                 // 21: webhook.v1.PingWebhookResponse
-	(*timestamppb.Timestamp)(nil),               // 22: google.protobuf.Timestamp
+	(*Webhook)(nil),                              // 0: webhook.v1.Webhook
+	(*CreateWebhookRequest)(nil),                 // 1: webhook.v1.CreateWebhookRequest
+	(*CreateWebhookResponse)(nil),                // 2: webhook.v1.CreateWebhookResponse
+	(*GetWebhookRequest)(nil),                    // 3: webhook.v1.GetWebhookRequest
+	(*GetWebhookResponse)(nil),                   // 4: webhook.v1.GetWebhookResponse
+	(*ListWebhooksRequest)(nil),                  // 5: webhook.v1.ListWebhooksRequest
+	(*ListWebhooksResponse)(nil),                 // 6: webhook.v1.ListWebhooksResponse
+	(*WebhookDelivery)(nil),                      // 7: webhook.v1.WebhookDelivery
+	(*ListWebhookDeliveriesRequest)(nil),         // 8: webhook.v1.ListWebhookDeliveriesRequest
+	(*ListWebhookDeliveriesResponse)(nil),        // 9: webhook.v1.ListWebhookDeliveriesResponse
+	(*WebhookAttempt)(nil),                       // 10: webhook.v1.WebhookAttempt
+	(*WebhookResponseHeader)(nil),                // 11: webhook.v1.WebhookResponseHeader
+	(*ListWebhookDeliveryAttemptsRequest)(nil),   // 12: webhook.v1.ListWebhookDeliveryAttemptsRequest
+	(*ListWebhookDeliveryAttemptsResponse)(nil),  // 13: webhook.v1.ListWebhookDeliveryAttemptsResponse
+	(*UpdateWebhookRequest)(nil),                 // 14: webhook.v1.UpdateWebhookRequest
+	(*UpdateWebhookResponse)(nil),                // 15: webhook.v1.UpdateWebhookResponse
+	(*DeleteWebhookRequest)(nil),                 // 16: webhook.v1.DeleteWebhookRequest
+	(*DeleteWebhookResponse)(nil),                // 17: webhook.v1.DeleteWebhookResponse
+	(*RotateWebhookSecretRequest)(nil),           // 18: webhook.v1.RotateWebhookSecretRequest
+	(*RotateWebhookSecretResponse)(nil),          // 19: webhook.v1.RotateWebhookSecretResponse
+	(*PingWebhookRequest)(nil),                   // 20: webhook.v1.PingWebhookRequest
+	(*PingWebhookResponse)(nil),                  // 21: webhook.v1.PingWebhookResponse
+	(*RetryWebhookDeliveryRequest)(nil),          // 22: webhook.v1.RetryWebhookDeliveryRequest
+	(*RetryWebhookDeliveryResponse)(nil),         // 23: webhook.v1.RetryWebhookDeliveryResponse
+	(*RetryFailedWebhookDeliveriesRequest)(nil),  // 24: webhook.v1.RetryFailedWebhookDeliveriesRequest
+	(*RetryFailedWebhookDeliveriesResponse)(nil), // 25: webhook.v1.RetryFailedWebhookDeliveriesResponse
+	(*timestamppb.Timestamp)(nil),                // 26: google.protobuf.Timestamp
 }
 var file_webhook_v1_webhook_proto_depIdxs = []int32{
-	22, // 0: webhook.v1.Webhook.created_at:type_name -> google.protobuf.Timestamp
-	22, // 1: webhook.v1.Webhook.updated_at:type_name -> google.protobuf.Timestamp
+	26, // 0: webhook.v1.Webhook.created_at:type_name -> google.protobuf.Timestamp
+	26, // 1: webhook.v1.Webhook.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: webhook.v1.CreateWebhookResponse.webhook:type_name -> webhook.v1.Webhook
 	0,  // 3: webhook.v1.GetWebhookResponse.webhook:type_name -> webhook.v1.Webhook
 	0,  // 4: webhook.v1.ListWebhooksResponse.webhooks:type_name -> webhook.v1.Webhook
-	22, // 5: webhook.v1.WebhookDelivery.next_attempt_at:type_name -> google.protobuf.Timestamp
-	22, // 6: webhook.v1.WebhookDelivery.created_at:type_name -> google.protobuf.Timestamp
+	26, // 5: webhook.v1.WebhookDelivery.next_attempt_at:type_name -> google.protobuf.Timestamp
+	26, // 6: webhook.v1.WebhookDelivery.created_at:type_name -> google.protobuf.Timestamp
 	7,  // 7: webhook.v1.ListWebhookDeliveriesResponse.deliveries:type_name -> webhook.v1.WebhookDelivery
-	22, // 8: webhook.v1.WebhookAttempt.created_at:type_name -> google.protobuf.Timestamp
+	26, // 8: webhook.v1.WebhookAttempt.created_at:type_name -> google.protobuf.Timestamp
 	11, // 9: webhook.v1.WebhookAttempt.response_headers:type_name -> webhook.v1.WebhookResponseHeader
 	10, // 10: webhook.v1.ListWebhookDeliveryAttemptsResponse.attempts:type_name -> webhook.v1.WebhookAttempt
 	0,  // 11: webhook.v1.UpdateWebhookResponse.webhook:type_name -> webhook.v1.Webhook
@@ -1587,17 +1818,21 @@ var file_webhook_v1_webhook_proto_depIdxs = []int32{
 	16, // 18: webhook.v1.WebhookService.DeleteWebhook:input_type -> webhook.v1.DeleteWebhookRequest
 	18, // 19: webhook.v1.WebhookService.RotateWebhookSecret:input_type -> webhook.v1.RotateWebhookSecretRequest
 	20, // 20: webhook.v1.WebhookService.PingWebhook:input_type -> webhook.v1.PingWebhookRequest
-	2,  // 21: webhook.v1.WebhookService.CreateWebhook:output_type -> webhook.v1.CreateWebhookResponse
-	4,  // 22: webhook.v1.WebhookService.GetWebhook:output_type -> webhook.v1.GetWebhookResponse
-	6,  // 23: webhook.v1.WebhookService.ListWebhooks:output_type -> webhook.v1.ListWebhooksResponse
-	9,  // 24: webhook.v1.WebhookService.ListWebhookDeliveries:output_type -> webhook.v1.ListWebhookDeliveriesResponse
-	13, // 25: webhook.v1.WebhookService.ListWebhookDeliveryAttempts:output_type -> webhook.v1.ListWebhookDeliveryAttemptsResponse
-	15, // 26: webhook.v1.WebhookService.UpdateWebhook:output_type -> webhook.v1.UpdateWebhookResponse
-	17, // 27: webhook.v1.WebhookService.DeleteWebhook:output_type -> webhook.v1.DeleteWebhookResponse
-	19, // 28: webhook.v1.WebhookService.RotateWebhookSecret:output_type -> webhook.v1.RotateWebhookSecretResponse
-	21, // 29: webhook.v1.WebhookService.PingWebhook:output_type -> webhook.v1.PingWebhookResponse
-	21, // [21:30] is the sub-list for method output_type
-	12, // [12:21] is the sub-list for method input_type
+	22, // 21: webhook.v1.WebhookService.RetryWebhookDelivery:input_type -> webhook.v1.RetryWebhookDeliveryRequest
+	24, // 22: webhook.v1.WebhookService.RetryFailedWebhookDeliveries:input_type -> webhook.v1.RetryFailedWebhookDeliveriesRequest
+	2,  // 23: webhook.v1.WebhookService.CreateWebhook:output_type -> webhook.v1.CreateWebhookResponse
+	4,  // 24: webhook.v1.WebhookService.GetWebhook:output_type -> webhook.v1.GetWebhookResponse
+	6,  // 25: webhook.v1.WebhookService.ListWebhooks:output_type -> webhook.v1.ListWebhooksResponse
+	9,  // 26: webhook.v1.WebhookService.ListWebhookDeliveries:output_type -> webhook.v1.ListWebhookDeliveriesResponse
+	13, // 27: webhook.v1.WebhookService.ListWebhookDeliveryAttempts:output_type -> webhook.v1.ListWebhookDeliveryAttemptsResponse
+	15, // 28: webhook.v1.WebhookService.UpdateWebhook:output_type -> webhook.v1.UpdateWebhookResponse
+	17, // 29: webhook.v1.WebhookService.DeleteWebhook:output_type -> webhook.v1.DeleteWebhookResponse
+	19, // 30: webhook.v1.WebhookService.RotateWebhookSecret:output_type -> webhook.v1.RotateWebhookSecretResponse
+	21, // 31: webhook.v1.WebhookService.PingWebhook:output_type -> webhook.v1.PingWebhookResponse
+	23, // 32: webhook.v1.WebhookService.RetryWebhookDelivery:output_type -> webhook.v1.RetryWebhookDeliveryResponse
+	25, // 33: webhook.v1.WebhookService.RetryFailedWebhookDeliveries:output_type -> webhook.v1.RetryFailedWebhookDeliveriesResponse
+	23, // [23:34] is the sub-list for method output_type
+	12, // [12:23] is the sub-list for method input_type
 	12, // [12:12] is the sub-list for extension type_name
 	12, // [12:12] is the sub-list for extension extendee
 	0,  // [0:12] is the sub-list for field type_name
@@ -1614,7 +1849,7 @@ func file_webhook_v1_webhook_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_webhook_v1_webhook_proto_rawDesc), len(file_webhook_v1_webhook_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   22,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

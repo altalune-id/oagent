@@ -60,6 +60,12 @@ const (
 	// WebhookServicePingWebhookProcedure is the fully-qualified name of the WebhookService's
 	// PingWebhook RPC.
 	WebhookServicePingWebhookProcedure = "/webhook.v1.WebhookService/PingWebhook"
+	// WebhookServiceRetryWebhookDeliveryProcedure is the fully-qualified name of the WebhookService's
+	// RetryWebhookDelivery RPC.
+	WebhookServiceRetryWebhookDeliveryProcedure = "/webhook.v1.WebhookService/RetryWebhookDelivery"
+	// WebhookServiceRetryFailedWebhookDeliveriesProcedure is the fully-qualified name of the
+	// WebhookService's RetryFailedWebhookDeliveries RPC.
+	WebhookServiceRetryFailedWebhookDeliveriesProcedure = "/webhook.v1.WebhookService/RetryFailedWebhookDeliveries"
 )
 
 // WebhookServiceClient is a client for the webhook.v1.WebhookService service.
@@ -73,6 +79,8 @@ type WebhookServiceClient interface {
 	DeleteWebhook(context.Context, *connect.Request[v1.DeleteWebhookRequest]) (*connect.Response[v1.DeleteWebhookResponse], error)
 	RotateWebhookSecret(context.Context, *connect.Request[v1.RotateWebhookSecretRequest]) (*connect.Response[v1.RotateWebhookSecretResponse], error)
 	PingWebhook(context.Context, *connect.Request[v1.PingWebhookRequest]) (*connect.Response[v1.PingWebhookResponse], error)
+	RetryWebhookDelivery(context.Context, *connect.Request[v1.RetryWebhookDeliveryRequest]) (*connect.Response[v1.RetryWebhookDeliveryResponse], error)
+	RetryFailedWebhookDeliveries(context.Context, *connect.Request[v1.RetryFailedWebhookDeliveriesRequest]) (*connect.Response[v1.RetryFailedWebhookDeliveriesResponse], error)
 }
 
 // NewWebhookServiceClient constructs a client for the webhook.v1.WebhookService service. By
@@ -140,20 +148,34 @@ func NewWebhookServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(webhookServiceMethods.ByName("PingWebhook")),
 			connect.WithClientOptions(opts...),
 		),
+		retryWebhookDelivery: connect.NewClient[v1.RetryWebhookDeliveryRequest, v1.RetryWebhookDeliveryResponse](
+			httpClient,
+			baseURL+WebhookServiceRetryWebhookDeliveryProcedure,
+			connect.WithSchema(webhookServiceMethods.ByName("RetryWebhookDelivery")),
+			connect.WithClientOptions(opts...),
+		),
+		retryFailedWebhookDeliveries: connect.NewClient[v1.RetryFailedWebhookDeliveriesRequest, v1.RetryFailedWebhookDeliveriesResponse](
+			httpClient,
+			baseURL+WebhookServiceRetryFailedWebhookDeliveriesProcedure,
+			connect.WithSchema(webhookServiceMethods.ByName("RetryFailedWebhookDeliveries")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // webhookServiceClient implements WebhookServiceClient.
 type webhookServiceClient struct {
-	createWebhook               *connect.Client[v1.CreateWebhookRequest, v1.CreateWebhookResponse]
-	getWebhook                  *connect.Client[v1.GetWebhookRequest, v1.GetWebhookResponse]
-	listWebhooks                *connect.Client[v1.ListWebhooksRequest, v1.ListWebhooksResponse]
-	listWebhookDeliveries       *connect.Client[v1.ListWebhookDeliveriesRequest, v1.ListWebhookDeliveriesResponse]
-	listWebhookDeliveryAttempts *connect.Client[v1.ListWebhookDeliveryAttemptsRequest, v1.ListWebhookDeliveryAttemptsResponse]
-	updateWebhook               *connect.Client[v1.UpdateWebhookRequest, v1.UpdateWebhookResponse]
-	deleteWebhook               *connect.Client[v1.DeleteWebhookRequest, v1.DeleteWebhookResponse]
-	rotateWebhookSecret         *connect.Client[v1.RotateWebhookSecretRequest, v1.RotateWebhookSecretResponse]
-	pingWebhook                 *connect.Client[v1.PingWebhookRequest, v1.PingWebhookResponse]
+	createWebhook                *connect.Client[v1.CreateWebhookRequest, v1.CreateWebhookResponse]
+	getWebhook                   *connect.Client[v1.GetWebhookRequest, v1.GetWebhookResponse]
+	listWebhooks                 *connect.Client[v1.ListWebhooksRequest, v1.ListWebhooksResponse]
+	listWebhookDeliveries        *connect.Client[v1.ListWebhookDeliveriesRequest, v1.ListWebhookDeliveriesResponse]
+	listWebhookDeliveryAttempts  *connect.Client[v1.ListWebhookDeliveryAttemptsRequest, v1.ListWebhookDeliveryAttemptsResponse]
+	updateWebhook                *connect.Client[v1.UpdateWebhookRequest, v1.UpdateWebhookResponse]
+	deleteWebhook                *connect.Client[v1.DeleteWebhookRequest, v1.DeleteWebhookResponse]
+	rotateWebhookSecret          *connect.Client[v1.RotateWebhookSecretRequest, v1.RotateWebhookSecretResponse]
+	pingWebhook                  *connect.Client[v1.PingWebhookRequest, v1.PingWebhookResponse]
+	retryWebhookDelivery         *connect.Client[v1.RetryWebhookDeliveryRequest, v1.RetryWebhookDeliveryResponse]
+	retryFailedWebhookDeliveries *connect.Client[v1.RetryFailedWebhookDeliveriesRequest, v1.RetryFailedWebhookDeliveriesResponse]
 }
 
 // CreateWebhook calls webhook.v1.WebhookService.CreateWebhook.
@@ -201,6 +223,16 @@ func (c *webhookServiceClient) PingWebhook(ctx context.Context, req *connect.Req
 	return c.pingWebhook.CallUnary(ctx, req)
 }
 
+// RetryWebhookDelivery calls webhook.v1.WebhookService.RetryWebhookDelivery.
+func (c *webhookServiceClient) RetryWebhookDelivery(ctx context.Context, req *connect.Request[v1.RetryWebhookDeliveryRequest]) (*connect.Response[v1.RetryWebhookDeliveryResponse], error) {
+	return c.retryWebhookDelivery.CallUnary(ctx, req)
+}
+
+// RetryFailedWebhookDeliveries calls webhook.v1.WebhookService.RetryFailedWebhookDeliveries.
+func (c *webhookServiceClient) RetryFailedWebhookDeliveries(ctx context.Context, req *connect.Request[v1.RetryFailedWebhookDeliveriesRequest]) (*connect.Response[v1.RetryFailedWebhookDeliveriesResponse], error) {
+	return c.retryFailedWebhookDeliveries.CallUnary(ctx, req)
+}
+
 // WebhookServiceHandler is an implementation of the webhook.v1.WebhookService service.
 type WebhookServiceHandler interface {
 	CreateWebhook(context.Context, *connect.Request[v1.CreateWebhookRequest]) (*connect.Response[v1.CreateWebhookResponse], error)
@@ -212,6 +244,8 @@ type WebhookServiceHandler interface {
 	DeleteWebhook(context.Context, *connect.Request[v1.DeleteWebhookRequest]) (*connect.Response[v1.DeleteWebhookResponse], error)
 	RotateWebhookSecret(context.Context, *connect.Request[v1.RotateWebhookSecretRequest]) (*connect.Response[v1.RotateWebhookSecretResponse], error)
 	PingWebhook(context.Context, *connect.Request[v1.PingWebhookRequest]) (*connect.Response[v1.PingWebhookResponse], error)
+	RetryWebhookDelivery(context.Context, *connect.Request[v1.RetryWebhookDeliveryRequest]) (*connect.Response[v1.RetryWebhookDeliveryResponse], error)
+	RetryFailedWebhookDeliveries(context.Context, *connect.Request[v1.RetryFailedWebhookDeliveriesRequest]) (*connect.Response[v1.RetryFailedWebhookDeliveriesResponse], error)
 }
 
 // NewWebhookServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -275,6 +309,18 @@ func NewWebhookServiceHandler(svc WebhookServiceHandler, opts ...connect.Handler
 		connect.WithSchema(webhookServiceMethods.ByName("PingWebhook")),
 		connect.WithHandlerOptions(opts...),
 	)
+	webhookServiceRetryWebhookDeliveryHandler := connect.NewUnaryHandler(
+		WebhookServiceRetryWebhookDeliveryProcedure,
+		svc.RetryWebhookDelivery,
+		connect.WithSchema(webhookServiceMethods.ByName("RetryWebhookDelivery")),
+		connect.WithHandlerOptions(opts...),
+	)
+	webhookServiceRetryFailedWebhookDeliveriesHandler := connect.NewUnaryHandler(
+		WebhookServiceRetryFailedWebhookDeliveriesProcedure,
+		svc.RetryFailedWebhookDeliveries,
+		connect.WithSchema(webhookServiceMethods.ByName("RetryFailedWebhookDeliveries")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/webhook.v1.WebhookService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case WebhookServiceCreateWebhookProcedure:
@@ -295,6 +341,10 @@ func NewWebhookServiceHandler(svc WebhookServiceHandler, opts ...connect.Handler
 			webhookServiceRotateWebhookSecretHandler.ServeHTTP(w, r)
 		case WebhookServicePingWebhookProcedure:
 			webhookServicePingWebhookHandler.ServeHTTP(w, r)
+		case WebhookServiceRetryWebhookDeliveryProcedure:
+			webhookServiceRetryWebhookDeliveryHandler.ServeHTTP(w, r)
+		case WebhookServiceRetryFailedWebhookDeliveriesProcedure:
+			webhookServiceRetryFailedWebhookDeliveriesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -338,4 +388,12 @@ func (UnimplementedWebhookServiceHandler) RotateWebhookSecret(context.Context, *
 
 func (UnimplementedWebhookServiceHandler) PingWebhook(context.Context, *connect.Request[v1.PingWebhookRequest]) (*connect.Response[v1.PingWebhookResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("webhook.v1.WebhookService.PingWebhook is not implemented"))
+}
+
+func (UnimplementedWebhookServiceHandler) RetryWebhookDelivery(context.Context, *connect.Request[v1.RetryWebhookDeliveryRequest]) (*connect.Response[v1.RetryWebhookDeliveryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("webhook.v1.WebhookService.RetryWebhookDelivery is not implemented"))
+}
+
+func (UnimplementedWebhookServiceHandler) RetryFailedWebhookDeliveries(context.Context, *connect.Request[v1.RetryFailedWebhookDeliveriesRequest]) (*connect.Response[v1.RetryFailedWebhookDeliveriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("webhook.v1.WebhookService.RetryFailedWebhookDeliveries is not implemented"))
 }

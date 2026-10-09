@@ -67,6 +67,20 @@ func (f *fakeClient) PingWebhook(context.Context, *connect.Request[webhookv1.Pin
 	return connect.NewResponse(&webhookv1.PingWebhookResponse{}), nil
 }
 
+func (f *fakeClient) RetryWebhookDelivery(context.Context, *connect.Request[webhookv1.RetryWebhookDeliveryRequest]) (*connect.Response[webhookv1.RetryWebhookDeliveryResponse], error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return connect.NewResponse(&webhookv1.RetryWebhookDeliveryResponse{}), nil
+}
+
+func (f *fakeClient) RetryFailedWebhookDeliveries(context.Context, *connect.Request[webhookv1.RetryFailedWebhookDeliveriesRequest]) (*connect.Response[webhookv1.RetryFailedWebhookDeliveriesResponse], error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return connect.NewResponse(&webhookv1.RetryFailedWebhookDeliveriesResponse{Requeued: 2}), nil
+}
+
 func (f *fakeClient) ListWebhookDeliveries(context.Context, *connect.Request[webhookv1.ListWebhookDeliveriesRequest]) (*connect.Response[webhookv1.ListWebhookDeliveriesResponse], error) {
 	if f.err != nil {
 		return nil, f.err
@@ -107,6 +121,8 @@ func TestCLICommands(t *testing.T) {
 	require.NoError(t, runCmd(t, c, "delete", "w1", "--org-id", "o", "--project-id", "p"))
 	require.NoError(t, runCmd(t, c, "rotate", "w1", "--org-id", "o", "--project-id", "p"))
 	require.NoError(t, runCmd(t, c, "ping", "w1", "--org-id", "o", "--project-id", "p"))
+	require.NoError(t, runCmd(t, c, "retry", "w1", "d1", "--org-id", "o", "--project-id", "p"))
+	require.NoError(t, runCmd(t, c, "retry-failed", "w1", "--org-id", "o", "--project-id", "p"))
 	require.NoError(t, runCmd(t, c, "deliveries", "w1", "--org-id", "o", "--project-id", "p"))
 	require.NoError(t, runCmd(t, c, "attempts", "w1", "d1", "--org-id", "o", "--project-id", "p"))
 }
@@ -129,6 +145,8 @@ func TestCLIErrors(t *testing.T) {
 	assert.Error(t, runCmd(t, c, "delete", "w1", "--org-id", "o", "--project-id", "p"))
 	assert.Error(t, runCmd(t, c, "rotate", "w1", "--org-id", "o", "--project-id", "p"))
 	assert.Error(t, runCmd(t, c, "ping", "w1", "--org-id", "o", "--project-id", "p"))
+	assert.Error(t, runCmd(t, c, "retry", "w1", "d1", "--org-id", "o", "--project-id", "p"))
+	assert.Error(t, runCmd(t, c, "retry-failed", "w1", "--org-id", "o", "--project-id", "p"))
 	assert.Error(t, runCmd(t, c, "deliveries", "w1", "--org-id", "o", "--project-id", "p"))
 	assert.Error(t, runCmd(t, c, "attempts", "w1", "d1", "--org-id", "o", "--project-id", "p"))
 }

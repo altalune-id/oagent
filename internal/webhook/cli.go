@@ -31,6 +31,8 @@ func NewCmd(clientFn ClientFn) *cobra.Command {
 		newDeleteCmd(clientFn),
 		newRotateCmd(clientFn),
 		newPingCmd(clientFn),
+		newRetryCmd(clientFn),
+		newRetryFailedCmd(clientFn),
 		newDeliveriesCmd(clientFn),
 		newAttemptsCmd(clientFn),
 	)
@@ -264,6 +266,59 @@ func newPingCmd(clientFn ClientFn) *cobra.Command {
 				return err
 			}
 			cmd.Printf("Queued ping to webhook %s\n", args[0])
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	_ = cmd.MarkFlagRequired("org-id")
+	_ = cmd.MarkFlagRequired("project-id")
+	return cmd
+}
+
+func newRetryCmd(clientFn ClientFn) *cobra.Command {
+	var orgID, projectID string
+	cmd := &cobra.Command{
+		Use:   "retry <id> <delivery-id>",
+		Short: "Requeue one failed delivery of an endpoint",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := clientFn(cmd)
+			if err != nil {
+				return err
+			}
+			req := &webhookv1.RetryWebhookDeliveryRequest{OrgId: orgID, ProjectId: projectID, Id: args[0], DeliveryId: args[1]}
+			if _, err = client.RetryWebhookDelivery(cmd.Context(), connect.NewRequest(req)); err != nil {
+				return err
+			}
+			cmd.Printf("Requeued delivery %s\n", args[1])
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	_ = cmd.MarkFlagRequired("org-id")
+	_ = cmd.MarkFlagRequired("project-id")
+	return cmd
+}
+
+func newRetryFailedCmd(clientFn ClientFn) *cobra.Command {
+	var orgID, projectID string
+	cmd := &cobra.Command{
+		Use:   "retry-failed <id>",
+		Short: "Requeue every failed delivery of an endpoint",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := clientFn(cmd)
+			if err != nil {
+				return err
+			}
+			req := &webhookv1.RetryFailedWebhookDeliveriesRequest{OrgId: orgID, ProjectId: projectID, Id: args[0]}
+			resp, err := client.RetryFailedWebhookDeliveries(cmd.Context(), connect.NewRequest(req))
+			if err != nil {
+				return err
+			}
+			cmd.Printf("Requeued %d deliveries\n", resp.Msg.GetRequeued())
 			return nil
 		},
 	}

@@ -315,6 +315,35 @@ func (s *Service) toDelivery(ctx context.Context, endpointID uuid.UUID, e outbox
 	return Delivery{Entry: e, EventType: typ}
 }
 
+// Retry requeues one failed delivery of the identified endpoint.
+func (s *Service) Retry(ctx context.Context, id, deliveryID uuid.UUID) error {
+	if _, err := s.load(ctx, "webhook.Retry", id); err != nil {
+		return err
+	}
+	err := s.outbox.Requeue(ctx, deliveryID, id.String())
+	switch {
+	case err == nil:
+		return nil
+	case outbox.IsNotFailedError(err):
+		return &DeliveryNotRetryableError{ID: deliveryID.String()}
+	case outbox.IsNotFoundError(err):
+		return &DeliveryNotFoundError{ID: deliveryID.String()}
+	}
+	return s.unexpected(ctx, "webhook.Retry: requeue", err, "endpoint_id", id, "delivery_id", deliveryID)
+}
+
+// RetryFailed requeues every failed delivery of the identified endpoint and returns how many.
+func (s *Service) RetryFailed(ctx context.Context, id uuid.UUID) (int, error) {
+	if _, err := s.load(ctx, "webhook.RetryFailed", id); err != nil {
+		return 0, err
+	}
+	n, err := s.outbox.RequeueFailed(ctx, id.String())
+	if err != nil {
+		return 0, s.unexpected(ctx, "webhook.RetryFailed: requeue", err, "endpoint_id", id)
+	}
+	return n, nil
+}
+
 func (s *Service) fanOut(ctx context.Context, orgID, projectID uuid.UUID, spec events.Spec, data any, targets []*Endpoint) error {
 	slug, projectPublicID, err := s.resolver.ProjectRef(ctx, projectID)
 	if err != nil {

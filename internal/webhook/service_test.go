@@ -103,9 +103,12 @@ func (s *fakeStore) ListAttempts(context.Context, uuid.UUID, uuid.UUID) ([]Attem
 
 type fakeOutbox struct {
 	outbox.Store
-	enqueued []outbox.Entry
-	entries  []outbox.Entry
-	listErr  error
+	enqueued         []outbox.Entry
+	entries          []outbox.Entry
+	listErr          error
+	requeueErr       error
+	requeued         int
+	requeueFailedErr error
 }
 
 func (f *fakeOutbox) Enqueue(_ context.Context, e outbox.Entry) error {
@@ -118,6 +121,12 @@ func (f *fakeOutbox) ListByTarget(context.Context, string, int) ([]outbox.Entry,
 		return nil, f.listErr
 	}
 	return f.entries, nil
+}
+
+func (f *fakeOutbox) Requeue(context.Context, uuid.UUID, string) error { return f.requeueErr }
+
+func (f *fakeOutbox) RequeueFailed(context.Context, string) (int, error) {
+	return f.requeued, f.requeueFailedErr
 }
 
 type fakeResolver struct{ err error }

@@ -146,3 +146,29 @@ func IsDeliveryFailedError(err error) bool {
 	_, ok := errors.AsType[*DeliveryFailedError](err)
 	return ok
 }
+
+// DeliveryNotFoundError reports that no delivery of the endpoint matched the lookup.
+type DeliveryNotFoundError struct{ ID string }
+
+func (e *DeliveryNotFoundError) Error() string {
+	return fmt.Sprintf("webhook: delivery not found: id=%s", e.ID)
+}
+
+// IsDeliveryNotFoundError reports whether err's tree contains a *DeliveryNotFoundError.
+func IsDeliveryNotFoundError(err error) bool {
+	_, ok := errors.AsType[*DeliveryNotFoundError](err)
+	return ok
+}
+
+// DeliveryNotRetryableError reports a retry refused because the delivery has not failed.
+type DeliveryNotRetryableError struct{ ID string }
+
+func (e *DeliveryNotRetryableError) Error() string {
+	return fmt.Sprintf("webhook: delivery not retryable: id=%s", e.ID)
+}
+
+// IsDeliveryNotRetryableError reports whether err's tree contains a *DeliveryNotRetryableError.
+func IsDeliveryNotRetryableError(err error) bool {
+	_, ok := errors.AsType[*DeliveryNotRetryableError](err)
+	return ok
+}
