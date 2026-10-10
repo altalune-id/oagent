@@ -37,4 +37,8 @@ const (
 	CodeUserAlreadyExists Code = "USR002"
 	CodeUserInvalidEmail  Code = "USR003"
 	CodeUserInvalidName   Code = "USR004"
+
+	CodeMemberNotFound      Code = "MBR001"
+	CodeMemberAlreadyExists Code = "MBR002"
+	CodeMemberInvalidRole   Code = "MBR003"
 )

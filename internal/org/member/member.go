@@ -1,0 +1,66 @@
+// Package member models who belongs to an org and with which role.
+package member
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+
+	"altalune.id/oagent/nanoid"
+)
+
+const publicIDLen = 21
+
+// Role is a member's built-in role inside one org.
+type Role string
+
+// The built-in roles.
+const (
+	RoleOwner  Role = "owner"
+	RoleAdmin  Role = "admin"
+	RoleMember Role = "member"
+)
+
+// IsValid reports whether r is a built-in role.
+func (r Role) IsValid() bool { return r == RoleOwner || r == RoleAdmin || r == RoleMember }
+
+// CanManage reports whether r may manage the org's members and settings.
+func (r Role) CanManage() bool { return r == RoleOwner || r == RoleAdmin }
+
+// Membership links one user to one org with a role.
+type Membership struct {
+	ID        uuid.UUID
+	PublicID  string
+	OrgID     uuid.UUID
+	UserID    uuid.UUID
+	Role      Role
+	CreatedAt time.Time
+}
+
+// New builds a Membership after validating its ids and role.
+func New(orgID, userID uuid.UUID, role Role) (*Membership, error) {
+	if orgID == uuid.Nil || userID == uuid.Nil {
+		return nil, &InvalidRoleError{Role: string(role), Reason: "org and user are required"}
+	}
+	if !role.IsValid() {
+		return nil, &InvalidRoleError{Role: string(role), Reason: "unknown role"}
+	}
+	publicID, err := nanoid.New(publicIDLen)
+	if err != nil {
+		return nil, err
+	}
+	return &Membership{ID: uuid.New(), PublicID: publicID, OrgID: orgID, UserID: userID, Role: role, CreatedAt: time.Now().UTC()}, nil
+}
+
+type membershipRow struct {
+	ID        uuid.UUID `alias:"memberships.id"`
+	PublicID  string    `alias:"memberships.public_id"`
+	OrgID     uuid.UUID `alias:"memberships.org_id"`
+	UserID    uuid.UUID `alias:"memberships.user_id"`
+	Role      string    `alias:"memberships.role"`
+	CreatedAt time.Time `alias:"memberships.created_at"`
+}
+
+func (r *membershipRow) toMembership() *Membership {
+	return &Membership{ID: r.ID, PublicID: r.PublicID, OrgID: r.OrgID, UserID: r.UserID, Role: Role(r.Role), CreatedAt: r.CreatedAt}
+}
