@@ -86,9 +86,26 @@ func IsInvalidNameError(err error) bool {
 	return ok
 }
 
+// CreationDisabledError reports an org create on a deployment that only has its system org.
+type CreationDisabledError struct{}
+
+func (*CreationDisabledError) Error() string { return "org: creation is disabled on this deployment" }
+
+// ToAppError maps CreationDisabledError to its own code.
+func (e *CreationDisabledError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeOrgCreationDisabled, "Creating organizations is disabled on this deployment").WithCause(e)
+}
+
+// IsCreationDisabledError reports whether err's tree contains a *CreationDisabledError.
+func IsCreationDisabledError(err error) bool {
+	_, ok := errors.AsType[*CreationDisabledError](err)
+	return ok
+}
+
 // IsExpectedError reports whether err is a typed domain error a service returns as-is.
 func IsExpectedError(err error) bool {
-	return IsNotFoundError(err) || IsAlreadyExistsError(err) || IsInvalidSlugError(err) || IsInvalidNameError(err)
+	return IsNotFoundError(err) || IsAlreadyExistsError(err) || IsInvalidSlugError(err) || IsInvalidNameError(err) ||
+		IsCreationDisabledError(err)
 }
 
 // ToAppError maps NotFoundError to the canonical NotFound envelope.

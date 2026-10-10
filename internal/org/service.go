@@ -12,14 +12,21 @@ import (
 
 // Service is the org application service: the driving port surfaces call.
 type Service struct {
-	store       Store
-	unexpected  apperror.UnexpectedFunc
-	afterCreate func(ctx context.Context, o *Org) error
+	store           Store
+	unexpected      apperror.UnexpectedFunc
+	afterCreate     func(ctx context.Context, o *Org) error
+	creationAllowed bool
 }
 
-// NewService builds a Service over store.
+// NewService builds a Service over store; org creation is allowed until WithCreation(false).
 func NewService(store Store, unexpected apperror.UnexpectedFunc) *Service {
-	return &Service{store: store, unexpected: unexpected}
+	return &Service{store: store, unexpected: unexpected, creationAllowed: true}
+}
+
+// WithCreation sets whether Create may add orgs; boot passes the OrgCreation capability.
+func (s *Service) WithCreation(allowed bool) *Service {
+	s.creationAllowed = allowed
+	return s
 }
 
 // WithAfterCreate registers a hook run after an org is created (e.g. to seed a default project).
@@ -37,6 +44,9 @@ type CreateRequest struct {
 
 // Create validates and persists a new org. An empty slug is generated, retrying on collision.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (*Org, error) {
+	if !s.creationAllowed {
+		return nil, &CreationDisabledError{}
+	}
 	o, err := s.create(ctx, req)
 	if err != nil {
 		return nil, err
@@ -93,6 +103,15 @@ func (s *Service) BySlug(ctx context.Context, slug string) (*Org, error) {
 	o, err := s.store.BySlug(ctx, slug)
 	if err != nil {
 		return nil, s.errOrReport(ctx, "org: by slug", err)
+	}
+	return o, nil
+}
+
+// System returns the deployment's system org.
+func (s *Service) System(ctx context.Context) (*Org, error) {
+	o, err := s.store.System(ctx)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "org: system", err)
 	}
 	return o, nil
 }

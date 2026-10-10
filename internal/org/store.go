@@ -17,6 +17,7 @@ type Reader interface {
 	ByID(ctx context.Context, id uuid.UUID) (*Org, error)
 	BySlug(ctx context.Context, slug string) (*Org, error)
 	List(ctx context.Context) ([]*Org, error)
+	System(ctx context.Context) (*Org, error)
 }
 
 // Writer writes Org aggregates.

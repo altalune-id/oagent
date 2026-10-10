@@ -14,7 +14,7 @@ import (
 func (s *postgresStore) Save(ctx context.Context, o *Org) error {
 	now := time.Now().UTC()
 	stmt := s.orgs.INSERT(s.orgs.AllColumns).
-		VALUES(o.ID, o.PublicID, o.Slug, o.Name, createdByExpr(o), o.CreatedAt.UTC(), now).
+		VALUES(o.ID, o.PublicID, o.Slug, o.Name, createdByExpr(o), o.CreatedAt.UTC(), now, o.IsSystem).
 		ON_CONFLICT(s.orgs.ID).
 		DO_UPDATE(postgres.SET(
 			s.orgs.PublicID.SET(postgres.String(o.PublicID)),

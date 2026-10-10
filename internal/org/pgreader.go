@@ -13,7 +13,7 @@ import (
 
 // ByID loads an org by id.
 func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*Org, error) {
-	stmt := postgres.SELECT(s.orgs.ID, s.orgs.PublicID, s.orgs.Slug, s.orgs.Name, s.orgs.CreatedBy, s.orgs.CreatedAt, s.orgs.UpdatedAt).
+	stmt := postgres.SELECT(s.orgs.AllColumns).
 		FROM(s.orgs).
 		WHERE(s.orgs.ID.EQ(postgres.UUID(id))).
 		LIMIT(1)
@@ -29,7 +29,7 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*Org, error) {
 
 // BySlug loads an org by slug.
 func (s *postgresStore) BySlug(ctx context.Context, slug string) (*Org, error) {
-	stmt := postgres.SELECT(s.orgs.ID, s.orgs.PublicID, s.orgs.Slug, s.orgs.Name, s.orgs.CreatedBy, s.orgs.CreatedAt, s.orgs.UpdatedAt).
+	stmt := postgres.SELECT(s.orgs.AllColumns).
 		FROM(s.orgs).
 		WHERE(s.orgs.Slug.EQ(postgres.String(slug))).
 		LIMIT(1)
@@ -45,7 +45,7 @@ func (s *postgresStore) BySlug(ctx context.Context, slug string) (*Org, error) {
 
 // List returns every org ordered by creation time.
 func (s *postgresStore) List(ctx context.Context) ([]*Org, error) {
-	stmt := postgres.SELECT(s.orgs.ID, s.orgs.PublicID, s.orgs.Slug, s.orgs.Name, s.orgs.CreatedBy, s.orgs.CreatedAt, s.orgs.UpdatedAt).
+	stmt := postgres.SELECT(s.orgs.AllColumns).
 		FROM(s.orgs).
 		ORDER_BY(s.orgs.CreatedAt.ASC())
 	var rows []orgRow
@@ -57,4 +57,20 @@ func (s *postgresStore) List(ctx context.Context) ([]*Org, error) {
 		out = append(out, rows[i].toOrg())
 	}
 	return out, nil
+}
+
+// System loads the deployment's system org from the primary.
+func (s *postgresStore) System(ctx context.Context) (*Org, error) {
+	stmt := postgres.SELECT(s.orgs.AllColumns).
+		FROM(s.orgs).
+		WHERE(s.orgs.IsSystem.IS_TRUE()).
+		LIMIT(1)
+	var row orgRow
+	if err := stmt.QueryContext(ctx, s.writer(ctx), &row); err != nil {
+		if errors.Is(err, qrm.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
+			return nil, &NotFoundError{}
+		}
+		return nil, fmt.Errorf("org.postgres: System: %w", err)
+	}
+	return row.toOrg(), nil
 }

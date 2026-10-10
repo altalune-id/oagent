@@ -13,6 +13,7 @@ type Orgs struct {
 	CreatedBy postgres.ColumnString
 	CreatedAt postgres.ColumnTimestampz
 	UpdatedAt postgres.ColumnTimestampz
+	IsSystem  postgres.ColumnBool
 
 	AllColumns postgres.ColumnList
 }
@@ -30,7 +31,8 @@ func NewOrgs(schema, tablePrefix string) *Orgs {
 		createdBy = postgres.StringColumn("created_by")
 		createdAt = postgres.TimestampzColumn("created_at")
 		updatedAt = postgres.TimestampzColumn("updated_at")
-		all       = postgres.ColumnList{id, publicID, slug, name, createdBy, createdAt, updatedAt}
+		isSystem  = postgres.BoolColumn("is_system")
+		all       = postgres.ColumnList{id, publicID, slug, name, createdBy, createdAt, updatedAt, isSystem}
 	)
 	return &Orgs{
 		Table:      postgres.NewTable(schema, tablePrefix+"orgs", "orgs", all...),
@@ -41,6 +43,7 @@ func NewOrgs(schema, tablePrefix string) *Orgs {
 		CreatedBy:  createdBy,
 		CreatedAt:  createdAt,
 		UpdatedAt:  updatedAt,
+		IsSystem:   isSystem,
 		AllColumns: all,
 	}
 }

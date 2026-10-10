@@ -11,10 +11,11 @@ const (
 	CodeAlreadyExists Code = "GEN006"
 	CodeUnexpected    Code = "GEN900"
 
-	CodeOrgNotFound      Code = "ORG001"
-	CodeOrgAlreadyExists Code = "ORG002"
-	CodeOrgInvalidSlug   Code = "ORG003"
-	CodeOrgInvalidName   Code = "ORG004"
+	CodeOrgNotFound         Code = "ORG001"
+	CodeOrgAlreadyExists    Code = "ORG002"
+	CodeOrgInvalidSlug      Code = "ORG003"
+	CodeOrgInvalidName      Code = "ORG004"
+	CodeOrgCreationDisabled Code = "ORG005"
 
 	CodeProjectNotFound      Code = "PRJ001"
 	CodeProjectAlreadyExists Code = "PRJ002"

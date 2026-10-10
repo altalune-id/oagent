@@ -62,3 +62,22 @@ func TestValidateName(t *testing.T) {
 	assert.True(t, IsInvalidNameError(ValidateName("")))
 	assert.True(t, IsInvalidNameError(ValidateName(strings.Repeat("a", 201))))
 }
+
+func TestNewSystemOrg(t *testing.T) {
+	o, err := NewSystemOrg("acme", "Acme", uuid.Nil)
+	require.NoError(t, err)
+	assert.True(t, o.IsSystem)
+	assert.False(t, o.CreatedBy.Valid, "basic mode creates it without an owner")
+
+	owner := uuid.New()
+	o, err = NewSystemOrg("acme", "Acme", owner)
+	require.NoError(t, err)
+	assert.Equal(t, owner, o.CreatedBy.UUID)
+
+	_, err = NewSystemOrg("A", "Acme", uuid.Nil)
+	assert.True(t, IsInvalidSlugError(err))
+
+	plain, err := NewOrg("acme", "Acme", uuid.Nil)
+	require.NoError(t, err)
+	assert.False(t, plain.IsSystem)
+}

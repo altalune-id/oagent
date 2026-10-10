@@ -170,3 +170,34 @@ func TestService_Create_AfterCreateHookError(t *testing.T) {
 	_, err := svc.Create(context.Background(), org.CreateRequest{Slug: "acme", Name: "Acme"})
 	assert.True(t, org.IsAlreadyExistsError(err))
 }
+
+func TestService_CreationGate(t *testing.T) {
+	store := &fakes.OrgStore{}
+	svc := org.NewService(store, testUnexpected()).WithCreation(false)
+	_, err := svc.Create(context.Background(), org.CreateRequest{Slug: "acme", Name: "Acme"})
+	assert.True(t, org.IsCreationDisabledError(err), "got %v", err)
+	assert.Nil(t, store.Saved, "nothing saved when creation is off")
+
+	svc = org.NewService(&fakes.OrgStore{}, testUnexpected())
+	_, err = svc.Create(context.Background(), org.CreateRequest{Slug: "acme", Name: "Acme"})
+	assert.NoError(t, err, "default stays allowed until boot passes capabilities")
+}
+
+func TestService_System(t *testing.T) {
+	sys, err := org.NewSystemOrg("acme", "Acme", uuid.Nil)
+	require.NoError(t, err)
+	svc := org.NewService(&fakes.OrgStore{Org: sys}, testUnexpected())
+	got, err := svc.System(context.Background())
+	require.NoError(t, err)
+	assert.True(t, got.IsSystem)
+
+	svc = org.NewService(&fakes.OrgStore{}, testUnexpected())
+	_, err = svc.System(context.Background())
+	assert.True(t, org.IsNotFoundError(err), "got %v", err)
+
+	svc = org.NewService(&fakes.OrgStore{Err: errors.New("db down")}, testUnexpected())
+	_, err = svc.System(context.Background())
+	ae, ok := errors.AsType[*apperror.AppError](err)
+	require.True(t, ok, "got %v", err)
+	assert.Equal(t, apperror.CodeUnexpected, ae.Code())
+}

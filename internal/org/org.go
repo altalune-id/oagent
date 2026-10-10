@@ -32,6 +32,7 @@ type Org struct {
 	CreatedBy uuid.NullUUID
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	IsSystem  bool
 }
 
 // NewOrg constructs an Org after validating slug and name. A nil createdBy is the genesis org.
@@ -53,6 +54,16 @@ func NewOrg(slug, name string, createdBy uuid.UUID) (*Org, error) {
 	if createdBy != uuid.Nil {
 		o.CreatedBy = uuid.NullUUID{UUID: createdBy, Valid: true}
 	}
+	return o, nil
+}
+
+// NewSystemOrg constructs the deployment's single system org; its owners and admins are the operators.
+func NewSystemOrg(slug, name string, createdBy uuid.UUID) (*Org, error) {
+	o, err := NewOrg(slug, name, createdBy)
+	if err != nil {
+		return nil, err
+	}
+	o.IsSystem = true
 	return o, nil
 }
 
@@ -102,6 +113,7 @@ type orgRow struct {
 	CreatedBy uuid.NullUUID `alias:"orgs.created_by"`
 	CreatedAt time.Time     `alias:"orgs.created_at"`
 	UpdatedAt time.Time     `alias:"orgs.updated_at"`
+	IsSystem  bool          `alias:"orgs.is_system"`
 }
 
 func (r *orgRow) toOrg() *Org {
@@ -113,6 +125,7 @@ func (r *orgRow) toOrg() *Org {
 		CreatedBy: r.CreatedBy,
 		CreatedAt: r.CreatedAt,
 		UpdatedAt: r.UpdatedAt,
+		IsSystem:  r.IsSystem,
 	}
 }
 

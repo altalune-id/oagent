@@ -46,3 +46,11 @@ func TestToAppError(t *testing.T) {
 	assert.Equal(t, apperror.CodeOrgInvalidSlug, (&InvalidSlugError{}).ToAppError().Code())
 	assert.Equal(t, apperror.CodeOrgInvalidName, (&InvalidNameError{}).ToAppError().Code())
 }
+
+func TestCreationDisabledError(t *testing.T) {
+	err := &CreationDisabledError{}
+	assert.True(t, IsCreationDisabledError(err))
+	assert.True(t, IsExpectedError(err))
+	assert.NotEmpty(t, err.Error())
+	assert.Equal(t, apperror.CodeOrgCreationDisabled, err.ToAppError().Code())
+}

@@ -44,6 +44,17 @@ func (f *OrgStore) BySlug(context.Context, string) (*org.Org, error) {
 	return f.Org, nil
 }
 
+// System implements org.Store; it returns Org when that is a system org, else *org.NotFoundError.
+func (f *OrgStore) System(context.Context) (*org.Org, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	if f.Org == nil || !f.Org.IsSystem {
+		return nil, &org.NotFoundError{}
+	}
+	return f.Org, nil
+}
+
 // List implements org.Store.
 func (f *OrgStore) List(context.Context) ([]*org.Org, error) {
 	if f.Err != nil {

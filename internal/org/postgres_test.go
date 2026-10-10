@@ -62,7 +62,7 @@ func TestReaderWriterSelection(t *testing.T) {
 }
 
 func orgRowColumns() []string {
-	return []string{"orgs.id", "orgs.public_id", "orgs.slug", "orgs.name", "orgs.created_by", "orgs.created_at", "orgs.updated_at"}
+	return []string{"orgs.id", "orgs.public_id", "orgs.slug", "orgs.name", "orgs.created_by", "orgs.created_at", "orgs.updated_at", "orgs.is_system"}
 }
 
 func TestList(t *testing.T) {
@@ -71,7 +71,7 @@ func TestList(t *testing.T) {
 
 	id := uuid.New()
 	rows := sqlmock.NewRows(orgRowColumns()).
-		AddRow(id, "p", "acme", "Acme", nil, time.Now(), time.Now())
+		AddRow(id, "p", "acme", "Acme", nil, time.Now(), time.Now(), false)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, orgs: entity.NewOrgs("public", "")}
@@ -96,7 +96,7 @@ func TestBySlug(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	rows := sqlmock.NewRows(orgRowColumns()).
-		AddRow(uuid.New(), "p", "acme", "Acme", nil, time.Now(), time.Now())
+		AddRow(uuid.New(), "p", "acme", "Acme", nil, time.Now(), time.Now(), false)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 
 	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, orgs: entity.NewOrgs("public", "")}
@@ -146,4 +146,23 @@ func TestStore_QueryErrors(t *testing.T) {
 	o, err := NewOrg("acme", "Acme", uuid.New())
 	require.NoError(t, err)
 	assert.Error(t, s.Save(ctx, o))
+}
+
+func TestSystem(t *testing.T) {
+	writer, wMock, err := sqlmock.New()
+	require.NoError(t, err)
+	reader, rMock, err := sqlmock.New()
+	require.NoError(t, err)
+	s := &postgresStore{pool: db.Pool{W: writer, R: reader}, orgs: entity.NewOrgs("public", "")}
+
+	wMock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(orgRowColumns()).
+		AddRow(uuid.New(), "p", "acme", "Acme", nil, time.Now(), time.Now(), true))
+	got, err := s.System(context.Background())
+	require.NoError(t, err)
+	assert.True(t, got.IsSystem)
+	assert.NoError(t, rMock.ExpectationsWereMet(), "the installed marker is read from the primary")
+
+	wMock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(orgRowColumns()))
+	_, err = s.System(context.Background())
+	assert.True(t, IsNotFoundError(err))
 }
