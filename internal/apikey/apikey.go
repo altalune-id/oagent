@@ -140,6 +140,9 @@ func (sc Scheme) mint(orgID uuid.UUID, name string, scopes []string, expiresAt *
 		if !scope.Valid(s) {
 			return nil, "", &UnknownScopeError{Scope: s}
 		}
+		if !scope.Mintable(s) {
+			return nil, "", &PersonOnlyScopeError{Scope: s}
+		}
 	}
 	if err := validateLifetime(expiresAt, now); err != nil {
 		return nil, "", err

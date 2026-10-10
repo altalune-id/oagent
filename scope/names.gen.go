@@ -10,4 +10,10 @@ const (
 	ProjectWrite = "project:write"
 	AgentRead = "agent:read"
 	AgentWrite = "agent:write"
+	WebhookRead = "webhook:read"
+	WebhookWrite = "webhook:write"
+	MemberRead = "member:read"
+	MemberWrite = "member:write"
+	ApikeyRead = "apikey:read"
+	ApikeyWrite = "apikey:write"
 )

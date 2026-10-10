@@ -1,11 +1,11 @@
-// Package scope is the single catalog of API scopes and the level each is authoritative at.
-// The catalog data lives in scopes.json, shared verbatim with the console.
+// Package scope is the single catalog of API scopes, read from scopes.json, which the console shares verbatim.
 package scope
 
 import (
 	_ "embed"
 	"encoding/json"
 	"slices"
+	"strings"
 )
 
 //go:embed scopes.json
@@ -22,8 +22,9 @@ const (
 
 // Spec describes one scope.
 type Spec struct {
-	Name  string `json:"name"`
-	Level Level  `json:"level"`
+	Name       string `json:"name"`
+	Level      Level  `json:"level"`
+	PersonOnly bool   `json:"personOnly,omitempty"`
 }
 
 //nolint:gochecknoglobals // immutable catalog parsed once from the embedded file.
@@ -61,4 +62,24 @@ func LevelOf(name string) (Level, bool) {
 		return "", false
 	}
 	return catalog[i].Level, true
+}
+
+// Mintable reports whether an API key may hold name. SECURITY: person-only scopes never go on a key.
+func Mintable(name string) bool {
+	i := slices.IndexFunc(catalog, func(s Spec) bool { return s.Name == name })
+	return i >= 0 && !catalog[i].PersonOnly
+}
+
+// Grants reports whether granted covers required, honoring "*" and "<resource>:*" wildcards.
+func Grants(granted []string, required string) bool {
+	if required == "" {
+		return false
+	}
+	resource, _, _ := strings.Cut(required, ":")
+	for _, g := range granted {
+		if g == "*" || g == required || g == resource+":*" {
+			return true
+		}
+	}
+	return false
 }

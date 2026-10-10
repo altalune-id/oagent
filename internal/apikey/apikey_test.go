@@ -58,6 +58,11 @@ func TestScheme_Mint_Validation(t *testing.T) {
 	_, _, err = NewScheme("").MintOrg(uuid.New(), "x", []string{"nope:read"}, ProjectGrant{All: true}, future(), now)
 	assert.IsType(t, &UnknownScopeError{}, err)
 
+	for _, s := range []string{scope.MemberWrite, scope.ApikeyWrite} {
+		_, _, err = NewScheme("").MintOrg(uuid.New(), "x", []string{s}, ProjectGrant{All: true}, future(), now)
+		assert.True(t, IsPersonOnlyScopeError(err), s)
+	}
+
 	_, _, err = NewScheme("").MintOrg(uuid.New(), "x", nil, ProjectGrant{All: true}, nil, now)
 	assert.IsType(t, &ExpiryRequiredError{}, err)
 

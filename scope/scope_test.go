@@ -31,3 +31,30 @@ func TestEverySpecHasLevel(t *testing.T) {
 		assert.Contains(t, []Level{LevelOrg, LevelProject}, s.Level, s.Name)
 	}
 }
+
+func TestCatalog_PersonOnly(t *testing.T) {
+	assert.False(t, Mintable(MemberWrite))
+	assert.False(t, Mintable(ApikeyWrite))
+	assert.True(t, Mintable(MemberRead))
+	assert.True(t, Mintable(WebhookWrite))
+	assert.False(t, Mintable("nope:read"))
+}
+
+func TestGrants(t *testing.T) {
+	for name, tc := range map[string]struct {
+		granted  []string
+		required string
+		want     bool
+	}{
+		"exact":             {[]string{AgentRead}, AgentRead, true},
+		"other":             {[]string{AgentRead}, AgentWrite, false},
+		"star":              {[]string{"*"}, MemberWrite, true},
+		"resource wildcard": {[]string{"agent:*"}, AgentWrite, true},
+		"wildcard no leak":  {[]string{"agent:*"}, ProjectRead, false},
+		"prefix trick":      {[]string{"agent:*"}, "agents:read", false},
+		"empty":             {nil, AgentRead, false},
+		"empty required":    {[]string{"*"}, "", false},
+	} {
+		t.Run(name, func(t *testing.T) { assert.Equal(t, tc.want, Grants(tc.granted, tc.required)) })
+	}
+}

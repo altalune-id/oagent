@@ -28,11 +28,12 @@ const (
 	CodeAgentInvalidName        Code = "AGT004"
 	CodeAgentInvalidDescription Code = "AGT005"
 
-	CodeAPIKeyNotFound      Code = "KEY001"
-	CodeAPIKeyInvalidName   Code = "KEY002"
-	CodeAPIKeyInvalidScope  Code = "KEY003"
-	CodeAPIKeyInvalidExpiry Code = "KEY004"
-	CodeAPIKeyInvalidGrant  Code = "KEY005"
+	CodeAPIKeyNotFound        Code = "KEY001"
+	CodeAPIKeyInvalidName     Code = "KEY002"
+	CodeAPIKeyInvalidScope    Code = "KEY003"
+	CodeAPIKeyInvalidExpiry   Code = "KEY004"
+	CodeAPIKeyInvalidGrant    Code = "KEY005"
+	CodeAPIKeyPersonOnlyScope Code = "KEY006"
 
 	CodeUserNotFound      Code = "USR001"
 	CodeUserAlreadyExists Code = "USR002"

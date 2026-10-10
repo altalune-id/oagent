@@ -15,7 +15,7 @@ const projects = useProjectsStore()
 const create = useAPIKeyCreate(orgId)
 const { open, kind, name, scopes: selectedScopes, allProjects, projectId, projectIds, expiresInHours, busy, error, plaintext } = create
 
-const availableScopes = computed(() => scopes.filter(s => kind.value === 'org' || s.level === 'project'))
+const availableScopes = computed(() => scopes.filter(s => !s.personOnly && (kind.value === 'org' || s.level === 'project')))
 const orgProjects = computed(() => projects.forOrg(orgId))
 
 const expiryOptions = computed(() => [

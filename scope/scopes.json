@@ -4,5 +4,11 @@
   { "name": "project:read", "level": "project", "labelKey": "scope.project_read" },
   { "name": "project:write", "level": "project", "labelKey": "scope.project_write" },
   { "name": "agent:read", "level": "project", "labelKey": "scope.agent_read" },
-  { "name": "agent:write", "level": "project", "labelKey": "scope.agent_write" }
+  { "name": "agent:write", "level": "project", "labelKey": "scope.agent_write" },
+  { "name": "webhook:read", "level": "project", "labelKey": "scope.webhook_read" },
+  { "name": "webhook:write", "level": "project", "labelKey": "scope.webhook_write" },
+  { "name": "member:read", "level": "org", "labelKey": "scope.member_read" },
+  { "name": "member:write", "level": "org", "labelKey": "scope.member_write", "personOnly": true },
+  { "name": "apikey:read", "level": "org", "labelKey": "scope.apikey_read" },
+  { "name": "apikey:write", "level": "org", "labelKey": "scope.apikey_write", "personOnly": true }
 ]

@@ -51,6 +51,13 @@ func (e *ScopeLevelError) Error() string {
 	return fmt.Sprintf("apikey: scope %q is not project-level", e.Scope)
 }
 
+// PersonOnlyScopeError signals a person-only scope requested for a key.
+type PersonOnlyScopeError struct{ Scope string }
+
+func (e *PersonOnlyScopeError) Error() string {
+	return fmt.Sprintf("apikey: scope %q can only be held by a person", e.Scope)
+}
+
 // ExpiryRequiredError signals a missing expiry at mint.
 type ExpiryRequiredError struct{}
 
@@ -100,6 +107,12 @@ func IsScopeLevelError(err error) bool {
 	return ok
 }
 
+// IsPersonOnlyScopeError reports whether err wraps a *PersonOnlyScopeError.
+func IsPersonOnlyScopeError(err error) bool {
+	_, ok := errors.AsType[*PersonOnlyScopeError](err)
+	return ok
+}
+
 // IsExpiryError reports whether err wraps one of the expiry errors.
 func IsExpiryError(err error) bool {
 	if _, ok := errors.AsType[*ExpiryRequiredError](err); ok {
@@ -124,7 +137,7 @@ func IsGrantError(err error) bool {
 // IsExpectedError reports whether err is a typed domain error a service returns as-is.
 func IsExpectedError(err error) bool {
 	return IsNotFoundError(err) || IsInvalidNameError(err) || IsUnknownScopeError(err) ||
-		IsScopeLevelError(err) || IsExpiryError(err) || IsGrantError(err)
+		IsScopeLevelError(err) || IsPersonOnlyScopeError(err) || IsExpiryError(err) || IsGrantError(err)
 }
 
 // ToAppError maps NotFoundError to the canonical NotFound envelope.
@@ -145,6 +158,11 @@ func (e *UnknownScopeError) ToAppError() *apperror.AppError {
 // ToAppError maps ScopeLevelError to the canonical Validation envelope.
 func (e *ScopeLevelError) ToAppError() *apperror.AppError {
 	return apperror.New(apperror.CodeAPIKeyInvalidScope, "Scope level too high for a project key").WithCause(e)
+}
+
+// ToAppError maps PersonOnlyScopeError to the canonical Validation envelope.
+func (e *PersonOnlyScopeError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeAPIKeyPersonOnlyScope, fmt.Sprintf("Scope %s can only be held by a person", e.Scope)).WithCause(e)
 }
 
 // ToAppError maps expiry errors to the canonical Validation envelope.

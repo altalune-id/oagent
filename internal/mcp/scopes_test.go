@@ -35,14 +35,14 @@ func TestScopeFor(t *testing.T) {
 	assert.Equal(t, scope.AgentWrite, ScopeFor(agentv1mcp.AgentUpdateToolName))
 	assert.Equal(t, scope.AgentWrite, ScopeFor(agentv1mcp.AgentDeleteToolName))
 
-	assert.Equal(t, scope.ProjectWrite, ScopeFor(webhookv1mcp.WebhookCreateToolName))
-	assert.Equal(t, scope.ProjectRead, ScopeFor(webhookv1mcp.WebhookListToolName))
-	assert.Equal(t, scope.ProjectRead, ScopeFor(webhookv1mcp.WebhookDeliveriesToolName))
-	assert.Equal(t, scope.ProjectWrite, ScopeFor(webhookv1mcp.WebhookRetryFailedToolName))
+	assert.Equal(t, scope.WebhookWrite, ScopeFor(webhookv1mcp.WebhookCreateToolName))
+	assert.Equal(t, scope.WebhookRead, ScopeFor(webhookv1mcp.WebhookListToolName))
+	assert.Equal(t, scope.WebhookRead, ScopeFor(webhookv1mcp.WebhookDeliveriesToolName))
+	assert.Equal(t, scope.WebhookWrite, ScopeFor(webhookv1mcp.WebhookRetryFailedToolName))
 
 	assert.Equal(t, "", ScopeFor("unknown"))
 }
 
 func TestAllScopes(t *testing.T) {
-	assert.Equal(t, []string{scope.AgentRead, scope.AgentWrite, scope.OrgRead, scope.OrgWrite, scope.ProjectRead, scope.ProjectWrite}, AllScopes(context.Background()))
+	assert.Equal(t, []string{scope.AgentRead, scope.AgentWrite, scope.OrgRead, scope.OrgWrite, scope.ProjectRead, scope.ProjectWrite, scope.WebhookRead, scope.WebhookWrite}, AllScopes(context.Background()))
 }
