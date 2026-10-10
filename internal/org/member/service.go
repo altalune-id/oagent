@@ -49,6 +49,15 @@ func (s *Service) ListByUser(ctx context.Context, userID uuid.UUID) ([]*Membersh
 	return ms, nil
 }
 
+// CountOwners returns how many owners orgID has.
+func (s *Service) CountOwners(ctx context.Context, orgID uuid.UUID) (int, error) {
+	n, err := s.store.CountOwners(ctx, orgID)
+	if err != nil {
+		return 0, s.errOrReport(ctx, "member: count owners", err)
+	}
+	return n, nil
+}
+
 func (s *Service) errOrReport(ctx context.Context, message string, err error) error {
 	if IsExpectedError(err) {
 		return err

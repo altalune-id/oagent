@@ -46,4 +46,6 @@ const (
 	CodeMemberInvalidRole   Code = "MBR003"
 
 	CodeAuthInvalidCredentials Code = "AUT001"
+
+	CodeInstallAlreadyDone Code = "INS001"
 )

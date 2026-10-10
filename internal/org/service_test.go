@@ -201,3 +201,31 @@ func TestService_System(t *testing.T) {
 	require.True(t, ok, "got %v", err)
 	assert.Equal(t, apperror.CodeUnexpected, ae.Code())
 }
+
+func TestService_CreateSystem_IgnoresGateAndHook(t *testing.T) {
+	store := &fakes.OrgStore{}
+	hookCalls := 0
+	svc := org.NewService(store, testUnexpected()).
+		WithCreation(false).
+		WithAfterCreate(func(context.Context, *org.Org) error { hookCalls++; return nil })
+	owner := uuid.New()
+
+	o, err := svc.CreateSystem(context.Background(), org.CreateRequest{Name: "Default", CreatedBy: owner})
+	require.NoError(t, err)
+	assert.True(t, o.IsSystem)
+	assert.Equal(t, o, store.Saved)
+	assert.Equal(t, owner, o.CreatedBy.UUID)
+	assert.NoError(t, org.ValidateSlug(o.Slug))
+	assert.Zero(t, hookCalls)
+
+	_, err = svc.Create(context.Background(), org.CreateRequest{Name: "Other"})
+	assert.True(t, org.IsCreationDisabledError(err), "the gate still applies to Create")
+}
+
+func TestService_CreateSystem_ExplicitSlug(t *testing.T) {
+	store := &fakes.OrgStore{}
+	o, err := org.NewService(store, testUnexpected()).CreateSystem(context.Background(), org.CreateRequest{Slug: "acme", Name: "Acme"})
+	require.NoError(t, err)
+	assert.Equal(t, "acme", o.Slug)
+	assert.False(t, o.CreatedBy.Valid)
+}

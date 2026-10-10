@@ -67,3 +67,21 @@ func TestService_StoreFailureIsReported(t *testing.T) {
 	_, err = svc.ListByUser(ctx, uuid.New())
 	assert.True(t, isUnexpected(err))
 }
+
+func TestService_CountOwners(t *testing.T) {
+	svc := newService(&fakes.MemberStore{})
+	ctx := context.Background()
+	orgID := uuid.New()
+
+	n, err := svc.CountOwners(ctx, orgID)
+	require.NoError(t, err)
+	assert.Zero(t, n)
+
+	_, err = svc.Add(ctx, orgID, uuid.New(), member.RoleOwner)
+	require.NoError(t, err)
+	_, err = svc.Add(ctx, orgID, uuid.New(), member.RoleAdmin)
+	require.NoError(t, err)
+	n, err = svc.CountOwners(ctx, orgID)
+	require.NoError(t, err)
+	assert.Equal(t, 1, n)
+}

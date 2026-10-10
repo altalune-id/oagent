@@ -10,6 +10,8 @@ import (
 	slugpkg "altalune.id/oagent/slug"
 )
 
+const systemSlug = "default"
+
 // Service is the org application service: the driving port surfaces call.
 type Service struct {
 	store           Store
@@ -87,6 +89,37 @@ func (s *Service) createGenerated(ctx context.Context, req CreateRequest) (*Org,
 		return nil, s.errOrReport(ctx, "org: create", err)
 	}
 	return o, nil
+}
+
+// CreateSystem persists the system org, skipping the creation gate and after-create hook; an empty slug becomes "default" if free.
+func (s *Service) CreateSystem(ctx context.Context, req CreateRequest) (*Org, error) {
+	slug, err := s.systemSlug(ctx, req.Slug)
+	if err != nil {
+		return nil, err
+	}
+	o, err := NewSystemOrg(slug, req.Name, req.CreatedBy)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.store.Save(ctx, o); err != nil {
+		return nil, s.errOrReport(ctx, "org: create system", err)
+	}
+	return o, nil
+}
+
+// NOTE: checks before inserting, since a unique violation would abort the caller's transaction.
+func (s *Service) systemSlug(ctx context.Context, slug string) (string, error) {
+	if slug = strings.TrimSpace(slug); slug != "" {
+		return slug, nil
+	}
+	_, err := s.store.BySlug(ctx, systemSlug)
+	switch {
+	case IsNotFoundError(err):
+		return systemSlug, nil
+	case err != nil:
+		return "", s.errOrReport(ctx, "org: system slug", err)
+	}
+	return slugpkg.Generate(), nil
 }
 
 // Get loads an org by id.
