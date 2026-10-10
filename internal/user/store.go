@@ -1,0 +1,24 @@
+package user
+
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
+
+// Store persists users.
+type Store interface {
+	Reader
+	Writer
+}
+
+// Reader reads users.
+type Reader interface {
+	ByID(ctx context.Context, id uuid.UUID) (*User, error)
+	ByEmail(ctx context.Context, email string) (*User, error)
+}
+
+// Writer writes users.
+type Writer interface {
+	Save(ctx context.Context, u *User) error
+}

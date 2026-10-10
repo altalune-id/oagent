@@ -32,4 +32,9 @@ const (
 	CodeAPIKeyInvalidScope  Code = "KEY003"
 	CodeAPIKeyInvalidExpiry Code = "KEY004"
 	CodeAPIKeyInvalidGrant  Code = "KEY005"
+
+	CodeUserNotFound      Code = "USR001"
+	CodeUserAlreadyExists Code = "USR002"
+	CodeUserInvalidEmail  Code = "USR003"
+	CodeUserInvalidName   Code = "USR004"
 )

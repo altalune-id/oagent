@@ -1,0 +1,41 @@
+package user
+
+import (
+	"errors"
+	"testing"
+
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/stretchr/testify/assert"
+
+	"altalune.id/oagent/apperror"
+)
+
+func TestErrors(t *testing.T) {
+	for name, tc := range map[string]struct {
+		err interface {
+			error
+			ToAppError() *apperror.AppError
+		}
+		is   func(error) bool
+		code apperror.Code
+	}{
+		"not found":     {&NotFoundError{}, IsNotFoundError, apperror.CodeUserNotFound},
+		"already exist": {&AlreadyExistsError{Email: "a@example.com"}, IsAlreadyExistsError, apperror.CodeUserAlreadyExists},
+		"invalid email": {&InvalidEmailError{}, IsInvalidEmailError, apperror.CodeUserInvalidEmail},
+		"invalid name":  {&InvalidNameError{}, IsInvalidNameError, apperror.CodeUserInvalidName},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.True(t, tc.is(tc.err))
+			assert.True(t, IsExpectedError(tc.err))
+			assert.NotEmpty(t, tc.err.Error())
+			assert.Equal(t, tc.code, tc.err.ToAppError().Code())
+		})
+	}
+	assert.False(t, IsExpectedError(errors.New("boom")))
+}
+
+func TestIsUniqueViolation(t *testing.T) {
+	assert.True(t, IsUniqueViolation(&pgconn.PgError{Code: "23505"}))
+	assert.False(t, IsUniqueViolation(&pgconn.PgError{Code: "23503"}))
+	assert.False(t, IsUniqueViolation(errors.New("x")))
+}
