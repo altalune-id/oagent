@@ -135,7 +135,7 @@ func TestServe_ConfigFileMissing(t *testing.T) {
 }
 
 func TestServe_FlagOverridesConfig(t *testing.T) {
-	t.Setenv("OAGENT_MODE", "selfhosted")
+	t.Setenv("OAGENT_MODE", "cloud")
 	t.Setenv("OAGENT_DB_DSN", "postgres://env/db")
 	var gotCfg config.Config
 	bootFn := func(_ context.Context, cfg config.Config, _ *slog.Logger, _ ...boot.Option) (cli.App, error) {
@@ -143,10 +143,10 @@ func TestServe_FlagOverridesConfig(t *testing.T) {
 		return fakeApp{}, nil
 	}
 
-	_, err := runRoot(t, bootFn, "serve", "--mode", "cloud", "--http-base-path", "/app", "--db-dsn", "postgres://flag/db")
+	_, err := runRoot(t, bootFn, "serve", "--mode", "selfhosted", "--http-base-path", "/app", "--db-dsn", "postgres://flag/db")
 
 	require.NoError(t, err)
-	assert.Equal(t, config.ModeCloud, gotCfg.Mode)
+	assert.Equal(t, config.ModeSelfhosted, gotCfg.Mode)
 	assert.Equal(t, "/app", gotCfg.HTTP.BasePath)
 	assert.Equal(t, "postgres://flag/db", gotCfg.DB.DSN)
 }

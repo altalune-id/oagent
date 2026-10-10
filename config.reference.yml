@@ -21,6 +21,22 @@ api:
     # env: OAGENT_API_OPENAPI_REQUIRE_BASIC_AUTH
     requireBasicAuth: true
 
+auth:
+  basic:
+    # [secret] env: OAGENT_AUTH_BASIC_PASSWORD
+    password: ""
+    # env: OAGENT_AUTH_BASIC_USER
+    user: ""
+  genesis:
+    # env: OAGENT_AUTH_GENESIS_EMAIL
+    email: ""
+    # [secret] env: OAGENT_AUTH_GENESIS_PASSWORD
+    password: ""
+  # env: OAGENT_AUTH_MODE
+  mode: local
+  # env: OAGENT_AUTH_SESSION_TTL
+  sessionTTL: 24h
+
 db:
   # env: OAGENT_DB_AUTO_MIGRATE
   autoMigrate: true
@@ -78,6 +94,10 @@ http:
   basePath: ""
   # env: OAGENT_HTTP_BASE_URL
   baseURL: ""
+
+install:
+  # [secret] env: OAGENT_INSTALL_TOKEN
+  token: ""
 
 mcp:
   # env: OAGENT_MCP_APPS_UI

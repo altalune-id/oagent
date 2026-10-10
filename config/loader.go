@@ -115,6 +115,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("api.openapi.enabled", true)
 	v.SetDefault("api.openapi.requireBasicAuth", true)
 	v.SetDefault("mcp.enabled", false)
+	v.SetDefault("auth.mode", string(AuthModeLocal))
+	v.SetDefault("auth.sessionTTL", "24h")
 	v.SetDefault("db.schema", "public")
 	v.SetDefault("db.autoMigrate", true)
 	v.SetDefault("db.health.interval", "30s")

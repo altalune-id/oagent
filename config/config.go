@@ -20,6 +20,8 @@ type Config struct {
 	API       APIConfig       `yaml:"api"       mapstructure:"api"`
 	MCP       MCPConfig       `yaml:"mcp"       mapstructure:"mcp"`
 	Secrets   SecretsConfig   `yaml:"secrets"   mapstructure:"secrets"`
+	Auth      AuthConfig      `yaml:"auth"      mapstructure:"auth"`
+	Install   InstallConfig   `yaml:"install"   mapstructure:"install"`
 }
 
 // SecretsConfig configures at-rest secret sealing (webhook signing secrets).
@@ -173,5 +175,5 @@ func (c *Config) Validate() error {
 	if err := v10.Struct(c); err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
-	return nil
+	return c.validateAuth()
 }

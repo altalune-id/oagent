@@ -46,9 +46,13 @@ func TestLoad_ModeAndEnvOverride(t *testing.T) {
 	t.Setenv("OAGENT_MODE", "cloud")
 	t.Setenv("OAGENT_ENV", "production")
 
+	_, err := Load(missingPath(t))
+	assert.True(t, IsCloudRequiresOIDCError(err), "cloud must refuse to boot until OIDC (P3); got %v", err)
+
+	t.Setenv("OAGENT_MODE", "selfhosted")
 	c, err := Load(missingPath(t))
 	require.NoError(t, err)
-	assert.Equal(t, ModeCloud, c.Mode)
+	assert.Equal(t, ModeSelfhosted, c.Mode)
 	assert.True(t, c.Env.IsProduction())
 }
 
