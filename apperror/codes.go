@@ -44,4 +44,6 @@ const (
 	CodeMemberNotFound      Code = "MBR001"
 	CodeMemberAlreadyExists Code = "MBR002"
 	CodeMemberInvalidRole   Code = "MBR003"
+
+	CodeAuthInvalidCredentials Code = "AUT001"
 )
