@@ -11,9 +11,26 @@ import (
 	"altalune.id/oagent/password"
 )
 
-func validConfig(t *testing.T) *Config {
+const (
+	testStateSecret   = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	testEncryptionKey = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+)
+
+func setRequiredEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	setSecretEnv(t)
+}
+
+func setSecretEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("OAGENT_HTTP_STATE_SECRET", testStateSecret)
+	t.Setenv("OAGENT_SECRETS_ENCRYPTION_KEY", testEncryptionKey)
+}
+
+func validConfig(t *testing.T) *Config {
+	t.Helper()
+	setRequiredEnv(t)
 	c, err := Load(missingPath(t))
 	require.NoError(t, err)
 	return c
@@ -24,6 +41,8 @@ func TestLoad_AuthDefaults(t *testing.T) {
 	assert.Equal(t, AuthModeLocal, c.Auth.Mode)
 	assert.Equal(t, 24*time.Hour, c.Auth.SessionTTL)
 	assert.Empty(t, c.Install.Token)
+	assert.True(t, c.HTTP.CookieSecure)
+	assert.Equal(t, testStateSecret, c.HTTP.StateSecret)
 }
 
 func TestValidate_Auth(t *testing.T) {
@@ -91,6 +110,68 @@ func TestValidate_Auth(t *testing.T) {
 			mutate: func(c *Config) { c.Auth.SessionTTL = 30 * time.Minute },
 			check:  func(t *testing.T, err error) { assert.Error(t, err) },
 		},
+		"production local without state secret": {
+			mutate: func(c *Config) { c.HTTP.StateSecret = "" },
+			check: func(t *testing.T, err error) {
+				assert.True(t, IsMissingSettingError(err), "got %v", err)
+				assert.Contains(t, err.Error(), "http.stateSecret")
+				assert.Contains(t, err.Error(), "openssl rand -hex 32")
+			},
+		},
+		"short state secret": {
+			mutate: func(c *Config) { c.HTTP.StateSecret = "too-short" },
+			check: func(t *testing.T, err error) {
+				assert.True(t, IsInvalidSettingError(err), "got %v", err)
+				assert.Contains(t, err.Error(), "openssl rand -hex 32")
+			},
+		},
+		"production local without encryption key": {
+			mutate: func(c *Config) { c.Secrets.EncryptionKey = "" },
+			check: func(t *testing.T, err error) {
+				assert.True(t, IsMissingSettingError(err), "got %v", err)
+				assert.Contains(t, err.Error(), "secrets.encryptionKey")
+				assert.Contains(t, err.Error(), "openssl rand -hex 32")
+			},
+		},
+		"production local with a bad encryption key": {
+			mutate: func(c *Config) { c.Secrets.EncryptionKey = "abcd" },
+			check:  func(t *testing.T, err error) { assert.True(t, IsInvalidSettingError(err), "got %v", err) },
+		},
+		"production basic needs no secrets": {
+			mutate: func(c *Config) {
+				c.Auth.Mode = AuthModeBasic
+				c.Auth.Basic = BasicConfig{User: "ops", Password: "s3cret-pass"}
+				c.HTTP.StateSecret, c.Secrets.EncryptionKey = "", ""
+			},
+			check: func(t *testing.T, err error) { assert.NoError(t, err) },
+		},
+		"development needs no secrets": {
+			mutate: func(c *Config) {
+				c.Env = EnvDevelopment
+				c.HTTP.StateSecret, c.Secrets.EncryptionKey = "", ""
+			},
+			check: func(t *testing.T, err error) { assert.NoError(t, err) },
+		},
+		"insecure cookie in production": {
+			mutate: func(c *Config) { c.HTTP.CookieSecure = false },
+			check:  func(t *testing.T, err error) { assert.True(t, IsInvalidSettingError(err), "got %v", err) },
+		},
+		"insecure cookie in development": {
+			mutate: func(c *Config) { c.Env, c.HTTP.CookieSecure = EnvDevelopment, false },
+			check:  func(t *testing.T, err error) { assert.NoError(t, err) },
+		},
+		"short install token": {
+			mutate: func(c *Config) { c.Env, c.Install.Token = EnvDevelopment, "too-short" },
+			check: func(t *testing.T, err error) {
+				assert.True(t, IsInvalidSettingError(err), "got %v", err)
+				assert.Contains(t, err.Error(), "install.token")
+				assert.Contains(t, err.Error(), "openssl rand -hex 32")
+			},
+		},
+		"install token ok": {
+			mutate: func(c *Config) { c.Install.Token = strings.Repeat("a", 32) },
+			check:  func(t *testing.T, err error) { assert.NoError(t, err) },
+		},
 		"unknown auth mode": {
 			mutate: func(c *Config) { c.Auth.Mode = "magic" },
 			check:  func(t *testing.T, err error) { assert.Error(t, err) },
@@ -108,4 +189,5 @@ func TestErrors_Messages(t *testing.T) {
 	assert.Equal(t, `config: auth.mode "basic" is not allowed with mode "cloud"`, (&AuthModeError{AuthMode: AuthModeBasic, Mode: ModeCloud}).Error())
 	assert.Equal(t, "config: auth.basic.user required: auth.mode is basic", (&MissingSettingError{Keys: "auth.basic.user", Reason: "auth.mode is basic"}).Error())
 	assert.Contains(t, (&GenesisInCloudError{}).Error(), "selfhosted only")
+	assert.Equal(t, "config: http.stateSecret: too short", (&InvalidSettingError{Key: "http.stateSecret", Reason: "too short"}).Error())
 }

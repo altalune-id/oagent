@@ -34,6 +34,19 @@ func IsMissingSettingError(err error) bool {
 	return ok
 }
 
+// InvalidSettingError reports a setting whose value is present but unusable.
+type InvalidSettingError struct{ Key, Reason string }
+
+func (e *InvalidSettingError) Error() string {
+	return fmt.Sprintf("config: %s: %s", e.Key, e.Reason)
+}
+
+// IsInvalidSettingError reports whether err's tree contains an *InvalidSettingError.
+func IsInvalidSettingError(err error) bool {
+	_, ok := errors.AsType[*InvalidSettingError](err)
+	return ok
+}
+
 // GenesisInCloudError reports env genesis configured in cloud mode, where the first operator installs through /install.
 type GenesisInCloudError struct{}
 

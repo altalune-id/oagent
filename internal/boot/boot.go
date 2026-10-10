@@ -66,6 +66,16 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 	k.AddCloser(qclient)
 
 	svcs := buildServices(k, cfg)
+	if err := buildAuthSecrets(cfg, svcs, log); err != nil {
+		_ = pool.Close()
+		_ = shutdown(ctx)
+		return nil, err
+	}
+	if err := firstBoot(ctx, cfg, svcs, log, logsInstallURL(o)); err != nil {
+		_ = pool.Close()
+		_ = shutdown(ctx)
+		return nil, err
+	}
 	health := buildDBHealth(k, cfg, log)
 	apiHandler := buildAPIHandler(svcs, k.Reporter.Unexpected, cfg.API, cfg.HTTP.BasePath)
 	consoleHandler := buildConsoleHandler(cfg.HTTP.BasePath)
@@ -90,7 +100,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 
 	var runner *scheduler.Runner
 	if off := schedulerOff(o, cfg); off == "" {
-		r, schedErr := buildScheduler(k, cfg, log)
+		r, schedErr := buildScheduler(k, cfg, svcs, log)
 		if schedErr != nil {
 			_ = pool.Close()
 			_ = shutdown(ctx)

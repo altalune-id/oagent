@@ -94,6 +94,10 @@ http:
   basePath: ""
   # env: OAGENT_HTTP_BASE_URL
   baseURL: ""
+  # env: OAGENT_HTTP_COOKIE_SECURE
+  cookieSecure: true
+  # [secret] env: OAGENT_HTTP_STATE_SECRET
+  stateSecret: ""
 
 install:
   # [secret] env: OAGENT_INSTALL_TOKEN

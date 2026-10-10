@@ -2,3 +2,9 @@ db:
   dsn: postgres://postgres:postgres@localhost-pooler:5432/oagent?sslmode=disable
   migrator:
     dsn: postgres://postgres:postgres@localhost:5432/oagent?sslmode=disable
+http:
+  # generate: openssl rand -hex 32
+  stateSecret: ""
+secrets:
+  # generate: openssl rand -hex 32
+  encryptionKey: ""

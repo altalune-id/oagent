@@ -48,6 +48,7 @@ func TestConfigCandidates_Priority(t *testing.T) {
 }
 
 func TestLoad_SearchPath(t *testing.T) {
+	setSecretEnv(t)
 	xdg := t.TempDir()
 	writeConfig(t, filepath.Join(xdg, "oagent"), "config.yaml", "db:\n  dsn: postgres://search/db\n")
 	t.Setenv("XDG_CONFIG_HOME", xdg)
@@ -60,6 +61,7 @@ func TestLoad_SearchPath(t *testing.T) {
 }
 
 func TestLoader_BindFlag_OverridesEnv(t *testing.T) {
+	setSecretEnv(t)
 	t.Setenv("OAGENT_MODE", "cloud")
 	t.Setenv("OAGENT_DB_DSN", "postgres://env/db")
 

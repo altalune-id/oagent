@@ -5,6 +5,12 @@ import (
 	"time"
 
 	"altalune.id/oagent/password"
+	"altalune.id/oagent/sealer"
+)
+
+const (
+	minSecretLen = 32
+	generateHint = "generate: openssl rand -hex 32"
 )
 
 // AuthMode selects how people sign in.
@@ -65,8 +71,44 @@ func (c *Config) validateAuth() error {
 			return fmt.Errorf("config: auth.genesis.password: %w", err)
 		}
 	}
+	if err := c.validateSecrets(); err != nil {
+		return err
+	}
 	if c.Mode == ModeCloud {
 		return &CloudRequiresOIDCError{}
 	}
 	return nil
+}
+
+func (c *Config) validateSecrets() error {
+	if !c.HTTP.CookieSecure && c.Env != EnvDevelopment {
+		return &InvalidSettingError{Key: "http.cookieSecure", Reason: "false is allowed only when env is development"}
+	}
+	if err := checkSecretLen("http.stateSecret", c.HTTP.StateSecret); err != nil {
+		return err
+	}
+	if err := checkSecretLen("install.token", c.Install.Token); err != nil {
+		return err
+	}
+	if c.Env == EnvDevelopment || c.Auth.Mode != AuthModeLocal {
+		return nil
+	}
+	if c.HTTP.StateSecret == "" {
+		return &MissingSettingError{Keys: "http.stateSecret", Reason: "required in production; " + generateHint}
+	}
+	if c.Secrets.EncryptionKey == "" {
+		return &MissingSettingError{Keys: "secrets.encryptionKey", Reason: "required in production; " + generateHint}
+	}
+	if _, err := sealer.ParseKey(c.Secrets.EncryptionKey); err != nil {
+		return &InvalidSettingError{Key: "secrets.encryptionKey", Reason: "must be 32 bytes as hex or base64; " + generateHint}
+	}
+	return nil
+}
+
+func checkSecretLen(key, value string) error {
+	if value == "" || len(value) >= minSecretLen {
+		return nil
+	}
+	reason := fmt.Sprintf("must be at least %d characters; %s", minSecretLen, generateHint)
+	return &InvalidSettingError{Key: key, Reason: reason}
 }

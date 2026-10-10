@@ -2,16 +2,17 @@ package boot
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/scheduler"
 	"altalune.id/oagent/worker"
 )
 
-// schedulerOff returns the reason the scheduler is disabled, or "" when it should run.
 func schedulerOff(o *options, cfg config.Config) string {
 	switch {
 	case !o.scheduler:
@@ -24,7 +25,6 @@ func schedulerOff(o *options, cfg config.Config) string {
 	return ""
 }
 
-// schedulerConfig maps the operator config and kernel deps onto the runner's options.
 func schedulerConfig(c config.SchedulerConfig, k kernel.Kernel, log *slog.Logger) scheduler.Options {
 	if log == nil {
 		log = slog.Default()
@@ -37,15 +37,22 @@ func schedulerConfig(c config.SchedulerConfig, k kernel.Kernel, log *slog.Logger
 	}
 }
 
-// buildScheduler constructs the runner. Domain jobs are registered here as modules gain SchedulerJobs().
-func buildScheduler(k kernel.Kernel, cfg config.Config, log *slog.Logger) (*scheduler.Runner, error) {
-	return scheduler.New(schedulerConfig(cfg.Scheduler, k, log))
+func buildScheduler(k kernel.Kernel, cfg config.Config, s *Services, log *slog.Logger) (*scheduler.Runner, error) {
+	r, err := scheduler.New(schedulerConfig(cfg.Scheduler, k, log))
+	if err != nil {
+		return nil, err
+	}
+	for _, j := range session.NewScheduler(s.Sessions, orDiscard(log)).SchedulerJobs() {
+		if err := r.Register(j); err != nil {
+			return nil, fmt.Errorf("boot: register %s: %w", j.Name, err)
+		}
+	}
+	return r, nil
 }
 
 var _ worker.Worker = (*scheduler.Runner)(nil)
 var _ scheduler.ErrorReporter = reporterAdapter{}
 
-// reporterAdapter maps scheduler failures onto the app's centralized reporter.
 type reporterAdapter struct {
 	report apperror.UnexpectedFunc
 	log    *slog.Logger

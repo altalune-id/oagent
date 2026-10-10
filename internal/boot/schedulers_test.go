@@ -15,6 +15,7 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/kernel/session"
 )
 
 func testLogger() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
@@ -22,9 +23,10 @@ func testLogger() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard,
 func TestBuildScheduler(t *testing.T) {
 	k := kernel.Kernel{Meter: noopmetric.NewMeterProvider().Meter("test"), Reporter: apperror.NewReporter(nil, false)}
 
-	r, err := buildScheduler(k, config.Config{Scheduler: config.SchedulerConfig{Enabled: true}}, testLogger())
+	r, err := buildScheduler(k, config.Config{Scheduler: config.SchedulerConfig{Enabled: true}}, &Services{Sessions: session.NewMemoryStore()}, testLogger())
 	require.NoError(t, err)
-	assert.NotNil(t, r)
+	require.Len(t, r.Jobs(), 1)
+	assert.Equal(t, "session-sweep", r.Jobs()[0].Name)
 }
 
 func TestSchedulerConfig(t *testing.T) {

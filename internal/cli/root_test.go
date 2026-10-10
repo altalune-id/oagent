@@ -23,6 +23,13 @@ func (f fakeApp) Run(context.Context) error    { return f.runErr }
 func (f fakeApp) RunMCP(context.Context) error { return f.runErr }
 func (f fakeApp) Close(context.Context) error  { return nil }
 
+func setServeEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_HTTP_STATE_SECRET", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	t.Setenv("OAGENT_SECRETS_ENCRYPTION_KEY", "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210")
+}
+
 func runRoot(t *testing.T, bootFn cli.ServerBootFn, args ...string) (*bytes.Buffer, error) {
 	t.Helper()
 	buf := new(bytes.Buffer)
@@ -40,7 +47,7 @@ func TestVersion(t *testing.T) {
 }
 
 func TestServe_InvokesBoot(t *testing.T) {
-	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	setServeEnv(t)
 	var gotCfg config.Config
 	var gotOpts int
 	var gotReqID string
@@ -61,7 +68,7 @@ func TestServe_InvokesBoot(t *testing.T) {
 }
 
 func TestServe_RunError(t *testing.T) {
-	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	setServeEnv(t)
 	bootFn := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
 		return fakeApp{runErr: errors.New("boom")}, nil
 	}
@@ -71,7 +78,7 @@ func TestServe_RunError(t *testing.T) {
 }
 
 func TestServe_BootError(t *testing.T) {
-	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	setServeEnv(t)
 	bootFn := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
 		return nil, errors.New("boot failed")
 	}
@@ -91,7 +98,7 @@ func TestServe_ConfigError(t *testing.T) {
 }
 
 func TestServe_InvalidLogLevel(t *testing.T) {
-	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	setServeEnv(t)
 	noop := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
 		return fakeApp{}, nil
 	}
@@ -101,7 +108,7 @@ func TestServe_InvalidLogLevel(t *testing.T) {
 }
 
 func TestServe_MutuallyExclusiveFlags(t *testing.T) {
-	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	setServeEnv(t)
 	noop := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
 		return fakeApp{}, nil
 	}
@@ -116,7 +123,7 @@ func TestUnknownFlag(t *testing.T) {
 }
 
 func TestMCPCmd_InvokesRunMCP(t *testing.T) {
-	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	setServeEnv(t)
 	noop := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
 		return fakeApp{}, nil
 	}
@@ -135,6 +142,7 @@ func TestServe_ConfigFileMissing(t *testing.T) {
 }
 
 func TestServe_FlagOverridesConfig(t *testing.T) {
+	setServeEnv(t)
 	t.Setenv("OAGENT_MODE", "cloud")
 	t.Setenv("OAGENT_DB_DSN", "postgres://env/db")
 	var gotCfg config.Config

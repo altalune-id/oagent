@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+
+	"altalune.id/oagent/internal/boot"
 )
 
 func newMCPCmd(bootServer ServerBootFn) *cobra.Command {
@@ -17,7 +19,7 @@ func newMCPCmd(bootServer ServerBootFn) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			app, err := bootServer(cmd.Context(), *rt.cfg, rt.log)
+			app, err := bootServer(cmd.Context(), *rt.cfg, rt.log, boot.WithInstallURL(false))
 			if err != nil {
 				return err
 			}

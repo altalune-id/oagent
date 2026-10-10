@@ -16,6 +16,7 @@ func missingPath(t *testing.T) string {
 }
 
 func TestLoad_Defaults(t *testing.T) {
+	setSecretEnv(t)
 	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
 
 	c, err := Load(missingPath(t))
@@ -30,9 +31,11 @@ func TestLoad_Defaults(t *testing.T) {
 	assert.Empty(t, c.HTTP.BasePath)               // default
 	assert.True(t, c.API.OpenAPI.Enabled)          // default
 	assert.True(t, c.API.OpenAPI.RequireBasicAuth) // default
+	assert.True(t, c.HTTP.CookieSecure)            // default
 }
 
 func TestLoad_BasePathOverride(t *testing.T) {
+	setSecretEnv(t)
 	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
 	t.Setenv("OAGENT_HTTP_BASE_PATH", "/app")
 
@@ -42,6 +45,7 @@ func TestLoad_BasePathOverride(t *testing.T) {
 }
 
 func TestLoad_ModeAndEnvOverride(t *testing.T) {
+	setSecretEnv(t)
 	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
 	t.Setenv("OAGENT_MODE", "cloud")
 	t.Setenv("OAGENT_ENV", "production")
@@ -73,6 +77,7 @@ func TestLoad_InvalidEnv(t *testing.T) {
 }
 
 func TestLoad_AutoMigrateOverride(t *testing.T) {
+	setSecretEnv(t)
 	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
 	t.Setenv("OAGENT_DB_AUTO_MIGRATE", "false")
 
@@ -82,6 +87,7 @@ func TestLoad_AutoMigrateOverride(t *testing.T) {
 }
 
 func TestLoad_DefaultPath(t *testing.T) {
+	setSecretEnv(t)
 	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
 
 	c, err := Load("")
@@ -105,6 +111,7 @@ func TestLoad_MissingDSN(t *testing.T) {
 }
 
 func TestLoad_EnvOverride(t *testing.T) {
+	setSecretEnv(t)
 	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
 	t.Setenv("OAGENT_DB_SCHEMA", "auth")
 	t.Setenv("OAGENT_DB_TABLE_PREFIX", "t_")
@@ -118,6 +125,7 @@ func TestLoad_EnvOverride(t *testing.T) {
 }
 
 func TestLoad_File(t *testing.T) {
+	setSecretEnv(t)
 	path := filepath.Join(t.TempDir(), "oagent.yaml")
 	require.NoError(t, os.WriteFile(path, []byte("db:\n  dsn: postgres://file/db\n  tablePrefix: f_\n"), 0o600))
 	t.Setenv("OAGENT_DB_DSN", "") // no env override; take the file value

@@ -41,9 +41,11 @@ type MCPConfig struct {
 
 // HTTPConfig configures the web-facing HTTP server.
 type HTTPConfig struct {
-	Addr     string `yaml:"addr"     mapstructure:"addr"     awareness:"required" validate:"required"`
-	BasePath string `yaml:"basePath" mapstructure:"basePath"`
-	BaseURL  string `yaml:"baseURL"  mapstructure:"baseURL"  validate:"omitempty,url"`
+	Addr         string `yaml:"addr"         mapstructure:"addr"         awareness:"required" validate:"required"`
+	BasePath     string `yaml:"basePath"     mapstructure:"basePath"`
+	BaseURL      string `yaml:"baseURL"      mapstructure:"baseURL"      validate:"omitempty,url"`
+	CookieSecure bool   `yaml:"cookieSecure" mapstructure:"cookieSecure"`
+	StateSecret  string `yaml:"stateSecret"  mapstructure:"stateSecret"  awareness:"secret"`
 }
 
 // APIConfig configures the Connect-RPC controlplane.

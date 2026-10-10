@@ -108,6 +108,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("mode", string(ModeSelfhosted))
 	v.SetDefault("env", string(EnvProduction))
 	v.SetDefault("http.addr", ":5150")
+	v.SetDefault("http.cookieSecure", true)
 	v.SetDefault("scheduler.enabled", true)
 	v.SetDefault("scheduler.shutdownGrace", "30s")
 	v.SetDefault("queue.enabled", false)

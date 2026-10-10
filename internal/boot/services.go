@@ -8,10 +8,16 @@ import (
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
+	"altalune.id/oagent/internal/auth"
+	"altalune.id/oagent/internal/install"
 	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/kernel/capabilities"
 	"altalune.id/oagent/internal/kernel/outbox"
+	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
+	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/webhook"
 	"altalune.id/oagent/sealer"
 )
@@ -30,6 +36,14 @@ type Services struct {
 	WebhookStore webhook.Store
 	Webhooks     *webhook.Service
 	Sealer       sealer.Sealer
+	Users        *user.Service
+	Members      *member.Service
+	Sessions     session.Store
+	Auth         *auth.Service
+	Install      *install.Service
+	InstallToken install.Token
+	Caps         capabilities.Capabilities
+	StateSecret  []byte
 }
 
 func buildServices(k kernel.Kernel, cfg config.Config) *Services {
@@ -57,6 +71,20 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	agents := agent.NewService(agentStore, k.Reporter.Unexpected).WithPublisher(webhooks)
 	apiKeys := apikey.NewService(apiKeyStore, apikey.NewScheme(""), projectIDs{projects: projects}, k.Reporter.Unexpected)
 
+	caps := capabilities.From(&cfg)
+	users := user.NewService(user.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Reporter.Unexpected)
+	members := member.NewService(member.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Reporter.Unexpected)
+	sessions := buildSessionStore(k, cfg, sl, secretsLog(k.Log, caps))
+	authn := auth.NewService(auth.Deps{
+		Users:    users,
+		Members:  members,
+		Orgs:     orgs,
+		Projects: projects,
+		Sessions: sessions,
+		Basic:    basicCredentials(cfg, caps),
+	})
+	installer := install.NewService(k.Pool, users, orgs, members, projects)
+
 	return &Services{
 		OrgStore:     orgStore,
 		Orgs:         orgs,
@@ -70,6 +98,12 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		WebhookStore: webhookStore,
 		Webhooks:     webhooks,
 		Sealer:       sl,
+		Users:        users,
+		Members:      members,
+		Sessions:     sessions,
+		Auth:         authn,
+		Install:      installer,
+		Caps:         caps,
 	}
 }
 
@@ -81,7 +115,6 @@ func webhookServiceOpts(cfg config.Config) []webhook.ServiceOption {
 	return []webhook.ServiceOption{webhook.WithAllowInsecureURL()}
 }
 
-// refResolver adapts the project and org services to webhook.Resolver, exposing public ids and slug.
 type refResolver struct {
 	projects *project.Service
 	orgs     *org.Service
@@ -103,7 +136,6 @@ func (r refResolver) OrgRef(ctx context.Context, orgID uuid.UUID) (publicID stri
 	return o.PublicID, nil
 }
 
-// projectIDs adapts the project service to apikey.Projects.
 type projectIDs struct{ projects *project.Service }
 
 func (p projectIDs) ProjectIDs(ctx context.Context, orgID uuid.UUID) ([]uuid.UUID, error) {
