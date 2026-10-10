@@ -7,16 +7,175 @@ on the migration connection.
 
 ```mermaid
 erDiagram
+    orgs ||--o{ projects : has
+    orgs ||--o{ agents : has
+    projects ||--o{ agents : has
+    orgs ||--o{ api_keys : has
+    projects |o--o{ api_keys : "scopes (project keys)"
+    api_keys ||--o{ api_key_projects : grants
+    projects ||--o{ api_key_projects : "granted to"
+    orgs ||--o{ outbox_entries : has
+    projects ||--o{ outbox_entries : has
+    orgs ||--o{ webhook_endpoints : has
+    projects ||--o{ webhook_endpoints : has
+    webhook_endpoints ||--o{ webhook_deliveries : logs
+    users ||--o{ memberships : has
+    orgs ||--o{ memberships : has
+    users |o--o{ orgs : "created_by"
+    users ||--o{ sessions : owns
+
     orgs {
         uuid id PK
         text public_id UK
         text slug UK
         text name
-        uuid created_by FK "nullable - NULL for genesis"
+        bool is_system "one row at most"
+        uuid created_by FK "users, NULL in basic mode"
         timestamptz created_at
         timestamptz updated_at
     }
+    projects {
+        uuid id PK
+        text public_id UK
+        uuid org_id FK
+        text slug "unique per org"
+        text name
+        uuid created_by
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    agents {
+        uuid id PK
+        text public_id UK
+        uuid org_id FK
+        uuid project_id FK
+        text slug "unique per project"
+        text name
+        text description
+        uuid created_by
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    api_keys {
+        uuid id PK
+        uuid org_id FK
+        uuid project_id FK "project keys only"
+        text kind "project or org"
+        bool all_projects
+        text name
+        bytea secret_hash UK
+        text secret_hint
+        text_array scopes
+        uuid_array resource_ids
+        uuid created_by
+        timestamptz created_at
+        timestamptz expires_at
+        timestamptz revoked_at
+        timestamptz last_used_at
+    }
+    api_key_projects {
+        uuid key_id PK, FK
+        uuid project_id PK, FK
+        uuid org_id FK
+        timestamptz created_at
+    }
+    outbox_entries {
+        uuid id PK
+        uuid event_id
+        uuid org_id FK
+        uuid project_id FK
+        text target
+        bytea payload
+        int attempt
+        timestamptz next_attempt_at
+        text status "pending, delivered, failed"
+        text last_error
+        timestamptz created_at
+        timestamptz delivered_at
+    }
+    webhook_endpoints {
+        uuid id PK
+        text public_id UK
+        uuid org_id FK
+        uuid project_id FK
+        text url
+        text description
+        text event_types
+        bytea secret_primary "sealed"
+        bytea secret_secondary "sealed, during rotation"
+        bool active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    webhook_deliveries {
+        uuid id PK
+        uuid org_id FK
+        uuid project_id FK
+        uuid endpoint_id FK
+        uuid delivery_id
+        uuid event_id
+        text event_type
+        int attempt
+        int status_code
+        text error
+        text response_body
+        bool response_truncated
+        text response_headers
+        int duration_ms
+        timestamptz created_at
+    }
+    users {
+        uuid id PK
+        text public_id UK
+        text email UK "trimmed, lowercase"
+        text name
+        text avatar_url
+        text password_hash "Argon2id PHC, empty when none"
+        text idp_issuer "OIDC, set with idp_subject"
+        text idp_subject
+        text locale
+        timestamptz terms_accepted_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    memberships {
+        uuid id PK
+        text public_id UK
+        uuid org_id FK
+        uuid user_id FK
+        text role "owner, admin, member"
+        timestamptz created_at
+    }
+    sessions {
+        text sid PK "opaque, no public_id"
+        uuid user_id FK
+        bytea payload "sealed Principal, AAD = sid"
+        timestamptz expires_at
+        timestamptz created_at
+    }
 ```
+
+Every foreign key to `orgs`, `projects`, `api_keys`, `webhook_endpoints` and
+`users` cascades on delete, except `orgs.created_by`, which is set to NULL.
+
+## Constraints and indexes
+
+Rules the diagram can't show. Names omit `{{.TablePrefix}}`.
+
+| Table | Constraint / index | Rule |
+|---|---|---|
+| `orgs` | `orgs_one_system` (unique, `WHERE is_system`) | at most one system org; it marks the instance as installed |
+| `projects` | `UNIQUE (org_id, slug)`, `projects_org_id_id_key UNIQUE (org_id, id)` | slug unique per org; the pair is the target of org-scoped FKs |
+| `agents` | `UNIQUE (project_id, slug)` | slug unique per project |
+| `api_keys` | `api_keys_kind_shape` (check) | `project` keys have a `project_id` and no `all_projects`; `org` keys have no `project_id` |
+| `api_keys` | `api_keys_secret_hash_key` (unique) | keys are found by the hash of their secret |
+| `api_key_projects` | FKs on `(org_id, key_id)` and `(org_id, project_id)` | a key can only be granted projects of its own org |
+| `outbox_entries` | `UNIQUE (org_id, event_id, target)`, status check | one entry per event and target, per org |
+| `webhook_endpoints` | `webhook_endpoints_secondary_nonempty` (check) | the secondary secret is NULL or non-empty |
+| `users` | `users_email_normalized` (check), `email` unique | email is stored trimmed and lowercase |
+| `users` | `users_idp_pair` (check), `users_idp_idx` (unique, `WHERE idp_issuer IS NOT NULL`) | issuer and subject are set together and identify one user |
+| `memberships` | `UNIQUE (org_id, user_id)`, role check | one membership per person per org |
+| `sessions` | `sessions_expires_idx`, `sessions_user_idx` | sweep of expired rows; delete all sessions of a user |
 
 ## External migrations
 
@@ -31,4 +190,9 @@ The external tool owns its tables under a reserved prefix; ours must not use it.
 
 ## Add a migration
 
-`NNN_<name>.sql` at the next number, bump `VERSION`, write the `Down`.
+1. `NNN_<name>.sql` at the next number, with a working `Down`.
+2. Bump `VERSION`.
+3. Add or update the `schema/entity` binding for the table.
+4. In the same commit, update this README: the diagram (tables, columns,
+   relationships) and the constraints table (new unique, check, partial or
+   foreign-key rules).
