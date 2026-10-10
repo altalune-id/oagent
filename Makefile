@@ -66,8 +66,8 @@ fmt: ## format all Go files
 	$(GO) fmt ./...
 
 .PHONY: vet
-vet: ## run go vet
-	$(GO) vet ./...
+vet: ## run go vet (unit and integration files)
+	$(GO) vet -tags integration ./...
 
 .PHONY: lint
 lint: ## run golangci-lint
@@ -76,6 +76,15 @@ lint: ## run golangci-lint
 .PHONY: test
 test: ## run tests with the race detector
 	$(GO) test -race ./...
+
+INTEGRATION_TIMEOUT ?= 10m
+
+.PHONY: test-integration
+test-integration: ## run integration tests (TEST_PG_DSN if set, else one Postgres container per package)
+	$(GO) test -race -shuffle=on -tags integration -timeout $(INTEGRATION_TIMEOUT) ./...
+
+.PHONY: test-all
+test-all: test test-integration ## unit + integration tests
 
 .PHONY: cover
 cover: ## run tests with coverage
