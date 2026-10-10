@@ -3,6 +3,8 @@ package schema
 import (
 	"context"
 	"io/fs"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,9 +14,21 @@ import (
 )
 
 func TestNew_TargetVersion(t *testing.T) {
+	names, err := fs.Glob(MigrationsFS(), "*.sql")
+	require.NoError(t, err)
+	require.NotEmpty(t, names)
+	var latest int64
+	for _, name := range names {
+		num, _, ok := strings.Cut(name, "_")
+		require.True(t, ok, name)
+		n, err := strconv.ParseInt(num, 10, 64)
+		require.NoError(t, err, name)
+		latest = max(latest, n)
+	}
+
 	v, err := New(migrator.Config{}).TargetVersion()
 	require.NoError(t, err)
-	assert.Equal(t, int64(4), v)
+	assert.Equal(t, latest, v, "VERSION must name the newest migration")
 }
 
 func TestMigrationsFS(t *testing.T) {
