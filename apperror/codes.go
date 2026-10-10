@@ -9,6 +9,7 @@ const (
 	CodeValidation    Code = "GEN004"
 	CodeNotFound      Code = "GEN005"
 	CodeAlreadyExists Code = "GEN006"
+	CodeForbidden     Code = "GEN007"
 	CodeUnexpected    Code = "GEN900"
 
 	CodeOrgNotFound         Code = "ORG001"
