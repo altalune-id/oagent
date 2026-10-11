@@ -6,10 +6,79 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"strings"
+	"time"
 )
 
 const idBytes = 32
+
+// CookieName is the browser session cookie; its value is Sign(stateSecret, sid).
+const CookieName = "oagent_sid"
+
+// CookieOptions are the deployment-wide attributes of the session cookie.
+type CookieOptions struct {
+	Path   string
+	Secure bool
+}
+
+// WriteCookie sets the session cookie to signed until expires; it is always HttpOnly and SameSite=Lax.
+func WriteCookie(w http.ResponseWriter, c CookieOptions, signed string, expires time.Time) {
+	http.SetCookie(w, c.cookie(signed, expires, 0))
+}
+
+// ClearCookie tells the browser to drop the session cookie.
+func ClearCookie(w http.ResponseWriter, c CookieOptions) {
+	http.SetCookie(w, c.cookie("", time.Unix(0, 0), -1))
+}
+
+// ReadCookie returns the session id of the first session cookie in h whose signature verifies.
+func ReadCookie(h http.Header, secret []byte) (string, bool) {
+	for _, raw := range sessionCookies(h) {
+		if sid, err := Verify(secret, raw); err == nil {
+			return sid, true
+		}
+	}
+	return "", false
+}
+
+// HasCookie reports whether h carries a session cookie, valid or not.
+func HasCookie(h http.Header) bool {
+	return len(sessionCookies(h)) > 0
+}
+
+func sessionCookies(h http.Header) []string {
+	var out []string
+	for _, line := range h.Values("Cookie") {
+		cs, err := http.ParseCookie(line)
+		if err != nil {
+			continue
+		}
+		for _, c := range cs {
+			if c.Name == CookieName {
+				out = append(out, c.Value)
+			}
+		}
+	}
+	return out
+}
+
+func (c CookieOptions) cookie(value string, expires time.Time, maxAge int) *http.Cookie {
+	path := c.Path
+	if path == "" {
+		path = "/"
+	}
+	return &http.Cookie{ //nolint:gosec // Secure follows http.cookieSecure.
+		Name:     CookieName,
+		Value:    value,
+		Path:     path,
+		Expires:  expires,
+		MaxAge:   maxAge,
+		Secure:   c.Secure,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	}
+}
 
 // NewID returns a fresh session id: 32 random bytes, base64url without padding.
 func NewID() (string, error) {
