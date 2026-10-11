@@ -138,7 +138,7 @@ func buildSessionMiddleware(svcs *Services, unexpected apperror.UnexpectedFunc) 
 type httpSurfaces struct {
 	log        *slog.Logger
 	unexpected apperror.UnexpectedFunc
-	ready      func() bool
+	probes     web.Registrar
 	basePath   string
 	api        http.Handler
 	console    http.Handler
@@ -161,7 +161,7 @@ func buildHTTPHandler(s httpSurfaces) http.Handler {
 		BasePath:   s.basePath,
 		Log:        s.log,
 		Unexpected: s.unexpected,
-		Ready:      s.ready,
+		Probes:     s.probes,
 
 		Gate:        install.InstallGate(s.basePath, s.installRequired),
 		Session:     s.session,

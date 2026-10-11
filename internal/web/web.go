@@ -22,6 +22,7 @@ type ServerOpts struct {
 	MCPHandler http.Handler // optional MCP surface mounted at BasePath+"/mcp"
 	Console    http.Handler // optional console SPA mounted at BasePath+"/console"
 	Routes     []Registrar  // optional server-rendered routes; their mux also answers every unknown path
+	Probes     Registrar    // optional /healthz and /readyz, mounted with no gate, session or CSRF check
 
 	Gate        func(http.Handler) http.Handler // optional; wraps every route, probes included
 	Session     func(http.Handler) http.Handler // optional; puts the cookie's Principal on routes and the console
@@ -31,7 +32,6 @@ type ServerOpts struct {
 	BasePath    string
 	Log         *slog.Logger
 	Unexpected  apperror.UnexpectedFunc
-	Ready       func() bool
 }
 
 // NewServer builds the root http.Handler.
@@ -41,8 +41,9 @@ func NewServer(opts ServerOpts) http.Handler {
 		cop = http.NewCrossOriginProtection()
 	}
 	outer := http.NewServeMux()
-	outer.HandleFunc("GET /healthz", healthz)
-	outer.HandleFunc("GET /readyz", readyz(opts.Ready))
+	if opts.Probes != nil {
+		opts.Probes.Register(outer)
+	}
 	if opts.APIHandler != nil {
 		outer.Handle(layout.Path(opts.BasePath, "/api")+"/", cop.Handler(opts.APIHandler))
 	}
@@ -89,21 +90,5 @@ func chain(outer, inner func(http.Handler) http.Handler) func(http.Handler) http
 			h = outer(h)
 		}
 		return h
-	}
-}
-
-func healthz(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("ok"))
-}
-
-func readyz(ready func() bool) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		if ready != nil && !ready() {
-			http.Error(w, "not ready", http.StatusServiceUnavailable)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
 	}
 }

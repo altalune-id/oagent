@@ -9,6 +9,7 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/httpserver"
+	"altalune.id/oagent/internal/health"
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/queue"
 	"altalune.id/oagent/scheduler"
@@ -81,7 +82,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		_ = shutdown(ctx)
 		return nil, err
 	}
-	health := buildDBHealth(k, cfg, log)
+	dbHealth := buildDBHealth(k, cfg, log)
 	apiHandler := buildAPIHandler(svcs, k.Reporter.Unexpected, cfg.API, cfg.HTTP.BasePath, log)
 	crossOrigin, err := buildCrossOrigin(cfg.HTTP.BaseURL)
 	if err != nil {
@@ -98,7 +99,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		buildHTTPHandler(httpSurfaces{
 			log:        log,
 			unexpected: k.Reporter.Unexpected,
-			ready:      health.Ready,
+			probes:     health.NewWeb(health.NewService(dbHealth)),
 			basePath:   cfg.HTTP.BasePath,
 			api:        apiHandler,
 			console:    consoleHandler,
@@ -113,7 +114,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		}),
 		log,
 	))
-	sup.Register(health)
+	sup.Register(dbHealth)
 	sup.Register(buildOutboxWorker(svcs, log))
 	sup.Register(svcs.KeyUsage)
 
