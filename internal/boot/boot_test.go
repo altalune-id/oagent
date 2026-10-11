@@ -87,7 +87,9 @@ func TestBoot(t *testing.T) {
 	assert.NotNil(t, app.Kernel.Meter)
 	assert.NotNil(t, app.Kernel.Queue) // always non-nil; Disabled when queue.enabled=false
 	require.NotNil(t, app.Supervisor)
-	assert.Len(t, app.Supervisor.Workers(), 3) // http + db-health + outbox
+	assert.Len(t, app.Supervisor.Workers(), 4) // http + db-health + outbox + apikey-usage
+	assert.Contains(t, workerNames(app), "apikey-usage")
+	assert.NotNil(t, app.Services.KeyAuthn)
 
 	require.NoError(t, app.Close(context.Background()))
 	assert.True(t, called)
@@ -107,7 +109,7 @@ func TestBoot_SchedulerEnabled(t *testing.T) {
 		Scheduler: config.SchedulerConfig{Enabled: true},
 	}, testLogger())
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 4) // http + db-health + outbox + scheduler
+	assert.Len(t, app.Supervisor.Workers(), 5) // http + db-health + outbox + apikey-usage + scheduler
 	require.NoError(t, app.Close(context.Background()))
 }
 
@@ -123,7 +125,7 @@ func TestBoot_WithSchedulerFalse(t *testing.T) {
 		config.Config{DB: config.DBConfig{DSN: "x"}, Scheduler: config.SchedulerConfig{Enabled: true}},
 		testLogger(), WithScheduler(false))
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 3) // http + db-health + outbox
+	assert.Len(t, app.Supervisor.Workers(), 4) // http + db-health + outbox + apikey-usage
 	require.NoError(t, app.Close(context.Background()))
 }
 
@@ -176,7 +178,7 @@ func TestBoot_ConsumerEnabled(t *testing.T) {
 		Queue: config.QueueConfig{Enabled: true},
 	}, testLogger())
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 5) // http + db-health + outbox + consumer + listener
+	assert.Len(t, app.Supervisor.Workers(), 6) // http + db-health + outbox + apikey-usage + consumer + listener
 	assert.False(t, app.Kernel.Queue.Enabled())
 	require.NoError(t, app.Close(context.Background()))
 }
@@ -443,4 +445,12 @@ func TestBuildMCPServer_AppsUI(t *testing.T) {
 
 func TestApp_RunMCP_Disabled(t *testing.T) {
 	assert.Error(t, (&App{}).RunMCP(context.Background()))
+}
+
+func workerNames(app *App) []string {
+	var names []string
+	for _, w := range app.Supervisor.Workers() {
+		names = append(names, w.Name())
+	}
+	return names
 }

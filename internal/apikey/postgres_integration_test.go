@@ -591,3 +591,43 @@ func TestPostgres_KeyUpsertCannotRewriteAnotherOrgsKey(t *testing.T) {
 		t.Skip("BUG: apikey Save ON CONFLICT (id) DO UPDATE has no org_id guard; a colliding id from org B rewrites org A's key scopes/expiry")
 	}
 }
+
+func TestPostgres_BySecretHashLoadsGrants(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, p1 := f.seedScope(t)
+	p2 := f.seedProject(t, orgID)
+	k, plain, err := apikey.NewScheme("").MintOrg(orgID, "ci", []string{"agent:read"},
+		apikey.ProjectGrant{ProjectIDs: []uuid.UUID{p1, p2}}, expiry(), time.Now().UTC())
+	require.NoError(t, err)
+	require.NoError(t, f.store.Save(t.Context(), k))
+
+	got, err := f.store.BySecretHash(t.Context(), sha256.Sum256([]byte(plain)))
+	require.NoError(t, err)
+	assert.Equal(t, k.ID, got.ID)
+	assert.ElementsMatch(t, []uuid.UUID{p1, p2}, got.ProjectIDs)
+	assert.Equal(t, []string{"agent:read"}, got.Scopes)
+
+	_, err = f.store.BySecretHash(t.Context(), sha256.Sum256([]byte("oagent_unknown")))
+	assert.True(t, apikey.IsNotFoundError(err), "got %v", err)
+}
+
+func TestPostgres_TouchLastUsedNeverMovesBack(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	k, _, err := apikey.NewScheme("").MintProject(orgID, projectID, "bot", []string{"agent:read"}, nil, expiry(), time.Now().UTC())
+	require.NoError(t, err)
+	require.NoError(t, f.store.Save(t.Context(), k))
+
+	later := time.Now().UTC().Truncate(time.Microsecond)
+	earlier := later.Add(-time.Hour)
+
+	require.NoError(t, f.store.TouchLastUsed(t.Context(), map[uuid.UUID]time.Time{k.ID: later}))
+	require.NoError(t, f.store.TouchLastUsed(t.Context(), map[uuid.UUID]time.Time{k.ID: earlier}))
+
+	got, err := f.store.ByID(t.Context(), k.ID)
+	require.NoError(t, err)
+	require.NotNil(t, got.LastUsedAt)
+	assert.True(t, later.Equal(*got.LastUsedAt), "got %v want %v", got.LastUsedAt, later)
+
+	require.NoError(t, f.store.TouchLastUsed(t.Context(), map[uuid.UUID]time.Time{}))
+}

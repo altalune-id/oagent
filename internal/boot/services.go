@@ -2,6 +2,7 @@ package boot
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -22,6 +23,8 @@ import (
 	"altalune.id/oagent/sealer"
 )
 
+const keyUsageInterval = 30 * time.Second
+
 // Services is every store and service the composition root wires.
 type Services struct {
 	OrgStore     org.Store
@@ -32,6 +35,8 @@ type Services struct {
 	Agents       *agent.Service
 	APIKeyStore  apikey.Store
 	APIKeys      *apikey.Service
+	KeyAuthn     *apikey.Authenticator
+	KeyUsage     *apikey.UsageWorker
 	Outbox       outbox.Store
 	WebhookStore webhook.Store
 	Webhooks     *webhook.Service
@@ -69,11 +74,15 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	)
 
 	agents := agent.NewService(agentStore, k.Reporter.Unexpected).WithPublisher(webhooks)
-	apiKeys := apikey.NewService(apiKeyStore, apikey.NewScheme(""), projectIDs{projects: projects}, k.Reporter.Unexpected)
 
 	caps := capabilities.From(&cfg)
 	users := user.NewService(user.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Reporter.Unexpected)
 	members := member.NewService(member.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Reporter.Unexpected)
+
+	keyScheme := apikey.NewScheme("")
+	apiKeys := apikey.NewService(apiKeyStore, keyScheme, projectIDs{projects: projects}, k.Reporter.Unexpected)
+	keyUsage := apikey.NewUsageWorker(apiKeyStore, keyUsageInterval, k.Log)
+	keyAuthn := apikey.NewAuthenticator(apiKeyStore, keyUsage, keyScheme, k.Reporter.Unexpected)
 	sessions := buildSessionStore(k, cfg, sl, secretsLog(k.Log, caps))
 	authn := auth.NewService(auth.Deps{
 		Users:    users,
@@ -94,6 +103,8 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Agents:       agents,
 		APIKeyStore:  apiKeyStore,
 		APIKeys:      apiKeys,
+		KeyAuthn:     keyAuthn,
+		KeyUsage:     keyUsage,
 		Outbox:       outboxStore,
 		WebhookStore: webhookStore,
 		Webhooks:     webhooks,

@@ -47,3 +47,19 @@ func (s *postgresStore) List(ctx context.Context, orgID uuid.UUID) ([]*APIKey, e
 	}
 	return out, nil
 }
+
+// BySecretHash loads the key whose secret hashes to hash. SECURITY: reads the writer, so a revoked key is never stale.
+func (s *postgresStore) BySecretHash(ctx context.Context, hash [32]byte) (*APIKey, error) {
+	stmt := postgres.SELECT(s.selectColumns()).
+		FROM(s.keys).
+		WHERE(s.keys.SecretHash.EQ(postgres.Bytea(hash[:]))).
+		LIMIT(1)
+	var row apiKeyRow
+	if err := stmt.QueryContext(ctx, s.writer(ctx), &row); err != nil {
+		if errors.Is(err, qrm.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
+			return nil, &NotFoundError{}
+		}
+		return nil, fmt.Errorf("apikey.postgres: BySecretHash: %w", err)
+	}
+	return row.toKey()
+}

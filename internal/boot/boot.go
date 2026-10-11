@@ -97,6 +97,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 	))
 	sup.Register(health)
 	sup.Register(buildOutboxWorker(svcs, log))
+	sup.Register(svcs.KeyUsage)
 
 	var runner *scheduler.Runner
 	if off := schedulerOff(o, cfg); off == "" {
