@@ -23,7 +23,8 @@ type ServerOpts struct {
 	Console    http.Handler // optional console SPA mounted at BasePath+"/console"
 	Routes     []Registrar  // optional server-rendered routes; their mux also answers every unknown path
 
-	Gate func(http.Handler) http.Handler // optional; wraps every route, probes included
+	Gate    func(http.Handler) http.Handler // optional; wraps every route, probes included
+	Session func(http.Handler) http.Handler // optional; puts the cookie's Principal on routes and the console
 
 	BasePath   string
 	Log        *slog.Logger
@@ -45,10 +46,14 @@ func NewServer(opts ServerOpts) http.Handler {
 		outer.Handle(mcp, opts.MCPHandler)
 		outer.Handle(mcp+"/", opts.MCPHandler)
 	}
+	withSession := opts.Session
+	if withSession == nil {
+		withSession = func(h http.Handler) http.Handler { return h }
+	}
 	if opts.Console != nil {
 		console := layout.Path(opts.BasePath, "/console")
 		outer.Handle(console, http.RedirectHandler(console+"/", http.StatusMovedPermanently))
-		outer.Handle(console+"/", http.StripPrefix(console, opts.Console))
+		outer.Handle(console+"/", withSession(http.StripPrefix(console, opts.Console)))
 	}
 	static := layout.Path(opts.BasePath, "/static") + "/"
 	outer.Handle("GET "+static, staticHandler(static))
@@ -62,7 +67,7 @@ func NewServer(opts ServerOpts) http.Handler {
 		for _, r := range opts.Routes {
 			r.Register(routes)
 		}
-		outer.Handle("/", cop.Handler(routes))
+		outer.Handle("/", cop.Handler(withSession(routes)))
 	} else {
 		outer.Handle("/", http.NotFoundHandler())
 	}

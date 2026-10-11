@@ -110,3 +110,60 @@ func TestInstall_EndToEnd(t *testing.T) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "/app/login", rec.Header().Get("Location"))
 }
+
+func TestLogin_EndToEnd(t *testing.T) {
+	cfg := devLocalConfig()
+	cfg.HTTP.StateSecret = strings.Repeat("s", 40)
+	cfg.Secrets.EncryptionKey = testKeyHex
+	cfg.Auth.SessionTTL = 24 * time.Hour
+	cfg.Auth.Genesis = config.GenesisConfig{Email: "root@example.com", Password: "genesis-password"}
+	svcs, cfg := migratedServices(t, cfg)
+	svcs.Caps.EnvGenesis = true
+	require.NoError(t, firstBoot(t.Context(), cfg, svcs, testLogger(), false))
+	required, err := installRequired(t.Context(), svcs)
+	require.NoError(t, err)
+	svcs.InstallRequired = required
+
+	console := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := session.PrincipalFrom(r.Context())
+		_, _ = w.Write([]byte(p.Email + "|" + strings.Join(p.Scopes, ",")))
+	})
+	h := buildHTTPHandler(httpSurfaces{
+		routes:          buildRoutes(cfg, svcs, nil, nil),
+		console:         console,
+		session:         buildSessionMiddleware(svcs, nil),
+		installRequired: required,
+	})
+
+	form := url.Values{"email": {"root@example.com"}, "password": {"genesis-password"}}
+	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
+	var sid *http.Cookie
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == session.CookieName {
+			sid = c
+		}
+	}
+	require.NotNil(t, sid)
+
+	req = httptest.NewRequest(http.MethodGet, "/console/", nil)
+	req.AddCookie(sid)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, "root@example.com|*", rec.Body.String())
+
+	req = httptest.NewRequest(http.MethodPost, "/logout", nil)
+	req.AddCookie(sid)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusSeeOther, rec.Code)
+
+	req = httptest.NewRequest(http.MethodGet, "/console/", nil)
+	req.AddCookie(sid)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, "|", rec.Body.String(), "the old cookie no longer signs in")
+}

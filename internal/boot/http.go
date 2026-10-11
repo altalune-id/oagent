@@ -15,6 +15,7 @@ import (
 	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/web"
 	"altalune.id/oagent/internal/web/layout"
+	"altalune.id/oagent/internal/web/middleware"
 )
 
 // httpConfig maps the operator config onto the HTTP server worker's config.
@@ -49,6 +50,7 @@ func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected
 	sessions := cookieSessions(cfg, svcs)
 	return []web.Registrar{
 		legal.NewWeb(legalOpts),
+		auth.NewWeb(kit, svcs.Auth, sessions),
 		install.NewWeb(install.WebOpts{
 			Kit:       kit,
 			Installer: svcs.Install,
@@ -71,6 +73,18 @@ func cookieSessions(cfg config.Config, svcs *Services) auth.CookieSessions {
 	}
 }
 
+func buildSessionMiddleware(svcs *Services, unexpected apperror.UnexpectedFunc) func(http.Handler) http.Handler {
+	if svcs == nil || !svcs.Caps.LocalLogin {
+		return nil
+	}
+	return middleware.Session(middleware.SessionConfig{
+		Store:      svcs.Sessions,
+		Secret:     svcs.StateSecret,
+		Auth:       svcs.Auth,
+		Unexpected: unexpected,
+	})
+}
+
 type httpSurfaces struct {
 	log        *slog.Logger
 	unexpected apperror.UnexpectedFunc
@@ -82,6 +96,7 @@ type httpSurfaces struct {
 	routes     []web.Registrar
 
 	installRequired *atomic.Bool
+	session         func(http.Handler) http.Handler
 }
 
 func buildHTTPHandler(s httpSurfaces) http.Handler {
@@ -95,6 +110,7 @@ func buildHTTPHandler(s httpSurfaces) http.Handler {
 		Unexpected: s.unexpected,
 		Ready:      s.ready,
 
-		Gate: install.InstallGate(s.basePath, s.installRequired),
+		Gate:    install.InstallGate(s.basePath, s.installRequired),
+		Session: s.session,
 	})
 }

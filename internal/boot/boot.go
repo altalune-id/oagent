@@ -100,6 +100,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 			routes:     buildRoutes(cfg, svcs, log, k.Reporter.Unexpected),
 
 			installRequired: svcs.InstallRequired,
+			session:         buildSessionMiddleware(svcs, k.Reporter.Unexpected),
 		}),
 		log,
 	))

@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/auth"
+	"altalune.id/oagent/internal/kernel/capabilities"
 )
 
 func TestHTTPConfig(t *testing.T) {
@@ -41,4 +43,13 @@ func TestBuildRoutes_TermsOverride(t *testing.T) {
 	rec := serveRoutes(cfg, nil, http.MethodGet, "/terms")
 	assert.Equal(t, http.StatusFound, rec.Code)
 	assert.Equal(t, "https://example.com/t", rec.Header().Get("Location"))
+}
+
+func TestBuildRoutes_LoginOnlyWithLocalLogin(t *testing.T) {
+	cfg := config.Config{}
+	assert.Equal(t, http.StatusNotFound, serveRoutes(cfg, nil, http.MethodGet, "/login").Code)
+	assert.Equal(t, http.StatusNotFound, serveRoutes(cfg, nil, http.MethodPost, "/logout").Code)
+
+	svcs := &Services{Caps: capabilities.Capabilities{LocalLogin: true}, Auth: &auth.Service{}}
+	assert.Equal(t, http.StatusOK, serveRoutes(cfg, svcs, http.MethodGet, "/login").Code)
 }
