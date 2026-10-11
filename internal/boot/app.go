@@ -32,6 +32,11 @@ func (a *App) RunMCP(ctx context.Context) error {
 	return a.MCP.SDK().Run(ctx, &sdkmcp.StdioTransport{})
 }
 
+// SetPassword replaces the password of the user with email and signs out every session of theirs.
+func (a *App) SetPassword(ctx context.Context, email, password string) error {
+	return a.Services.Auth.SetPassword(ctx, email, password)
+}
+
 // Close drains telemetry then closes the kernel's resources.
 func (a *App) Close(ctx context.Context) error {
 	err := a.shutdownTelemetry(ctx)

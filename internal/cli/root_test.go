@@ -23,6 +23,8 @@ func (f fakeApp) Run(context.Context) error    { return f.runErr }
 func (f fakeApp) RunMCP(context.Context) error { return f.runErr }
 func (f fakeApp) Close(context.Context) error  { return nil }
 
+func (f fakeApp) SetPassword(context.Context, string, string) error { return f.runErr }
+
 func setServeEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")

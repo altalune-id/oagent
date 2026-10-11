@@ -24,15 +24,17 @@ import (
 	"altalune.id/oagent/internal/boot"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
+	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/webhook"
 	"altalune.id/oagent/reqid"
 	"altalune.id/oagent/version"
 )
 
-// App is the running server the serve command drives.
+// App is the running server the serve, mcp and user commands drive.
 type App interface {
 	Run(ctx context.Context) error
 	RunMCP(ctx context.Context) error
+	SetPassword(ctx context.Context, email, password string) error
 	Close(ctx context.Context) error
 }
 
@@ -137,6 +139,7 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 	root.AddCommand(
 		newServeCmd(bootServer),
 		newMCPCmd(bootServer),
+		user.NewCmd(setPasswordFn(bootServer)),
 		authCmd,
 		orgCmd,
 		projectCmd,
@@ -260,6 +263,25 @@ func authSessionClientFn(bootClient ClientBootFn) auth.SessionClientFn {
 			return nil, err
 		}
 		return client.Auth, nil
+	}
+}
+
+func setPasswordFn(bootServer ServerBootFn) user.SetPasswordFn {
+	return func(ctx context.Context, email, password string) error {
+		rt, err := runtimeFromCtx(ctx)
+		if err != nil {
+			return err
+		}
+		app, err := bootServer(ctx, *rt.cfg, rt.log,
+			boot.WithInstallURL(false),
+			boot.WithScheduler(false),
+			boot.WithConsumer(false),
+		)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = app.Close(context.WithoutCancel(ctx)) }()
+		return app.SetPassword(ctx, email, password)
 	}
 }
 

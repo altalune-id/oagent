@@ -43,6 +43,11 @@ type UserGetter interface {
 	ByID(ctx context.Context, id uuid.UUID) (*user.User, error)
 }
 
+// PasswordSetter replaces a user's password after the policy check.
+type PasswordSetter interface {
+	SetPassword(ctx context.Context, id uuid.UUID, plain string) error
+}
+
 // CLIProfiles is the CLI's store of signed-in profiles; internal/cli implements it over cli.sessionFile.
 type CLIProfiles interface {
 	// Target names the selected profile and the server URL a login signs in to.
@@ -55,10 +60,11 @@ type CLIProfiles interface {
 
 // Deps are the ports a Service reads from.
 type Deps struct {
-	Users    UserReader
-	Members  MemberReader
-	Orgs     SystemOrgReader
-	Projects ProjectLister
-	Sessions session.Store
-	Basic    BasicCredentials
+	Users     UserReader
+	Members   MemberReader
+	Orgs      SystemOrgReader
+	Projects  ProjectLister
+	Sessions  session.Store
+	Passwords PasswordSetter
+	Basic     BasicCredentials
 }

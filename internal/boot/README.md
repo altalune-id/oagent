@@ -28,9 +28,10 @@ flowchart TD
 ```
 
 `App.Run` starts the supervisor (`serve`). `App.RunMCP` serves MCP over stdio
-instead (`oagent mcp`). `BootRemote` (`remote.go`) is the CLI side: config, a
-logger and a Connect client (`internal/apiclient`) to a running server, with no
-database.
+instead (`oagent mcp`). `App.SetPassword` is an operator action (`oagent user
+set-password`), booted with the install URL, scheduler and consumer off.
+`BootRemote` (`remote.go`) is the CLI side: config, a logger and a Connect
+client (`internal/apiclient`) to a running server, with no database.
 
 ## Request flow
 
@@ -68,8 +69,8 @@ flowchart TD
 | `agent` | webhook (publisher), project (org of project) | ✓ | ✓ | — |
 | `apikey` | project (ids), member (owner roles) | ✓ | — | — |
 | `webhook` | project + org (refs), project (org of project), outbox | ✓ | ✓ | — |
-| `user` | — | — | — | — |
-| `auth` | user, member, org, project, sessions | whoami; CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | — | `/login`, `/logout` |
+| `user` | — | CLI `user set-password` (operator, boots the `App`) | — | — |
+| `auth` | user, member, org, project, sessions, passwords | whoami; CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | — | `/login`, `/logout` |
 | `install` | user, org, member, project; auth (sign-in) | — | — | `/install` + `InstallGate` |
 | `legal` | user (accept terms), auth (rotate session) | — | — | `/terms`, `/privacy`, `/welcome` + `WelcomeGate` |
 | `health` | readiness checks (db-health monitor) | — | — | `/healthz`, `/readyz` (probes slot, root-anchored) |
@@ -160,7 +161,7 @@ The supervisor runs these next to the HTTP server.
 | `console.go` | console SPA handler |
 | `outbox.go`, `schedulers.go`, `consumers.go`, `queue.go` | workers |
 | `db.go`, `sealer.go`, `telemetry.go` | pool, migrations, health, sealer, telemetry |
-| `options.go`, `app.go`, `remote.go` | boot options, the running `App`, the CLI graph |
+| `options.go`, `app.go`, `remote.go` | boot options, the running `App` and its operator actions, the CLI graph |
 
 ## Add a domain
 

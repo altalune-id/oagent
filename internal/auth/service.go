@@ -90,6 +90,22 @@ func (s *Service) Refresh(ctx context.Context, p session.Principal) (session.Pri
 	return withoutAuthority(p), nil
 }
 
+// SetPassword replaces the password of the user with email and signs out every session of theirs.
+func (s *Service) SetPassword(ctx context.Context, email, plain string) error {
+	normalized, err := user.NormalizeEmail(email)
+	if err != nil {
+		return err
+	}
+	u, err := s.deps.Users.ByEmail(ctx, normalized)
+	if err != nil {
+		return err
+	}
+	if err := s.deps.Passwords.SetPassword(ctx, u.ID, plain); err != nil {
+		return err
+	}
+	return s.deps.Sessions.DeleteByUser(ctx, u.ID)
+}
+
 // Logout deletes the session sid.
 func (s *Service) Logout(ctx context.Context, sid string) error {
 	return s.deps.Sessions.Delete(ctx, sid)

@@ -93,12 +93,13 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	keyAuthn := apikey.NewAuthenticator(apiKeyStore, keyUsage, keyScheme, owners, k.Reporter.Unexpected)
 	sessions := buildSessionStore(k, cfg, sl, secretsLog(k.Log, caps))
 	authn := auth.NewService(auth.Deps{
-		Users:    users,
-		Members:  members,
-		Orgs:     orgs,
-		Projects: projects,
-		Sessions: sessions,
-		Basic:    basicCredentials(cfg, caps),
+		Users:     users,
+		Members:   members,
+		Orgs:      orgs,
+		Projects:  projects,
+		Sessions:  sessions,
+		Passwords: users,
+		Basic:     basicCredentials(cfg, caps),
 	})
 	installer := install.NewService(k.Pool, users, orgs, members, projects)
 

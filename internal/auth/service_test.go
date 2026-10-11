@@ -31,6 +31,29 @@ func (f *fakeUsers) ByEmail(_ context.Context, email string) (*user.User, error)
 	return nil, &user.NotFoundError{}
 }
 
+type fakePasswords struct {
+	users *fakeUsers
+	calls []uuid.UUID
+}
+
+func (f *fakePasswords) SetPassword(_ context.Context, id uuid.UUID, plain string) error {
+	f.calls = append(f.calls, id)
+	if err := password.CheckPolicy(plain); err != nil {
+		return err
+	}
+	for _, u := range f.users.byEmail {
+		if u.ID == id {
+			h, err := password.Hash(plain)
+			if err != nil {
+				return err
+			}
+			u.PasswordHash = h
+			return nil
+		}
+	}
+	return &user.NotFoundError{}
+}
+
 type fakeMembers struct {
 	byUser map[uuid.UUID][]*member.Membership
 }
@@ -57,14 +80,15 @@ func (f *fakeProjects) List(_ context.Context, orgID uuid.UUID) ([]*project.Proj
 }
 
 type fixture struct {
-	svc      *Service
-	users    *fakeUsers
-	members  *fakeMembers
-	orgs     *fakeOrgs
-	projects *fakeProjects
-	sessions *session.MemoryStore
-	verifies int
-	dummies  int
+	svc       *Service
+	users     *fakeUsers
+	members   *fakeMembers
+	orgs      *fakeOrgs
+	projects  *fakeProjects
+	sessions  *session.MemoryStore
+	passwords *fakePasswords
+	verifies  int
+	dummies   int
 }
 
 const testPassword = "correct horse battery"
@@ -78,7 +102,11 @@ func newFixture(t *testing.T, basic BasicCredentials) *fixture {
 		projects: &fakeProjects{byOrg: map[uuid.UUID][]*project.Project{}},
 		sessions: session.NewMemoryStore(),
 	}
-	f.svc = NewService(Deps{Users: f.users, Members: f.members, Orgs: f.orgs, Projects: f.projects, Sessions: f.sessions, Basic: basic})
+	f.passwords = &fakePasswords{users: f.users}
+	f.svc = NewService(Deps{
+		Users: f.users, Members: f.members, Orgs: f.orgs, Projects: f.projects,
+		Sessions: f.sessions, Passwords: f.passwords, Basic: basic,
+	})
 	verify, dummy := f.svc.verify, f.svc.verifyDummy
 	f.svc.verify = func(hash, plain string) error { f.verifies++; return verify(hash, plain) }
 	f.svc.verifyDummy = func(plain string) { f.dummies++; dummy(plain) }
@@ -354,4 +382,52 @@ func TestRefresh_KeyUntouchedAndUnknownStripped(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, p.Scopes, "a person without a user id gets no authority")
 	assert.False(t, p.Operator)
+}
+
+func TestSetPassword_ReplacesHashAndEndsEverySession(t *testing.T) {
+	f := newFixture(t, BasicCredentials{})
+	u := f.addUser(t, "ada@example.com", true)
+	other := f.addUser(t, "bob@example.com", true)
+	old := u.PasswordHash
+	ctx := context.Background()
+	exp := time.Now().Add(time.Hour)
+	require.NoError(t, f.sessions.Save(ctx, "s1", session.Principal{Source: session.SourceLocal, UserID: u.ID}, exp))
+	require.NoError(t, f.sessions.Save(ctx, "s2", session.Principal{Source: session.SourceLocal, UserID: u.ID}, exp))
+	require.NoError(t, f.sessions.Save(ctx, "s3", session.Principal{Source: session.SourceLocal, UserID: other.ID}, exp))
+
+	require.NoError(t, f.svc.SetPassword(ctx, " Ada@Example.com ", "a brand new password"))
+
+	assert.NotEqual(t, old, u.PasswordHash)
+	assert.Equal(t, []uuid.UUID{u.ID}, f.passwords.calls)
+	for _, sid := range []string{"s1", "s2"} {
+		_, ok, err := f.sessions.Load(ctx, sid)
+		require.NoError(t, err)
+		assert.False(t, ok, sid)
+	}
+	_, ok, err := f.sessions.Load(ctx, "s3")
+	require.NoError(t, err)
+	assert.True(t, ok, "another user's session stays")
+}
+
+func TestSetPassword_PolicyErrorChangesNothing(t *testing.T) {
+	f := newFixture(t, BasicCredentials{})
+	u := f.addUser(t, "ada@example.com", true)
+	old := u.PasswordHash
+	ctx := context.Background()
+	require.NoError(t, f.sessions.Save(ctx, "s1", session.Principal{Source: session.SourceLocal, UserID: u.ID}, time.Now().Add(time.Hour)))
+
+	err := f.svc.SetPassword(ctx, "ada@example.com", "short")
+	require.Error(t, err)
+	assert.Equal(t, old, u.PasswordHash)
+	_, ok, err := f.sessions.Load(ctx, "s1")
+	require.NoError(t, err)
+	assert.True(t, ok, "sessions stay when the password is refused")
+}
+
+func TestSetPassword_UnknownEmailIsNotFound(t *testing.T) {
+	f := newFixture(t, BasicCredentials{})
+	err := f.svc.SetPassword(context.Background(), "nobody@example.com", "a brand new password")
+	assert.True(t, user.IsNotFoundError(err), "%v", err)
+	assert.False(t, IsInvalidCredentialsError(err))
+	assert.Empty(t, f.passwords.calls)
 }
