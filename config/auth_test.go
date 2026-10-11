@@ -154,7 +154,7 @@ func TestValidate_Auth(t *testing.T) {
 		},
 		"insecure cookie in production": {
 			mutate: func(c *Config) { c.HTTP.CookieSecure = false },
-			check:  func(t *testing.T, err error) { assert.True(t, IsInvalidSettingError(err), "got %v", err) },
+			check:  func(t *testing.T, err error) { assert.NoError(t, err) },
 		},
 		"insecure cookie in development": {
 			mutate: func(c *Config) { c.Env, c.HTTP.CookieSecure = EnvDevelopment, false },

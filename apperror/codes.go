@@ -51,4 +51,5 @@ const (
 	CodeAuthInvalidCredentials Code = "AUT001"
 
 	CodeInstallAlreadyDone Code = "INS001"
+	CodeInstallRequired    Code = "INS002"
 )

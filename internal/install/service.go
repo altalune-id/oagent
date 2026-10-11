@@ -22,14 +22,14 @@ const (
 // Service installs the instance and reports whether it still needs installing.
 type Service struct {
 	pool     db.Pool
-	users    *user.Service
-	orgs     *org.Service
-	members  *member.Service
-	projects *project.Service
+	users    UserCreator
+	orgs     SystemOrgs
+	members  Owners
+	projects DefaultProjects
 }
 
 // NewService builds a Service over the domain services it writes through.
-func NewService(pool db.Pool, users *user.Service, orgs *org.Service, members *member.Service, projects *project.Service) *Service {
+func NewService(pool db.Pool, users UserCreator, orgs SystemOrgs, members Owners, projects DefaultProjects) *Service {
 	return &Service{pool: pool, users: users, orgs: orgs, members: members, projects: projects}
 }
 

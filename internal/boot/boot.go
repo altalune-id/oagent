@@ -76,6 +76,11 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		_ = shutdown(ctx)
 		return nil, err
 	}
+	if svcs.InstallRequired, err = installRequired(ctx, svcs); err != nil {
+		_ = pool.Close()
+		_ = shutdown(ctx)
+		return nil, err
+	}
 	health := buildDBHealth(k, cfg, log)
 	apiHandler := buildAPIHandler(svcs, k.Reporter.Unexpected, cfg.API, cfg.HTTP.BasePath)
 	consoleHandler := buildConsoleHandler(cfg.HTTP.BasePath)
@@ -92,7 +97,9 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 			api:        apiHandler,
 			console:    consoleHandler,
 			mcp:        mcpHTTPHandler(mcpServer),
-			routes:     buildRoutes(cfg, log, k.Reporter.Unexpected),
+			routes:     buildRoutes(cfg, svcs, log, k.Reporter.Unexpected),
+
+			installRequired: svcs.InstallRequired,
 		}),
 		log,
 	))

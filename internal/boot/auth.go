@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"sync/atomic"
 
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/auth"
@@ -24,6 +25,9 @@ func buildAuthSecrets(cfg config.Config, s *Services, log *slog.Logger) error {
 	secret, err := stateSecret(cfg.HTTP, secretsLog(log, s.Caps))
 	if err != nil {
 		return err
+	}
+	if !cfg.HTTP.CookieSecure && cfg.Env != config.EnvDevelopment {
+		secretsLog(log, s.Caps).Warn("boot: http.cookieSecure is false; session cookies are sent over plain HTTP")
 	}
 	s.StateSecret = secret
 	if s.InstallToken, err = install.NewToken(cfg.Install.Token); err != nil {
@@ -99,6 +103,20 @@ func installGenesis(ctx context.Context, g config.GenesisConfig, svc *install.Se
 	}
 	log.Info("boot: installed the first owner from auth.genesis")
 	return nil
+}
+
+// SECURITY: only local login has an install page; a failed check keeps the gate shut rather than open.
+func installRequired(ctx context.Context, s *Services) (*atomic.Bool, error) {
+	required := &atomic.Bool{}
+	if !s.Caps.LocalLogin {
+		return required, nil
+	}
+	need, err := s.Install.Required(ctx, false)
+	if err != nil {
+		return nil, fmt.Errorf("boot: install state: %w", err)
+	}
+	required.Store(need)
+	return required, nil
 }
 
 func logsInstallURL(o *options) bool {

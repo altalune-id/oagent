@@ -22,6 +22,9 @@ type ServerOpts struct {
 	MCPHandler http.Handler // optional MCP surface mounted at BasePath+"/mcp"
 	Console    http.Handler // optional console SPA mounted at BasePath+"/console"
 	Routes     []Registrar  // optional server-rendered routes; their mux also answers every unknown path
+
+	Gate func(http.Handler) http.Handler // optional; wraps every route, probes included
+
 	BasePath   string
 	Log        *slog.Logger
 	Unexpected apperror.UnexpectedFunc
@@ -30,6 +33,7 @@ type ServerOpts struct {
 
 // NewServer builds the root http.Handler.
 func NewServer(opts ServerOpts) http.Handler {
+	cop := http.NewCrossOriginProtection()
 	outer := http.NewServeMux()
 	outer.HandleFunc("GET /healthz", healthz)
 	outer.HandleFunc("GET /readyz", readyz(opts.Ready))
@@ -58,11 +62,15 @@ func NewServer(opts ServerOpts) http.Handler {
 		for _, r := range opts.Routes {
 			r.Register(routes)
 		}
-		outer.Handle("/", routes)
+		outer.Handle("/", cop.Handler(routes))
 	} else {
 		outer.Handle("/", http.NotFoundHandler())
 	}
-	return middleware.Recoverer(opts.Log, opts.Unexpected, middleware.RequestID(outer))
+	var root http.Handler = outer
+	if opts.Gate != nil {
+		root = opts.Gate(outer)
+	}
+	return middleware.Recoverer(opts.Log, opts.Unexpected, middleware.RequestID(root))
 }
 
 func healthz(w http.ResponseWriter, _ *http.Request) {

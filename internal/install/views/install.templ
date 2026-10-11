@@ -1,0 +1,41 @@
+package views
+
+import "altalune.id/oagent/internal/web/layout"
+
+// InstallData is the install form's state; the password is never echoed back.
+type InstallData struct {
+	Name    string
+	Email   string
+	OrgName string
+	Error   string
+}
+
+templ Install(d layout.LayoutData, v InstallData) {
+	@layout.Layout(d) {
+		@layout.Card(d.Title) {
+			<p class="text-sm text-base-content/70">Create the first owner account. You can invite others later.</p>
+			if v.Error != "" {
+				<div role="alert" class="alert alert-error alert-soft">{ v.Error }</div>
+			}
+			<form method="post" action={ d.Href("/install") } class="flex flex-col gap-3">
+				<label class="floating-label">
+					<span>Your name</span>
+					<input class="input w-full" type="text" name="name" value={ v.Name } placeholder="Your name" autocomplete="name"/>
+				</label>
+				<label class="floating-label">
+					<span>Email</span>
+					<input class="input w-full" type="email" name="email" value={ v.Email } placeholder="Email" autocomplete="email" required/>
+				</label>
+				<label class="floating-label">
+					<span>Password</span>
+					<input class="input w-full" type="password" name="password" placeholder="Password" autocomplete="new-password" minlength="8" required/>
+				</label>
+				<label class="floating-label">
+					<span>Organization name</span>
+					<input class="input w-full" type="text" name="org_name" value={ v.OrgName } placeholder="Organization name"/>
+				</label>
+				<button class="btn btn-primary mt-2" type="submit">Install</button>
+			</form>
+		}
+	}
+}

@@ -2,6 +2,7 @@ package boot
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,28 +28,29 @@ const keyUsageInterval = 30 * time.Second
 
 // Services is every store and service the composition root wires.
 type Services struct {
-	OrgStore     org.Store
-	Orgs         *org.Service
-	ProjectStore project.Store
-	Projects     *project.Service
-	AgentStore   agent.Store
-	Agents       *agent.Service
-	APIKeyStore  apikey.Store
-	APIKeys      *apikey.Service
-	KeyAuthn     *apikey.Authenticator
-	KeyUsage     *apikey.UsageWorker
-	Outbox       outbox.Store
-	WebhookStore webhook.Store
-	Webhooks     *webhook.Service
-	Sealer       sealer.Sealer
-	Users        *user.Service
-	Members      *member.Service
-	Sessions     session.Store
-	Auth         *auth.Service
-	Install      *install.Service
-	InstallToken install.Token
-	Caps         capabilities.Capabilities
-	StateSecret  []byte
+	OrgStore        org.Store
+	Orgs            *org.Service
+	ProjectStore    project.Store
+	Projects        *project.Service
+	AgentStore      agent.Store
+	Agents          *agent.Service
+	APIKeyStore     apikey.Store
+	APIKeys         *apikey.Service
+	KeyAuthn        *apikey.Authenticator
+	KeyUsage        *apikey.UsageWorker
+	Outbox          outbox.Store
+	WebhookStore    webhook.Store
+	Webhooks        *webhook.Service
+	Sealer          sealer.Sealer
+	Users           *user.Service
+	Members         *member.Service
+	Sessions        session.Store
+	Auth            *auth.Service
+	Install         *install.Service
+	InstallToken    install.Token
+	InstallRequired *atomic.Bool
+	Caps            capabilities.Capabilities
+	StateSecret     []byte
 }
 
 func buildServices(k kernel.Kernel, cfg config.Config) *Services {
@@ -57,13 +59,16 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	agentStore := agent.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
 	apiKeyStore := apikey.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
 
+	caps := capabilities.From(&cfg)
 	projects := project.NewService(projectStore, k.Reporter.Unexpected)
-	orgs := org.NewService(orgStore, k.Reporter.Unexpected).WithAfterCreate(func(ctx context.Context, o *org.Org) error {
-		if _, err := projects.Create(ctx, project.CreateRequest{OrgID: o.ID, Slug: project.DefaultSlug, Name: project.DefaultName}); err != nil {
-			_ = k.Reporter.Unexpected(ctx, "org: default project", err)
-		}
-		return nil
-	})
+	orgs := org.NewService(orgStore, k.Reporter.Unexpected).
+		WithCreation(caps.OrgCreation).
+		WithAfterCreate(func(ctx context.Context, o *org.Org) error {
+			if _, err := projects.Create(ctx, project.CreateRequest{OrgID: o.ID, Slug: project.DefaultSlug, Name: project.DefaultName}); err != nil {
+				_ = k.Reporter.Unexpected(ctx, "org: default project", err)
+			}
+			return nil
+		})
 
 	sl := buildSealer(cfg.Secrets)
 	outboxStore := outbox.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
@@ -74,8 +79,6 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	)
 
 	agents := agent.NewService(agentStore, k.Reporter.Unexpected).WithPublisher(webhooks)
-
-	caps := capabilities.From(&cfg)
 	users := user.NewService(user.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Reporter.Unexpected)
 	members := member.NewService(member.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Reporter.Unexpected)
 

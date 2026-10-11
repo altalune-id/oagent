@@ -81,9 +81,6 @@ func (c *Config) validateAuth() error {
 }
 
 func (c *Config) validateSecrets() error {
-	if !c.HTTP.CookieSecure && c.Env != EnvDevelopment {
-		return &InvalidSettingError{Key: "http.cookieSecure", Reason: "false is allowed only when env is development"}
-	}
 	if err := checkSecretLen("http.stateSecret", c.HTTP.StateSecret); err != nil {
 		return err
 	}

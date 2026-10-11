@@ -17,3 +17,13 @@ func Path(basePath, sub string) string {
 	}
 	return bp + s
 }
+
+// UnderAny reports whether p is one of prefixes or below one of them.
+func UnderAny(p string, prefixes []string) bool {
+	for _, prefix := range prefixes {
+		if p == prefix || strings.HasPrefix(p, prefix+"/") {
+			return true
+		}
+	}
+	return false
+}

@@ -16,6 +16,7 @@ import (
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/org"
 )
 
 const testKeyHex = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
@@ -139,4 +140,31 @@ func TestLogsInstallURL(t *testing.T) {
 		opt(o)
 		assert.False(t, logsInstallURL(o), name)
 	}
+}
+
+func TestBuildAuthSecrets_WarnsOnInsecureCookieOutsideDevelopment(t *testing.T) {
+	log, buf := bufferLogger()
+	k := authKernel(t, log)
+	cfg := devLocalConfig()
+	cfg.Env = config.EnvProduction
+	cfg.HTTP.StateSecret = strings.Repeat("s", 40)
+	cfg.Secrets.EncryptionKey = testKeyHex
+	svcs := buildServices(k, cfg)
+
+	require.NoError(t, buildAuthSecrets(cfg, svcs, log))
+	assert.Contains(t, buf.String(), "boot: http.cookieSecure is false; session cookies are sent over plain HTTP")
+
+	buf.Reset()
+	cfg.HTTP.CookieSecure = true
+	require.NoError(t, buildAuthSecrets(cfg, buildServices(k, cfg), log))
+	assert.NotContains(t, buf.String(), "cookieSecure")
+}
+
+func TestBuildServices_OrgCreationRefusedInSelfhosted(t *testing.T) {
+	svcs := buildServices(authKernel(t, nil), devLocalConfig())
+	_, err := svcs.Orgs.Create(context.Background(), org.CreateRequest{Slug: "acme", Name: "Acme"})
+	require.Error(t, err)
+	ae, ok := apperror.AsAppError(err)
+	require.True(t, ok)
+	assert.Equal(t, apperror.CodeOrgCreationDisabled, ae.Code())
 }

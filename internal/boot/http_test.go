@@ -18,7 +18,7 @@ func TestHTTPConfig(t *testing.T) {
 
 func TestBuildHTTPHandler_ServesPages(t *testing.T) {
 	cfg := config.Config{HTTP: config.HTTPConfig{BasePath: "/app"}}
-	h := buildHTTPHandler(httpSurfaces{basePath: "/app", routes: buildRoutes(cfg, nil, nil)})
+	h := buildHTTPHandler(httpSurfaces{basePath: "/app", routes: buildRoutes(cfg, nil, nil, nil)})
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/app/terms", nil))
@@ -30,7 +30,7 @@ func TestBuildHTTPHandler_ServesPages(t *testing.T) {
 }
 
 func serveRoutes(cfg config.Config, svcs *Services, method, path string) *httptest.ResponseRecorder {
-	h := buildHTTPHandler(httpSurfaces{basePath: cfg.HTTP.BasePath, routes: buildRoutes(cfg, nil, nil)})
+	h := buildHTTPHandler(httpSurfaces{basePath: cfg.HTTP.BasePath, routes: buildRoutes(cfg, svcs, nil, nil)})
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(method, path, nil))
 	return rec

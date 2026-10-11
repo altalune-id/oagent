@@ -63,6 +63,7 @@ var kinds = map[Code]Kind{
 	CodeAuthInvalidCredentials: KindUnauthenticated,
 
 	CodeInstallAlreadyDone: KindAlreadyExists,
+	CodeInstallRequired:    KindFailedPrecondition,
 }
 
 // KindOf returns the Kind of code; unknown codes are internal.
