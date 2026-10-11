@@ -27,6 +27,7 @@ type ServerOpts struct {
 	Gate        func(http.Handler) http.Handler // optional; wraps every route, probes included
 	Session     func(http.Handler) http.Handler // optional; puts the cookie's Principal on routes and the console
 	SessionGate func(http.Handler) http.Handler // optional; runs after Session on routes and the console
+	ConsoleGate func(http.Handler) http.Handler // optional; runs after SessionGate on the console only
 
 	CrossOrigin *http.CrossOriginProtection // guards routes and /api, not /mcp; nil uses the stdlib default
 	BasePath    string
@@ -56,7 +57,11 @@ func NewServer(opts ServerOpts) http.Handler {
 	if opts.Console != nil {
 		console := layout.Path(opts.BasePath, "/console")
 		outer.Handle(console, http.RedirectHandler(console+"/", http.StatusMovedPermanently))
-		outer.Handle(console+"/", withSession(http.StripPrefix(console, opts.Console)))
+		spa := http.StripPrefix(console, opts.Console)
+		if opts.ConsoleGate != nil {
+			spa = opts.ConsoleGate(spa)
+		}
+		outer.Handle(console+"/", withSession(spa))
 	}
 	static := layout.Path(opts.BasePath, "/static") + "/"
 	outer.Handle("GET "+static, staticHandler(static))

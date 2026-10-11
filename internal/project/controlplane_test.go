@@ -19,7 +19,8 @@ import (
 
 func newProjectServiceClient(t *testing.T, store project.Store) projectv1connect.ProjectServiceClient {
 	t.Helper()
-	_, handler := projectv1connect.NewProjectServiceHandler(project.NewControlPlane(project.NewService(store, nil)))
+	_, handler := projectv1connect.NewProjectServiceHandler(project.NewControlPlane(project.NewService(store, nil)),
+		connect.WithInterceptors(fakes.OperatorInterceptor()))
 	ts := httptest.NewServer(handler)
 	t.Cleanup(ts.Close)
 	return projectv1connect.NewProjectServiceClient(http.DefaultClient, ts.URL)

@@ -43,15 +43,18 @@ func TestOrgReach_OwnOrgAndTrustedCallers(t *testing.T) {
 	o := mustOrg(t, "org-a")
 	cp := org.NewControlPlane(org.NewService(&fakes.OrgStore{Org: o}, nil))
 	for name, ctx := range map[string]context.Context{
-		"no principal": context.Background(),
-		"member":       session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceLocal, UserID: uuid.New(), ActiveOrgID: o.ID}),
-		"operator":     session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceBasic, Operator: true}),
+		"system":   fakes.OperatorContext(context.Background()),
+		"member":   session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceLocal, UserID: uuid.New(), ActiveOrgID: o.ID}),
+		"operator": session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceBasic, Operator: true}),
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := cp.GetOrg(ctx, connect.NewRequest(&orgv1.GetOrgRequest{Id: o.ID.String()}))
 			require.NoError(t, err)
 		})
 	}
+
+	_, err := cp.GetOrg(context.Background(), connect.NewRequest(&orgv1.GetOrgRequest{Id: o.ID.String()}))
+	assert.True(t, org.IsNotFoundError(err), "no principal reaches nothing: %v", err)
 }
 
 func TestOrgReach_ListOrgs(t *testing.T) {
@@ -66,7 +69,8 @@ func TestOrgReach_ListOrgs(t *testing.T) {
 		}
 		return out
 	}
-	assert.Len(t, ids(context.Background()), 2, "no principal sees all")
+	assert.Empty(t, ids(context.Background()), "no principal sees nothing")
+	assert.Len(t, ids(fakes.OperatorContext(context.Background())), 2, "system sees all")
 	assert.Len(t, ids(session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceBasic, Operator: true})), 2, "operator sees all")
 	assert.Equal(t, []string{orgA.ID.String()}, ids(session.PrincipalInto(context.Background(),
 		session.Principal{Source: session.SourceLocal, UserID: uuid.New(), ActiveOrgID: orgA.ID})), "person sees the active org")

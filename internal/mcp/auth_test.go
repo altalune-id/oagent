@@ -173,7 +173,7 @@ func TestScopesFromContext(t *testing.T) {
 		p    *session.Principal
 		want []string
 	}{
-		{name: "no principal holds every scope before the lockdown", want: all},
+		{name: "no principal holds no scope", want: nil},
 		{name: "owner", p: &session.Principal{Source: session.SourceLocal, UserID: uuid.New(), Scopes: []string{"*"}}, want: all},
 		{name: "system", p: new(session.System()), want: all},
 		{name: "basic", p: &session.Principal{Source: session.SourceBasic, Operator: true}, want: all},

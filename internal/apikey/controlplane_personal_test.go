@@ -62,9 +62,8 @@ func personalCreate(orgID uuid.UUID) *connect.Request[apikeyv1.CreateAPIKeyReque
 func TestAPIKeyService_CreatePersonal_NeedsPerson(t *testing.T) {
 	orgID := uuid.New()
 	for name, p := range map[string]session.Principal{
-		"no principal": {},
-		"api key":      {Source: session.SourceAPIKey, KeyID: uuid.New(), ActiveOrgID: orgID},
-		"basic":        {Source: session.SourceBasic, Operator: true, ActiveOrgID: orgID},
+		"api key": {Source: session.SourceAPIKey, KeyID: uuid.New(), ActiveOrgID: orgID},
+		"basic":   {Source: session.SourceBasic, Operator: true, ActiveOrgID: orgID},
 	} {
 		t.Run(name, func(t *testing.T) {
 			store := &fakes.APIKeyStore{}
@@ -127,7 +126,6 @@ func TestAPIKeyService_List_Visibility(t *testing.T) {
 		"person sees own personal keys": {person(me, orgID), []string{mine.ID.String(), machine.ID.String()}},
 		"key sees no personal keys":     {session.Principal{Source: session.SourceAPIKey, ActiveOrgID: orgID}, []string{machine.ID.String()}},
 		"operator sees all":             {session.Principal{Source: session.SourceBasic, Operator: true}, []string{mine.ID.String(), theirs.ID.String(), machine.ID.String()}},
-		"no principal sees all":         {session.Principal{}, []string{mine.ID.String(), theirs.ID.String(), machine.ID.String()}},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -276,6 +274,24 @@ func TestAPIKeyService_KeyPrincipalNeverReachesTheService(t *testing.T) {
 			assert.Nil(t, store.Saved)
 		})
 	}
+}
+
+func TestAPIKeyService_NoPrincipalReachesNothing(t *testing.T) {
+	orgID := uuid.New()
+	machine, _, err := apikey.NewScheme("").MintOrg(orgID, "ci", nil, apikey.ProjectGrant{All: true}, future(), time.Now().UTC())
+	require.NoError(t, err)
+	store := &fakes.APIKeyStore{Key: machine, Keys: []*apikey.APIKey{machine}}
+	c := newPersonalClient(t, store, &fakeOwners{}, session.Principal{})
+
+	_, err = c.CreateAPIKey(context.Background(), orgCreate(orgID))
+	assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+	_, err = c.CreateAPIKey(context.Background(), personalCreate(orgID))
+	assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+	_, err = c.ListAPIKeys(context.Background(), connect.NewRequest(&apikeyv1.ListAPIKeysRequest{OrgId: orgID.String()}))
+	assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+	_, err = c.RevokeAPIKey(context.Background(), revoke(orgID, machine.ID))
+	assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+	assert.Nil(t, store.Saved)
 }
 
 func TestAPIKeyService_OperatorManagesKeys(t *testing.T) {

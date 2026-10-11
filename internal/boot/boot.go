@@ -109,6 +109,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 
 			installRequired: svcs.InstallRequired,
 			session:         buildSessionMiddleware(svcs, k.Reporter.Unexpected),
+			consoleGate:     buildConsoleGate(cfg, svcs),
 
 			requireAcceptance: cfg.Compliance.RequireAcceptance && svcs.Caps.LocalLogin,
 			crossOrigin:       crossOrigin,

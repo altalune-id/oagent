@@ -22,7 +22,7 @@ import (
 func newAPIKeyClient(t *testing.T, store apikey.Store) apikeyv1connect.APIKeyServiceClient {
 	t.Helper()
 	svc := apikey.NewService(store, apikey.NewScheme(""), stubProjects{ids: []uuid.UUID{knownProject}}, nil)
-	_, handler := apikeyv1connect.NewAPIKeyServiceHandler(apikey.NewControlPlane(svc))
+	_, handler := apikeyv1connect.NewAPIKeyServiceHandler(apikey.NewControlPlane(svc), connect.WithInterceptors(fakes.OperatorInterceptor()))
 	ts := httptest.NewServer(handler)
 	t.Cleanup(ts.Close)
 	return apikeyv1connect.NewAPIKeyServiceClient(http.DefaultClient, ts.URL)

@@ -12,6 +12,7 @@ import (
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
 	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/kernel/outbox"
+	"altalune.id/oagent/internal/kernel/session"
 )
 
 func controlPlane(t *testing.T, store *fakeStore) (*WebhookControlPlane, uuid.UUID, uuid.UUID) {
@@ -22,7 +23,7 @@ func controlPlane(t *testing.T, store *fakeStore) (*WebhookControlPlane, uuid.UU
 
 func TestControlPlaneCreate(t *testing.T) {
 	cp, org, project := controlPlane(t, &fakeStore{})
-	resp, err := cp.CreateWebhook(context.Background(), connect.NewRequest(&webhookv1.CreateWebhookRequest{
+	resp, err := cp.CreateWebhook(session.PrincipalInto(context.Background(), session.System()), connect.NewRequest(&webhookv1.CreateWebhookRequest{
 		OrgId: org.String(), ProjectId: project.String(), Url: "https://e.com", EventTypes: []string{string(events.AgentCreated)},
 	}))
 	require.NoError(t, err)
@@ -32,7 +33,7 @@ func TestControlPlaneCreate(t *testing.T) {
 
 func TestControlPlaneValidationError(t *testing.T) {
 	cp, _, _ := controlPlane(t, &fakeStore{})
-	_, err := cp.CreateWebhook(context.Background(), connect.NewRequest(&webhookv1.CreateWebhookRequest{
+	_, err := cp.CreateWebhook(session.PrincipalInto(context.Background(), session.System()), connect.NewRequest(&webhookv1.CreateWebhookRequest{
 		OrgId: "bad", ProjectId: "bad", Url: "https://e.com", EventTypes: []string{string(events.AgentCreated)},
 	}))
 	assert.Error(t, err)
@@ -43,15 +44,15 @@ func TestControlPlaneGetList(t *testing.T) {
 	e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project, URL: "https://e.com", Active: true, EventTypes: []events.Type{events.AgentCreated}}
 	cp, _, _ := controlPlane(t, &fakeStore{endpoints: []*Endpoint{e}})
 
-	got, err := cp.GetWebhook(context.Background(), connect.NewRequest(&webhookv1.GetWebhookRequest{OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String()}))
+	got, err := cp.GetWebhook(session.PrincipalInto(context.Background(), session.System()), connect.NewRequest(&webhookv1.GetWebhookRequest{OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String()}))
 	require.NoError(t, err)
 	assert.Equal(t, e.ID.String(), got.Msg.GetWebhook().GetId())
 
-	list, err := cp.ListWebhooks(context.Background(), connect.NewRequest(&webhookv1.ListWebhooksRequest{OrgId: org.String(), ProjectId: project.String()}))
+	list, err := cp.ListWebhooks(session.PrincipalInto(context.Background(), session.System()), connect.NewRequest(&webhookv1.ListWebhooksRequest{OrgId: org.String(), ProjectId: project.String()}))
 	require.NoError(t, err)
 	assert.Len(t, list.Msg.GetWebhooks(), 1)
 
-	_, err = cp.GetWebhook(context.Background(), connect.NewRequest(&webhookv1.GetWebhookRequest{OrgId: org.String(), ProjectId: project.String(), Id: "bad"}))
+	_, err = cp.GetWebhook(session.PrincipalInto(context.Background(), session.System()), connect.NewRequest(&webhookv1.GetWebhookRequest{OrgId: org.String(), ProjectId: project.String(), Id: "bad"}))
 	assert.Error(t, err)
 }
 
@@ -60,13 +61,13 @@ func TestControlPlaneUpdateDelete(t *testing.T) {
 	e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project, URL: "https://e.com", Active: true, EventTypes: []events.Type{events.AgentCreated}}
 	cp, _, _ := controlPlane(t, &fakeStore{endpoints: []*Endpoint{e}})
 
-	upd, err := cp.UpdateWebhook(context.Background(), connect.NewRequest(&webhookv1.UpdateWebhookRequest{
+	upd, err := cp.UpdateWebhook(session.PrincipalInto(context.Background(), session.System()), connect.NewRequest(&webhookv1.UpdateWebhookRequest{
 		OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String(), Url: "https://e2.com", EventTypes: []string{string(events.AgentUpdated)}, Active: true,
 	}))
 	require.NoError(t, err)
 	assert.Equal(t, "https://e2.com", upd.Msg.GetWebhook().GetUrl())
 
-	_, err = cp.DeleteWebhook(context.Background(), connect.NewRequest(&webhookv1.DeleteWebhookRequest{OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String()}))
+	_, err = cp.DeleteWebhook(session.PrincipalInto(context.Background(), session.System()), connect.NewRequest(&webhookv1.DeleteWebhookRequest{OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String()}))
 	require.NoError(t, err)
 }
 
@@ -75,17 +76,17 @@ func TestControlPlaneRotatePing(t *testing.T) {
 	e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project, Active: true, EventTypes: []events.Type{events.AgentCreated}}
 	cp, _, _ := controlPlane(t, &fakeStore{endpoints: []*Endpoint{e}})
 
-	rot, err := cp.RotateWebhookSecret(context.Background(), connect.NewRequest(&webhookv1.RotateWebhookSecretRequest{OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String()}))
+	rot, err := cp.RotateWebhookSecret(session.PrincipalInto(context.Background(), session.System()), connect.NewRequest(&webhookv1.RotateWebhookSecretRequest{OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String()}))
 	require.NoError(t, err)
 	assert.NotEmpty(t, rot.Msg.GetSecret())
 
-	_, err = cp.PingWebhook(context.Background(), connect.NewRequest(&webhookv1.PingWebhookRequest{OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String()}))
+	_, err = cp.PingWebhook(session.PrincipalInto(context.Background(), session.System()), connect.NewRequest(&webhookv1.PingWebhookRequest{OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String()}))
 	require.NoError(t, err)
 }
 
 func TestControlPlaneErrors(t *testing.T) {
 	cp, org, project := controlPlane(t, &fakeStore{})
-	ctx := context.Background()
+	ctx := session.PrincipalInto(context.Background(), session.System())
 	id := uuid.New().String()
 
 	_, err := cp.GetWebhook(ctx, connect.NewRequest(&webhookv1.GetWebhookRequest{OrgId: org.String(), ProjectId: project.String(), Id: id}))
@@ -106,7 +107,7 @@ func TestControlPlaneErrors(t *testing.T) {
 
 func TestControlPlaneBadProject(t *testing.T) {
 	cp, org, _ := controlPlane(t, &fakeStore{})
-	_, err := cp.ListWebhooks(context.Background(), connect.NewRequest(&webhookv1.ListWebhooksRequest{OrgId: org.String(), ProjectId: "bad"}))
+	_, err := cp.ListWebhooks(session.PrincipalInto(context.Background(), session.System()), connect.NewRequest(&webhookv1.ListWebhooksRequest{OrgId: org.String(), ProjectId: "bad"}))
 	assert.Error(t, err)
 }
 
@@ -116,7 +117,7 @@ func TestControlPlaneDeliveryLogs(t *testing.T) {
 	ob := &fakeOutbox{entries: []outbox.Entry{{ID: uuid.New(), Payload: []byte(`{"type":"agent.created"}`)}}}
 	store := &fakeStore{endpoints: []*Endpoint{e}, attempts: []Attempt{{Attempt: 1, StatusCode: 200}}}
 	cp := NewControlPlane(testService(t, store, ob))
-	ctx := context.Background()
+	ctx := session.PrincipalInto(context.Background(), session.System())
 
 	resp, err := cp.ListWebhookDeliveries(ctx, connect.NewRequest(&webhookv1.ListWebhookDeliveriesRequest{
 		OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String(),

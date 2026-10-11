@@ -91,12 +91,15 @@ func writeUnauthorized(w http.ResponseWriter, r *http.Request, challenge string)
 	}))
 }
 
-// ScopesFromContext lists the tool scopes the caller holds; no Principal (before the lockdown) holds every scope.
+// ScopesFromContext lists the tool scopes the caller holds; no Principal holds none.
 func ScopesFromContext(ctx context.Context) []string {
 	p := session.PrincipalFrom(ctx)
+	if p.Source == "" {
+		return nil
+	}
 	held := map[string]struct{}{}
 	for _, s := range ScopeTable() {
-		if p.Source == "" || authz.Allowed(p, s) {
+		if authz.Allowed(p, s) {
 			held[s] = struct{}{}
 		}
 	}

@@ -15,16 +15,17 @@ import (
 	"altalune.id/oagent/internal/apiclient"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/controlplane"
+	"altalune.id/oagent/internal/testutil/cptest"
 	"altalune.id/oagent/internal/testutil/fakes"
 )
 
 func apiKeyClient(t *testing.T, store apikey.Store) apikeyv1connect.APIKeyServiceClient {
 	t.Helper()
 	svc := apikey.NewService(store, apikey.NewScheme(""), stubProjects{ids: []uuid.UUID{knownProject}}, nil)
-	srv := controlplane.New(controlplane.Services{APIKeys: svc}, nil, controlplane.Options{})
+	srv := controlplane.New(controlplane.Services{APIKeys: svc}, nil, cptest.OperatorOptions())
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
-	return apiclient.New(ts.URL, apiclient.Credential{}).APIKeys
+	return apiclient.New(ts.URL, cptest.OperatorCredential()).APIKeys
 }
 
 func runAPIKey(t *testing.T, client apikeyv1connect.APIKeyServiceClient, args ...string) (*bytes.Buffer, error) {

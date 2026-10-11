@@ -19,7 +19,8 @@ import (
 
 func newAgentServiceClient(t *testing.T, store agent.Store) agentv1connect.AgentServiceClient {
 	t.Helper()
-	_, handler := agentv1connect.NewAgentServiceHandler(agent.NewControlPlane(agent.NewService(store, nil)))
+	_, handler := agentv1connect.NewAgentServiceHandler(agent.NewControlPlane(agent.NewService(store, nil)),
+		connect.WithInterceptors(fakes.OperatorInterceptor()))
 	ts := httptest.NewServer(handler)
 	t.Cleanup(ts.Close)
 	return agentv1connect.NewAgentServiceClient(http.DefaultClient, ts.URL)

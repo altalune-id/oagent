@@ -12,6 +12,7 @@ import (
 
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
 	"altalune.id/oagent/internal/kernel/outbox"
+	"altalune.id/oagent/internal/kernel/session"
 )
 
 func TestServiceRetry(t *testing.T) {
@@ -57,7 +58,7 @@ func TestControlPlaneRetry(t *testing.T) {
 	org, project := uuid.New(), uuid.New()
 	e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project}
 	cp := NewControlPlane(testService(t, &fakeStore{endpoints: []*Endpoint{e}}, &fakeOutbox{requeued: 2}))
-	ctx := context.Background()
+	ctx := session.PrincipalInto(context.Background(), session.System())
 
 	_, err := cp.RetryWebhookDelivery(ctx, connect.NewRequest(&webhookv1.RetryWebhookDeliveryRequest{
 		OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String(), DeliveryId: uuid.New().String(),

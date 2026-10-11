@@ -19,19 +19,20 @@ import (
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
+	"altalune.id/oagent/internal/testutil/cptest"
 	"altalune.id/oagent/internal/testutil/fakes"
 )
 
 // Exercises the real root tree for a remote command: config (no validation), client boot, org.ClientFn.
 func TestRoot_OrgGet_Remote(t *testing.T) {
 	store := &fakes.OrgStore{Org: &org.Org{ID: uuid.New(), PublicID: "pub", Slug: "acme", Name: "Acme"}}
-	srv := controlplane.New(controlplane.Services{Orgs: org.NewService(store, nil)}, nil, controlplane.Options{})
+	srv := controlplane.New(controlplane.Services{Orgs: org.NewService(store, nil)}, nil, cptest.OperatorOptions())
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
 
 	t.Setenv("OAGENT_CLI_SESSION_FILE", filepath.Join(t.TempDir(), "session.json"))
 	clientFn := func(context.Context, config.Config, *slog.Logger, string, apiclient.Credential) (*apiclient.Client, error) {
-		return apiclient.New(ts.URL, apiclient.Credential{}), nil
+		return apiclient.New(ts.URL, cptest.OperatorCredential()), nil
 	}
 	buf := new(bytes.Buffer)
 	root := cli.NewRootCmd(nil, clientFn)
@@ -46,13 +47,13 @@ func TestRoot_OrgGet_Remote(t *testing.T) {
 func TestRoot_ProjectGet_Remote(t *testing.T) {
 	p, err := project.NewProject(uuid.New(), "acme", "Acme", uuid.New())
 	require.NoError(t, err)
-	srv := controlplane.New(controlplane.Services{Projects: project.NewService(&fakes.ProjectStore{Project: p}, nil)}, nil, controlplane.Options{})
+	srv := controlplane.New(controlplane.Services{Projects: project.NewService(&fakes.ProjectStore{Project: p}, nil)}, nil, cptest.OperatorOptions())
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
 
 	t.Setenv("OAGENT_CLI_SESSION_FILE", filepath.Join(t.TempDir(), "session.json"))
 	clientFn := func(context.Context, config.Config, *slog.Logger, string, apiclient.Credential) (*apiclient.Client, error) {
-		return apiclient.New(ts.URL, apiclient.Credential{}), nil
+		return apiclient.New(ts.URL, cptest.OperatorCredential()), nil
 	}
 	buf := new(bytes.Buffer)
 	root := cli.NewRootCmd(nil, clientFn)
@@ -67,13 +68,13 @@ func TestRoot_ProjectGet_Remote(t *testing.T) {
 func TestRoot_AgentGet_Remote(t *testing.T) {
 	a, err := agent.New(uuid.New(), uuid.New(), "acme", "Acme", "", uuid.New())
 	require.NoError(t, err)
-	srv := controlplane.New(controlplane.Services{Agents: agent.NewService(&fakes.AgentStore{Agent: a}, nil)}, nil, controlplane.Options{})
+	srv := controlplane.New(controlplane.Services{Agents: agent.NewService(&fakes.AgentStore{Agent: a}, nil)}, nil, cptest.OperatorOptions())
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
 
 	t.Setenv("OAGENT_CLI_SESSION_FILE", filepath.Join(t.TempDir(), "session.json"))
 	clientFn := func(context.Context, config.Config, *slog.Logger, string, apiclient.Credential) (*apiclient.Client, error) {
-		return apiclient.New(ts.URL, apiclient.Credential{}), nil
+		return apiclient.New(ts.URL, cptest.OperatorCredential()), nil
 	}
 	buf := new(bytes.Buffer)
 	root := cli.NewRootCmd(nil, clientFn)

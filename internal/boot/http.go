@@ -24,6 +24,9 @@ import (
 	rootmcp "altalune.id/oagent/mcp"
 )
 
+// SECURITY: the lockdown switch; /api, /mcp and the console refuse a request without a credential. Revert its commit to undo.
+const requireCredentials = true
+
 // httpConfig maps the operator config onto the HTTP server worker's config.
 func httpConfig(c config.HTTPConfig) httpserver.Config {
 	return httpserver.Config{Name: "http", Addr: c.Addr}
@@ -46,13 +49,14 @@ func buildAPIHandler(
 			KeyPrefix:    svcs.KeyScheme.Prefix(),
 			CookieSecret: svcs.StateSecret,
 			Permissions:  controlplane.PermissionTable(),
+			Required:     requireCredentials,
 			Logger:       log,
 		},
 	}
 	if cfg.OpenAPI.RequireBasicAuth {
 		opts.OpenAPIBasicAuth = &controlplane.BasicAuth{User: cfg.OpenAPI.BasicAuthUser, Password: cfg.OpenAPI.BasicAuthPassword}
 	}
-	return controlplane.New(controlplane.Services{
+	h := controlplane.New(controlplane.Services{
 		Orgs:     svcs.Orgs,
 		Projects: svcs.Projects,
 		Agents:   svcs.Agents,
@@ -60,6 +64,21 @@ func buildAPIHandler(
 		Webhooks: svcs.Webhooks,
 		Users:    svcs.Users,
 	}, unexpected, opts).Handler(basePath)
+	if requireCredentials && svcs.Caps.BasicAuth {
+		h = auth.BasicChallenge(h)
+	}
+	return h
+}
+
+// NOTE: nil before the lockdown; local mode sends a signed-out caller to /login, basic mode challenges.
+func buildConsoleGate(cfg config.Config, svcs *Services) func(http.Handler) http.Handler {
+	if !requireCredentials || svcs == nil {
+		return nil
+	}
+	if svcs.Caps.BasicAuth {
+		return auth.ConsoleGate(cfg.HTTP.BasePath, svcs.Auth)
+	}
+	return auth.ConsoleGate(cfg.HTTP.BasePath, nil)
 }
 
 func apiChain(svcs *Services) authn.Chain {
@@ -81,6 +100,7 @@ func buildMCPHandler(srv *rootmcp.Server, svcs *Services, log *slog.Logger) http
 	return mcpinternal.Authenticate(mcpinternal.AuthOptions{
 		Chain:     mcpChain(svcs),
 		KeyPrefix: svcs.KeyScheme.Prefix(),
+		Required:  requireCredentials,
 		Logger:    log,
 	})(h)
 }
@@ -189,6 +209,7 @@ type httpSurfaces struct {
 
 	installRequired *atomic.Bool
 	session         func(http.Handler) http.Handler
+	consoleGate     func(http.Handler) http.Handler
 
 	requireAcceptance bool
 	crossOrigin       *http.CrossOriginProtection
@@ -208,6 +229,7 @@ func buildHTTPHandler(s httpSurfaces) http.Handler {
 		Gate:        install.InstallGate(s.basePath, s.installRequired),
 		Session:     s.session,
 		SessionGate: legal.WelcomeGate(s.basePath, s.requireAcceptance),
+		ConsoleGate: s.consoleGate,
 		CrossOrigin: s.crossOrigin,
 	})
 }

@@ -14,15 +14,16 @@ import (
 	"altalune.id/oagent/internal/apiclient"
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/project"
+	"altalune.id/oagent/internal/testutil/cptest"
 	"altalune.id/oagent/internal/testutil/fakes"
 )
 
 func projectClient(t *testing.T, store project.Store) projectv1connect.ProjectServiceClient {
 	t.Helper()
-	srv := controlplane.New(controlplane.Services{Projects: project.NewService(store, nil)}, nil, controlplane.Options{})
+	srv := controlplane.New(controlplane.Services{Projects: project.NewService(store, nil)}, nil, cptest.OperatorOptions())
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
-	return apiclient.New(ts.URL, apiclient.Credential{}).Projects
+	return apiclient.New(ts.URL, cptest.OperatorCredential()).Projects
 }
 
 func runProject(t *testing.T, client projectv1connect.ProjectServiceClient, args ...string) (*bytes.Buffer, error) {

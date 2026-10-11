@@ -19,7 +19,8 @@ import (
 
 func newOrgServiceClient(t *testing.T, store org.Store) orgv1connect.OrgServiceClient {
 	t.Helper()
-	_, handler := orgv1connect.NewOrgServiceHandler(org.NewControlPlane(org.NewService(store, nil)))
+	_, handler := orgv1connect.NewOrgServiceHandler(org.NewControlPlane(org.NewService(store, nil)),
+		connect.WithInterceptors(fakes.OperatorInterceptor()))
 	ts := httptest.NewServer(handler)
 	t.Cleanup(ts.Close)
 	return orgv1connect.NewOrgServiceClient(http.DefaultClient, ts.URL)

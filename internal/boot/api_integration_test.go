@@ -181,10 +181,20 @@ func TestAPI_KeyPermissionIsChecked(t *testing.T) {
 	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 
 	_, err = agents.CreateAgent(context.Background(), connect.NewRequest(create))
-	require.NoError(t, err, "no credential still works before the lockdown")
+	assert.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err), "no credential is refused")
 
 	_, err = orgv1connect.NewOrgServiceClient(http.DefaultClient, f.url).ListOrgs(context.Background(), connect.NewRequest(&orgv1.ListOrgsRequest{}))
+	assert.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err), "no credential is refused")
+}
+
+func (f *apiFixture) ownerCookie(t *testing.T) string {
+	t.Helper()
+	p, err := f.svcs.Auth.LoginLocal(t.Context(), authCredentials("root@example.com", "genesis-password"))
 	require.NoError(t, err)
+	sid, err := session.NewID()
+	require.NoError(t, err)
+	require.NoError(t, f.svcs.Sessions.Save(t.Context(), sid, p, time.Now().Add(time.Hour)))
+	return session.CookieName + "=" + session.Sign(f.svcs.StateSecret, sid)
 }
 
 func TestAPI_CreateRefusesAnotherOrgsProject(t *testing.T) {
@@ -197,9 +207,9 @@ func TestAPI_CreateRefusesAnotherOrgsProject(t *testing.T) {
 	foreign, err := f.svcs.Projects.Create(t.Context(), project.CreateRequest{OrgID: other.ID, Slug: "theirs", Name: "Theirs"})
 	require.NoError(t, err)
 
-	_, err = agentv1connect.NewAgentServiceClient(http.DefaultClient, f.url).CreateAgent(context.Background(), connect.NewRequest(&agentv1.CreateAgentRequest{
+	_, err = agentv1connect.NewAgentServiceClient(http.DefaultClient, f.url).CreateAgent(context.Background(), withCookie(connect.NewRequest(&agentv1.CreateAgentRequest{
 		OrgId: sys.ID.String(), ProjectId: foreign.ID.String(), Slug: "bot", Name: "Bot",
-	}))
+	}), f.ownerCookie(t)))
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 

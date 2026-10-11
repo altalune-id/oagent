@@ -42,9 +42,9 @@ service. Every service writes through its own store.
 flowchart TD
     CLI["oagent CLI"] -- Connect client --> API
     CLI -- "auth login / logout" --> WEB
-    API["/api"] --> G1[InstallGate] --> C1[CrossOrigin] --> I1["RequestID, OTel, Wrap"] --> I2["authn + permission"] --> I3[tenantFromPrincipal] --> DC
+    API["/api"] --> G1[InstallGate] --> C1[CrossOrigin] --> B1["BasicChallenge (basic mode)"] --> I1["RequestID, OTel, Wrap"] --> I2["authn + permission"] --> I3[tenantFromPrincipal] --> DC
     WEB["web routes"] --> G2[InstallGate] --> C2[CrossOrigin] --> S2[Session] --> W2[WelcomeGate] --> DW
-    CON["/console"] --> G3[InstallGate] --> S3[Session] --> W3[WelcomeGate] --> SPA[console SPA]
+    CON["/console"] --> G3[InstallGate] --> S3[Session] --> W3[WelcomeGate] --> CG3["ConsoleGate: /login redirect or Basic challenge"] --> SPA[console SPA]
     SPA -. calls .-> API
     MCPH["/mcp HTTP"] --> G4[InstallGate] --> A4["mcp.Authenticate: key or Basic, no cookie"] --> T4["tool scope check"] --> DC
     MCPS["oagent mcp stdio"] --> SYS["session.System() Principal"] --> T4
@@ -57,7 +57,8 @@ flowchart TD
 
 - **Reach:** after the permission check, each `controlplane.go` checks that the caller reaches the org, project or resource (`kernel/authz.Reach*`). Out of reach answers 404.
 - **MCP:** tools are generated from the same Connect services, so MCP and `/api` share one handler per RPC.
-- **MCP scopes:** `tools/list` and `tools/call` both check the tool's scope against the caller's expanded permissions (`mcpinternal.ScopesFromContext`). Until the lockdown, no Principal holds every scope.
+- **Credentials required:** `requireCredentials` (`http.go`) makes `/api` and `/mcp` answer 401 and the console redirect to `/login?return_to=…` (local) or send a Basic challenge (basic mode) when no credential is sent. `/login`, `/logout`, `/install`, `/welcome`, `/terms`, `/privacy`, `/static`, `/healthz` and `/readyz` stay open. A request with no Principal reaches nothing (`kernel/authz`).
+- **MCP scopes:** `tools/list` and `tools/call` both check the tool's scope against the caller's expanded permissions (`mcpinternal.ScopesFromContext`). No Principal holds no scope.
 - **stdio:** `oagent mcp` runs as `session.System()`, an operator, never as "no Principal".
 
 ## Domains and their surfaces

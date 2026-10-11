@@ -15,7 +15,7 @@ import (
 // PermissionTable maps a Connect procedure to the permission it needs.
 type PermissionTable map[string]string
 
-// InterceptorOptions configures Interceptor; Required stays false until every surface can sign in.
+// InterceptorOptions configures Interceptor; Required refuses a request that carries no credential.
 type InterceptorOptions struct {
 	Chain        Chain
 	KeyPrefix    string

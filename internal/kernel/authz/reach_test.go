@@ -19,7 +19,8 @@ func TestReach(t *testing.T) {
 		p                                               session.Principal
 		org, wholeOrg, proj, wholeProj, resource, other bool
 	}{
-		{"no principal", session.Principal{}, true, true, true, true, true, true},
+		{"no principal", session.Principal{}, false, false, false, false, false, false},
+		{"system (stdio)", session.System(), true, true, true, true, true, true},
 		{"operator", session.Principal{Source: session.SourceBasic, Operator: true, ActiveOrgID: orgB}, true, true, true, true, true, true},
 		{"person in org A", session.Principal{Source: session.SourceLocal, UserID: uuid.New(), ActiveOrgID: orgA}, true, true, true, true, true, false},
 		{"person elsewhere", session.Principal{Source: session.SourceLocal, UserID: uuid.New(), ActiveOrgID: orgB}, false, false, false, false, false, true},

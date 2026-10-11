@@ -8,7 +8,7 @@ import (
 	"altalune.id/oagent/internal/kernel/session"
 )
 
-// ReachOrg reports whether the caller in ctx may read inside orgID. SECURITY: no Principal is a trusted caller (stdio MCP, pre-lockdown).
+// ReachOrg reports whether the caller in ctx may read inside orgID. SECURITY: no Principal reaches nothing; stdio runs as System().
 func ReachOrg(ctx context.Context, orgID uuid.UUID) bool {
 	p := session.PrincipalFrom(ctx)
 	return trusted(p) || (orgID != uuid.Nil && orgID == p.ActiveOrgID)
@@ -46,5 +46,5 @@ func ReachResource(ctx context.Context, orgID, projectID, resourceID uuid.UUID) 
 
 // SECURITY: a person reaches only their active org (P1); operators reach every org and keys are never operators.
 func trusted(p session.Principal) bool {
-	return p.Source == "" || p.Operator
+	return p.Operator
 }

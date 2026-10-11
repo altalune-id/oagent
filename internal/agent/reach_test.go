@@ -67,7 +67,8 @@ func TestAgentReach_ListFiltersToReach(t *testing.T) {
 		}
 		return out
 	}
-	assert.Len(t, list(session.Principal{}), 3, "no principal unchanged")
+	assert.Empty(t, list(session.Principal{}), "no principal reaches nothing")
+	assert.Len(t, list(session.System()), 3, "system sees all")
 	assert.ElementsMatch(t, []string{mine.ID.String(), other.ID.String()},
 		list(session.Principal{Source: session.SourceLocal, UserID: uuid.New(), ActiveOrgID: orgA}))
 	assert.Equal(t, []string{mine.ID.String()},
