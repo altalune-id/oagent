@@ -7,7 +7,8 @@
   },
   "scripts": {
     "ui:mcp": "pnpm --filter @oagent/mcp-ui build",
-    "ui:console": "pnpm --filter @oagent/console generate"
+    "ui:console": "pnpm --filter @oagent/console generate",
+    "ui:test": "pnpm -r --if-present test"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild"]

@@ -10,6 +10,7 @@ import WebhookCreateView from "./WebhookCreateView.vue";
 import WebhookDeliveriesView from "./WebhookDeliveriesView.vue";
 import WebhookListView from "./WebhookListView.vue";
 import WebhookRetryFailedView from "./WebhookRetryFailedView.vue";
+import AuthWhoami from "./AuthWhoami.vue";
 import DefaultView from "./DefaultView.vue";
 
 const registry: Record<string, Component> = {
@@ -24,6 +25,7 @@ const registry: Record<string, Component> = {
   webhook_list: WebhookListView,
   webhook_deliveries: WebhookDeliveriesView,
   webhook_retry_failed: WebhookRetryFailedView,
+  auth_whoami: AuthWhoami,
 };
 
 // resolveView picks the view for the calling tool, falling back to a generic renderer.

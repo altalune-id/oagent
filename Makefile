@@ -55,6 +55,10 @@ ui-mcp: ## build the MCP App (Vue) and embed it
 	pnpm --filter @oagent/mcp-ui build
 	cp ui/mcp/dist/index.html internal/mcp/ui/assets/app.html
 
+.PHONY: ui-test
+ui-test: ## run every ui/* package's tests
+	pnpm -r --if-present test
+
 .PHONY: ui-console
 ui-console: ## build the console SPA and embed it
 	pnpm --filter @oagent/console generate
