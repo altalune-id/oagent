@@ -5,12 +5,13 @@ type Code string
 
 // Error codes: <DOM><NNN>, append-only; 900-999 is reserved for internal failures.
 const (
-	CodeTenantMissing Code = "GEN001"
-	CodeValidation    Code = "GEN004"
-	CodeNotFound      Code = "GEN005"
-	CodeAlreadyExists Code = "GEN006"
-	CodeForbidden     Code = "GEN007"
-	CodeUnexpected    Code = "GEN900"
+	CodeTenantMissing   Code = "GEN001"
+	CodeUnauthenticated Code = "GEN002"
+	CodeValidation      Code = "GEN004"
+	CodeNotFound        Code = "GEN005"
+	CodeAlreadyExists   Code = "GEN006"
+	CodeForbidden       Code = "GEN007"
+	CodeUnexpected      Code = "GEN900"
 
 	CodeOrgNotFound         Code = "ORG001"
 	CodeOrgAlreadyExists    Code = "ORG002"

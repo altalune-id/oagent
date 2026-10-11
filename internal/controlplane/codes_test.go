@@ -21,6 +21,14 @@ func TestConnectCodeOf(t *testing.T) {
 		apperror.CodeOrgAlreadyExists: connect.CodeAlreadyExists,
 		apperror.CodeUnexpected:       connect.CodeInternal,
 		apperror.Code("BOGUS"):        connect.CodeInternal,
+
+		apperror.CodeAgentNotFound:          connect.CodeNotFound,
+		apperror.CodeAPIKeyInvalidScope:     connect.CodeInvalidArgument,
+		apperror.CodeProjectAlreadyExists:   connect.CodeAlreadyExists,
+		apperror.CodeUnauthenticated:        connect.CodeUnauthenticated,
+		apperror.CodeAuthInvalidCredentials: connect.CodeUnauthenticated,
+		apperror.CodeForbidden:              connect.CodePermissionDenied,
+		apperror.CodeOrgCreationDisabled:    connect.CodeFailedPrecondition,
 	}
 	for code, want := range cases {
 		t.Run(string(code), func(t *testing.T) {

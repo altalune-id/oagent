@@ -6,18 +6,21 @@ import (
 	"altalune.id/oagent/apperror"
 )
 
-// connectCodeOf maps a stable apperror code onto the Connect status code clients see.
 func connectCodeOf(code apperror.Code) connect.Code {
-	switch code {
-	case apperror.CodeTenantMissing:
-		return connect.CodeUnauthenticated
-	case apperror.CodeValidation, apperror.CodeOrgInvalidSlug, apperror.CodeOrgInvalidName:
+	switch apperror.KindOf(code) {
+	case apperror.KindInvalid:
 		return connect.CodeInvalidArgument
-	case apperror.CodeNotFound, apperror.CodeOrgNotFound:
+	case apperror.KindNotFound:
 		return connect.CodeNotFound
-	case apperror.CodeAlreadyExists, apperror.CodeOrgAlreadyExists:
+	case apperror.KindAlreadyExists:
 		return connect.CodeAlreadyExists
-	case apperror.CodeUnexpected:
+	case apperror.KindUnauthenticated:
+		return connect.CodeUnauthenticated
+	case apperror.KindForbidden:
+		return connect.CodePermissionDenied
+	case apperror.KindFailedPrecondition:
+		return connect.CodeFailedPrecondition
+	case apperror.KindUnknown, apperror.KindInternal:
 		return connect.CodeInternal
 	default:
 		return connect.CodeInternal
