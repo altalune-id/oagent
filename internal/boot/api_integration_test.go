@@ -15,17 +15,21 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/config"
 	agentv1 "altalune.id/oagent/gen/go/agent/v1"
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
+	apikeyv1 "altalune.id/oagent/gen/go/apikey/v1"
+	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	authv1 "altalune.id/oagent/gen/go/auth/v1"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org"
@@ -197,4 +201,84 @@ func TestAPI_CreateRefusesAnotherOrgsProject(t *testing.T) {
 		OrgId: sys.ID.String(), ProjectId: foreign.ID.String(), Slug: "bot", Name: "Bot",
 	}))
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func (f *apiFixture) memberCookie(t *testing.T) (string, uuid.UUID) {
+	t.Helper()
+	ctx := t.Context()
+	u, err := f.svcs.Users.Create(ctx, user.CreateRequest{Email: "member@example.com", Name: "Mem", Password: "member-password"})
+	require.NoError(t, err)
+	sys, err := f.svcs.Orgs.System(ctx)
+	require.NoError(t, err)
+	_, err = f.svcs.Members.Add(ctx, sys.ID, u.ID, member.RoleMember)
+	require.NoError(t, err)
+	p, err := f.svcs.Auth.LoginLocal(ctx, authCredentials("member@example.com", "member-password"))
+	require.NoError(t, err)
+	sid, err := session.NewID()
+	require.NoError(t, err)
+	require.NoError(t, f.svcs.Sessions.Save(ctx, sid, p, time.Now().Add(time.Hour)))
+	return session.CookieName + "=" + session.Sign(f.svcs.StateSecret, sid), u.ID
+}
+
+func withCookie[T any](req *connect.Request[T], cookie string) *connect.Request[T] {
+	req.Header().Set("Cookie", cookie)
+	return req
+}
+
+// Review Focus 4: a member mints and revokes only their own personal keys, never wider than their role.
+func TestAPI_MemberManagesOwnPersonalKeys(t *testing.T) {
+	f := newAPIFixture(t)
+	cookie, memberID := f.memberCookie(t)
+	keys := apikeyv1connect.NewAPIKeyServiceClient(http.DefaultClient, f.url)
+	exp := timestamppb.New(time.Now().Add(time.Hour))
+	create := func(kind string, scopes ...string) (*apikeyv1.CreateAPIKeyResponse, error) {
+		resp, err := keys.CreateAPIKey(context.Background(), withCookie(connect.NewRequest(&apikeyv1.CreateAPIKeyRequest{
+			OrgId: f.orgID, Kind: kind, Name: "k", Scopes: scopes, AllProjects: true, ExpiresAt: exp,
+		}), cookie))
+		if err != nil {
+			return nil, err
+		}
+		return resp.Msg, nil
+	}
+
+	mine, err := create("personal", "agent:read")
+	require.NoError(t, err)
+	assert.Equal(t, memberID.String(), f.ownerOf(t, mine.GetKey().GetId()))
+
+	_, err = create("personal", "org:write")
+	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "above the member role")
+	_, err = create("personal", "apikey:write")
+	require.Error(t, err, "person-only scope")
+	_, err = create("org", "agent:read")
+	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "org keys need apikey:write")
+
+	revoke := func(id string) error {
+		_, err := keys.RevokeAPIKey(context.Background(), withCookie(connect.NewRequest(&apikeyv1.RevokeAPIKeyRequest{OrgId: f.orgID, Id: id}), cookie))
+		return err
+	}
+	orgKey := f.mint(t, apikey.KindOrg, "agent:read")
+	orgKeyID := f.keyIDOf(t, orgKey)
+	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(revoke(orgKeyID)))
+	ownersKey := f.mint(t, apikey.KindPersonal, "agent:read")
+	assert.Equal(t, connect.CodeNotFound, connect.CodeOf(revoke(f.keyIDOf(t, ownersKey))))
+	require.NoError(t, revoke(mine.GetKey().GetId()))
+
+	_, err = keys.CreateAPIKey(context.Background(), withBearer(connect.NewRequest(&apikeyv1.CreateAPIKeyRequest{
+		OrgId: f.orgID, Kind: "org", Name: "k", Scopes: []string{"agent:read"}, AllProjects: true, ExpiresAt: exp,
+	}), orgKey))
+	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "a key never mints keys")
+}
+
+func (f *apiFixture) keyIDOf(t *testing.T, plain string) string {
+	t.Helper()
+	p, err := f.svcs.KeyAuthn.Authenticate(t.Context(), authn.Credential{Kind: authn.KindAPIKey, Token: plain})
+	require.NoError(t, err)
+	return p.KeyID.String()
+}
+
+func (f *apiFixture) ownerOf(t *testing.T, id string) string {
+	t.Helper()
+	var owner string
+	require.NoError(t, f.db.QueryRowContext(t.Context(), `SELECT created_by::text FROM api_keys WHERE id = $1`, id).Scan(&owner))
+	return owner
 }

@@ -12,6 +12,7 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/apikey"
+	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/testutil/fakes"
 	"altalune.id/oagent/scope"
 )
@@ -136,20 +137,20 @@ func TestService_Revoke(t *testing.T) {
 	k, _, err := apikey.NewScheme("").MintOrg(orgID, "x", nil, apikey.ProjectGrant{All: true}, future(), time.Now().UTC())
 	require.NoError(t, err)
 	store := &fakes.APIKeyStore{Key: k}
-	require.NoError(t, newService(store, stubProjects{}).Revoke(context.Background(), orgID, k.ID, uuid.Nil))
+	require.NoError(t, newService(store, stubProjects{}).Revoke(context.Background(), orgID, k.ID, uuid.Nil, true))
 	assert.NotNil(t, store.Saved.RevokedAt)
 }
 
 func TestService_Revoke_WrongOrg(t *testing.T) {
 	k, _, err := apikey.NewScheme("").MintOrg(uuid.New(), "x", nil, apikey.ProjectGrant{All: true}, future(), time.Now().UTC())
 	require.NoError(t, err)
-	err = newService(&fakes.APIKeyStore{Key: k}, stubProjects{}).Revoke(context.Background(), uuid.New(), k.ID, uuid.Nil)
+	err = newService(&fakes.APIKeyStore{Key: k}, stubProjects{}).Revoke(context.Background(), uuid.New(), k.ID, uuid.Nil, true)
 	assert.IsType(t, &apikey.NotFoundError{}, err)
 }
 
 func TestService_Revoke_NotFound(t *testing.T) {
 	store := &fakes.APIKeyStore{Err: &apikey.NotFoundError{ID: "x"}}
-	err := newService(store, stubProjects{}).Revoke(context.Background(), uuid.New(), uuid.New(), uuid.Nil)
+	err := newService(store, stubProjects{}).Revoke(context.Background(), uuid.New(), uuid.New(), uuid.Nil, true)
 	assert.True(t, apikey.IsNotFoundError(err))
 }
 
@@ -159,7 +160,7 @@ func TestService_Revoke_SaveError(t *testing.T) {
 	require.NoError(t, err)
 	store := &fakes.APIKeyStore{Key: k, SaveFn: func(*apikey.APIKey) error { return errors.New("boom") }}
 
-	err = newService(store, stubProjects{}).Revoke(context.Background(), orgID, k.ID, uuid.Nil)
+	err = newService(store, stubProjects{}).Revoke(context.Background(), orgID, k.ID, uuid.Nil, true)
 	_, ok := apperror.AsAppError(err)
 	assert.True(t, ok)
 }
@@ -181,4 +182,25 @@ func TestService_Create_ProjectKeyProjectMustBelongToOrg(t *testing.T) {
 		OrgID: uuid.New(), ProjectID: mine, Kind: apikey.KindProject, Name: "ci", Scopes: []string{scope.AgentRead}, ExpiresAt: future(),
 	})
 	require.NoError(t, err)
+}
+
+func TestService_Revoke_OwnPersonalKeyWithoutManage(t *testing.T) {
+	orgID, me := uuid.New(), uuid.New()
+	mine, _ := personalKey(t, orgID, me)
+	store := &fakes.APIKeyStore{Key: mine}
+	require.NoError(t, newService(store, stubProjects{}).Revoke(context.Background(), orgID, mine.ID, me, false))
+	assert.NotNil(t, store.Saved.RevokedAt)
+}
+
+func TestService_Revoke_OtherKeysNeedManage(t *testing.T) {
+	orgID, me := uuid.New(), uuid.New()
+	k, _, err := apikey.NewScheme("").MintOrg(orgID, "ci", nil, apikey.ProjectGrant{All: true}, future(), time.Now().UTC())
+	require.NoError(t, err)
+	store := &fakes.APIKeyStore{Key: k}
+
+	err = newService(store, stubProjects{}).Revoke(context.Background(), orgID, k.ID, me, false)
+	forbidden, ok := errors.AsType[*authz.ForbiddenError](err)
+	require.True(t, ok, "%v", err)
+	assert.Equal(t, scope.ApikeyWrite, forbidden.Permission)
+	assert.Nil(t, store.Saved)
 }

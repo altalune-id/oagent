@@ -160,11 +160,11 @@ func TestService_Revoke_OthersPersonalKeyIsNotFound(t *testing.T) {
 	theirs, _ := personalKey(t, orgID, other)
 	store := &fakes.APIKeyStore{Key: theirs}
 
-	err := newService(store, stubProjects{}).Revoke(context.Background(), orgID, theirs.ID, me)
+	err := newService(store, stubProjects{}).Revoke(context.Background(), orgID, theirs.ID, me, true)
 	assert.True(t, apikey.IsNotFoundError(err))
 	assert.Nil(t, store.Saved)
 
-	require.NoError(t, newService(store, stubProjects{}).Revoke(context.Background(), orgID, theirs.ID, other))
+	require.NoError(t, newService(store, stubProjects{}).Revoke(context.Background(), orgID, theirs.ID, other, false))
 	assert.NotNil(t, store.Saved.RevokedAt)
 }
 

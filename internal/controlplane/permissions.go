@@ -32,8 +32,8 @@ func PermissionTable() authn.PermissionTable {
 		agentv1connect.AgentServiceDeleteAgentProcedure: scope.AgentWrite,
 
 		apikeyv1connect.APIKeyServiceListAPIKeysProcedure:  scope.ApikeyRead,
-		apikeyv1connect.APIKeyServiceCreateAPIKeyProcedure: scope.ApikeyWrite,
-		apikeyv1connect.APIKeyServiceRevokeAPIKeyProcedure: scope.ApikeyWrite,
+		apikeyv1connect.APIKeyServiceCreateAPIKeyProcedure: authz.AnyAuthenticated,
+		apikeyv1connect.APIKeyServiceRevokeAPIKeyProcedure: authz.AnyAuthenticated,
 
 		webhookv1connect.WebhookServiceGetWebhookProcedure:                   scope.WebhookRead,
 		webhookv1connect.WebhookServiceListWebhooksProcedure:                 scope.WebhookRead,

@@ -64,8 +64,8 @@ func TestPermissionTable_Spec15(t *testing.T) {
 		"/webhook.v1.WebhookService/RotateWebhookSecret":          "webhook:write",
 		"/webhook.v1.WebhookService/RetryFailedWebhookDeliveries": "webhook:write",
 		"/apikey.v1.APIKeyService/ListAPIKeys":                    "apikey:read",
-		"/apikey.v1.APIKeyService/CreateAPIKey":                   "apikey:write",
-		"/apikey.v1.APIKeyService/RevokeAPIKey":                   "apikey:write",
+		"/apikey.v1.APIKeyService/CreateAPIKey":                   authz.AnyAuthenticated,
+		"/apikey.v1.APIKeyService/RevokeAPIKey":                   authz.AnyAuthenticated,
 		"/auth.v1.AuthService/Whoami":                             authz.AnyAuthenticated,
 	} {
 		assert.Equal(t, want, table[proc], proc)

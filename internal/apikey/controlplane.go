@@ -14,6 +14,7 @@ import (
 	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/scope"
 )
 
 // APIKeyService implements apikey.v1.APIKeyService.
@@ -59,8 +60,11 @@ func (s *APIKeyService) CreateAPIKey(
 	}
 	kind := Kind(req.Msg.GetKind())
 	p := session.PrincipalFrom(ctx)
-	if kind == KindPersonal && !p.IsPerson() {
+	switch {
+	case kind == KindPersonal && !p.IsPerson():
 		return nil, &authn.UnauthorizedError{}
+	case kind != KindPersonal && !manages(p):
+		return nil, &authz.ForbiddenError{Permission: scope.ApikeyWrite}
 	}
 	var createdBy uuid.UUID
 	if p.IsPerson() {
@@ -127,10 +131,20 @@ func (s *APIKeyService) RevokeAPIKey(
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid key id").WithCause(err)
 	}
-	if err := s.keys.Revoke(ctx, orgID, id, session.PrincipalFrom(ctx).UserID); err != nil {
+	p := session.PrincipalFrom(ctx)
+	manage := manages(p)
+	if !manage && !p.IsPerson() {
+		return nil, &authz.ForbiddenError{Permission: scope.ApikeyWrite}
+	}
+	if err := s.keys.Revoke(ctx, orgID, id, p.UserID, manage); err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&apikeyv1.RevokeAPIKeyResponse{}), nil
+}
+
+// SECURITY: a member manages only their own personal keys; other keys need apikey:write. No Principal (pre-lockdown) manages all.
+func manages(p session.Principal) bool {
+	return p.Source == "" || authz.Allowed(p, scope.ApikeyWrite)
 }
 
 func keyToProto(k *APIKey) *apikeyv1.APIKey {

@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/scope"
 )
@@ -181,14 +182,17 @@ func (s *Service) List(ctx context.Context, orgID, viewer uuid.UUID) ([]*APIKey,
 	return out, nil
 }
 
-// Revoke marks a key revoked; another person's personal key is reported as not found.
-func (s *Service) Revoke(ctx context.Context, orgID, id, viewer uuid.UUID) error {
+// Revoke marks a key revoked; another person's personal key is not found, and any key but the viewer's own needs manage.
+func (s *Service) Revoke(ctx context.Context, orgID, id, viewer uuid.UUID, manage bool) error {
 	k, err := s.store.ByID(ctx, id)
 	if err != nil {
 		return s.errOrReport(ctx, "apikey: revoke", err)
 	}
 	if k.OrgID != orgID || !visibleTo(k, viewer) {
 		return &NotFoundError{ID: id.String()}
+	}
+	if !manage && (k.Kind != KindPersonal || k.CreatedBy != viewer) {
+		return &authz.ForbiddenError{Permission: scope.ApikeyWrite}
 	}
 	k.Revoke(s.now())
 	if err := s.store.Save(ctx, k); err != nil {
