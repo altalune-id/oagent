@@ -5,6 +5,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/agent"
+	"altalune.id/oagent/internal/apiclient"
 	"altalune.id/oagent/internal/cli"
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/org"
@@ -27,8 +29,9 @@ func TestRoot_OrgGet_Remote(t *testing.T) {
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
 
-	clientFn := func(context.Context, config.Config, *slog.Logger, string, string) (*controlplane.Client, error) {
-		return controlplane.NewClient(ts.URL, ""), nil
+	t.Setenv("OAGENT_CLI_SESSION_FILE", filepath.Join(t.TempDir(), "session.json"))
+	clientFn := func(context.Context, config.Config, *slog.Logger, string, apiclient.Credential) (*apiclient.Client, error) {
+		return apiclient.New(ts.URL, apiclient.Credential{}), nil
 	}
 	buf := new(bytes.Buffer)
 	root := cli.NewRootCmd(nil, clientFn)
@@ -47,8 +50,9 @@ func TestRoot_ProjectGet_Remote(t *testing.T) {
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
 
-	clientFn := func(context.Context, config.Config, *slog.Logger, string, string) (*controlplane.Client, error) {
-		return controlplane.NewClient(ts.URL, ""), nil
+	t.Setenv("OAGENT_CLI_SESSION_FILE", filepath.Join(t.TempDir(), "session.json"))
+	clientFn := func(context.Context, config.Config, *slog.Logger, string, apiclient.Credential) (*apiclient.Client, error) {
+		return apiclient.New(ts.URL, apiclient.Credential{}), nil
 	}
 	buf := new(bytes.Buffer)
 	root := cli.NewRootCmd(nil, clientFn)
@@ -67,8 +71,9 @@ func TestRoot_AgentGet_Remote(t *testing.T) {
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
 
-	clientFn := func(context.Context, config.Config, *slog.Logger, string, string) (*controlplane.Client, error) {
-		return controlplane.NewClient(ts.URL, ""), nil
+	t.Setenv("OAGENT_CLI_SESSION_FILE", filepath.Join(t.TempDir(), "session.json"))
+	clientFn := func(context.Context, config.Config, *slog.Logger, string, apiclient.Credential) (*apiclient.Client, error) {
+		return apiclient.New(ts.URL, apiclient.Credential{}), nil
 	}
 	buf := new(bytes.Buffer)
 	root := cli.NewRootCmd(nil, clientFn)

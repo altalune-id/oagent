@@ -24,17 +24,17 @@ func parsedRoot(t *testing.T, args ...string) *cobra.Command {
 }
 
 func TestResolveURL_Flag(t *testing.T) {
-	assert.Equal(t, "http://flag", resolveURL(parsedRoot(t, "y", "--url", "http://flag")))
+	assert.Equal(t, "http://flag", resolveURL(parsedRoot(t, "y", "--url", "http://flag"), nil))
 }
 
 func TestResolveURL_Env(t *testing.T) {
 	t.Setenv("OAGENT_URL", "http://env")
-	assert.Equal(t, "http://env", resolveURL(parsedRoot(t, "y")))
+	assert.Equal(t, "http://env", resolveURL(parsedRoot(t, "y"), nil))
 }
 
 func TestResolveURL_Default(t *testing.T) {
 	t.Setenv("OAGENT_URL", "")
-	assert.Equal(t, DefaultURL, resolveURL(parsedRoot(t, "y")))
+	assert.Equal(t, DefaultURL, resolveURL(parsedRoot(t, "y"), nil))
 }
 
 func TestResolveToken_Flag(t *testing.T) {

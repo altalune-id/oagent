@@ -10,10 +10,13 @@ import (
 // DefaultURL is the hosted oagent API used when nothing else is configured.
 const DefaultURL = "https://oagent.altalune.id"
 
-// resolveURL precedence: --url > OAGENT_URL > config http.baseURL > DefaultURL.
-func resolveURL(cmd *cobra.Command) string {
+// NOTE: precedence is --url > OAGENT_URL > the profile's URL > config http.baseURL > DefaultURL.
+func resolveURL(cmd *cobra.Command, p *profile) string {
 	if v := explicitURL(cmd); v != "" {
 		return v
+	}
+	if p != nil && p.URL != "" {
+		return p.URL
 	}
 	if cfg := configFromCtx(cmd.Context()); cfg != nil && cfg.HTTP.BaseURL != "" {
 		return cfg.HTTP.BaseURL

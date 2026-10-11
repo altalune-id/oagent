@@ -13,13 +13,15 @@ import (
 	"altalune.id/oagent/config"
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
+	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
 	"altalune.id/oagent/internal/agent"
+	"altalune.id/oagent/internal/apiclient"
 	"altalune.id/oagent/internal/apikey"
+	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/boot"
-	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/webhook"
@@ -38,7 +40,9 @@ type App interface {
 type ServerBootFn func(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...boot.Option) (App, error)
 
 // ClientBootFn builds the remote client graph admin commands use (no DB).
-type ClientBootFn func(ctx context.Context, cfg config.Config, log *slog.Logger, baseURL, token string) (*controlplane.Client, error)
+type ClientBootFn func(
+	ctx context.Context, cfg config.Config, log *slog.Logger, baseURL string, cred apiclient.Credential,
+) (*apiclient.Client, error)
 
 type ctxKey int
 
@@ -71,6 +75,7 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 	p.String("url", "", "remote oagent base URL (also: OAGENT_URL)")
 	p.String("token", "", "bearer token (also: OAGENT_TOKEN)")
 	p.String("token-file", "", "read the bearer token from a file")
+	p.String("profile", "", "signed-in profile to use (also: OAGENT_PROFILE; default \"default\")")
 	p.String("output", "", "output format: text|json|ndjson (also: OAGENT_OUTPUT)")
 	registerConfigFlags(p)
 
@@ -126,9 +131,13 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 	webhookCmd := webhook.NewCmd(webhookClientFn(bootClient))
 	markClientTree(webhookCmd)
 
+	authCmd := auth.NewCmd(sessionProfiles{}, authClientFn(bootClient), authSessionClientFn(bootClient))
+	markClientTree(authCmd)
+
 	root.AddCommand(
 		newServeCmd(bootServer),
 		newMCPCmd(bootServer),
+		authCmd,
 		orgCmd,
 		projectCmd,
 		agentCmd,
@@ -155,17 +164,16 @@ func configFromCtx(ctx context.Context) *config.Config {
 	return rt.cfg
 }
 
-// connectClient resolves URL, token and config, then builds the remote client.
-func connectClient(cmd *cobra.Command, bootClient ClientBootFn) (*controlplane.Client, error) {
+func connectClient(cmd *cobra.Command, bootClient ClientBootFn) (*apiclient.Client, error) {
 	rt, err := runtimeFromCtx(cmd.Context())
 	if err != nil {
 		return nil, err
 	}
-	token, err := resolveToken(cmd)
+	r, err := resolveRemote(cmd)
 	if err != nil {
 		return nil, err
 	}
-	return bootClient(cmd.Context(), *rt.cfg, rt.log, resolveURL(cmd), token)
+	return bootClient(cmd.Context(), *rt.cfg, rt.log, r.url, r.cred)
 }
 
 // orgClientFn adapts the resolved remote client to the org package's ClientFn.
@@ -220,6 +228,38 @@ func webhookClientFn(bootClient ClientBootFn) webhook.ClientFn {
 			return nil, err
 		}
 		return client.Webhooks, nil
+	}
+}
+
+func authClientFn(bootClient ClientBootFn) auth.ClientFn {
+	return func(cmd *cobra.Command) (authv1connect.AuthServiceClient, bool, error) {
+		rt, err := runtimeFromCtx(cmd.Context())
+		if err != nil {
+			return nil, false, err
+		}
+		r, err := resolveRemote(cmd)
+		if err != nil {
+			return nil, false, err
+		}
+		client, err := bootClient(cmd.Context(), *rt.cfg, rt.log, r.url, r.cred)
+		if err != nil {
+			return nil, false, err
+		}
+		return client.Auth, r.fromProfile(), nil
+	}
+}
+
+func authSessionClientFn(bootClient ClientBootFn) auth.SessionClientFn {
+	return func(cmd *cobra.Command, url, sid string) (authv1connect.AuthServiceClient, error) {
+		rt, err := runtimeFromCtx(cmd.Context())
+		if err != nil {
+			return nil, err
+		}
+		client, err := bootClient(cmd.Context(), *rt.cfg, rt.log, url, apiclient.Credential{Session: sid})
+		if err != nil {
+			return nil, err
+		}
+		return client.Auth, nil
 	}
 }
 

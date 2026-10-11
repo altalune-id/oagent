@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
+	"altalune.id/oagent/internal/apiclient"
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/testutil/fakes"
@@ -21,7 +22,7 @@ func projectClient(t *testing.T, store project.Store) projectv1connect.ProjectSe
 	srv := controlplane.New(controlplane.Services{Projects: project.NewService(store, nil)}, nil, controlplane.Options{})
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
-	return controlplane.NewClient(ts.URL, "").Projects
+	return apiclient.New(ts.URL, apiclient.Credential{}).Projects
 }
 
 func runProject(t *testing.T, client projectv1connect.ProjectServiceClient, args ...string) (*bytes.Buffer, error) {

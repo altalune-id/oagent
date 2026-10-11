@@ -12,6 +12,7 @@ import (
 
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	"altalune.id/oagent/internal/agent"
+	"altalune.id/oagent/internal/apiclient"
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/testutil/fakes"
 )
@@ -21,7 +22,7 @@ func agentClient(t *testing.T, store agent.Store) agentv1connect.AgentServiceCli
 	srv := controlplane.New(controlplane.Services{Agents: agent.NewService(store, nil)}, nil, controlplane.Options{})
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
-	return controlplane.NewClient(ts.URL, "").Agents
+	return apiclient.New(ts.URL, apiclient.Credential{}).Agents
 }
 
 func runAgent(t *testing.T, client agentv1connect.AgentServiceClient, args ...string) (*bytes.Buffer, error) {

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
+	"altalune.id/oagent/internal/apiclient"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/testutil/fakes"
@@ -23,7 +24,7 @@ func apiKeyClient(t *testing.T, store apikey.Store) apikeyv1connect.APIKeyServic
 	srv := controlplane.New(controlplane.Services{APIKeys: svc}, nil, controlplane.Options{})
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
-	return controlplane.NewClient(ts.URL, "").APIKeys
+	return apiclient.New(ts.URL, apiclient.Credential{}).APIKeys
 }
 
 func runAPIKey(t *testing.T, client apikeyv1connect.APIKeyServiceClient, args ...string) (*bytes.Buffer, error) {

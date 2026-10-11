@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/spf13/cobra"
 
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org"
@@ -40,6 +41,16 @@ type OrgGetter interface {
 // UserGetter loads a user by id.
 type UserGetter interface {
 	ByID(ctx context.Context, id uuid.UUID) (*user.User, error)
+}
+
+// CLIProfiles is the CLI's store of signed-in profiles; internal/cli implements it over cli.sessionFile.
+type CLIProfiles interface {
+	// Target names the selected profile and the server URL a login signs in to.
+	Target(cmd *cobra.Command) (profile, url string, err error)
+	// Current returns the selected profile's session, or nil when it has none.
+	Current(cmd *cobra.Command) (profile string, s *CLISession, err error)
+	Save(cmd *cobra.Command, s CLISession) error
+	Remove(cmd *cobra.Command) error
 }
 
 // Deps are the ports a Service reads from.

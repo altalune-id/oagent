@@ -23,6 +23,12 @@ type Config struct {
 	Auth       AuthConfig       `yaml:"auth"      mapstructure:"auth"`
 	Install    InstallConfig    `yaml:"install"    mapstructure:"install"`
 	Compliance ComplianceConfig `yaml:"compliance" mapstructure:"compliance"`
+	CLI        CLIConfig        `yaml:"cli"        mapstructure:"cli"`
+}
+
+// CLIConfig configures the oagent CLI; SessionFile may start with "~/", expanded when used.
+type CLIConfig struct {
+	SessionFile string `yaml:"sessionFile" mapstructure:"sessionFile"`
 }
 
 // ComplianceConfig configures the legal pages; an empty URL serves the embedded document.

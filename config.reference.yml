@@ -37,6 +37,10 @@ auth:
   # env: OAGENT_AUTH_SESSION_TTL
   sessionTTL: 24h
 
+cli:
+  # env: OAGENT_CLI_SESSION_FILE
+  sessionFile: ~/.oagent/session.json
+
 compliance:
   # env: OAGENT_COMPLIANCE_PRIVACY_URL
   privacyURL: ""

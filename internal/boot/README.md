@@ -29,7 +29,8 @@ flowchart TD
 
 `App.Run` starts the supervisor (`serve`). `App.RunMCP` serves MCP over stdio
 instead (`oagent mcp`). `BootRemote` (`remote.go`) is the CLI side: config, a
-logger and a Connect client to a running server, with no database.
+logger and a Connect client (`internal/apiclient`) to a running server, with no
+database.
 
 ## Request flow
 
@@ -39,6 +40,7 @@ service. Every service writes through its own store.
 ```mermaid
 flowchart TD
     CLI["oagent CLI"] -- Connect client --> API
+    CLI -- "auth login / logout" --> WEB
     API["/api"] --> G1[InstallGate] --> C1[CrossOrigin] --> I1["RequestID, OTel, Wrap"] --> I2["authn + permission"] --> I3[tenantFromPrincipal] --> DC
     WEB["web routes"] --> G2[InstallGate] --> C2[CrossOrigin] --> S2[Session] --> W2[WelcomeGate] --> DW
     CON["/console"] --> G3[InstallGate] --> S3[Session] --> W3[WelcomeGate] --> SPA[console SPA]
@@ -67,7 +69,7 @@ flowchart TD
 | `apikey` | project (ids), member (owner roles) | ✓ | — | — |
 | `webhook` | project + org (refs), project (org of project), outbox | ✓ | ✓ | — |
 | `user` | — | — | — | — |
-| `auth` | user, member, org, project, sessions | whoami only | — | `/login`, `/logout` |
+| `auth` | user, member, org, project, sessions | whoami; CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | — | `/login`, `/logout` |
 | `install` | user, org, member, project; auth (sign-in) | — | — | `/install` + `InstallGate` |
 | `legal` | user (accept terms), auth (rotate session) | — | — | `/terms`, `/privacy`, `/welcome` + `WelcomeGate` |
 | `health` | readiness checks (db-health monitor) | — | — | `/healthz`, `/readyz` (probes slot, root-anchored) |
@@ -75,6 +77,12 @@ flowchart TD
 Every domain follows the same file layout: `<domain>.go`, `errors.go`,
 `ports.go`, `store.go` + `pg*.go`, `service.go`, then one file per surface
 (`controlplane.go`, `cli.go`, `web.go`), with templ in `<domain>/views`.
+
+`internal/cli` is only the CLI shell: the root command, flags, config, and the
+URL, token, profile and session-file resolution. Each domain's command tree is
+its `cli.go` (`NewCmd`). Domains never import `internal/cli`, `internal/boot`,
+`internal/controlplane` or `internal/web` (only `internal/web/layout`); the CLI's
+Connect client lives in `internal/apiclient`, which imports no domain.
 
 ## Service wiring
 
@@ -160,7 +168,7 @@ The supervisor runs these next to the HTTP server.
 2. In `services.go`, add the store and service to `Services` and build them in `buildServices`.
 3. For each surface it has:
    - **Connect:** `controlplane.Services` + `server.go`, and every RPC in `controlplane/permissions.go`.
-   - **CLI:** `internal/cli/root.go`.
+   - **CLI:** `<domain>/cli.go` (`NewCmd`), added in `internal/cli/root.go`.
    - **MCP:** `mcp.go`.
    - **Web:** `buildRoutes` in `http.go`.
    - **Readiness:** pass its check to `health.NewService` in `boot.go`.

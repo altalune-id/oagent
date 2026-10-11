@@ -9,9 +9,9 @@ import (
 	"syscall"
 
 	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/apiclient"
 	"altalune.id/oagent/internal/boot"
 	"altalune.id/oagent/internal/cli"
-	"altalune.id/oagent/internal/controlplane"
 )
 
 func main() {
@@ -34,8 +34,10 @@ func bootApp(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...b
 	return boot.Boot(ctx, cfg, log, opts...)
 }
 
-func remoteApp(ctx context.Context, cfg config.Config, log *slog.Logger, baseURL, token string) (*controlplane.Client, error) {
-	r, err := boot.BootRemote(ctx, cfg, log, baseURL, token)
+func remoteApp(
+	ctx context.Context, cfg config.Config, log *slog.Logger, baseURL string, cred apiclient.Credential,
+) (*apiclient.Client, error) {
+	r, err := boot.BootRemote(ctx, cfg, log, baseURL, cred)
 	if err != nil {
 		return nil, err
 	}

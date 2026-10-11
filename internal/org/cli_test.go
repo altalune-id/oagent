@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
+	"altalune.id/oagent/internal/apiclient"
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/testutil/fakes"
@@ -21,7 +22,7 @@ func orgClient(t *testing.T, store org.Store) orgv1connect.OrgServiceClient {
 	srv := controlplane.New(controlplane.Services{Orgs: org.NewService(store, nil)}, nil, controlplane.Options{})
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
-	return controlplane.NewClient(ts.URL, "").Org
+	return apiclient.New(ts.URL, apiclient.Credential{}).Org
 }
 
 func runOrg(t *testing.T, client orgv1connect.OrgServiceClient, args ...string) (*bytes.Buffer, error) {

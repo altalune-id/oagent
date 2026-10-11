@@ -57,3 +57,14 @@ func TestRenderError_Plain(t *testing.T) {
 	RenderError(root, errors.New("boom"))
 	assert.Contains(t, buf.String(), "error: boom")
 }
+
+func TestRenderError_UnauthenticatedHint(t *testing.T) {
+	cerr := connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	det, _ := connect.NewErrorDetail(&apperrorv1.ErrorDetail{Code: string(apperror.CodeUnauthenticated)})
+	cerr.AddDetail(det)
+
+	root, buf := renderRoot(t, "text")
+	RenderError(root, cerr)
+	assert.Contains(t, buf.String(), "not signed in or credential rejected; run `oagent auth login` or pass --token (GEN002)")
+	assert.Equal(t, ExitUnauth, ExitCodeFor(cerr))
+}

@@ -30,6 +30,9 @@ func ExitCodeFor(err error) int {
 	if code, ok := connectErrorCode(err); ok {
 		return exitCode(code)
 	}
+	if connect.CodeOf(err) == connect.CodeUnauthenticated {
+		return ExitUnauth
+	}
 	return ExitGeneral
 }
 
@@ -59,7 +62,7 @@ func exitCode(code apperror.Code) int {
 		return ExitNotFound
 	case apperror.CodeAlreadyExists, apperror.CodeOrgAlreadyExists:
 		return ExitAlreadyExists
-	case apperror.CodeTenantMissing:
+	case apperror.CodeTenantMissing, apperror.CodeUnauthenticated, apperror.CodeAuthInvalidCredentials:
 		return ExitUnauth
 	default:
 		return ExitGeneral
