@@ -46,8 +46,8 @@ flowchart TD
     WEB["web routes"] --> G2[InstallGate] --> C2[CrossOrigin] --> S2[Session] --> W2[WelcomeGate] --> DW
     CON["/console"] --> G3[InstallGate] --> S3[Session] --> W3[WelcomeGate] --> SPA[console SPA]
     SPA -. calls .-> API
-    MCPH["/mcp HTTP"] --> G4[InstallGate] --> DC
-    MCPS["oagent mcp stdio"] --> DC
+    MCPH["/mcp HTTP"] --> G4[InstallGate] --> A4["mcp.Authenticate: key or Basic, no cookie"] --> T4["tool scope check"] --> DC
+    MCPS["oagent mcp stdio"] --> SYS["session.System() Principal"] --> T4
     LB["/healthz, /readyz"] --> HW["health web.go (no gate, session or CSRF)"] --> HS["health service.go"] --> DBH["db-health monitor"]
 
     DC["domain controlplane.go"] --> SVC["domain service.go"]
@@ -57,7 +57,8 @@ flowchart TD
 
 - **Reach:** after the permission check, each `controlplane.go` checks that the caller reaches the org, project or resource (`kernel/authz.Reach*`). Out of reach answers 404.
 - **MCP:** tools are generated from the same Connect services, so MCP and `/api` share one handler per RPC.
-- **Not yet authenticated:** MCP still runs with all scopes (`mcpinternal.AllScopes`) until plan 5.
+- **MCP scopes:** `tools/list` and `tools/call` both check the tool's scope against the caller's expanded permissions (`mcpinternal.ScopesFromContext`). Until the lockdown, no Principal holds every scope.
+- **stdio:** `oagent mcp` runs as `session.System()`, an operator, never as "no Principal".
 
 ## Domains and their surfaces
 
@@ -70,7 +71,7 @@ flowchart TD
 | `apikey` | project (ids), member (owner roles) | ✓ | — | — |
 | `webhook` | project + org (refs), project (org of project), outbox | ✓ | ✓ | — |
 | `user` | — | CLI `user set-password` (operator, boots the `App`) | — | — |
-| `auth` | user, member, org, project, sessions, passwords | whoami; CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | — | `/login`, `/logout` |
+| `auth` | user, member, org, project, sessions, passwords | whoami; CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | `auth_whoami` | `/login`, `/logout` |
 | `install` | user, org, member, project; auth (sign-in) | — | — | `/install` + `InstallGate` |
 | `legal` | user (accept terms), auth (rotate session) | — | — | `/terms`, `/privacy`, `/welcome` + `WelcomeGate` |
 | `health` | readiness checks (db-health monitor) | — | — | `/healthz`, `/readyz` (probes slot, root-anchored) |
@@ -156,7 +157,7 @@ The supervisor runs these next to the HTTP server.
 | `boot.go` | `Boot`: the order above |
 | `services.go` | `Services` and every domain service, plus the port adapters |
 | `auth.go` | secrets, session store, first boot, install state |
-| `http.go` | API handler and its authn chain, web routes, session middleware, CSRF, the HTTP handler |
+| `http.go` | API and MCP handlers and their authn chains, web routes, session middleware, CSRF, the HTTP handler |
 | `mcp.go` | MCP server and its tools |
 | `console.go` | console SPA handler |
 | `outbox.go`, `schedulers.go`, `consumers.go`, `queue.go` | workers |

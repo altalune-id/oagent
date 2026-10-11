@@ -75,7 +75,7 @@ func wireFreezeServer(t *testing.T, opts ...mcp.Option) *mcp.Server {
 }
 
 func TestToolsListWireIsFrozen(t *testing.T) {
-	res, err := connect(t, wireFreezeServer(t)).ListTools(t.Context(), &sdkmcp.ListToolsParams{})
+	res, err := connect(t, wireFreezeServer(t), "posts:read", "posts:write").ListTools(t.Context(), &sdkmcp.ListToolsParams{})
 	if err != nil {
 		t.Fatalf("list tools: %v", err)
 	}
@@ -96,7 +96,7 @@ func wireFreezeUIServer(t *testing.T) *mcp.Server {
 }
 
 func TestToolsListWireIsFrozenWithUI(t *testing.T) {
-	res, err := connect(t, wireFreezeUIServer(t)).ListTools(t.Context(), &sdkmcp.ListToolsParams{})
+	res, err := connect(t, wireFreezeUIServer(t), "posts:read", "posts:write").ListTools(t.Context(), &sdkmcp.ListToolsParams{})
 	if err != nil {
 		t.Fatalf("list tools: %v", err)
 	}

@@ -11,6 +11,7 @@ import (
 const (
 	methodInitialize = "initialize"
 	methodToolsCall  = "tools/call"
+	methodToolsList  = "tools/list"
 )
 
 const (

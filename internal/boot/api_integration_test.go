@@ -36,11 +36,12 @@ import (
 )
 
 type apiFixture struct {
-	db    *sql.DB
-	svcs  *Services
-	url   string
-	owner *user.User
-	orgID string
+	db     *sql.DB
+	svcs   *Services
+	url    string
+	mcpURL string
+	owner  *user.User
+	orgID  string
 }
 
 func newAPIFixture(t *testing.T) *apiFixture {
@@ -62,6 +63,7 @@ func newAPIFixture(t *testing.T) *apiFixture {
 
 	h := buildHTTPHandler(httpSurfaces{
 		api:             buildAPIHandler(svcs, nil, cfg.API, "", testLogger()),
+		mcp:             buildMCPHandler(buildMCPServer(config.MCPConfig{Enabled: true}, svcs, testLogger()), svcs, testLogger()),
 		routes:          buildRoutes(cfg, svcs, nil, nil),
 		session:         buildSessionMiddleware(svcs, nil),
 		installRequired: required,
@@ -73,7 +75,7 @@ func newAPIFixture(t *testing.T) *apiFixture {
 	require.NoError(t, err)
 	sys, err := svcs.Orgs.System(t.Context())
 	require.NoError(t, err)
-	return &apiFixture{db: sqlDB, svcs: svcs, url: ts.URL + "/api", owner: owner, orgID: sys.ID.String()}
+	return &apiFixture{db: sqlDB, svcs: svcs, url: ts.URL + "/api", mcpURL: ts.URL + "/mcp", owner: owner, orgID: sys.ID.String()}
 }
 
 func (f *apiFixture) mint(t *testing.T, kind apikey.Kind, scopes ...string) string {

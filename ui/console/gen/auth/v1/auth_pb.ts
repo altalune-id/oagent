@@ -4,13 +4,14 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import { file_mcp_v1_annotations } from "../../mcp/v1/annotations_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file auth/v1/auth.proto.
  */
 export const file_auth_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChJhdXRoL3YxL2F1dGgucHJvdG8SB2F1dGgudjEiDwoNV2hvYW1pUmVxdWVzdCL2AQoOV2hvYW1pUmVzcG9uc2USDgoGc291cmNlGAEgASgJEg8KB3VzZXJfaWQYAiABKAkSDQoFZW1haWwYAyABKAkSDAoEbmFtZRgEIAEoCRISCgphdmF0YXJfdXJsGAUgASgJEg4KBmtleV9pZBgGIAEoCRIQCghvd25lcl9pZBgHIAEoCRIVCg1hY3RpdmVfb3JnX2lkGAggASgJEhcKD2FjdGl2ZV9vcmdfc2x1ZxgJIAEoCRIZChFhY3RpdmVfcHJvamVjdF9pZBgKIAEoCRITCgtwZXJtaXNzaW9ucxgLIAMoCRIQCghvcGVyYXRvchgMIAEoCDJICgtBdXRoU2VydmljZRI5CgZXaG9hbWkSFi5hdXRoLnYxLldob2FtaVJlcXVlc3QaFy5hdXRoLnYxLldob2FtaVJlc3BvbnNlQn8KC2NvbS5hdXRoLnYxQglBdXRoUHJvdG9QAVooYWx0YWx1bmUuaWQvb2FnZW50L2dlbi9nby9hdXRoL3YxO2F1dGh2MaICA0FYWKoCB0F1dGguVjHKAgdBdXRoXFYx4gITQXV0aFxWMVxHUEJNZXRhZGF0YeoCCEF1dGg6OlYxYgZwcm90bzM");
+  fileDesc("ChJhdXRoL3YxL2F1dGgucHJvdG8SB2F1dGgudjEiDwoNV2hvYW1pUmVxdWVzdCL2AQoOV2hvYW1pUmVzcG9uc2USDgoGc291cmNlGAEgASgJEg8KB3VzZXJfaWQYAiABKAkSDQoFZW1haWwYAyABKAkSDAoEbmFtZRgEIAEoCRISCgphdmF0YXJfdXJsGAUgASgJEg4KBmtleV9pZBgGIAEoCRIQCghvd25lcl9pZBgHIAEoCRIVCg1hY3RpdmVfb3JnX2lkGAggASgJEhcKD2FjdGl2ZV9vcmdfc2x1ZxgJIAEoCRIZChFhY3RpdmVfcHJvamVjdF9pZBgKIAEoCRITCgtwZXJtaXNzaW9ucxgLIAMoCRIQCghvcGVyYXRvchgMIAEoCDKlAQoLQXV0aFNlcnZpY2USlQEKBldob2FtaRIWLmF1dGgudjEuV2hvYW1pUmVxdWVzdBoXLmF1dGgudjEuV2hvYW1pUmVzcG9uc2UiWsrzGFYKC2F1dGhfd2hvYW1pEkJXaG8gdGhpcyBNQ1AgY2xpZW50IGFjdHMgYXM6IHVzZXIgb3Iga2V5LCBhY3RpdmUgb3JnLCBwZXJtaXNzaW9ucy4qA2FwcEJ/Cgtjb20uYXV0aC52MUIJQXV0aFByb3RvUAFaKGFsdGFsdW5lLmlkL29hZ2VudC9nZW4vZ28vYXV0aC92MTthdXRodjGiAgNBWFiqAgdBdXRoLlYxygIHQXV0aFxWMeICE0F1dGhcVjFcR1BCTWV0YWRhdGHqAghBdXRoOjpWMWIGcHJvdG8z", [file_mcp_v1_annotations]);
 
 /**
  * @generated from message auth.v1.WhoamiRequest
@@ -30,7 +31,7 @@ export const WhoamiRequestSchema: GenMessage<WhoamiRequest> = /*@__PURE__*/
  */
 export type WhoamiResponse = Message<"auth.v1.WhoamiResponse"> & {
   /**
-   * local, basic or apikey.
+   * local, basic, apikey or system.
    *
    * @generated from field: string source = 1;
    */

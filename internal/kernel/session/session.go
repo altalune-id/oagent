@@ -18,7 +18,13 @@ const (
 	SourceAPIKey Source = "apikey"
 	SourceOIDC   Source = "oidc"
 	SourceToken  Source = "token"
+	SourceSystem Source = "system"
 )
+
+// System is the Principal of a trusted local process: `oagent mcp` over stdio, run by whoever holds the DB DSN.
+func System() Principal {
+	return Principal{Source: SourceSystem, Name: "stdio", Operator: true}
+}
 
 // Principal is the authenticated caller. SECURITY: Scopes, Operator and reach fields are rebuilt per request, never persisted.
 type Principal struct {

@@ -1,22 +1,23 @@
 package mcp
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
+	authv1mcp "altalune.id/oagent/gen/go/auth/v1/authv1mcp"
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
 	projectv1mcp "altalune.id/oagent/gen/go/project/v1/projectv1mcp"
 	webhookv1mcp "altalune.id/oagent/gen/go/webhook/v1/webhookv1mcp"
+	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/scope"
 )
 
 // TestScopeTableInCatalog guards the MCP tool→scope table against drift from the shared catalog.
 func TestScopeTableInCatalog(t *testing.T) {
 	for tool, sc := range ScopeTable() {
-		assert.True(t, scope.Valid(sc), tool+" -> "+sc)
+		assert.True(t, sc == authz.AnyAuthenticated || scope.Valid(sc), tool+" -> "+sc)
 	}
 }
 
@@ -40,9 +41,7 @@ func TestScopeFor(t *testing.T) {
 	assert.Equal(t, scope.WebhookRead, ScopeFor(webhookv1mcp.WebhookDeliveriesToolName))
 	assert.Equal(t, scope.WebhookWrite, ScopeFor(webhookv1mcp.WebhookRetryFailedToolName))
 
-	assert.Equal(t, "", ScopeFor("unknown"))
-}
+	assert.Equal(t, authz.AnyAuthenticated, ScopeFor(authv1mcp.AuthWhoamiToolName))
 
-func TestAllScopes(t *testing.T) {
-	assert.Equal(t, []string{scope.AgentRead, scope.AgentWrite, scope.OrgRead, scope.OrgWrite, scope.ProjectRead, scope.ProjectWrite, scope.WebhookRead, scope.WebhookWrite}, AllScopes(context.Background()))
+	assert.Equal(t, "", ScopeFor("unknown"))
 }

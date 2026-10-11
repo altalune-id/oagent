@@ -44,3 +44,11 @@ func TestPrincipal_IsPerson(t *testing.T) {
 	assert.False(t, Principal{Source: SourceAPIKey, KeyID: uuid.New()}.IsPerson())
 	assert.False(t, Principal{}.IsPerson())
 }
+
+func TestSystemPrincipal(t *testing.T) {
+	p := System()
+	assert.Equal(t, SourceSystem, p.Source)
+	assert.Equal(t, "stdio", p.Name)
+	assert.True(t, p.Operator)
+	assert.False(t, p.IsPerson())
+}

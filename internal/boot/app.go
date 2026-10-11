@@ -7,6 +7,7 @@ import (
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/kernel/session"
 	rootmcp "altalune.id/oagent/mcp"
 	"altalune.id/oagent/worker"
 )
@@ -26,10 +27,15 @@ func (a *App) Run(ctx context.Context) error { return a.Supervisor.Run(ctx) }
 
 // RunMCP runs the MCP server over stdio until ctx is cancelled or the client disconnects.
 func (a *App) RunMCP(ctx context.Context) error {
+	return a.runMCP(ctx, &sdkmcp.StdioTransport{})
+}
+
+// SECURITY: stdio is trusted (whoever runs it holds the DB DSN), so it acts as the explicit system Principal, never as "no Principal".
+func (a *App) runMCP(ctx context.Context, t sdkmcp.Transport) error {
 	if a.MCP == nil {
 		return errors.New("boot: mcp is disabled (set mcp.enabled)")
 	}
-	return a.MCP.SDK().Run(ctx, &sdkmcp.StdioTransport{})
+	return a.MCP.SDK().Run(session.PrincipalInto(ctx, session.System()), t)
 }
 
 // SetPassword replaces the password of the user with email and signs out every session of theirs.

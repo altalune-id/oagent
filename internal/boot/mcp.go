@@ -6,10 +6,12 @@ import (
 
 	"altalune.id/oagent/config"
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
+	authv1mcp "altalune.id/oagent/gen/go/auth/v1/authv1mcp"
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
 	projectv1mcp "altalune.id/oagent/gen/go/project/v1/projectv1mcp"
 	webhookv1mcp "altalune.id/oagent/gen/go/webhook/v1/webhookv1mcp"
 	"altalune.id/oagent/internal/agent"
+	"altalune.id/oagent/internal/auth"
 	mcpinternal "altalune.id/oagent/internal/mcp"
 	mcpui "altalune.id/oagent/internal/mcp/ui"
 	"altalune.id/oagent/internal/org"
@@ -19,8 +21,7 @@ import (
 	"altalune.id/oagent/version"
 )
 
-// buildMCPServer builds the MCP server, or nil when disabled.
-// SECURITY: the scope check is allow-all (mcpinternal.AllScopes) until the authn/tokens port lands.
+// NOTE: nil when mcp.enabled is off.
 func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger) *rootmcp.Server {
 	if !cfg.Enabled {
 		return nil
@@ -30,11 +31,12 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger) *roo
 	projectv1mcp.RegisterProjectServiceTools(registry, project.NewControlPlane(svcs.Projects), mcpinternal.ScopeFor)
 	agentv1mcp.RegisterAgentServiceTools(registry, agent.NewControlPlane(svcs.Agents), mcpinternal.ScopeFor)
 	webhookv1mcp.RegisterWebhookServiceTools(registry, webhook.NewControlPlane(svcs.Webhooks), mcpinternal.ScopeFor)
+	authv1mcp.RegisterAuthServiceTools(registry, auth.NewControlPlane(svcs.Orgs, svcs.Users), mcpinternal.ScopeFor)
 
 	srv := rootmcp.NewServer(
 		rootmcp.WithImplementation("oagent", version.Default()),
 		rootmcp.WithRegistry(registry),
-		rootmcp.WithScopes(mcpinternal.AllScopes),
+		rootmcp.WithScopes(mcpinternal.ScopesFromContext),
 		rootmcp.WithErrorMapper(mcpinternal.ErrorPayload),
 		rootmcp.WithLogger(log),
 		rootmcp.WithUI(cfg.AppsUI),

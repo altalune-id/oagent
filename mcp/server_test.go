@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -56,7 +57,7 @@ func TestServerListsRegisteredTools(t *testing.T) {
 		mcp.WithUI(true),
 	)
 	srv.AddUIResource(testUIResource())
-	session := connect(t, srv)
+	session := connect(t, srv, "posts:read", "posts:write")
 
 	res, err := session.ListTools(t.Context(), nil)
 	if err != nil {
@@ -79,6 +80,34 @@ func TestServerListsRegisteredTools(t *testing.T) {
 }
 
 // TestUIMetaIsTheFixedMCPAppsShape pins the one _meta key MCP Apps defines and the object under it.
+func TestToolsListShowsOnlyCallableTools(t *testing.T) {
+	reg := mcp.NewRegistry()
+	reg.Register(mcp.ToolSpec{Name: "blog_list", Scope: "posts:read", Handler: okHandler}, nil)
+	reg.Register(mcp.ToolSpec{Name: "blog_publish", Scope: "posts:write", Mutation: true, Handler: okHandler}, nil)
+	reg.Register(mcp.ToolSpec{Name: "blog_unscoped", Handler: okHandler}, nil)
+	session := connect(t, mcp.NewServer(mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext)), "posts:read")
+
+	res, err := session.ListTools(t.Context(), nil)
+	if err != nil {
+		t.Fatalf("ListTools: %v", err)
+	}
+	var names []string
+	for _, tool := range res.Tools {
+		names = append(names, tool.Name)
+	}
+	if !slices.Equal(names, []string{"blog_list"}) {
+		t.Fatalf("ListTools = %v, want only blog_list", names)
+	}
+
+	call, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "blog_publish"})
+	if err != nil {
+		t.Fatalf("CallTool: %v", err)
+	}
+	if !call.IsError {
+		t.Fatal("a hidden tool must still be denied when called")
+	}
+}
+
 func TestUIMetaIsTheFixedMCPAppsShape(t *testing.T) {
 	tool := uiTool(t, mcp.WithUI(true))
 
@@ -392,7 +421,7 @@ func uiTool(t *testing.T, opts ...mcp.Option) *sdkmcp.Tool {
 	srv := mcp.NewServer(append(opts, mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext))...)
 	srv.AddUIResource(testUIResource())
 
-	res, err := connect(t, srv).ListTools(t.Context(), &sdkmcp.ListToolsParams{})
+	res, err := connect(t, srv, "posts:read").ListTools(t.Context(), &sdkmcp.ListToolsParams{})
 	if err != nil {
 		t.Fatalf("ListTools: %v", err)
 	}

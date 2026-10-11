@@ -7,6 +7,7 @@
 package authv1
 
 import (
+	_ "altalune.id/oagent/gen/go/mcp/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -59,7 +60,7 @@ func (*WhoamiRequest) Descriptor() ([]byte, []int) {
 
 type WhoamiResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// local, basic or apikey.
+	// local, basic, apikey or system.
 	Source    string `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
 	UserId    string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Email     string `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
@@ -197,7 +198,7 @@ var File_auth_v1_auth_proto protoreflect.FileDescriptor
 
 const file_auth_v1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x12auth/v1/auth.proto\x12\aauth.v1\"\x0f\n" +
+	"\x12auth/v1/auth.proto\x12\aauth.v1\x1a\x18mcp/v1/annotations.proto\"\x0f\n" +
 	"\rWhoamiRequest\"\xf2\x02\n" +
 	"\x0eWhoamiResponse\x12\x16\n" +
 	"\x06source\x18\x01 \x01(\tR\x06source\x12\x17\n" +
@@ -213,9 +214,10 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\x11active_project_id\x18\n" +
 	" \x01(\tR\x0factiveProjectId\x12 \n" +
 	"\vpermissions\x18\v \x03(\tR\vpermissions\x12\x1a\n" +
-	"\boperator\x18\f \x01(\bR\boperator2H\n" +
-	"\vAuthService\x129\n" +
-	"\x06Whoami\x12\x16.auth.v1.WhoamiRequest\x1a\x17.auth.v1.WhoamiResponseB\x7f\n" +
+	"\boperator\x18\f \x01(\bR\boperator2\xa5\x01\n" +
+	"\vAuthService\x12\x95\x01\n" +
+	"\x06Whoami\x12\x16.auth.v1.WhoamiRequest\x1a\x17.auth.v1.WhoamiResponse\"Z\xca\xf3\x18V\n" +
+	"\vauth_whoami\x12BWho this MCP client acts as: user or key, active org, permissions.*\x03appB\x7f\n" +
 	"\vcom.auth.v1B\tAuthProtoP\x01Z(altalune.id/oagent/gen/go/auth/v1;authv1\xa2\x02\x03AXX\xaa\x02\aAuth.V1\xca\x02\aAuth\\V1\xe2\x02\x13Auth\\V1\\GPBMetadata\xea\x02\bAuth::V1b\x06proto3"
 
 var (

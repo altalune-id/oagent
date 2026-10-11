@@ -17,9 +17,11 @@ import (
 	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/legal"
+	mcpinternal "altalune.id/oagent/internal/mcp"
 	"altalune.id/oagent/internal/web"
 	"altalune.id/oagent/internal/web/layout"
 	"altalune.id/oagent/internal/web/middleware"
+	rootmcp "altalune.id/oagent/mcp"
 )
 
 // httpConfig maps the operator config onto the HTTP server worker's config.
@@ -65,6 +67,27 @@ func apiChain(svcs *Services) authn.Chain {
 	if svcs.Caps.LocalLogin {
 		chain = append(chain, auth.SessionAuthenticator{Sessions: svcs.Sessions, Auth: svcs.Auth})
 	}
+	if svcs.Caps.BasicAuth {
+		chain = append(chain, auth.BasicAuthenticator{Auth: svcs.Auth})
+	}
+	return chain
+}
+
+func buildMCPHandler(srv *rootmcp.Server, svcs *Services, log *slog.Logger) http.Handler {
+	h := mcpHTTPHandler(srv)
+	if h == nil {
+		return nil
+	}
+	return mcpinternal.Authenticate(mcpinternal.AuthOptions{
+		Chain:     mcpChain(svcs),
+		KeyPrefix: svcs.KeyScheme.Prefix(),
+		Logger:    log,
+	})(h)
+}
+
+// SECURITY: no session authenticator — /mcp has no CSRF guard, so a browser cookie must never act on it.
+func mcpChain(svcs *Services) authn.Chain {
+	chain := authn.Chain{svcs.KeyAuthn}
 	if svcs.Caps.BasicAuth {
 		chain = append(chain, auth.BasicAuthenticator{Auth: svcs.Auth})
 	}

@@ -50,7 +50,7 @@ components:
         source:
           type: string
           title: source
-          description: local, basic or apikey.
+          description: local, basic, apikey or system.
         userId:
           type: string
           title: user_id

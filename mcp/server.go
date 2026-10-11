@@ -80,7 +80,7 @@ func (s *Server) build() {
 		&sdkmcp.Implementation{Name: s.name, Version: s.version},
 		&sdkmcp.ServerOptions{Logger: s.logger},
 	)
-	s.sdk.AddReceivingMiddleware(s.trace)
+	s.sdk.AddReceivingMiddleware(s.trace, s.listCallable)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.sealed = true
@@ -133,6 +133,22 @@ func (s *Server) dispatch(spec ToolSpec) sdkmcp.ToolHandler {
 			return s.failure(ctx, spec.Name, err), nil
 		}
 		return s.success(ctx, spec.Name, out), nil
+	}
+}
+
+// SECURITY: tools/list answers only the tools the same authorize check lets the caller call.
+func (s *Server) listCallable(next sdkmcp.MethodHandler) sdkmcp.MethodHandler {
+	return func(ctx context.Context, method string, req sdkmcp.Request) (sdkmcp.Result, error) {
+		res, err := next(ctx, method, req)
+		list, ok := res.(*sdkmcp.ListToolsResult)
+		if err != nil || method != methodToolsList || !ok {
+			return res, err
+		}
+		list.Tools = slices.DeleteFunc(list.Tools, func(tool *sdkmcp.Tool) bool {
+			spec, found := s.registry.Spec(tool.Name)
+			return !found || s.authorize(ctx, spec) != nil
+		})
+		return list, nil
 	}
 }
 

@@ -15,7 +15,7 @@ func annotatedTool(t *testing.T, spec mcp.ToolSpec) *sdkmcp.Tool {
 	reg := mcp.NewRegistry()
 	reg.Register(spec, nil)
 
-	res, err := connect(t, mcp.NewServer(mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext))).
+	res, err := connect(t, mcp.NewServer(mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext)), spec.Scope).
 		ListTools(t.Context(), &sdkmcp.ListToolsParams{})
 	if err != nil {
 		t.Fatalf("ListTools: %v", err)

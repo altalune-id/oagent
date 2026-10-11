@@ -104,7 +104,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 			basePath:   cfg.HTTP.BasePath,
 			api:        apiHandler,
 			console:    consoleHandler,
-			mcp:        mcpHTTPHandler(mcpServer),
+			mcp:        buildMCPHandler(mcpServer, svcs, log),
 			routes:     buildRoutes(cfg, svcs, log, k.Reporter.Unexpected),
 
 			installRequired: svcs.InstallRequired,
