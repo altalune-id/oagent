@@ -11,6 +11,7 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/agent"
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/testutil/fakes"
 )
 
@@ -162,4 +163,28 @@ func TestService_Delete_Error(t *testing.T) {
 
 	err := agent.NewService(store, testUnexpected()).Delete(context.Background(), uuid.New())
 	assert.True(t, agent.IsNotFoundError(err))
+}
+
+type projectOrgs map[uuid.UUID]uuid.UUID
+
+func (m projectOrgs) OrgOf(_ context.Context, id uuid.UUID) (uuid.UUID, error) {
+	if org, ok := m[id]; ok {
+		return org, nil
+	}
+	return uuid.Nil, &agent.NotFoundError{}
+}
+
+func TestService_Create_ProjectMustBelongToOrg(t *testing.T) {
+	orgA, orgB, prjB := uuid.New(), uuid.New(), uuid.New()
+	store := &fakes.AgentStore{}
+	svc := agent.NewService(store, nil).WithProjects(projectOrgs{prjB: orgB})
+
+	for _, slug := range []string{"bot", ""} {
+		_, err := svc.Create(context.Background(), agent.CreateRequest{OrgID: orgA, ProjectID: prjB, Slug: slug, Name: "Bot"})
+		assert.True(t, tenant.IsProjectOutsideOrgError(err), "slug %q: %v", slug, err)
+	}
+	assert.Nil(t, store.Saved)
+
+	_, err := svc.Create(context.Background(), agent.CreateRequest{OrgID: orgB, ProjectID: prjB, Slug: "bot", Name: "Bot"})
+	require.NoError(t, err)
 }

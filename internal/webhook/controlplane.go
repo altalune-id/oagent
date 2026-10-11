@@ -10,6 +10,7 @@ import (
 	"altalune.id/oagent/apperror"
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
+	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/kernel/tenant"
 )
@@ -221,22 +222,21 @@ func (s *WebhookControlPlane) ListWebhookDeliveryAttempts(
 	return connect.NewResponse(&webhookv1.ListWebhookDeliveryAttemptsResponse{Attempts: out}), nil
 }
 
-// scopeCtx parses the org and project ids and carries them as the tenant scope.
+// SECURITY: a project outside the caller's reach is reported as an absent webhook.
 func scopeCtx(ctx context.Context, orgID, projectID string) (context.Context, error) {
-	org, err := uuid.Parse(orgID)
+	org, project, err := parseScope(orgID, projectID)
 	if err != nil {
-		return ctx, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
+		return ctx, err
 	}
-	project, err := uuid.Parse(projectID)
-	if err != nil {
-		return ctx, apperror.New(apperror.CodeValidation, "invalid project id").WithCause(err)
+	if !authz.ReachWholeProject(ctx, org, project) {
+		return ctx, &NotFoundError{}
 	}
 	return tenant.Into(ctx, tenant.Context{OrgID: org, ProjectID: project}), nil
 }
 
-// scopedID parses a scoped endpoint id.
+// SECURITY: an endpoint outside the caller's reach is reported as absent.
 func scopedID(ctx context.Context, orgID, projectID, id string) (context.Context, uuid.UUID, error) {
-	ctx, err := scopeCtx(ctx, orgID, projectID)
+	org, project, err := parseScope(orgID, projectID)
 	if err != nil {
 		return ctx, uuid.Nil, err
 	}
@@ -244,7 +244,20 @@ func scopedID(ctx context.Context, orgID, projectID, id string) (context.Context
 	if err != nil {
 		return ctx, uuid.Nil, apperror.New(apperror.CodeValidation, "invalid webhook id").WithCause(err)
 	}
-	return ctx, parsed, nil
+	if !authz.ReachResource(ctx, org, project, parsed) {
+		return ctx, uuid.Nil, &NotFoundError{ID: parsed.String()}
+	}
+	return tenant.Into(ctx, tenant.Context{OrgID: org, ProjectID: project}), parsed, nil
+}
+
+func parseScope(orgID, projectID string) (org, project uuid.UUID, err error) {
+	if org, err = uuid.Parse(orgID); err != nil {
+		return uuid.Nil, uuid.Nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
+	}
+	if project, err = uuid.Parse(projectID); err != nil {
+		return uuid.Nil, uuid.Nil, apperror.New(apperror.CodeValidation, "invalid project id").WithCause(err)
+	}
+	return org, project, nil
 }
 
 func toEventTypes(names []string) []events.Type {

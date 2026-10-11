@@ -40,9 +40,12 @@ func (f *AgentStore) Delete(_ context.Context, id uuid.UUID) error {
 }
 
 // ByID implements agent.Store.
-func (f *AgentStore) ByID(context.Context, uuid.UUID) (*agent.Agent, error) {
+func (f *AgentStore) ByID(_ context.Context, id uuid.UUID) (*agent.Agent, error) {
 	if f.Err != nil {
 		return nil, f.Err
+	}
+	if f.Agent == nil {
+		return nil, &agent.NotFoundError{ID: id.String()}
 	}
 	return f.Agent, nil
 }

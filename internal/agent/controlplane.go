@@ -9,6 +9,7 @@ import (
 	"altalune.id/oagent/apperror"
 	agentv1 "altalune.id/oagent/gen/go/agent/v1"
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
+	"altalune.id/oagent/internal/kernel/authz"
 )
 
 // AgentService implements agent.v1.AgentService.
@@ -32,6 +33,9 @@ func (s *AgentService) CreateAgent(
 	if err != nil {
 		return nil, err
 	}
+	if !authz.ReachWholeProject(ctx, orgID, projectID) {
+		return nil, &NotFoundError{}
+	}
 	a, err := s.agents.Create(ctx, CreateRequest{
 		OrgID:       orgID,
 		ProjectID:   projectID,
@@ -54,14 +58,14 @@ func (s *AgentService) GetAgent(
 	if err != nil {
 		return nil, err
 	}
-	a, err := s.agents.Get(ctx, id)
+	a, err := s.reachable(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&agentv1.GetAgentResponse{Agent: agentToProto(a)}), nil
 }
 
-// ListAgents lists a project's agents, ordered by creation time.
+// ListAgents lists the project's agents the caller reaches, ordered by creation time.
 func (s *AgentService) ListAgents(
 	ctx context.Context,
 	req *connect.Request[agentv1.ListAgentsRequest],
@@ -76,7 +80,9 @@ func (s *AgentService) ListAgents(
 	}
 	out := make([]*agentv1.Agent, 0, len(agents))
 	for _, a := range agents {
-		out = append(out, agentToProto(a))
+		if authz.ReachResource(ctx, a.OrgID, a.ProjectID, a.ID) {
+			out = append(out, agentToProto(a))
+		}
 	}
 	return connect.NewResponse(&agentv1.ListAgentsResponse{Agents: out}), nil
 }
@@ -88,6 +94,9 @@ func (s *AgentService) UpdateAgent(
 ) (*connect.Response[agentv1.UpdateAgentResponse], error) {
 	id, err := parseID(req.Msg.GetId())
 	if err != nil {
+		return nil, err
+	}
+	if _, err := s.reachable(ctx, id); err != nil {
 		return nil, err
 	}
 	a, err := s.agents.Update(ctx, id, req.Msg.GetName(), req.Msg.GetDescription())
@@ -106,10 +115,25 @@ func (s *AgentService) DeleteAgent(
 	if err != nil {
 		return nil, err
 	}
+	if _, err := s.reachable(ctx, id); err != nil {
+		return nil, err
+	}
 	if err := s.agents.Delete(ctx, id); err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&agentv1.DeleteAgentResponse{}), nil
+}
+
+// SECURITY: an agent outside the caller's reach is reported as absent.
+func (s *AgentService) reachable(ctx context.Context, id uuid.UUID) (*Agent, error) {
+	a, err := s.agents.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if !authz.ReachResource(ctx, a.OrgID, a.ProjectID, a.ID) {
+		return nil, &NotFoundError{ID: id.String()}
+	}
+	return a, nil
 }
 
 func parseID(raw string) (uuid.UUID, error) {

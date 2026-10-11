@@ -85,6 +85,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*APIKey, strin
 		if req.ProjectID == uuid.Nil {
 			return nil, "", apperror.New(apperror.CodeValidation, "project id is required for a project key")
 		}
+		if verr := s.requireOrgProjects(ctx, req.OrgID, ProjectGrant{ProjectIDs: []uuid.UUID{req.ProjectID}}); verr != nil {
+			return nil, "", verr
+		}
 		k, plaintext, err = s.scheme.MintProject(req.OrgID, req.ProjectID, req.Name, req.Scopes, req.ResourceIDs, req.ExpiresAt, now)
 	case KindOrg:
 		grant := ProjectGrant{All: req.AllProjects, ProjectIDs: req.ProjectIDs}

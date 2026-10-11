@@ -11,6 +11,7 @@ const (
 	CodeNotFound        Code = "GEN005"
 	CodeAlreadyExists   Code = "GEN006"
 	CodeForbidden       Code = "GEN007"
+	CodeProjectNotInOrg Code = "GEN008"
 	CodeUnexpected      Code = "GEN900"
 
 	CodeOrgNotFound         Code = "ORG001"

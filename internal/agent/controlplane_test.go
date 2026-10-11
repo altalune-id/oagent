@@ -93,9 +93,11 @@ func TestAgentService_UpdateAgent(t *testing.T) {
 }
 
 func TestAgentService_DeleteAgent(t *testing.T) {
-	c := newAgentServiceClient(t, &fakes.AgentStore{})
+	a, err := agent.New(uuid.New(), uuid.New(), "bot", "Bot", "", uuid.Nil)
+	require.NoError(t, err)
+	c := newAgentServiceClient(t, &fakes.AgentStore{Agent: a})
 
-	_, err := c.DeleteAgent(context.Background(), connect.NewRequest(&agentv1.DeleteAgentRequest{Id: uuid.New().String()}))
+	_, err = c.DeleteAgent(context.Background(), connect.NewRequest(&agentv1.DeleteAgentRequest{Id: a.ID.String()}))
 	assert.NoError(t, err)
 
 	_, err = c.DeleteAgent(context.Background(), connect.NewRequest(&agentv1.DeleteAgentRequest{Id: "bad"}))

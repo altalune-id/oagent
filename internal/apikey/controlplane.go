@@ -12,6 +12,7 @@ import (
 	apikeyv1 "altalune.id/oagent/gen/go/apikey/v1"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	"altalune.id/oagent/internal/kernel/authn"
+	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/session"
 )
 
@@ -35,6 +36,9 @@ func (s *APIKeyService) CreateAPIKey(
 	orgID, err := uuid.Parse(req.Msg.GetOrgId())
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
+	}
+	if !authz.ReachOrg(ctx, orgID) {
+		return nil, &NotFoundError{}
 	}
 	projectID, err := optionalUUID(req.Msg.GetProjectId())
 	if err != nil {
@@ -89,6 +93,9 @@ func (s *APIKeyService) ListAPIKeys(
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
 	}
+	if !authz.ReachOrg(ctx, orgID) {
+		return nil, &NotFoundError{}
+	}
 	p := session.PrincipalFrom(ctx)
 	keys, err := s.keys.List(ctx, orgID, p.UserID)
 	if err != nil {
@@ -112,6 +119,9 @@ func (s *APIKeyService) RevokeAPIKey(
 	orgID, err := uuid.Parse(req.Msg.GetOrgId())
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
+	}
+	if !authz.ReachOrg(ctx, orgID) {
+		return nil, &NotFoundError{}
 	}
 	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {

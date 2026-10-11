@@ -23,6 +23,7 @@ var kinds = map[Code]Kind{
 	CodeNotFound:        KindNotFound,
 	CodeAlreadyExists:   KindAlreadyExists,
 	CodeForbidden:       KindForbidden,
+	CodeProjectNotInOrg: KindInvalid,
 	CodeUnexpected:      KindInternal,
 
 	CodeOrgNotFound:         KindNotFound,

@@ -9,6 +9,7 @@ import (
 	"altalune.id/oagent/apperror"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
+	"altalune.id/oagent/internal/kernel/authz"
 )
 
 // OrgService implements org.v1.OrgService.
@@ -44,6 +45,9 @@ func (s *OrgService) GetOrg(
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
 	}
+	if !authz.ReachOrg(ctx, id) {
+		return nil, &NotFoundError{ID: id.String()}
+	}
 	o, err := s.orgs.Get(ctx, id)
 	if err != nil {
 		return nil, err
@@ -51,7 +55,7 @@ func (s *OrgService) GetOrg(
 	return connect.NewResponse(&orgv1.GetOrgResponse{Org: orgToProto(o)}), nil
 }
 
-// ListOrgs lists organizations, ordered by creation time.
+// ListOrgs lists the organizations the caller reaches, ordered by creation time.
 func (s *OrgService) ListOrgs(
 	ctx context.Context,
 	_ *connect.Request[orgv1.ListOrgsRequest],
@@ -62,7 +66,9 @@ func (s *OrgService) ListOrgs(
 	}
 	out := make([]*orgv1.Org, 0, len(orgs))
 	for _, o := range orgs {
-		out = append(out, orgToProto(o))
+		if authz.ReachOrg(ctx, o.ID) {
+			out = append(out, orgToProto(o))
+		}
 	}
 	return connect.NewResponse(&orgv1.ListOrgsResponse{Orgs: out}), nil
 }
@@ -75,6 +81,9 @@ func (s *OrgService) UpdateOrg(
 	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
+	}
+	if !authz.ReachWholeOrg(ctx, id) {
+		return nil, &NotFoundError{ID: id.String()}
 	}
 	o, err := s.orgs.Update(ctx, id, req.Msg.GetName(), req.Msg.GetSlug())
 	if err != nil {

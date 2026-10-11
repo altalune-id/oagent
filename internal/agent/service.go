@@ -17,6 +17,7 @@ type Service struct {
 	store      Store
 	unexpected apperror.UnexpectedFunc
 	publisher  Publisher
+	projects   tenant.ProjectResolver
 }
 
 // NewService builds a Service over store.
@@ -27,6 +28,12 @@ func NewService(store Store, unexpected apperror.UnexpectedFunc) *Service {
 // WithPublisher emits agent.created/agent.updated events through p; nil disables emission.
 func (s *Service) WithPublisher(p Publisher) *Service {
 	s.publisher = p
+	return s
+}
+
+// WithProjects makes Create refuse a project outside the request's org; nil skips the check.
+func (s *Service) WithProjects(r tenant.ProjectResolver) *Service {
+	s.projects = r
 	return s
 }
 
@@ -47,6 +54,12 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*Agent, error)
 	}
 	if req.ProjectID == uuid.Nil {
 		return nil, apperror.New(apperror.CodeValidation, "project id is required")
+	}
+	if err := tenant.RequireProjectInOrg(ctx, s.projects, req.OrgID, req.ProjectID); err != nil {
+		if tenant.IsProjectOutsideOrgError(err) {
+			return nil, err
+		}
+		return nil, s.errOrReport(ctx, "agent: project org", err)
 	}
 	if strings.TrimSpace(req.Slug) == "" {
 		return s.createGenerated(ctx, req)

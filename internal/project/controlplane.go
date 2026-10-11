@@ -9,6 +9,7 @@ import (
 	"altalune.id/oagent/apperror"
 	projectv1 "altalune.id/oagent/gen/go/project/v1"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
+	"altalune.id/oagent/internal/kernel/authz"
 )
 
 // ProjectService implements project.v1.ProjectService.
@@ -32,6 +33,9 @@ func (s *ProjectService) CreateProject(
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
 	}
+	if !authz.ReachWholeOrg(ctx, orgID) {
+		return nil, &NotFoundError{}
+	}
 	p, err := s.projects.Create(ctx, CreateRequest{OrgID: orgID, Slug: req.Msg.GetSlug(), Name: req.Msg.GetName()})
 	if err != nil {
 		return nil, err
@@ -48,14 +52,14 @@ func (s *ProjectService) GetProject(
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid project id").WithCause(err)
 	}
-	p, err := s.projects.Get(ctx, id)
+	p, err := s.reachable(ctx, id, authz.ReachProject)
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&projectv1.GetProjectResponse{Project: projectToProto(p)}), nil
 }
 
-// ListProjects lists an organization's projects, ordered by creation time.
+// ListProjects lists the organization's projects the caller reaches, ordered by creation time.
 func (s *ProjectService) ListProjects(
 	ctx context.Context,
 	req *connect.Request[projectv1.ListProjectsRequest],
@@ -64,13 +68,18 @@ func (s *ProjectService) ListProjects(
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
 	}
+	if !authz.ReachOrg(ctx, orgID) {
+		return nil, &NotFoundError{}
+	}
 	projects, err := s.projects.List(ctx, orgID)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]*projectv1.Project, 0, len(projects))
 	for _, p := range projects {
-		out = append(out, projectToProto(p))
+		if authz.ReachProject(ctx, p.OrgID, p.ID) {
+			out = append(out, projectToProto(p))
+		}
 	}
 	return connect.NewResponse(&projectv1.ListProjectsResponse{Projects: out}), nil
 }
@@ -84,9 +93,28 @@ func (s *ProjectService) UpdateProject(
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid project id").WithCause(err)
 	}
+	if _, err := s.reachable(ctx, id, authz.ReachWholeProject); err != nil {
+		return nil, err
+	}
 	p, err := s.projects.Update(ctx, id, req.Msg.GetName(), req.Msg.GetSlug())
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&projectv1.UpdateProjectResponse{Project: projectToProto(p)}), nil
+}
+
+// SECURITY: a project outside the caller's reach is reported as absent.
+func (s *ProjectService) reachable(
+	ctx context.Context,
+	id uuid.UUID,
+	reach func(ctx context.Context, orgID, projectID uuid.UUID) bool,
+) (*Project, error) {
+	p, err := s.projects.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if !reach(ctx, p.OrgID, p.ID) {
+		return nil, &NotFoundError{ID: id.String()}
+	}
+	return p, nil
 }

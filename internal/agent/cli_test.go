@@ -79,7 +79,9 @@ func TestAgentUpdate(t *testing.T) {
 }
 
 func TestAgentDelete(t *testing.T) {
-	buf, err := runAgent(t, agentClient(t, &fakes.AgentStore{}), "delete", uuid.New().String())
+	a, err := agent.New(uuid.New(), uuid.New(), "bot", "Bot", "", uuid.Nil)
+	require.NoError(t, err)
+	buf, err := runAgent(t, agentClient(t, &fakes.AgentStore{Agent: a}), "delete", a.ID.String())
 
 	require.NoError(t, err)
 	assert.Contains(t, buf.String(), "Deleted agent")

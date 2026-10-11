@@ -19,7 +19,7 @@ import (
 
 func apiKeyClient(t *testing.T, store apikey.Store) apikeyv1connect.APIKeyServiceClient {
 	t.Helper()
-	svc := apikey.NewService(store, apikey.NewScheme(""), stubProjects{}, nil)
+	svc := apikey.NewService(store, apikey.NewScheme(""), stubProjects{ids: []uuid.UUID{knownProject}}, nil)
 	srv := controlplane.New(controlplane.Services{APIKeys: svc}, nil, controlplane.Options{})
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
@@ -80,7 +80,7 @@ func TestAPIKeyRevoke(t *testing.T) {
 
 func TestAPIKeyCreate_ProjectKeyScopes(t *testing.T) {
 	buf, err := runAPIKey(t, apiKeyClient(t, &fakes.APIKeyStore{}), "create",
-		"--org-id", uuid.New().String(), "--kind", "project", "--project-id", uuid.New().String(),
+		"--org-id", uuid.New().String(), "--kind", "project", "--project-id", knownProject.String(),
 		"--name", "ci", "--scopes", "agent:read,agent:write", "--output", "text")
 
 	require.NoError(t, err)

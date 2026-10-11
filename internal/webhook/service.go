@@ -67,6 +67,7 @@ type Service struct {
 	resolver   Resolver
 
 	allowInsecureURL bool
+	projects         tenant.ProjectResolver
 }
 
 // ServiceOption tunes a Service at construction.
@@ -74,6 +75,9 @@ type ServiceOption func(*Service)
 
 // WithAllowInsecureURL lets endpoints use http:// URLs; self-hosted dev only.
 func WithAllowInsecureURL() ServiceOption { return func(s *Service) { s.allowInsecureURL = true } }
+
+// WithProjects makes Create refuse a project outside the caller's org.
+func WithProjects(r tenant.ProjectResolver) ServiceOption { return func(s *Service) { s.projects = r } }
 
 func (s *Service) validateOpts() []ValidateOption {
 	if s.allowInsecureURL {
@@ -136,6 +140,12 @@ func (s *Service) Create(ctx context.Context, rawURL, description string, types 
 	tc, err := tenant.From(ctx)
 	if err != nil {
 		return nil, "", err
+	}
+	if err := tenant.RequireProjectInOrg(ctx, s.projects, tc.OrgID, tc.ProjectID); err != nil {
+		if tenant.IsProjectOutsideOrgError(err) {
+			return nil, "", err
+		}
+		return nil, "", s.unexpected(ctx, "webhook.Create: project org", err, "org_id", tc.OrgID, "project_id", tc.ProjectID)
 	}
 	e, err := New(tc.OrgID, tc.ProjectID, rawURL, description, types, s.validateOpts()...)
 	if err != nil {

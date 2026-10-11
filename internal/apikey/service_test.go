@@ -25,6 +25,8 @@ func (s stubProjects) ProjectIDs(context.Context, uuid.UUID) ([]uuid.UUID, error
 	return s.ids, s.err
 }
 
+var knownProject = uuid.MustParse("0b7d1c7e-5a3f-4e2b-9c11-2f6a8d4e7b01")
+
 func future() *time.Time {
 	t := time.Now().UTC().Add(time.Hour)
 	return &t
@@ -40,8 +42,8 @@ func newService(store apikey.Store, projects apikey.Projects) *apikey.Service {
 
 func TestService_Create_Project(t *testing.T) {
 	store := &fakes.APIKeyStore{}
-	k, plaintext, err := newService(store, stubProjects{}).Create(context.Background(), apikey.CreateRequest{
-		OrgID: uuid.New(), ProjectID: uuid.New(), Kind: apikey.KindProject, Name: "ci",
+	k, plaintext, err := newService(store, stubProjects{ids: []uuid.UUID{knownProject}}).Create(context.Background(), apikey.CreateRequest{
+		OrgID: uuid.New(), ProjectID: knownProject, Kind: apikey.KindProject, Name: "ci",
 		Scopes: []string{scope.AgentRead}, ExpiresAt: future(),
 	})
 	require.NoError(t, err)
@@ -160,4 +162,23 @@ func TestService_Revoke_SaveError(t *testing.T) {
 	err = newService(store, stubProjects{}).Revoke(context.Background(), orgID, k.ID, uuid.Nil)
 	_, ok := apperror.AsAppError(err)
 	assert.True(t, ok)
+}
+
+func TestService_Create_ProjectKeyProjectMustBelongToOrg(t *testing.T) {
+	mine := uuid.New()
+	store := &fakes.APIKeyStore{}
+	svc := newService(store, stubProjects{ids: []uuid.UUID{mine}})
+
+	_, _, err := svc.Create(context.Background(), apikey.CreateRequest{
+		OrgID: uuid.New(), ProjectID: uuid.New(), Kind: apikey.KindProject, Name: "ci", Scopes: []string{scope.AgentRead}, ExpiresAt: future(),
+	})
+	ae, ok := apperror.AsAppError(err)
+	require.True(t, ok, "got %v", err)
+	assert.Equal(t, apperror.CodeAPIKeyInvalidGrant, ae.Code())
+	assert.Nil(t, store.Saved)
+
+	_, _, err = svc.Create(context.Background(), apikey.CreateRequest{
+		OrgID: uuid.New(), ProjectID: mine, Kind: apikey.KindProject, Name: "ci", Scopes: []string{scope.AgentRead}, ExpiresAt: future(),
+	})
+	require.NoError(t, err)
 }

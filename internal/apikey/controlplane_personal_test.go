@@ -148,3 +148,21 @@ func TestAPIKeyService_Revoke_OthersPersonalKey(t *testing.T) {
 	assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
 	assert.Nil(t, store.Saved)
 }
+
+func TestAPIKeyService_ReachIsTheActiveOrg(t *testing.T) {
+	orgA, orgB, me := uuid.New(), uuid.New(), uuid.New()
+	machine, _, err := apikey.NewScheme("").MintOrg(orgB, "ci", nil, apikey.ProjectGrant{All: true}, future(), time.Now().UTC())
+	require.NoError(t, err)
+	store := &fakes.APIKeyStore{Key: machine, Keys: []*apikey.APIKey{machine}}
+	owners := &fakeOwners{}
+	owners.set(orgB, me, member.RoleOwner)
+	c := newPersonalClient(t, store, owners, person(me, orgA))
+
+	_, err = c.ListAPIKeys(context.Background(), connect.NewRequest(&apikeyv1.ListAPIKeysRequest{OrgId: orgB.String()}))
+	assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+	_, err = c.RevokeAPIKey(context.Background(), connect.NewRequest(&apikeyv1.RevokeAPIKeyRequest{OrgId: orgB.String(), Id: machine.ID.String()}))
+	assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+	_, err = c.CreateAPIKey(context.Background(), personalCreate(orgB))
+	assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+	assert.Nil(t, store.Saved)
+}

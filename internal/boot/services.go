@@ -74,12 +74,13 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	sl := buildSealer(cfg.Secrets)
 	outboxStore := outbox.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
 	webhookStore := webhook.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
+	projectOwners := projectOrgs{projects: projects}
 	webhooks := webhook.NewService(
 		webhookStore, k.Log, k.Reporter.Unexpected, sl, outboxStore,
-		refResolver{projects: projects, orgs: orgs}, webhookServiceOpts(cfg)...,
+		refResolver{projects: projects, orgs: orgs}, append(webhookServiceOpts(cfg), webhook.WithProjects(projectOwners))...,
 	)
 
-	agents := agent.NewService(agentStore, k.Reporter.Unexpected).WithPublisher(webhooks)
+	agents := agent.NewService(agentStore, k.Reporter.Unexpected).WithPublisher(webhooks).WithProjects(projectOwners)
 	users := user.NewService(user.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Reporter.Unexpected)
 	members := member.NewService(member.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Reporter.Unexpected)
 
@@ -180,4 +181,14 @@ func (o ownerRoles) Role(ctx context.Context, orgID, userID uuid.UUID) (member.R
 		return "", false, err
 	}
 	return m.Role, true, nil
+}
+
+type projectOrgs struct{ projects *project.Service }
+
+func (p projectOrgs) OrgOf(ctx context.Context, projectID uuid.UUID) (uuid.UUID, error) {
+	pr, err := p.projects.Get(ctx, projectID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return pr.OrgID, nil
 }

@@ -77,3 +77,16 @@ func TestOwnerRoles(t *testing.T) {
 	_, _, err = r.Role(context.Background(), orgID, userID)
 	assert.Error(t, err)
 }
+
+func TestProjectOrgs(t *testing.T) {
+	p, err := project.NewProject(uuid.New(), "acme", "Acme", uuid.Nil)
+	require.NoError(t, err)
+	r := projectOrgs{projects: project.NewService(&fakes.ProjectStore{Project: p}, testUnexpected())}
+
+	got, err := r.OrgOf(context.Background(), p.ID)
+	require.NoError(t, err)
+	assert.Equal(t, p.OrgID, got)
+
+	_, err = projectOrgs{projects: project.NewService(&fakes.ProjectStore{Err: &project.NotFoundError{}}, testUnexpected())}.OrgOf(context.Background(), uuid.New())
+	assert.True(t, project.IsNotFoundError(err))
+}

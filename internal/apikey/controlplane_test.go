@@ -21,7 +21,7 @@ import (
 
 func newAPIKeyClient(t *testing.T, store apikey.Store) apikeyv1connect.APIKeyServiceClient {
 	t.Helper()
-	svc := apikey.NewService(store, apikey.NewScheme(""), stubProjects{}, nil)
+	svc := apikey.NewService(store, apikey.NewScheme(""), stubProjects{ids: []uuid.UUID{knownProject}}, nil)
 	_, handler := apikeyv1connect.NewAPIKeyServiceHandler(apikey.NewControlPlane(svc))
 	ts := httptest.NewServer(handler)
 	t.Cleanup(ts.Close)
@@ -83,7 +83,7 @@ func TestAPIKeyService_Create_ProjectKey(t *testing.T) {
 	c := newAPIKeyClient(t, &fakes.APIKeyStore{})
 
 	resp, err := c.CreateAPIKey(context.Background(), connect.NewRequest(&apikeyv1.CreateAPIKeyRequest{
-		OrgId: uuid.New().String(), ProjectId: uuid.New().String(), Kind: "project", Name: "ci",
+		OrgId: uuid.New().String(), ProjectId: knownProject.String(), Kind: "project", Name: "ci",
 		Scopes: []string{"agent:read"}, ResourceIds: []string{uuid.New().String()},
 		ExpiresAt: timestamppb.New(time.Now().UTC().Add(time.Hour)),
 	}))

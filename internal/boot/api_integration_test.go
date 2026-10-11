@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -27,6 +28,7 @@ import (
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/testutil/pgtest"
@@ -177,4 +179,20 @@ func TestAPI_KeyPermissionIsChecked(t *testing.T) {
 
 	_, err = orgv1connect.NewOrgServiceClient(http.DefaultClient, f.url).ListOrgs(context.Background(), connect.NewRequest(&orgv1.ListOrgsRequest{}))
 	require.NoError(t, err)
+}
+
+func TestAPI_CreateRefusesAnotherOrgsProject(t *testing.T) {
+	f := newAPIFixture(t)
+	sys, err := f.svcs.Orgs.System(t.Context())
+	require.NoError(t, err)
+	other, err := org.NewOrg("other-org", "Other", uuid.Nil)
+	require.NoError(t, err)
+	require.NoError(t, f.svcs.OrgStore.Save(t.Context(), other))
+	foreign, err := f.svcs.Projects.Create(t.Context(), project.CreateRequest{OrgID: other.ID, Slug: "theirs", Name: "Theirs"})
+	require.NoError(t, err)
+
+	_, err = agentv1connect.NewAgentServiceClient(http.DefaultClient, f.url).CreateAgent(context.Background(), connect.NewRequest(&agentv1.CreateAgentRequest{
+		OrgId: sys.ID.String(), ProjectId: foreign.ID.String(), Slug: "bot", Name: "Bot",
+	}))
+	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
