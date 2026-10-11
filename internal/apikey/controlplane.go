@@ -11,6 +11,8 @@ import (
 	"altalune.id/oagent/apperror"
 	apikeyv1 "altalune.id/oagent/gen/go/apikey/v1"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
+	"altalune.id/oagent/internal/kernel/authn"
+	"altalune.id/oagent/internal/kernel/session"
 )
 
 // APIKeyService implements apikey.v1.APIKeyService.
@@ -51,16 +53,26 @@ func (s *APIKeyService) CreateAPIKey(
 		t := ts.AsTime()
 		expiresAt = &t
 	}
+	kind := Kind(req.Msg.GetKind())
+	p := session.PrincipalFrom(ctx)
+	if kind == KindPersonal && !p.IsPerson() {
+		return nil, &authn.UnauthorizedError{}
+	}
+	var createdBy uuid.UUID
+	if p.IsPerson() {
+		createdBy = p.UserID
+	}
 	k, plaintext, err := s.keys.Create(ctx, CreateRequest{
 		OrgID:       orgID,
 		ProjectID:   projectID,
-		Kind:        Kind(req.Msg.GetKind()),
+		Kind:        kind,
 		Name:        req.Msg.GetName(),
 		Scopes:      req.Msg.GetScopes(),
 		ProjectIDs:  projectIDs,
 		AllProjects: req.Msg.GetAllProjects(),
 		ResourceIDs: resourceIDs,
 		ExpiresAt:   expiresAt,
+		CreatedBy:   createdBy,
 	})
 	if err != nil {
 		return nil, err
@@ -68,7 +80,7 @@ func (s *APIKeyService) CreateAPIKey(
 	return connect.NewResponse(&apikeyv1.CreateAPIKeyResponse{Key: keyToProto(k), Plaintext: plaintext}), nil
 }
 
-// ListAPIKeys lists an organization's keys, never carrying a plaintext secret.
+// ListAPIKeys lists an organization's keys, never carrying a plaintext secret. SECURITY: a key never sees personal keys.
 func (s *APIKeyService) ListAPIKeys(
 	ctx context.Context,
 	req *connect.Request[apikeyv1.ListAPIKeysRequest],
@@ -77,12 +89,16 @@ func (s *APIKeyService) ListAPIKeys(
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
 	}
-	keys, err := s.keys.List(ctx, orgID)
+	p := session.PrincipalFrom(ctx)
+	keys, err := s.keys.List(ctx, orgID, p.UserID)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]*apikeyv1.APIKey, 0, len(keys))
 	for _, k := range keys {
+		if p.Source == session.SourceAPIKey && k.Kind == KindPersonal {
+			continue
+		}
 		out = append(out, keyToProto(k))
 	}
 	return connect.NewResponse(&apikeyv1.ListAPIKeysResponse{Keys: out}), nil
@@ -101,7 +117,7 @@ func (s *APIKeyService) RevokeAPIKey(
 	if err != nil {
 		return nil, apperror.New(apperror.CodeValidation, "invalid key id").WithCause(err)
 	}
-	if err := s.keys.Revoke(ctx, orgID, id); err != nil {
+	if err := s.keys.Revoke(ctx, orgID, id, session.PrincipalFrom(ctx).UserID); err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&apikeyv1.RevokeAPIKeyResponse{}), nil

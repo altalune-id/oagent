@@ -16,6 +16,7 @@ message APIKey {
   string id = 1;
   string org_id = 2;
   string project_id = 3;
+  // project, org or personal; a personal key acts for the person who created it.
   string kind = 4;
   string name = 5;
   repeated string scopes = 6;
@@ -32,6 +33,7 @@ message APIKey {
 message CreateAPIKeyRequest {
   string org_id = 1;
   string project_id = 2;
+  // project, org or personal; personal needs a signed-in person and never exceeds their role.
   string kind = 3;
   string name = 4;
   repeated string scopes = 5;

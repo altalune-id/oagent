@@ -23,10 +23,11 @@ const (
 )
 
 type APIKey struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	OrgId         string                 `protobuf:"bytes,2,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
-	ProjectId     string                 `protobuf:"bytes,3,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	OrgId     string                 `protobuf:"bytes,2,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	ProjectId string                 `protobuf:"bytes,3,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	// project, org or personal; a personal key acts for the person who created it.
 	Kind          string                 `protobuf:"bytes,4,opt,name=kind,proto3" json:"kind,omitempty"`
 	Name          string                 `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
 	Scopes        []string               `protobuf:"bytes,6,rep,name=scopes,proto3" json:"scopes,omitempty"`
@@ -171,15 +172,16 @@ func (x *APIKey) GetLastUsedAt() *timestamppb.Timestamp {
 }
 
 type CreateAPIKeyRequest struct {
-	state       protoimpl.MessageState `protogen:"open.v1"`
-	OrgId       string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
-	ProjectId   string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	Kind        string                 `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
-	Name        string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Scopes      []string               `protobuf:"bytes,5,rep,name=scopes,proto3" json:"scopes,omitempty"`
-	ProjectIds  []string               `protobuf:"bytes,6,rep,name=project_ids,json=projectIds,proto3" json:"project_ids,omitempty"`
-	AllProjects bool                   `protobuf:"varint,7,opt,name=all_projects,json=allProjects,proto3" json:"all_projects,omitempty"`
-	ResourceIds []string               `protobuf:"bytes,8,rep,name=resource_ids,json=resourceIds,proto3" json:"resource_ids,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	OrgId     string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	ProjectId string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	// project, org or personal; personal needs a signed-in person and never exceeds their role.
+	Kind        string   `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
+	Name        string   `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Scopes      []string `protobuf:"bytes,5,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	ProjectIds  []string `protobuf:"bytes,6,rep,name=project_ids,json=projectIds,proto3" json:"project_ids,omitempty"`
+	AllProjects bool     `protobuf:"varint,7,opt,name=all_projects,json=allProjects,proto3" json:"all_projects,omitempty"`
+	ResourceIds []string `protobuf:"bytes,8,rep,name=resource_ids,json=resourceIds,proto3" json:"resource_ids,omitempty"`
 	// Required: when the key stops working, in the future and at most one year away.
 	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	unknownFields protoimpl.UnknownFields

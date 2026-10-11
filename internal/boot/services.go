@@ -80,9 +80,12 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	members := member.NewService(member.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Reporter.Unexpected)
 
 	keyScheme := apikey.NewScheme("")
-	apiKeys := apikey.NewService(apiKeyStore, keyScheme, projectIDs{projects: projects}, k.Reporter.Unexpected)
+	owners := ownerRoles{members: members}
+	apiKeys := apikey.NewService(apiKeyStore, keyScheme, projectIDs{projects: projects}, k.Reporter.Unexpected).
+		WithOwnerRoles(owners).
+		WithPersonalKeys(caps.PersonalKeys)
 	keyUsage := apikey.NewUsageWorker(apiKeyStore, keyUsageInterval, k.Log)
-	keyAuthn := apikey.NewAuthenticator(apiKeyStore, keyUsage, keyScheme, k.Reporter.Unexpected)
+	keyAuthn := apikey.NewAuthenticator(apiKeyStore, keyUsage, keyScheme, owners, k.Reporter.Unexpected)
 	sessions := buildSessionStore(k, cfg, sl, secretsLog(k.Log, caps))
 	authn := auth.NewService(auth.Deps{
 		Users:    users,
@@ -159,4 +162,17 @@ func (p projectIDs) ProjectIDs(ctx context.Context, orgID uuid.UUID) ([]uuid.UUI
 		ids = append(ids, pr.ID)
 	}
 	return ids, nil
+}
+
+type ownerRoles struct{ members *member.Service }
+
+func (o ownerRoles) Role(ctx context.Context, orgID, userID uuid.UUID) (member.Role, bool, error) {
+	m, err := o.members.Find(ctx, orgID, userID)
+	if member.IsNotFoundError(err) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return m.Role, true, nil
 }

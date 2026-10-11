@@ -22,10 +22,12 @@ import (
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/testutil/pgtest"
+	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/scope"
 )
 
 type pgFixture struct {
+	schema   string
 	sqlDB    *sql.DB
 	pool     db.Pool
 	store    apikey.Store
@@ -38,6 +40,7 @@ func newPgFixture(t *testing.T) *pgFixture {
 	sqlDB, schemaName := pgtest.Migrated(t)
 	pool := db.Pool{W: sqlDB, R: sqlDB}
 	return &pgFixture{
+		schema:   schemaName,
 		sqlDB:    sqlDB,
 		pool:     pool,
 		store:    apikey.NewStore(pool, schemaName, ""),
@@ -111,6 +114,7 @@ func sortedIDs(ids ...uuid.UUID) []uuid.UUID {
 func TestPostgres_ProjectKeyRoundTrip(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
+	creator := f.seedUser(t)
 	loc := time.FixedZone("UTC+7", 7*60*60)
 	at := func(h int) *time.Time {
 		v := time.Date(2026, 5, 6, h, 7, 8, 123456789, loc)
@@ -129,7 +133,7 @@ func TestPostgres_ProjectKeyRoundTrip(t *testing.T) {
 		{name: "nullable columns set", mutate: func(k *apikey.APIKey) {
 			k.Scopes = []string{scope.AgentRead, `quote"back\slash`, "comma,brace{}", "NULL", ""}
 			k.ResourceIDs = []uuid.UUID{uuid.New(), uuid.New()}
-			k.CreatedBy = uuid.New()
+			k.CreatedBy = creator
 			k.ExpiresAt = at(10)
 			k.RevokedAt = at(11)
 			k.LastUsedAt = at(12)
@@ -217,7 +221,7 @@ func TestPostgres_KeySaveUpdatesOnlyMutableColumns(t *testing.T) {
 	otherProject := f.seedProject(t, orgID)
 
 	k := projectKey(t, orgID, projectID)
-	k.CreatedBy = uuid.New()
+	k.CreatedBy = f.seedUser(t)
 	k.ResourceIDs = []uuid.UUID{uuid.New()}
 	require.NoError(t, f.store.Save(t.Context(), k))
 	saved, err := f.store.ByID(t.Context(), k.ID)
@@ -234,7 +238,7 @@ func TestPostgres_KeySaveUpdatesOnlyMutableColumns(t *testing.T) {
 	changed.ProjectID = otherProject
 	changed.SecretHash = sha256.Sum256([]byte("another secret"))
 	changed.SecretHint = "zzzz"
-	changed.CreatedBy = uuid.New()
+	changed.CreatedBy = f.seedUser(t)
 	changed.CreatedAt = k.CreatedAt.Add(-time.Hour)
 	require.NoError(t, f.store.Save(t.Context(), &changed))
 
@@ -304,7 +308,11 @@ func TestPostgres_KeyKindShapeCheck(t *testing.T) {
 			k.Kind = apikey.KindOrg
 			k.AllProjects = true
 		}},
-		{name: "unknown kind", mutate: func(k *apikey.APIKey) { k.Kind = apikey.Kind("personal") }},
+		{name: "personal key bound to a project", mutate: func(k *apikey.APIKey) {
+			k.Kind = apikey.KindPersonal
+			k.CreatedBy = uuid.Nil
+		}},
+		{name: "unknown kind", mutate: func(k *apikey.APIKey) { k.Kind = apikey.Kind("robot") }},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -630,4 +638,62 @@ func TestPostgres_TouchLastUsedNeverMovesBack(t *testing.T) {
 	assert.True(t, later.Equal(*got.LastUsedAt), "got %v want %v", got.LastUsedAt, later)
 
 	require.NoError(t, f.store.TouchLastUsed(t.Context(), map[uuid.UUID]time.Time{}))
+}
+
+func (f *pgFixture) seedUser(t *testing.T) uuid.UUID {
+	t.Helper()
+	u, err := user.New("u-"+uuid.NewString()[:8]+"@example.com", "User")
+	require.NoError(t, err)
+	require.NoError(t, user.NewStore(f.pool, f.schema, "").Save(t.Context(), u))
+	return u.ID
+}
+
+func TestPostgres_PersonalKeyRoundTrip(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	owner := f.seedUser(t)
+	k, plain, err := apikey.NewScheme("").MintPersonal(orgID, owner, "laptop", []string{"agent:read"},
+		apikey.ProjectGrant{ProjectIDs: []uuid.UUID{projectID}}, expiry(), time.Now().UTC())
+	require.NoError(t, err)
+	require.NoError(t, f.store.Save(t.Context(), k))
+
+	got, err := f.store.BySecretHash(t.Context(), sha256.Sum256([]byte(plain)))
+	require.NoError(t, err)
+	assert.Equal(t, apikey.KindPersonal, got.Kind)
+	assert.Equal(t, owner, got.CreatedBy)
+	assert.Equal(t, []uuid.UUID{projectID}, got.ProjectIDs)
+	assert.Equal(t, []uuid.UUID{projectID}, got.ReachableProjects())
+}
+
+func TestPostgres_DeletingUserNullsKeyOwner(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	owner := f.seedUser(t)
+	personal, _, err := apikey.NewScheme("").MintPersonal(orgID, owner, "laptop", []string{"agent:read"},
+		apikey.ProjectGrant{All: true}, expiry(), time.Now().UTC())
+	require.NoError(t, err)
+	machine := projectKey(t, orgID, projectID)
+	machine.CreatedBy = owner
+	for _, k := range []*apikey.APIKey{personal, machine} {
+		require.NoError(t, f.store.Save(t.Context(), k))
+	}
+
+	_, err = f.sqlDB.ExecContext(t.Context(), `DELETE FROM users WHERE id = $1`, owner)
+	require.NoError(t, err)
+
+	for _, id := range []uuid.UUID{personal.ID, machine.ID} {
+		got, err := f.store.ByID(t.Context(), id)
+		require.NoError(t, err, "keys outlive their creator")
+		assert.Equal(t, uuid.Nil, got.CreatedBy)
+	}
+}
+
+func TestPostgres_KeyCreatorMustExist(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	k := projectKey(t, orgID, projectID)
+	k.CreatedBy = uuid.New()
+	err := f.store.Save(t.Context(), k)
+	require.Error(t, err)
+	assert.Equal(t, "23503", pgCode(err))
 }

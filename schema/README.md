@@ -22,6 +22,7 @@ erDiagram
     users ||--o{ memberships : has
     orgs ||--o{ memberships : has
     users |o--o{ orgs : "created_by"
+    users |o--o{ api_keys : "created_by (owner of personal keys)"
     users ||--o{ sessions : owns
 
     orgs {
@@ -60,14 +61,14 @@ erDiagram
         uuid id PK
         uuid org_id FK
         uuid project_id FK "project keys only"
-        text kind "project or org"
+        text kind "project, org or personal"
         bool all_projects
         text name
         bytea secret_hash UK
         text secret_hint
         text_array scopes
         uuid_array resource_ids
-        uuid created_by
+        uuid created_by FK "NULL when the user is deleted"
         timestamptz created_at
         timestamptz expires_at
         timestamptz revoked_at
@@ -156,7 +157,8 @@ erDiagram
 ```
 
 Every foreign key to `orgs`, `projects`, `api_keys`, `webhook_endpoints` and
-`users` cascades on delete, except `orgs.created_by`, which is set to NULL.
+`users` cascades on delete, except `orgs.created_by` and `api_keys.created_by`,
+which are set to NULL.
 
 ## Constraints and indexes
 
@@ -167,7 +169,9 @@ Rules the diagram can't show. Names omit `{{.TablePrefix}}`.
 | `orgs` | `orgs_one_system` (unique, `WHERE is_system`) | at most one system org; it marks the instance as installed |
 | `projects` | `UNIQUE (org_id, slug)`, `projects_org_id_id_key UNIQUE (org_id, id)` | slug unique per org; the pair is the target of org-scoped FKs |
 | `agents` | `UNIQUE (project_id, slug)` | slug unique per project |
-| `api_keys` | `api_keys_kind_shape` (check) | `project` keys have a `project_id` and no `all_projects`; `org` keys have no `project_id` |
+| `api_keys` | `api_keys_kind_shape` (check) | `project` keys have a `project_id` and no `all_projects`; `org` and `personal` keys have no `project_id` |
+| `api_keys` | `api_keys_created_by_fkey` (`ON DELETE SET NULL`) | `created_by` is a real user; deleting the user keeps the key but clears the owner, and a personal key without an owner never authenticates |
+| `api_keys` | `api_keys_personal_idx` (`WHERE kind = 'personal'`) | lists one person's personal keys in an org |
 | `api_keys` | `api_keys_secret_hash_key` (unique) | keys are found by the hash of their secret |
 | `api_key_projects` | FKs on `(org_id, key_id)` and `(org_id, project_id)` | a key can only be granted projects of its own org |
 | `outbox_entries` | `UNIQUE (org_id, event_id, target)`, status check | one entry per event and target, per org |

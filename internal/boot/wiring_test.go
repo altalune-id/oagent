@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -12,6 +13,7 @@ import (
 
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/testutil/fakes"
 	"altalune.id/oagent/sealer"
@@ -52,4 +54,26 @@ func TestRefResolver(t *testing.T) {
 	orgPublicID, err := r.OrgRef(context.Background(), o.ID)
 	require.NoError(t, err)
 	assert.Equal(t, o.PublicID, orgPublicID)
+}
+
+func TestOwnerRoles(t *testing.T) {
+	store := &fakes.MemberStore{}
+	members := member.NewService(store, testUnexpected())
+	orgID, userID := uuid.New(), uuid.New()
+	_, err := members.Add(context.Background(), orgID, userID, member.RoleAdmin)
+	require.NoError(t, err)
+	r := ownerRoles{members: members}
+
+	role, ok, err := r.Role(context.Background(), orgID, userID)
+	require.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, member.RoleAdmin, role)
+
+	_, ok, err = r.Role(context.Background(), orgID, uuid.New())
+	require.NoError(t, err)
+	assert.False(t, ok)
+
+	store.Err = errors.New("db down")
+	_, _, err = r.Role(context.Background(), orgID, userID)
+	assert.Error(t, err)
 }

@@ -34,6 +34,8 @@ export type APIKey = Message<"apikey.v1.APIKey"> & {
   projectId: string;
 
   /**
+   * project, org or personal; a personal key acts for the person who created it.
+   *
    * @generated from field: string kind = 4;
    */
   kind: string;
@@ -111,6 +113,8 @@ export type CreateAPIKeyRequest = Message<"apikey.v1.CreateAPIKeyRequest"> & {
   projectId: string;
 
   /**
+   * project, org or personal; personal needs a signed-in person and never exceeds their role.
+   *
    * @generated from field: string kind = 3;
    */
   kind: string;

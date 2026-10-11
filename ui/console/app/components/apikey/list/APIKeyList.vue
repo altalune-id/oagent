@@ -11,6 +11,14 @@ const { $apiKeyClient: client } = useNuxtApp()
 
 await keys.ensureLoaded(orgId)
 
+function kindLabel(kind: string): string {
+  if (kind === 'org')
+    return t('apikeys.kind_org')
+  if (kind === 'personal')
+    return t('apikeys.kind_personal')
+  return t('apikeys.kind_project')
+}
+
 async function revoke(id: string) {
   try {
     await client.revokeAPIKey({ orgId, id })
@@ -44,7 +52,7 @@ async function revoke(id: string) {
       <tbody>
         <tr v-for="k in keys.items" :key="k.id" class="hover:bg-base-200">
           <td>{{ k.name }}</td>
-          <td>{{ k.kind === 'org' ? t('apikeys.kind_org') : t('apikeys.kind_project') }}</td>
+          <td>{{ kindLabel(k.kind) }}</td>
           <td class="text-base-content/60">
             {{ k.scopes.map(scopeLabel).join(', ') }}
           </td>

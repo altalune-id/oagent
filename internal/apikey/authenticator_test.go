@@ -39,7 +39,7 @@ func keyCred(plain string) authn.Credential {
 func TestAuthenticator_OrgKey(t *testing.T) {
 	k, plain := mintOrgKey(t, []string{"agent:read", "agent:write"})
 	store := &fakes.APIKeyStore{Key: k}
-	a := apikey.NewAuthenticator(store, nil, apikey.NewScheme(""), nil)
+	a := apikey.NewAuthenticator(store, nil, apikey.NewScheme(""), nil, nil)
 
 	p, err := a.Authenticate(context.Background(), keyCred(plain))
 	require.NoError(t, err)
@@ -59,7 +59,7 @@ func TestAuthenticator_ProjectKey(t *testing.T) {
 	orgID, projectID, res := uuid.New(), uuid.New(), uuid.New()
 	k, plain, err := apikey.NewScheme("").MintProject(orgID, projectID, "bot", []string{"agent:read"}, []uuid.UUID{res}, &exp, time.Now().UTC())
 	require.NoError(t, err)
-	a := apikey.NewAuthenticator(&fakes.APIKeyStore{Key: k}, nil, apikey.NewScheme(""), nil)
+	a := apikey.NewAuthenticator(&fakes.APIKeyStore{Key: k}, nil, apikey.NewScheme(""), nil, nil)
 
 	p, err := a.Authenticate(context.Background(), keyCred(plain))
 	require.NoError(t, err)
@@ -80,7 +80,7 @@ func TestAuthenticator_Refuses(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			k, plain := mintOrgKey(t, []string{"agent:read"})
 			mutate(k)
-			a := apikey.NewAuthenticator(&fakes.APIKeyStore{Key: k}, nil, apikey.NewScheme(""), nil)
+			a := apikey.NewAuthenticator(&fakes.APIKeyStore{Key: k}, nil, apikey.NewScheme(""), nil, nil)
 			_, err := a.Authenticate(context.Background(), keyCred(plain))
 			assert.True(t, authn.IsUnauthorizedError(err), "got %v", err)
 		})
@@ -88,7 +88,7 @@ func TestAuthenticator_Refuses(t *testing.T) {
 	t.Run("unknown key", func(t *testing.T) {
 		k, _ := mintOrgKey(t, []string{"agent:read"})
 		_, other := mintOrgKey(t, []string{"agent:read"})
-		a := apikey.NewAuthenticator(&fakes.APIKeyStore{Key: k}, nil, apikey.NewScheme(""), nil)
+		a := apikey.NewAuthenticator(&fakes.APIKeyStore{Key: k}, nil, apikey.NewScheme(""), nil, nil)
 		_, err := a.Authenticate(context.Background(), keyCred(other))
 		assert.True(t, authn.IsUnauthorizedError(err))
 	})
@@ -96,7 +96,7 @@ func TestAuthenticator_Refuses(t *testing.T) {
 
 func TestAuthenticator_WrongShapeSkipsStore(t *testing.T) {
 	store := &fakes.APIKeyStore{}
-	a := apikey.NewAuthenticator(store, nil, apikey.NewScheme(""), nil)
+	a := apikey.NewAuthenticator(store, nil, apikey.NewScheme(""), nil, nil)
 
 	for name, c := range map[string]authn.Credential{
 		"wrong prefix": {Kind: authn.KindAPIKey, Token: "other_abc"},
@@ -114,7 +114,7 @@ func TestAuthenticator_WrongShapeSkipsStore(t *testing.T) {
 func TestAuthenticator_StoreErrorIsReported(t *testing.T) {
 	r := &reported{}
 	_, plain := mintOrgKey(t, []string{"agent:read"})
-	a := apikey.NewAuthenticator(&fakes.APIKeyStore{Err: errors.New("db down")}, nil, apikey.NewScheme(""), r.fn)
+	a := apikey.NewAuthenticator(&fakes.APIKeyStore{Err: errors.New("db down")}, nil, apikey.NewScheme(""), nil, r.fn)
 
 	_, err := a.Authenticate(context.Background(), keyCred(plain))
 	assert.True(t, authn.IsUnauthorizedError(err))
@@ -125,7 +125,7 @@ func TestAuthenticator_StoreErrorIsReported(t *testing.T) {
 func TestAuthenticator_NotFoundIsNotReported(t *testing.T) {
 	r := &reported{}
 	_, plain := mintOrgKey(t, []string{"agent:read"})
-	a := apikey.NewAuthenticator(&fakes.APIKeyStore{}, nil, apikey.NewScheme(""), r.fn)
+	a := apikey.NewAuthenticator(&fakes.APIKeyStore{}, nil, apikey.NewScheme(""), nil, r.fn)
 
 	_, err := a.Authenticate(context.Background(), keyCred(plain))
 	assert.True(t, authn.IsUnauthorizedError(err))
@@ -135,7 +135,7 @@ func TestAuthenticator_NotFoundIsNotReported(t *testing.T) {
 func TestAuthenticator_StripsPersonOnlyScopes(t *testing.T) {
 	k, plain := mintOrgKey(t, []string{"agent:read"})
 	k.Scopes = append(k.Scopes, "apikey:write", "member:write")
-	a := apikey.NewAuthenticator(&fakes.APIKeyStore{Key: k}, nil, apikey.NewScheme(""), nil)
+	a := apikey.NewAuthenticator(&fakes.APIKeyStore{Key: k}, nil, apikey.NewScheme(""), nil, nil)
 
 	p, err := a.Authenticate(context.Background(), keyCred(plain))
 	require.NoError(t, err)
@@ -146,7 +146,7 @@ func TestAuthenticator_RecordsUsage(t *testing.T) {
 	k, plain := mintOrgKey(t, []string{"agent:read"})
 	store := &fakes.APIKeyStore{Key: k}
 	usage := apikey.NewUsageWorker(store, time.Hour, nil)
-	a := apikey.NewAuthenticator(store, usage, apikey.NewScheme(""), nil)
+	a := apikey.NewAuthenticator(store, usage, apikey.NewScheme(""), nil, nil)
 
 	_, err := a.Authenticate(context.Background(), keyCred(plain))
 	require.NoError(t, err)

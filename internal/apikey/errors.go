@@ -89,6 +89,30 @@ func (e *EmptyGrantError) Error() string {
 	return "apikey: org key grant must set all_projects or project_ids"
 }
 
+// ScopeExceedsRoleError signals a personal key asking for a scope its owner's role does not grant.
+type ScopeExceedsRoleError struct{ Scope string }
+
+func (e *ScopeExceedsRoleError) Error() string {
+	return fmt.Sprintf("apikey: scope %q exceeds the owner's role", e.Scope)
+}
+
+// PersonalKeysDisabledError signals a personal key requested where the deployment has no people to own one.
+type PersonalKeysDisabledError struct{}
+
+func (*PersonalKeysDisabledError) Error() string { return "apikey: personal keys are disabled" }
+
+// IsScopeExceedsRoleError reports whether err wraps a *ScopeExceedsRoleError.
+func IsScopeExceedsRoleError(err error) bool {
+	_, ok := errors.AsType[*ScopeExceedsRoleError](err)
+	return ok
+}
+
+// IsPersonalKeysDisabledError reports whether err wraps a *PersonalKeysDisabledError.
+func IsPersonalKeysDisabledError(err error) bool {
+	_, ok := errors.AsType[*PersonalKeysDisabledError](err)
+	return ok
+}
+
 // IsInvalidNameError reports whether err wraps an *InvalidNameError.
 func IsInvalidNameError(err error) bool {
 	_, ok := errors.AsType[*InvalidNameError](err)
@@ -137,7 +161,8 @@ func IsGrantError(err error) bool {
 // IsExpectedError reports whether err is a typed domain error a service returns as-is.
 func IsExpectedError(err error) bool {
 	return IsNotFoundError(err) || IsInvalidNameError(err) || IsUnknownScopeError(err) ||
-		IsScopeLevelError(err) || IsPersonOnlyScopeError(err) || IsExpiryError(err) || IsGrantError(err)
+		IsScopeLevelError(err) || IsPersonOnlyScopeError(err) || IsExpiryError(err) || IsGrantError(err) ||
+		IsScopeExceedsRoleError(err) || IsPersonalKeysDisabledError(err)
 }
 
 // ToAppError maps NotFoundError to the canonical NotFound envelope.
@@ -188,6 +213,20 @@ func (e *GrantConflictError) ToAppError() *apperror.AppError {
 // ToAppError maps EmptyGrantError to the canonical Validation envelope.
 func (e *EmptyGrantError) ToAppError() *apperror.AppError {
 	return apperror.New(apperror.CodeAPIKeyInvalidGrant, "Org key grant cannot be empty").WithCause(e)
+}
+
+// ToAppError maps ScopeExceedsRoleError to the canonical Forbidden envelope.
+func (e *ScopeExceedsRoleError) ToAppError() *apperror.AppError {
+	msg := "A personal key cannot hold more than your role allows"
+	if e.Scope != "" {
+		msg = fmt.Sprintf("Your role does not allow scope %s", e.Scope)
+	}
+	return apperror.New(apperror.CodeAPIKeyScopeExceedsRole, msg).WithCause(e)
+}
+
+// ToAppError maps PersonalKeysDisabledError to the canonical FailedPrecondition envelope.
+func (e *PersonalKeysDisabledError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeAPIKeyPersonalKeysDisabled, "Personal API keys are not available on this instance").WithCause(e)
 }
 
 // IsUniqueViolation reports whether err is a Postgres unique-violation (SQLSTATE 23505).

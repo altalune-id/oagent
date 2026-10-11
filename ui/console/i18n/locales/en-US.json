@@ -20,6 +20,7 @@
   "apikeys.expires": "Expires",
   "apikeys.kind": "Kind",
   "apikeys.kind_org": "Org key",
+  "apikeys.kind_personal": "Personal key",
   "apikeys.kind_project": "Project key",
   "apikeys.new": "New API key",
   "apikeys.project": "Project",

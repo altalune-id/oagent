@@ -20,6 +20,7 @@
   "apikeys.expires": "Kedaluwarsa",
   "apikeys.kind": "Jenis",
   "apikeys.kind_org": "Kunci org",
+  "apikeys.kind_personal": "Kunci pribadi",
   "apikeys.kind_project": "Kunci proyek",
   "apikeys.new": "Kunci API baru",
   "apikeys.project": "Proyek",

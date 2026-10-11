@@ -44,10 +44,11 @@ func (sc Scheme) Prefix() string {
 // Kind names what a key is bound to.
 type Kind string
 
-// The key kinds. A project key is bound to one project for life; an org key reaches the projects its grant names.
+// The key kinds. A project key is bound to one project; org and personal keys reach the projects their grant names.
 const (
-	KindProject Kind = "project"
-	KindOrg     Kind = "org"
+	KindProject  Kind = "project"
+	KindOrg      Kind = "org"
+	KindPersonal Kind = "personal"
 )
 
 // ProjectGrant is the set of projects an org key reaches: every project of the org, or the named ones.
@@ -132,6 +133,24 @@ func (sc Scheme) MintOrg(
 	return k, plaintext, nil
 }
 
+// MintPersonal returns a new personal key acting for ownerID and its one-time plaintext secret.
+func (sc Scheme) MintPersonal(
+	orgID, ownerID uuid.UUID,
+	name string,
+	scopes []string,
+	grant ProjectGrant,
+	expiresAt *time.Time,
+	now time.Time,
+) (*APIKey, string, error) {
+	k, plaintext, err := sc.MintOrg(orgID, name, scopes, grant, expiresAt, now)
+	if err != nil {
+		return nil, "", err
+	}
+	k.Kind = KindPersonal
+	k.CreatedBy = ownerID
+	return k, plaintext, nil
+}
+
 func (sc Scheme) mint(orgID uuid.UUID, name string, scopes []string, expiresAt *time.Time, now time.Time) (*APIKey, string, error) {
 	if err := ValidateName(name); err != nil {
 		return nil, "", err
@@ -190,7 +209,7 @@ func ValidateName(name string) error {
 }
 
 // HasGrant reports whether the key reaches projects through a grant rather than one bound project.
-func (k *APIKey) HasGrant() bool { return k.Kind == KindOrg }
+func (k *APIKey) HasGrant() bool { return k.Kind == KindOrg || k.Kind == KindPersonal }
 
 // ReachableProjects returns the projects the key reaches when it is not granted all of them.
 func (k *APIKey) ReachableProjects() []uuid.UUID {

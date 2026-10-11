@@ -69,11 +69,11 @@ func newCreateCmd(clientFn ClientFn) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
-	cmd.Flags().StringVar(&kind, "kind", "org", "Key kind: project|org")
+	cmd.Flags().StringVar(&kind, "kind", "org", "Key kind: project|org|personal (personal needs a signed-in session)")
 	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id (project keys)")
 	cmd.Flags().StringVar(&name, "name", "", "Key name")
 	cmd.Flags().StringVar(&scopes, "scopes", "", "Comma-separated scopes")
-	cmd.Flags().StringVar(&projectIDs, "project-ids", "", "Comma-separated project ids (org keys)")
+	cmd.Flags().StringVar(&projectIDs, "project-ids", "", "Comma-separated project ids (org and personal keys)")
 	cmd.Flags().BoolVar(&allProjects, "all-projects", false, "Grant the key every project of the org")
 	cmd.Flags().DurationVar(&expiresIn, "expires-in", 720*time.Hour, "Lifetime from now (max 366 days)")
 	_ = cmd.MarkFlagRequired("org-id")

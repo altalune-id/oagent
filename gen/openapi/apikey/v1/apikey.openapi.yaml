@@ -124,6 +124,7 @@ components:
         kind:
           type: string
           title: kind
+          description: project, org or personal; a personal key acts for the person who created it.
         name:
           type: string
           title: name
@@ -174,6 +175,7 @@ components:
         kind:
           type: string
           title: kind
+          description: project, org or personal; personal needs a signed-in person and never exceeds their role.
         name:
           type: string
           title: name

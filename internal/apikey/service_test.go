@@ -119,13 +119,13 @@ func TestService_List(t *testing.T) {
 	k, _, err := apikey.NewScheme("").MintOrg(uuid.New(), "x", nil, apikey.ProjectGrant{All: true}, future(), time.Now().UTC())
 	require.NoError(t, err)
 	store := &fakes.APIKeyStore{Keys: []*apikey.APIKey{k}}
-	got, err := newService(store, stubProjects{}).List(context.Background(), k.OrgID)
+	got, err := newService(store, stubProjects{}).List(context.Background(), k.OrgID, uuid.Nil)
 	require.NoError(t, err)
 	assert.Equal(t, []*apikey.APIKey{k}, got)
 }
 
 func TestService_List_Error(t *testing.T) {
-	_, err := newService(&fakes.APIKeyStore{Err: errors.New("boom")}, stubProjects{}).List(context.Background(), uuid.New())
+	_, err := newService(&fakes.APIKeyStore{Err: errors.New("boom")}, stubProjects{}).List(context.Background(), uuid.New(), uuid.Nil)
 	assert.Error(t, err)
 }
 
@@ -134,20 +134,20 @@ func TestService_Revoke(t *testing.T) {
 	k, _, err := apikey.NewScheme("").MintOrg(orgID, "x", nil, apikey.ProjectGrant{All: true}, future(), time.Now().UTC())
 	require.NoError(t, err)
 	store := &fakes.APIKeyStore{Key: k}
-	require.NoError(t, newService(store, stubProjects{}).Revoke(context.Background(), orgID, k.ID))
+	require.NoError(t, newService(store, stubProjects{}).Revoke(context.Background(), orgID, k.ID, uuid.Nil))
 	assert.NotNil(t, store.Saved.RevokedAt)
 }
 
 func TestService_Revoke_WrongOrg(t *testing.T) {
 	k, _, err := apikey.NewScheme("").MintOrg(uuid.New(), "x", nil, apikey.ProjectGrant{All: true}, future(), time.Now().UTC())
 	require.NoError(t, err)
-	err = newService(&fakes.APIKeyStore{Key: k}, stubProjects{}).Revoke(context.Background(), uuid.New(), k.ID)
+	err = newService(&fakes.APIKeyStore{Key: k}, stubProjects{}).Revoke(context.Background(), uuid.New(), k.ID, uuid.Nil)
 	assert.IsType(t, &apikey.NotFoundError{}, err)
 }
 
 func TestService_Revoke_NotFound(t *testing.T) {
 	store := &fakes.APIKeyStore{Err: &apikey.NotFoundError{ID: "x"}}
-	err := newService(store, stubProjects{}).Revoke(context.Background(), uuid.New(), uuid.New())
+	err := newService(store, stubProjects{}).Revoke(context.Background(), uuid.New(), uuid.New(), uuid.Nil)
 	assert.True(t, apikey.IsNotFoundError(err))
 }
 
@@ -157,7 +157,7 @@ func TestService_Revoke_SaveError(t *testing.T) {
 	require.NoError(t, err)
 	store := &fakes.APIKeyStore{Key: k, SaveFn: func(*apikey.APIKey) error { return errors.New("boom") }}
 
-	err = newService(store, stubProjects{}).Revoke(context.Background(), orgID, k.ID)
+	err = newService(store, stubProjects{}).Revoke(context.Background(), orgID, k.ID, uuid.Nil)
 	_, ok := apperror.AsAppError(err)
 	assert.True(t, ok)
 }

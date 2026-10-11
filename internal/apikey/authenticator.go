@@ -12,6 +12,7 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/scope"
 )
 
@@ -20,23 +21,26 @@ type Authenticator struct {
 	store      Reader
 	usage      *UsageWorker
 	scheme     Scheme
+	owners     OwnerRoles
 	unexpected apperror.UnexpectedFunc
 	now        func() time.Time
 }
 
 var _ authn.Authenticator = (*Authenticator)(nil)
 
-// NewAuthenticator binds an Authenticator to its store, usage recorder and scheme; usage and unexpected may be nil.
+// NewAuthenticator binds an Authenticator to its store, usage recorder, scheme and owner roles; usage and unexpected may be nil.
 func NewAuthenticator(
 	store Reader,
 	usage *UsageWorker,
 	scheme Scheme,
+	owners OwnerRoles,
 	unexpected apperror.UnexpectedFunc,
 ) *Authenticator {
 	return &Authenticator{
 		store:      store,
 		usage:      usage,
 		scheme:     scheme,
+		owners:     owners,
 		unexpected: unexpected,
 		now:        func() time.Time { return time.Now().UTC() },
 	}
@@ -59,9 +63,35 @@ func (a *Authenticator) Authenticate(ctx context.Context, c authn.Credential) (s
 		return session.Principal{}, &authn.UnauthorizedError{}
 	}
 	p := principalFor(k, now)
+	if k.Kind == KindPersonal {
+		if p, err = a.actAsOwner(ctx, k, p); err != nil {
+			return session.Principal{}, err
+		}
+	}
 	if a.usage != nil {
 		a.usage.Record(k.ID, now)
 	}
+	return p, nil
+}
+
+// SECURITY: a personal key never exceeds its owner's current role, and dies when the owner leaves the org.
+func (a *Authenticator) actAsOwner(ctx context.Context, k *APIKey, p session.Principal) (session.Principal, error) {
+	if a.owners == nil || k.CreatedBy == uuid.Nil {
+		return session.Principal{}, &authn.UnauthorizedError{}
+	}
+	role, ok, err := a.owners.Role(ctx, k.OrgID, k.CreatedBy)
+	if err != nil {
+		if a.unexpected != nil {
+			_ = a.unexpected(ctx, "apikey: owner role", err)
+		}
+		return session.Principal{}, &authn.UnauthorizedError{}
+	}
+	if !ok {
+		return session.Principal{}, &authn.UnauthorizedError{}
+	}
+	granted := member.BuiltinPermissions(role)
+	p.Scopes = slices.DeleteFunc(p.Scopes, func(s string) bool { return !scope.Grants(granted, s) })
+	p.OwnerID = k.CreatedBy
 	return p, nil
 }
 
