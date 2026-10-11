@@ -84,15 +84,16 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 	sup := worker.New(log)
 	sup.Register(httpserver.New(
 		httpConfig(cfg.HTTP),
-		buildHTTPHandler(
-			log,
-			k.Reporter.Unexpected,
-			health.Ready,
-			cfg.HTTP.BasePath,
-			apiHandler,
-			consoleHandler,
-			mcpHTTPHandler(mcpServer),
-		),
+		buildHTTPHandler(httpSurfaces{
+			log:        log,
+			unexpected: k.Reporter.Unexpected,
+			ready:      health.Ready,
+			basePath:   cfg.HTTP.BasePath,
+			api:        apiHandler,
+			console:    consoleHandler,
+			mcp:        mcpHTTPHandler(mcpServer),
+			routes:     buildRoutes(cfg, log, k.Reporter.Unexpected),
+		}),
 		log,
 	))
 	sup.Register(health)

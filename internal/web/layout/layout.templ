@@ -1,0 +1,28 @@
+package layout
+
+templ Layout(d LayoutData) {
+	<!DOCTYPE html>
+	<html lang={ d.lang() } data-theme="oagent-light">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ d.Title } · oagent</title>
+			<link rel="icon" type="image/svg+xml" href={ d.Static("/favicon.svg") }/>
+			<link rel="stylesheet" href={ d.Static("/app.css") }/>
+		</head>
+		<body class="min-h-screen bg-base-200 text-base-content">
+			<main class="flex min-h-screen items-center justify-center p-4">
+				{ children... }
+			</main>
+		</body>
+	</html>
+}
+
+templ Card(title string) {
+	<div class="card w-full max-w-md bg-base-100 shadow-sm">
+		<div class="card-body gap-4">
+			<h1 class="card-title text-2xl">{ title }</h1>
+			{ children... }
+		</div>
+	</div>
+}

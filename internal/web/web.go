@@ -4,16 +4,24 @@ package web
 import (
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/web/layout"
 	"altalune.id/oagent/internal/web/middleware"
 )
+
+// Registrar mounts a domain's server-rendered routes; each domain's web.go implements it.
+type Registrar interface {
+	Register(mux *http.ServeMux)
+}
 
 // ServerOpts configures the web server handler.
 type ServerOpts struct {
 	APIHandler http.Handler // optional Connect-RPC surface mounted at BasePath+"/api"
 	MCPHandler http.Handler // optional MCP surface mounted at BasePath+"/mcp"
 	Console    http.Handler // optional console SPA mounted at BasePath+"/console"
+	Routes     []Registrar  // optional server-rendered routes; their mux also answers every unknown path
 	BasePath   string
 	Log        *slog.Logger
 	Unexpected apperror.UnexpectedFunc
@@ -26,19 +34,34 @@ func NewServer(opts ServerOpts) http.Handler {
 	outer.HandleFunc("GET /healthz", healthz)
 	outer.HandleFunc("GET /readyz", readyz(opts.Ready))
 	if opts.APIHandler != nil {
-		outer.Handle(Path(opts.BasePath, "/api")+"/", opts.APIHandler)
+		outer.Handle(layout.Path(opts.BasePath, "/api")+"/", opts.APIHandler)
 	}
 	if opts.MCPHandler != nil {
-		mcp := Path(opts.BasePath, "/mcp")
+		mcp := layout.Path(opts.BasePath, "/mcp")
 		outer.Handle(mcp, opts.MCPHandler)
 		outer.Handle(mcp+"/", opts.MCPHandler)
 	}
 	if opts.Console != nil {
-		console := Path(opts.BasePath, "/console")
+		console := layout.Path(opts.BasePath, "/console")
 		outer.Handle(console, http.RedirectHandler(console+"/", http.StatusMovedPermanently))
 		outer.Handle(console+"/", http.StripPrefix(console, opts.Console))
 	}
-	outer.Handle("/", http.NotFoundHandler())
+	static := layout.Path(opts.BasePath, "/static") + "/"
+	outer.Handle("GET "+static, staticHandler(static))
+	toConsole := http.RedirectHandler(layout.Path(opts.BasePath, "/console")+"/", http.StatusFound)
+	outer.Handle("GET "+strings.TrimRight(opts.BasePath, "/")+"/{$}", toConsole)
+	if bp := strings.TrimRight(opts.BasePath, "/"); bp != "" {
+		outer.Handle("GET "+bp, toConsole)
+	}
+	if len(opts.Routes) > 0 {
+		routes := http.NewServeMux()
+		for _, r := range opts.Routes {
+			r.Register(routes)
+		}
+		outer.Handle("/", routes)
+	} else {
+		outer.Handle("/", http.NotFoundHandler())
+	}
 	return middleware.Recoverer(opts.Log, opts.Unexpected, middleware.RequestID(outer))
 }
 

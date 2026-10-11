@@ -8,7 +8,9 @@ import (
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/httpserver"
 	"altalune.id/oagent/internal/controlplane"
+	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/web"
+	"altalune.id/oagent/internal/web/layout"
 )
 
 // httpConfig maps the operator config onto the HTTP server worker's config.
@@ -34,21 +36,33 @@ func buildAPIHandler(svcs *Services, unexpected apperror.UnexpectedFunc, cfg con
 	}, unexpected, opts).Handler(basePath)
 }
 
-// buildHTTPHandler builds the web surface's handler.
-func buildHTTPHandler(
-	log *slog.Logger,
-	unexpected apperror.UnexpectedFunc,
-	ready func() bool,
-	basePath string,
-	api, consoleHandler, mcpHandler http.Handler,
-) http.Handler {
+func buildRoutes(cfg config.Config, log *slog.Logger, unexpected apperror.UnexpectedFunc) []web.Registrar {
+	kit := layout.Kit{BasePath: cfg.HTTP.BasePath, Log: log, Unexpected: unexpected}
+	return []web.Registrar{
+		legal.NewWeb(legal.WebOpts{Kit: kit, TermsURL: cfg.Compliance.TermsURL, PrivacyURL: cfg.Compliance.PrivacyURL}),
+	}
+}
+
+type httpSurfaces struct {
+	log        *slog.Logger
+	unexpected apperror.UnexpectedFunc
+	ready      func() bool
+	basePath   string
+	api        http.Handler
+	console    http.Handler
+	mcp        http.Handler
+	routes     []web.Registrar
+}
+
+func buildHTTPHandler(s httpSurfaces) http.Handler {
 	return web.NewServer(web.ServerOpts{
-		APIHandler: api,
-		MCPHandler: mcpHandler,
-		Console:    consoleHandler,
-		BasePath:   basePath,
-		Log:        log,
-		Unexpected: unexpected,
-		Ready:      ready,
+		APIHandler: s.api,
+		MCPHandler: s.mcp,
+		Console:    s.console,
+		Routes:     s.routes,
+		BasePath:   s.basePath,
+		Log:        s.log,
+		Unexpected: s.unexpected,
+		Ready:      s.ready,
 	})
 }

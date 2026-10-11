@@ -95,11 +95,66 @@ func TestConsoleMountsUnderBasePath(t *testing.T) {
 	assert.Equal(t, "/ping", rec.Body.String())
 }
 
-func TestRootStaysNotFoundWithConsole(t *testing.T) {
+func TestUnknownPathStaysNotFoundWithConsole(t *testing.T) {
 	app := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
 	srv := NewServer(ServerOpts{Console: app})
 
 	rec := httptest.NewRecorder()
-	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/elsewhere", nil))
 	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+type noRoutes struct{}
+
+func (noRoutes) Register(*http.ServeMux) {}
+
+func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+	return rec
+}
+
+func TestRoutes_UnknownPathIs404(t *testing.T) {
+	srv := NewServer(ServerOpts{Routes: []Registrar{noRoutes{}}})
+	assert.Equal(t, http.StatusNotFound, get(t, srv, "/nope").Code)
+}
+
+func TestStaticAssets(t *testing.T) {
+	for _, base := range []string{"", "/app"} {
+		srv := NewServer(ServerOpts{BasePath: base})
+
+		rec := get(t, srv, base+"/static/app.css")
+		assert.Equal(t, http.StatusOK, rec.Code, base)
+		assert.Equal(t, "text/css; charset=utf-8", rec.Header().Get("Content-Type"))
+		assert.Equal(t, "public, max-age=3600", rec.Header().Get("Cache-Control"))
+		assert.NotEmpty(t, rec.Body.String())
+
+		rec = get(t, srv, base+"/static/favicon.svg")
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "image/svg+xml", rec.Header().Get("Content-Type"))
+
+		assert.Equal(t, http.StatusNotFound, get(t, srv, base+"/static/missing.css").Code)
+	}
+}
+
+func TestRootRedirectsToConsole(t *testing.T) {
+	cases := map[string]struct{ base, path, want string }{
+		"root":           {"", "/", "/console/"},
+		"base with dash": {"/app", "/app/", "/app/console/"},
+		"base bare":      {"/app", "/app", "/app/console/"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			rec := get(t, NewServer(ServerOpts{BasePath: tc.base}), tc.path)
+			assert.Equal(t, http.StatusFound, rec.Code)
+			assert.Equal(t, tc.want, rec.Header().Get("Location"))
+		})
+	}
+}
+
+func TestRootRedirectIsGetOnly(t *testing.T) {
+	rec := httptest.NewRecorder()
+	NewServer(ServerOpts{}).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/", nil))
+	assert.NotEqual(t, http.StatusFound, rec.Code)
 }

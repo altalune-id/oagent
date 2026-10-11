@@ -10,18 +10,25 @@ import (
 
 // Config is the full runtime configuration.
 type Config struct {
-	Mode      Mode            `yaml:"mode"      mapstructure:"mode"      awareness:"required,bootstrap" validate:"required,oneof=selfhosted cloud"`       //nolint:lll // struct tags are single-line
-	Env       Env             `yaml:"env"       mapstructure:"env"       awareness:"required,bootstrap" validate:"required,oneof=development production"` //nolint:lll // struct tags are single-line
-	HTTP      HTTPConfig      `yaml:"http"      mapstructure:"http"`
-	DB        DBConfig        `yaml:"db"        mapstructure:"db"`
-	Telemetry TelemetryConfig `yaml:"telemetry" mapstructure:"telemetry"`
-	Scheduler SchedulerConfig `yaml:"scheduler" mapstructure:"scheduler"`
-	Queue     QueueConfig     `yaml:"queue"     mapstructure:"queue"`
-	API       APIConfig       `yaml:"api"       mapstructure:"api"`
-	MCP       MCPConfig       `yaml:"mcp"       mapstructure:"mcp"`
-	Secrets   SecretsConfig   `yaml:"secrets"   mapstructure:"secrets"`
-	Auth      AuthConfig      `yaml:"auth"      mapstructure:"auth"`
-	Install   InstallConfig   `yaml:"install"   mapstructure:"install"`
+	Mode       Mode             `yaml:"mode"      mapstructure:"mode"      awareness:"required,bootstrap" validate:"required,oneof=selfhosted cloud"`       //nolint:lll // struct tags are single-line
+	Env        Env              `yaml:"env"       mapstructure:"env"       awareness:"required,bootstrap" validate:"required,oneof=development production"` //nolint:lll // struct tags are single-line
+	HTTP       HTTPConfig       `yaml:"http"      mapstructure:"http"`
+	DB         DBConfig         `yaml:"db"        mapstructure:"db"`
+	Telemetry  TelemetryConfig  `yaml:"telemetry" mapstructure:"telemetry"`
+	Scheduler  SchedulerConfig  `yaml:"scheduler" mapstructure:"scheduler"`
+	Queue      QueueConfig      `yaml:"queue"     mapstructure:"queue"`
+	API        APIConfig        `yaml:"api"       mapstructure:"api"`
+	MCP        MCPConfig        `yaml:"mcp"       mapstructure:"mcp"`
+	Secrets    SecretsConfig    `yaml:"secrets"   mapstructure:"secrets"`
+	Auth       AuthConfig       `yaml:"auth"      mapstructure:"auth"`
+	Install    InstallConfig    `yaml:"install"    mapstructure:"install"`
+	Compliance ComplianceConfig `yaml:"compliance" mapstructure:"compliance"`
+}
+
+// ComplianceConfig configures the legal pages; an empty URL serves the embedded document.
+type ComplianceConfig struct {
+	TermsURL   string `yaml:"termsURL"   mapstructure:"termsURL"   validate:"omitempty,url"`
+	PrivacyURL string `yaml:"privacyURL" mapstructure:"privacyURL" validate:"omitempty,url"`
 }
 
 // SecretsConfig configures at-rest secret sealing (webhook signing secrets).

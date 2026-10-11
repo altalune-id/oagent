@@ -1,0 +1,16 @@
+{
+  "name": "@oagent/web",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tailwindcss -i app.css -o ../../internal/web/static/app.css --minify"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "daisyui": "5.7.47",
+    "tailwindcss": "4.3.3"
+  }
+}

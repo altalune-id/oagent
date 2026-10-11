@@ -1,0 +1,12 @@
+package layout
+
+templ Error(d LayoutData, message string) {
+	@Layout(d) {
+		@Card(d.Title) {
+			<p>{ message }</p>
+			<div class="card-actions justify-end">
+				<a class="btn btn-primary" href={ d.Href("/console/") }>Go to the console</a>
+			</div>
+		}
+	}
+}

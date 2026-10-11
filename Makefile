@@ -38,9 +38,17 @@ config-examples: ## regenerate .env.reference and config.reference.yml from stru
 	$(GO) tool gen-config-example --format=yaml
 
 .PHONY: generate
-generate: ## regenerate protos (connect, openapi, mcp tools) and scope names
+generate: templ ## regenerate protos (connect, openapi, mcp tools), scope names and templ components
 	env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) buf generate
 	$(GO) tool gen-scope
+
+.PHONY: templ
+templ: ## generate templ components
+	$(GO) tool templ generate -path internal
+
+.PHONY: web-css
+web-css: ## compile internal/web/static/app.css
+	pnpm --filter @oagent/web exec tailwindcss -i app.css -o ../../internal/web/static/app.css --minify
 
 .PHONY: ui-mcp
 ui-mcp: ## build the MCP App (Vue) and embed it

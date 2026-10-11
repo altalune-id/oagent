@@ -1,0 +1,30 @@
+package views
+
+import (
+	"time"
+
+	"altalune.id/oagent/internal/web/layout"
+)
+
+// DocumentData is a rendered legal document. SECURITY: HTML is written as-is, so it must come from markdown rendered without raw HTML.
+type DocumentData struct {
+	Title     string
+	HTML      string
+	UpdatedAt time.Time
+}
+
+templ Document(d layout.LayoutData, doc DocumentData) {
+	@layout.Layout(d) {
+		<article class="card w-full max-w-2xl bg-base-100 shadow-sm">
+			<div class="card-body">
+				<h1 class="card-title text-2xl">{ doc.Title }</h1>
+				if !doc.UpdatedAt.IsZero() {
+					<p class="text-sm text-base-content/60">Last updated { doc.UpdatedAt.Format("2006-01-02") }</p>
+				}
+				<div class="mt-2 leading-relaxed [&_h2]:mt-6 [&_h2]:text-lg [&_h2]:font-semibold [&_p]:mt-2 [&_ul]:mt-2 [&_ul]:list-disc [&_ul]:pl-6">
+					@templ.Raw(doc.HTML)
+				</div>
+			</div>
+		</article>
+	}
+}

@@ -1,0 +1,8 @@
+@import "tailwindcss";
+@source "../../internal/**/*.templ";
+
+@plugin "daisyui" {
+  themes: false;
+}
+
+@import "../theme.css";

@@ -37,6 +37,12 @@ auth:
   # env: OAGENT_AUTH_SESSION_TTL
   sessionTTL: 24h
 
+compliance:
+  # env: OAGENT_COMPLIANCE_PRIVACY_URL
+  privacyURL: ""
+  # env: OAGENT_COMPLIANCE_TERMS_URL
+  termsURL: ""
+
 db:
   # env: OAGENT_DB_AUTO_MIGRATE
   autoMigrate: true
