@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { loginURL, siblingURL } from './urls'
+import { loginURL, mcpURL, siblingURL } from './urls'
 
 describe('siblingURL', () => {
   it.each([
@@ -28,5 +28,12 @@ describe('loginURL', () => {
 
   it('works at the root', () => {
     expect(loginURL('', { pathname: '/console/', search: '', hash: '' })).toBe('/login?return_to=%2Fconsole%2F')
+  })
+})
+
+describe('mcpURL', () => {
+  it('is absolute and next to the API', () => {
+    expect(mcpURL('/app/api', 'https://oagent.example.com')).toBe('https://oagent.example.com/app/mcp')
+    expect(mcpURL('', 'http://localhost:5150')).toBe('http://localhost:5150/mcp')
   })
 })

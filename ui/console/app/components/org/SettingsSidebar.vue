@@ -9,6 +9,7 @@ const base = computed(() => `/o/${route.params.org}/settings`)
 const items = computed<NavItem[]>(() => [
   { key: 'general', label: t('nav.general'), icon: 'lucide:sliders-horizontal', active: route.path === base.value },
   { key: 'api-keys', label: t('apikeys.title'), icon: 'lucide:key-round', active: route.path.startsWith(`${base.value}/api-keys`) },
+  { key: 'personal-keys', label: t('apikeys.personal_title'), icon: 'lucide:user-round-key', active: route.path.startsWith(`${base.value}/personal-keys`) },
 ])
 
 function onSelect(key: string) {
