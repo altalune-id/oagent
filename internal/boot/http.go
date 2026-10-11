@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync/atomic"
 
 	"altalune.id/oagent/apperror"
@@ -84,6 +85,24 @@ func buildCrossOrigin(baseURL string) (*http.CrossOriginProtection, error) {
 		return nil, fmt.Errorf("boot: http.baseURL origin: %w", err)
 	}
 	return cop, nil
+}
+
+func warnSampleLegal(cfg config.Config, log *slog.Logger, serving bool) {
+	if log == nil || !serving || cfg.Env == config.EnvDevelopment {
+		return
+	}
+	var missing []string
+	if cfg.Compliance.TermsURL == "" {
+		missing = append(missing, "compliance.termsURL")
+	}
+	if cfg.Compliance.PrivacyURL == "" {
+		missing = append(missing, "compliance.privacyURL")
+	}
+	if len(missing) == 0 {
+		return
+	}
+	log.Warn("boot: serving the built-in sample terms/privacy; set compliance.termsURL and compliance.privacyURL",
+		slog.String("missing", strings.Join(missing, " ")))
 }
 
 func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected apperror.UnexpectedFunc) []web.Registrar {

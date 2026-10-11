@@ -3,6 +3,7 @@ package boot
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -92,4 +93,43 @@ func TestBuildCrossOrigin(t *testing.T) {
 	cop, err = buildCrossOrigin("")
 	require.NoError(t, err)
 	assert.NotNil(t, cop)
+}
+
+func TestWarnSampleLegal(t *testing.T) {
+	prod := config.Config{Env: config.EnvProduction}
+	set := prod
+	set.Compliance = config.ComplianceConfig{TermsURL: "https://example.com/terms", PrivacyURL: "https://example.com/privacy"}
+	dev := config.Config{Env: config.EnvDevelopment}
+
+	tests := []struct {
+		name    string
+		cfg     config.Config
+		serving bool
+		want    string
+	}{
+		{name: "production, both empty", cfg: prod, serving: true, want: "missing=\"compliance.termsURL compliance.privacyURL\""},
+		{name: "production, both set", cfg: set, serving: true},
+		{name: "development", cfg: dev, serving: true},
+		{name: "not serving http (mcp stdio, set-password)", cfg: prod, serving: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			log, buf := bufferLogger()
+			warnSampleLegal(tt.cfg, log, tt.serving)
+			if tt.want == "" {
+				assert.Empty(t, buf.String())
+				return
+			}
+			assert.Equal(t, 1, strings.Count(buf.String(), "level=WARN"))
+			assert.Contains(t, buf.String(), "boot: serving the built-in sample terms/privacy; set compliance.termsURL and compliance.privacyURL")
+			assert.Contains(t, buf.String(), tt.want)
+		})
+	}
+}
+
+func TestWarnSampleLegal_NamesOnlyTheMissingKey(t *testing.T) {
+	cfg := config.Config{Env: config.EnvProduction, Compliance: config.ComplianceConfig{TermsURL: "https://example.com/terms"}}
+	log, buf := bufferLogger()
+	warnSampleLegal(cfg, log, true)
+	assert.Contains(t, buf.String(), "missing=compliance.privacyURL")
 }

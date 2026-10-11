@@ -82,6 +82,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		_ = shutdown(ctx)
 		return nil, err
 	}
+	warnSampleLegal(cfg, log, logsInstallURL(o))
 	dbHealth := buildDBHealth(k, cfg, log)
 	apiHandler := buildAPIHandler(svcs, k.Reporter.Unexpected, cfg.API, cfg.HTTP.BasePath, log)
 	crossOrigin, err := buildCrossOrigin(cfg.HTTP.BaseURL)
