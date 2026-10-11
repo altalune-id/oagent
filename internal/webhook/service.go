@@ -21,12 +21,6 @@ import (
 
 const eventIDPrefix = "evt_"
 
-// Resolver resolves the public identifiers and slug the envelope carries; internal UUIDs are never exposed.
-type Resolver interface {
-	ProjectRef(ctx context.Context, projectID uuid.UUID) (slug, publicID string, err error)
-	OrgRef(ctx context.Context, orgID uuid.UUID) (publicID string, err error)
-}
-
 // Envelope is the JSON body every delivery of one event carries; it is the public wire contract.
 type Envelope struct {
 	ID         string         `json:"id"`
