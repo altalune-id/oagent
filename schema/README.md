@@ -49,7 +49,7 @@ erDiagram
         uuid id PK
         text public_id UK
         uuid org_id FK
-        uuid project_id FK
+        uuid project_id FK "(org_id, project_id) -> projects"
         text slug "unique per project"
         text name
         text description
@@ -60,7 +60,7 @@ erDiagram
     api_keys {
         uuid id PK
         uuid org_id FK
-        uuid project_id FK "project keys only"
+        uuid project_id FK "project keys only; (org_id, project_id) -> projects"
         text kind "project, org or personal"
         bool all_projects
         text name
@@ -84,7 +84,7 @@ erDiagram
         uuid id PK
         uuid event_id
         uuid org_id FK
-        uuid project_id FK
+        uuid project_id FK "(org_id, project_id) -> projects"
         text target
         bytea payload
         int attempt
@@ -98,7 +98,7 @@ erDiagram
         uuid id PK
         text public_id UK
         uuid org_id FK
-        uuid project_id FK
+        uuid project_id FK "(org_id, project_id) -> projects"
         text url
         text description
         text event_types
@@ -111,7 +111,7 @@ erDiagram
     webhook_deliveries {
         uuid id PK
         uuid org_id FK
-        uuid project_id FK
+        uuid project_id FK "(org_id, project_id) -> projects"
         uuid endpoint_id FK
         uuid delivery_id
         uuid event_id
@@ -168,6 +168,7 @@ Rules the diagram can't show. Names omit `{{.TablePrefix}}`.
 |---|---|---|
 | `orgs` | `orgs_one_system` (unique, `WHERE is_system`) | at most one system org; it marks the instance as installed |
 | `projects` | `UNIQUE (org_id, slug)`, `projects_org_id_id_key UNIQUE (org_id, id)` | slug unique per org; the pair is the target of org-scoped FKs |
+| `agents`, `api_keys`, `outbox_entries`, `webhook_endpoints`, `webhook_deliveries` | `<table>_org_project_fkey`: `(org_id, project_id) → projects (org_id, id)`, `ON DELETE CASCADE` | a row's project always belongs to the row's org; a NULL `project_id` (org and personal keys) is allowed |
 | `agents` | `UNIQUE (project_id, slug)` | slug unique per project |
 | `api_keys` | `api_keys_kind_shape` (check) | `project` keys have a `project_id` and no `all_projects`; `org` and `personal` keys have no `project_id` |
 | `api_keys` | `api_keys_created_by_fkey` (`ON DELETE SET NULL`) | `created_by` is a real user; deleting the user keeps the key but clears the owner, and a personal key without an owner never authenticates |

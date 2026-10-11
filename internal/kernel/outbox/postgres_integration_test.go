@@ -202,7 +202,7 @@ func TestEnqueue_UnknownProjectViolatesTheForeignKey(t *testing.T) {
 
 	err := f.store.Enqueue(ctx, newEntry(tc, "t"))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outbox_entries_project_id_fkey")
+	assert.Contains(t, err.Error(), "outbox_entries_org_project_fkey")
 }
 
 func TestEnqueue_DeletingOrgOrProjectCascades(t *testing.T) {
