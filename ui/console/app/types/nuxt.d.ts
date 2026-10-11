@@ -1,6 +1,7 @@
 import type { Client } from '@connectrpc/connect'
 import { AgentService } from '~~/gen/agent/v1/agent_pb'
 import { APIKeyService } from '~~/gen/apikey/v1/apikey_pb'
+import { AuthService } from '~~/gen/auth/v1/auth_pb'
 import { OrgService } from '~~/gen/org/v1/org_pb'
 import { ProjectService } from '~~/gen/project/v1/project_pb'
 import { WebhookService } from '~~/gen/webhook/v1/webhook_pb'
@@ -12,5 +13,6 @@ declare module '#app' {
     $agentClient: Client<typeof AgentService>
     $apiKeyClient: Client<typeof APIKeyService>
     $webhookClient: Client<typeof WebhookService>
+    $authClient: Client<typeof AuthService>
   }
 }

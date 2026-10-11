@@ -5,6 +5,9 @@ import OrgSelector from '~/components/org/OrgSelector.vue'
 import ProjectSelector from '~/components/project/ProjectSelector.vue'
 import ThemeFamilySwitcher from '~/components/layout/ThemeFamilySwitcher.vue'
 import ThemeSwitcher from '~/components/layout/ThemeSwitcher.vue'
+import UserMenu from '~/components/layout/UserMenu.vue'
+import { siblingURL } from '~/lib/auth/urls'
+import { useAuthStore } from '~/stores/auth'
 import { useUIStore } from '~/stores/ui'
 
 const route = useRoute()
@@ -12,6 +15,17 @@ const { t } = useI18n()
 const ui = useUIStore()
 
 const hasNav = computed(() => !!route.params.org)
+
+const auth = useAuthStore()
+const logoutUrl = siblingURL(useRuntimeConfig().public.apiUrl, '/logout')
+const userLabels = computed(() => ({
+  signOut: t('auth.sign_out'),
+  signedInAs: t('auth.signed_in_as'),
+  operator: t('auth.operator'),
+  apikey: t('auth.source_apikey'),
+  basic: t('auth.source_basic'),
+}))
+onMounted(() => auth.load())
 </script>
 
 <template>
@@ -34,6 +48,7 @@ const hasNav = computed(() => !!route.params.org)
       <LanguageSwitcher @focusin="ui.navOpen = false" />
       <ThemeFamilySwitcher @focusin="ui.navOpen = false" />
       <ThemeSwitcher @focusin="ui.navOpen = false" />
+      <UserMenu :me="auth.me" :logout-url="logoutUrl" :labels="userLabels" @focusin="ui.navOpen = false" />
     </template>
   </NavbarShell>
 </template>
