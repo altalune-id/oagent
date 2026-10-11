@@ -32,6 +32,16 @@ type ProjectLister interface {
 	List(ctx context.Context, orgID uuid.UUID) ([]*project.Project, error)
 }
 
+// OrgGetter loads an org by id.
+type OrgGetter interface {
+	Get(ctx context.Context, id uuid.UUID) (*org.Org, error)
+}
+
+// UserGetter loads a user by id.
+type UserGetter interface {
+	ByID(ctx context.Context, id uuid.UUID) (*user.User, error)
+}
+
 // Deps are the ports a Service reads from.
 type Deps struct {
 	Users    UserReader

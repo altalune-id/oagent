@@ -36,6 +36,7 @@ type Services struct {
 	Agents          *agent.Service
 	APIKeyStore     apikey.Store
 	APIKeys         *apikey.Service
+	KeyScheme       apikey.Scheme
 	KeyAuthn        *apikey.Authenticator
 	KeyUsage        *apikey.UsageWorker
 	Outbox          outbox.Store
@@ -109,6 +110,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Agents:       agents,
 		APIKeyStore:  apiKeyStore,
 		APIKeys:      apiKeys,
+		KeyScheme:    keyScheme,
 		KeyAuthn:     keyAuthn,
 		KeyUsage:     keyUsage,
 		Outbox:       outboxStore,

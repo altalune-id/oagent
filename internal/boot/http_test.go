@@ -6,8 +6,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/kernel/capabilities"
 	"altalune.id/oagent/internal/user"
@@ -62,4 +64,32 @@ func TestBuildRoutes_LoginOnlyWithLocalLogin(t *testing.T) {
 
 	svcs := &Services{Caps: capabilities.Capabilities{LocalLogin: true}, Auth: &auth.Service{}}
 	assert.Equal(t, http.StatusOK, serveRoutes(cfg, svcs, http.MethodGet, "/login").Code)
+}
+
+func TestAPIChain(t *testing.T) {
+	local := &Services{Caps: capabilities.Capabilities{LocalLogin: true}, KeyAuthn: &apikey.Authenticator{}, Auth: &auth.Service{}}
+	chain := apiChain(local)
+	require.Len(t, chain, 2)
+	assert.IsType(t, &apikey.Authenticator{}, chain[0])
+	assert.IsType(t, auth.SessionAuthenticator{}, chain[1])
+
+	basic := &Services{Caps: capabilities.Capabilities{BasicAuth: true}, KeyAuthn: &apikey.Authenticator{}, Auth: &auth.Service{}}
+	chain = apiChain(basic)
+	require.Len(t, chain, 2)
+	assert.IsType(t, auth.BasicAuthenticator{}, chain[1])
+}
+
+func TestBuildCrossOrigin(t *testing.T) {
+	cop, err := buildCrossOrigin("https://oagent.example.com/app")
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/x", nil)
+	req.Host = "internal:8080"
+	req.Header.Set("Origin", "https://oagent.example.com")
+	assert.NoError(t, cop.Check(req))
+	req.Header.Set("Origin", "https://evil.example")
+	assert.Error(t, cop.Check(req))
+
+	cop, err = buildCrossOrigin("")
+	require.NoError(t, err)
+	assert.NotNil(t, cop)
 }

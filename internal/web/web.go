@@ -27,20 +27,24 @@ type ServerOpts struct {
 	Session     func(http.Handler) http.Handler // optional; puts the cookie's Principal on routes and the console
 	SessionGate func(http.Handler) http.Handler // optional; runs after Session on routes and the console
 
-	BasePath   string
-	Log        *slog.Logger
-	Unexpected apperror.UnexpectedFunc
-	Ready      func() bool
+	CrossOrigin *http.CrossOriginProtection // guards routes and /api, not /mcp; nil uses the stdlib default
+	BasePath    string
+	Log         *slog.Logger
+	Unexpected  apperror.UnexpectedFunc
+	Ready       func() bool
 }
 
 // NewServer builds the root http.Handler.
 func NewServer(opts ServerOpts) http.Handler {
-	cop := http.NewCrossOriginProtection()
+	cop := opts.CrossOrigin
+	if cop == nil {
+		cop = http.NewCrossOriginProtection()
+	}
 	outer := http.NewServeMux()
 	outer.HandleFunc("GET /healthz", healthz)
 	outer.HandleFunc("GET /readyz", readyz(opts.Ready))
 	if opts.APIHandler != nil {
-		outer.Handle(layout.Path(opts.BasePath, "/api")+"/", opts.APIHandler)
+		outer.Handle(layout.Path(opts.BasePath, "/api")+"/", cop.Handler(opts.APIHandler))
 	}
 	if opts.MCPHandler != nil {
 		mcp := layout.Path(opts.BasePath, "/mcp")

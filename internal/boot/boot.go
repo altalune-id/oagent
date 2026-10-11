@@ -82,7 +82,13 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		return nil, err
 	}
 	health := buildDBHealth(k, cfg, log)
-	apiHandler := buildAPIHandler(svcs, k.Reporter.Unexpected, cfg.API, cfg.HTTP.BasePath)
+	apiHandler := buildAPIHandler(svcs, k.Reporter.Unexpected, cfg.API, cfg.HTTP.BasePath, log)
+	crossOrigin, err := buildCrossOrigin(cfg.HTTP.BaseURL)
+	if err != nil {
+		_ = pool.Close()
+		_ = shutdown(ctx)
+		return nil, err
+	}
 	consoleHandler := buildConsoleHandler(cfg.HTTP.BasePath)
 	mcpServer := buildMCPServer(cfg.MCP, svcs, log)
 
@@ -103,6 +109,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 			session:         buildSessionMiddleware(svcs, k.Reporter.Unexpected),
 
 			requireAcceptance: cfg.Compliance.RequireAcceptance && svcs.Caps.LocalLogin,
+			crossOrigin:       crossOrigin,
 		}),
 		log,
 	))

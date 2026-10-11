@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/auth/views"
 	"altalune.id/oagent/internal/kernel/session"
@@ -77,13 +75,6 @@ func viewOf(p session.Principal) principalView {
 		Permissions:     perms,
 		Operator:        p.Operator,
 	}
-}
-
-func idString(id uuid.UUID) string {
-	if id == uuid.Nil {
-		return ""
-	}
-	return id.String()
 }
 
 func (h *Web) getLogin(w http.ResponseWriter, r *http.Request) {

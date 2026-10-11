@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package auth.v1;
+
+option go_package = "altalune.id/oagent/gen/go/auth/v1;authv1";
+
+service AuthService {
+  // Whoami describes the credential the request was made with.
+  rpc Whoami(WhoamiRequest) returns (WhoamiResponse);
+}
+
+message WhoamiRequest {}
+
+message WhoamiResponse {
+  // local, basic or apikey.
+  string source = 1;
+  string user_id = 2;
+  string email = 3;
+  string name = 4;
+  string avatar_url = 5;
+  // Set for API keys.
+  string key_id = 6;
+  // Personal keys: the person the key acts for.
+  string owner_id = 7;
+  string active_org_id = 8;
+  string active_org_slug = 9;
+  string active_project_id = 10;
+  // Effective permissions after roles, key scopes and grants are intersected.
+  repeated string permissions = 11;
+  bool operator = 12;
+}

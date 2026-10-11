@@ -11,13 +11,17 @@ import (
 	"altalune.id/oagent/apperror"
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
+	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
+	"altalune.id/oagent/internal/auth"
+	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
+	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/webhook"
 )
 
@@ -25,6 +29,7 @@ import (
 type Options struct {
 	OpenAPIEnabled   bool
 	OpenAPIBasicAuth *BasicAuth
+	Authn            authn.InterceptorOptions
 }
 
 // Services are the domain services the controlplane exposes.
@@ -34,6 +39,7 @@ type Services struct {
 	Agents   *agent.Service
 	APIKeys  *apikey.Service
 	Webhooks *webhook.Service
+	Users    *user.Service
 }
 
 // Server holds the wired Connect handlers.
@@ -49,9 +55,11 @@ type Server struct {
 	AgentSvc   *agent.AgentService
 	APIKeySvc  *apikey.APIKeyService
 	WebhookSvc *webhook.WebhookControlPlane
+	AuthSvc    *auth.AuthService
 
 	OpenAPIEnabled   bool
 	OpenAPIBasicAuth *BasicAuth
+	authn            authn.InterceptorOptions
 
 	unexpected apperror.UnexpectedFunc
 }
@@ -67,6 +75,7 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 		OrgSvc:           org.NewControlPlane(svcs.Orgs),
 		OpenAPIEnabled:   opts.OpenAPIEnabled,
 		OpenAPIBasicAuth: opts.OpenAPIBasicAuth,
+		authn:            opts.Authn,
 		unexpected:       unexpected,
 	}
 	if svcs.Projects != nil {
@@ -80,6 +89,9 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 	}
 	if svcs.Webhooks != nil {
 		s.WebhookSvc = webhook.NewControlPlane(svcs.Webhooks)
+	}
+	if svcs.Orgs != nil && svcs.Users != nil {
+		s.AuthSvc = auth.NewControlPlane(svcs.Orgs, svcs.Users)
 	}
 	return s
 }
@@ -106,6 +118,11 @@ func (s *Server) Handler(basePath string) http.Handler {
 		inner.Handle(hookPath, hookHandler)
 	}
 
+	if s.AuthSvc != nil {
+		authPath, authHandler := authv1connect.NewAuthServiceHandler(s.AuthSvc, s.handlerOptions()...)
+		inner.Handle(authPath, authHandler)
+	}
+
 	if s.OpenAPIEnabled {
 		yamlBody, jsonBody := openAPI()
 		if len(yamlBody) > 0 {
@@ -129,7 +146,7 @@ func (s *Server) handlerOptions() []connect.HandlerOption {
 	if otel, err := OTel(nil, nil); err == nil && otel != nil {
 		ics = append(ics, otel)
 	}
-	ics = append(ics, Wrap(s.unexpected))
+	ics = append(ics, Wrap(s.unexpected), authn.Interceptor(s.authn), tenantFromPrincipal())
 	return []connect.HandlerOption{
 		connect.WithRecover(s.recoverPanic),
 		connect.WithInterceptors(ics...),
