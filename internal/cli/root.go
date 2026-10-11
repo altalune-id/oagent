@@ -64,7 +64,7 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 
 	root := &cobra.Command{
 		Use:           "oagent",
-		Short:         "oagent — authentication and organization service",
+		Short:         "oagent — build, manage and integrate custom AI agents",
 		Version:       version.String(),
 		SilenceUsage:  true,
 		SilenceErrors: true,

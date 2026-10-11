@@ -1,4 +1,4 @@
-// Command oagent is the authentication and organization service. See `oagent --help`.
+// Command oagent builds, manages and integrates custom AI agents. See `oagent --help`.
 package main
 
 import (
