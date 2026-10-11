@@ -1,4 +1,4 @@
-// Package legal ships the Terms of Service and Privacy Policy.
+// Package legal ships the Terms of Service and Privacy Policy and records that a person accepted them.
 package legal
 
 import "time"

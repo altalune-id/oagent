@@ -10,6 +10,7 @@ import (
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/kernel/capabilities"
+	"altalune.id/oagent/internal/user"
 )
 
 func TestHTTPConfig(t *testing.T) {
@@ -43,6 +44,15 @@ func TestBuildRoutes_TermsOverride(t *testing.T) {
 	rec := serveRoutes(cfg, nil, http.MethodGet, "/terms")
 	assert.Equal(t, http.StatusFound, rec.Code)
 	assert.Equal(t, "https://example.com/t", rec.Header().Get("Location"))
+}
+
+func TestBuildRoutes_WelcomeFollowsFlag(t *testing.T) {
+	svcs := &Services{Caps: capabilities.Capabilities{LocalLogin: true}, Auth: &auth.Service{}, Users: &user.Service{}}
+	cfg := config.Config{}
+	assert.Equal(t, http.StatusNotFound, serveRoutes(cfg, svcs, http.MethodGet, "/welcome").Code)
+
+	cfg.Compliance.RequireAcceptance = true
+	assert.Equal(t, http.StatusSeeOther, serveRoutes(cfg, svcs, http.MethodGet, "/welcome").Code, "anonymous goes to /login")
 }
 
 func TestBuildRoutes_LoginOnlyWithLocalLogin(t *testing.T) {

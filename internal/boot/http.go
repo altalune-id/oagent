@@ -48,6 +48,11 @@ func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected
 		return []web.Registrar{legal.NewWeb(legalOpts)}
 	}
 	sessions := cookieSessions(cfg, svcs)
+	if svcs.Users != nil {
+		legalOpts.Service = legal.NewService(svcs.Users)
+	}
+	legalOpts.Sessions = sessions
+	legalOpts.RequireAcceptance = cfg.Compliance.RequireAcceptance
 	return []web.Registrar{
 		legal.NewWeb(legalOpts),
 		auth.NewWeb(kit, svcs.Auth, sessions),
@@ -97,6 +102,8 @@ type httpSurfaces struct {
 
 	installRequired *atomic.Bool
 	session         func(http.Handler) http.Handler
+
+	requireAcceptance bool
 }
 
 func buildHTTPHandler(s httpSurfaces) http.Handler {
@@ -110,7 +117,8 @@ func buildHTTPHandler(s httpSurfaces) http.Handler {
 		Unexpected: s.unexpected,
 		Ready:      s.ready,
 
-		Gate:    install.InstallGate(s.basePath, s.installRequired),
-		Session: s.session,
+		Gate:        install.InstallGate(s.basePath, s.installRequired),
+		Session:     s.session,
+		SessionGate: legal.WelcomeGate(s.basePath, s.requireAcceptance),
 	})
 }

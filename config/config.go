@@ -27,8 +27,9 @@ type Config struct {
 
 // ComplianceConfig configures the legal pages; an empty URL serves the embedded document.
 type ComplianceConfig struct {
-	TermsURL   string `yaml:"termsURL"   mapstructure:"termsURL"   validate:"omitempty,url"`
-	PrivacyURL string `yaml:"privacyURL" mapstructure:"privacyURL" validate:"omitempty,url"`
+	RequireAcceptance bool   `yaml:"requireAcceptance" mapstructure:"requireAcceptance"`
+	TermsURL          string `yaml:"termsURL"          mapstructure:"termsURL"          validate:"omitempty,url"`
+	PrivacyURL        string `yaml:"privacyURL"        mapstructure:"privacyURL"        validate:"omitempty,url"`
 }
 
 // SecretsConfig configures at-rest secret sealing (webhook signing secrets).

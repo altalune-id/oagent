@@ -8,7 +8,7 @@ import (
 	"altalune.id/oagent/internal/kernel/session"
 )
 
-// CookieSessions starts, reads and ends browser sessions.
+// CookieSessions starts, reads, rotates and ends browser sessions.
 type CookieSessions struct {
 	Store  session.Store
 	Secret []byte
@@ -34,6 +34,18 @@ func (s CookieSessions) Start(ctx context.Context, w http.ResponseWriter, p sess
 // Read returns the session id from r's verified session cookie.
 func (s CookieSessions) Read(r *http.Request) (string, bool) {
 	return session.ReadCookie(r.Header, s.Secret)
+}
+
+// Rotate starts a new session for p and deletes the one r carried, if any.
+func (s CookieSessions) Rotate(ctx context.Context, w http.ResponseWriter, r *http.Request, p session.Principal) error {
+	old, hadSession := s.Read(r)
+	if _, _, err := s.Start(ctx, w, p); err != nil {
+		return err
+	}
+	if !hadSession {
+		return nil
+	}
+	return s.Store.Delete(ctx, old)
 }
 
 // End deletes the session sid and clears the cookie.

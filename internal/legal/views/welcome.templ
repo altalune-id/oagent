@@ -1,0 +1,35 @@
+package views
+
+import "altalune.id/oagent/internal/web/layout"
+
+// WelcomeData is the terms acceptance form's state.
+type WelcomeData struct {
+	TermsURL   string
+	PrivacyURL string
+	ReturnTo   string
+	Error      string
+}
+
+templ Welcome(d layout.LayoutData, v WelcomeData) {
+	@layout.Layout(d) {
+		@layout.Card(d.Title) {
+			<p>Before you continue, please read and accept the terms of this instance.</p>
+			if v.Error != "" {
+				<div role="alert" class="alert alert-error alert-soft">{ v.Error }</div>
+			}
+			<form method="post" action={ d.Href("/welcome") } class="flex flex-col gap-4">
+				if v.ReturnTo != "" {
+					<input type="hidden" name="return_to" value={ v.ReturnTo }/>
+				}
+				<label class="label cursor-pointer items-start gap-3 whitespace-normal">
+					<input class="checkbox checkbox-primary" type="checkbox" name="accept_terms" value="1" required/>
+					<span class="text-base-content">
+						I accept the <a class="link" href={ templ.SafeURL(v.TermsURL) } target="_blank" rel="noopener">Terms of Service</a>
+						and the <a class="link" href={ templ.SafeURL(v.PrivacyURL) } target="_blank" rel="noopener">Privacy Policy</a>.
+					</span>
+				</label>
+				<button class="btn btn-primary" type="submit">Continue</button>
+			</form>
+		}
+	}
+}

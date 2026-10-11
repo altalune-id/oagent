@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -79,6 +80,19 @@ func (s *Service) SetPassword(ctx context.Context, id uuid.UUID, plain string) e
 		return s.errOrReport(ctx, "user: set password", err)
 	}
 	return nil
+}
+
+// AcceptTerms records that the user accepted the terms and returns the updated user.
+func (s *Service) AcceptTerms(ctx context.Context, id uuid.UUID) (*User, error) {
+	u, err := s.ByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	u.AcceptTerms(time.Now())
+	if err := s.store.Save(ctx, u); err != nil {
+		return nil, s.errOrReport(ctx, "user: accept terms", err)
+	}
+	return u, nil
 }
 
 func (s *Service) errOrReport(ctx context.Context, message string, err error) error {

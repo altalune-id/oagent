@@ -104,3 +104,20 @@ func TestService_StoreFailureIsReported(t *testing.T) {
 	_, ok = errors.AsType[*apperror.AppError](err)
 	assert.True(t, ok)
 }
+
+func TestService_AcceptTerms(t *testing.T) {
+	store := fakes.NewUserStore()
+	svc := newService(store)
+	u, err := svc.Create(context.Background(), user.CreateRequest{Email: "ada@example.com", Password: "long-enough"})
+	require.NoError(t, err)
+
+	got, err := svc.AcceptTerms(context.Background(), u.ID)
+	require.NoError(t, err)
+	require.NotNil(t, got.TermsAcceptedAt)
+	stored, err := svc.ByID(context.Background(), u.ID)
+	require.NoError(t, err)
+	require.NotNil(t, stored.TermsAcceptedAt)
+
+	_, err = svc.AcceptTerms(context.Background(), uuid.New())
+	assert.True(t, user.IsNotFoundError(err))
+}

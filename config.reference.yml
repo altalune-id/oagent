@@ -40,6 +40,8 @@ auth:
 compliance:
   # env: OAGENT_COMPLIANCE_PRIVACY_URL
   privacyURL: ""
+  # env: OAGENT_COMPLIANCE_REQUIRE_ACCEPTANCE
+  requireAcceptance: ""
   # env: OAGENT_COMPLIANCE_TERMS_URL
   termsURL: ""
 

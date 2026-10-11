@@ -30,3 +30,9 @@ func TestValidate_ComplianceURLs(t *testing.T) {
 	c.Compliance.PrivacyURL = "::"
 	require.Error(t, c.Validate())
 }
+
+func TestLoad_RequireAcceptance(t *testing.T) {
+	assert.False(t, validConfig(t).Compliance.RequireAcceptance)
+	t.Setenv("OAGENT_COMPLIANCE_REQUIRE_ACCEPTANCE", "true")
+	assert.True(t, validConfig(t).Compliance.RequireAcceptance)
+}

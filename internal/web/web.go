@@ -23,8 +23,9 @@ type ServerOpts struct {
 	Console    http.Handler // optional console SPA mounted at BasePath+"/console"
 	Routes     []Registrar  // optional server-rendered routes; their mux also answers every unknown path
 
-	Gate    func(http.Handler) http.Handler // optional; wraps every route, probes included
-	Session func(http.Handler) http.Handler // optional; puts the cookie's Principal on routes and the console
+	Gate        func(http.Handler) http.Handler // optional; wraps every route, probes included
+	Session     func(http.Handler) http.Handler // optional; puts the cookie's Principal on routes and the console
+	SessionGate func(http.Handler) http.Handler // optional; runs after Session on routes and the console
 
 	BasePath   string
 	Log        *slog.Logger
@@ -46,10 +47,7 @@ func NewServer(opts ServerOpts) http.Handler {
 		outer.Handle(mcp, opts.MCPHandler)
 		outer.Handle(mcp+"/", opts.MCPHandler)
 	}
-	withSession := opts.Session
-	if withSession == nil {
-		withSession = func(h http.Handler) http.Handler { return h }
-	}
+	withSession := chain(opts.Session, opts.SessionGate)
 	if opts.Console != nil {
 		console := layout.Path(opts.BasePath, "/console")
 		outer.Handle(console, http.RedirectHandler(console+"/", http.StatusMovedPermanently))
@@ -76,6 +74,18 @@ func NewServer(opts ServerOpts) http.Handler {
 		root = opts.Gate(outer)
 	}
 	return middleware.Recoverer(opts.Log, opts.Unexpected, middleware.RequestID(root))
+}
+
+func chain(outer, inner func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		if inner != nil {
+			h = inner(h)
+		}
+		if outer != nil {
+			h = outer(h)
+		}
+		return h
+	}
 }
 
 func healthz(w http.ResponseWriter, _ *http.Request) {

@@ -3,6 +3,7 @@ package user
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,4 +36,16 @@ func TestNewUser_NameLength(t *testing.T) {
 
 func TestHasPassword(t *testing.T) {
 	assert.True(t, (&User{PasswordHash: "$argon2id$x"}).HasPassword())
+}
+
+func TestAcceptTerms_FirstAcceptanceWins(t *testing.T) {
+	u, err := New("ada@example.com", "Ada")
+	require.NoError(t, err)
+	first := time.Date(2026, 10, 11, 9, 0, 0, 0, time.UTC)
+	u.AcceptTerms(first)
+	require.NotNil(t, u.TermsAcceptedAt)
+	assert.True(t, first.Equal(*u.TermsAcceptedAt))
+
+	u.AcceptTerms(first.Add(time.Hour))
+	assert.True(t, first.Equal(*u.TermsAcceptedAt))
 }
