@@ -6,11 +6,20 @@
     "node": ">=24"
   },
   "scripts": {
-    "build": "tailwindcss -i app.css -o ../../internal/web/static/app.css --minify"
+    "build": "tailwindcss -i app.css -o ../../internal/web/static/app.css --minify",
+    "build:js": "vite build",
+    "test": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@oagent/vitest-config": "workspace:*",
     "@tailwindcss/cli": "4.3.3",
+    "@vitest/coverage-v8": "5.0.3",
     "daisyui": "5.7.47",
-    "tailwindcss": "4.3.3"
+    "happy-dom": "20.14.6",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "vite": "6.4.3",
+    "vitest": "5.0.3"
   }
 }

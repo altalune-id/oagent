@@ -51,6 +51,13 @@ templ: ## generate templ components
 web-css: ## compile internal/web/static/app.css
 	pnpm --filter @oagent/web exec tailwindcss -i app.css -o ../../internal/web/static/app.css --minify
 
+.PHONY: web-js
+web-js: ## build internal/web/static/password.js
+	pnpm --filter @oagent/web build:js
+
+.PHONY: web
+web: web-css web-js ## build the templ pages' CSS and JS
+
 .PHONY: ui-mcp
 ui-mcp: ## build the MCP App (Vue) and embed it
 	pnpm --filter @oagent/mcp-ui build
