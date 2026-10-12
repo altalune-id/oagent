@@ -115,10 +115,12 @@ func startContainer(t *testing.T) (string, error) {
 		postgres.WithUsername("oagent"),
 		postgres.WithPassword("oagent"),
 		testcontainers.WithLabels(map[string]string{labelOwner: "true"}),
+		// NOTE: Docker Desktop proxies the port after the log line; without the port wait the first connect can fail.
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
 				WithStartupTimeout(time.Minute),
+			wait.ForListeningPort("5432/tcp").WithStartupTimeout(time.Minute),
 		),
 	)
 	if err != nil {
