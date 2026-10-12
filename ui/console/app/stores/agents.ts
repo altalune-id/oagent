@@ -19,6 +19,8 @@ export const useAgentsStore = defineStore('agents', () => {
   const errorMessage = useErrorMessage()
   let loadedFor = ''
   let inflight: Promise<void> | null = null
+  let inflightFor = ''
+  let latest = 0
 
   function forProject(projectId: string) {
     return items.value.filter(agent => agent.projectId === projectId)
@@ -39,18 +41,26 @@ export const useAgentsStore = defineStore('agents', () => {
   }
 
   async function load(projectId: string) {
+    const mine = ++latest
     loading.value = true
     error.value = null
     try {
       const res = await client.listAgents({ projectId })
+      if (mine !== latest) {
+        return
+      }
       items.value = (res.agents ?? []).map(a => ({ id: a.id, publicId: a.publicId, projectId: a.projectId, slug: a.slug, name: a.name, description: a.description }))
       loadedFor = projectId
     }
     catch (e) {
-      error.value = errorMessage(e, 'error.load_agents')
+      if (mine === latest) {
+        error.value = errorMessage(e, 'error.load_agents')
+      }
     }
     finally {
-      loading.value = false
+      if (mine === latest) {
+        loading.value = false
+      }
     }
   }
 
@@ -58,10 +68,17 @@ export const useAgentsStore = defineStore('agents', () => {
     if (!projectId || loadedFor === projectId) {
       return Promise.resolve()
     }
-    inflight ??= load(projectId).finally(() => {
-      inflight = null
+    if (inflight && inflightFor === projectId) {
+      return inflight
+    }
+    inflightFor = projectId
+    const run = load(projectId).finally(() => {
+      if (inflight === run) {
+        inflight = null
+      }
     })
-    return inflight
+    inflight = run
+    return run
   }
 
   return { items, loading, error, forProject, add, remove, update, load, ensureLoaded }

@@ -18,6 +18,8 @@ export const useProjectsStore = defineStore('projects', () => {
   const errorMessage = useErrorMessage()
   let loadedFor = ''
   let inflight: Promise<void> | null = null
+  let inflightFor = ''
+  let latest = 0
 
   function forOrg(orgId: string) {
     return items.value.filter(project => project.orgId === orgId)
@@ -34,18 +36,26 @@ export const useProjectsStore = defineStore('projects', () => {
   }
 
   async function load(orgId: string) {
+    const mine = ++latest
     loading.value = true
     error.value = null
     try {
       const res = await client.listProjects({ orgId })
+      if (mine !== latest) {
+        return
+      }
       items.value = (res.projects ?? []).map(p => ({ id: p.id, publicId: p.publicId, orgId: p.orgId, slug: p.slug, name: p.name }))
       loadedFor = orgId
     }
     catch (e) {
-      error.value = errorMessage(e, 'error.load_projects')
+      if (mine === latest) {
+        error.value = errorMessage(e, 'error.load_projects')
+      }
     }
     finally {
-      loading.value = false
+      if (mine === latest) {
+        loading.value = false
+      }
     }
   }
 
@@ -53,10 +63,17 @@ export const useProjectsStore = defineStore('projects', () => {
     if (!orgId || loadedFor === orgId) {
       return Promise.resolve()
     }
-    inflight ??= load(orgId).finally(() => {
-      inflight = null
+    if (inflight && inflightFor === orgId) {
+      return inflight
+    }
+    inflightFor = orgId
+    const run = load(orgId).finally(() => {
+      if (inflight === run) {
+        inflight = null
+      }
     })
-    return inflight
+    inflight = run
+    return run
   }
 
   return { items, loading, error, forOrg, add, update, load, ensureLoaded }

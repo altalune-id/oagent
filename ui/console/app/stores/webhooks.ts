@@ -33,6 +33,8 @@ export const useWebhooksStore = defineStore('webhooks', () => {
   const errorMessage = useErrorMessage()
   let loadedFor = ''
   let inflight: Promise<void> | null = null
+  let inflightFor = ''
+  let latest = 0
 
   function forProject(projectId: string) {
     return items.value.filter(w => w.projectId === projectId)
@@ -53,18 +55,26 @@ export const useWebhooksStore = defineStore('webhooks', () => {
   }
 
   async function load(orgId: string, projectId: string) {
+    const mine = ++latest
     loading.value = true
     error.value = null
     try {
       const res = await client.listWebhooks({ orgId, projectId })
+      if (mine !== latest) {
+        return
+      }
       items.value = (res.webhooks ?? []).map(toWebhook)
       loadedFor = `${orgId}:${projectId}`
     }
     catch (e) {
-      error.value = errorMessage(e, 'error.load_webhooks')
+      if (mine === latest) {
+        error.value = errorMessage(e, 'error.load_webhooks')
+      }
     }
     finally {
-      loading.value = false
+      if (mine === latest) {
+        loading.value = false
+      }
     }
   }
 
@@ -72,10 +82,18 @@ export const useWebhooksStore = defineStore('webhooks', () => {
     if (!orgId || !projectId || loadedFor === `${orgId}:${projectId}`) {
       return Promise.resolve()
     }
-    inflight ??= load(orgId, projectId).finally(() => {
-      inflight = null
+    const key = `${orgId}:${projectId}`
+    if (inflight && inflightFor === key) {
+      return inflight
+    }
+    inflightFor = key
+    const run = load(orgId, projectId).finally(() => {
+      if (inflight === run) {
+        inflight = null
+      }
     })
-    return inflight
+    inflight = run
+    return run
   }
 
   return { items, loading, error, forProject, add, replace, remove, load, ensureLoaded }

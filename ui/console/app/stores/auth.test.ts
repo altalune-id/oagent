@@ -30,4 +30,16 @@ describe('useAuthStore', () => {
     expect(auth.me).toBeNull()
     expect(auth.loaded).toBe(true)
   })
+
+  it('asks again after a failure, but not after a success', async () => {
+    const whoami = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ source: 'local' })
+    setClient('$authClient', { whoami })
+    const auth = useAuthStore()
+    await auth.load()
+    expect(auth.me).toBeNull()
+    await auth.load()
+    expect(auth.me).toEqual({ source: 'local' })
+    await auth.load()
+    expect(whoami).toHaveBeenCalledTimes(2)
+  })
 })

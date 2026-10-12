@@ -40,6 +40,8 @@ export const useAPIKeysStore = defineStore('apiKeys', () => {
   const errorMessage = useErrorMessage()
   let loadedFor = ''
   let inflight: Promise<void> | null = null
+  let inflightFor = ''
+  let latest = 0
 
   function add(key: APIKey) {
     items.value = [key, ...items.value.filter(k => k.id !== key.id)]
@@ -51,18 +53,26 @@ export const useAPIKeysStore = defineStore('apiKeys', () => {
   }
 
   async function load(orgId: string) {
+    const mine = ++latest
     loading.value = true
     error.value = null
     try {
       const res = await client.listAPIKeys({ orgId })
+      if (mine !== latest) {
+        return
+      }
       items.value = (res.keys ?? []).map(toAPIKey)
       loadedFor = orgId
     }
     catch (e) {
-      error.value = errorMessage(e, 'error.load_apikeys')
+      if (mine === latest) {
+        error.value = errorMessage(e, 'error.load_apikeys')
+      }
     }
     finally {
-      loading.value = false
+      if (mine === latest) {
+        loading.value = false
+      }
     }
   }
 
@@ -70,10 +80,17 @@ export const useAPIKeysStore = defineStore('apiKeys', () => {
     if (!orgId || loadedFor === orgId) {
       return Promise.resolve()
     }
-    inflight ??= load(orgId).finally(() => {
-      inflight = null
+    if (inflight && inflightFor === orgId) {
+      return inflight
+    }
+    inflightFor = orgId
+    const run = load(orgId).finally(() => {
+      if (inflight === run) {
+        inflight = null
+      }
     })
-    return inflight
+    inflight = run
+    return run
   }
 
   return { items, loading, error, add, markRevoked, load, ensureLoaded }

@@ -20,7 +20,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function load() {
-    inflight ??= fetchMe()
+    inflight ??= fetchMe().then(() => {
+      if (!me.value) {
+        inflight = null
+      }
+    })
     return inflight
   }
 
