@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"altalune.id/oagent/internal/prompt"
+	"altalune.id/oagent/password"
 )
 
 // SetPasswordFn sets a user's password and signs out their sessions; the caller boots the server graph.
@@ -34,14 +35,15 @@ func newSetPasswordCmd(setPassword SetPasswordFn) *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			in := bufio.NewReader(cmd.InOrStdin())
-			password, err := prompt.NewSecret(cmd, in, "New password: ", "Repeat password: ", passwordStdin)
+			label := fmt.Sprintf("New password (at least %d characters): ", password.MinLen)
+			plain, err := prompt.NewSecret(cmd, in, label, "Repeat password: ", passwordStdin)
 			if errors.Is(err, prompt.ErrMismatch) {
 				return fmt.Errorf("set-password: %w", err)
 			}
 			if err != nil {
 				return fmt.Errorf("set-password: read password: %w", err)
 			}
-			if err := setPassword(cmd.Context(), email, password); err != nil {
+			if err := setPassword(cmd.Context(), email, plain); err != nil {
 				return err
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Password updated for %s; their sessions were signed out.\n", email)

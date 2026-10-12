@@ -105,7 +105,13 @@ func samples() []error {
 		errOf(member.New(nobody, nobody, member.Role("root"))),
 
 		&auth.InvalidCredentialsError{},
-		password.CheckPolicy("short"),
+		password.Check("short", password.Hints{}),
+		password.Check(strings.Repeat("a", password.MaxLen+1), password.Hints{}),
+		password.Check("iloveyou1234", password.Hints{}),
+		password.Check("abababababab", password.Hints{}),
+		password.Check("abcdefghijklm", password.Hints{}),
+		password.Check("alice-is-great-2026", password.Hints{Email: "alice@example.com"}),
+		password.Check("maria-loves-tea", password.Hints{Name: "Ana Maria"}),
 
 		&install.AlreadyInstalledError{},
 		apperror.New(apperror.CodeInstallRequired, "Setup required"),

@@ -55,7 +55,7 @@ func (c *Config) validateAuth() error {
 		if c.Auth.Basic.User == "" || c.Auth.Basic.Password == "" {
 			return &MissingSettingError{Keys: "auth.basic.user, auth.basic.password", Reason: "auth.mode is basic"}
 		}
-		if err := password.CheckPolicy(c.Auth.Basic.Password); err != nil {
+		if err := password.Check(c.Auth.Basic.Password, password.Hints{Name: c.Auth.Basic.User}); err != nil {
 			return fmt.Errorf("config: auth.basic.password: %w", err)
 		}
 	}
@@ -67,7 +67,7 @@ func (c *Config) validateAuth() error {
 		if c.Mode == ModeCloud {
 			return &GenesisInCloudError{}
 		}
-		if err := password.CheckPolicy(g.Password); err != nil {
+		if err := password.Check(g.Password, password.Hints{Email: g.Email}); err != nil {
 			return fmt.Errorf("config: auth.genesis.password: %w", err)
 		}
 	}

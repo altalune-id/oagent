@@ -84,39 +84,30 @@ func TestVerifyDummy_DoesNotPanic(t *testing.T) {
 	assert.NotPanics(t, func() { VerifyDummy("anything") })
 }
 
-func TestCheckPolicy(t *testing.T) {
-	for name, tc := range map[string]struct {
-		plain string
-		ok    bool
-	}{
-		"7 ascii":       {"1234567", false},
-		"8 ascii":       {"12345678", true},
-		"8 multibyte":   {"pässwörd", true},
-		"7 multibyte":   {"pässwör", false},
-		"emoji counted": {"🔑🔑🔑🔑🔑🔑🔑🔑", true},
-		"max":           {strings.Repeat("a", MaxLen), true},
-		"over max":      {strings.Repeat("a", MaxLen+1), false},
+func TestPolicyError_PerReason(t *testing.T) {
+	for reason, text := range map[Reason]string{
+		ReasonTooShort:      "must be 12 to 256 characters",
+		ReasonTooLong:       "must be 12 to 256 characters",
+		ReasonCommon:        "is too common",
+		ReasonRepeated:      "is a repeated pattern",
+		ReasonSequential:    "is a simple sequence",
+		ReasonContainsEmail: "must not contain your email",
+		ReasonContainsName:  "must not contain your name",
+		Reason("other"):     "is not allowed",
 	} {
-		t.Run(name, func(t *testing.T) {
-			err := CheckPolicy(tc.plain)
-			if tc.ok {
-				assert.NoError(t, err)
-				return
-			}
-			assert.True(t, IsPolicyError(err), "got %v", err)
+		t.Run(string(reason), func(t *testing.T) {
+			e := &PolicyError{Reason: reason, Min: MinLen, Max: MaxLen}
+			assert.Equal(t, "password: "+text, e.Error())
+			ae := e.ToAppError()
+			assert.Equal(t, "AUT002", string(ae.Code()))
+			assert.Equal(t, "Password "+text, ae.Message())
+			assert.Equal(t, map[string]string{"reason": string(reason), "min": "12", "max": "256"}, ae.Meta())
+			assert.True(t, IsPolicyError(ae))
 		})
 	}
-}
-
-func TestPolicyError_ToAppError(t *testing.T) {
-	ae := (&PolicyError{Min: MinLen, Max: MaxLen}).ToAppError()
-	assert.Equal(t, "AUT002", string(ae.Code()))
-	assert.Equal(t, map[string]string{"min": "8", "max": "256"}, ae.Meta())
-	assert.Equal(t, "Password must be 8 to 256 characters", ae.Message())
 }
 
 func TestErrors_Messages(t *testing.T) {
 	assert.Equal(t, "password: mismatch", (&MismatchError{}).Error())
 	assert.Equal(t, "password: invalid hash format", (&InvalidHashError{}).Error())
-	assert.Equal(t, "password: must be 8 to 256 characters", (&PolicyError{Min: MinLen, Max: MaxLen}).Error())
 }

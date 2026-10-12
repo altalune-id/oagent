@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -57,7 +58,7 @@ func TestValidate_Auth(t *testing.T) {
 		"basic with credentials ok": {
 			mutate: func(c *Config) {
 				c.Auth.Mode = AuthModeBasic
-				c.Auth.Basic = BasicConfig{User: "ops", Password: "s3cret-pass"}
+				c.Auth.Basic = BasicConfig{User: "ops", Password: "s3cret-pass-phrase"}
 			},
 			check: func(t *testing.T, err error) { assert.NoError(t, err) },
 		},
@@ -76,7 +77,7 @@ func TestValidate_Auth(t *testing.T) {
 			mutate: func(c *Config) {
 				c.Mode = ModeCloud
 				c.Auth.Mode = AuthModeBasic
-				c.Auth.Basic = BasicConfig{User: "ops", Password: "s3cret-pass"}
+				c.Auth.Basic = BasicConfig{User: "ops", Password: "s3cret-pass-phrase"}
 			},
 			check: func(t *testing.T, err error) { assert.True(t, IsAuthModeError(err), "got %v", err) },
 		},
@@ -89,13 +90,15 @@ func TestValidate_Auth(t *testing.T) {
 			check:  func(t *testing.T, err error) { assert.True(t, password.IsPolicyError(err), "got %v", err) },
 		},
 		"genesis ok": {
-			mutate: func(c *Config) { c.Auth.Genesis = GenesisConfig{Email: "root@example.com", Password: "long-enough"} },
-			check:  func(t *testing.T, err error) { assert.NoError(t, err) },
+			mutate: func(c *Config) {
+				c.Auth.Genesis = GenesisConfig{Email: "root@example.com", Password: "long-enough-phrase"}
+			},
+			check: func(t *testing.T, err error) { assert.NoError(t, err) },
 		},
 		"genesis in cloud": {
 			mutate: func(c *Config) {
 				c.Mode = ModeCloud
-				c.Auth.Genesis = GenesisConfig{Email: "root@example.com", Password: "long-enough"}
+				c.Auth.Genesis = GenesisConfig{Email: "root@example.com", Password: "long-enough-phrase"}
 			},
 			check: func(t *testing.T, err error) { assert.True(t, IsGenesisInCloudError(err), "got %v", err) },
 		},
@@ -140,7 +143,7 @@ func TestValidate_Auth(t *testing.T) {
 		"production basic needs no secrets": {
 			mutate: func(c *Config) {
 				c.Auth.Mode = AuthModeBasic
-				c.Auth.Basic = BasicConfig{User: "ops", Password: "s3cret-pass"}
+				c.Auth.Basic = BasicConfig{User: "ops", Password: "s3cret-pass-phrase"}
 				c.HTTP.StateSecret, c.Secrets.EncryptionKey = "", ""
 			},
 			check: func(t *testing.T, err error) { assert.NoError(t, err) },
@@ -183,6 +186,51 @@ func TestValidate_Auth(t *testing.T) {
 			tc.check(t, c.Validate())
 		})
 	}
+}
+
+func TestValidate_ConfigPasswordRule(t *testing.T) {
+	for name, tc := range map[string]struct {
+		mutate func(c *Config)
+		plain  string
+		want   password.Reason
+	}{
+		"basic 11 characters": {
+			mutate: func(c *Config) {
+				c.Auth.Mode, c.Auth.Basic = AuthModeBasic, BasicConfig{User: "ops", Password: "tea-for-two"}
+			},
+			plain: "tea-for-two",
+			want:  password.ReasonTooShort,
+		},
+		"basic contains the user": {
+			mutate: func(c *Config) {
+				c.Auth.Mode, c.Auth.Basic = AuthModeBasic, BasicConfig{User: "operator", Password: "the-operator-2026"}
+			},
+			plain: "the-operator-2026",
+			want:  password.ReasonContainsName,
+		},
+		"genesis contains the email": {
+			mutate: func(c *Config) { c.Auth.Genesis = GenesisConfig{Email: "root@example.com", Password: "i-am-root-2026"} },
+			plain:  "i-am-root-2026",
+			want:   password.ReasonContainsEmail,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := validConfig(t)
+			tc.mutate(c)
+			err := c.validateAuth()
+			pe, ok := errors.AsType[*password.PolicyError](err)
+			require.True(t, ok, "got %v", err)
+			assert.Equal(t, tc.want, pe.Reason)
+			assert.NotContains(t, err.Error(), tc.plain)
+		})
+	}
+}
+
+func TestValidate_StrongConfigPasswordsPass(t *testing.T) {
+	c := validConfig(t)
+	c.Auth.Mode, c.Auth.Basic = AuthModeBasic, BasicConfig{User: "operator", Password: "correct horse battery"}
+	c.Auth.Genesis = GenesisConfig{Email: "root@example.com", Password: "correct horse battery"}
+	assert.NoError(t, c.validateAuth())
 }
 
 func TestErrors_Messages(t *testing.T) {

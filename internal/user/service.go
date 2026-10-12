@@ -30,7 +30,7 @@ type CreateRequest struct {
 
 // Create validates, hashes the password and persists a new local user.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (*User, error) {
-	if err := password.CheckPolicy(req.Password); err != nil {
+	if err := password.Check(req.Password, password.Hints{Email: req.Email, Name: req.Name}); err != nil {
 		return nil, err
 	}
 	u, err := New(req.Email, req.Name)
@@ -66,11 +66,11 @@ func (s *Service) ByEmail(ctx context.Context, email string) (*User, error) {
 
 // SetPassword replaces the user's password after a policy check.
 func (s *Service) SetPassword(ctx context.Context, id uuid.UUID, plain string) error {
-	if err := password.CheckPolicy(plain); err != nil {
-		return err
-	}
 	u, err := s.ByID(ctx, id)
 	if err != nil {
+		return err
+	}
+	if err := password.Check(plain, password.Hints{Email: u.Email, Name: u.Name}); err != nil {
 		return err
 	}
 	if u.PasswordHash, err = password.Hash(plain); err != nil {

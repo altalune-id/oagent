@@ -31,7 +31,7 @@ func TestLoginLocal_AgainstPostgres(t *testing.T) {
 	projects := project.NewService(project.NewStore(pool, schemaName, ""), unexpected)
 	svc := auth.NewService(auth.Deps{Users: users, Members: members, Orgs: orgs, Projects: projects, Sessions: session.NewMemoryStore()})
 
-	owner, err := users.Create(ctx, user.CreateRequest{Email: "Owner@Example.com", Name: "Owner", Password: "owner-password"})
+	owner, err := users.Create(ctx, user.CreateRequest{Email: "Owner@Example.com", Name: "Owner", Password: "blue-river-stone-42"})
 	require.NoError(t, err)
 	sys, err := org.NewSystemOrg("default", "Default", owner.ID)
 	require.NoError(t, err)
@@ -41,7 +41,7 @@ func TestLoginLocal_AgainstPostgres(t *testing.T) {
 	defaultPrj, err := projects.Create(ctx, project.CreateRequest{OrgID: sys.ID, Slug: project.DefaultSlug, Name: project.DefaultName})
 	require.NoError(t, err)
 
-	p, err := svc.LoginLocal(ctx, auth.Credentials{Email: "owner@example.com", Password: "owner-password"})
+	p, err := svc.LoginLocal(ctx, auth.Credentials{Email: "owner@example.com", Password: "blue-river-stone-42"})
 	require.NoError(t, err)
 	assert.True(t, p.Operator)
 	assert.Equal(t, []string{"*"}, p.Scopes)
@@ -50,17 +50,17 @@ func TestLoginLocal_AgainstPostgres(t *testing.T) {
 
 	_, err = svc.LoginLocal(ctx, auth.Credentials{Email: "owner@example.com", Password: "wrong-password"})
 	assert.True(t, auth.IsInvalidCredentialsError(err))
-	_, err = svc.LoginLocal(ctx, auth.Credentials{Email: "ghost@example.com", Password: "owner-password"})
+	_, err = svc.LoginLocal(ctx, auth.Credentials{Email: "ghost@example.com", Password: "blue-river-stone-42"})
 	assert.True(t, auth.IsInvalidCredentialsError(err))
 
 	other, err := orgs.Create(ctx, org.CreateRequest{Name: "Other", CreatedBy: owner.ID})
 	require.NoError(t, err)
-	worker, err := users.Create(ctx, user.CreateRequest{Email: "worker@example.com", Name: "Worker", Password: "worker-password"})
+	worker, err := users.Create(ctx, user.CreateRequest{Email: "worker@example.com", Name: "Worker", Password: "green-hill-cloud-17"})
 	require.NoError(t, err)
 	_, err = members.Add(ctx, other.ID, worker.ID, member.RoleMember)
 	require.NoError(t, err)
 
-	p, err = svc.LoginLocal(ctx, auth.Credentials{Email: "worker@example.com", Password: "worker-password"})
+	p, err = svc.LoginLocal(ctx, auth.Credentials{Email: "worker@example.com", Password: "green-hill-cloud-17"})
 	require.NoError(t, err)
 	assert.False(t, p.Operator)
 	assert.Equal(t, member.BuiltinPermissions(member.RoleMember), p.Scopes)

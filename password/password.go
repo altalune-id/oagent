@@ -8,15 +8,8 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"unicode/utf8"
 
 	"golang.org/x/crypto/argon2"
-)
-
-// The length bounds every new password must meet, in characters.
-const (
-	MinLen = 8
-	MaxLen = 256
 )
 
 // NOTE: OWASP baseline for Argon2id; the params are encoded into every hash so they can be retuned without a migration.
@@ -75,15 +68,6 @@ func Verify(hash, plain string) error {
 // VerifyDummy spends the work of Verify on a fixed hash. SECURITY: call it for unknown users so timing does not reveal which emails exist.
 func VerifyDummy(plain string) {
 	_ = Verify(dummyHash(), plain)
-}
-
-// CheckPolicy returns a *PolicyError when plain is shorter than MinLen or longer than MaxLen characters.
-func CheckPolicy(plain string) error {
-	n := utf8.RuneCountInString(plain)
-	if n < MinLen || n > MaxLen {
-		return &PolicyError{Min: MinLen, Max: MaxLen}
-	}
-	return nil
 }
 
 func encode(mem, t uint32, threads uint8, salt, key []byte) string {

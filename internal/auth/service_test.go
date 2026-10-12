@@ -38,7 +38,7 @@ type fakePasswords struct {
 
 func (f *fakePasswords) SetPassword(_ context.Context, id uuid.UUID, plain string) error {
 	f.calls = append(f.calls, id)
-	if err := password.CheckPolicy(plain); err != nil {
+	if err := password.Check(plain, password.Hints{}); err != nil {
 		return err
 	}
 	for _, u := range f.users.byEmail {

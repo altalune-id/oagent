@@ -67,3 +67,26 @@ func TestSetPassword_Error(t *testing.T) {
 	assert.True(t, user.IsNotFoundError(err))
 	assert.NotContains(t, out, "Password updated")
 }
+
+type fakeTerminal struct {
+	*strings.Reader
+	answers []string
+}
+
+func (f *fakeTerminal) ReadPassword() ([]byte, error) {
+	a := f.answers[0]
+	f.answers = f.answers[1:]
+	return []byte(a), nil
+}
+
+func TestSetPassword_PromptSaysTheMinimum(t *testing.T) {
+	cmd := user.NewCmd(func(context.Context, string, string) error { return nil })
+	errOut := new(bytes.Buffer)
+	cmd.SetIn(&fakeTerminal{Reader: strings.NewReader(""), answers: []string{"a brand new password", "a brand new password"}})
+	cmd.SetOut(new(bytes.Buffer))
+	cmd.SetErr(errOut)
+	cmd.SetArgs([]string{"set-password", "--email", "ada@example.com"})
+	require.NoError(t, cmd.ExecuteContext(t.Context()))
+	assert.Contains(t, errOut.String(), "New password (at least 12 characters): ")
+	assert.NotContains(t, errOut.String(), "a brand new password")
+}
