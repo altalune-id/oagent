@@ -42,16 +42,17 @@ func IsAlreadyMemberError(err error) bool {
 	return ok
 }
 
-// InvalidRoleError reports a membership with an unknown role or missing ids.
-type InvalidRoleError struct{ Role, Reason string }
+// InvalidRoleError reports a membership with an unknown role.
+type InvalidRoleError struct{ Role string }
 
 func (e *InvalidRoleError) Error() string {
-	return fmt.Sprintf("member: invalid role %q: %s", e.Role, e.Reason)
+	return fmt.Sprintf("member: unknown role %q", apperror.Echo(e.Role))
 }
 
-// ToAppError maps InvalidRoleError to the validation envelope.
+// ToAppError maps InvalidRoleError to its own code with the role.
 func (e *InvalidRoleError) ToAppError() *apperror.AppError {
-	return apperror.New(apperror.CodeMemberInvalidRole, "Invalid membership role").WithCause(e)
+	return apperror.New(apperror.CodeMemberInvalidRole, fmt.Sprintf("Unknown membership role %q", apperror.Echo(e.Role))).
+		WithMeta(map[string]string{"role": apperror.Echo(e.Role)}).WithCause(e)
 }
 
 // IsInvalidRoleError reports whether err's tree contains an *InvalidRoleError.

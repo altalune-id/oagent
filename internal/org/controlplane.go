@@ -43,7 +43,7 @@ func (s *OrgService) GetOrg(
 ) (*connect.Response[orgv1.GetOrgResponse], error) {
 	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
-		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
+		return nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
 	}
 	if !authz.ReachOrg(ctx, id) {
 		return nil, &NotFoundError{ID: id.String()}
@@ -80,7 +80,7 @@ func (s *OrgService) UpdateOrg(
 ) (*connect.Response[orgv1.UpdateOrgResponse], error) {
 	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
-		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
+		return nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
 	}
 	if !authz.ReachWholeOrg(ctx, id) {
 		return nil, &NotFoundError{ID: id.String()}

@@ -85,13 +85,13 @@ func (o *Org) Update(name, slug string) error {
 // ValidateSlug reports whether s is usable as an org slug.
 func ValidateSlug(s string) error {
 	if len(s) < slugMinLen || len(s) > slugMaxLen {
-		return &InvalidSlugError{Slug: s, Reason: "length out of range"}
+		return &InvalidSlugError{Slug: s, Reason: SlugLength}
 	}
 	if !slugRe.MatchString(s) {
-		return &InvalidSlugError{Slug: s, Reason: "must be lowercase alphanumeric with dashes"}
+		return &InvalidSlugError{Slug: s, Reason: SlugFormat}
 	}
 	if s == "new" {
-		return &InvalidSlugError{Slug: s, Reason: "reserved word"}
+		return &InvalidSlugError{Slug: s, Reason: SlugReserved}
 	}
 	return nil
 }
@@ -99,7 +99,7 @@ func ValidateSlug(s string) error {
 // ValidateName reports whether n is usable as an org name.
 func ValidateName(n string) error {
 	if len(n) < nameMinLen || len(n) > nameMaxLen {
-		return &InvalidNameError{Reason: "length out of range"}
+		return &InvalidNameError{Reason: NameLength}
 	}
 	return nil
 }

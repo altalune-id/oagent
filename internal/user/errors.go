@@ -2,6 +2,8 @@ package user
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgconn"
 
@@ -63,7 +65,8 @@ func (*InvalidNameError) Error() string { return "user: invalid name" }
 
 // ToAppError maps InvalidNameError to the validation envelope.
 func (e *InvalidNameError) ToAppError() *apperror.AppError {
-	return apperror.New(apperror.CodeUserInvalidName, "Name is too long").WithCause(e)
+	return apperror.New(apperror.CodeUserInvalidName, fmt.Sprintf("Name must be at most %d characters", nameMaxLen)).
+		WithMeta(map[string]string{"max": strconv.Itoa(nameMaxLen)}).WithCause(e)
 }
 
 // IsInvalidNameError reports whether err's tree contains an *InvalidNameError.

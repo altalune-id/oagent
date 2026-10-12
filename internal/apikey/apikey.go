@@ -200,10 +200,10 @@ func validateLifetime(expiresAt *time.Time, now time.Time) error {
 func ValidateName(name string) error {
 	n := strings.TrimSpace(name)
 	if n == "" {
-		return &InvalidNameError{Reason: "name is required"}
+		return &InvalidNameError{Reason: NameRequired}
 	}
 	if len(n) > nameMaxLen {
-		return &InvalidNameError{Reason: "length out of range"}
+		return &InvalidNameError{Reason: NameLength}
 	}
 	return nil
 }

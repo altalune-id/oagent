@@ -3,6 +3,7 @@ package password
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	"altalune.id/oagent/apperror"
 )
@@ -36,9 +37,10 @@ func (e *PolicyError) Error() string {
 	return fmt.Sprintf("password: must be %d to %d characters", e.Min, e.Max)
 }
 
-// ToAppError maps PolicyError to the validation envelope.
+// ToAppError maps PolicyError to its own code with the length limits.
 func (e *PolicyError) ToAppError() *apperror.AppError {
-	return apperror.New(apperror.CodeValidation, fmt.Sprintf("Password must be %d to %d characters", e.Min, e.Max)).WithCause(e)
+	return apperror.New(apperror.CodeAuthPasswordPolicy, fmt.Sprintf("Password must be %d to %d characters", e.Min, e.Max)).
+		WithMeta(map[string]string{"min": strconv.Itoa(e.Min), "max": strconv.Itoa(e.Max)}).WithCause(e)
 }
 
 // IsPolicyError reports whether err's tree contains a *PolicyError.

@@ -36,7 +36,7 @@ func (s *APIKeyService) CreateAPIKey(
 ) (*connect.Response[apikeyv1.CreateAPIKeyResponse], error) {
 	orgID, err := uuid.Parse(req.Msg.GetOrgId())
 	if err != nil {
-		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
+		return nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
 	}
 	if !authz.ReachOrg(ctx, orgID) {
 		return nil, &NotFoundError{}
@@ -95,7 +95,7 @@ func (s *APIKeyService) ListAPIKeys(
 ) (*connect.Response[apikeyv1.ListAPIKeysResponse], error) {
 	orgID, err := uuid.Parse(req.Msg.GetOrgId())
 	if err != nil {
-		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
+		return nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
 	}
 	if !authz.ReachOrg(ctx, orgID) {
 		return nil, &NotFoundError{}
@@ -122,14 +122,14 @@ func (s *APIKeyService) RevokeAPIKey(
 ) (*connect.Response[apikeyv1.RevokeAPIKeyResponse], error) {
 	orgID, err := uuid.Parse(req.Msg.GetOrgId())
 	if err != nil {
-		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
+		return nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
 	}
 	if !authz.ReachOrg(ctx, orgID) {
 		return nil, &NotFoundError{}
 	}
 	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
-		return nil, apperror.New(apperror.CodeValidation, "invalid key id").WithCause(err)
+		return nil, apperror.Invalid("key_id", apperror.FieldInvalid).WithCause(err)
 	}
 	p := session.PrincipalFrom(ctx)
 	manage := manages(p)
@@ -185,7 +185,7 @@ func optionalUUID(raw string) (uuid.UUID, error) {
 	}
 	id, err := uuid.Parse(raw)
 	if err != nil {
-		return uuid.Nil, apperror.New(apperror.CodeValidation, "invalid project id").WithCause(err)
+		return uuid.Nil, apperror.Invalid("project_id", apperror.FieldInvalid).WithCause(err)
 	}
 	return id, nil
 }
@@ -195,7 +195,7 @@ func parseUUIDs(raw []string) ([]uuid.UUID, error) {
 	for _, s := range raw {
 		id, err := uuid.Parse(s)
 		if err != nil {
-			return nil, apperror.New(apperror.CodeValidation, "invalid uuid").WithCause(err)
+			return nil, apperror.Invalid("project_ids", apperror.FieldInvalid).WithCause(err)
 		}
 		out = append(out, id)
 	}

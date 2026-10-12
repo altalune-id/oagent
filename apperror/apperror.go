@@ -3,6 +3,7 @@ package apperror
 import (
 	"errors"
 	"maps"
+	"strings"
 )
 
 // AppError is the wire error envelope.
@@ -71,4 +72,19 @@ func AsAppError(err error) (*AppError, bool) {
 		}
 	}
 	return nil, false
+}
+
+// FieldReason is why a request field was refused, sent as meta.reason with CodeValidation.
+type FieldReason string
+
+// The FieldReason values.
+const (
+	FieldRequired FieldReason = "required"
+	FieldInvalid  FieldReason = "invalid"
+)
+
+// Invalid reports a malformed request field (a bad id, a missing value) under CodeValidation.
+func Invalid(field string, reason FieldReason) *AppError {
+	return New(CodeValidation, strings.ReplaceAll(field, "_", " ")+" is "+string(reason)).
+		WithMeta(map[string]string{"field": field, "reason": string(reason)})
 }

@@ -92,10 +92,10 @@ func (a *Agent) Update(name, description string) error {
 // ValidateSlug reports whether s is usable as an agent slug.
 func ValidateSlug(s string) error {
 	if len(s) < slugMinLen || len(s) > slugMaxLen {
-		return &InvalidSlugError{Slug: s, Reason: "length out of range"}
+		return &InvalidSlugError{Slug: s, Reason: SlugLength}
 	}
 	if !slugRe.MatchString(s) {
-		return &InvalidSlugError{Slug: s, Reason: "must be lowercase alphanumeric with dashes"}
+		return &InvalidSlugError{Slug: s, Reason: SlugFormat}
 	}
 	return nil
 }
@@ -103,7 +103,7 @@ func ValidateSlug(s string) error {
 // ValidateName reports whether n is usable as an agent name.
 func ValidateName(n string) error {
 	if len(n) < nameMinLen || len(n) > nameMaxLen {
-		return &InvalidNameError{Reason: "length out of range"}
+		return &InvalidNameError{Reason: NameLength}
 	}
 	return nil
 }
@@ -111,7 +111,7 @@ func ValidateName(n string) error {
 func normalizeDescription(d string) (string, error) {
 	d = strings.TrimSpace(d)
 	if len(d) > descMaxLen {
-		return "", &InvalidDescriptionError{Reason: "length out of range"}
+		return "", &InvalidDescriptionError{Reason: DescriptionLength}
 	}
 	return d, nil
 }

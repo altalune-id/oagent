@@ -63,7 +63,7 @@ type CreateRequest struct {
 // Create mints a key and returns it with its one-time plaintext secret.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (*APIKey, string, error) {
 	if req.OrgID == uuid.Nil {
-		return nil, "", apperror.New(apperror.CodeValidation, "organization id is required")
+		return nil, "", apperror.Invalid("organization_id", apperror.FieldRequired)
 	}
 	if req.Kind == KindPersonal {
 		if err := s.requirePersonalAllowed(req.CreatedBy); err != nil {
@@ -84,7 +84,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*APIKey, strin
 	switch req.Kind {
 	case KindProject:
 		if req.ProjectID == uuid.Nil {
-			return nil, "", apperror.New(apperror.CodeValidation, "project id is required for a project key")
+			return nil, "", apperror.Invalid("project_id", apperror.FieldRequired)
 		}
 		if verr := s.requireOrgProjects(ctx, req.OrgID, ProjectGrant{ProjectIDs: []uuid.UUID{req.ProjectID}}); verr != nil {
 			return nil, "", verr
@@ -103,7 +103,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*APIKey, strin
 		}
 		k, plaintext, err = s.scheme.MintPersonal(req.OrgID, req.CreatedBy, req.Name, req.Scopes, grant, req.ExpiresAt, now)
 	default:
-		return nil, "", apperror.New(apperror.CodeValidation, "invalid key kind: "+string(req.Kind))
+		return nil, "", apperror.Invalid("kind", apperror.FieldInvalid)
 	}
 	if err != nil {
 		return nil, "", err
@@ -120,7 +120,7 @@ func (s *Service) requirePersonalAllowed(ownerID uuid.UUID) error {
 		return &PersonalKeysDisabledError{}
 	}
 	if ownerID == uuid.Nil {
-		return apperror.New(apperror.CodeValidation, "a personal key needs an owner")
+		return apperror.Invalid("owner", apperror.FieldRequired)
 	}
 	return nil
 }
@@ -161,7 +161,7 @@ func (s *Service) requireOrgProjects(ctx context.Context, orgID uuid.UUID, grant
 	}
 	for _, id := range grant.ProjectIDs {
 		if _, ok := allowed[id]; !ok {
-			return apperror.New(apperror.CodeAPIKeyInvalidGrant, "project is not in this organization")
+			return &GrantOutsideOrgError{}
 		}
 	}
 	return nil

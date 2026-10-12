@@ -6,6 +6,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"altalune.id/oagent/apperror"
 )
 
 func TestRole(t *testing.T) {
@@ -32,8 +34,17 @@ func TestNew(t *testing.T) {
 
 	_, err = New(uuid.New(), uuid.New(), "root")
 	assert.True(t, IsInvalidRoleError(err))
+	assert.Equal(t, map[string]string{"role": "root"}, mustAppErr(t, err).Meta())
+
 	_, err = New(uuid.Nil, uuid.New(), RoleMember)
-	assert.True(t, IsInvalidRoleError(err))
+	assert.Equal(t, map[string]string{"field": "organization_id", "reason": "required"}, mustAppErr(t, err).Meta())
 	_, err = New(uuid.New(), uuid.Nil, RoleMember)
-	assert.True(t, IsInvalidRoleError(err))
+	assert.Equal(t, map[string]string{"field": "user_id", "reason": "required"}, mustAppErr(t, err).Meta())
+}
+
+func mustAppErr(t *testing.T, err error) *apperror.AppError {
+	t.Helper()
+	ae, ok := apperror.AsAppError(err)
+	require.True(t, ok, "%v carries no code", err)
+	return ae
 }

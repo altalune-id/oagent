@@ -110,7 +110,8 @@ func TestCheckPolicy(t *testing.T) {
 
 func TestPolicyError_ToAppError(t *testing.T) {
 	ae := (&PolicyError{Min: MinLen, Max: MaxLen}).ToAppError()
-	assert.Equal(t, "GEN004", string(ae.Code()))
+	assert.Equal(t, "AUT002", string(ae.Code()))
+	assert.Equal(t, map[string]string{"min": "8", "max": "256"}, ae.Meta())
 	assert.Equal(t, "Password must be 8 to 256 characters", ae.Message())
 }
 

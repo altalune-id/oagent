@@ -81,10 +81,10 @@ func (p *Project) Update(name, slug string) error {
 // ValidateSlug reports whether s is usable as a project slug.
 func ValidateSlug(s string) error {
 	if len(s) < slugMinLen || len(s) > slugMaxLen {
-		return &InvalidSlugError{Slug: s, Reason: "length out of range"}
+		return &InvalidSlugError{Slug: s, Reason: SlugLength}
 	}
 	if !slugRe.MatchString(s) {
-		return &InvalidSlugError{Slug: s, Reason: "must be lowercase alphanumeric with dashes"}
+		return &InvalidSlugError{Slug: s, Reason: SlugFormat}
 	}
 	return nil
 }
@@ -92,7 +92,7 @@ func ValidateSlug(s string) error {
 // ValidateName reports whether n is usable as a project name.
 func ValidateName(n string) error {
 	if len(n) < nameMinLen || len(n) > nameMaxLen {
-		return &InvalidNameError{Reason: "length out of range"}
+		return &InvalidNameError{Reason: NameLength}
 	}
 	return nil
 }

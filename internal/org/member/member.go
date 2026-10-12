@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/nanoid"
 )
 
@@ -39,11 +40,14 @@ type Membership struct {
 
 // New builds a Membership after validating its ids and role.
 func New(orgID, userID uuid.UUID, role Role) (*Membership, error) {
-	if orgID == uuid.Nil || userID == uuid.Nil {
-		return nil, &InvalidRoleError{Role: string(role), Reason: "org and user are required"}
+	if orgID == uuid.Nil {
+		return nil, apperror.Invalid("organization_id", apperror.FieldRequired)
+	}
+	if userID == uuid.Nil {
+		return nil, apperror.Invalid("user_id", apperror.FieldRequired)
 	}
 	if !role.IsValid() {
-		return nil, &InvalidRoleError{Role: string(role), Reason: "unknown role"}
+		return nil, &InvalidRoleError{Role: string(role)}
 	}
 	publicID, err := nanoid.New(publicIDLen)
 	if err != nil {

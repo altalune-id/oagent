@@ -22,7 +22,7 @@ func TestErrors(t *testing.T) {
 	}{
 		"not found":      {&NotFoundError{}, IsNotFoundError, apperror.CodeMemberNotFound},
 		"already member": {&AlreadyMemberError{OrgID: uuid.New(), UserID: uuid.New()}, IsAlreadyMemberError, apperror.CodeMemberAlreadyExists},
-		"invalid role":   {&InvalidRoleError{Role: "root", Reason: "unknown role"}, IsInvalidRoleError, apperror.CodeMemberInvalidRole},
+		"invalid role":   {&InvalidRoleError{Role: "root"}, IsInvalidRoleError, apperror.CodeMemberInvalidRole},
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.True(t, tc.is(tc.err))

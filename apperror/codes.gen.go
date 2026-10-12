@@ -49,6 +49,7 @@ const (
 	CodeMemberInvalidRole   Code = "MBR003"
 
 	CodeAuthInvalidCredentials Code = "AUT001"
+	CodeAuthPasswordPolicy     Code = "AUT002"
 
 	CodeInstallAlreadyDone Code = "INS001"
 	CodeInstallRequired    Code = "INS002"
@@ -110,6 +111,7 @@ var kinds = map[Code]Kind{
 	CodeMemberInvalidRole:   KindInvalid,
 
 	CodeAuthInvalidCredentials: KindUnauthenticated,
+	CodeAuthPasswordPolicy:     KindInvalid,
 
 	CodeInstallAlreadyDone: KindAlreadyExists,
 	CodeInstallRequired:    KindFailedPrecondition,

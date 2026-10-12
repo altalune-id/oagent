@@ -22,5 +22,9 @@ func IsForbiddenError(err error) bool {
 
 // ToAppError maps ForbiddenError to the canonical Forbidden envelope.
 func (e *ForbiddenError) ToAppError() *apperror.AppError {
-	return apperror.New(apperror.CodeForbidden, "You do not have permission to do this").WithCause(e)
+	ae := apperror.New(apperror.CodeForbidden, "You do not have permission to do this").WithCause(e)
+	if e.Permission == "" {
+		return ae
+	}
+	return ae.WithMeta(map[string]string{"permission": e.Permission})
 }

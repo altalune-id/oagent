@@ -50,10 +50,10 @@ type CreateRequest struct {
 // Create validates and persists a new agent within a project. An empty slug is generated, retrying on collision.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (*Agent, error) {
 	if req.OrgID == uuid.Nil {
-		return nil, apperror.New(apperror.CodeValidation, "organization id is required")
+		return nil, apperror.Invalid("organization_id", apperror.FieldRequired)
 	}
 	if req.ProjectID == uuid.Nil {
-		return nil, apperror.New(apperror.CodeValidation, "project id is required")
+		return nil, apperror.Invalid("project_id", apperror.FieldRequired)
 	}
 	if err := tenant.RequireProjectInOrg(ctx, s.projects, req.OrgID, req.ProjectID); err != nil {
 		if tenant.IsProjectOutsideOrgError(err) {

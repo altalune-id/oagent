@@ -56,7 +56,7 @@ func connectErrorCode(err error) (apperror.Code, bool) {
 
 func exitCode(code apperror.Code) int {
 	switch code {
-	case apperror.CodeValidation, apperror.CodeOrgInvalidSlug, apperror.CodeOrgInvalidName:
+	case apperror.CodeValidation, apperror.CodeOrgInvalidSlug, apperror.CodeOrgInvalidName, apperror.CodeAuthPasswordPolicy:
 		return ExitInvalidArg
 	case apperror.CodeNotFound, apperror.CodeOrgNotFound:
 		return ExitNotFound

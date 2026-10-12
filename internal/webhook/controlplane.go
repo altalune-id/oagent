@@ -154,7 +154,7 @@ func (s *WebhookControlPlane) RetryWebhookDelivery(
 	}
 	deliveryID, err := uuid.Parse(req.Msg.GetDeliveryId())
 	if err != nil {
-		return nil, apperror.New(apperror.CodeValidation, "invalid delivery id").WithCause(err)
+		return nil, apperror.Invalid("delivery_id", apperror.FieldInvalid).WithCause(err)
 	}
 	if err := s.webhooks.Retry(ctx, id, deliveryID); err != nil {
 		return nil, err
@@ -209,7 +209,7 @@ func (s *WebhookControlPlane) ListWebhookDeliveryAttempts(
 	}
 	deliveryID, err := uuid.Parse(req.Msg.GetDeliveryId())
 	if err != nil {
-		return nil, apperror.New(apperror.CodeValidation, "invalid delivery id").WithCause(err)
+		return nil, apperror.Invalid("delivery_id", apperror.FieldInvalid).WithCause(err)
 	}
 	attempts, err := s.webhooks.Attempts(ctx, id, deliveryID)
 	if err != nil {
@@ -242,7 +242,7 @@ func scopedID(ctx context.Context, orgID, projectID, id string) (context.Context
 	}
 	parsed, err := uuid.Parse(id)
 	if err != nil {
-		return ctx, uuid.Nil, apperror.New(apperror.CodeValidation, "invalid webhook id").WithCause(err)
+		return ctx, uuid.Nil, apperror.Invalid("webhook_id", apperror.FieldInvalid).WithCause(err)
 	}
 	if !authz.ReachResource(ctx, org, project, parsed) {
 		return ctx, uuid.Nil, &NotFoundError{ID: parsed.String()}
@@ -252,10 +252,10 @@ func scopedID(ctx context.Context, orgID, projectID, id string) (context.Context
 
 func parseScope(orgID, projectID string) (org, project uuid.UUID, err error) {
 	if org, err = uuid.Parse(orgID); err != nil {
-		return uuid.Nil, uuid.Nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
+		return uuid.Nil, uuid.Nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
 	}
 	if project, err = uuid.Parse(projectID); err != nil {
-		return uuid.Nil, uuid.Nil, apperror.New(apperror.CodeValidation, "invalid project id").WithCause(err)
+		return uuid.Nil, uuid.Nil, apperror.Invalid("project_id", apperror.FieldInvalid).WithCause(err)
 	}
 	return org, project, nil
 }

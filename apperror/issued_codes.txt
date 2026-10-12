@@ -36,6 +36,7 @@ MBR001 MemberNotFound
 MBR002 MemberAlreadyExists
 MBR003 MemberInvalidRole
 AUT001 AuthInvalidCredentials
+AUT002 AuthPasswordPolicy
 INS001 InstallAlreadyDone
 INS002 InstallRequired
 WHK001 WebhookNotFound

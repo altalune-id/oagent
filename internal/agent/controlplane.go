@@ -72,7 +72,7 @@ func (s *AgentService) ListAgents(
 ) (*connect.Response[agentv1.ListAgentsResponse], error) {
 	projectID, err := uuid.Parse(req.Msg.GetProjectId())
 	if err != nil {
-		return nil, apperror.New(apperror.CodeValidation, "invalid project id").WithCause(err)
+		return nil, apperror.Invalid("project_id", apperror.FieldInvalid).WithCause(err)
 	}
 	agents, err := s.agents.List(ctx, projectID)
 	if err != nil {
@@ -139,7 +139,7 @@ func (s *AgentService) reachable(ctx context.Context, id uuid.UUID) (*Agent, err
 func parseID(raw string) (uuid.UUID, error) {
 	id, err := uuid.Parse(raw)
 	if err != nil {
-		return uuid.Nil, apperror.New(apperror.CodeValidation, "invalid agent id").WithCause(err)
+		return uuid.Nil, apperror.Invalid("agent_id", apperror.FieldInvalid).WithCause(err)
 	}
 	return id, nil
 }
@@ -147,11 +147,11 @@ func parseID(raw string) (uuid.UUID, error) {
 func parseScope(orgRaw, projectRaw string) (orgID, projectID uuid.UUID, err error) {
 	orgID, err = uuid.Parse(orgRaw)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
+		return uuid.Nil, uuid.Nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
 	}
 	projectID, err = uuid.Parse(projectRaw)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, apperror.New(apperror.CodeValidation, "invalid project id").WithCause(err)
+		return uuid.Nil, uuid.Nil, apperror.Invalid("project_id", apperror.FieldInvalid).WithCause(err)
 	}
 	return orgID, projectID, nil
 }

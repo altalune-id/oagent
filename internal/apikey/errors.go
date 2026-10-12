@@ -3,6 +3,8 @@ package apikey
 import (
 	"errors"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 
@@ -27,35 +29,46 @@ func IsNotFoundError(err error) bool {
 	return ok
 }
 
-// InvalidNameError signals a name that fails the aggregate invariants.
-type InvalidNameError struct{ Reason string }
+// NameReason is the stable cause of an InvalidNameError, sent to clients as meta.reason.
+type NameReason string
 
-func (e *InvalidNameError) Error() string {
-	if e.Reason == "" {
-		return "apikey: invalid name"
+// The causes of an InvalidNameError.
+const (
+	NameRequired NameReason = "required"
+	NameLength   NameReason = "length"
+)
+
+// InvalidNameError signals a name that fails the aggregate invariants.
+type InvalidNameError struct{ Reason NameReason }
+
+func (e *InvalidNameError) Error() string { return "apikey: invalid name: " + e.text() }
+
+func (e *InvalidNameError) text() string {
+	if e.Reason == NameRequired {
+		return "name is required"
 	}
-	return "apikey: invalid name: " + e.Reason
+	return fmt.Sprintf("name must be at most %d characters", nameMaxLen)
 }
 
 // UnknownScopeError signals a scope outside the catalog.
 type UnknownScopeError struct{ Scope string }
 
 func (e *UnknownScopeError) Error() string {
-	return fmt.Sprintf("apikey: unknown scope: %q", e.Scope)
+	return fmt.Sprintf("apikey: unknown scope: %q", apperror.Echo(e.Scope))
 }
 
 // ScopeLevelError signals a project key granted a scope above its level.
 type ScopeLevelError struct{ Scope string }
 
 func (e *ScopeLevelError) Error() string {
-	return fmt.Sprintf("apikey: scope %q is not project-level", e.Scope)
+	return fmt.Sprintf("apikey: scope %q is not project-level", apperror.Echo(e.Scope))
 }
 
 // PersonOnlyScopeError signals a person-only scope requested for a key.
 type PersonOnlyScopeError struct{ Scope string }
 
 func (e *PersonOnlyScopeError) Error() string {
-	return fmt.Sprintf("apikey: scope %q can only be held by a person", e.Scope)
+	return fmt.Sprintf("apikey: scope %q can only be held by a person", apperror.Echo(e.Scope))
 }
 
 // ExpiryRequiredError signals a missing expiry at mint.
@@ -72,8 +85,10 @@ func (e *ExpiryInPastError) Error() string { return "apikey: expires_at must be 
 type ExpiryTooLongError struct{}
 
 func (e *ExpiryTooLongError) Error() string {
-	return "apikey: expires_at is more than one year away"
+	return fmt.Sprintf("apikey: expires_at is more than %d days away", maxLifetimeDays)
 }
+
+const maxLifetimeDays = int(MaxLifetime / (24 * time.Hour))
 
 // GrantConflictError signals both All and named project ids set.
 type GrantConflictError struct{}
@@ -89,11 +104,18 @@ func (e *EmptyGrantError) Error() string {
 	return "apikey: org key grant must set all_projects or project_ids"
 }
 
+// GrantOutsideOrgError signals a grant naming a project that is not in the key's org.
+type GrantOutsideOrgError struct{}
+
+func (e *GrantOutsideOrgError) Error() string {
+	return "apikey: grant names a project outside the organization"
+}
+
 // ScopeExceedsRoleError signals a personal key asking for a scope its owner's role does not grant.
 type ScopeExceedsRoleError struct{ Scope string }
 
 func (e *ScopeExceedsRoleError) Error() string {
-	return fmt.Sprintf("apikey: scope %q exceeds the owner's role", e.Scope)
+	return fmt.Sprintf("apikey: scope %q exceeds the owner's role", apperror.Echo(e.Scope))
 }
 
 // PersonalKeysDisabledError signals a personal key requested where the deployment has no people to own one.
@@ -154,7 +176,10 @@ func IsGrantError(err error) bool {
 	if _, ok := errors.AsType[*GrantConflictError](err); ok {
 		return true
 	}
-	_, ok := errors.AsType[*EmptyGrantError](err)
+	if _, ok := errors.AsType[*EmptyGrantError](err); ok {
+		return true
+	}
+	_, ok := errors.AsType[*GrantOutsideOrgError](err)
 	return ok
 }
 
@@ -170,58 +195,77 @@ func (e *NotFoundError) ToAppError() *apperror.AppError {
 	return apperror.New(apperror.CodeAPIKeyNotFound, "API key not found").WithCause(e)
 }
 
-// ToAppError maps InvalidNameError to the canonical Validation envelope.
+// ToAppError maps InvalidNameError to its own code with the reason and the length limit.
 func (e *InvalidNameError) ToAppError() *apperror.AppError {
-	return apperror.New(apperror.CodeAPIKeyInvalidName, "Invalid API key name").WithCause(e)
+	return apperror.New(apperror.CodeAPIKeyInvalidName, "API key "+e.text()).
+		WithMeta(map[string]string{"reason": string(e.Reason), "max": strconv.Itoa(nameMaxLen)}).WithCause(e)
 }
 
-// ToAppError maps UnknownScopeError to the canonical Validation envelope.
+// ToAppError maps UnknownScopeError to the invalid-scope code with the scope.
 func (e *UnknownScopeError) ToAppError() *apperror.AppError {
-	return apperror.New(apperror.CodeAPIKeyInvalidScope, "Unknown API key scope").WithCause(e)
+	return apperror.New(apperror.CodeAPIKeyInvalidScope, "Unknown scope "+apperror.Echo(e.Scope)).
+		WithMeta(map[string]string{"scope": apperror.Echo(e.Scope), "reason": "unknown"}).WithCause(e)
 }
 
-// ToAppError maps ScopeLevelError to the canonical Validation envelope.
+// ToAppError maps ScopeLevelError to the invalid-scope code with the scope.
 func (e *ScopeLevelError) ToAppError() *apperror.AppError {
-	return apperror.New(apperror.CodeAPIKeyInvalidScope, "Scope level too high for a project key").WithCause(e)
+	return apperror.New(apperror.CodeAPIKeyInvalidScope, fmt.Sprintf("Scope %s cannot be granted to a project key", apperror.Echo(e.Scope))).
+		WithMeta(map[string]string{"scope": apperror.Echo(e.Scope), "reason": "level"}).WithCause(e)
 }
 
-// ToAppError maps PersonOnlyScopeError to the canonical Validation envelope.
+// ToAppError maps PersonOnlyScopeError to its own code with the scope.
 func (e *PersonOnlyScopeError) ToAppError() *apperror.AppError {
-	return apperror.New(apperror.CodeAPIKeyPersonOnlyScope, fmt.Sprintf("Scope %s can only be held by a person", e.Scope)).WithCause(e)
+	return apperror.New(apperror.CodeAPIKeyPersonOnlyScope, fmt.Sprintf("Scope %s can only be held by a person", apperror.Echo(e.Scope))).
+		WithMeta(map[string]string{"scope": apperror.Echo(e.Scope)}).WithCause(e)
 }
 
-// ToAppError maps expiry errors to the canonical Validation envelope.
+// ToAppError maps ExpiryRequiredError to the invalid-expiry code.
 func (e *ExpiryRequiredError) ToAppError() *apperror.AppError {
-	return apperror.New(apperror.CodeAPIKeyInvalidExpiry, "expires_at is required").WithCause(e)
+	return expiryAppError("expires_at is required", "required").WithCause(e)
 }
 
-// ToAppError maps ExpiryInPastError to the canonical Validation envelope.
+// ToAppError maps ExpiryInPastError to the invalid-expiry code.
 func (e *ExpiryInPastError) ToAppError() *apperror.AppError {
-	return apperror.New(apperror.CodeAPIKeyInvalidExpiry, "expires_at must be in the future").WithCause(e)
+	return expiryAppError("expires_at must be in the future", "past").WithCause(e)
 }
 
-// ToAppError maps ExpiryTooLongError to the canonical Validation envelope.
+// ToAppError maps ExpiryTooLongError to the invalid-expiry code.
 func (e *ExpiryTooLongError) ToAppError() *apperror.AppError {
-	return apperror.New(apperror.CodeAPIKeyInvalidExpiry, "expires_at is more than one year away").WithCause(e)
+	return expiryAppError(fmt.Sprintf("expires_at is more than %d days away", maxLifetimeDays), "too_far").WithCause(e)
 }
 
-// ToAppError maps grant errors to the canonical Validation envelope.
+func expiryAppError(msg, reason string) *apperror.AppError {
+	return apperror.New(apperror.CodeAPIKeyInvalidExpiry, msg).
+		WithMeta(map[string]string{"reason": reason, "max_days": strconv.Itoa(maxLifetimeDays)})
+}
+
+// ToAppError maps GrantConflictError to the invalid-grant code.
 func (e *GrantConflictError) ToAppError() *apperror.AppError {
-	return apperror.New(apperror.CodeAPIKeyInvalidGrant, "Grant cannot set all_projects and project_ids").WithCause(e)
+	return grantAppError("Grant cannot set all_projects and project_ids", "conflict").WithCause(e)
 }
 
-// ToAppError maps EmptyGrantError to the canonical Validation envelope.
+// ToAppError maps EmptyGrantError to the invalid-grant code.
 func (e *EmptyGrantError) ToAppError() *apperror.AppError {
-	return apperror.New(apperror.CodeAPIKeyInvalidGrant, "Org key grant cannot be empty").WithCause(e)
+	return grantAppError("Org key grant cannot be empty", "empty").WithCause(e)
 }
 
-// ToAppError maps ScopeExceedsRoleError to the canonical Forbidden envelope.
+// ToAppError maps GrantOutsideOrgError to the invalid-grant code.
+func (e *GrantOutsideOrgError) ToAppError() *apperror.AppError {
+	return grantAppError("Project is not in this organization", "outside_org").WithCause(e)
+}
+
+func grantAppError(msg, reason string) *apperror.AppError {
+	return apperror.New(apperror.CodeAPIKeyInvalidGrant, msg).WithMeta(map[string]string{"reason": reason})
+}
+
+// ToAppError maps ScopeExceedsRoleError to its own code: with the scope, or reason not_member when no role was found.
 func (e *ScopeExceedsRoleError) ToAppError() *apperror.AppError {
-	msg := "A personal key cannot hold more than your role allows"
-	if e.Scope != "" {
-		msg = fmt.Sprintf("Your role does not allow scope %s", e.Scope)
+	if e.Scope == "" {
+		return apperror.New(apperror.CodeAPIKeyScopeExceedsRole, "A personal key cannot hold more than your role allows").
+			WithMeta(map[string]string{"reason": "not_member"}).WithCause(e)
 	}
-	return apperror.New(apperror.CodeAPIKeyScopeExceedsRole, msg).WithCause(e)
+	return apperror.New(apperror.CodeAPIKeyScopeExceedsRole, fmt.Sprintf("Your role does not allow scope %s", apperror.Echo(e.Scope))).
+		WithMeta(map[string]string{"scope": apperror.Echo(e.Scope)}).WithCause(e)
 }
 
 // ToAppError maps PersonalKeysDisabledError to the canonical FailedPrecondition envelope.

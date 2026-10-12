@@ -31,7 +31,7 @@ func (s *ProjectService) CreateProject(
 ) (*connect.Response[projectv1.CreateProjectResponse], error) {
 	orgID, err := uuid.Parse(req.Msg.GetOrgId())
 	if err != nil {
-		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
+		return nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
 	}
 	if !authz.ReachWholeOrg(ctx, orgID) {
 		return nil, &NotFoundError{}
@@ -50,7 +50,7 @@ func (s *ProjectService) GetProject(
 ) (*connect.Response[projectv1.GetProjectResponse], error) {
 	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
-		return nil, apperror.New(apperror.CodeValidation, "invalid project id").WithCause(err)
+		return nil, apperror.Invalid("project_id", apperror.FieldInvalid).WithCause(err)
 	}
 	p, err := s.reachable(ctx, id, authz.ReachProject)
 	if err != nil {
@@ -66,7 +66,7 @@ func (s *ProjectService) ListProjects(
 ) (*connect.Response[projectv1.ListProjectsResponse], error) {
 	orgID, err := uuid.Parse(req.Msg.GetOrgId())
 	if err != nil {
-		return nil, apperror.New(apperror.CodeValidation, "invalid organization id").WithCause(err)
+		return nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
 	}
 	if !authz.ReachOrg(ctx, orgID) {
 		return nil, &NotFoundError{}
@@ -91,7 +91,7 @@ func (s *ProjectService) UpdateProject(
 ) (*connect.Response[projectv1.UpdateProjectResponse], error) {
 	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
-		return nil, apperror.New(apperror.CodeValidation, "invalid project id").WithCause(err)
+		return nil, apperror.Invalid("project_id", apperror.FieldInvalid).WithCause(err)
 	}
 	if _, err := s.reachable(ctx, id, authz.ReachWholeProject); err != nil {
 		return nil, err

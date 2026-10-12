@@ -110,7 +110,7 @@ func (e *InvalidEventTypesError) Error() string {
 func (e *InvalidEventTypesError) ToAppError() *apperror.AppError {
 	meta := map[string]string{"reason": string(e.Reason)}
 	if e.Event != "" {
-		meta["event"] = string(e.Event)
+		meta["event"] = apperror.Echo(string(e.Event))
 	}
 	return apperror.New(apperror.CodeWebhookInvalidEventTypes, "Webhook event types: "+e.text()).WithMeta(meta).WithCause(e)
 }
@@ -120,11 +120,11 @@ func (e *InvalidEventTypesError) text() string {
 	case EventTypesRequired:
 		return "at least one event type is required"
 	case EventTypeUnknown:
-		return "unknown event type " + string(e.Event)
+		return "unknown event type " + apperror.Echo(string(e.Event))
 	case EventTypeNotSubscribable:
-		return "event type " + string(e.Event) + " cannot be subscribed to"
+		return "event type " + apperror.Echo(string(e.Event)) + " cannot be subscribed to"
 	case EventTypeDuplicate:
-		return "event type " + string(e.Event) + " is listed twice"
+		return "event type " + apperror.Echo(string(e.Event)) + " is listed twice"
 	default:
 		return "invalid event types"
 	}

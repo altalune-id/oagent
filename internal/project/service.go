@@ -32,7 +32,7 @@ type CreateRequest struct {
 // Create validates and persists a new project within an org. An empty slug is generated, retrying on collision.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (*Project, error) {
 	if req.OrgID == uuid.Nil {
-		return nil, apperror.New(apperror.CodeValidation, "organization id is required")
+		return nil, apperror.Invalid("organization_id", apperror.FieldRequired)
 	}
 	if strings.TrimSpace(req.Slug) == "" {
 		return s.createGenerated(ctx, req)

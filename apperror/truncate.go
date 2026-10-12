@@ -10,3 +10,9 @@ func TruncateCause(cause string, limit int) string {
 	}
 	return strings.ToValidUTF8(cause, "")
 }
+
+// EchoLimit caps a caller-supplied value echoed back in meta.
+const EchoLimit = 100
+
+// Echo cuts a caller-supplied value to EchoLimit bytes before it goes into meta.
+func Echo(v string) string { return TruncateCause(v, EchoLimit) }
