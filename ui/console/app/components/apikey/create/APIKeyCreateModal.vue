@@ -4,8 +4,9 @@ import AppModal from '~/components/ui/AppModal.vue'
 import SecretField from '~/components/ui/SecretField.vue'
 import scopes from '@shared/scope/scopes.json'
 import { useProjectsStore } from '~/stores/projects'
-import { useScopeLabel } from '~/components/apikey/useScopeLabel'
+import { useScopeLabel } from '~/composables/useScopeLabel'
 import { useAPIKeyCreate } from './useAPIKeyCreate'
+import ErrorText from '~/components/ui/ErrorText.vue'
 
 const { orgId } = defineProps<{ orgId: string }>()
 
@@ -90,9 +91,7 @@ const expiryOptions = computed(() => [
         </select>
       </label>
 
-      <p v-if="error" class="text-sm text-error">
-        {{ error }}
-      </p>
+      <ErrorText :error="error" />
     </form>
 
     <template #footer>

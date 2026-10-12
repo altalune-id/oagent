@@ -3,7 +3,7 @@ import { Code, ConnectError } from '@connectrpc/connect'
 import { describe, expect, it } from 'vitest'
 
 import { ErrorDetailSchema } from '../../../gen/apperror/v1/error_pb'
-import { describeError } from './message'
+import { describeError, toShown } from './message'
 
 const messages: Record<string, string> = {
   'apperror.ORG003': 'Slug {slug} must be {min} to {max} characters',
@@ -89,5 +89,13 @@ describe('describeError', () => {
   it('returns the request id', () => {
     expect(describeError(connectError('GEN900', {}, 'req-42'), t, te, 'fallback').requestId).toBe('req-42')
     expect(describeError(connectError('GEN900', {}, ''), t, te, 'fallback').requestId).toBeUndefined()
+  })
+})
+
+describe('toShown', () => {
+  it('adds the reference line only when there is a request id', () => {
+    const ref = (id: string) => `Ref: ${id}`
+    expect(toShown({ message: 'Nope', code: 'X', requestId: 'req-1' }, ref)).toEqual({ message: 'Nope', reference: 'Ref: req-1' })
+    expect(toShown({ message: 'Nope' }, ref)).toEqual({ message: 'Nope' })
   })
 })

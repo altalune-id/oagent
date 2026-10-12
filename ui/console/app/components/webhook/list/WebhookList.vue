@@ -4,11 +4,14 @@ import SecretField from '~/components/ui/SecretField.vue'
 import { webhookEvents } from '~/components/webhook/events'
 import type { Webhook } from '~/stores/webhooks'
 import { toWebhook, useWebhooksStore } from '~/stores/webhooks'
+import { useErrorMessage } from '~/composables/useErrorMessage'
+import ErrorText from '~/components/ui/ErrorText.vue'
 
 const { orgId, projectId } = defineProps<{ orgId: string, projectId: string }>()
 
 const route = useRoute()
 const { t } = useI18n()
+const errorMessage = useErrorMessage()
 const webhooks = useWebhooksStore()
 const { $webhookClient: client } = useNuxtApp()
 
@@ -31,7 +34,7 @@ async function ping(webhook: Webhook) {
     await client.pingWebhook({ orgId, projectId, id: webhook.id })
   }
   catch (e) {
-    webhooks.error = e instanceof Error ? e.message : t('error.ping_webhook')
+    webhooks.error = errorMessage(e, 'error.ping_webhook')
   }
   finally {
     busyId.value = ''
@@ -50,7 +53,7 @@ async function toggle(webhook: Webhook) {
     }
   }
   catch (e) {
-    webhooks.error = e instanceof Error ? e.message : t('error.update_webhook')
+    webhooks.error = errorMessage(e, 'error.update_webhook')
   }
   finally {
     busyId.value = ''
@@ -65,7 +68,7 @@ async function rotate(webhook: Webhook) {
     rotatedSecret.value = res.secret
   }
   catch (e) {
-    webhooks.error = e instanceof Error ? e.message : t('error.rotate_webhook')
+    webhooks.error = errorMessage(e, 'error.rotate_webhook')
   }
   finally {
     busyId.value = ''
@@ -79,7 +82,7 @@ async function destroy(webhook: Webhook) {
     webhooks.remove(webhook.id)
   }
   catch (e) {
-    webhooks.error = e instanceof Error ? e.message : t('error.delete_webhook')
+    webhooks.error = errorMessage(e, 'error.delete_webhook')
   }
   finally {
     busyId.value = ''
@@ -93,9 +96,7 @@ function closeRotate() {
 </script>
 
 <template>
-  <p v-if="webhooks.error" class="text-sm text-error">
-    {{ webhooks.error }}
-  </p>
+  <ErrorText v-if="webhooks.error" :error="webhooks.error" />
   <p v-else-if="items.length === 0" class="text-sm text-base-content/60">
     {{ t('webhooks.empty') }}
   </p>

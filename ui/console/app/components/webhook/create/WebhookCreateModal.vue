@@ -4,6 +4,7 @@ import AppModal from '~/components/ui/AppModal.vue'
 import SecretField from '~/components/ui/SecretField.vue'
 import { webhookEvents } from '~/components/webhook/events'
 import { useWebhookCreate } from './useWebhookCreate'
+import ErrorText from '~/components/ui/ErrorText.vue'
 
 const { orgId, projectId } = defineProps<{ orgId: string, projectId: string }>()
 
@@ -30,9 +31,7 @@ const { open, url, description, eventTypes, busy, error, secret, pingBusy, pingE
           {{ pinged ? t('webhooks.tested') : t('webhooks.test') }}
         </button>
       </div>
-      <p v-if="pingError" class="text-sm text-error">
-        {{ pingError }}
-      </p>
+      <ErrorText :error="pingError" />
     </div>
 
     <form v-else class="space-y-3" @submit.prevent="create.submit()">
@@ -53,9 +52,7 @@ const { open, url, description, eventTypes, busy, error, secret, pingBusy, pingE
           </label>
         </div>
       </div>
-      <p v-if="error" class="text-sm text-error">
-        {{ error }}
-      </p>
+      <ErrorText :error="error" />
     </form>
 
     <template #footer>

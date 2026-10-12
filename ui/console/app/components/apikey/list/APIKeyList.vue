@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { useAPIKeysStore } from '~/stores/apiKeys'
-import { useScopeLabel } from '~/components/apikey/useScopeLabel'
+import { useScopeLabel } from '~/composables/useScopeLabel'
+import { useErrorMessage } from '~/composables/useErrorMessage'
+import ErrorText from '~/components/ui/ErrorText.vue'
 
 const { orgId } = defineProps<{ orgId: string }>()
 
 const { t } = useI18n()
+const errorMessage = useErrorMessage()
 const scopeLabel = useScopeLabel()
 const keys = useAPIKeysStore()
 const { $apiKeyClient: client } = useNuxtApp()
@@ -25,15 +28,13 @@ async function revoke(id: string) {
     keys.markRevoked(id)
   }
   catch (e) {
-    keys.error = e instanceof Error ? e.message : t('error.revoke_apikey')
+    keys.error = errorMessage(e, 'error.revoke_apikey')
   }
 }
 </script>
 
 <template>
-  <p v-if="keys.error" class="text-sm text-error">
-    {{ keys.error }}
-  </p>
+  <ErrorText v-if="keys.error" :error="keys.error" />
   <p v-else-if="keys.items.length === 0" class="text-sm text-base-content/60">
     {{ t('apikeys.empty') }}
   </p>

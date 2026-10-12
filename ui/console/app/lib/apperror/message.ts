@@ -59,3 +59,13 @@ function label(key: string, value: string, te: HasKey, t: Translate, labels: Err
   }
   return value
 }
+
+// ShownError is what the console renders: the message, plus a muted support reference when the server sent a request id.
+export interface ShownError {
+  message: string
+  reference?: string
+}
+
+export function toShown(view: ErrorView, ref: (id: string) => string): ShownError {
+  return view.requestId ? { message: view.message, reference: ref(view.requestId) } : { message: view.message }
+}

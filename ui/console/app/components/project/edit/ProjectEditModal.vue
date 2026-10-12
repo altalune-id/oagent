@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppModal from '~/components/ui/AppModal.vue'
 import { useProjectEdit } from './useProjectEdit'
+import ErrorText from '~/components/ui/ErrorText.vue'
 
 const { t } = useI18n()
 const { open, name, slug, busy, error, show, hide, submit } = useProjectEdit()
@@ -19,9 +20,7 @@ defineExpose({ show })
         <span class="mb-1 block text-xs text-base-content/60">{{ t('common.slug') }}</span>
         <input v-model="slug" type="text" class="input input-sm input-bordered w-full" :disabled="busy">
       </label>
-      <p v-if="error" class="text-sm text-error">
-        {{ error }}
-      </p>
+      <ErrorText :error="error" />
     </form>
     <template #footer>
       <button class="btn btn-ghost btn-sm" type="button" :disabled="busy" @click="hide()">

@@ -1,5 +1,7 @@
 import { timestampFromDate } from '@bufbuild/protobuf/wkt'
 import { toAPIKey, useAPIKeysStore } from '~/stores/apiKeys'
+import type { ShownError } from '~/lib/apperror/message'
+import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export function useAPIKeyCreate(orgId: string) {
   const open = ref(false)
@@ -11,11 +13,11 @@ export function useAPIKeyCreate(orgId: string) {
   const projectIds = ref<string[]>([])
   const expiresInHours = ref(720)
   const busy = ref(false)
-  const error = ref('')
+  const error = ref<ShownError | null>(null)
   const plaintext = ref('')
 
   const keys = useAPIKeysStore()
-  const { t } = useI18n()
+  const errorMessage = useErrorMessage()
   const { $apiKeyClient: client } = useNuxtApp()
 
   function show() {
@@ -26,7 +28,7 @@ export function useAPIKeyCreate(orgId: string) {
     projectId.value = ''
     projectIds.value = []
     expiresInHours.value = 720
-    error.value = ''
+    error.value = null
     plaintext.value = ''
     open.value = true
   }
@@ -44,7 +46,7 @@ export function useAPIKeyCreate(orgId: string) {
       return
     }
     busy.value = true
-    error.value = ''
+    error.value = null
     try {
       const res = await client.createAPIKey({
         orgId,
@@ -62,7 +64,7 @@ export function useAPIKeyCreate(orgId: string) {
       plaintext.value = res.plaintext
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : t('error.create_apikey')
+      error.value = errorMessage(e, 'error.create_apikey')
     }
     finally {
       busy.value = false

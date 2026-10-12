@@ -2,6 +2,7 @@
 import AppButton from '~/components/ui/AppButton.vue'
 import { useOrgsStore } from '~/stores/orgs'
 import { useUIStore } from '~/stores/ui'
+import ErrorText from '~/components/ui/ErrorText.vue'
 
 const { t } = useI18n()
 const orgs = useOrgsStore()
@@ -25,9 +26,7 @@ useHead({ title: () => `${t('org.all')} · oagent` })
       </AppButton>
     </div>
 
-    <p v-if="orgs.error" class="mt-6 text-sm text-error">
-      {{ orgs.error }}
-    </p>
+    <ErrorText v-if="orgs.error" :error="orgs.error" class="mt-6" />
     <p v-else-if="orgs.items.length === 0" class="mt-6 text-sm text-base-content/60">
       {{ t('org.empty') }}
     </p>

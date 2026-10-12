@@ -6,9 +6,12 @@ import type { Agent } from '~/stores/agents'
 import { useAgentsStore } from '~/stores/agents'
 import { useOrgsStore } from '~/stores/orgs'
 import { useProjectsStore } from '~/stores/projects'
+import { useErrorMessage } from '~/composables/useErrorMessage'
+import ErrorText from '~/components/ui/ErrorText.vue'
 
 const route = useRoute()
 const { t } = useI18n()
+const errorMessage = useErrorMessage()
 const orgs = useOrgsStore()
 const projects = useProjectsStore()
 const agents = useAgentsStore()
@@ -38,7 +41,7 @@ async function destroy(id: string) {
     agents.remove(id)
   }
   catch (e) {
-    agents.error = e instanceof Error ? e.message : t('error.delete_agent')
+    agents.error = errorMessage(e, 'error.delete_agent')
   }
 }
 
@@ -54,9 +57,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
       <AgentCreateModal :org-id="org?.id ?? ''" :project-id="project.id" />
     </div>
 
-    <p v-if="agents.error" class="text-sm text-error">
-      {{ agents.error }}
-    </p>
+    <ErrorText v-if="agents.error" :error="agents.error" />
     <div v-else-if="items.length" class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
       <table class="table table-sm">
         <thead>

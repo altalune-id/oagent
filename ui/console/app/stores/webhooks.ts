@@ -1,4 +1,6 @@
 import type { Webhook as WebhookPB } from '~~/gen/webhook/v1/webhook_pb'
+import type { ShownError } from '~/lib/apperror/message'
+import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export interface Webhook {
   id: string
@@ -25,10 +27,10 @@ export function toWebhook(w: WebhookPB): Webhook {
 export const useWebhooksStore = defineStore('webhooks', () => {
   const items = ref<Webhook[]>([])
   const loading = ref(false)
-  const error = ref('')
+  const error = ref<ShownError | null>(null)
 
   const { $webhookClient: client } = useNuxtApp()
-  const { t } = useI18n()
+  const errorMessage = useErrorMessage()
   let loadedFor = ''
   let inflight: Promise<void> | null = null
 
@@ -52,14 +54,14 @@ export const useWebhooksStore = defineStore('webhooks', () => {
 
   async function load(orgId: string, projectId: string) {
     loading.value = true
-    error.value = ''
+    error.value = null
     try {
       const res = await client.listWebhooks({ orgId, projectId })
       items.value = (res.webhooks ?? []).map(toWebhook)
       loadedFor = `${orgId}:${projectId}`
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : t('error.load_webhooks')
+      error.value = errorMessage(e, 'error.load_webhooks')
     }
     finally {
       loading.value = false

@@ -1,5 +1,7 @@
 import { useAgentsStore } from '~/stores/agents'
 import type { Agent } from '~/stores/agents'
+import type { ShownError } from '~/lib/apperror/message'
+import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export function useAgentEdit() {
   const open = ref(false)
@@ -7,17 +9,17 @@ export function useAgentEdit() {
   const name = ref('')
   const description = ref('')
   const busy = ref(false)
-  const error = ref('')
+  const error = ref<ShownError | null>(null)
 
   const agents = useAgentsStore()
-  const { t } = useI18n()
+  const errorMessage = useErrorMessage()
   const { $agentClient: client } = useNuxtApp()
 
   function show(agent: Agent) {
     id.value = agent.id
     name.value = agent.name
     description.value = agent.description
-    error.value = ''
+    error.value = null
     open.value = true
   }
 
@@ -26,7 +28,7 @@ export function useAgentEdit() {
       return
     }
     open.value = false
-    error.value = ''
+    error.value = null
   }
 
   async function submit() {
@@ -35,7 +37,7 @@ export function useAgentEdit() {
       return
     }
     busy.value = true
-    error.value = ''
+    error.value = null
     try {
       const res = await client.updateAgent({ id: id.value, name: value, description: description.value })
       if (res.agent) {
@@ -46,7 +48,7 @@ export function useAgentEdit() {
       description.value = ''
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : t('error.update_agent')
+      error.value = errorMessage(e, 'error.update_agent')
     }
     finally {
       busy.value = false

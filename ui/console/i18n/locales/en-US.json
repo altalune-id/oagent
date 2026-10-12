@@ -168,6 +168,7 @@
   "error.org_not_found": "Organization not found",
   "error.ping_webhook": "Failed to ping webhook",
   "error.project_not_found": "Project not found",
+  "error.ref": "Ref: {id}",
   "error.rename_project": "Failed to update project",
   "error.retry_deliveries": "Failed to retry deliveries",
   "error.revoke_apikey": "Failed to revoke API key",

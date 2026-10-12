@@ -2,9 +2,13 @@
 import AppButton from '~/components/ui/AppButton.vue'
 import CopyButton from '~/components/ui/CopyButton.vue'
 import { useOrgsStore } from '~/stores/orgs'
+import type { ShownError } from '~/lib/apperror/message'
+import { useErrorMessage } from '~/composables/useErrorMessage'
+import ErrorText from '~/components/ui/ErrorText.vue'
 
 const route = useRoute()
 const { t } = useI18n()
+const errorMessage = useErrorMessage()
 const orgs = useOrgsStore()
 const { $orgClient: client } = useNuxtApp()
 
@@ -17,7 +21,7 @@ if (!org.value) {
 const name = ref(org.value.name)
 const slug = ref(org.value.slug)
 const busy = ref(false)
-const error = ref('')
+const error = ref<ShownError | null>(null)
 const saved = ref(false)
 
 async function save() {
@@ -26,7 +30,7 @@ async function save() {
     return
   }
   busy.value = true
-  error.value = ''
+  error.value = null
   saved.value = false
   try {
     const res = await client.updateOrg({ id: current.id, name: name.value.trim(), slug: slug.value.trim() })
@@ -39,7 +43,7 @@ async function save() {
     saved.value = true
   }
   catch (e) {
-    error.value = e instanceof Error ? e.message : t('error.update_org')
+    error.value = errorMessage(e, 'error.update_org')
   }
   finally {
     busy.value = false
@@ -72,9 +76,7 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('settings.ti
         <span class="mb-1 block text-xs text-base-content/60">{{ t('common.slug') }}</span>
         <input v-model="slug" type="text" class="input input-sm input-bordered w-full" :disabled="busy">
       </label>
-      <p v-if="error" class="text-sm text-error">
-        {{ error }}
-      </p>
+      <ErrorText :error="error" />
       <div class="flex items-center gap-3">
         <AppButton type="submit" size="sm" :disabled="busy || !name.trim()">
           <Icon name="lucide:check" size="16" />

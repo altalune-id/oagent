@@ -3,6 +3,9 @@ import { timestampDate } from '@bufbuild/protobuf/wkt'
 import AppModal from '~/components/ui/AppModal.vue'
 import { useOrgsStore } from '~/stores/orgs'
 import { useProjectsStore } from '~/stores/projects'
+import type { ShownError } from '~/lib/apperror/message'
+import { useErrorMessage } from '~/composables/useErrorMessage'
+import ErrorText from '~/components/ui/ErrorText.vue'
 
 interface Delivery {
   id: string
@@ -26,6 +29,7 @@ interface Attempt {
 
 const route = useRoute()
 const { t } = useI18n()
+const errorMessage = useErrorMessage()
 const orgs = useOrgsStore()
 const projects = useProjectsStore()
 const { $webhookClient: client } = useNuxtApp()
@@ -41,12 +45,12 @@ if (!project.value) {
 
 const webhookId = computed(() => route.params.webhook as string)
 const deliveries = ref<Delivery[]>([])
-const error = ref('')
+const error = ref<ShownError | null>(null)
 const busy = ref(false)
 
 async function load() {
   busy.value = true
-  error.value = ''
+  error.value = null
   try {
     const res = await client.listWebhookDeliveries({
       orgId: org.value?.id ?? '', projectId: project.value?.id ?? '', id: webhookId.value, limit: 50,
@@ -62,7 +66,7 @@ async function load() {
     }))
   }
   catch (e) {
-    error.value = e instanceof Error ? e.message : t('error.load_deliveries')
+    error.value = errorMessage(e, 'error.load_deliveries')
   }
   finally {
     busy.value = false
@@ -71,12 +75,12 @@ async function load() {
 
 const selected = ref<Delivery | null>(null)
 const attempts = ref<Attempt[]>([])
-const attemptsError = ref('')
+const attemptsError = ref<ShownError | null>(null)
 
 async function showAttempts(delivery: Delivery) {
   selected.value = delivery
   attempts.value = []
-  attemptsError.value = ''
+  attemptsError.value = null
   try {
     const res = await client.listWebhookDeliveryAttempts({
       orgId: org.value?.id ?? '', projectId: project.value?.id ?? '', id: webhookId.value, deliveryId: delivery.id,
@@ -92,24 +96,24 @@ async function showAttempts(delivery: Delivery) {
     }))
   }
   catch (e) {
-    attemptsError.value = e instanceof Error ? e.message : t('error.load_attempts')
+    attemptsError.value = errorMessage(e, 'error.load_attempts')
   }
 }
 
 function closeAttempts() {
   selected.value = null
   attempts.value = []
-  attemptsError.value = ''
+  attemptsError.value = null
 }
 
 const retrying = ref(false)
-const retryError = ref('')
+const retryError = ref<ShownError | null>(null)
 const requeued = ref('')
-const retryOneError = ref('')
+const retryOneError = ref<ShownError | null>(null)
 
 async function retryFailed() {
   retrying.value = true
-  retryError.value = ''
+  retryError.value = null
   requeued.value = ''
   try {
     const res = await client.retryFailedWebhookDeliveries({
@@ -119,7 +123,7 @@ async function retryFailed() {
     await load()
   }
   catch (e) {
-    retryError.value = e instanceof Error ? e.message : t('error.retry_deliveries')
+    retryError.value = errorMessage(e, 'error.retry_deliveries')
   }
   finally {
     retrying.value = false
@@ -131,7 +135,7 @@ async function retryOne() {
     return
   }
   retrying.value = true
-  retryOneError.value = ''
+  retryOneError.value = null
   try {
     await client.retryWebhookDelivery({
       orgId: org.value?.id ?? '', projectId: project.value?.id ?? '', id: webhookId.value, deliveryId: selected.value.id,
@@ -140,7 +144,7 @@ async function retryOne() {
     await load()
   }
   catch (e) {
-    retryOneError.value = e instanceof Error ? e.message : t('error.retry_deliveries')
+    retryOneError.value = errorMessage(e, 'error.retry_deliveries')
   }
   finally {
     retrying.value = false
@@ -184,16 +188,12 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
       </div>
     </div>
 
-    <p v-if="retryError" class="text-sm text-error">
-      {{ retryError }}
-    </p>
+    <ErrorText :error="retryError" />
     <p v-if="requeued" class="text-sm text-success">
       {{ requeued }}
     </p>
 
-    <p v-if="error" class="text-sm text-error">
-      {{ error }}
-    </p>
+    <ErrorText v-if="error" :error="error" />
     <p v-else-if="deliveries.length === 0" class="text-sm text-base-content/60">
       {{ t('webhooks.no_deliveries') }}
     </p>
@@ -231,9 +231,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
         <span class="block text-xs text-base-content/60">{{ t('webhooks.payload') }}</span>
         <pre class="max-h-64 overflow-auto rounded-box bg-base-200 p-3 text-xs">{{ prettyPayload }}</pre>
       </div>
-      <p v-if="attemptsError" class="text-sm text-error">
-        {{ attemptsError }}
-      </p>
+      <ErrorText v-if="attemptsError" :error="attemptsError" />
       <p v-else-if="attempts.length === 0" class="text-sm text-base-content/60">
         {{ t('webhooks.no_attempts') }}
       </p>
@@ -264,7 +262,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
         </div>
       </div>
       <template #footer>
-        <p v-if="retryOneError" class="mr-auto text-sm text-error">{{ retryOneError }}</p>
+        <ErrorText :error="retryOneError" class="mr-auto" />
         <button
           v-if="selected?.status === 'failed'"
           class="btn btn-primary btn-sm"

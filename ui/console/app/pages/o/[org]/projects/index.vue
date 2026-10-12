@@ -6,6 +6,7 @@ import type { Project } from '~/stores/projects'
 import { useOrgsStore } from '~/stores/orgs'
 import { useProjectsStore } from '~/stores/projects'
 import { useUIStore } from '~/stores/ui'
+import ErrorText from '~/components/ui/ErrorText.vue'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -33,9 +34,7 @@ function edit(project: Project) {
       </AppButton>
     </div>
 
-    <p v-if="projects.error" class="text-sm text-error">
-      {{ projects.error }}
-    </p>
+    <ErrorText v-if="projects.error" :error="projects.error" />
     <div v-else-if="items.length" class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
       <table class="table table-sm">
         <thead>

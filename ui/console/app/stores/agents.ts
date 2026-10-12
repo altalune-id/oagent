@@ -1,3 +1,6 @@
+import type { ShownError } from '~/lib/apperror/message'
+import { useErrorMessage } from '~/composables/useErrorMessage'
+
 export interface Agent {
   id: string
   publicId: string
@@ -10,10 +13,10 @@ export interface Agent {
 export const useAgentsStore = defineStore('agents', () => {
   const items = ref<Agent[]>([])
   const loading = ref(false)
-  const error = ref('')
+  const error = ref<ShownError | null>(null)
 
   const { $agentClient: client } = useNuxtApp()
-  const { t } = useI18n()
+  const errorMessage = useErrorMessage()
   let loadedFor = ''
   let inflight: Promise<void> | null = null
 
@@ -37,14 +40,14 @@ export const useAgentsStore = defineStore('agents', () => {
 
   async function load(projectId: string) {
     loading.value = true
-    error.value = ''
+    error.value = null
     try {
       const res = await client.listAgents({ projectId })
       items.value = (res.agents ?? []).map(a => ({ id: a.id, publicId: a.publicId, projectId: a.projectId, slug: a.slug, name: a.name, description: a.description }))
       loadedFor = projectId
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : t('error.load_agents')
+      error.value = errorMessage(e, 'error.load_agents')
     }
     finally {
       loading.value = false

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
+import type { ShownError } from '../../../lib/apperror/message'
 import CopyButton from '../../ui/CopyButton.vue'
+import ErrorText from '../../ui/ErrorText.vue'
 import SecretField from '../../ui/SecretField.vue'
 
 export interface PersonalKey {
@@ -55,14 +57,14 @@ const props = withDefaults(defineProps<{
   projects: { id: string, name: string }[]
   created?: { plaintext: string, snippet: string } | null
   busy?: boolean
-  error?: string
+  error?: ShownError | null
   signedIn?: boolean
   loginUrl?: string
   labels?: PersonalKeysLabels
 }>(), {
   created: null,
   busy: false,
-  error: '',
+  error: null,
   signedIn: true,
   loginUrl: '/login',
   labels: () => ({
@@ -181,9 +183,7 @@ function revoke(id: string) {
         </select>
       </label>
 
-      <p v-if="error" class="text-sm text-error">
-        {{ error }}
-      </p>
+      <ErrorText :error="error" />
       <button type="submit" class="btn btn-primary btn-sm" :disabled="busy || !form.name.trim()">
         <Icon name="lucide:plus" size="16" />
         {{ busy ? labels.creating : labels.create }}

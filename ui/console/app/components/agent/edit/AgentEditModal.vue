@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppModal from '~/components/ui/AppModal.vue'
 import { useAgentEdit } from './useAgentEdit'
+import ErrorText from '~/components/ui/ErrorText.vue'
 
 const { t } = useI18n()
 const { open, name, description, busy, error, show, hide, submit } = useAgentEdit()
@@ -19,9 +20,7 @@ defineExpose({ show })
         <span class="mb-1 block text-xs text-base-content/60">{{ t('common.description') }}</span>
         <textarea v-model="description" rows="3" class="textarea textarea-bordered textarea-sm w-full" :disabled="busy" />
       </label>
-      <p v-if="error" class="text-sm text-error">
-        {{ error }}
-      </p>
+      <ErrorText :error="error" />
     </form>
     <template #footer>
       <button class="btn btn-ghost btn-sm" type="button" :disabled="busy" @click="hide()">

@@ -1,4 +1,6 @@
 import { useAgentsStore } from '~/stores/agents'
+import type { ShownError } from '~/lib/apperror/message'
+import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export function useAgentCreate(orgId: string, projectId: string) {
   const open = ref(false)
@@ -6,14 +8,14 @@ export function useAgentCreate(orgId: string, projectId: string) {
   const slug = ref('')
   const description = ref('')
   const busy = ref(false)
-  const error = ref('')
+  const error = ref<ShownError | null>(null)
 
   const agents = useAgentsStore()
-  const { t } = useI18n()
+  const errorMessage = useErrorMessage()
   const { $agentClient: client } = useNuxtApp()
 
   function show() {
-    error.value = ''
+    error.value = null
     open.value = true
   }
 
@@ -22,7 +24,7 @@ export function useAgentCreate(orgId: string, projectId: string) {
       return
     }
     open.value = false
-    error.value = ''
+    error.value = null
   }
 
   async function submit() {
@@ -31,7 +33,7 @@ export function useAgentCreate(orgId: string, projectId: string) {
       return
     }
     busy.value = true
-    error.value = ''
+    error.value = null
     try {
       const res = await client.createAgent({ orgId, projectId, slug: slug.value.trim(), name: value, description: description.value })
       const agent = res.agent
@@ -44,7 +46,7 @@ export function useAgentCreate(orgId: string, projectId: string) {
       }
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : t('error.create_agent')
+      error.value = errorMessage(e, 'error.create_agent')
     }
     finally {
       busy.value = false

@@ -3,6 +3,7 @@ import AppButton from '~/components/ui/AppButton.vue'
 import { useLanding } from '~/components/layout/useLanding'
 import { useOrgsStore } from '~/stores/orgs'
 import { useUIStore } from '~/stores/ui'
+import ErrorText from '~/components/ui/ErrorText.vue'
 
 const { t } = useI18n()
 const orgs = useOrgsStore()
@@ -29,9 +30,7 @@ if (orgs.items.length) {
       </AppButton>
     </div>
 
-    <p v-if="orgs.error" class="mt-6 text-sm text-error">
-      {{ orgs.error }}
-    </p>
+    <ErrorText v-if="orgs.error" :error="orgs.error" class="mt-6" />
     <p v-else class="mt-6 text-sm text-base-content/60">
       {{ t('org.empty') }}
     </p>

@@ -168,6 +168,7 @@
   "error.org_not_found": "Organisasi tidak ditemukan",
   "error.ping_webhook": "Gagal ping webhook",
   "error.project_not_found": "Proyek tidak ditemukan",
+  "error.ref": "Ref: {id}",
   "error.rename_project": "Gagal memperbarui proyek",
   "error.retry_deliveries": "Gagal mencoba ulang pengiriman",
   "error.revoke_apikey": "Gagal mencabut kunci API",

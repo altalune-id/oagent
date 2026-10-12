@@ -1,6 +1,6 @@
 import { timestampFromDate } from '@bufbuild/protobuf/wkt'
 import scopes from '@shared/scope/scopes.json'
-import { useScopeLabel } from '~/components/apikey/useScopeLabel'
+import { useScopeLabel } from '~/composables/useScopeLabel'
 import { mcpURL } from '~/lib/auth/urls'
 import { toAPIKey, useAPIKeysStore } from '~/stores/apiKeys'
 import { useAuthStore } from '~/stores/auth'
@@ -8,6 +8,8 @@ import { useProjectsStore } from '~/stores/projects'
 import { mintableForMe } from './grants'
 import { mcpSnippet } from './mcpSnippet'
 import type { PersonalKeyForm } from './PersonalKeys.vue'
+import type { ShownError } from '~/lib/apperror/message'
+import { useErrorMessage } from '~/composables/useErrorMessage'
 
 // The server already hides other people's personal keys, so every personal key in the store is the viewer's.
 export function usePersonalKeys(orgId: string) {
@@ -15,12 +17,12 @@ export function usePersonalKeys(orgId: string) {
   const auth = useAuthStore()
   const projects = useProjectsStore()
   const scopeLabel = useScopeLabel()
-  const { t } = useI18n()
+  const errorMessage = useErrorMessage()
   const { $apiKeyClient: client } = useNuxtApp()
   const apiUrl = useRuntimeConfig().public.apiUrl
 
   const busy = ref(false)
-  const error = ref('')
+  const error = ref<ShownError | null>(null)
   const created = ref<{ plaintext: string, snippet: string } | null>(null)
 
   const mine = computed(() => keys.items.filter(k => k.kind === 'personal').map(k => ({ ...k, scopes: k.scopes.map(scopeLabel) })))
@@ -30,7 +32,7 @@ export function usePersonalKeys(orgId: string) {
 
   async function create(form: PersonalKeyForm) {
     busy.value = true
-    error.value = ''
+    error.value = null
     try {
       const res = await client.createAPIKey({
         orgId,
@@ -47,7 +49,7 @@ export function usePersonalKeys(orgId: string) {
       created.value = { plaintext: res.plaintext, snippet: mcpSnippet('oagent', mcpURL(apiUrl, window.location.origin), res.plaintext) }
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : t('error.create_apikey')
+      error.value = errorMessage(e, 'error.create_apikey')
     }
     finally {
       busy.value = false
@@ -55,13 +57,13 @@ export function usePersonalKeys(orgId: string) {
   }
 
   async function revoke(id: string) {
-    error.value = ''
+    error.value = null
     try {
       await client.revokeAPIKey({ orgId, id })
       keys.markRevoked(id)
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : t('error.revoke_apikey')
+      error.value = errorMessage(e, 'error.revoke_apikey')
     }
   }
 

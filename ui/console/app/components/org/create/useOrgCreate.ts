@@ -1,15 +1,17 @@
 import { useOrgsStore } from '~/stores/orgs'
 import { useUIStore } from '~/stores/ui'
+import type { ShownError } from '~/lib/apperror/message'
+import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export function useOrgCreate() {
   const name = ref('')
   const slug = ref('')
   const busy = ref(false)
-  const error = ref('')
+  const error = ref<ShownError | null>(null)
 
   const orgs = useOrgsStore()
   const ui = useUIStore()
-  const { t } = useI18n()
+  const errorMessage = useErrorMessage()
   const { $orgClient: client } = useNuxtApp()
 
   const open = computed(() => ui.orgCreateOpen)
@@ -19,7 +21,7 @@ export function useOrgCreate() {
       return
     }
     ui.closeOrgCreate()
-    error.value = ''
+    error.value = null
   }
 
   async function submit() {
@@ -28,7 +30,7 @@ export function useOrgCreate() {
       return
     }
     busy.value = true
-    error.value = ''
+    error.value = null
     try {
       const res = await client.createOrg({ name: value, slug: slug.value.trim() })
       const org = res.org
@@ -41,7 +43,7 @@ export function useOrgCreate() {
       }
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : t('error.create_org')
+      error.value = errorMessage(e, 'error.create_org')
     }
     finally {
       busy.value = false

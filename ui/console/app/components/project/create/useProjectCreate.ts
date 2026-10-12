@@ -1,15 +1,17 @@
 import { useProjectsStore } from '~/stores/projects'
 import { useUIStore } from '~/stores/ui'
+import type { ShownError } from '~/lib/apperror/message'
+import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export function useProjectCreate(orgId: string) {
   const name = ref('')
   const slug = ref('')
   const busy = ref(false)
-  const error = ref('')
+  const error = ref<ShownError | null>(null)
 
   const projects = useProjectsStore()
   const ui = useUIStore()
-  const { t } = useI18n()
+  const errorMessage = useErrorMessage()
   const { $projectClient: client } = useNuxtApp()
 
   const open = computed(() => ui.projectCreateOpen)
@@ -19,7 +21,7 @@ export function useProjectCreate(orgId: string) {
       return
     }
     ui.closeProjectCreate()
-    error.value = ''
+    error.value = null
   }
 
   async function submit() {
@@ -28,7 +30,7 @@ export function useProjectCreate(orgId: string) {
       return
     }
     busy.value = true
-    error.value = ''
+    error.value = null
     try {
       const res = await client.createProject({ orgId, name: value, slug: slug.value.trim() })
       const project = res.project
@@ -40,7 +42,7 @@ export function useProjectCreate(orgId: string) {
       }
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : t('error.create_project')
+      error.value = errorMessage(e, 'error.create_project')
     }
     finally {
       busy.value = false

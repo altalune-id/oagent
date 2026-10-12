@@ -1,5 +1,7 @@
 import { useProjectsStore } from '~/stores/projects'
 import type { Project } from '~/stores/projects'
+import type { ShownError } from '~/lib/apperror/message'
+import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export function useProjectEdit() {
   const open = ref(false)
@@ -7,17 +9,17 @@ export function useProjectEdit() {
   const name = ref('')
   const slug = ref('')
   const busy = ref(false)
-  const error = ref('')
+  const error = ref<ShownError | null>(null)
 
   const projects = useProjectsStore()
-  const { t } = useI18n()
+  const errorMessage = useErrorMessage()
   const { $projectClient: client } = useNuxtApp()
 
   function show(project: Project) {
     id.value = project.id
     name.value = project.name
     slug.value = project.slug
-    error.value = ''
+    error.value = null
     open.value = true
   }
 
@@ -26,7 +28,7 @@ export function useProjectEdit() {
       return
     }
     open.value = false
-    error.value = ''
+    error.value = null
   }
 
   async function submit() {
@@ -35,7 +37,7 @@ export function useProjectEdit() {
       return
     }
     busy.value = true
-    error.value = ''
+    error.value = null
     try {
       const res = await client.updateProject({ id: id.value, name: value, slug: slug.value.trim() })
       if (res.project) {
@@ -46,7 +48,7 @@ export function useProjectEdit() {
       slug.value = ''
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : t('error.rename_project')
+      error.value = errorMessage(e, 'error.rename_project')
     }
     finally {
       busy.value = false

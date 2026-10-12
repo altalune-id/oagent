@@ -1,3 +1,6 @@
+import type { ShownError } from '~/lib/apperror/message'
+import { useErrorMessage } from '~/composables/useErrorMessage'
+
 export interface Org {
   id: string
   publicId: string
@@ -9,10 +12,10 @@ export const useOrgsStore = defineStore('orgs', () => {
   const items = ref<Org[]>([])
   const loaded = ref(false)
   const loading = ref(false)
-  const error = ref('')
+  const error = ref<ShownError | null>(null)
 
   const { $orgClient: client } = useNuxtApp()
-  const { t } = useI18n()
+  const errorMessage = useErrorMessage()
   let inflight: Promise<void> | null = null
 
   function bySlug(slug: string) {
@@ -31,14 +34,14 @@ export const useOrgsStore = defineStore('orgs', () => {
 
   async function load() {
     loading.value = true
-    error.value = ''
+    error.value = null
     try {
       const res = await client.listOrgs({})
       items.value = (res.orgs ?? []).map(org => ({ id: org.id, publicId: org.publicId, slug: org.slug, name: org.name }))
       loaded.value = true
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : t('error.load_orgs')
+      error.value = errorMessage(e, 'error.load_orgs')
     }
     finally {
       loading.value = false

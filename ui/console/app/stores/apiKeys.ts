@@ -1,5 +1,7 @@
 import { timestampDate } from '@bufbuild/protobuf/wkt'
 import type { APIKey as APIKeyPB } from '~~/gen/apikey/v1/apikey_pb'
+import type { ShownError } from '~/lib/apperror/message'
+import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export interface APIKey {
   id: string
@@ -32,10 +34,10 @@ export function toAPIKey(k: APIKeyPB): APIKey {
 export const useAPIKeysStore = defineStore('apiKeys', () => {
   const items = ref<APIKey[]>([])
   const loading = ref(false)
-  const error = ref('')
+  const error = ref<ShownError | null>(null)
 
   const { $apiKeyClient: client } = useNuxtApp()
-  const { t } = useI18n()
+  const errorMessage = useErrorMessage()
   let loadedFor = ''
   let inflight: Promise<void> | null = null
 
@@ -50,14 +52,14 @@ export const useAPIKeysStore = defineStore('apiKeys', () => {
 
   async function load(orgId: string) {
     loading.value = true
-    error.value = ''
+    error.value = null
     try {
       const res = await client.listAPIKeys({ orgId })
       items.value = (res.keys ?? []).map(toAPIKey)
       loadedFor = orgId
     }
     catch (e) {
-      error.value = e instanceof Error ? e.message : t('error.load_apikeys')
+      error.value = errorMessage(e, 'error.load_apikeys')
     }
     finally {
       loading.value = false
