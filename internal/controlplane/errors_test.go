@@ -12,6 +12,7 @@ import (
 	"altalune.id/oagent/apperror"
 	apperrorv1 "altalune.id/oagent/gen/go/apperror/v1"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
+	"altalune.id/oagent/internal/webhook"
 	"altalune.id/oagent/reqid"
 )
 
@@ -55,4 +56,24 @@ func TestWrap_Passthrough(t *testing.T) {
 	resp, err := wrapped(context.Background(), connect.NewRequest(&orgv1.GetOrgRequest{}))
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
+}
+
+func TestTranslate_WebhookValidationIsNotAnIncident(t *testing.T) {
+	called := false
+	unexpected := func(context.Context, string, error, ...any) *apperror.AppError {
+		called = true
+		return apperror.New(apperror.CodeUnexpected, "reported")
+	}
+	err := Translate(context.Background(), &webhook.InvalidURLError{Reason: webhook.URLHTTPSRequired}, unexpected)
+
+	assert.False(t, called)
+	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	var cerr *connect.Error
+	require.ErrorAs(t, err, &cerr)
+	value, verr := cerr.Details()[0].Value()
+	require.NoError(t, verr)
+	det, ok := value.(*apperrorv1.ErrorDetail)
+	require.True(t, ok)
+	assert.Equal(t, "WHK002", det.GetCode())
+	assert.Equal(t, "https_required", det.GetMeta()["reason"])
 }

@@ -38,3 +38,12 @@ MBR003 MemberInvalidRole
 AUT001 AuthInvalidCredentials
 INS001 InstallAlreadyDone
 INS002 InstallRequired
+WHK001 WebhookNotFound
+WHK002 WebhookInvalidURL
+WHK003 WebhookInvalidEventTypes
+WHK004 WebhookInvalidDescription
+WHK005 WebhookEndpointLimit
+WHK006 WebhookEndpointInactive
+WHK007 WebhookSecretConflict
+WHK008 WebhookDeliveryNotFound
+WHK009 WebhookDeliveryNotRetryable

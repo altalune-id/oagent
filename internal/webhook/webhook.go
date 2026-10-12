@@ -4,7 +4,6 @@ package webhook
 import (
 	"net/url"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -149,26 +148,26 @@ func validate(rawURL, description string, types []events.Type, allowInsecureURL 
 func validateURL(rawURL string, allowInsecureURL bool) (string, error) {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
-		return "", &InvalidURLError{Reason: "is required"}
+		return "", &InvalidURLError{Reason: URLRequired}
 	}
 	if len(rawURL) > MaxURLLen {
-		return "", &InvalidURLError{Reason: "is longer than " + strconv.Itoa(MaxURLLen) + " characters"}
+		return "", &InvalidURLError{Reason: URLTooLong}
 	}
 	if !utf8.ValidString(rawURL) {
-		return "", &InvalidURLError{Reason: "is not valid UTF-8"}
+		return "", &InvalidURLError{Reason: URLNotUTF8}
 	}
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return "", &InvalidURLError{Reason: "cannot be parsed"}
+		return "", &InvalidURLError{Reason: URLUnparsable}
 	}
 	if u.Scheme != "https" && (!allowInsecureURL || u.Scheme != "http") {
-		return "", &InvalidURLError{Reason: "must use https"}
+		return "", &InvalidURLError{Reason: URLHTTPSRequired}
 	}
 	if u.User != nil {
-		return "", &InvalidURLError{Reason: "must not carry credentials"}
+		return "", &InvalidURLError{Reason: URLHasCredentials}
 	}
 	if u.Hostname() == "" {
-		return "", &InvalidURLError{Reason: "has no host"}
+		return "", &InvalidURLError{Reason: URLNoHost}
 	}
 	return rawURL, nil
 }
@@ -176,28 +175,28 @@ func validateURL(rawURL string, allowInsecureURL bool) (string, error) {
 func validateDescription(description string) (string, error) {
 	description = strings.TrimSpace(description)
 	if !utf8.ValidString(description) {
-		return "", &InvalidDescriptionError{Reason: "is not valid UTF-8"}
+		return "", &InvalidDescriptionError{Reason: DescriptionNotUTF8}
 	}
 	if utf8.RuneCountInString(description) > MaxDescriptionRunes {
-		return "", &InvalidDescriptionError{Reason: "is longer than " + strconv.Itoa(MaxDescriptionRunes) + " characters"}
+		return "", &InvalidDescriptionError{Reason: DescriptionTooLong}
 	}
 	return description, nil
 }
 
 func validateTypes(types []events.Type) ([]events.Type, error) {
 	if len(types) == 0 {
-		return nil, &InvalidEventTypesError{Reason: "at least one event type is required"}
+		return nil, &InvalidEventTypesError{Reason: EventTypesRequired}
 	}
 	for i, t := range types {
 		spec, ok := events.Lookup(t)
 		if !ok {
-			return nil, &InvalidEventTypesError{Reason: "unknown event type " + string(t)}
+			return nil, &InvalidEventTypesError{Event: t, Reason: EventTypeUnknown}
 		}
 		if !spec.Subscribable {
-			return nil, &InvalidEventTypesError{Reason: "event type " + string(t) + " cannot be subscribed to"}
+			return nil, &InvalidEventTypesError{Event: t, Reason: EventTypeNotSubscribable}
 		}
 		if slices.Contains(types[:i], t) {
-			return nil, &InvalidEventTypesError{Reason: "event type " + string(t) + " is listed twice"}
+			return nil, &InvalidEventTypesError{Event: t, Reason: EventTypeDuplicate}
 		}
 	}
 	return slices.Clone(types), nil

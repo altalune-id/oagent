@@ -23,10 +23,13 @@ import (
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1 "altalune.id/oagent/gen/go/apikey/v1"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
+	apperrorv1 "altalune.id/oagent/gen/go/apperror/v1"
 	authv1 "altalune.id/oagent/gen/go/auth/v1"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
+	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
+	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/authn"
@@ -291,4 +294,25 @@ func (f *apiFixture) ownerOf(t *testing.T, id string) string {
 	var owner string
 	require.NoError(t, f.db.QueryRowContext(t.Context(), `SELECT created_by::text FROM api_keys WHERE id = $1`, id).Scan(&owner))
 	return owner
+}
+
+func TestAPI_WebhookBadSchemeIsInvalidArgument(t *testing.T) {
+	f := newAPIFixture(t)
+	p, err := f.svcs.Projects.Create(t.Context(), project.CreateRequest{OrgID: uuid.MustParse(f.orgID), Slug: "hooks", Name: "Hooks"})
+	require.NoError(t, err)
+
+	_, err = webhookv1connect.NewWebhookServiceClient(http.DefaultClient, f.url).CreateWebhook(context.Background(), withCookie(connect.NewRequest(&webhookv1.CreateWebhookRequest{
+		OrgId: f.orgID, ProjectId: p.ID.String(), Url: "ftp://example.com/hook", EventTypes: []string{"agent.created"},
+	}), f.ownerCookie(t)))
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err), "%v", err)
+	var cerr *connect.Error
+	require.ErrorAs(t, err, &cerr)
+	require.Len(t, cerr.Details(), 1)
+	value, err := cerr.Details()[0].Value()
+	require.NoError(t, err)
+	det, ok := value.(*apperrorv1.ErrorDetail)
+	require.True(t, ok)
+	assert.Equal(t, "WHK002", det.GetCode())
+	assert.Equal(t, "https_required", det.GetMeta()["reason"])
+	assert.NotContains(t, det.GetMeta(), "underlying_error")
 }

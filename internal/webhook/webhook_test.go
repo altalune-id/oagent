@@ -1,6 +1,7 @@
 package webhook
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/events"
 )
 
@@ -28,30 +30,37 @@ func TestNew(t *testing.T) {
 func TestNewRejects(t *testing.T) {
 	org, project := uuid.New(), uuid.New()
 	types := []events.Type{events.AgentCreated}
+	long := "https://example.com/" + strings.Repeat("a", MaxURLLen)
 
-	_, err := New(org, project, "", "d", types)
-	assert.True(t, IsInvalidURLError(err))
+	for name, tc := range map[string]struct {
+		url    string
+		types  []events.Type
+		reason string
+	}{
+		"empty url":      {"", types, string(URLRequired)},
+		"long url":       {long, types, string(URLTooLong)},
+		"bad utf8 url":   {"https://e.com/\xff", types, string(URLNotUTF8)},
+		"unparsable url": {"https://e.com/%zz", types, string(URLUnparsable)},
+		"http":           {"http://example.com", types, string(URLHTTPSRequired)},
+		"credentials":    {"https://user:pass@example.com", types, string(URLHasCredentials)},
+		"no host":        {"https://", types, string(URLNoHost)},
+		"no types":       {"https://example.com", nil, string(EventTypesRequired)},
+		"unknown type":   {"https://example.com", []events.Type{"nope"}, string(EventTypeUnknown)},
+		"twice":          {"https://example.com", []events.Type{events.AgentCreated, events.AgentCreated}, string(EventTypeDuplicate)},
+		"ping":           {"https://example.com", []events.Type{events.WebhookPing}, string(EventTypeNotSubscribable)},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := New(org, project, tc.url, "d", tc.types)
+			ae, ok := apperror.AsAppError(err)
+			require.True(t, ok, "%v carries no code", err)
+			assert.Equal(t, tc.reason, ae.Meta()["reason"])
+		})
+	}
 
-	_, err = New(org, project, "http://example.com", "d", types)
-	assert.True(t, IsInvalidURLError(err))
-
-	_, err = New(org, project, "https://user:pass@example.com", "d", types)
-	assert.True(t, IsInvalidURLError(err))
-
-	_, err = New(org, project, "https://", "d", types)
-	assert.True(t, IsInvalidURLError(err))
-
-	_, err = New(org, project, "https://example.com", "d", nil)
+	_, err := New(org, project, "https://example.com", "d", []events.Type{events.AgentCreated, "nope"})
 	assert.True(t, IsInvalidEventTypesError(err))
-
-	_, err = New(org, project, "https://example.com", "d", []events.Type{"nope"})
-	assert.True(t, IsInvalidEventTypesError(err))
-
-	_, err = New(org, project, "https://example.com", "d", []events.Type{events.AgentCreated, events.AgentCreated})
-	assert.True(t, IsInvalidEventTypesError(err))
-
-	_, err = New(org, project, "https://example.com", "d", []events.Type{events.WebhookPing})
-	assert.True(t, IsInvalidEventTypesError(err))
+	ae, _ := apperror.AsAppError(err)
+	assert.Equal(t, "nope", ae.Meta()["event"])
 }
 
 func TestNewAllowsInsecureURL(t *testing.T) {
@@ -85,6 +94,14 @@ func TestValidateDescriptionTooLong(t *testing.T) {
 	}
 	_, err := New(uuid.New(), uuid.New(), "https://example.com", string(long), []events.Type{events.AgentCreated})
 	assert.True(t, IsInvalidDescriptionError(err))
+	ae, ok := apperror.AsAppError(err)
+	require.True(t, ok)
+	assert.Equal(t, string(DescriptionTooLong), ae.Meta()["reason"])
+
+	_, err = New(uuid.New(), uuid.New(), "https://example.com", "\xff", []events.Type{events.AgentCreated})
+	ae, ok = apperror.AsAppError(err)
+	require.True(t, ok)
+	assert.Equal(t, string(DescriptionNotUTF8), ae.Meta()["reason"])
 }
 
 func TestResolveValidateOpts(t *testing.T) {

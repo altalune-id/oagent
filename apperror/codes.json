@@ -38,5 +38,14 @@
   { "code": "MBR003", "name": "MemberInvalidRole", "kind": "invalid", "params": [], "reasons": [] },
   { "code": "AUT001", "name": "AuthInvalidCredentials", "kind": "unauthenticated", "params": [], "reasons": [] },
   { "code": "INS001", "name": "InstallAlreadyDone", "kind": "already_exists", "params": [], "reasons": [] },
-  { "code": "INS002", "name": "InstallRequired", "kind": "failed_precondition", "params": [], "reasons": [] }
+  { "code": "INS002", "name": "InstallRequired", "kind": "failed_precondition", "params": [], "reasons": [] },
+  { "code": "WHK001", "name": "WebhookNotFound", "kind": "not_found", "params": [], "reasons": [] },
+  { "code": "WHK002", "name": "WebhookInvalidURL", "kind": "invalid", "params": ["max"], "reasons": ["required", "too_long", "not_utf8", "unparsable", "https_required", "has_credentials", "no_host"] },
+  { "code": "WHK003", "name": "WebhookInvalidEventTypes", "kind": "invalid", "params": ["event"], "reasons": ["required", "unknown", "not_subscribable", "duplicate"] },
+  { "code": "WHK004", "name": "WebhookInvalidDescription", "kind": "invalid", "params": ["max"], "reasons": ["not_utf8", "too_long"] },
+  { "code": "WHK005", "name": "WebhookEndpointLimit", "kind": "failed_precondition", "params": ["limit"], "reasons": [] },
+  { "code": "WHK006", "name": "WebhookEndpointInactive", "kind": "failed_precondition", "params": [], "reasons": [] },
+  { "code": "WHK007", "name": "WebhookSecretConflict", "kind": "failed_precondition", "params": [], "reasons": [] },
+  { "code": "WHK008", "name": "WebhookDeliveryNotFound", "kind": "not_found", "params": [], "reasons": [] },
+  { "code": "WHK009", "name": "WebhookDeliveryNotRetryable", "kind": "failed_precondition", "params": [], "reasons": [] }
 ]

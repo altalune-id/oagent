@@ -3,6 +3,10 @@ package webhook
 import (
 	"errors"
 	"fmt"
+	"strconv"
+
+	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/events"
 )
 
 // NotFoundError reports that no endpoint matched the lookup.
@@ -15,17 +19,64 @@ func (e *NotFoundError) Error() string {
 	return fmt.Sprintf("webhook: endpoint not found: id=%s", e.ID)
 }
 
+// ToAppError maps NotFoundError to its own code.
+func (e *NotFoundError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeWebhookNotFound, "Webhook not found").WithCause(e)
+}
+
 // IsNotFoundError reports whether err's tree contains a *NotFoundError.
 func IsNotFoundError(err error) bool {
 	_, ok := errors.AsType[*NotFoundError](err)
 	return ok
 }
 
+// URLReason is the stable cause of an InvalidURLError, sent to clients as meta.reason.
+type URLReason string
+
+// The causes of an InvalidURLError.
+const (
+	URLRequired       URLReason = "required"
+	URLTooLong        URLReason = "too_long"
+	URLNotUTF8        URLReason = "not_utf8"
+	URLUnparsable     URLReason = "unparsable"
+	URLHTTPSRequired  URLReason = "https_required"
+	URLHasCredentials URLReason = "has_credentials"
+	URLNoHost         URLReason = "no_host"
+)
+
+func (r URLReason) text() string {
+	switch r {
+	case URLRequired:
+		return "is required"
+	case URLTooLong:
+		return "is longer than " + strconv.Itoa(MaxURLLen) + " characters"
+	case URLNotUTF8:
+		return "is not valid UTF-8"
+	case URLUnparsable:
+		return "cannot be parsed"
+	case URLHTTPSRequired:
+		return "must use https"
+	case URLHasCredentials:
+		return "must not carry credentials"
+	case URLNoHost:
+		return "has no host"
+	default:
+		return "is invalid"
+	}
+}
+
 // InvalidURLError reports that the endpoint URL breaks its invariants.
-type InvalidURLError struct{ Reason string }
+type InvalidURLError struct{ Reason URLReason }
 
 func (e *InvalidURLError) Error() string {
-	return fmt.Sprintf("webhook: invalid endpoint url: %s", e.Reason)
+	return "webhook: invalid endpoint url: " + e.Reason.text()
+}
+
+// ToAppError maps InvalidURLError to its own code with the reason and the length limit.
+func (e *InvalidURLError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeWebhookInvalidURL, "Webhook URL "+e.Reason.text()).
+		WithMeta(map[string]string{"reason": string(e.Reason), "max": strconv.Itoa(MaxURLLen)}).
+		WithCause(e)
 }
 
 // IsInvalidURLError reports whether err's tree contains an *InvalidURLError.
@@ -34,11 +85,49 @@ func IsInvalidURLError(err error) bool {
 	return ok
 }
 
-// InvalidEventTypesError reports that the subscribed event types break their invariants.
-type InvalidEventTypesError struct{ Reason string }
+// EventTypesReason is the stable cause of an InvalidEventTypesError, sent to clients as meta.reason.
+type EventTypesReason string
+
+// The causes of an InvalidEventTypesError.
+const (
+	EventTypesRequired       EventTypesReason = "required"
+	EventTypeUnknown         EventTypesReason = "unknown"
+	EventTypeNotSubscribable EventTypesReason = "not_subscribable"
+	EventTypeDuplicate       EventTypesReason = "duplicate"
+)
+
+// InvalidEventTypesError reports that the subscribed event types break their invariants; Event is the offending type, if any.
+type InvalidEventTypesError struct {
+	Event  events.Type
+	Reason EventTypesReason
+}
 
 func (e *InvalidEventTypesError) Error() string {
-	return fmt.Sprintf("webhook: invalid event types: %s", e.Reason)
+	return "webhook: invalid event types: " + e.text()
+}
+
+// ToAppError maps InvalidEventTypesError to its own code with the reason and the offending type.
+func (e *InvalidEventTypesError) ToAppError() *apperror.AppError {
+	meta := map[string]string{"reason": string(e.Reason)}
+	if e.Event != "" {
+		meta["event"] = string(e.Event)
+	}
+	return apperror.New(apperror.CodeWebhookInvalidEventTypes, "Webhook event types: "+e.text()).WithMeta(meta).WithCause(e)
+}
+
+func (e *InvalidEventTypesError) text() string {
+	switch e.Reason {
+	case EventTypesRequired:
+		return "at least one event type is required"
+	case EventTypeUnknown:
+		return "unknown event type " + string(e.Event)
+	case EventTypeNotSubscribable:
+		return "event type " + string(e.Event) + " cannot be subscribed to"
+	case EventTypeDuplicate:
+		return "event type " + string(e.Event) + " is listed twice"
+	default:
+		return "invalid event types"
+	}
 }
 
 // IsInvalidEventTypesError reports whether err's tree contains an *InvalidEventTypesError.
@@ -47,11 +136,38 @@ func IsInvalidEventTypesError(err error) bool {
 	return ok
 }
 
+// DescriptionReason is the stable cause of an InvalidDescriptionError, sent to clients as meta.reason.
+type DescriptionReason string
+
+// The causes of an InvalidDescriptionError.
+const (
+	DescriptionNotUTF8 DescriptionReason = "not_utf8"
+	DescriptionTooLong DescriptionReason = "too_long"
+)
+
+func (r DescriptionReason) text() string {
+	switch r {
+	case DescriptionNotUTF8:
+		return "is not valid UTF-8"
+	case DescriptionTooLong:
+		return "is longer than " + strconv.Itoa(MaxDescriptionRunes) + " characters"
+	default:
+		return "is invalid"
+	}
+}
+
 // InvalidDescriptionError reports that the endpoint description breaks its invariants.
-type InvalidDescriptionError struct{ Reason string }
+type InvalidDescriptionError struct{ Reason DescriptionReason }
 
 func (e *InvalidDescriptionError) Error() string {
-	return fmt.Sprintf("webhook: invalid endpoint description: %s", e.Reason)
+	return "webhook: invalid endpoint description: " + e.Reason.text()
+}
+
+// ToAppError maps InvalidDescriptionError to its own code with the reason and the length limit.
+func (e *InvalidDescriptionError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeWebhookInvalidDescription, "Webhook description "+e.Reason.text()).
+		WithMeta(map[string]string{"reason": string(e.Reason), "max": strconv.Itoa(MaxDescriptionRunes)}).
+		WithCause(e)
 }
 
 // IsInvalidDescriptionError reports whether err's tree contains an *InvalidDescriptionError.
@@ -67,6 +183,13 @@ func (e *EndpointLimitError) Error() string {
 	return fmt.Sprintf("webhook: endpoint limit reached: limit=%d", e.Limit)
 }
 
+// ToAppError maps EndpointLimitError to its own code with the limit.
+func (e *EndpointLimitError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeWebhookEndpointLimit, fmt.Sprintf("This project already has the maximum of %d webhooks", e.Limit)).
+		WithMeta(map[string]string{"limit": strconv.Itoa(e.Limit)}).
+		WithCause(e)
+}
+
 // IsEndpointLimitError reports whether err's tree contains an *EndpointLimitError.
 func IsEndpointLimitError(err error) bool {
 	_, ok := errors.AsType[*EndpointLimitError](err)
@@ -80,6 +203,11 @@ func (e *EndpointInactiveError) Error() string {
 	return fmt.Sprintf("webhook: endpoint inactive: id=%s", e.ID)
 }
 
+// ToAppError maps EndpointInactiveError to its own code.
+func (e *EndpointInactiveError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeWebhookEndpointInactive, "The webhook is inactive; activate it first").WithCause(e)
+}
+
 // IsEndpointInactiveError reports whether err's tree contains an *EndpointInactiveError.
 func IsEndpointInactiveError(err error) bool {
 	_, ok := errors.AsType[*EndpointInactiveError](err)
@@ -91,6 +219,11 @@ type SecretConflictError struct{ ID string }
 
 func (e *SecretConflictError) Error() string {
 	return fmt.Sprintf("webhook: secret changed concurrently: id=%s", e.ID)
+}
+
+// ToAppError maps SecretConflictError to its own code; a retry reloads the secrets.
+func (e *SecretConflictError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeWebhookSecretConflict, "The webhook secret was just changed elsewhere; try again").WithCause(e)
 }
 
 // IsSecretConflictError reports whether err's tree contains a *SecretConflictError.
@@ -154,6 +287,11 @@ func (e *DeliveryNotFoundError) Error() string {
 	return fmt.Sprintf("webhook: delivery not found: id=%s", e.ID)
 }
 
+// ToAppError maps DeliveryNotFoundError to its own code.
+func (e *DeliveryNotFoundError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeWebhookDeliveryNotFound, "Delivery not found").WithCause(e)
+}
+
 // IsDeliveryNotFoundError reports whether err's tree contains a *DeliveryNotFoundError.
 func IsDeliveryNotFoundError(err error) bool {
 	_, ok := errors.AsType[*DeliveryNotFoundError](err)
@@ -165,6 +303,11 @@ type DeliveryNotRetryableError struct{ ID string }
 
 func (e *DeliveryNotRetryableError) Error() string {
 	return fmt.Sprintf("webhook: delivery not retryable: id=%s", e.ID)
+}
+
+// ToAppError maps DeliveryNotRetryableError to its own code.
+func (e *DeliveryNotRetryableError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeWebhookDeliveryNotRetryable, "Only failed deliveries can be retried").WithCause(e)
 }
 
 // IsDeliveryNotRetryableError reports whether err's tree contains a *DeliveryNotRetryableError.

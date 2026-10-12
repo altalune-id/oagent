@@ -52,6 +52,16 @@ const (
 
 	CodeInstallAlreadyDone Code = "INS001"
 	CodeInstallRequired    Code = "INS002"
+
+	CodeWebhookNotFound             Code = "WHK001"
+	CodeWebhookInvalidURL           Code = "WHK002"
+	CodeWebhookInvalidEventTypes    Code = "WHK003"
+	CodeWebhookInvalidDescription   Code = "WHK004"
+	CodeWebhookEndpointLimit        Code = "WHK005"
+	CodeWebhookEndpointInactive     Code = "WHK006"
+	CodeWebhookSecretConflict       Code = "WHK007"
+	CodeWebhookDeliveryNotFound     Code = "WHK008"
+	CodeWebhookDeliveryNotRetryable Code = "WHK009"
 )
 
 var kinds = map[Code]Kind{
@@ -103,4 +113,14 @@ var kinds = map[Code]Kind{
 
 	CodeInstallAlreadyDone: KindAlreadyExists,
 	CodeInstallRequired:    KindFailedPrecondition,
+
+	CodeWebhookNotFound:             KindNotFound,
+	CodeWebhookInvalidURL:           KindInvalid,
+	CodeWebhookInvalidEventTypes:    KindInvalid,
+	CodeWebhookInvalidDescription:   KindInvalid,
+	CodeWebhookEndpointLimit:        KindFailedPrecondition,
+	CodeWebhookEndpointInactive:     KindFailedPrecondition,
+	CodeWebhookSecretConflict:       KindFailedPrecondition,
+	CodeWebhookDeliveryNotFound:     KindNotFound,
+	CodeWebhookDeliveryNotRetryable: KindFailedPrecondition,
 }

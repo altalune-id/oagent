@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"altalune.id/oagent/apperror"
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
 	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/kernel/outbox"
@@ -136,4 +138,45 @@ func TestControlPlaneDeliveryLogs(t *testing.T) {
 		OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String(), DeliveryId: "bad",
 	}))
 	assert.Error(t, err)
+}
+
+func TestControlPlaneErrorCodes(t *testing.T) {
+	ctx := session.PrincipalInto(context.Background(), session.System())
+	org, project := uuid.New(), uuid.New()
+	full := &fakeStore{}
+	for range MaxEndpointsPerProject {
+		full.endpoints = append(full.endpoints, &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project, Active: true})
+	}
+	e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project, URL: "https://e.com", Active: true, EventTypes: []events.Type{events.AgentCreated}}
+
+	t.Run("http url", func(t *testing.T) {
+		cp, _, _ := controlPlane(t, &fakeStore{})
+		_, err := cp.CreateWebhook(ctx, connect.NewRequest(&webhookv1.CreateWebhookRequest{
+			OrgId: org.String(), ProjectId: project.String(), Url: "http://x", EventTypes: []string{string(events.AgentCreated)},
+		}))
+		ae := appErr(t, err)
+		assert.Equal(t, apperror.CodeWebhookInvalidURL, ae.Code())
+		assert.Equal(t, "https_required", ae.Meta()["reason"])
+	})
+	t.Run("endpoint limit", func(t *testing.T) {
+		cp := NewControlPlane(testService(t, full, &fakeOutbox{}))
+		_, err := cp.CreateWebhook(ctx, connect.NewRequest(&webhookv1.CreateWebhookRequest{
+			OrgId: org.String(), ProjectId: project.String(), Url: "https://e.com", EventTypes: []string{string(events.AgentCreated)},
+		}))
+		ae := appErr(t, err)
+		assert.Equal(t, apperror.CodeWebhookEndpointLimit, ae.Code())
+		assert.Equal(t, strconv.Itoa(MaxEndpointsPerProject), ae.Meta()["limit"])
+	})
+	t.Run("unknown id", func(t *testing.T) {
+		cp, _, _ := controlPlane(t, &fakeStore{})
+		_, err := cp.GetWebhook(ctx, connect.NewRequest(&webhookv1.GetWebhookRequest{OrgId: org.String(), ProjectId: project.String(), Id: uuid.New().String()}))
+		assert.Equal(t, apperror.CodeWebhookNotFound, appErr(t, err).Code())
+	})
+	t.Run("retry a delivery that has not failed", func(t *testing.T) {
+		cp := NewControlPlane(testService(t, &fakeStore{endpoints: []*Endpoint{e}}, &fakeOutbox{requeueErr: &outbox.NotFailedError{ID: "x"}}))
+		_, err := cp.RetryWebhookDelivery(ctx, connect.NewRequest(&webhookv1.RetryWebhookDeliveryRequest{
+			OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String(), DeliveryId: uuid.New().String(),
+		}))
+		assert.Equal(t, apperror.CodeWebhookDeliveryNotRetryable, appErr(t, err).Code())
+	})
 }
