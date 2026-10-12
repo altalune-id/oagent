@@ -26,6 +26,7 @@ export default defineNuxtConfig({
   },
   alias: {
     '@shared/scope': fileURLToPath(new URL('../../scope', import.meta.url)),
+    '@shared/apperror': fileURLToPath(new URL('../../apperror', import.meta.url)),
   },
   components: { dirs: [] },
   imports: { scan: false },

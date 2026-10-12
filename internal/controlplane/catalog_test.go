@@ -4,8 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -247,5 +254,57 @@ func TestEchoedInputIsCapped(t *testing.T) {
 		require.ErrorAs(t, Translate(context.Background(), err, nil), &cerr)
 		assert.Less(t, len(cerr.Message()), 2*apperror.EchoLimit, "%T: message", err)
 		assert.Less(t, len(err.Error()), 2*apperror.EchoLimit, "%T: Error()", err)
+	}
+}
+
+func TestEveryInvalidFieldHasALabel(t *testing.T) {
+	fields := map[string]string{}
+	err := filepath.WalkDir("../..", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() && slices.Contains([]string{".git", "node_modules", "gen", "ui", "docs"}, d.Name()) {
+			return filepath.SkipDir
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+		if err != nil {
+			return err
+		}
+		ast.Inspect(file, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok || sel.Sel.Name != "Invalid" || fmt.Sprint(sel.X) != "apperror" {
+				return true
+			}
+			lit, ok := call.Args[0].(*ast.BasicLit)
+			if !assert.True(t, ok && lit.Kind == token.STRING, "%s: apperror.Invalid needs a literal field name", path) {
+				return true
+			}
+			name, _ := strconv.Unquote(lit.Value)
+			fields[name] = path
+			return true
+		})
+		return nil
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, fields)
+
+	locales, err := filepath.Glob("../../ui/console/i18n/locales/*.json")
+	require.NoError(t, err)
+	require.NotEmpty(t, locales)
+	for _, path := range locales {
+		raw, err := os.ReadFile(path)
+		require.NoError(t, err)
+		var messages map[string]string
+		require.NoError(t, json.Unmarshal(raw, &messages))
+		for field, src := range fields {
+			assert.Contains(t, messages, "field."+field, "%s: no label for field %q (used in %s)", filepath.Base(path), field, src)
+		}
 	}
 }
