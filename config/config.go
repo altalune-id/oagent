@@ -24,6 +24,7 @@ type Config struct {
 	Install    InstallConfig    `yaml:"install"    mapstructure:"install"`
 	Compliance ComplianceConfig `yaml:"compliance" mapstructure:"compliance"`
 	CLI        CLIConfig        `yaml:"cli"        mapstructure:"cli"`
+	Mail       MailConfig       `yaml:"mail"       mapstructure:"mail"`
 }
 
 // CLIConfig configures the oagent CLI; SessionFile may start with "~/", expanded when used.
@@ -191,5 +192,8 @@ func (c *Config) Validate() error {
 	if err := v10.Struct(c); err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
-	return c.validateAuth()
+	if err := c.validateAuth(); err != nil {
+		return err
+	}
+	return c.validateMail()
 }

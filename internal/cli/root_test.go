@@ -30,6 +30,10 @@ func setServeEnv(t *testing.T) {
 	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
 	t.Setenv("OAGENT_HTTP_STATE_SECRET", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 	t.Setenv("OAGENT_SECRETS_ENCRYPTION_KEY", "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210")
+	t.Setenv("OAGENT_MAIL_DRIVER", "smtp")
+	t.Setenv("OAGENT_MAIL_FROM", "noreply@example.com")
+	t.Setenv("OAGENT_MAIL_SMTP_HOST", "smtp.example.com")
+	t.Setenv("OAGENT_HTTP_BASE_URL", "https://oagent.example.com")
 }
 
 func runRoot(t *testing.T, bootFn cli.ServerBootFn, args ...string) (*bytes.Buffer, error) {

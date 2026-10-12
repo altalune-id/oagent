@@ -115,6 +115,28 @@ install:
   # [secret] env: OAGENT_INSTALL_TOKEN
   token: ""
 
+mail:
+  # env: OAGENT_MAIL_DRIVER
+  driver: console
+  # env: OAGENT_MAIL_FROM
+  from: ""
+  resend:
+    # [secret] env: OAGENT_MAIL_RESEND_API_KEY
+    apiKey: ""
+  smtp:
+    # env: OAGENT_MAIL_SMTP_HOST
+    host: ""
+    # [secret] env: OAGENT_MAIL_SMTP_PASSWORD
+    password: ""
+    # env: OAGENT_MAIL_SMTP_PORT
+    port: 587
+    # env: OAGENT_MAIL_SMTP_TIMEOUT
+    timeout: 10s
+    # env: OAGENT_MAIL_SMTP_TLS
+    tls: starttls
+    # env: OAGENT_MAIL_SMTP_USERNAME
+    username: ""
+
 mcp:
   # env: OAGENT_MCP_APPS_UI
   appsUI: ""

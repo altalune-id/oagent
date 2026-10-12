@@ -15,6 +15,7 @@ import (
 const (
 	testStateSecret   = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 	testEncryptionKey = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+	testMailFrom      = "oagent <noreply@example.com>"
 )
 
 func setRequiredEnv(t *testing.T) {
@@ -27,6 +28,15 @@ func setSecretEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("OAGENT_HTTP_STATE_SECRET", testStateSecret)
 	t.Setenv("OAGENT_SECRETS_ENCRYPTION_KEY", testEncryptionKey)
+	setMailEnv(t)
+}
+
+func setMailEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("OAGENT_MAIL_DRIVER", "smtp")
+	t.Setenv("OAGENT_MAIL_FROM", testMailFrom)
+	t.Setenv("OAGENT_MAIL_SMTP_HOST", "smtp.example.com")
+	t.Setenv("OAGENT_HTTP_BASE_URL", "https://oagent.example.com")
 }
 
 func validConfig(t *testing.T) *Config {
@@ -140,17 +150,18 @@ func TestValidate_Auth(t *testing.T) {
 			mutate: func(c *Config) { c.Secrets.EncryptionKey = "abcd" },
 			check:  func(t *testing.T, err error) { assert.True(t, IsInvalidSettingError(err), "got %v", err) },
 		},
-		"production basic needs no secrets": {
+		"production basic needs no state secret": {
 			mutate: func(c *Config) {
 				c.Auth.Mode = AuthModeBasic
 				c.Auth.Basic = BasicConfig{User: "ops", Password: "s3cret-pass-phrase"}
-				c.HTTP.StateSecret, c.Secrets.EncryptionKey = "", ""
+				c.HTTP.StateSecret = ""
 			},
 			check: func(t *testing.T, err error) { assert.NoError(t, err) },
 		},
-		"development needs no secrets": {
+		"development with console mail needs no secrets": {
 			mutate: func(c *Config) {
 				c.Env = EnvDevelopment
+				c.Mail.Driver = MailDriverConsole
 				c.HTTP.StateSecret, c.Secrets.EncryptionKey = "", ""
 			},
 			check: func(t *testing.T, err error) { assert.NoError(t, err) },

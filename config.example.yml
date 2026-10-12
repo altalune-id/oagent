@@ -1,10 +1,24 @@
+# development prints emails to the log (console mail driver) and allows http:// webhook URLs.
+# For production, set production and configure mail, see the commented lines below.
+env: development
 db:
   dsn: postgres://postgres:postgres@localhost-pooler:5432/oagent?sslmode=disable
   migrator:
     dsn: postgres://postgres:postgres@localhost:5432/oagent?sslmode=disable
 http:
   # generate: openssl rand -hex 32
-  stateSecret: ""
+  stateSecret: "f8e6ed3aae2d359d0ecd41f884ffc71631bb16e10cc69205da1e7767aeab9074"
 secrets:
   # generate: openssl rand -hex 32
-  encryptionKey: ""
+  encryptionKey: "6d8f96d24a1ae4aabc10010dcdc7d23f98c1bdd5c8ca81209313f968abad27de"
+mail:
+  # console prints emails to the log; refused in production
+  driver: console
+# production mail (required when env: production; replaces the mail block above):
+# http:
+#   baseURL: https://oagent.example.com
+# mail:
+#   driver: smtp            # or resend, with resend.apiKey
+#   from: oagent <noreply@example.com>
+#   smtp:
+#     host: ""
