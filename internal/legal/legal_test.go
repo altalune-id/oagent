@@ -1,6 +1,8 @@
 package legal
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -48,4 +50,25 @@ func TestSplitFrontmatter(t *testing.T) {
 
 	_, _, err = splitFrontmatter([]byte("---\ntitle: X\nnever closed"))
 	assert.Error(t, err)
+}
+
+func TestUnknownDocumentError(t *testing.T) {
+	err := &UnknownDocumentError{Slug: "cookies"}
+	assert.Equal(t, `legal: unknown document "cookies"`, err.Error())
+	assert.True(t, IsUnknownDocumentError(fmt.Errorf("wrapped: %w", err)))
+	assert.False(t, IsUnknownDocumentError(errors.New("other")))
+}
+
+func TestParse_UnclosedFrontmatter(t *testing.T) {
+	_, err := parse("terms", []byte("---\ntitle: X\n"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "legal: frontmatter terms")
+}
+
+func TestSplitFrontmatter_SkipsUnknownAndMalformedLines(t *testing.T) {
+	fm, body, err := splitFrontmatter([]byte("---\nno colon here\nauthor: someone\nupdated: not-a-date\ntitle: 'T'\n---\nbody"))
+	require.NoError(t, err)
+	assert.Equal(t, "T", fm.Title)
+	assert.True(t, fm.Updated.IsZero())
+	assert.Equal(t, "body", string(body))
 }

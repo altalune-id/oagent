@@ -59,3 +59,19 @@ func TestRender_ConstantsAndKinds(t *testing.T) {
 	assert.Contains(t, s, "CodeWebhookInvalidURL: KindInvalid,")
 	assert.Contains(t, s, "CodeTenantMissing: KindUnauthenticated,")
 }
+
+func TestRun_WritesTheGeneratedFile(t *testing.T) {
+	t.Chdir(t.TempDir())
+	require.NoError(t, os.Mkdir("apperror", 0o750))
+	require.ErrorIs(t, run(), os.ErrNotExist)
+
+	require.NoError(t, os.WriteFile("apperror/codes.json", []byte(`{`), 0o600))
+	require.Error(t, run())
+
+	catalog := `[{"code":"GEN001","name":"TenantMissing","kind":"unauthenticated","params":[],"reasons":[]}]`
+	require.NoError(t, os.WriteFile("apperror/codes.json", []byte(catalog), 0o600))
+	require.NoError(t, run())
+	out, err := os.ReadFile("apperror/codes.gen.go")
+	require.NoError(t, err)
+	assert.Contains(t, string(out), `CodeTenantMissing Code = "GEN001"`)
+}

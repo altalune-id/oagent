@@ -2,9 +2,11 @@ package install
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -15,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/user"
@@ -279,4 +282,124 @@ func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 	return rec
+}
+
+type failingSessions struct{ err error }
+
+func (f failingSessions) Start(context.Context, http.ResponseWriter, session.Principal) (string, time.Time, error) {
+	return "", time.Time{}, f.err
+}
+
+type failingFixture struct {
+	web      *Web
+	required *atomic.Bool
+	reported []string
+}
+
+func newFailingFixture(t *testing.T, installer Installer, signIn SignIn, sessions SessionStarter) *failingFixture {
+	t.Helper()
+	token, err := NewToken(testToken)
+	require.NoError(t, err)
+	f := &failingFixture{required: &atomic.Bool{}}
+	f.required.Store(true)
+	f.web = NewWeb(WebOpts{
+		Kit: layout.Kit{Unexpected: func(_ context.Context, msg string, _ error, _ ...any) *apperror.AppError {
+			f.reported = append(f.reported, msg)
+			return nil
+		}},
+		Installer: installer,
+		SignIn:    signIn,
+		Sessions:  sessions,
+		Token:     token,
+		Required:  f.required,
+		Secret:    testSecret,
+	})
+	return f
+}
+
+func (f *failingFixture) post(t *testing.T) *httptest.ResponseRecorder {
+	t.Helper()
+	setup := &http.Cookie{Name: setupCookieName, Value: setupValue(testSecret, f.web.o.Token, time.Now())}
+	rec := httptest.NewRecorder()
+	f.web.postInstall(rec, installPost("", goodForm(), setup))
+	return rec
+}
+
+func TestInstall_UnexpectedInstallErrorsFail(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+	}{
+		{"plain error", errors.New("db down")},
+		{"app error of another kind", apperror.New(apperror.CodeUnexpected, "db down")},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newFailingFixture(t, &fakeInstaller{err: tt.err}, &fakeAuth{}, failingSessions{})
+
+			rec := f.post(t)
+
+			assert.Equal(t, http.StatusInternalServerError, rec.Code)
+			assert.Equal(t, []string{"web: install"}, f.reported)
+			assert.NotContains(t, rec.Body.String(), "db down")
+			assert.True(t, f.required.Load(), "the gate stays closed")
+		})
+	}
+}
+
+func TestInstall_AlreadyExistsRerendersForm(t *testing.T) {
+	f := newFailingFixture(t, &fakeInstaller{err: &user.AlreadyExistsError{Email: "ada@example.com"}}, &fakeAuth{}, failingSessions{})
+
+	rec := f.post(t)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	assert.Contains(t, rec.Body.String(), "alert-error")
+	assert.Empty(t, f.reported)
+}
+
+func TestInstall_SignInAfterInstallFails(t *testing.T) {
+	f := newFailingFixture(t, &fakeInstaller{}, &fakeAuth{users: map[string]string{}}, failingSessions{})
+
+	rec := f.post(t)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Equal(t, []string{"web: sign in after install"}, f.reported)
+	assert.False(t, f.required.Load(), "the install itself succeeded")
+}
+
+func TestInstall_StartSessionAfterInstallFails(t *testing.T) {
+	signIn := &fakeAuth{users: map[string]string{"ada@example.com": "correct horse battery"}}
+	f := newFailingFixture(t, &fakeInstaller{}, signIn, failingSessions{err: errors.New("store down")})
+
+	rec := f.post(t)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Equal(t, []string{"web: start session after install"}, f.reported)
+	assert.Nil(t, cookieNamed(rec, session.CookieName))
+}
+
+func TestValidSetup(t *testing.T) {
+	token, err := NewToken(testToken)
+	require.NoError(t, err)
+	now := time.Now()
+	sign := func(v string) string { return session.Sign(testSecret, v) }
+	cases := []struct {
+		name  string
+		token Token
+		raw   string
+		want  bool
+	}{
+		{"valid", token, setupValue(testSecret, token, now), true},
+		{"bad signature", token, setupValue([]byte("another-secret-0123456789abcdefg"), token, now), false},
+		{"not signed", token, "garbage", false},
+		{"no separator", token, sign("12345"), false},
+		{"empty token", Token{}, setupValue(testSecret, Token{}, now), false},
+		{"non-numeric expiry", token, sign("soon." + tokenTag(token)), false},
+		{"expired", token, sign(strconv.FormatInt(now.Add(-time.Minute).Unix(), 10) + "." + tokenTag(token)), false},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, validSetup(testSecret, tt.token, tt.raw, now))
+		})
+	}
 }

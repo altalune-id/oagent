@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/web"
 	"altalune.id/oagent/internal/web/layout"
@@ -221,12 +222,64 @@ func TestLogin_UnexpectedErrorIs500(t *testing.T) {
 	assert.NotContains(t, rec.Body.String(), "db down")
 }
 
+func TestLogin_JSONWithoutScopesSendsEmptyPermissions(t *testing.T) {
+	f := newLoginFixture(t, "")
+	f.auth.principal.Scopes = nil
+	rec := f.do(jsonLogin("", url.Values{"email": {"ada@example.com"}, "password": {"correct horse battery"}}))
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"permissions":[]`)
+}
+
+func TestLogin_SessionStartFailureIs500(t *testing.T) {
+	signIn := &fakeAuth{users: map[string]string{"ada@example.com": "correct horse battery"}}
+	sessions := testSessions(failingStore{MemoryStore: session.NewMemoryStore(), saveErr: errors.New("store down")})
+	mux := http.NewServeMux()
+	NewWeb(layout.Kit{}, signIn, sessions).Register(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, jsonLogin("", url.Values{"email": {"ada@example.com"}, "password": {"correct horse battery"}}))
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.NotContains(t, rec.Body.String(), "store down")
+	assert.Nil(t, cookieNamed(rec, session.CookieName))
+}
+
+func TestLogout_ServiceErrorIsReportedAndCookieCleared(t *testing.T) {
+	store := session.NewMemoryStore()
+	sessions := testSessions(store)
+	signIn := &fakeAuth{logoutErr: errors.New("db down")}
+	var reported []error
+	kit := layout.Kit{Unexpected: func(_ context.Context, msg string, cause error, _ ...any) *apperror.AppError {
+		assert.Equal(t, "web: logout", msg)
+		reported = append(reported, cause)
+		return nil
+	}}
+	mux := http.NewServeMux()
+	NewWeb(kit, signIn, sessions).Register(mux)
+
+	login := httptest.NewRecorder()
+	_, _, err := sessions.Start(context.Background(), login, session.Principal{UserID: uuid.New(), Source: session.SourceLocal})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
+	req.AddCookie(login.Result().Cookies()[0])
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "/login", rec.Header().Get("Location"))
+	assert.Len(t, signIn.loggedOut, 1)
+	assert.Equal(t, []error{signIn.logoutErr}, reported)
+	cleared := cookieNamed(rec, session.CookieName)
+	require.NotNil(t, cleared)
+	assert.Equal(t, -1, cleared.MaxAge)
+}
+
 type fakeAuth struct {
 	users      map[string]string
 	principal  session.Principal
 	loggedOut  []string
 	loginCalls int
 	loginErr   error
+	logoutErr  error
 }
 
 func (f *fakeAuth) LoginLocal(_ context.Context, c Credentials) (session.Principal, error) {
@@ -244,7 +297,7 @@ func (f *fakeAuth) LoginLocal(_ context.Context, c Credentials) (session.Princip
 
 func (f *fakeAuth) Logout(_ context.Context, sid string) error {
 	f.loggedOut = append(f.loggedOut, sid)
-	return nil
+	return f.logoutErr
 }
 
 func (f *fakeAuth) Refresh(_ context.Context, p session.Principal) (session.Principal, error) {

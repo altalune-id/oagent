@@ -99,9 +99,22 @@ test-integration: ## run integration tests (TEST_PG_DSN if set, else one Postgre
 .PHONY: test-all
 test-all: test test-integration ## unit + integration tests
 
+COVER_MIN ?= 85
+# generated code, templ views, test helpers and main wiring
+COVER_SKIP ?= /gen(/|$$)|/views$$|/testutil/|/sessiontest$$|/examples/|/cmd/oagent$$
+
 .PHONY: cover
-cover: ## run tests with coverage
-	$(GO) test ./... -cover
+cover: ## unit + integration coverage; fails when a package is under COVER_MIN percent
+	PATH="$$($(GO) env GOROOT)/bin:$$PATH" $(GO) test -tags integration -count=1 -timeout $(INTEGRATION_TIMEOUT) -cover ./... \
+		| tee /dev/stderr \
+		| awk -v min=$(COVER_MIN) -v skip='$(COVER_SKIP)' ' \
+			$$1 == "FAIL" { bad = 1 } \
+			{ pkg = ""; pct = -1 } \
+			$$1 == "ok" { pkg = $$2; for (i = 1; i <= NF; i++) if ($$i == "coverage:") pct = $$(i + 1) + 0 } \
+			$$1 == "?" { pkg = $$2; pct = 0 } \
+			$$2 == "coverage:" { pkg = $$1; pct = $$3 + 0 } \
+			pkg != "" && pkg !~ skip && pct < min { printf "cover: %s is at %.1f%% (min %d%%)\n", pkg, pct, min > "/dev/stderr"; bad = 1 } \
+			END { exit bad }'
 
 .PHONY: tidy
 tidy: ## run go mod tidy

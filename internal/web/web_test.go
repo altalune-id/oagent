@@ -124,3 +124,77 @@ func TestRootRedirectIsGetOnly(t *testing.T) {
 	NewServer(ServerOpts{}).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/", nil))
 	assert.NotEqual(t, http.StatusFound, rec.Code)
 }
+
+func tag(name string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("X-Trace", name)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+type probes struct{}
+
+func (probes) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
+}
+
+type pageRoute struct{}
+
+func (pageRoute) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /app/page", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("page")) })
+}
+
+func TestMiddlewareOrder(t *testing.T) {
+	console := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("console")) })
+	srv := NewServer(ServerOpts{
+		BasePath:    "/app",
+		Console:     console,
+		Routes:      []Registrar{pageRoute{}},
+		Probes:      probes{},
+		Gate:        tag("gate"),
+		Session:     tag("session"),
+		SessionGate: tag("session-gate"),
+		ConsoleGate: tag("console-gate"),
+	})
+	cases := []struct {
+		name  string
+		path  string
+		body  string
+		trace []string
+	}{
+		{"probe skips session", "/healthz", "ok", []string{"gate"}},
+		{"route runs session then its gate", "/app/page", "page", []string{"gate", "session", "session-gate"}},
+		{"console adds the console gate last", "/app/console/x", "console", []string{"gate", "session", "session-gate", "console-gate"}},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := get(t, srv, tt.path)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, tt.body, rec.Body.String())
+			assert.Equal(t, tt.trace, rec.Header().Values("X-Trace"))
+		})
+	}
+}
+
+func TestChain(t *testing.T) {
+	ok := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	cases := []struct {
+		name         string
+		outer, inner func(http.Handler) http.Handler
+		want         []string
+	}{
+		{"neither", nil, nil, nil},
+		{"outer only", tag("outer"), nil, []string{"outer"}},
+		{"inner only", nil, tag("inner"), []string{"inner"}},
+		{"both, outer first", tag("outer"), tag("inner"), []string{"outer", "inner"}},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := get(t, chain(tt.outer, tt.inner)(ok), "/")
+			assert.Equal(t, http.StatusNoContent, rec.Code)
+			assert.Equal(t, tt.want, rec.Header().Values("X-Trace"))
+		})
+	}
+}

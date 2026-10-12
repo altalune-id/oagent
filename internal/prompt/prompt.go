@@ -57,14 +57,31 @@ func Confirm(read func(label string) (string, error), label, again string) (stri
 	return first, nil
 }
 
+// Terminal is a stdin that can read a line without echoing it; a terminal *os.File is one through term.
+type Terminal interface {
+	ReadPassword() ([]byte, error)
+}
+
 func terminal(cmd *cobra.Command, fromStdin bool) (func(label string) (string, error), bool) {
-	f, ok := cmd.InOrStdin().(*os.File)
-	if !ok || fromStdin || !term.IsTerminal(int(f.Fd())) { //nolint:gosec // G115: a file descriptor fits in int.
+	if fromStdin {
+		return nil, false
+	}
+	var read func() ([]byte, error)
+	switch in := cmd.InOrStdin().(type) {
+	case Terminal:
+		read = in.ReadPassword
+	case *os.File:
+		fd := int(in.Fd()) //nolint:gosec // G115: a file descriptor fits in int.
+		if !term.IsTerminal(fd) {
+			return nil, false
+		}
+		read = func() ([]byte, error) { return term.ReadPassword(fd) }
+	default:
 		return nil, false
 	}
 	return func(label string) (string, error) {
 		_, _ = fmt.Fprint(cmd.ErrOrStderr(), label)
-		b, err := term.ReadPassword(int(f.Fd())) //nolint:gosec // G115: same descriptor.
+		b, err := read()
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr())
 		return string(b), err
 	}, true

@@ -90,3 +90,35 @@ func TestProjectOrgs(t *testing.T) {
 	_, err = projectOrgs{projects: project.NewService(&fakes.ProjectStore{Err: &project.NotFoundError{}}, testUnexpected())}.OrgOf(context.Background(), uuid.New())
 	assert.True(t, project.IsNotFoundError(err))
 }
+
+func TestRefResolver_PropagatesNotFound(t *testing.T) {
+	r := refResolver{
+		projects: project.NewService(&fakes.ProjectStore{Err: &project.NotFoundError{}}, testUnexpected()),
+		orgs:     org.NewService(&fakes.OrgStore{Err: &org.NotFoundError{}}, testUnexpected()),
+	}
+
+	_, _, err := r.ProjectRef(context.Background(), uuid.New())
+	assert.True(t, project.IsNotFoundError(err))
+
+	_, err = r.OrgRef(context.Background(), uuid.New())
+	assert.True(t, org.IsNotFoundError(err))
+}
+
+func TestProjectIDs(t *testing.T) {
+	orgID := uuid.New()
+	a, err := project.NewProject(orgID, "alpha", "Alpha", uuid.Nil)
+	require.NoError(t, err)
+	b, err := project.NewProject(orgID, "beta", "Beta", uuid.Nil)
+	require.NoError(t, err)
+
+	ids, err := projectIDs{projects: project.NewService(&fakes.ProjectStore{Projects: []*project.Project{a, b}}, testUnexpected())}.ProjectIDs(context.Background(), orgID)
+	require.NoError(t, err)
+	assert.Equal(t, []uuid.UUID{a.ID, b.ID}, ids)
+
+	ids, err = projectIDs{projects: project.NewService(&fakes.ProjectStore{}, testUnexpected())}.ProjectIDs(context.Background(), orgID)
+	require.NoError(t, err)
+	assert.Empty(t, ids)
+
+	_, err = projectIDs{projects: project.NewService(&fakes.ProjectStore{Err: errors.New("db down")}, testUnexpected())}.ProjectIDs(context.Background(), orgID)
+	assert.Error(t, err)
+}

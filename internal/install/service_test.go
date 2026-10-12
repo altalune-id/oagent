@@ -2,6 +2,7 @@ package install
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -52,9 +53,29 @@ func TestRequired(t *testing.T) {
 
 func TestAlreadyInstalledError(t *testing.T) {
 	err := &AlreadyInstalledError{}
+	assert.Equal(t, "install: already installed", err.Error())
 	assert.True(t, IsAlreadyInstalledError(err))
 	assert.False(t, IsAlreadyInstalledError(assert.AnError))
 	ae := err.ToAppError()
 	assert.Equal(t, apperror.CodeInstallAlreadyDone, ae.Code())
 	assert.Equal(t, "This instance is already installed", ae.Message())
+}
+
+func TestRequired_PropagatesErrors(t *testing.T) {
+	ctx := context.Background()
+	unexpected := apperror.NewReporter(nil, false).Unexpected
+	sys, err := org.NewSystemOrg("default", "Default", uuid.Nil)
+	require.NoError(t, err)
+
+	orgs := org.NewService(&fakes.OrgStore{Err: errors.New("org store down")}, unexpected)
+	svc := NewService(db.Pool{}, nil, orgs, member.NewService(&fakes.MemberStore{}, unexpected), nil)
+	_, err = svc.Required(ctx, true)
+	require.Error(t, err)
+
+	orgs = org.NewService(&fakes.OrgStore{Org: sys}, unexpected)
+	svc = NewService(db.Pool{}, nil, orgs, member.NewService(&fakes.MemberStore{Err: errors.New("member store down")}, unexpected), nil)
+	_, err = svc.Required(ctx, true)
+	require.NoError(t, err, "basic mode never counts owners")
+	_, err = svc.Required(ctx, false)
+	require.Error(t, err)
 }

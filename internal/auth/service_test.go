@@ -172,6 +172,17 @@ func TestLoginLocal_Success(t *testing.T) {
 	assert.Equal(t, 0, f.dummies)
 }
 
+func TestLoginLocal_CarriesTermsAcceptedAt(t *testing.T) {
+	f := newFixture(t, BasicCredentials{})
+	u := f.addUser(t, "ada@example.com", true)
+	accepted := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	u.TermsAcceptedAt = &accepted
+
+	p, err := f.svc.LoginLocal(context.Background(), Credentials{Email: "ada@example.com", Password: testPassword})
+	require.NoError(t, err)
+	assert.Equal(t, accepted, p.TermsAcceptedAt)
+}
+
 func TestLoginLocal_WrongPassword(t *testing.T) {
 	f := newFixture(t, BasicCredentials{})
 	f.addUser(t, "ada@example.com", true)

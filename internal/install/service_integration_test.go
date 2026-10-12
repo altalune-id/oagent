@@ -4,12 +4,14 @@ package install_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -25,6 +27,7 @@ import (
 )
 
 type installFixture struct {
+	pool     db.Pool
 	svc      *install.Service
 	users    *user.Service
 	orgs     *org.Service
@@ -44,6 +47,7 @@ func newInstallFixtureWithConns(t *testing.T, maxOpen int) *installFixture {
 	pool := db.Pool{W: sqlDB, R: sqlDB}
 	unexpected := apperror.NewReporter(nil, false).Unexpected
 	f := &installFixture{
+		pool:     pool,
 		users:    user.NewService(user.NewStore(pool, schemaName, ""), unexpected),
 		orgs:     org.NewService(org.NewStore(pool, schemaName, ""), unexpected).WithCreation(false),
 		members:  member.NewService(member.NewStore(pool, schemaName, ""), unexpected),
@@ -209,4 +213,76 @@ func TestInstall_FailureAfterUserRollsBack(t *testing.T) {
 	_, err = f.users.ByEmail(ctx, "ada@example.com")
 	assert.True(t, user.IsNotFoundError(err), "the user insert is rolled back with the failed org")
 	assert.Zero(t, f.orgCount(t))
+}
+
+var errInjected = errors.New("injected failure")
+
+type failSystem struct{ install.SystemOrgs }
+
+func (failSystem) System(context.Context) (*org.Org, error) { return nil, errInjected }
+
+type failCount struct{ install.Owners }
+
+func (failCount) CountOwners(context.Context, uuid.UUID) (int, error) { return 0, errInjected }
+
+type failAdd struct{ install.Owners }
+
+func (failAdd) Add(context.Context, uuid.UUID, uuid.UUID, member.Role) (*member.Membership, error) {
+	return nil, errInjected
+}
+
+type failProjectCreate struct{ install.DefaultProjects }
+
+func (failProjectCreate) Create(context.Context, project.CreateRequest) (*project.Project, error) {
+	return nil, errInjected
+}
+
+func TestInstall_DependencyFailuresRollBack(t *testing.T) {
+	cases := []struct {
+		name  string
+		basic bool
+		wrap  func(f *installFixture, pool db.Pool) *install.Service
+	}{
+		{"system org lookup", false, func(f *installFixture, pool db.Pool) *install.Service {
+			return install.NewService(pool, f.users, failSystem{f.orgs}, f.members, f.projects)
+		}},
+		{"owner count", true, func(f *installFixture, pool db.Pool) *install.Service {
+			return install.NewService(pool, f.users, f.orgs, failCount{f.members}, f.projects)
+		}},
+		{"owner membership", false, func(f *installFixture, pool db.Pool) *install.Service {
+			return install.NewService(pool, f.users, f.orgs, failAdd{f.members}, f.projects)
+		}},
+		{"default project", false, func(f *installFixture, pool db.Pool) *install.Service {
+			return install.NewService(pool, f.users, f.orgs, f.members, failProjectCreate{f.projects})
+		}},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newInstallFixture(t)
+			ctx := t.Context()
+			if tt.basic {
+				require.NoError(t, f.svc.EnsureBasicSystemOrg(ctx))
+			}
+			before := f.orgCount(t)
+
+			_, err := tt.wrap(f, f.pool).Install(ctx, install.Request{Email: "ada@example.com", Password: "a-good-password"})
+
+			require.ErrorIs(t, err, errInjected)
+			_, err = f.users.ByEmail(ctx, "ada@example.com")
+			assert.True(t, user.IsNotFoundError(err), "the user insert is rolled back")
+			assert.Equal(t, before, f.orgCount(t))
+		})
+	}
+}
+
+func TestEnsureBasicSystemOrg_DependencyFailures(t *testing.T) {
+	f := newInstallFixture(t)
+	ctx := t.Context()
+
+	err := install.NewService(f.pool, f.users, failSystem{f.orgs}, f.members, f.projects).EnsureBasicSystemOrg(ctx)
+	require.ErrorIs(t, err, errInjected)
+
+	err = install.NewService(f.pool, f.users, f.orgs, f.members, failProjectCreate{f.projects}).EnsureBasicSystemOrg(ctx)
+	require.ErrorIs(t, err, errInjected)
+	assert.Zero(t, f.orgCount(t), "the system org insert is rolled back with the failed project")
 }

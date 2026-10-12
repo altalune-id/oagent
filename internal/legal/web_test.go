@@ -2,6 +2,7 @@ package legal
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/user"
@@ -207,4 +209,72 @@ func cookieNamed(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 		}
 	}
 	return nil
+}
+
+type failingUsers struct{ err error }
+
+func (f failingUsers) AcceptTerms(context.Context, uuid.UUID) (*user.User, error) { return nil, f.err }
+
+type rotatorFunc func(p session.Principal) error
+
+func (f rotatorFunc) Rotate(_ context.Context, _ http.ResponseWriter, _ *http.Request, p session.Principal) error {
+	return f(p)
+}
+
+func postAccept(h *Web, p *session.Principal) *httptest.ResponseRecorder {
+	form := url.Values{"accept_terms": {"1"}, "return_to": {"/console/"}}
+	req := httptest.NewRequest(http.MethodPost, "/welcome", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if p != nil {
+		req = req.WithContext(session.PrincipalInto(req.Context(), *p))
+	}
+	rec := httptest.NewRecorder()
+	h.postWelcome(rec, req)
+	return rec
+}
+
+func TestWelcome_PostAnonymousGoesToLogin(t *testing.T) {
+	h := NewWeb(WebOpts{Service: NewService(&fakeUsers{}), Sessions: rotatorFunc(func(session.Principal) error { return nil })})
+	rec := postAccept(h, nil)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "/login?return_to=%2Fwelcome", rec.Header().Get("Location"))
+}
+
+func TestWelcome_PostFailures(t *testing.T) {
+	cases := []struct {
+		name    string
+		users   TermsAcceptor
+		rotate  error
+		wantMsg string
+	}{
+		{"accept fails", failingUsers{err: errors.New("db down")}, nil, "web: accept terms"},
+		{"rotate fails", &fakeUsers{}, errors.New("store down"), "web: rotate session"},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			var reported string
+			var rotated session.Principal
+			h := NewWeb(WebOpts{
+				Kit: layout.Kit{Unexpected: func(_ context.Context, msg string, _ error, _ ...any) *apperror.AppError {
+					reported = msg
+					return nil
+				}},
+				Service: NewService(tt.users),
+				Sessions: rotatorFunc(func(p session.Principal) error {
+					rotated = p
+					return tt.rotate
+				}),
+			})
+			p := newPerson()
+
+			rec := postAccept(h, &p)
+
+			assert.Equal(t, http.StatusInternalServerError, rec.Code)
+			assert.Equal(t, tt.wantMsg, reported)
+			assert.NotContains(t, rec.Body.String(), "down")
+			if tt.rotate != nil {
+				assert.False(t, rotated.TermsAcceptedAt.IsZero(), "the rotated session carries the acceptance time")
+			}
+		})
+	}
 }
