@@ -3,3 +3,4 @@
 dist
 .data
 storybook-static
+coverage
