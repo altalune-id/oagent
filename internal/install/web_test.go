@@ -23,6 +23,7 @@ import (
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/web"
 	"altalune.id/oagent/internal/web/layout"
+	"altalune.id/oagent/password"
 )
 
 const testToken = "setup-token-0123456789abcdefghij"
@@ -227,6 +228,46 @@ func TestInstall_ValidationErrorRerendersForm(t *testing.T) {
 	assert.NotContains(t, body, "correct horse battery")
 	assert.Contains(t, body, "alert-error")
 	assert.True(t, f.required.Load())
+}
+
+func TestInstall_PageHasThePasswordField(t *testing.T) {
+	for _, base := range []string{"", "/app"} {
+		f := newInstallFixture(t, base)
+		req := httptest.NewRequest(http.MethodGet, base+"/install", nil)
+		req.AddCookie(f.setupCookie(t, base))
+		rec := f.do(t, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+		body := rec.Body.String()
+		assert.Contains(t, body, `data-password-field data-email-input="email" data-name-input="name"`)
+		assert.Contains(t, body, `minlength="12"`)
+		assert.Contains(t, body, `data-rule="length"`)
+		assert.Contains(t, body, `<script type="module" src="`+base+`/static/password.js"></script>`)
+	}
+}
+
+func TestInstall_WeakPasswordRerendersForm(t *testing.T) {
+	for name, tc := range map[string]struct{ plain, message string }{
+		"too short":     {"tea-for-two", "Password must be 12 to 256 characters"},
+		"has the email": {"i-am-ada.lovelace", "Password must not contain your email"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newInstallFixture(t, "")
+			setup := f.setupCookie(t, "")
+			form := goodForm()
+			form.Set("email", "ada.lovelace@example.com")
+			form.Set("password", tc.plain)
+			f.installer.err = password.Check(tc.plain, password.Hints{Email: form.Get("email"), Name: form.Get("name")})
+			require.Error(t, f.installer.err)
+
+			rec := f.do(t, installPost("", form, setup))
+			assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+			body := rec.Body.String()
+			assert.Contains(t, body, tc.message)
+			assert.NotContains(t, body, tc.plain)
+			assert.Contains(t, body, `data-rule="length"`, "the rules show without JavaScript")
+			assert.True(t, f.required.Load())
+		})
+	}
 }
 
 func TestInstall_CrossSitePostIsRejected(t *testing.T) {

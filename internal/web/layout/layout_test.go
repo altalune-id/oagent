@@ -241,6 +241,7 @@ func TestTemplatesReturnWriteErrors(t *testing.T) {
 		{"Layout", Layout(d)},
 		{"Card", Card("Title")},
 		{"Error", Error(d, "message")},
+		{"PasswordField", PasswordField(d, PasswordFieldData{Name: "password", Label: "Password"})},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -264,7 +265,7 @@ func TestTemplatesStopOnCancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	d := LayoutData{Title: "Oops"}
-	for _, c := range []templ.Component{Layout(d), Card("Title"), Error(d, "message")} {
+	for _, c := range []templ.Component{Layout(d), Card("Title"), Error(d, "message"), PasswordField(d, PasswordFieldData{})} {
 		var buf bytes.Buffer
 		require.ErrorIs(t, c.Render(ctx, &buf), context.Canceled)
 		assert.Empty(t, buf.String())

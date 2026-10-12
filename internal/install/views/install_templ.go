@@ -125,20 +125,28 @@ func Install(d layout.LayoutData, v InstallData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" placeholder=\"Email\" autocomplete=\"email\" required></label> <label class=\"floating-label\"><span>Password</span> <input class=\"input w-full\" type=\"password\" name=\"password\" placeholder=\"Password\" autocomplete=\"new-password\" minlength=\"8\" required></label> <label class=\"floating-label\"><span>Organization name</span> <input class=\"input w-full\" type=\"text\" name=\"org_name\" value=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" placeholder=\"Email\" autocomplete=\"email\" required></label>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = layout.PasswordField(d, layout.PasswordFieldData{Name: "password", Label: "Password", EmailInput: "email", NameInput: "name"}).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<label class=\"floating-label\"><span>Organization name</span> <input class=\"input w-full\" type=\"text\" name=\"org_name\" value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.OrgName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `install/views/install.templ`, Line: 35, Col: 78}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `install/views/install.templ`, Line: 32, Col: 78}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" placeholder=\"Organization name\"></label> <button class=\"btn btn-primary mt-2\" type=\"submit\">Install</button></form>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" placeholder=\"Organization name\"></label> <button class=\"btn btn-primary mt-2\" type=\"submit\">Install</button></form>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

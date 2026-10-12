@@ -26,10 +26,7 @@ templ Install(d layout.LayoutData, v InstallData) {
 					<span>Email</span>
 					<input class="input w-full" type="email" name="email" value={ v.Email } placeholder="Email" autocomplete="email" required/>
 				</label>
-				<label class="floating-label">
-					<span>Password</span>
-					<input class="input w-full" type="password" name="password" placeholder="Password" autocomplete="new-password" minlength="8" required/>
-				</label>
+				@layout.PasswordField(d, layout.PasswordFieldData{Name: "password", Label: "Password", EmailInput: "email", NameInput: "name"})
 				<label class="floating-label">
 					<span>Organization name</span>
 					<input class="input w-full" type="text" name="org_name" value={ v.OrgName } placeholder="Organization name"/>
