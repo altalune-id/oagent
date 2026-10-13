@@ -109,7 +109,7 @@ func (h *Web) postWelcome(w http.ResponseWriter, r *http.Request) {
 		h.o.Kit.Render(w, r, http.StatusUnprocessableEntity, views.Welcome(h.o.Kit.Layout("Welcome"), view))
 		return
 	}
-	at, err := h.o.Service.Accept(r.Context(), principal.UserID)
+	at, err := h.o.Service.Accept(r.Context(), principal.UserID, SourceWelcome)
 	if err != nil {
 		h.o.Kit.Fail(w, r, "web: accept terms", err)
 		return

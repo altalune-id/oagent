@@ -14,6 +14,7 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/events"
+	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/testutil/fakes"
@@ -48,7 +49,7 @@ func newFixture(t *testing.T) *fixture {
 	f.members = member.NewService(&fakes.MemberStore{}, fakes.TxPool(), apperror.NewReporter(nil, false).Unexpected)
 	f.users = user.NewService(fakes.NewUserStore(), apperror.NewReporter(nil, false).Unexpected)
 	f.svc = invite.NewService(invite.Deps{
-		Store: f.store, Pool: fakes.TxPool(), Members: f.members, Mail: f.mail, Users: f.users, Events: f.events,
+		Store: f.store, Pool: fakes.TxPool(), Members: f.members, Mail: f.mail, Users: f.users, Terms: legal.NewService(f.users), Events: f.events,
 		Orgs: orgNames{f.org: "Acme  Corp"}, People: directory{people: f.people, users: f.users}, From: "oagent@example.com", BaseURL: baseURL,
 		Unexpected: apperror.NewReporter(nil, false).Unexpected,
 	}).WithClock(func() time.Time { return f.clock })

@@ -9,16 +9,21 @@ import (
 
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/user"
 )
 
-// UserCreator creates the first owner and records that they accepted the terms; both join the transaction on ctx.
+// UserCreator creates the first owner.
 type UserCreator interface {
 	Create(ctx context.Context, req user.CreateRequest) (*user.User, error)
-	AcceptTerms(ctx context.Context, id uuid.UUID) (*user.User, error)
+}
+
+// Terms records that a person accepted the current terms; it joins the transaction on ctx.
+type Terms interface {
+	Accept(ctx context.Context, userID uuid.UUID, source legal.Source) (time.Time, error)
 }
 
 // SystemOrgs finds or creates the deployment's system org.

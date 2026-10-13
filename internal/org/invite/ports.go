@@ -10,6 +10,7 @@ import (
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/mailer"
@@ -59,11 +60,15 @@ type Sessions interface {
 	End(ctx context.Context, w http.ResponseWriter, sid string) error
 }
 
-// Users finds and creates people who join through an invite and records their terms acceptance; each call joins the transaction on ctx.
+// Users finds and creates the people who join through an invite; each call joins the transaction on ctx.
 type Users interface {
 	ByEmail(ctx context.Context, email string) (*user.User, error)
 	Create(ctx context.Context, req user.CreateRequest) (*user.User, error)
-	AcceptTerms(ctx context.Context, id uuid.UUID) (*user.User, error)
+}
+
+// Terms records that a person accepted the current terms; it joins the transaction on ctx.
+type Terms interface {
+	Accept(ctx context.Context, userID uuid.UUID, source legal.Source) (time.Time, error)
 }
 
 // People looks up how to reach a person and their public id.

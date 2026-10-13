@@ -18,6 +18,7 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/install"
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
@@ -53,7 +54,7 @@ func newInstallFixtureWithConns(t *testing.T, maxOpen int) *installFixture {
 		members:  member.NewService(member.NewStore(pool, schemaName, ""), pool, unexpected),
 		projects: project.NewService(project.NewStore(pool, schemaName, ""), unexpected),
 	}
-	f.svc = install.NewService(pool, f.users, f.orgs, f.members, f.projects)
+	f.svc = install.NewService(pool, f.users, f.orgs, f.members, f.projects).WithTerms(legal.NewService(f.users))
 	return f
 }
 

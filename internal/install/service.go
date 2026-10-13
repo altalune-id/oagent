@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
@@ -26,11 +27,18 @@ type Service struct {
 	orgs     SystemOrgs
 	members  Owners
 	projects DefaultProjects
+	terms    Terms
 }
 
 // NewService builds a Service over the domain services it writes through.
 func NewService(pool db.Pool, users UserCreator, orgs SystemOrgs, members Owners, projects DefaultProjects) *Service {
 	return &Service{pool: pool, users: users, orgs: orgs, members: members, projects: projects}
+}
+
+// WithTerms records the owner's acceptance of the terms through t.
+func (s *Service) WithTerms(t Terms) *Service {
+	s.terms = t
+	return s
 }
 
 // Required reports whether the instance still needs installing: no system org, or in local mode no owner of it.
@@ -68,7 +76,7 @@ func (s *Service) Install(ctx context.Context, r Request) (*user.User, error) {
 			return err
 		}
 		if r.AcceptTerms {
-			if _, err := s.users.AcceptTerms(ctx, u.ID); err != nil {
+			if _, err := s.terms.Accept(ctx, u.ID, legal.SourceInstall); err != nil {
 				return err
 			}
 		}

@@ -134,16 +134,18 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Sessions:     sessions,
 		Auth:         authn,
 		Install:      installer,
-		Legal:        buildLegal(cfg, users),
+		Legal:        buildLegal(k, cfg, users),
 		Caps:         caps,
 	}
 	members.WithEffects(memberEffects(cfg, svcs)).WithDirectory(memberDirectory{users: users, orgs: orgs})
+	installer.WithTerms(svcs.Legal)
 	svcs.Invites = invite.NewService(invite.Deps{
 		Store:      invite.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix),
 		Pool:       k.Pool,
 		Members:    members,
 		Mail:       svcs.MailQueue,
 		Users:      users,
+		Terms:      svcs.Legal,
 		Events:     webhooks,
 		Orgs:       memberOrgs{orgs: orgs},
 		People:     memberPeople{users: users},
@@ -154,8 +156,8 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	return svcs
 }
 
-func buildLegal(cfg config.Config, users *user.Service) *legal.Service {
-	l := legal.NewService(users)
+func buildLegal(k kernel.Kernel, cfg config.Config, users *user.Service) *legal.Service {
+	l := legal.NewService(users).WithStore(legal.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Pool)
 	if cfg.Compliance.TermsURL != "" || cfg.Compliance.PrivacyURL != "" {
 		l.WithExternalTerms(cfg.Compliance.TermsUpdated())
 	}

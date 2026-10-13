@@ -2,7 +2,9 @@ package legal
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -60,18 +62,35 @@ func loadAll() (map[string]*Document, error) {
 func parse(slug string, raw []byte) (*Document, error) {
 	meta, body, err := splitFrontmatter(raw)
 	if err != nil {
-		return nil, fmt.Errorf("legal: frontmatter %s: %w", slug, err)
+		return nil, fmt.Errorf("legal: content/%s.md: %w", slug, err)
+	}
+	if meta.Version == "" {
+		return nil, fmt.Errorf("legal: content/%s.md: no updated: header; add updated: YYYY-MM-DD to the front matter", slug)
 	}
 	var buf bytes.Buffer
 	if err := goldmark.Convert(body, &buf); err != nil {
 		return nil, fmt.Errorf("legal: render %s: %w", slug, err)
 	}
-	return &Document{Slug: slug, Title: meta.Title, HTML: buf.String(), UpdatedAt: meta.Updated}, nil
+	sum := sha256.Sum256(raw)
+	return &Document{
+		Slug: slug, Title: meta.Title, Version: meta.Version, Source: string(body), SHA256: hex.EncodeToString(sum[:]),
+		HTML: buf.String(), UpdatedAt: meta.Updated,
+	}, nil
 }
 
 type frontmatter struct {
 	Title   string
+	Version string
 	Updated time.Time
+}
+
+// NOTE: updated is also the version people accept; a second change on one day needs a date-time.
+func parseUpdated(value string) (time.Time, bool) {
+	if t, err := time.Parse(time.DateOnly, value); err == nil {
+		return t, true
+	}
+	t, err := time.Parse(time.RFC3339, value)
+	return t.UTC(), err == nil
 }
 
 func splitFrontmatter(raw []byte) (frontmatter, []byte, error) {
@@ -97,9 +116,11 @@ func splitFrontmatter(raw []byte) (frontmatter, []byte, error) {
 		case "title":
 			fm.Title = value
 		case "updated":
-			if t, err := time.Parse(time.DateOnly, value); err == nil {
-				fm.Updated = t
+			t, ok := parseUpdated(value)
+			if !ok {
+				return frontmatter{}, nil, fmt.Errorf("updated: %q is not a YYYY-MM-DD date or an RFC 3339 date-time", value)
 			}
+			fm.Version, fm.Updated = value, t
 		}
 	}
 	return fm, body, nil

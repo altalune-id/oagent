@@ -16,6 +16,7 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
@@ -75,7 +76,7 @@ func newPGFixture(t *testing.T) *pgFixture {
 	require.NoError(t, err)
 	f.svc = invite.NewService(invite.Deps{
 		Store: f.store, Pool: pool, Members: f.members, Mail: &mailBox{}, Orgs: orgNames{o.ID: "Acme"},
-		People: userPeople{users: f.users}, Users: user.NewService(f.users, unexpected), BaseURL: baseURL, Unexpected: unexpected,
+		People: userPeople{users: f.users}, Users: user.NewService(f.users, unexpected), Terms: legal.NewService(user.NewService(f.users, unexpected)), BaseURL: baseURL, Unexpected: unexpected,
 	}).WithClock(f.now)
 	return f
 }

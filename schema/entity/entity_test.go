@@ -48,6 +48,11 @@ func TestBindings(t *testing.T) {
 			},
 		},
 		{
+			"legal_documents",
+			func(s, p string) binding { b := entity.NewLegalDocuments(s, p); return binding{b, b.AllColumns} },
+			[]string{"id", "slug", "version", "title", "body", "sha256", "published_at"},
+		},
+		{
 			"mail_queue",
 			func(s, p string) binding { b := entity.NewMailQueue(s, p); return binding{b, b.AllColumns} },
 			[]string{"id", "payload", "sealed", "status", "attempt", "next_attempt_at", "last_error", "created_at", "settled_at"},
@@ -79,6 +84,11 @@ func TestBindings(t *testing.T) {
 			"sessions",
 			func(s, p string) binding { b := entity.NewSessions(s, p); return binding{b, b.AllColumns} },
 			[]string{"sid", "user_id", "payload", "expires_at", "created_at"},
+		},
+		{
+			"terms_acceptances",
+			func(s, p string) binding { b := entity.NewTermsAcceptances(s, p); return binding{b, b.AllColumns} },
+			[]string{"id", "public_id", "user_id", "terms_document_id", "privacy_document_id", "source", "accepted_at"},
 		},
 		{
 			"users",

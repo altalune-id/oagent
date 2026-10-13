@@ -10,6 +10,7 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/events"
+	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org/invite/views"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/user"
@@ -23,6 +24,7 @@ type Deps struct {
 	Members    Members
 	Mail       Mail
 	Users      Users
+	Terms      Terms
 	Events     Events
 	Orgs       Orgs
 	People     People
@@ -38,6 +40,7 @@ type Service struct {
 	members    Members
 	mail       Mail
 	users      Users
+	terms      Terms
 	events     Events
 	orgs       Orgs
 	people     People
@@ -51,7 +54,7 @@ type Service struct {
 // NewService builds a Service from d.
 func NewService(d Deps) *Service {
 	return &Service{
-		store: d.Store, pool: d.Pool, members: d.Members, mail: d.Mail, users: d.Users, events: d.Events,
+		store: d.Store, pool: d.Pool, members: d.Members, mail: d.Mail, users: d.Users, terms: d.Terms, events: d.Events,
 		orgs: d.Orgs, people: d.People, from: d.From, baseURL: strings.TrimSuffix(d.BaseURL, "/"), unexpected: d.Unexpected, now: time.Now,
 	}
 }
@@ -245,7 +248,7 @@ func (s *Service) Join(ctx context.Context, inviteID uuid.UUID, name, password s
 			return err
 		}
 		if acceptTerms {
-			if _, err := s.users.AcceptTerms(ctx, u.ID); err != nil {
+			if _, err := s.terms.Accept(ctx, u.ID, legal.SourceJoin); err != nil {
 				return err
 			}
 		}

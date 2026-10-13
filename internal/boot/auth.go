@@ -79,6 +79,9 @@ func firstBoot(ctx context.Context, cfg config.Config, s *Services, log *slog.Lo
 	case !s.Caps.LocalLogin:
 		return nil
 	}
+	if err := s.Legal.Publish(ctx); err != nil {
+		return fmt.Errorf("boot: legal documents: %w", err)
+	}
 	required, err := s.Install.Required(ctx, false)
 	if err != nil || !required {
 		return err

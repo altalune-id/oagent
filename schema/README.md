@@ -25,6 +25,8 @@ erDiagram
     users |o--o{ api_keys : "created_by (owner of personal keys)"
     users ||--o{ sessions : owns
     orgs ||--o{ invites : has
+    users ||--o{ terms_acceptances : accepted
+    legal_documents ||--o{ terms_acceptances : "terms, privacy"
     users |o--o{ invites : "invited_by, accepted_by"
 
     orgs {
@@ -165,6 +167,24 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
+    legal_documents {
+        uuid id PK
+        text slug "terms, privacy"
+        text version "the updated header value"
+        text title
+        text body "the markdown people accepted"
+        text sha256
+        timestamptz published_at
+    }
+    terms_acceptances {
+        uuid id PK
+        text public_id UK
+        uuid user_id FK
+        uuid terms_document_id FK
+        uuid privacy_document_id FK
+        text source "install, join, welcome"
+        timestamptz accepted_at
+    }
     mail_queue {
         uuid id PK "uuid v7, not tenant-scoped"
         bytea payload "sealed mailer.Message JSON, AAD = id, NULL once settled"
@@ -212,6 +232,8 @@ Rules the diagram can't show. Names omit `{{.TablePrefix}}`.
 | `invites` | `invites_live_idx` (unique, `WHERE accepted_at IS NULL AND revoked_at IS NULL`) | one live invite per org and email; a re-invite updates that row |
 | `invites` | `invites_token_or_draft` (check), `token_hash` unique | every invite but a draft has a token; tokens are found by their hash |
 | `invites` | `email` check | email is stored trimmed and lowercase |
+| `legal_documents` | `legal_documents_slug_version_key` (unique) | one snapshot per document version; built-in documents only (a custom terms or privacy URL keeps no history) |
+| `terms_acceptances` | `terms_acceptances_user_idx` | one person's acceptances, oldest first |
 | `mail_queue` | `mail_queue_settled_erased`, `mail_queue_pending_payload` (checks) | a pending row holds its payload; a sent or failed row holds none |
 | `mail_queue` | `mail_queue_due_idx` (`WHERE status = 'pending'`) | the worker's claim of due mail |
 | `sessions` | `sessions_expires_idx`, `sessions_user_idx` | sweep of expired rows; delete all sessions of a user |

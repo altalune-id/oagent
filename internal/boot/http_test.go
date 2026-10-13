@@ -13,6 +13,7 @@ import (
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/auth"
+	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/capabilities"
 	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/user"
@@ -140,12 +141,12 @@ func TestWarnSampleLegal_NamesOnlyTheMissingKey(t *testing.T) {
 
 func TestBuildLegal_TermsDate(t *testing.T) {
 	cfg := config.Config{}
-	builtIn := buildLegal(cfg, nil).TermsUpdatedAt()
+	builtIn := buildLegal(kernel.Kernel{}, cfg, nil).TermsUpdatedAt()
 	assert.False(t, builtIn.IsZero(), "the built-in documents carry a date")
 
 	cfg.Compliance.TermsURL = "https://legal.example.com/terms"
 	cfg.Compliance.TermsUpdatedAt = "2027-01-02"
-	assert.Equal(t, time.Date(2027, 1, 2, 0, 0, 0, 0, time.UTC), buildLegal(cfg, nil).TermsUpdatedAt())
+	assert.Equal(t, time.Date(2027, 1, 2, 0, 0, 0, 0, time.UTC), buildLegal(kernel.Kernel{}, cfg, nil).TermsUpdatedAt())
 }
 
 func TestConsentData(t *testing.T) {
@@ -160,4 +161,12 @@ func TestBuildRoutes_InviteOnlyWithLocalLogin(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, serveRoutes(cfg, nil, http.MethodGet, "/invite").Code)
 	svcs := &Services{Caps: capabilities.Capabilities{LocalLogin: true}, Auth: &auth.Service{}}
 	assert.Equal(t, http.StatusBadRequest, serveRoutes(cfg, svcs, http.MethodGet, "/invite").Code, "no invite cookie")
+}
+
+func TestBuildLegal_AnyCustomURLKeepsNoHistory(t *testing.T) {
+	cfg := config.Config{}
+	cfg.Compliance.PrivacyURL = "https://legal.example.com/privacy"
+	l := buildLegal(kernel.Kernel{}, cfg, nil)
+	require.NoError(t, l.Publish(t.Context()), "nothing is snapshotted, so no database is touched")
+	assert.True(t, l.TermsUpdatedAt().IsZero(), "custom terms are re-asked only by compliance.termsUpdatedAt")
 }
