@@ -1,0 +1,99 @@
+package views
+
+import "altalune.id/oagent/internal/web/layout"
+
+// State is which invite page a visitor sees.
+type State int
+
+// The invite page states, one per row of the invite journey.
+const (
+	StateJoin State = iota + 1
+	StateSignIn
+	StateAccept
+	StateMember
+	StateMismatch
+	StateNoMethod
+)
+
+// LandingData is the invite page: who invites whom to which org, and what the visitor can do; the password is never echoed back.
+type LandingData struct {
+	State         State
+	Org           string
+	Inviter       string
+	Role          string
+	Email         string
+	SignedInEmail string
+	Name          string
+	LoginURL      string
+	Error         string
+	Consent       layout.ConsentData
+}
+
+// GoneData is the page for an invite link that no longer works.
+type GoneData struct {
+	Message string
+	OpenURL string
+	OpenOrg string
+	SignIn  bool
+}
+
+templ Landing(d layout.LayoutData, v LandingData) {
+	@layout.Layout(d) {
+		@layout.Card(d.Title) {
+			if v.Error != "" {
+				<div role="alert" class="alert alert-error alert-soft">{ v.Error }</div>
+			}
+			switch v.State {
+				case StateJoin:
+					<p>{ v.Inviter } invited you to join { v.Org } as { v.Role }. Create your account to join.</p>
+					<form method="post" action={ d.Href("/invite/join") } class="flex flex-col gap-3">
+						<label class="floating-label">
+							<span>Email</span>
+							<input class="input w-full" type="email" name="email" value={ v.Email } placeholder="Email" autocomplete="username" readonly/>
+						</label>
+						<label class="floating-label">
+							<span>Your name</span>
+							<input class="input w-full" type="text" name="name" value={ v.Name } placeholder="Your name" autocomplete="name" autofocus/>
+						</label>
+						@layout.PasswordField(d, layout.PasswordFieldData{Name: "password", Label: "Password", EmailInput: "email", NameInput: "name"})
+						@layout.Consent(d, v.Consent)
+						<button class="btn btn-primary mt-2" type="submit">Join { v.Org }</button>
+					</form>
+				case StateSignIn:
+					<p>{ v.Inviter } invited you to join { v.Org } as { v.Role }. You already have an account with { v.Email }.</p>
+					<a class="btn btn-primary" href={ templ.SafeURL(v.LoginURL) }>Sign in to join</a>
+				case StateAccept:
+					<p>Join { v.Org } as { v.Role }, invited by { v.Inviter }.</p>
+					<form method="post" action={ d.Href("/invite/accept") }>
+						<button class="btn btn-primary w-full" type="submit">Join { v.Org }</button>
+					</form>
+				case StateMember:
+					<p>You're already a member of { v.Org }.</p>
+					<form method="post" action={ d.Href("/invite/accept") }>
+						<button class="btn btn-primary w-full" type="submit">Open { v.Org }</button>
+					</form>
+				case StateMismatch:
+					<p>This invite is for { v.Email }, but you're signed in as { v.SignedInEmail }.</p>
+					<form method="post" action={ d.Href("/invite/switch") }>
+						<button class="btn btn-primary w-full" type="submit">Sign out and continue</button>
+					</form>
+				case StateNoMethod:
+					<p>{ v.Inviter } invited you to join { v.Org } as { v.Role }, but this server has no way to sign in yet. Please contact { v.Inviter }.</p>
+			}
+		}
+	}
+}
+
+templ Gone(d layout.LayoutData, v GoneData) {
+	@layout.Layout(d) {
+		@layout.Card(d.Title) {
+			<p>{ v.Message }</p>
+			if v.OpenURL != "" {
+				<a class="btn btn-primary" href={ templ.SafeURL(v.OpenURL) }>Open { v.OpenOrg }</a>
+			}
+			if v.SignIn {
+				<a class="btn btn-primary" href={ d.Href("/login") }>Sign in</a>
+			}
+		}
+	}
+}

@@ -67,7 +67,7 @@ func newPGFixture(t *testing.T) *pgFixture {
 	require.NoError(t, err)
 	f.svc = invite.NewService(invite.Deps{
 		Store: f.store, Pool: pool, Members: f.members, Mail: &mailBox{}, Orgs: orgNames{o.ID: "Acme"},
-		People: userPeople{users: f.users}, BaseURL: baseURL, Unexpected: unexpected,
+		People: userPeople{users: f.users}, Users: user.NewService(f.users, unexpected), BaseURL: baseURL, Unexpected: unexpected,
 	}).WithClock(f.now)
 	return f
 }
@@ -295,6 +295,49 @@ func TestPostgresInvite_StoreErrors(t *testing.T) {
 	assert.Error(t, broken.Update(f.ctx, &invite.Invite{ID: uuid.New()}))
 	_, err = broken.MarkAccepted(f.ctx, uuid.New(), f.owner.ID, f.now())
 	assert.Error(t, err)
+}
+
+func TestPostgresInvite_JoinIsOneTransaction(t *testing.T) {
+	f := newPGFixture(t)
+	c := f.invite("new@example.com", member.RoleAdmin)
+	id, err := f.svc.Join(f.ctx, c.Invite.ID, "New", "a sturdy passphrase", true)
+	require.NoError(t, err)
+	u, err := f.users.ByID(f.ctx, id)
+	require.NoError(t, err)
+	assert.NotNil(t, u.TermsAcceptedAt)
+	m, err := f.members.Find(f.ctx, f.org.ID, id)
+	require.NoError(t, err)
+	assert.Equal(t, member.RoleAdmin, m.Role)
+
+	late := f.invite("late@example.com", member.RoleMember)
+	f.advance(invite.TTL)
+	_, err = f.svc.Join(f.ctx, late.Invite.ID, "Late", "a sturdy passphrase", true)
+	assert.Equal(t, invite.ReasonExpired, invite.ReasonOf(err))
+	_, err = f.users.ByEmail(f.ctx, "late@example.com")
+	assert.True(t, user.IsNotFoundError(err), "a refused join writes nothing")
+}
+
+func TestPostgresInvite_ConcurrentJoinsMakeOneUser(t *testing.T) {
+	f := newPGFixture(t)
+	c := f.invite("twin@example.com", member.RoleMember)
+	errs := race(
+		func() error { _, err := f.svc.Join(f.ctx, c.Invite.ID, "A", "a sturdy passphrase", true); return err },
+		func() error { _, err := f.svc.Join(f.ctx, c.Invite.ID, "B", "a sturdy passphrase", true); return err },
+	)
+	ok := 0
+	for _, err := range errs {
+		switch {
+		case err == nil:
+			ok++
+		case user.IsAlreadyExistsError(err), invite.ReasonOf(err) == invite.ReasonUsed:
+		default:
+			t.Fatalf("unexpected: %v", err)
+		}
+	}
+	assert.Equal(t, 1, ok)
+	ms, err := f.members.List(f.ctx, f.org.ID)
+	require.NoError(t, err)
+	assert.Len(t, ms, 2)
 }
 
 func TestPostgresInvite_ReinviteVersusAccept(t *testing.T) {

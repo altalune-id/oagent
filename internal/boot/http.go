@@ -19,6 +19,7 @@ import (
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/legal"
 	mcpinternal "altalune.id/oagent/internal/mcp"
+	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/permission"
 	"altalune.id/oagent/internal/web"
 	"altalune.id/oagent/internal/web/layout"
@@ -174,6 +175,21 @@ func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected
 			Secret:    svcs.StateSecret,
 			Secure:    cfg.HTTP.CookieSecure,
 			Consent:   consentData(cfg),
+		}),
+		invite.NewWeb(invite.WebOpts{
+			Kit:          kit,
+			Invites:      svcs.Invites,
+			Users:        svcs.Users,
+			Members:      svcs.Members,
+			Orgs:         memberOrgs{orgs: svcs.Orgs},
+			OrgLinks:     memberOrgs{orgs: svcs.Orgs},
+			People:       memberPeople{users: svcs.Users},
+			SignIn:       svcs.Auth,
+			Sessions:     sessions,
+			Consent:      consentData(cfg),
+			Methods:      []string{invite.MethodPassword},
+			StateSecret:  svcs.StateSecret,
+			CookieSecure: cfg.HTTP.CookieSecure,
 		}),
 	}
 }

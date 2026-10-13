@@ -151,9 +151,14 @@ func TestMemberOrgs(t *testing.T) {
 	name, err := orgs.Name(context.Background(), o.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "Acme Corp", name)
+	slug, err := orgs.Slug(context.Background(), o.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "acme", slug)
 
 	store.Err = errors.New("db down")
 	_, err = orgs.Name(context.Background(), o.ID)
+	assert.Error(t, err)
+	_, err = orgs.Slug(context.Background(), o.ID)
 	assert.Error(t, err)
 }
 

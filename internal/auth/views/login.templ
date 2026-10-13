@@ -7,6 +7,9 @@ type LoginData struct {
 	Email    string
 	ReturnTo string
 	Error    string
+	// EmailLocked shows Email read-only, with a link to sign in with another account.
+	EmailLocked  bool
+	AnotherLogin string
 }
 
 templ Login(d layout.LayoutData, v LoginData) {
@@ -21,14 +24,21 @@ templ Login(d layout.LayoutData, v LoginData) {
 				}
 				<label class="floating-label">
 					<span>Email</span>
-					<input class="input w-full" type="email" name="email" value={ v.Email } placeholder="Email" autocomplete="username" required autofocus/>
+					if v.EmailLocked {
+						<input class="input w-full" type="email" name="email" value={ v.Email } placeholder="Email" autocomplete="username" required readonly/>
+					} else {
+						<input class="input w-full" type="email" name="email" value={ v.Email } placeholder="Email" autocomplete="username" required autofocus/>
+					}
 				</label>
 				<label class="floating-label">
 					<span>Password</span>
-					<input class="input w-full" type="password" name="password" placeholder="Password" autocomplete="current-password" required/>
+					<input class="input w-full" type="password" name="password" placeholder="Password" autocomplete="current-password" required autofocus?={ v.EmailLocked }/>
 				</label>
 				<button class="btn btn-primary mt-2" type="submit">Sign in</button>
 			</form>
+			if v.EmailLocked {
+				<p class="text-sm"><a class="link" href={ templ.SafeURL(v.AnotherLogin) }>Use another account</a></p>
+			}
 			<p class="text-xs text-base-content/60">
 				<a class="link" href={ d.Href("/terms") }>Terms</a> · <a class="link" href={ d.Href("/privacy") }>Privacy</a>
 			</p>

@@ -17,6 +17,7 @@ import (
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/testutil/fakes"
 	"altalune.id/oagent/internal/user"
+	"altalune.id/oagent/password"
 )
 
 const baseURL = "https://oagent.example.com/"
@@ -45,7 +46,7 @@ func newFixture(t *testing.T) *fixture {
 	f.members = member.NewService(&fakes.MemberStore{}, fakes.TxPool(), apperror.NewReporter(nil, false).Unexpected)
 	f.users = user.NewService(fakes.NewUserStore(), apperror.NewReporter(nil, false).Unexpected)
 	f.svc = invite.NewService(invite.Deps{
-		Store: f.store, Pool: fakes.TxPool(), Members: f.members, Mail: f.mail,
+		Store: f.store, Pool: fakes.TxPool(), Members: f.members, Mail: f.mail, Users: f.users,
 		Orgs: orgNames{f.org: "Acme  Corp"}, People: directory{people: f.people, users: f.users}, From: "oagent@example.com", BaseURL: baseURL,
 		Unexpected: apperror.NewReporter(nil, false).Unexpected,
 	}).WithClock(func() time.Time { return f.clock })
@@ -415,6 +416,66 @@ func TestService_AcceptUnknownPerson(t *testing.T) {
 	c := f.create("bob@x.io", member.RoleMember)
 	_, err := f.svc.Accept(f.ctx, c.Invite.ID, uuid.New())
 	assert.True(t, user.IsNotFoundError(err), "got %v", err)
+}
+
+func TestService_Join(t *testing.T) {
+	f := newFixture(t)
+	c := f.create("bob@x.io", member.RoleAdmin)
+
+	_, err := f.svc.Join(f.ctx, c.Invite.ID, "Bob", "short", true)
+	assert.True(t, password.IsPolicyError(err), "a weak password: %v", err)
+	_, err = f.users.ByEmail(f.ctx, "bob@x.io")
+	assert.True(t, user.IsNotFoundError(err), "nothing is created")
+
+	id, err := f.svc.Join(f.ctx, c.Invite.ID, " Bob ", "a sturdy passphrase", true)
+	require.NoError(t, err)
+	u, err := f.users.ByID(f.ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, "bob@x.io", u.Email, "the email comes from the invite")
+	assert.Equal(t, "Bob", u.Name)
+	require.NotNil(t, u.TermsAcceptedAt)
+	m, err := f.members.Find(f.ctx, f.org, id)
+	require.NoError(t, err)
+	assert.Equal(t, member.RoleAdmin, m.Role)
+
+	_, err = f.svc.Join(f.ctx, c.Invite.ID, "Bob", "a sturdy passphrase", true)
+	assert.Equal(t, invite.ReasonUsed, invite.ReasonOf(err), "a used invite: %v", err)
+}
+
+func TestService_JoinWithoutTerms(t *testing.T) {
+	f := newFixture(t)
+	c := f.create("bob@x.io", member.RoleMember)
+	id, err := f.svc.Join(f.ctx, c.Invite.ID, "Bob", "a sturdy passphrase", false)
+	require.NoError(t, err)
+	u, err := f.users.ByID(f.ctx, id)
+	require.NoError(t, err)
+	assert.Nil(t, u.TermsAcceptedAt)
+}
+
+func TestService_JoinNeverMakesASecondUser(t *testing.T) {
+	f := newFixture(t)
+	c := f.create("bob@x.io", member.RoleMember)
+	_, err := f.users.Create(f.ctx, user.CreateRequest{Email: "bob@x.io", Password: "a sturdy passphrase"})
+	require.NoError(t, err)
+	_, err = f.svc.Join(f.ctx, c.Invite.ID, "Bob", "another sturdy passphrase", true)
+	assert.True(t, user.IsAlreadyExistsError(err), "got %v", err)
+	stored, err := f.store.ByID(f.ctx, c.Invite.ID)
+	require.NoError(t, err)
+	assert.Nil(t, stored.AcceptedAt, "the invite stays usable for sign-in")
+}
+
+func TestService_JoinUnusable(t *testing.T) {
+	f := newFixture(t)
+	_, err := f.svc.Join(f.ctx, uuid.New(), "Bob", "a sturdy passphrase", true)
+	assert.Equal(t, invite.ReasonNotFound, invite.ReasonOf(err))
+	d, err := f.svc.Draft(f.ctx, f.owner, f.org, "dina@x.io")
+	require.NoError(t, err)
+	_, err = f.svc.Join(f.ctx, d.ID, "Dina", "a sturdy passphrase", true)
+	assert.Equal(t, invite.ReasonNotFound, invite.ReasonOf(err), "a draft can't be joined")
+	c := f.create("late@x.io", member.RoleMember)
+	f.clock = f.clock.Add(invite.TTL)
+	_, err = f.svc.Join(f.ctx, c.Invite.ID, "Late", "a sturdy passphrase", true)
+	assert.Equal(t, invite.ReasonExpired, invite.ReasonOf(err))
 }
 
 type directory struct {

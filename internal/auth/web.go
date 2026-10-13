@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"mime"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/auth/views"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/web/layout"
 )
 
@@ -85,6 +87,13 @@ func (h *Web) getLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	view := views.LoginData{ReturnTo: layout.SanitizeReturnTo(h.kit.BasePath, returnTo)}
+	if email, err := user.NormalizeEmail(r.URL.Query().Get("email")); err == nil {
+		view.Email, view.EmailLocked = email, true
+		view.AnotherLogin = h.kit.Path("/login")
+		if view.ReturnTo != "" {
+			view.AnotherLogin += "?return_to=" + url.QueryEscape(view.ReturnTo)
+		}
+	}
 	h.kit.Render(w, r, http.StatusOK, views.Login(h.kit.Layout("Sign in"), view))
 }
 

@@ -84,6 +84,35 @@ func TestLogin_Form(t *testing.T) {
 	assert.Contains(t, body, `action="/app/login"`)
 }
 
+func TestLogin_FormLocksAGivenEmail(t *testing.T) {
+	f := newLoginFixture(t, "")
+	rec := f.do(httptest.NewRequest(http.MethodGet, "/login?email=A%40X.io&return_to=/invite", nil))
+	assert.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Contains(t, body, `name="email" value="a@x.io" placeholder="Email" autocomplete="username" required readonly`)
+	assert.Contains(t, body, `value="/invite"`)
+	assert.Contains(t, body, `href="/login?return_to=%2Finvite">Use another account</a>`)
+	assert.Contains(t, body, `autocomplete="current-password" required autofocus`, "the password field takes focus instead")
+}
+
+func TestLogin_FormIgnoresABadEmail(t *testing.T) {
+	f := newLoginFixture(t, "")
+	for _, raw := range []string{"%3Cscript%3E", strings.Repeat("a", 250) + "%40x.io", ""} {
+		rec := f.do(httptest.NewRequest(http.MethodGet, "/login?return_to=/invite&email="+raw, nil))
+		body := rec.Body.String()
+		assert.NotContains(t, body, "readonly", raw)
+		assert.NotContains(t, body, "<script>", raw)
+		assert.NotContains(t, body, "Use another account", raw)
+	}
+}
+
+func TestLogin_FormWithoutEmailIsUnchanged(t *testing.T) {
+	f := newLoginFixture(t, "")
+	body := f.do(httptest.NewRequest(http.MethodGet, "/login?return_to=/invite", nil)).Body.String()
+	assert.Contains(t, body, `name="email" value="" placeholder="Email" autocomplete="username" required autofocus`)
+	assert.NotContains(t, body, "readonly")
+}
+
 func TestLogin_FormDropsUnsafeReturnTo(t *testing.T) {
 	f := newLoginFixture(t, "")
 	rec := f.do(httptest.NewRequest(http.MethodGet, "/login?return_to=//evil.com", nil))

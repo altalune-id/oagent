@@ -212,6 +212,25 @@ func TestWelcomeGate_SkipList(t *testing.T) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code, "a path outside the base is not skipped")
 }
 
+func TestWelcomeGate_SkipsInviteLinks(t *testing.T) {
+	ok := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusTeapot) })
+	gate := WelcomeGate("/app", true, termsUpdated)(ok)
+	for path, want := range map[string]int{
+		"/app/invite":               http.StatusTeapot,
+		"/app/invite/raw-token-123": http.StatusTeapot,
+		"/app/invite/accept":        http.StatusTeapot,
+		"/app/invitee":              http.StatusSeeOther,
+		"/app/console/o/acme":       http.StatusSeeOther,
+	} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req = req.WithContext(session.PrincipalInto(req.Context(), newPerson()))
+		rec := httptest.NewRecorder()
+		gate.ServeHTTP(rec, req)
+		assert.Equal(t, want, rec.Code, path)
+		assert.NotContains(t, rec.Header().Get("Location"), "raw-token-123", "the token is never copied into another URL")
+	}
+}
+
 var testSecret = []byte("0123456789abcdef0123456789abcdef")
 
 type noRefresh struct{}

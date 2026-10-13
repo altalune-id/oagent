@@ -19,6 +19,7 @@ import (
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/user"
@@ -50,6 +51,7 @@ type Services struct {
 	MailQueue       mailqueue.Store
 	Users           *user.Service
 	Members         *member.Service
+	Invites         *invite.Service
 	Sessions        session.Store
 	Auth            *auth.Service
 	Install         *install.Service
@@ -136,6 +138,18 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Caps:         caps,
 	}
 	members.WithEffects(memberEffects(cfg, svcs)).WithDirectory(memberDirectory{users: users, orgs: orgs})
+	svcs.Invites = invite.NewService(invite.Deps{
+		Store:      invite.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix),
+		Pool:       k.Pool,
+		Members:    members,
+		Mail:       svcs.MailQueue,
+		Users:      users,
+		Orgs:       memberOrgs{orgs: orgs},
+		People:     memberPeople{users: users},
+		From:       cfg.Mail.From,
+		BaseURL:    publicBase(cfg.HTTP),
+		Unexpected: k.Reporter.Unexpected,
+	})
 	return svcs
 }
 
@@ -198,6 +212,14 @@ func (o memberOrgs) Name(ctx context.Context, orgID uuid.UUID) (string, error) {
 		return "", err
 	}
 	return got.Name, nil
+}
+
+func (o memberOrgs) Slug(ctx context.Context, orgID uuid.UUID) (string, error) {
+	got, err := o.orgs.Get(ctx, orgID)
+	if err != nil {
+		return "", err
+	}
+	return got.Slug, nil
 }
 
 // webhookServiceOpts allows http:// endpoint URLs outside production (dev/self-hosted).

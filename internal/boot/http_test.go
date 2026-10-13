@@ -154,3 +154,10 @@ func TestConsentData(t *testing.T) {
 	cfg.Compliance.PrivacyURL = "https://legal.example.com/privacy"
 	assert.Equal(t, layout.ConsentData{PrivacyURL: "https://legal.example.com/privacy", Required: true}, consentData(cfg))
 }
+
+func TestBuildRoutes_InviteOnlyWithLocalLogin(t *testing.T) {
+	cfg := config.Config{}
+	assert.Equal(t, http.StatusNotFound, serveRoutes(cfg, nil, http.MethodGet, "/invite").Code)
+	svcs := &Services{Caps: capabilities.Capabilities{LocalLogin: true}, Auth: &auth.Service{}}
+	assert.Equal(t, http.StatusBadRequest, serveRoutes(cfg, svcs, http.MethodGet, "/invite").Code, "no invite cookie")
+}

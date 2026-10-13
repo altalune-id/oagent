@@ -48,6 +48,7 @@ func WelcomeGate(basePath string, on bool, termsUpdated time.Time) func(http.Han
 	welcome := layout.Path(basePath, "/welcome")
 	skipped := []string{
 		welcome, layout.Path(basePath, "/login"), layout.Path(basePath, "/logout"), layout.Path(basePath, "/install"),
+		layout.Path(basePath, "/invite"),
 		layout.Path(basePath, "/terms"), layout.Path(basePath, "/privacy"), layout.Path(basePath, "/static"),
 		layout.Path(basePath, "/api"), layout.Path(basePath, "/mcp"), "/healthz", "/readyz",
 	}

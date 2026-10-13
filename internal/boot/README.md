@@ -59,7 +59,7 @@ flowchart TD
 
 - **Reach:** after the permission check, each `controlplane.go` checks that the caller reaches the org, project or resource (`kernel/authz.Reach*`). Out of reach answers 404.
 - **MCP:** tools are generated from the same Connect services, so MCP and `/api` share one handler per RPC.
-- **Credentials required:** `requireCredentials` (`http.go`) makes `/api` and `/mcp` answer 401 and the console redirect to `/login?return_to=…` (local) or send a Basic challenge (basic mode) when no credential is sent. `/login`, `/logout`, `/install`, `/welcome`, `/terms`, `/privacy`, `/static`, `/healthz` and `/readyz` stay open. A request with no Principal reaches nothing (`kernel/authz`).
+- **Credentials required:** `requireCredentials` (`http.go`) makes `/api` and `/mcp` answer 401 and the console redirect to `/login?return_to=…` (local) or send a Basic challenge (basic mode) when no credential is sent. `/login`, `/logout`, `/install`, `/invite`, `/welcome`, `/terms`, `/privacy`, `/static`, `/healthz` and `/readyz` stay open. A request with no Principal reaches nothing (`kernel/authz`).
 - **Permissions:** `internal/permission` is the one table of the permissions each RPC needs (all of them; a missing or empty entry is denied). The `/api` interceptor reads it, and every generated MCP tool takes its RPC's entry (`permission.For` in `mcp.go`).
 - **MCP scopes:** `tools/list` and `tools/call` both check every one of the tool's permissions against those the caller holds (`mcpinternal.ScopesFromContext`). No Principal holds none.
 - **stdio:** `oagent mcp` runs as `session.System()`, an operator, never as "no Principal".
@@ -70,6 +70,7 @@ flowchart TD
 | Domain | Service deps (ports) | Connect + CLI | MCP tools | Web routes |
 |---|---|---|---|---|
 | `org` | — | ✓ | ✓ | — |
+| `org/invite` | member (actor, add from invite), user (create, by email, accept terms), org (name, slug), user (contact), mail queue; auth (sign-in, sessions) on the web side | — | — | `/invite/{token}`, `/invite`, `POST /invite/join`, `/invite/accept`, `/invite/switch` (local login only) |
 | `org/member` | effects: sessions, apikey (personal keys), user (contact), org (name), mail queue | ✓ (role changes and removal: people and the operator only; leave: the signed-in person); CLI `member add` (operator, boots the `App`) | `member_list` | — |
 | `project` | — | ✓ | ✓ | — |
 | `agent` | webhook (publisher), project (org of project) | ✓ | ✓ | — |
@@ -96,7 +97,8 @@ Connect client lives in `internal/apiclient`, which imports no domain.
 `buildServices` (`services.go`) builds each service once and passes it to
 whoever needs it. An arrow means "depends on". Small adapters in `services.go`
 (`projectIDs`, `projectOrgs`, `ownerRoles`, `refResolver`, `memberPeople`, `memberDirectory`,
-`memberOrgs`) fit one service to another domain's port.
+`memberOrgs`) fit one service to another domain's port; `memberPeople` and `memberOrgs`
+(name and slug) serve `invite` too.
 
 ```mermaid
 flowchart TD
@@ -104,6 +106,7 @@ flowchart TD
         install
         legal
         auth
+        invite
     end
     subgraph Ops
         health
@@ -127,6 +130,8 @@ flowchart TD
     legal --> auth
     install --> user & org & member & project
     legal --> user
+    invite --> member & user & org & mailqueue
+    invite -. web .-> auth & sessions
     auth --> user & member & org & project & sessions
 
     agent --> webhook

@@ -7,6 +7,7 @@ import (
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/user"
+	"altalune.id/oagent/password"
 )
 
 // Reason is why an invite can't be used, sent to clients as meta.reason.
@@ -113,5 +114,5 @@ func IsPendingError(err error) bool {
 func IsExpectedError(err error) bool {
 	return IsNotUsableError(err) || IsEmailMismatchError(err) || IsDraftExpiredError(err) ||
 		IsNotFoundError(err) || IsPendingError(err) ||
-		member.IsExpectedError(err) || user.IsExpectedError(err) || authz.IsForbiddenError(err)
+		member.IsExpectedError(err) || user.IsExpectedError(err) || password.IsPolicyError(err) || authz.IsForbiddenError(err)
 }

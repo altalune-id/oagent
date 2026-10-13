@@ -21,6 +21,7 @@ type Deps struct {
 	Pool       db.Pool
 	Members    Members
 	Mail       Mail
+	Users      Users
 	Orgs       Orgs
 	People     People
 	From       string
@@ -34,6 +35,7 @@ type Service struct {
 	pool       db.Pool
 	members    Members
 	mail       Mail
+	users      Users
 	orgs       Orgs
 	people     People
 	from       string
@@ -46,7 +48,7 @@ type Service struct {
 // NewService builds a Service from d.
 func NewService(d Deps) *Service {
 	return &Service{
-		store: d.Store, pool: d.Pool, members: d.Members, mail: d.Mail,
+		store: d.Store, pool: d.Pool, members: d.Members, mail: d.Mail, users: d.Users,
 		orgs: d.Orgs, people: d.People, from: d.From, baseURL: strings.TrimSuffix(d.BaseURL, "/"), unexpected: d.Unexpected, now: time.Now,
 	}
 }
@@ -212,6 +214,48 @@ func (s *Service) Accept(ctx context.Context, inviteID, userID uuid.UUID) (Outco
 		return 0, s.errOrReport(ctx, "invite: accept", err)
 	}
 	return out, nil
+}
+
+// Join creates the account the invite inviteID names, records the terms when acceptTerms, and accepts the invite, in one transaction.
+func (s *Service) Join(ctx context.Context, inviteID uuid.UUID, name, password string, acceptTerms bool) (uuid.UUID, error) {
+	var userID uuid.UUID
+	err := db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
+		inv, err := s.store.ByID(ctx, inviteID)
+		if IsNotFoundError(err) {
+			return &NotUsableError{Reason: ReasonNotFound}
+		}
+		if err != nil {
+			return err
+		}
+		if err := inv.Usable(s.now()); err != nil {
+			return err
+		}
+		// SECURITY: never a second user for an email.
+		if _, err := s.users.ByEmail(ctx, inv.Email); !user.IsNotFoundError(err) {
+			if err == nil {
+				return &user.AlreadyExistsError{Email: inv.Email}
+			}
+			return err
+		}
+		u, err := s.users.Create(ctx, user.CreateRequest{Email: inv.Email, Name: name, Password: password})
+		if err != nil {
+			return err
+		}
+		if acceptTerms {
+			if _, err := s.users.AcceptTerms(ctx, u.ID); err != nil {
+				return err
+			}
+		}
+		if _, err := s.accept(ctx, inv.ID, u.ID); err != nil {
+			return err
+		}
+		userID = u.ID
+		return nil
+	})
+	if err != nil {
+		return uuid.Nil, s.errOrReport(ctx, "invite: join", err)
+	}
+	return userID, nil
 }
 
 // SECURITY: MarkAccepted's conditional UPDATE is the only gate on use; never check, then write.
