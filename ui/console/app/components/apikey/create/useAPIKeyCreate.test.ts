@@ -9,7 +9,7 @@ import { useAPIKeysStore } from '~/stores/apiKeys'
 import { useAPIKeyCreate } from './useAPIKeyCreate'
 
 const now = new Date('2026-10-01T00:00:00Z')
-const keyPB = create(APIKeySchema, { id: 'k1', kind: 'org', name: 'CI' })
+const keyPB = create(APIKeySchema, { secretHint: 'abcd', kind: 'org', name: 'CI' })
 
 describe('useAPIKeyCreate', () => {
   let createAPIKey: ReturnType<typeof vi.fn>
@@ -31,13 +31,13 @@ describe('useAPIKeyCreate', () => {
   }
 
   it('resets the form when shown', () => {
-    const form = useAPIKeyCreate('o1')
+    const form = useAPIKeyCreate('V1StGXR8Z5jdHi6BmyT2a')
     form.name.value = 'old'
     form.kind.value = 'project'
     form.scopes.value = ['agent:read']
     form.allProjects.value = false
-    form.projectId.value = 'p1'
-    form.projectIds.value = ['p1']
+    form.projectId.value = 'x6LH9WPWiktLwCBKHy4oF'
+    form.projectIds.value = ['x6LH9WPWiktLwCBKHy4oF']
     form.expiresInHours.value = 1
     form.plaintext.value = 'x'
     form.show()
@@ -47,16 +47,16 @@ describe('useAPIKeyCreate', () => {
   })
 
   it('creates an org key for all projects and shows the secret', async () => {
-    const form = useAPIKeyCreate('o1')
+    const form = useAPIKeyCreate('V1StGXR8Z5jdHi6BmyT2a')
     form.show()
     form.name.value = ' CI '
     form.scopes.value = ['agent:read']
-    form.projectIds.value = ['p9']
+    form.projectIds.value = ['IZUlSlpK8LF8Gw66EKS-m']
     await form.submit()
     const req = request()
-    expect(req).toMatchObject({ orgId: 'o1', kind: 'org', name: 'CI', scopes: ['agent:read'], projectId: '', allProjects: true, projectIds: [] })
+    expect(req).toMatchObject({ orgId: 'V1StGXR8Z5jdHi6BmyT2a', kind: 'org', name: 'CI', scopes: ['agent:read'], projectId: '', allProjects: true, projectIds: [] })
     expect(timestampDate(req.expiresAt)).toEqual(new Date(now.getTime() + 720 * 3600_000))
-    expect(useAPIKeysStore().items.map(k => k.id)).toEqual(['k1'])
+    expect(useAPIKeysStore().items.map(k => k.secretHint)).toEqual(['abcd'])
     expect(form.plaintext.value).toBe('oak_secret')
     form.hide()
     expect(form.open.value).toBe(false)
@@ -64,28 +64,28 @@ describe('useAPIKeyCreate', () => {
   })
 
   it('sends chosen projects for an org key limited to some projects', async () => {
-    const form = useAPIKeyCreate('o1')
+    const form = useAPIKeyCreate('V1StGXR8Z5jdHi6BmyT2a')
     form.show()
     form.name.value = 'CI'
     form.allProjects.value = false
-    form.projectIds.value = ['p1', 'p2']
+    form.projectIds.value = ['x6LH9WPWiktLwCBKHy4oF', 'KdrF3t1FHtooBPmLgj4sy']
     form.expiresInHours.value = 1
     await form.submit()
-    expect(request()).toMatchObject({ allProjects: false, projectIds: ['p1', 'p2'], projectId: '' })
+    expect(request()).toMatchObject({ allProjects: false, projectIds: ['x6LH9WPWiktLwCBKHy4oF', 'KdrF3t1FHtooBPmLgj4sy'], projectId: '' })
     expect(timestampDate(request().expiresAt)).toEqual(new Date(now.getTime() + 3600_000))
   })
 
   it('sends only the project for a project key', async () => {
     createAPIKey.mockResolvedValue({ plaintext: 'oak_p' })
-    const form = useAPIKeyCreate('o1')
+    const form = useAPIKeyCreate('V1StGXR8Z5jdHi6BmyT2a')
     form.show()
     form.name.value = 'Deploy'
     form.kind.value = 'project'
     form.allProjects.value = false
-    form.projectId.value = 'p1'
-    form.projectIds.value = ['p2']
+    form.projectId.value = 'x6LH9WPWiktLwCBKHy4oF'
+    form.projectIds.value = ['KdrF3t1FHtooBPmLgj4sy']
     await form.submit()
-    expect(request()).toMatchObject({ kind: 'project', projectId: 'p1', allProjects: false, projectIds: [] })
+    expect(request()).toMatchObject({ kind: 'project', projectId: 'x6LH9WPWiktLwCBKHy4oF', allProjects: false, projectIds: [] })
     expect(useAPIKeysStore().items).toEqual([])
     expect(form.plaintext.value).toBe('oak_p')
   })
@@ -93,7 +93,7 @@ describe('useAPIKeyCreate', () => {
   it('does not submit a blank name or while busy', async () => {
     const pending = deferred<object>()
     createAPIKey.mockReturnValue(pending.promise)
-    const form = useAPIKeyCreate('o1')
+    const form = useAPIKeyCreate('V1StGXR8Z5jdHi6BmyT2a')
     form.show()
     form.name.value = ' '
     await form.submit()
@@ -111,7 +111,7 @@ describe('useAPIKeyCreate', () => {
   it('shows a Connect error with its reference, then the fallback for a plain error', async () => {
     setKnownKeys('apperror.KEY001')
     createAPIKey.mockRejectedValueOnce(connectError('KEY001')).mockRejectedValueOnce(new Error('boom'))
-    const form = useAPIKeyCreate('o1')
+    const form = useAPIKeyCreate('V1StGXR8Z5jdHi6BmyT2a')
     form.show()
     form.name.value = 'CI'
     await form.submit()

@@ -254,7 +254,7 @@ func printWhoami(cmd *cobra.Command, w *authv1.WhoamiResponse) error {
 			"user_id":         w.GetUserId(),
 			"email":           w.GetEmail(),
 			"name":            w.GetName(),
-			"key_id":          w.GetKeyId(),
+			"key_hint":        w.GetKeyHint(),
 			"owner_id":        w.GetOwnerId(),
 			"active_org_id":   w.GetActiveOrgId(),
 			"active_org_slug": w.GetActiveOrgSlug(),
@@ -263,8 +263,8 @@ func printWhoami(cmd *cobra.Command, w *authv1.WhoamiResponse) error {
 		})
 	}
 	rows := [][]string{{"source", w.GetSource()}}
-	if w.GetKeyId() != "" {
-		rows = append(rows, []string{"key", w.GetKeyId()})
+	if w.GetKeyHint() != "" {
+		rows = append(rows, []string{"key", "…" + w.GetKeyHint()})
 	}
 	if w.GetEmail() != "" {
 		rows = append(rows, []string{"email", w.GetEmail()})

@@ -4,10 +4,10 @@ import type { MemberListRow } from './MemberList.vue'
 import { canRemove, roleOptions } from './roles'
 
 const people = [
-  { userId: 'u1', email: 'ann@example.com', name: 'Ann Lee', role: 'owner', initials: 'AL' },
-  { userId: 'u2', email: 'budi@example.com', name: 'Budi Santoso', role: 'owner', initials: 'BS' },
-  { userId: 'u3', email: 'cy@example.com', name: 'Cy', role: 'admin', initials: 'C' },
-  { userId: 'u4', email: 'dewi@example.com', name: '', role: 'member', initials: 'D' },
+  { userId: 'FtGrdYskgDVDf8aoKsLdn', email: 'ann@example.com', name: 'Ann Lee', role: 'owner', initials: 'AL' },
+  { userId: '5ieWO8_t8V9AC9GBMLHfx', email: 'budi@example.com', name: 'Budi Santoso', role: 'owner', initials: 'BS' },
+  { userId: 'izdsizt2UHJ1Cmr3uN0VP', email: 'cy@example.com', name: 'Cy', role: 'admin', initials: 'C' },
+  { userId: 'lADpdB8fUNOlUI9K_iBC-', email: 'dewi@example.com', name: '', role: 'member', initials: 'D' },
 ]
 
 function rowsFor(viewerId: string): MemberListRow[] {
@@ -18,7 +18,7 @@ function rowsFor(viewerId: string): MemberListRow[] {
 const meta = {
   title: 'Members/MemberList',
   component: MemberList,
-  args: { rows: rowsFor('u1'), canLeave: true },
+  args: { rows: rowsFor('FtGrdYskgDVDf8aoKsLdn'), canLeave: true },
 } satisfies Meta<typeof MemberList>
 
 export default meta
@@ -32,9 +32,9 @@ const render: Story['render'] = args => ({
 
 export const OwnerView: Story = { render }
 
-export const AdminView: Story = { args: { rows: rowsFor('u3') }, render }
+export const AdminView: Story = { args: { rows: rowsFor('izdsizt2UHJ1Cmr3uN0VP') }, render }
 
-export const MemberView: Story = { args: { rows: rowsFor('u4') }, render }
+export const MemberView: Story = { args: { rows: rowsFor('lADpdB8fUNOlUI9K_iBC-') }, render }
 
 export const ConfirmRemove: Story = {
   args: { confirming: { kind: 'remove', name: 'Cy' }, confirmMessage: 'Remove Cy from this organization? They lose access at once. They are signed out of the console and their personal API keys for this organization are revoked.' },

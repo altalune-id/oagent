@@ -63,10 +63,10 @@ components:
         avatarUrl:
           type: string
           title: avatar_url
-        keyId:
+        keyHint:
           type: string
-          title: key_id
-          description: Set for API keys.
+          title: key_hint
+          description: 'Set for API keys: the last 4 characters of the key''s secret.'
         ownerId:
           type: string
           title: owner_id
@@ -91,6 +91,7 @@ components:
           title: operator
       title: WhoamiResponse
       additionalProperties: false
+      description: Every id is a public id.
     connect-protocol-version:
       type: number
       title: Connect-Protocol-Version

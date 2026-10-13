@@ -187,7 +187,6 @@ func isJSON(cmd *cobra.Command) bool {
 func agentMap(a *agentv1.Agent) map[string]any {
 	return map[string]any{
 		"id":          a.GetId(),
-		"publicId":    a.GetPublicId(),
 		"orgId":       a.GetOrgId(),
 		"projectId":   a.GetProjectId(),
 		"slug":        a.GetSlug(),

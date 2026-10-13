@@ -200,6 +200,8 @@ export const LeaveOrgResponseSchema: GenMessage<LeaveOrgResponse> = /*@__PURE__*
   messageDesc(file_member_v1_member, 8);
 
 /**
+ * MemberService manages an organization's members, named by the user's public id.
+ *
  * @generated from service member.v1.MemberService
  */
 export const MemberService: GenService<{

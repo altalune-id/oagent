@@ -30,6 +30,7 @@ func System() Principal {
 type Principal struct {
 	UserID          uuid.UUID
 	KeyID           uuid.UUID
+	KeyHint         string
 	OwnerID         uuid.UUID
 	Email           string
 	Name            string

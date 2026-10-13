@@ -7,7 +7,7 @@ const scopes = [
   { name: 'agent:write', label: 'Write agents' },
   { name: 'webhook:read', label: 'Read webhooks' },
 ]
-const projects = [{ id: 'p1', name: 'Default' }, { id: 'p2', name: 'Support' }]
+const projects = [{ id: 'x6LH9WPWiktLwCBKHy4oF', name: 'Default' }, { id: 'KdrF3t1FHtooBPmLgj4sy', name: 'Support' }]
 
 const meta = {
   title: 'API keys/PersonalKeys',
@@ -29,8 +29,8 @@ export const Empty: Story = { render }
 export const List: Story = {
   args: {
     keys: [
-      { id: 'k1', name: 'laptop', scopes: ['agent:read', 'agent:write'], secretHint: 'a1b2' },
-      { id: 'k2', name: 'old ci', scopes: ['agent:read'], secretHint: 'c3d4', revokedAt: new Date('2026-10-01') },
+      { rowKey: 'key-1', name: 'laptop', scopes: ['agent:read', 'agent:write'], secretHint: 'a1b2' },
+      { rowKey: 'key-2', name: 'old ci', scopes: ['agent:read'], secretHint: 'c3d4', revokedAt: new Date('2026-10-01') },
     ],
   },
   render,
@@ -38,7 +38,7 @@ export const List: Story = {
 
 export const JustCreated: Story = {
   args: {
-    keys: [{ id: 'k1', name: 'laptop', scopes: ['agent:read'], secretHint: 'uAuE' }],
+    keys: [{ rowKey: 'key-1', name: 'laptop', scopes: ['agent:read'], secretHint: 'uAuE' }],
     created: {
       plaintext: 'oagent_Q0QeIWMvn5Tf84kAq2gaFarjbHX2PQA__J-NsdUqAuE',
       snippet: mcpSnippet('oagent', 'https://oagent.example.com/mcp', 'oagent_Q0QeIWMvn5Tf84kAq2gaFarjbHX2PQA__J-NsdUqAuE'),

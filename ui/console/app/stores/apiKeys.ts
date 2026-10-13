@@ -4,7 +4,7 @@ import type { ShownError } from '~/lib/apperror/message'
 import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export interface APIKey {
-  id: string
+  rowKey: string
   kind: string
   name: string
   scopes: string[]
@@ -16,9 +16,11 @@ export interface APIKey {
   revokedAt?: Date
 }
 
+let rows = 0
+
 export function toAPIKey(k: APIKeyPB): APIKey {
   return {
-    id: k.id,
+    rowKey: `key-${++rows}`,
     kind: k.kind,
     name: k.name,
     scopes: [...k.scopes],
@@ -43,13 +45,17 @@ export const useAPIKeysStore = defineStore('apiKeys', () => {
   let inflightFor = ''
   let latest = 0
 
-  function add(key: APIKey) {
-    items.value = [key, ...items.value.filter(k => k.id !== key.id)]
+  function isLive(k: APIKey, hint: string) {
+    return !k.revokedAt && k.secretHint === hint
   }
 
-  function markRevoked(id: string) {
+  function add(key: APIKey) {
+    items.value = [key, ...items.value.filter(k => !isLive(k, key.secretHint))]
+  }
+
+  function markRevoked(hint: string) {
     const at = new Date()
-    items.value = items.value.map(k => (k.id === id ? { ...k, revokedAt: at } : k))
+    items.value = items.value.map(k => (isLive(k, hint) ? { ...k, revokedAt: at } : k))
   }
 
   async function load(orgId: string) {

@@ -79,8 +79,8 @@ func newGetCmd(clientFn ClientFn) *cobra.Command {
 			if isJSON(cmd) {
 				return render.JSON(cmd.OutOrStdout(), projectMap(p))
 			}
-			return render.Table(cmd.OutOrStdout(), []string{"ID", "ORG_ID", "SLUG", "NAME", "PUBLIC_ID"},
-				[][]string{{p.GetId(), p.GetOrgId(), p.GetSlug(), p.GetName(), p.GetPublicId()}})
+			return render.Table(cmd.OutOrStdout(), []string{"ID", "ORG_ID", "SLUG", "NAME"},
+				[][]string{{p.GetId(), p.GetOrgId(), p.GetSlug(), p.GetName()}})
 		},
 	}
 }
@@ -110,9 +110,9 @@ func newListCmd(clientFn ClientFn) *cobra.Command {
 			}
 			rows := make([][]string, 0, len(projects))
 			for _, p := range projects {
-				rows = append(rows, []string{p.GetId(), p.GetOrgId(), p.GetSlug(), p.GetName(), p.GetPublicId()})
+				rows = append(rows, []string{p.GetId(), p.GetOrgId(), p.GetSlug(), p.GetName()})
 			}
-			return render.Table(cmd.OutOrStdout(), []string{"ID", "ORG_ID", "SLUG", "NAME", "PUBLIC_ID"}, rows)
+			return render.Table(cmd.OutOrStdout(), []string{"ID", "ORG_ID", "SLUG", "NAME"}, rows)
 		},
 	}
 	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
@@ -131,10 +131,9 @@ func isJSON(cmd *cobra.Command) bool {
 
 func projectMap(p *projectv1.Project) map[string]any {
 	return map[string]any{
-		"id":       p.GetId(),
-		"publicId": p.GetPublicId(),
-		"orgId":    p.GetOrgId(),
-		"slug":     p.GetSlug(),
-		"name":     p.GetName(),
+		"id":    p.GetId(),
+		"orgId": p.GetOrgId(),
+		"slug":  p.GetSlug(),
+		"name":  p.GetName(),
 	}
 }

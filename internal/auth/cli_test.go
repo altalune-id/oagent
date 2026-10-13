@@ -423,7 +423,7 @@ func TestWhoami_Errors(t *testing.T) {
 }
 
 var fullWhoami = &authv1.WhoamiResponse{
-	Source: "apikey", UserId: "u-1", Email: "ada@example.com", Name: "Ada", KeyId: "k-1", OwnerId: "u-1",
+	Source: "apikey", UserId: "u-1", Email: "ada@example.com", Name: "Ada", KeyHint: "a1b2", OwnerId: "u-1",
 	ActiveOrgId: "o-1", ActiveOrgSlug: "acme", Permissions: []string{"agent:read", "agent:write"}, Operator: true,
 }
 
@@ -437,7 +437,7 @@ func TestWhoami_Text(t *testing.T) {
 			name: "every field",
 			resp: fullWhoami,
 			want: "source:      apikey\n" +
-				"key:         k-1\n" +
+				"key:         …a1b2\n" +
 				"email:       ada@example.com\n" +
 				"name:        Ada\n" +
 				"org:         acme\n" +
@@ -479,7 +479,7 @@ func TestWhoami_JSON(t *testing.T) {
 			require.NoError(t, json.Unmarshal([]byte(out), &got))
 			assert.Equal(t, map[string]any{
 				"source": "apikey", "user_id": "u-1", "email": "ada@example.com", "name": "Ada",
-				"key_id": "k-1", "owner_id": "u-1", "active_org_id": "o-1", "active_org_slug": "acme",
+				"key_hint": "a1b2", "owner_id": "u-1", "active_org_id": "o-1", "active_org_slug": "acme",
 				"permissions": []any{"agent:read", "agent:write"}, "operator": true,
 			}, got)
 		})

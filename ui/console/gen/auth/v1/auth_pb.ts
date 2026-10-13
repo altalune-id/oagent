@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file auth/v1/auth.proto.
  */
 export const file_auth_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChJhdXRoL3YxL2F1dGgucHJvdG8SB2F1dGgudjEiDwoNV2hvYW1pUmVxdWVzdCL2AQoOV2hvYW1pUmVzcG9uc2USDgoGc291cmNlGAEgASgJEg8KB3VzZXJfaWQYAiABKAkSDQoFZW1haWwYAyABKAkSDAoEbmFtZRgEIAEoCRISCgphdmF0YXJfdXJsGAUgASgJEg4KBmtleV9pZBgGIAEoCRIQCghvd25lcl9pZBgHIAEoCRIVCg1hY3RpdmVfb3JnX2lkGAggASgJEhcKD2FjdGl2ZV9vcmdfc2x1ZxgJIAEoCRIZChFhY3RpdmVfcHJvamVjdF9pZBgKIAEoCRITCgtwZXJtaXNzaW9ucxgLIAMoCRIQCghvcGVyYXRvchgMIAEoCDKlAQoLQXV0aFNlcnZpY2USlQEKBldob2FtaRIWLmF1dGgudjEuV2hvYW1pUmVxdWVzdBoXLmF1dGgudjEuV2hvYW1pUmVzcG9uc2UiWsrzGFYKC2F1dGhfd2hvYW1pEkJXaG8gdGhpcyBNQ1AgY2xpZW50IGFjdHMgYXM6IHVzZXIgb3Iga2V5LCBhY3RpdmUgb3JnLCBwZXJtaXNzaW9ucy4qA2FwcEJ/Cgtjb20uYXV0aC52MUIJQXV0aFByb3RvUAFaKGFsdGFsdW5lLmlkL29hZ2VudC9nZW4vZ28vYXV0aC92MTthdXRodjGiAgNBWFiqAgdBdXRoLlYxygIHQXV0aFxWMeICE0F1dGhcVjFcR1BCTWV0YWRhdGHqAghBdXRoOjpWMWIGcHJvdG8z", [file_mcp_v1_annotations]);
+  fileDesc("ChJhdXRoL3YxL2F1dGgucHJvdG8SB2F1dGgudjEiDwoNV2hvYW1pUmVxdWVzdCKGAgoOV2hvYW1pUmVzcG9uc2USDgoGc291cmNlGAEgASgJEg8KB3VzZXJfaWQYAiABKAkSDQoFZW1haWwYAyABKAkSDAoEbmFtZRgEIAEoCRISCgphdmF0YXJfdXJsGAUgASgJEhAKCGtleV9oaW50GA0gASgJEhAKCG93bmVyX2lkGAcgASgJEhUKDWFjdGl2ZV9vcmdfaWQYCCABKAkSFwoPYWN0aXZlX29yZ19zbHVnGAkgASgJEhkKEWFjdGl2ZV9wcm9qZWN0X2lkGAogASgJEhMKC3Blcm1pc3Npb25zGAsgAygJEhAKCG9wZXJhdG9yGAwgASgISgQIBhAHUgZrZXlfaWQypQEKC0F1dGhTZXJ2aWNlEpUBCgZXaG9hbWkSFi5hdXRoLnYxLldob2FtaVJlcXVlc3QaFy5hdXRoLnYxLldob2FtaVJlc3BvbnNlIlrK8xhWCgthdXRoX3dob2FtaRJCV2hvIHRoaXMgTUNQIGNsaWVudCBhY3RzIGFzOiB1c2VyIG9yIGtleSwgYWN0aXZlIG9yZywgcGVybWlzc2lvbnMuKgNhcHBCfwoLY29tLmF1dGgudjFCCUF1dGhQcm90b1ABWihhbHRhbHVuZS5pZC9vYWdlbnQvZ2VuL2dvL2F1dGgvdjE7YXV0aHYxogIDQVhYqgIHQXV0aC5WMcoCB0F1dGhcVjHiAhNBdXRoXFYxXEdQQk1ldGFkYXRh6gIIQXV0aDo6VjFiBnByb3RvMw", [file_mcp_v1_annotations]);
 
 /**
  * @generated from message auth.v1.WhoamiRequest
@@ -27,6 +27,8 @@ export const WhoamiRequestSchema: GenMessage<WhoamiRequest> = /*@__PURE__*/
   messageDesc(file_auth_v1_auth, 0);
 
 /**
+ * Every id is a public id.
+ *
  * @generated from message auth.v1.WhoamiResponse
  */
 export type WhoamiResponse = Message<"auth.v1.WhoamiResponse"> & {
@@ -58,11 +60,11 @@ export type WhoamiResponse = Message<"auth.v1.WhoamiResponse"> & {
   avatarUrl: string;
 
   /**
-   * Set for API keys.
+   * Set for API keys: the last 4 characters of the key's secret.
    *
-   * @generated from field: string key_id = 6;
+   * @generated from field: string key_hint = 13;
    */
-  keyId: string;
+  keyHint: string;
 
   /**
    * Personal keys: the person the key acts for.

@@ -6,10 +6,10 @@ import { useOrgsStore } from '~/stores/orgs'
 import { usePinnedStore } from '~/stores/pinned'
 import { useLanding } from './useLanding'
 
-const acme = { id: 'o1', publicId: 'org_1', slug: 'acme', name: 'Acme' }
-const beta = { id: 'o2', publicId: 'org_2', slug: 'beta', name: 'Beta' }
-const web = { id: 'p1', publicId: 'prj_1', orgId: 'o1', slug: 'web', name: 'Web' }
-const api = { id: 'p2', publicId: 'prj_2', orgId: 'o1', slug: 'api', name: 'API' }
+const acme = { id: 'V1StGXR8Z5jdHi6BmyT2a', slug: 'acme', name: 'Acme' }
+const beta = { id: 'YeDxg2kMYznPJIG1wVmij', slug: 'beta', name: 'Beta' }
+const web = { id: 'x6LH9WPWiktLwCBKHy4oF', orgId: 'V1StGXR8Z5jdHi6BmyT2a', slug: 'web', name: 'Web' }
+const api = { id: 'KdrF3t1FHtooBPmLgj4sy', orgId: 'V1StGXR8Z5jdHi6BmyT2a', slug: 'api', name: 'API' }
 
 describe('useLanding', () => {
   let listProjects: ReturnType<typeof vi.fn>
@@ -35,7 +35,7 @@ describe('useLanding', () => {
   it('lands on the first project of the first org', async () => {
     withOrgs(acme, beta)
     expect(await useLanding().resolve()).toBe('/o/acme/projects/web')
-    expect(listProjects).toHaveBeenCalledWith({ orgId: 'o1' })
+    expect(listProjects).toHaveBeenCalledWith({ orgId: 'V1StGXR8Z5jdHi6BmyT2a' })
   })
 
   it('lands on the pinned org and project', async () => {

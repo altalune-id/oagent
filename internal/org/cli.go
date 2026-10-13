@@ -74,8 +74,8 @@ func newGetCmd(clientFn ClientFn) *cobra.Command {
 			if isJSON(cmd) {
 				return render.JSON(cmd.OutOrStdout(), orgMap(o))
 			}
-			return render.Table(cmd.OutOrStdout(), []string{"ID", "SLUG", "NAME", "PUBLIC_ID"},
-				[][]string{{o.GetId(), o.GetSlug(), o.GetName(), o.GetPublicId()}})
+			return render.Table(cmd.OutOrStdout(), []string{"ID", "SLUG", "NAME"},
+				[][]string{{o.GetId(), o.GetSlug(), o.GetName()}})
 		},
 	}
 }
@@ -104,9 +104,9 @@ func newListCmd(clientFn ClientFn) *cobra.Command {
 			}
 			rows := make([][]string, 0, len(orgs))
 			for _, o := range orgs {
-				rows = append(rows, []string{o.GetId(), o.GetSlug(), o.GetName(), o.GetPublicId()})
+				rows = append(rows, []string{o.GetId(), o.GetSlug(), o.GetName()})
 			}
-			return render.Table(cmd.OutOrStdout(), []string{"ID", "SLUG", "NAME", "PUBLIC_ID"}, rows)
+			return render.Table(cmd.OutOrStdout(), []string{"ID", "SLUG", "NAME"}, rows)
 		},
 	}
 }
@@ -122,9 +122,8 @@ func isJSON(cmd *cobra.Command) bool {
 
 func orgMap(o *orgv1.Org) map[string]any {
 	return map[string]any{
-		"id":       o.GetId(),
-		"publicId": o.GetPublicId(),
-		"slug":     o.GetSlug(),
-		"name":     o.GetName(),
+		"id":   o.GetId(),
+		"slug": o.GetSlug(),
+		"name": o.GetName(),
 	}
 }

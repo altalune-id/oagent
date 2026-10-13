@@ -39,6 +39,18 @@ type OrgGetter interface {
 	Get(ctx context.Context, id uuid.UUID) (*org.Org, error)
 }
 
+// ProjectGetter loads a project by id.
+type ProjectGetter interface {
+	Get(ctx context.Context, id uuid.UUID) (*project.Project, error)
+}
+
+// PublicIDs turns the ids a Principal holds into the public ids a surface shows.
+type PublicIDs interface {
+	UserPublicID(ctx context.Context, id uuid.UUID) (string, error)
+	OrgPublicID(ctx context.Context, id uuid.UUID) (string, error)
+	ProjectPublicID(ctx context.Context, id uuid.UUID) (string, error)
+}
+
 // UserGetter loads a user by id.
 type UserGetter interface {
 	ByID(ctx context.Context, id uuid.UUID) (*user.User, error)

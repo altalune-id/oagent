@@ -100,6 +100,7 @@ func principalFor(k *APIKey, now time.Time) session.Principal {
 	return session.Principal{
 		UserID:          uuid.Nil,
 		KeyID:           k.ID,
+		KeyHint:         k.SecretHint,
 		Name:            k.Name,
 		Source:          session.SourceAPIKey,
 		Scopes:          mintableOnly(k.Scopes),

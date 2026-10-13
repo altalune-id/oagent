@@ -13,30 +13,35 @@ interface Case {
   method: string
   field: string
   item: (id: string) => Record<string, unknown>
-  store: () => { items: { id: string }[], loading: boolean, error: unknown, ensureLoaded: (...ids: string[]) => Promise<void> }
+  key: 'id' | 'secretHint'
+  store: () => { items: Partial<Record<'id' | 'secretHint', string>>[], loading: boolean, error: unknown, ensureLoaded: (...ids: string[]) => Promise<void> }
   ids: [string[], string[]]
 }
 
 const cases: Case[] = [
   {
     name: 'projects', client: '$projectClient', method: 'listProjects', field: 'projects',
-    item: id => ({ id, publicId: id, orgId: 'o', slug: id, name: id }),
-    store: () => useProjectsStore(), ids: [['o1'], ['o2']],
+    key: 'id',
+    item: id => ({ id, orgId: 'o', slug: id, name: id }),
+    store: () => useProjectsStore(), ids: [['V1StGXR8Z5jdHi6BmyT2a'], ['YeDxg2kMYznPJIG1wVmij']],
   },
   {
     name: 'agents', client: '$agentClient', method: 'listAgents', field: 'agents',
-    item: id => ({ id, publicId: id, projectId: 'p', slug: id, name: id, description: '' }),
-    store: () => useAgentsStore(), ids: [['p1'], ['p2']],
+    key: 'id',
+    item: id => ({ id, projectId: 'p', slug: id, name: id, description: '' }),
+    store: () => useAgentsStore(), ids: [['x6LH9WPWiktLwCBKHy4oF'], ['KdrF3t1FHtooBPmLgj4sy']],
   },
   {
     name: 'apiKeys', client: '$apiKeyClient', method: 'listAPIKeys', field: 'keys',
-    item: id => ({ id, name: id, kind: 1, scopes: [], projectIds: [] }),
-    store: () => useAPIKeysStore(), ids: [['o1'], ['o2']],
+    key: 'secretHint',
+    item: id => ({ secretHint: id, name: id, kind: 1, scopes: [], projectIds: [] }),
+    store: () => useAPIKeysStore(), ids: [['V1StGXR8Z5jdHi6BmyT2a'], ['YeDxg2kMYznPJIG1wVmij']],
   },
   {
     name: 'webhooks', client: '$webhookClient', method: 'listWebhooks', field: 'webhooks',
+    key: 'id',
     item: id => ({ id, projectId: 'p', url: 'https://x', eventTypes: [], active: true }),
-    store: () => useWebhooksStore(), ids: [['o1', 'p1'], ['o1', 'p2']],
+    store: () => useWebhooksStore(), ids: [['V1StGXR8Z5jdHi6BmyT2a', 'x6LH9WPWiktLwCBKHy4oF'], ['V1StGXR8Z5jdHi6BmyT2a', 'KdrF3t1FHtooBPmLgj4sy']],
   },
 ]
 
@@ -61,7 +66,7 @@ describe.each(cases)('$name store when the selection changes mid-load', (c) => {
     first.resolve({ [c.field]: [c.item('old')] })
     await a
 
-    expect(store.items.map(i => i.id)).toEqual(['new'])
+    expect(store.items.map(i => i[c.key])).toEqual(['new'])
     expect(store.loading).toBe(false)
   })
 
@@ -78,6 +83,6 @@ describe.each(cases)('$name store when the selection changes mid-load', (c) => {
     await a
 
     expect(store.error).toBeNull()
-    expect(store.items.map(i => i.id)).toEqual(['new'])
+    expect(store.items.map(i => i[c.key])).toEqual(['new'])
   })
 })

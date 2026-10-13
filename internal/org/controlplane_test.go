@@ -33,7 +33,7 @@ func TestOrgService_CreateOrg(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "acme", resp.Msg.GetOrg().GetSlug())
 	assert.Equal(t, "Acme", resp.Msg.GetOrg().GetName())
-	assert.NotEmpty(t, resp.Msg.GetOrg().GetPublicId())
+	assert.Len(t, resp.Msg.GetOrg().GetId(), 21)
 	assert.NotNil(t, resp.Msg.GetOrg().GetCreatedAt())
 }
 
@@ -48,23 +48,23 @@ func TestOrgService_GetOrg(t *testing.T) {
 	store := &fakes.OrgStore{Org: &org.Org{ID: uuid.New(), PublicID: "pub", Slug: "acme", Name: "Acme"}}
 	c := newOrgServiceClient(t, store)
 
-	resp, err := c.GetOrg(context.Background(), connect.NewRequest(&orgv1.GetOrgRequest{Id: store.Org.ID.String()}))
+	resp, err := c.GetOrg(context.Background(), connect.NewRequest(&orgv1.GetOrgRequest{Id: "pub"}))
 	require.NoError(t, err)
 	assert.Equal(t, "acme", resp.Msg.GetOrg().GetSlug())
-	assert.Equal(t, "pub", resp.Msg.GetOrg().GetPublicId())
+	assert.Equal(t, "pub", resp.Msg.GetOrg().GetId())
 }
 
-func TestOrgService_GetOrg_InvalidID(t *testing.T) {
-	c := newOrgServiceClient(t, &fakes.OrgStore{})
+func TestOrgService_GetOrg_UnknownID(t *testing.T) {
+	c := newOrgServiceClient(t, &fakes.OrgStore{Err: &org.NotFoundError{}})
 
-	_, err := c.GetOrg(context.Background(), connect.NewRequest(&orgv1.GetOrgRequest{Id: "not-a-uuid"}))
+	_, err := c.GetOrg(context.Background(), connect.NewRequest(&orgv1.GetOrgRequest{Id: "not-a-public-id"}))
 	assert.Error(t, err)
 }
 
 func TestOrgService_GetOrg_StoreError(t *testing.T) {
 	c := newOrgServiceClient(t, &fakes.OrgStore{Err: &org.NotFoundError{Slug: "acme"}})
 
-	_, err := c.GetOrg(context.Background(), connect.NewRequest(&orgv1.GetOrgRequest{Id: uuid.New().String()}))
+	_, err := c.GetOrg(context.Background(), connect.NewRequest(&orgv1.GetOrgRequest{Id: "pub"}))
 	assert.Error(t, err)
 }
 
@@ -80,6 +80,7 @@ func TestOrgService_ListOrgs(t *testing.T) {
 	require.Len(t, resp.Msg.GetOrgs(), 2)
 	assert.Equal(t, "acme", resp.Msg.GetOrgs()[0].GetSlug())
 	assert.Equal(t, "globex", resp.Msg.GetOrgs()[1].GetSlug())
+	assert.Equal(t, "pub1", resp.Msg.GetOrgs()[0].GetId())
 }
 
 func TestOrgService_ListOrgs_StoreError(t *testing.T) {

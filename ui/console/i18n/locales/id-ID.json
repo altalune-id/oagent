@@ -215,6 +215,7 @@
   "field.owner": "Pemilik kunci",
   "field.project_id": "ID proyek",
   "field.project_ids": "Daftar proyek",
+  "field.resource_ids": "Daftar resource",
   "field.user_id": "ID pengguna",
   "field.webhook_id": "ID webhook",
   "invites.col_email": "Email",

@@ -3,7 +3,6 @@ import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export interface Project {
   id: string
-  publicId: string
   orgId: string
   slug: string
   name: string
@@ -44,7 +43,7 @@ export const useProjectsStore = defineStore('projects', () => {
       if (mine !== latest) {
         return
       }
-      items.value = (res.projects ?? []).map(p => ({ id: p.id, publicId: p.publicId, orgId: p.orgId, slug: p.slug, name: p.name }))
+      items.value = (res.projects ?? []).map(p => ({ id: p.id, orgId: p.orgId, slug: p.slug, name: p.name }))
       loadedFor = orgId
     }
     catch (e) {

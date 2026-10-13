@@ -18,11 +18,13 @@ import (
 )
 
 func TestWebhookReach(t *testing.T) {
-	orgA, orgB, prj := uuid.New(), uuid.New(), uuid.New()
-	e := &Endpoint{ID: uuid.New(), OrgID: orgB, ProjectID: prj, URL: "https://e.com", Active: true, EventTypes: []events.Type{events.AgentCreated}}
-	cp, _, _ := controlPlane(t, &fakeStore{endpoints: []*Endpoint{e}})
+	sb := newScope()
+	sa := newScopeIn(sb.refs, uuid.New())
+	orgA, orgB, prj := sa.org, sb.org, sb.project
+	e := sb.endpoint(events.AgentCreated)
+	cp := controlPlane(t, &fakeStore{endpoints: []*Endpoint{e}}, sb)
 	ctx := session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceAPIKey, ActiveOrgID: orgA, AllProjects: true})
-	b, p, id := orgB.String(), prj.String(), e.ID.String()
+	b, p, id := sb.o, sb.p, e.PublicID
 
 	_, err := cp.CreateWebhook(ctx, connect.NewRequest(&webhookv1.CreateWebhookRequest{OrgId: b, ProjectId: p, Url: "https://x.com", EventTypes: []string{string(events.AgentCreated)}}))
 	assert.True(t, IsNotFoundError(err), "create: %v", err)
@@ -35,9 +37,17 @@ func TestWebhookReach(t *testing.T) {
 	_, err = cp.RotateWebhookSecret(ctx, connect.NewRequest(&webhookv1.RotateWebhookSecretRequest{OrgId: b, ProjectId: p, Id: id}))
 	assert.True(t, IsNotFoundError(err), "rotate: %v", err)
 
+	_, err = cp.GetWebhook(ctx, connect.NewRequest(&webhookv1.GetWebhookRequest{OrgId: sa.o, ProjectId: p, Id: id}))
+	assert.True(t, IsNotFoundError(err), "own org with another org's project: %v", err)
+	_, err = cp.GetWebhook(ctx, connect.NewRequest(&webhookv1.GetWebhookRequest{OrgId: sa.o, ProjectId: sa.p, Id: id}))
+	assert.True(t, IsNotFoundError(err), "another org's endpoint through an own project: %v", err)
+	_, err = cp.GetWebhook(ctx, connect.NewRequest(&webhookv1.GetWebhookRequest{OrgId: orgB.String(), ProjectId: prj.String(), Id: e.ID.String()}))
+	assert.True(t, IsNotFoundError(err), "uuids: %v", err)
+
 	own := session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceAPIKey, ActiveOrgID: orgB, ProjectIDs: []uuid.UUID{prj}})
-	_, err = cp.GetWebhook(own, connect.NewRequest(&webhookv1.GetWebhookRequest{OrgId: b, ProjectId: p, Id: id}))
+	got, err := cp.GetWebhook(own, connect.NewRequest(&webhookv1.GetWebhookRequest{OrgId: b, ProjectId: p, Id: id}))
 	require.NoError(t, err)
+	assert.Equal(t, e.PublicID, got.Msg.GetWebhook().GetId())
 }
 
 type projectOrgs map[uuid.UUID]uuid.UUID
@@ -63,10 +73,11 @@ func TestCreate_ProjectMustBelongToOrg(t *testing.T) {
 }
 
 func TestOrgWideEventsNeedWholeOrgAndMemberRead(t *testing.T) {
-	org, prj := uuid.New(), uuid.New()
-	e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: prj, URL: "https://e.com", Active: true, EventTypes: []events.Type{events.AgentCreated}}
-	cp, _, _ := controlPlane(t, &fakeStore{endpoints: []*Endpoint{e}})
-	o, p, id := org.String(), prj.String(), e.ID.String()
+	s := newScope()
+	org, prj := s.org, s.project
+	e := s.endpoint(events.AgentCreated)
+	cp := controlPlane(t, &fakeStore{endpoints: []*Endpoint{e}}, s)
+	o, p, id := s.o, s.p, e.PublicID
 	callers := map[string]struct {
 		p    session.Principal
 		want bool
@@ -97,14 +108,15 @@ func TestOrgWideEventsNeedWholeOrgAndMemberRead(t *testing.T) {
 }
 
 func TestOrgWideDeliveryPayloadsAreHiddenFromProjectCallers(t *testing.T) {
-	org, prj := uuid.New(), uuid.New()
-	e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: prj, URL: "https://e.com", Active: true, EventTypes: []events.Type{events.InviteCreated, events.AgentCreated}}
+	s := newScope()
+	org, prj := s.org, s.project
+	e := s.endpoint(events.InviteCreated, events.AgentCreated)
 	entries := []outbox.Entry{
 		{ID: uuid.New(), Payload: []byte(`{"type":"invite.created","data":{"email":"bob@x.io"}}`), Status: outbox.StatusDelivered, Attempt: 1},
 		{ID: uuid.New(), Payload: []byte(`{"type":"agent.created"}`), Status: outbox.StatusDelivered, Attempt: 1},
 	}
-	cp := NewControlPlane(testService(t, &fakeStore{endpoints: []*Endpoint{e}}, &fakeOutbox{entries: entries}))
-	req := &webhookv1.ListWebhookDeliveriesRequest{OrgId: org.String(), ProjectId: prj.String(), Id: e.ID.String(), Limit: 10}
+	cp := NewControlPlane(testService(t, &fakeStore{endpoints: []*Endpoint{e}}, &fakeOutbox{entries: entries}), s.refs)
+	req := &webhookv1.ListWebhookDeliveriesRequest{OrgId: s.o, ProjectId: s.p, Id: e.PublicID, Limit: 10}
 
 	limited := session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceAPIKey, ActiveOrgID: org, ProjectIDs: []uuid.UUID{prj}, Scopes: []string{"webhook:read", "member:read"}})
 	got, err := cp.ListWebhookDeliveries(limited, connect.NewRequest(req))

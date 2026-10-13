@@ -57,6 +57,7 @@ flowchart TD
     SVC --> ST["domain store.go, pg*.go"] --> PG[(Postgres)]
 ```
 
+- **Public ids:** every id on a surface (Connect, MCP, CLI, console calls, `/login`'s JSON, webhook bodies and headers) is the 21-character `public_id`; UUIDs never leave the server and slugs appear only in URL paths. Each `controlplane.go` turns an incoming public id into its id once, through the `publicIDs` adapter (`publicids.go`, passed as `controlplane.Services.Refs` and to the MCP tools), and maps every outgoing id back. An unknown, malformed, UUID-shaped or another org's id answers the same not-found. Members are named by the user's public id; API keys have none and are named by their hint within the org. `publicid_integration_test.go` fails if any RPC answers with a UUID.
 - **Reach:** after the permission check, each `controlplane.go` checks that the caller reaches the org, project or resource (`kernel/authz.Reach*`). Out of reach answers 404.
 - **MCP:** tools are generated from the same Connect services, so MCP and `/api` share one handler per RPC.
 - **Credentials required:** `requireCredentials` (`http.go`) makes `/api` and `/mcp` answer 401 and the console redirect to `/login?return_to=…` (local) or send a Basic challenge (basic mode) when no credential is sent. `/login`, `/logout`, `/install`, `/invite`, `/welcome`, `/terms`, `/privacy`, `/static`, `/healthz` and `/readyz` stay open. A request with no Principal reaches nothing (`kernel/authz`).
@@ -71,7 +72,7 @@ flowchart TD
 | Domain | Service deps (ports) | Connect + CLI | MCP tools | Web routes |
 |---|---|---|---|---|
 | `org` | — | ✓ | ✓ | — |
-| `org/invite` | member (actor, add from invite), user (create, by email, accept terms), org (name, slug), user (contact, public id), mail queue, webhook (`invite.created`, `member.added` to every project's subscribers, in the same transaction); auth (sign-in, sessions) on the web side; org (public id → id, `orgPublicIDs`) for the API | ✓ (every id is a public id; writes: people and the operator only); CLI `invite create/list/resend/revoke` | `member_invite` (drafts only); `member_invite_confirm`, `member_invite_discard` (app-only) | `/invite/{token}`, `/invite`, `POST /invite/join`, `/invite/accept`, `/invite/switch` (local login only) |
+| `org/invite` | member (actor, add from invite), user (create, by email, accept terms), org (name, slug), user (contact, public id), mail queue, webhook (`invite.created`, `member.added` to every project's subscribers, in the same transaction); auth (sign-in, sessions) on the web side; org (public id → id, `publicIDs`) for the API | ✓ (writes: people and the operator only); CLI `invite create/list/resend/revoke` | `member_invite` (drafts only); `member_invite_confirm`, `member_invite_discard` (app-only) | `/invite/{token}`, `/invite`, `POST /invite/join`, `/invite/accept`, `/invite/switch` (local login only) |
 | `org/member` | effects: sessions, apikey (personal keys), user (contact), org (name), mail queue | ✓ (role changes and removal: people and the operator only; leave: the signed-in person); CLI `member add` (operator, boots the `App`) | `member_list` | — |
 | `project` | — | ✓ | ✓ | — |
 | `agent` | webhook (publisher, same transaction), project (org of project) | ✓ | ✓ | — |
@@ -98,8 +99,9 @@ Connect client lives in `internal/apiclient`, which imports no domain.
 `buildServices` (`services.go`) builds each service once and passes it to
 whoever needs it. An arrow means "depends on". Small adapters in `services.go`
 (`projectIDs`, `projectOrgs`, `ownerRoles`, `refResolver`, `memberPeople`, `memberDirectory`,
-`memberOrgs`, `orgPublicIDs`) fit one service to another domain's port; `memberPeople` and `memberOrgs`
-(name and slug) serve `invite` too.
+`memberOrgs`) fit one service to another domain's port; `memberPeople` and `memberOrgs`
+(name and slug) serve `invite` too. `publicIDs` (`publicids.go`) turns org, project, user and
+resource (agent or webhook endpoint) public ids into ids and back for every surface handler.
 
 ```mermaid
 flowchart TD
@@ -197,6 +199,7 @@ The supervisor runs these next to the HTTP server.
 |---|---|
 | `boot.go` | `Boot`: the order above |
 | `services.go` | `Services` and every domain service, plus the port adapters |
+| `publicids.go` | `publicIDs`: public id ↔ id for the surface handlers |
 | `auth.go` | secrets, session store, first boot, install state |
 | `http.go` | API and MCP handlers and their authn chains, web routes, session middleware, CSRF, the HTTP handler |
 | `mcp.go` | MCP server and its tools |

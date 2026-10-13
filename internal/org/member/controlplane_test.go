@@ -28,25 +28,30 @@ type cpFixture struct {
 	t     *testing.T
 	store *fakes.MemberStore
 	svc   *member.Service
+	ids   *fakes.PublicIDs
 	org   uuid.UUID
 }
 
 func newCPFixture(t *testing.T) *cpFixture {
 	store := &fakes.MemberStore{}
-	return &cpFixture{t: t, store: store, svc: newService(store), org: uuid.New()}
+	return &cpFixture{t: t, store: store, svc: newService(store), ids: fakes.NewPublicIDs(), org: uuid.New()}
 }
+
+func (f *cpFixture) orgPub() string { return f.ids.Org(f.org) }
+
+func (f *cpFixture) user(id uuid.UUID) string { return f.ids.User(id) }
 
 func (f *cpFixture) add(role member.Role, email string) uuid.UUID {
 	f.t.Helper()
 	m, err := f.svc.Add(context.Background(), f.org, uuid.New(), role)
 	require.NoError(f.t, err)
-	f.store.SetContact(m.UserID, fakes.MemberContact{Email: email, Name: "Name " + email})
+	f.store.SetContact(m.UserID, fakes.MemberContact{PublicID: f.user(m.UserID), Email: email, Name: "Name " + email})
 	return m.UserID
 }
 
 func (f *cpFixture) client(p session.Principal) memberv1connect.MemberServiceClient {
 	f.t.Helper()
-	_, handler := memberv1connect.NewMemberServiceHandler(member.NewControlPlane(f.svc),
+	_, handler := memberv1connect.NewMemberServiceHandler(member.NewControlPlane(f.svc, f.ids),
 		connect.WithInterceptors(controlplane.Wrap(nil), principalInterceptor(p)))
 	ts := httptest.NewServer(handler)
 	f.t.Cleanup(ts.Close)
@@ -106,11 +111,11 @@ func TestMemberService_ListMembers(t *testing.T) {
 	mem := f.add(member.RoleMember, "member@example.com")
 
 	resp, err := f.client(personIn(mem, f.org)).ListMembers(context.Background(),
-		connect.NewRequest(&memberv1.ListMembersRequest{OrgId: f.org.String()}))
+		connect.NewRequest(&memberv1.ListMembersRequest{OrgId: f.orgPub()}))
 	require.NoError(t, err)
 	rows := resp.Msg.GetMembers()
 	require.Len(t, rows, 2)
-	assert.Equal(t, owner.String(), rows[0].GetUserId())
+	assert.Equal(t, f.user(owner), rows[0].GetUserId())
 	assert.Equal(t, "owner@example.com", rows[0].GetEmail())
 	assert.Equal(t, "Name owner@example.com", rows[0].GetName())
 	assert.Equal(t, "owner", rows[0].GetRole())
@@ -124,7 +129,7 @@ func TestMemberService_ListMembers_NeedsAWholeOrgKey(t *testing.T) {
 	f.add(member.RoleOwner, "owner@example.com")
 	list := func(p session.Principal) error {
 		_, err := f.client(p).ListMembers(context.Background(),
-			connect.NewRequest(&memberv1.ListMembersRequest{OrgId: f.org.String()}))
+			connect.NewRequest(&memberv1.ListMembersRequest{OrgId: f.orgPub()}))
 		return err
 	}
 
@@ -139,58 +144,66 @@ func TestMemberService_ListMembers_StoreError(t *testing.T) {
 	f := newCPFixture(t)
 	f.store.Err = assert.AnError
 	_, err := f.client(operatorPrincipal()).ListMembers(context.Background(),
-		connect.NewRequest(&memberv1.ListMembersRequest{OrgId: f.org.String()}))
+		connect.NewRequest(&memberv1.ListMembersRequest{OrgId: f.orgPub()}))
 	assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 }
 
-func TestMemberService_BadIDs(t *testing.T) {
+// SECURITY: an unknown, malformed, UUID-shaped or out-of-reach id answers the same not-found as a missing membership.
+func TestMemberService_UnknownIDs(t *testing.T) {
 	f := newCPFixture(t)
-	c := f.client(operatorPrincipal())
+	owner := f.add(member.RoleOwner, "owner@example.com")
+	target := f.add(member.RoleMember, "member@example.com")
+	c := f.client(personIn(owner, f.org))
 	ctx := context.Background()
-	org, user := f.org.String(), uuid.New().String()
+	org, user := f.orgPub(), f.user(target)
 
-	for name, call := range map[string]func() error{
-		"list org": func() error {
-			_, err := c.ListMembers(ctx, connect.NewRequest(&memberv1.ListMembersRequest{OrgId: "bad"}))
-			return err
-		},
-		"set org": func() error {
-			_, err := c.SetMemberRole(ctx, connect.NewRequest(&memberv1.SetMemberRoleRequest{OrgId: "bad", UserId: user, Role: "admin"}))
-			return err
-		},
-		"remove org": func() error {
-			_, err := c.RemoveMember(ctx, connect.NewRequest(&memberv1.RemoveMemberRequest{OrgId: "bad", UserId: user}))
-			return err
-		},
-		"leave org": func() error {
-			_, err := c.LeaveOrg(ctx, connect.NewRequest(&memberv1.LeaveOrgRequest{OrgId: "bad"}))
-			return err
-		},
+	for name, orgID := range map[string]string{
+		"malformed":     "bad",
+		"uuid":          f.org.String(),
+		"another org's": f.ids.Org(uuid.New()),
+		"a user's":      user,
 	} {
-		t.Run(name, func(t *testing.T) {
-			err := call()
-			assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-			assert.Equal(t, apperror.CodeValidation, errCode(t, err))
-			assert.Equal(t, "organization_id", errDetail(t, err).GetMeta()["field"])
+		t.Run(name+" org", func(t *testing.T) {
+			for call, err := range map[string]error{
+				"list": func() error {
+					_, err := c.ListMembers(ctx, connect.NewRequest(&memberv1.ListMembersRequest{OrgId: orgID}))
+					return err
+				}(),
+				"set": func() error {
+					_, err := c.SetMemberRole(ctx, connect.NewRequest(&memberv1.SetMemberRoleRequest{OrgId: orgID, UserId: user, Role: "admin"}))
+					return err
+				}(),
+				"remove": func() error {
+					_, err := c.RemoveMember(ctx, connect.NewRequest(&memberv1.RemoveMemberRequest{OrgId: orgID, UserId: user}))
+					return err
+				}(),
+				"leave": func() error {
+					_, err := c.LeaveOrg(ctx, connect.NewRequest(&memberv1.LeaveOrgRequest{OrgId: orgID}))
+					return err
+				}(),
+			} {
+				assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err), call)
+				assert.Equal(t, apperror.CodeMemberNotFound, errCode(t, err), call)
+			}
 		})
 	}
-	for name, call := range map[string]func() error{
-		"set user": func() error {
-			_, err := c.SetMemberRole(ctx, connect.NewRequest(&memberv1.SetMemberRoleRequest{OrgId: org, UserId: "bad", Role: "admin"}))
-			return err
-		},
-		"remove user": func() error {
-			_, err := c.RemoveMember(ctx, connect.NewRequest(&memberv1.RemoveMemberRequest{OrgId: org, UserId: "bad"}))
-			return err
-		},
+	for name, userID := range map[string]string{
+		"malformed":      "bad",
+		"uuid":           target.String(),
+		"the org's":      org,
+		"a non-member's": f.user(uuid.New()),
+		"unregistered":   "V1StGXR8_Z5jdHi6B-myT",
 	} {
-		t.Run(name, func(t *testing.T) {
-			err := call()
-			assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-			assert.Equal(t, apperror.CodeValidation, errCode(t, err))
-			assert.Equal(t, "user_id", errDetail(t, err).GetMeta()["field"])
+		t.Run(name+" user", func(t *testing.T) {
+			_, err := c.SetMemberRole(ctx, connect.NewRequest(&memberv1.SetMemberRoleRequest{OrgId: org, UserId: userID, Role: "admin"}))
+			assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err), "set")
+			assert.Equal(t, apperror.CodeMemberNotFound, errCode(t, err), "set")
+			_, err = c.RemoveMember(ctx, connect.NewRequest(&memberv1.RemoveMemberRequest{OrgId: org, UserId: userID}))
+			assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err), "remove")
+			assert.Equal(t, apperror.CodeMemberNotFound, errCode(t, err), "remove")
 		})
 	}
+	assert.Equal(t, member.RoleMember, f.role(target))
 }
 
 // SECURITY: a key never changes or removes members, even inside its own org.
@@ -201,17 +214,17 @@ func TestMemberService_KeyCannotWrite(t *testing.T) {
 	c := f.client(keyIn(f.org))
 	ctx := context.Background()
 
-	resp, err := c.ListMembers(ctx, connect.NewRequest(&memberv1.ListMembersRequest{OrgId: f.org.String()}))
+	resp, err := c.ListMembers(ctx, connect.NewRequest(&memberv1.ListMembersRequest{OrgId: f.orgPub()}))
 	require.NoError(t, err)
 	assert.Len(t, resp.Msg.GetMembers(), 2)
 
 	// NOTE: the store fails every call, so reaching the service would answer Internal, not these codes.
 	f.store.Err = assert.AnError
-	_, err = c.SetMemberRole(ctx, connect.NewRequest(&memberv1.SetMemberRoleRequest{OrgId: f.org.String(), UserId: target.String(), Role: "admin"}))
+	_, err = c.SetMemberRole(ctx, connect.NewRequest(&memberv1.SetMemberRoleRequest{OrgId: f.orgPub(), UserId: f.user(target), Role: "admin"}))
 	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
-	_, err = c.RemoveMember(ctx, connect.NewRequest(&memberv1.RemoveMemberRequest{OrgId: f.org.String(), UserId: target.String()}))
+	_, err = c.RemoveMember(ctx, connect.NewRequest(&memberv1.RemoveMemberRequest{OrgId: f.orgPub(), UserId: f.user(target)}))
 	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
-	_, err = c.LeaveOrg(ctx, connect.NewRequest(&memberv1.LeaveOrgRequest{OrgId: f.org.String()}))
+	_, err = c.LeaveOrg(ctx, connect.NewRequest(&memberv1.LeaveOrgRequest{OrgId: f.orgPub()}))
 	assert.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
 	f.store.Err = nil
 	assert.Equal(t, member.RoleMember, f.role(target))
@@ -219,8 +232,8 @@ func TestMemberService_KeyCannotWrite(t *testing.T) {
 
 func TestMemberService_ActorRoleComesFromMembership(t *testing.T) {
 	ctx := context.Background()
-	set := func(c memberv1connect.MemberServiceClient, org, user uuid.UUID, role string) error {
-		_, err := c.SetMemberRole(ctx, connect.NewRequest(&memberv1.SetMemberRoleRequest{OrgId: org.String(), UserId: user.String(), Role: role}))
+	set := func(c memberv1connect.MemberServiceClient, f *cpFixture, user uuid.UUID, role string) error {
+		_, err := c.SetMemberRole(ctx, connect.NewRequest(&memberv1.SetMemberRoleRequest{OrgId: f.orgPub(), UserId: f.user(user), Role: role}))
 		return err
 	}
 
@@ -229,9 +242,9 @@ func TestMemberService_ActorRoleComesFromMembership(t *testing.T) {
 		owner := f.add(member.RoleOwner, "owner@example.com")
 		target := f.add(member.RoleMember, "member@example.com")
 		resp, err := f.client(personIn(owner, f.org)).SetMemberRole(ctx,
-			connect.NewRequest(&memberv1.SetMemberRoleRequest{OrgId: f.org.String(), UserId: target.String(), Role: "owner"}))
+			connect.NewRequest(&memberv1.SetMemberRoleRequest{OrgId: f.orgPub(), UserId: f.user(target), Role: "owner"}))
 		require.NoError(t, err)
-		assert.Equal(t, target.String(), resp.Msg.GetMember().GetUserId())
+		assert.Equal(t, f.user(target), resp.Msg.GetMember().GetUserId())
 		assert.Equal(t, "owner", resp.Msg.GetMember().GetRole())
 		assert.Equal(t, "member@example.com", resp.Msg.GetMember().GetEmail())
 		assert.Equal(t, member.RoleOwner, f.role(target))
@@ -240,7 +253,7 @@ func TestMemberService_ActorRoleComesFromMembership(t *testing.T) {
 		f := newCPFixture(t)
 		owner := f.add(member.RoleOwner, "owner@example.com")
 		admin := f.add(member.RoleAdmin, "admin@example.com")
-		err := set(f.client(personIn(admin, f.org)), f.org, owner, "admin")
+		err := set(f.client(personIn(admin, f.org)), f, owner, "admin")
 		assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 		assert.Equal(t, apperror.CodeMemberRoleNotAllowed, errCode(t, err))
 		assert.Equal(t, member.RoleOwner, f.role(owner))
@@ -250,7 +263,7 @@ func TestMemberService_ActorRoleComesFromMembership(t *testing.T) {
 		f.add(member.RoleOwner, "owner@example.com")
 		mem := f.add(member.RoleMember, "member@example.com")
 		other := f.add(member.RoleMember, "other@example.com")
-		err := set(f.client(personIn(mem, f.org)), f.org, other, "admin")
+		err := set(f.client(personIn(mem, f.org)), f, other, "admin")
 		assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 		assert.Equal(t, member.RoleMember, f.role(other))
 	})
@@ -258,7 +271,7 @@ func TestMemberService_ActorRoleComesFromMembership(t *testing.T) {
 		f := newCPFixture(t)
 		f.add(member.RoleOwner, "owner@example.com")
 		other := f.add(member.RoleMember, "other@example.com")
-		err := set(f.client(personIn(uuid.New(), f.org)), f.org, other, "admin")
+		err := set(f.client(personIn(uuid.New(), f.org)), f, other, "admin")
 		assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 		assert.Equal(t, member.RoleMember, f.role(other))
 	})
@@ -266,14 +279,14 @@ func TestMemberService_ActorRoleComesFromMembership(t *testing.T) {
 		f := newCPFixture(t)
 		owner := f.add(member.RoleOwner, "owner@example.com")
 		f.add(member.RoleOwner, "second@example.com")
-		require.NoError(t, set(f.client(operatorPrincipal()), f.org, owner, "member"))
+		require.NoError(t, set(f.client(operatorPrincipal()), f, owner, "member"))
 		assert.Equal(t, member.RoleMember, f.role(owner))
 	})
 	t.Run("a self change goes through leave", func(t *testing.T) {
 		f := newCPFixture(t)
 		owner := f.add(member.RoleOwner, "owner@example.com")
 		f.add(member.RoleOwner, "second@example.com")
-		err := set(f.client(personIn(owner, f.org)), f.org, owner, "member")
+		err := set(f.client(personIn(owner, f.org)), f, owner, "member")
 		assert.Equal(t, apperror.CodeMemberSelfChange, errCode(t, err))
 	})
 	t.Run("a role lookup failure is not a missing membership", func(t *testing.T) {
@@ -281,15 +294,15 @@ func TestMemberService_ActorRoleComesFromMembership(t *testing.T) {
 		owner := f.add(member.RoleOwner, "owner@example.com")
 		target := f.add(member.RoleMember, "member@example.com")
 		f.store.Err = assert.AnError
-		err := set(f.client(personIn(owner, f.org)), f.org, target, "admin")
+		err := set(f.client(personIn(owner, f.org)), f, target, "admin")
 		assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 	})
 }
 
 func TestMemberService_RemoveMember(t *testing.T) {
 	ctx := context.Background()
-	remove := func(c memberv1connect.MemberServiceClient, org, user uuid.UUID) error {
-		_, err := c.RemoveMember(ctx, connect.NewRequest(&memberv1.RemoveMemberRequest{OrgId: org.String(), UserId: user.String()}))
+	remove := func(c memberv1connect.MemberServiceClient, f *cpFixture, user uuid.UUID) error {
+		_, err := c.RemoveMember(ctx, connect.NewRequest(&memberv1.RemoveMemberRequest{OrgId: f.orgPub(), UserId: f.user(user)}))
 		return err
 	}
 
@@ -298,7 +311,7 @@ func TestMemberService_RemoveMember(t *testing.T) {
 		f.add(member.RoleOwner, "owner@example.com")
 		admin := f.add(member.RoleAdmin, "admin@example.com")
 		target := f.add(member.RoleMember, "member@example.com")
-		require.NoError(t, remove(f.client(personIn(admin, f.org)), f.org, target))
+		require.NoError(t, remove(f.client(personIn(admin, f.org)), f, target))
 		_, err := f.svc.Find(ctx, f.org, target)
 		assert.True(t, member.IsNotFoundError(err))
 	})
@@ -306,28 +319,28 @@ func TestMemberService_RemoveMember(t *testing.T) {
 		f := newCPFixture(t)
 		owner := f.add(member.RoleOwner, "owner@example.com")
 		admin := f.add(member.RoleAdmin, "admin@example.com")
-		err := remove(f.client(personIn(admin, f.org)), f.org, owner)
+		err := remove(f.client(personIn(admin, f.org)), f, owner)
 		assert.Equal(t, apperror.CodeMemberRoleNotAllowed, errCode(t, err))
 		assert.Equal(t, member.RoleOwner, f.role(owner))
 	})
 	t.Run("an operator removes anyone but the last owner", func(t *testing.T) {
 		f := newCPFixture(t)
 		owner := f.add(member.RoleOwner, "owner@example.com")
-		err := remove(f.client(operatorPrincipal()), f.org, owner)
+		err := remove(f.client(operatorPrincipal()), f, owner)
 		assert.Equal(t, apperror.CodeMemberLastOwner, errCode(t, err))
 	})
 	t.Run("an unknown member is not found", func(t *testing.T) {
 		f := newCPFixture(t)
 		owner := f.add(member.RoleOwner, "owner@example.com")
-		err := remove(f.client(personIn(owner, f.org)), f.org, uuid.New())
+		err := remove(f.client(personIn(owner, f.org)), f, uuid.New())
 		assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
 	})
 }
 
 func TestMemberService_LeaveOrg(t *testing.T) {
 	ctx := context.Background()
-	leave := func(c memberv1connect.MemberServiceClient, org uuid.UUID) error {
-		_, err := c.LeaveOrg(ctx, connect.NewRequest(&memberv1.LeaveOrgRequest{OrgId: org.String()}))
+	leave := func(c memberv1connect.MemberServiceClient, f *cpFixture) error {
+		_, err := c.LeaveOrg(ctx, connect.NewRequest(&memberv1.LeaveOrgRequest{OrgId: f.orgPub()}))
 		return err
 	}
 
@@ -335,20 +348,20 @@ func TestMemberService_LeaveOrg(t *testing.T) {
 		f := newCPFixture(t)
 		f.add(member.RoleOwner, "owner@example.com")
 		mem := f.add(member.RoleMember, "member@example.com")
-		require.NoError(t, leave(f.client(personIn(mem, f.org)), f.org))
+		require.NoError(t, leave(f.client(personIn(mem, f.org)), f))
 		_, err := f.svc.Find(ctx, f.org, mem)
 		assert.True(t, member.IsNotFoundError(err))
 	})
 	t.Run("the last owner cannot leave", func(t *testing.T) {
 		f := newCPFixture(t)
 		owner := f.add(member.RoleOwner, "owner@example.com")
-		err := leave(f.client(personIn(owner, f.org)), f.org)
+		err := leave(f.client(personIn(owner, f.org)), f)
 		assert.Equal(t, apperror.CodeMemberLastOwner, errCode(t, err))
 	})
 	t.Run("an operator has no membership to leave", func(t *testing.T) {
 		f := newCPFixture(t)
 		f.add(member.RoleOwner, "owner@example.com")
-		err := leave(f.client(operatorPrincipal()), f.org)
+		err := leave(f.client(operatorPrincipal()), f)
 		assert.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
 	})
 }
@@ -360,12 +373,12 @@ func staffPerson(userID uuid.UUID) session.Principal {
 // SECURITY: staff (an operator who is a person) manage like an admin only outside their own orgs, and only where operator support is on.
 func TestMemberService_OperatorPerson(t *testing.T) {
 	ctx := context.Background()
-	set := func(c memberv1connect.MemberServiceClient, org, user uuid.UUID, role string) error {
-		_, err := c.SetMemberRole(ctx, connect.NewRequest(&memberv1.SetMemberRoleRequest{OrgId: org.String(), UserId: user.String(), Role: role}))
+	set := func(c memberv1connect.MemberServiceClient, f *cpFixture, user uuid.UUID, role string) error {
+		_, err := c.SetMemberRole(ctx, connect.NewRequest(&memberv1.SetMemberRoleRequest{OrgId: f.orgPub(), UserId: f.user(user), Role: role}))
 		return err
 	}
-	remove := func(c memberv1connect.MemberServiceClient, org, user uuid.UUID) error {
-		_, err := c.RemoveMember(ctx, connect.NewRequest(&memberv1.RemoveMemberRequest{OrgId: org.String(), UserId: user.String()}))
+	remove := func(c memberv1connect.MemberServiceClient, f *cpFixture, user uuid.UUID) error {
+		_, err := c.RemoveMember(ctx, connect.NewRequest(&memberv1.RemoveMemberRequest{OrgId: f.orgPub(), UserId: f.user(user)}))
 		return err
 	}
 
@@ -376,12 +389,12 @@ func TestMemberService_OperatorPerson(t *testing.T) {
 		plain := f.add(member.RoleMember, "member@example.com")
 		other := f.add(member.RoleMember, "other@example.com")
 		c := f.client(staffPerson(uuid.New()))
-		require.NoError(t, set(c, f.org, plain, "admin"))
+		require.NoError(t, set(c, f, plain, "admin"))
 		assert.Equal(t, member.RoleAdmin, f.role(plain))
-		require.NoError(t, remove(c, f.org, other))
-		assert.Equal(t, apperror.CodeMemberRoleNotAllowed, errCode(t, set(c, f.org, owner, "member")))
-		assert.Equal(t, apperror.CodeMemberRoleNotAllowed, errCode(t, set(c, f.org, plain, "owner")))
-		assert.Equal(t, apperror.CodeMemberRoleNotAllowed, errCode(t, remove(c, f.org, owner)))
+		require.NoError(t, remove(c, f, other))
+		assert.Equal(t, apperror.CodeMemberRoleNotAllowed, errCode(t, set(c, f, owner, "member")))
+		assert.Equal(t, apperror.CodeMemberRoleNotAllowed, errCode(t, set(c, f, plain, "owner")))
+		assert.Equal(t, apperror.CodeMemberRoleNotAllowed, errCode(t, remove(c, f, owner)))
 		assert.Equal(t, member.RoleOwner, f.role(owner))
 	})
 	t.Run("outside their orgs with support off they are refused", func(t *testing.T) {
@@ -389,9 +402,9 @@ func TestMemberService_OperatorPerson(t *testing.T) {
 		owner := f.add(member.RoleOwner, "owner@example.com")
 		target := f.add(member.RoleMember, "member@example.com")
 		c := f.client(staffPerson(uuid.New()))
-		err := set(c, f.org, target, "admin")
+		err := set(c, f, target, "admin")
 		assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
-		assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(remove(c, f.org, owner)))
+		assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(remove(c, f, owner)))
 		assert.Equal(t, member.RoleMember, f.role(target))
 	})
 	for _, support := range []bool{false, true} {
@@ -403,11 +416,11 @@ func TestMemberService_OperatorPerson(t *testing.T) {
 			admin := f.add(member.RoleAdmin, "admin@example.com")
 			plain := f.add(member.RoleMember, "member@example.com")
 			c := f.client(staffPerson(admin))
-			assert.Equal(t, apperror.CodeMemberSelfChange, errCode(t, set(c, f.org, admin, "member")))
-			assert.Equal(t, apperror.CodeMemberRoleNotAllowed, errCode(t, set(c, f.org, owner, "admin")))
-			assert.Equal(t, apperror.CodeMemberRoleNotAllowed, errCode(t, remove(c, f.org, owner)))
-			assert.Equal(t, apperror.CodeMemberRoleNotAllowed, errCode(t, set(c, f.org, plain, "owner")))
-			require.NoError(t, set(c, f.org, plain, "admin"), "an admin still manages members")
+			assert.Equal(t, apperror.CodeMemberSelfChange, errCode(t, set(c, f, admin, "member")))
+			assert.Equal(t, apperror.CodeMemberRoleNotAllowed, errCode(t, set(c, f, owner, "admin")))
+			assert.Equal(t, apperror.CodeMemberRoleNotAllowed, errCode(t, remove(c, f, owner)))
+			assert.Equal(t, apperror.CodeMemberRoleNotAllowed, errCode(t, set(c, f, plain, "owner")))
+			require.NoError(t, set(c, f, plain, "admin"), "an admin still manages members")
 			assert.Equal(t, member.RoleOwner, f.role(owner))
 			assert.Equal(t, member.RoleAdmin, f.role(admin))
 		})

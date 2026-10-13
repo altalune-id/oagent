@@ -215,6 +215,7 @@
   "field.owner": "Key owner",
   "field.project_id": "Project ID",
   "field.project_ids": "Project list",
+  "field.resource_ids": "Resource list",
   "field.user_id": "User ID",
   "field.webhook_id": "Webhook ID",
   "invites.col_email": "Email",

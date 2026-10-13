@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/auth/views"
 	"altalune.id/oagent/internal/kernel/session"
@@ -29,11 +31,12 @@ type Web struct {
 	kit      layout.Kit
 	signIn   SignIn
 	sessions CookieSessions
+	ids      PublicIDs
 }
 
-// NewWeb binds the login pages to the sign-in service and the browser sessions.
-func NewWeb(kit layout.Kit, signIn SignIn, sessions CookieSessions) *Web {
-	return &Web{kit: kit, signIn: signIn, sessions: sessions}
+// NewWeb binds the login pages to the sign-in service, the browser sessions and the public id lookups.
+func NewWeb(kit layout.Kit, signIn SignIn, sessions CookieSessions, ids PublicIDs) *Web {
+	return &Web{kit: kit, signIn: signIn, sessions: sessions, ids: ids}
 }
 
 // Register mounts GET/POST /login and POST /logout on mux.
@@ -61,22 +64,36 @@ type principalView struct {
 	Operator        bool     `json:"operator"`
 }
 
-func viewOf(p session.Principal) principalView {
+func (h *Web) viewOf(ctx context.Context, p session.Principal) (principalView, error) {
 	perms := p.Scopes
 	if perms == nil {
 		perms = []string{}
 	}
-	return principalView{
-		Source:          string(p.Source),
-		UserID:          idString(p.UserID),
-		Email:           p.Email,
-		Name:            p.Name,
-		AvatarURL:       p.AvatarURL,
-		ActiveOrgID:     idString(p.ActiveOrgID),
-		ActiveProjectID: idString(p.ActiveProjectID),
-		Permissions:     perms,
-		Operator:        p.Operator,
+	v := principalView{
+		Source:      string(p.Source),
+		Email:       p.Email,
+		Name:        p.Name,
+		AvatarURL:   p.AvatarURL,
+		Permissions: perms,
+		Operator:    p.Operator,
 	}
+	var err error
+	if p.UserID != uuid.Nil {
+		if v.UserID, err = h.ids.UserPublicID(ctx, p.UserID); err != nil {
+			return principalView{}, err
+		}
+	}
+	if p.ActiveOrgID != uuid.Nil {
+		if v.ActiveOrgID, err = h.ids.OrgPublicID(ctx, p.ActiveOrgID); err != nil {
+			return principalView{}, err
+		}
+	}
+	if p.ActiveProjectID != uuid.Nil {
+		if v.ActiveProjectID, err = h.ids.ProjectPublicID(ctx, p.ActiveProjectID); err != nil {
+			return principalView{}, err
+		}
+	}
+	return v, nil
 }
 
 func (h *Web) getLogin(w http.ResponseWriter, r *http.Request) {
@@ -115,13 +132,20 @@ func (h *Web) postLogin(w http.ResponseWriter, r *http.Request) {
 		h.kit.Fail(w, r, "web: login", err)
 		return
 	}
+	var view principalView
+	if wantsJSON {
+		if view, err = h.viewOf(r.Context(), principal); err != nil {
+			h.kit.Fail(w, r, "web: login view", err)
+			return
+		}
+	}
 	signed, expires, err := h.sessions.Start(r.Context(), w, principal)
 	if err != nil {
 		h.kit.Fail(w, r, "web: start session", err)
 		return
 	}
 	if wantsJSON {
-		writeJSON(w, http.StatusOK, loginResponse{Session: signed, ExpiresAt: expires, Principal: viewOf(principal)})
+		writeJSON(w, http.StatusOK, loginResponse{Session: signed, ExpiresAt: expires, Principal: view})
 		return
 	}
 	to := layout.ResolveReturnTo(h.kit.BasePath, returnTo)

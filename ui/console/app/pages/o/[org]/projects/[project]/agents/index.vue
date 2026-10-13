@@ -78,8 +78,8 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
             </td>
             <td>
               <span class="inline-flex items-center gap-1">
-                <span class="font-mono text-xs text-base-content/60">{{ agent.publicId }}</span>
-                <CopyButton :value="agent.publicId" :label="t('common.copy')" />
+                <span class="font-mono text-xs text-base-content/60">{{ agent.id }}</span>
+                <CopyButton :value="agent.id" :label="t('common.copy')" />
               </span>
             </td>
             <td class="text-base-content/60">{{ agent.slug }}</td>

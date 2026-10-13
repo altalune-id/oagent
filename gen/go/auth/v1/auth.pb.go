@@ -58,6 +58,7 @@ func (*WhoamiRequest) Descriptor() ([]byte, []int) {
 	return file_auth_v1_auth_proto_rawDescGZIP(), []int{0}
 }
 
+// Every id is a public id.
 type WhoamiResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// local, basic, apikey or system.
@@ -66,8 +67,8 @@ type WhoamiResponse struct {
 	Email     string `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
 	Name      string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	AvatarUrl string `protobuf:"bytes,5,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
-	// Set for API keys.
-	KeyId string `protobuf:"bytes,6,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
+	// Set for API keys: the last 4 characters of the key's secret.
+	KeyHint string `protobuf:"bytes,13,opt,name=key_hint,json=keyHint,proto3" json:"key_hint,omitempty"`
 	// Personal keys: the person the key acts for.
 	OwnerId         string `protobuf:"bytes,7,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
 	ActiveOrgId     string `protobuf:"bytes,8,opt,name=active_org_id,json=activeOrgId,proto3" json:"active_org_id,omitempty"`
@@ -145,9 +146,9 @@ func (x *WhoamiResponse) GetAvatarUrl() string {
 	return ""
 }
 
-func (x *WhoamiResponse) GetKeyId() string {
+func (x *WhoamiResponse) GetKeyHint() string {
 	if x != nil {
-		return x.KeyId
+		return x.KeyHint
 	}
 	return ""
 }
@@ -199,22 +200,22 @@ var File_auth_v1_auth_proto protoreflect.FileDescriptor
 const file_auth_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"\x12auth/v1/auth.proto\x12\aauth.v1\x1a\x18mcp/v1/annotations.proto\"\x0f\n" +
-	"\rWhoamiRequest\"\xf2\x02\n" +
+	"\rWhoamiRequest\"\x84\x03\n" +
 	"\x0eWhoamiResponse\x12\x16\n" +
 	"\x06source\x18\x01 \x01(\tR\x06source\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x14\n" +
 	"\x05email\x18\x03 \x01(\tR\x05email\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12\x1d\n" +
 	"\n" +
-	"avatar_url\x18\x05 \x01(\tR\tavatarUrl\x12\x15\n" +
-	"\x06key_id\x18\x06 \x01(\tR\x05keyId\x12\x19\n" +
+	"avatar_url\x18\x05 \x01(\tR\tavatarUrl\x12\x19\n" +
+	"\bkey_hint\x18\r \x01(\tR\akeyHint\x12\x19\n" +
 	"\bowner_id\x18\a \x01(\tR\aownerId\x12\"\n" +
 	"\ractive_org_id\x18\b \x01(\tR\vactiveOrgId\x12&\n" +
 	"\x0factive_org_slug\x18\t \x01(\tR\ractiveOrgSlug\x12*\n" +
 	"\x11active_project_id\x18\n" +
 	" \x01(\tR\x0factiveProjectId\x12 \n" +
 	"\vpermissions\x18\v \x03(\tR\vpermissions\x12\x1a\n" +
-	"\boperator\x18\f \x01(\bR\boperator2\xa5\x01\n" +
+	"\boperator\x18\f \x01(\bR\boperatorJ\x04\b\x06\x10\aR\x06key_id2\xa5\x01\n" +
 	"\vAuthService\x12\x95\x01\n" +
 	"\x06Whoami\x12\x16.auth.v1.WhoamiRequest\x1a\x17.auth.v1.WhoamiResponse\"Z\xca\xf3\x18V\n" +
 	"\vauth_whoami\x12BWho this MCP client acts as: user or key, active org, permissions.*\x03appB\x7f\n" +

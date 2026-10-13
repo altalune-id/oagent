@@ -32,9 +32,9 @@ import (
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
+	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/kernel"
-	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org"
@@ -51,6 +51,7 @@ type apiFixture struct {
 	mcpURL string
 	owner  *user.User
 	orgID  string
+	sysID  uuid.UUID
 }
 
 func newAPIFixture(t *testing.T) *apiFixture {
@@ -84,7 +85,7 @@ func newAPIFixture(t *testing.T) *apiFixture {
 	require.NoError(t, err)
 	sys, err := svcs.Orgs.System(t.Context())
 	require.NoError(t, err)
-	return &apiFixture{db: sqlDB, svcs: svcs, url: ts.URL + "/api", mcpURL: ts.URL + "/mcp", owner: owner, orgID: sys.ID.String()}
+	return &apiFixture{db: sqlDB, svcs: svcs, url: ts.URL + "/api", mcpURL: ts.URL + "/mcp", owner: owner, orgID: sys.PublicID, sysID: sys.ID}
 }
 
 func (f *apiFixture) mint(t *testing.T, kind apikey.Kind, scopes ...string) string {
@@ -135,7 +136,7 @@ func TestAPI_WhoamiForEveryCredential(t *testing.T) {
 	personal := f.mint(t, apikey.KindPersonal, "project:write", "agent:write")
 	got, err = f.whoami(t, "Authorization", "Bearer "+personal)
 	require.NoError(t, err)
-	assert.Equal(t, f.owner.ID.String(), got.GetOwnerId())
+	assert.Equal(t, f.owner.PublicID, got.GetOwnerId())
 	assert.Equal(t, "root@example.com", got.GetEmail())
 	assert.ElementsMatch(t, []string{"project:write", "agent:write"}, got.GetPermissions())
 
@@ -185,7 +186,7 @@ func TestAPI_KeyPermissionIsChecked(t *testing.T) {
 	require.NoError(t, err)
 
 	agents := agentv1connect.NewAgentServiceClient(http.DefaultClient, f.url)
-	create := &agentv1.CreateAgentRequest{OrgId: sys.ID.String(), ProjectId: prj.ID.String(), Slug: "bot", Name: "Bot"}
+	create := &agentv1.CreateAgentRequest{OrgId: sys.PublicID, ProjectId: prj.PublicID, Slug: "bot", Name: "Bot"}
 	_, err = agents.CreateAgent(context.Background(), withBearer(connect.NewRequest(create), reader))
 	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 
@@ -217,7 +218,7 @@ func TestAPI_CreateRefusesAnotherOrgsProject(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = agentv1connect.NewAgentServiceClient(http.DefaultClient, f.url).CreateAgent(context.Background(), withCookie(connect.NewRequest(&agentv1.CreateAgentRequest{
-		OrgId: sys.ID.String(), ProjectId: foreign.ID.String(), Slug: "bot", Name: "Bot",
+		OrgId: sys.PublicID, ProjectId: foreign.PublicID, Slug: "bot", Name: "Bot",
 	}), f.ownerCookie(t)))
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
@@ -262,7 +263,7 @@ func TestAPI_MemberManagesOwnPersonalKeys(t *testing.T) {
 
 	mine, err := create("personal", "agent:read")
 	require.NoError(t, err)
-	assert.Equal(t, memberID.String(), f.ownerOf(t, mine.GetKey().GetId()))
+	assert.Equal(t, memberID.String(), f.ownerOf(t, mine.GetKey().GetSecretHint()))
 
 	_, err = create("personal", "org:write")
 	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "above the member role")
@@ -271,16 +272,15 @@ func TestAPI_MemberManagesOwnPersonalKeys(t *testing.T) {
 	_, err = create("org", "agent:read")
 	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "org keys need apikey:write")
 
-	revoke := func(id string) error {
-		_, err := keys.RevokeAPIKey(context.Background(), withCookie(connect.NewRequest(&apikeyv1.RevokeAPIKeyRequest{OrgId: f.orgID, Id: id}), cookie))
+	revoke := func(hint string) error {
+		_, err := keys.RevokeAPIKey(context.Background(), withCookie(connect.NewRequest(&apikeyv1.RevokeAPIKeyRequest{OrgId: f.orgID, Hint: hint}), cookie))
 		return err
 	}
 	orgKey := f.mint(t, apikey.KindOrg, "agent:read")
-	orgKeyID := f.keyIDOf(t, orgKey)
-	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(revoke(orgKeyID)))
+	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(revoke(hintOf(orgKey))))
 	ownersKey := f.mint(t, apikey.KindPersonal, "agent:read")
-	assert.Equal(t, connect.CodeNotFound, connect.CodeOf(revoke(f.keyIDOf(t, ownersKey))))
-	require.NoError(t, revoke(mine.GetKey().GetId()))
+	assert.Equal(t, connect.CodeNotFound, connect.CodeOf(revoke(hintOf(ownersKey))))
+	require.NoError(t, revoke(mine.GetKey().GetSecretHint()))
 
 	_, err = keys.CreateAPIKey(context.Background(), withBearer(connect.NewRequest(&apikeyv1.CreateAPIKeyRequest{
 		OrgId: f.orgID, Kind: "org", Name: "k", Scopes: []string{"agent:read"}, AllProjects: true, ExpiresAt: exp,
@@ -288,27 +288,30 @@ func TestAPI_MemberManagesOwnPersonalKeys(t *testing.T) {
 	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "a key never mints keys")
 }
 
-func (f *apiFixture) keyIDOf(t *testing.T, plain string) string {
-	t.Helper()
-	p, err := f.svcs.KeyAuthn.Authenticate(t.Context(), authn.Credential{Kind: authn.KindAPIKey, Token: plain})
-	require.NoError(t, err)
-	return p.KeyID.String()
-}
+func hintOf(plain string) string { return plain[len(plain)-4:] }
 
-func (f *apiFixture) ownerOf(t *testing.T, id string) string {
+func (f *apiFixture) ownerOf(t *testing.T, hint string) string {
 	t.Helper()
 	var owner string
-	require.NoError(t, f.db.QueryRowContext(t.Context(), `SELECT created_by::text FROM api_keys WHERE id = $1`, id).Scan(&owner))
+	require.NoError(t, f.db.QueryRowContext(t.Context(),
+		`SELECT created_by::text FROM api_keys WHERE org_id = $1 AND secret_hint = $2 AND revoked_at IS NULL`, f.sysID, hint).Scan(&owner))
 	return owner
+}
+
+func (f *apiFixture) userPublicID(t *testing.T, id uuid.UUID) string {
+	t.Helper()
+	u, err := f.svcs.Users.ByID(t.Context(), id)
+	require.NoError(t, err)
+	return u.PublicID
 }
 
 func TestAPI_WebhookBadSchemeIsInvalidArgument(t *testing.T) {
 	f := newAPIFixture(t)
-	p, err := f.svcs.Projects.Create(t.Context(), project.CreateRequest{OrgID: uuid.MustParse(f.orgID), Slug: "hooks", Name: "Hooks"})
+	p, err := f.svcs.Projects.Create(t.Context(), project.CreateRequest{OrgID: f.sysID, Slug: "hooks", Name: "Hooks"})
 	require.NoError(t, err)
 
 	_, err = webhookv1connect.NewWebhookServiceClient(http.DefaultClient, f.url).CreateWebhook(context.Background(), withCookie(connect.NewRequest(&webhookv1.CreateWebhookRequest{
-		OrgId: f.orgID, ProjectId: p.ID.String(), Url: "ftp://example.com/hook", EventTypes: []string{"agent.created"},
+		OrgId: f.orgID, ProjectId: p.PublicID, Url: "ftp://example.com/hook", EventTypes: []string{"agent.created"},
 	}), f.ownerCookie(t)))
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err), "%v", err)
 	var cerr *connect.Error
@@ -341,7 +344,7 @@ func TestAPI_RemovedMemberLosesAccess(t *testing.T) {
 	require.NoError(t, err, "the key works before the removal")
 
 	_, err = memberv1connect.NewMemberServiceClient(http.DefaultClient, f.url).RemoveMember(ctx, withCookie(connect.NewRequest(
-		&memberv1.RemoveMemberRequest{OrgId: sys.ID.String(), UserId: memberID.String()}), f.ownerCookie(t)))
+		&memberv1.RemoveMemberRequest{OrgId: sys.PublicID, UserId: f.userPublicID(t, memberID)}), f.ownerCookie(t)))
 	require.NoError(t, err)
 
 	_, err = f.whoami(t, "Cookie", cookie)
@@ -358,7 +361,7 @@ func TestAPI_RemovedMemberLosesAccess(t *testing.T) {
 
 func (f *apiFixture) personCookie(t *testing.T, email string, role member.Role) (string, session.Principal, uuid.UUID) {
 	t.Helper()
-	return f.personCookieIn(t, uuid.MustParse(f.orgID), email, role)
+	return f.personCookieIn(t, f.sysID, email, role)
 }
 
 func (f *apiFixture) personCookieIn(t *testing.T, orgID uuid.UUID, email string, role member.Role) (string, session.Principal, uuid.UUID) {
@@ -399,14 +402,14 @@ func TestAPI_SystemOrgAdminFollowsMemberRules(t *testing.T) {
 	c := memberv1connect.NewMemberServiceClient(http.DefaultClient, f.url)
 	setRole := func(userID uuid.UUID, role member.Role) error {
 		_, err := c.SetMemberRole(ctx, withCookie(connect.NewRequest(&memberv1.SetMemberRoleRequest{
-			OrgId: f.orgID, UserId: userID.String(), Role: string(role),
+			OrgId: f.orgID, UserId: f.userPublicID(t, userID), Role: string(role),
 		}), bobCookie))
 		return err
 	}
 
 	assert.Equal(t, "MBR006", connectCode(t, setRole(bob.UserID, member.RoleMember)), "no self-change")
 	assert.Equal(t, "MBR005", connectCode(t, setRole(f.owner.ID, member.RoleAdmin)), "an admin can't demote an owner")
-	_, err := c.RemoveMember(ctx, withCookie(connect.NewRequest(&memberv1.RemoveMemberRequest{OrgId: f.orgID, UserId: carol.String()}), bobCookie))
+	_, err := c.RemoveMember(ctx, withCookie(connect.NewRequest(&memberv1.RemoveMemberRequest{OrgId: f.orgID, UserId: f.userPublicID(t, carol)}), bobCookie))
 	assert.Equal(t, "MBR005", connectCode(t, err), "an admin can't remove an owner")
 	assert.Equal(t, "MBR005", connectCode(t, setRole(dave, member.RoleOwner)), "an admin can't make an owner")
 
@@ -416,14 +419,37 @@ func TestAPI_SystemOrgAdminFollowsMemberRules(t *testing.T) {
 	_, err = f.svcs.Members.Add(ctx, other.ID, dave, member.RoleMember)
 	require.NoError(t, err)
 	_, err = c.SetMemberRole(ctx, withCookie(connect.NewRequest(&memberv1.SetMemberRoleRequest{
-		OrgId: other.ID.String(), UserId: dave.String(), Role: string(member.RoleAdmin),
+		OrgId: other.PublicID, UserId: f.userPublicID(t, dave), Role: string(member.RoleAdmin),
 	}), bobCookie))
 	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "selfhosted has no operator support in orgs Bob is not in")
 
-	sys := uuid.MustParse(f.orgID)
+	sys := f.sysID
 	for id, want := range map[uuid.UUID]member.Role{bob.UserID: member.RoleAdmin, f.owner.ID: member.RoleOwner, carol: member.RoleOwner, dave: member.RoleMember} {
 		m, err := f.svcs.Members.Find(ctx, sys, id)
 		require.NoError(t, err)
 		assert.Equal(t, want, m.Role)
 	}
+}
+
+// A key scoped to a deleted agent still lists, without the gone resource.
+func TestAPI_KeyListSurvivesADeletedResource(t *testing.T) {
+	f := newAPIFixture(t)
+	ctx := t.Context()
+	prj, err := f.svcs.Projects.BySlug(ctx, f.sysID, project.DefaultSlug)
+	require.NoError(t, err)
+	ag, err := f.svcs.Agents.Create(ctx, agent.CreateRequest{OrgID: f.sysID, ProjectID: prj.ID, Slug: "gone", Name: "Gone"})
+	require.NoError(t, err)
+	cookie := f.ownerCookie(t)
+	keys := apikeyv1connect.NewAPIKeyServiceClient(http.DefaultClient, f.url)
+	_, err = keys.CreateAPIKey(ctx, withCookie(connect.NewRequest(&apikeyv1.CreateAPIKeyRequest{
+		OrgId: f.orgID, ProjectId: prj.PublicID, Kind: "project", Name: "scoped", Scopes: []string{"agent:read"},
+		ResourceIds: []string{ag.PublicID}, ExpiresAt: timestamppb.New(time.Now().Add(time.Hour)),
+	}), cookie))
+	require.NoError(t, err)
+	require.NoError(t, f.svcs.Agents.Delete(ctx, ag.ID))
+
+	resp, err := keys.ListAPIKeys(ctx, withCookie(connect.NewRequest(&apikeyv1.ListAPIKeysRequest{OrgId: f.orgID}), cookie))
+	require.NoError(t, err, "a deleted resource must not break the org's key list")
+	require.Len(t, resp.Msg.GetKeys(), 1)
+	assert.Empty(t, resp.Msg.GetKeys()[0].GetResourceIds())
 }

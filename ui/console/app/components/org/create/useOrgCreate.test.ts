@@ -6,7 +6,7 @@ import { useOrgsStore } from '~/stores/orgs'
 import { useUIStore } from '~/stores/ui'
 import { useOrgCreate } from './useOrgCreate'
 
-const org = { id: 'o1', publicId: 'org_1', slug: 'acme', name: 'Acme' }
+const org = { id: 'V1StGXR8Z5jdHi6BmyT2a', slug: 'acme', name: 'Acme' }
 
 describe('useOrgCreate', () => {
   let createOrg: ReturnType<typeof vi.fn>

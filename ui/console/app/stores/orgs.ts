@@ -3,7 +3,6 @@ import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export interface Org {
   id: string
-  publicId: string
   slug: string
   name: string
 }
@@ -37,7 +36,7 @@ export const useOrgsStore = defineStore('orgs', () => {
     error.value = null
     try {
       const res = await client.listOrgs({})
-      items.value = (res.orgs ?? []).map(org => ({ id: org.id, publicId: org.publicId, slug: org.slug, name: org.name }))
+      items.value = (res.orgs ?? []).map(org => ({ id: org.id, slug: org.slug, name: org.name }))
       loaded.value = true
     }
     catch (e) {

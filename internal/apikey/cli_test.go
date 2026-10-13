@@ -19,10 +19,10 @@ import (
 	"altalune.id/oagent/internal/testutil/fakes"
 )
 
-func apiKeyClient(t *testing.T, store apikey.Store) apikeyv1connect.APIKeyServiceClient {
+func apiKeyClient(t *testing.T, refs *fakes.PublicIDs, store apikey.Store) apikeyv1connect.APIKeyServiceClient {
 	t.Helper()
 	svc := apikey.NewService(store, apikey.NewScheme(""), stubProjects{ids: []uuid.UUID{knownProject}}, nil)
-	srv := controlplane.New(controlplane.Services{APIKeys: svc}, nil, cptest.OperatorOptions())
+	srv := controlplane.New(controlplane.Services{APIKeys: svc, Refs: refs}, nil, cptest.OperatorOptions())
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
 	return apiclient.New(ts.URL, cptest.OperatorCredential()).APIKeys
@@ -42,17 +42,20 @@ func runAPIKey(t *testing.T, client apikeyv1connect.APIKeyServiceClient, args ..
 }
 
 func TestAPIKeyCreate(t *testing.T) {
-	buf, err := runAPIKey(t, apiKeyClient(t, &fakes.APIKeyStore{}), "create",
-		"--org-id", uuid.New().String(), "--name", "deploy", "--all-projects", "--output", "text")
+	refs := fakes.NewPublicIDs()
+	store := &fakes.APIKeyStore{}
+	buf, err := runAPIKey(t, apiKeyClient(t, refs, store), "create",
+		"--org-id", refs.Org(uuid.New()), "--name", "deploy", "--all-projects", "--output", "text")
 
 	require.NoError(t, err)
-	assert.Contains(t, buf.String(), "Created API key deploy")
+	assert.Contains(t, buf.String(), "Created API key deploy (…"+store.Saved.SecretHint+")")
 	assert.Contains(t, buf.String(), "Secret:")
 }
 
 func TestAPIKeyCreate_JSON(t *testing.T) {
-	buf, err := runAPIKey(t, apiKeyClient(t, &fakes.APIKeyStore{}), "create",
-		"--org-id", uuid.New().String(), "--name", "deploy", "--all-projects", "--output", "json")
+	refs := fakes.NewPublicIDs()
+	buf, err := runAPIKey(t, apiKeyClient(t, refs, &fakes.APIKeyStore{}), "create",
+		"--org-id", refs.Org(uuid.New()), "--name", "deploy", "--all-projects", "--output", "json")
 
 	require.NoError(t, err)
 	assert.Contains(t, buf.String(), `"plaintext"`)
@@ -62,11 +65,15 @@ func TestAPIKeyList_JSON(t *testing.T) {
 	k, _, err := apikey.NewScheme("").MintOrg(uuid.New(), "deploy", nil, apikey.ProjectGrant{All: true}, future(), time.Now().UTC())
 	require.NoError(t, err)
 	store := &fakes.APIKeyStore{Keys: []*apikey.APIKey{k}}
+	refs := fakes.NewPublicIDs()
 
-	buf, err := runAPIKey(t, apiKeyClient(t, store), "list", "--org-id", k.OrgID.String(), "--output", "json")
+	buf, err := runAPIKey(t, apiKeyClient(t, refs, store), "list", "--org-id", refs.Org(k.OrgID), "--output", "json")
 
 	require.NoError(t, err)
 	assert.Contains(t, buf.String(), `"name": "deploy"`)
+	assert.Contains(t, buf.String(), `"secretHint": "`+k.SecretHint+`"`)
+	assert.NotContains(t, buf.String(), k.ID.String())
+	assert.NotContains(t, buf.String(), k.OrgID.String())
 }
 
 func TestAPIKeyRevoke(t *testing.T) {
@@ -74,15 +81,22 @@ func TestAPIKeyRevoke(t *testing.T) {
 	k, _, err := apikey.NewScheme("").MintOrg(orgID, "deploy", nil, apikey.ProjectGrant{All: true}, future(), time.Now().UTC())
 	require.NoError(t, err)
 
-	buf, err := runAPIKey(t, apiKeyClient(t, &fakes.APIKeyStore{Key: k}), "revoke", k.ID.String(), "--org-id", orgID.String())
+	refs := fakes.NewPublicIDs()
+	store := &fakes.APIKeyStore{Key: k}
+
+	buf, err := runAPIKey(t, apiKeyClient(t, refs, store), "revoke", "--org-id", refs.Org(orgID), "--hint", k.SecretHint)
 
 	require.NoError(t, err)
-	assert.Contains(t, buf.String(), "Revoked API key")
+	assert.Contains(t, buf.String(), "Revoked API key …"+k.SecretHint)
+	require.NotNil(t, store.Saved)
+	assert.NotNil(t, store.Saved.RevokedAt)
 }
 
 func TestAPIKeyCreate_ProjectKeyScopes(t *testing.T) {
-	buf, err := runAPIKey(t, apiKeyClient(t, &fakes.APIKeyStore{}), "create",
-		"--org-id", uuid.New().String(), "--kind", "project", "--project-id", knownProject.String(),
+	refs := fakes.NewPublicIDs()
+	orgID := uuid.New()
+	buf, err := runAPIKey(t, apiKeyClient(t, refs, &fakes.APIKeyStore{}), "create",
+		"--org-id", refs.Org(orgID), "--kind", "project", "--project-id", refs.Project(knownProject, orgID),
 		"--name", "ci", "--scopes", "agent:read,agent:write", "--output", "text")
 
 	require.NoError(t, err)
@@ -93,9 +107,11 @@ func TestAPIKeyList_Text(t *testing.T) {
 	k, _, err := apikey.NewScheme("").MintOrg(uuid.New(), "deploy", nil, apikey.ProjectGrant{All: true}, future(), time.Now().UTC())
 	require.NoError(t, err)
 	store := &fakes.APIKeyStore{Keys: []*apikey.APIKey{k}}
+	refs := fakes.NewPublicIDs()
 
-	buf, err := runAPIKey(t, apiKeyClient(t, store), "list", "--org-id", k.OrgID.String(), "--output", "text")
+	buf, err := runAPIKey(t, apiKeyClient(t, refs, store), "list", "--org-id", refs.Org(k.OrgID), "--output", "text")
 
 	require.NoError(t, err)
-	assert.Contains(t, buf.String(), "KIND")
+	assert.Regexp(t, `^HINT\s+KIND`, buf.String())
+	assert.Contains(t, buf.String(), k.SecretHint)
 }

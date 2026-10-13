@@ -27,6 +27,7 @@ import (
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/permission"
+	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/testutil/fakes"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/web/layout"
@@ -73,6 +74,7 @@ type testServer struct {
 	URL    string
 	secret []byte
 	store  session.Store
+	orgID  string
 
 	mu       sync.Mutex
 	requests int
@@ -89,12 +91,18 @@ func (s *testServer) seen() (int, string, string) {
 func newTestServer(t *testing.T) *testServer {
 	t.Helper()
 	ts := &testServer{secret: bytes.Repeat([]byte{7}, 32), store: session.NewMemoryStore()}
+	ids := fakes.NewPublicIDs()
 	acme := &org.Org{ID: uuid.New(), Slug: "acme", Name: "Acme"}
+	acme.PublicID = ids.Org(acme.ID)
+	ts.orgID = acme.PublicID
 	p := session.Principal{Source: session.SourceLocal, UserID: uuid.New(), Email: testEmail, Name: "Ada", ActiveOrgID: acme.ID}
+	ids.User(p.UserID)
 
 	api := controlplane.New(controlplane.Services{
-		Orgs:  org.NewService(&fakes.OrgStore{Org: acme}, fakes.Transactor{}, nil),
-		Users: user.NewService(fakes.NewUserStore(), nil),
+		Orgs:     org.NewService(&fakes.OrgStore{Org: acme}, fakes.Transactor{}, nil),
+		Projects: project.NewService(&fakes.ProjectStore{}, nil),
+		Users:    user.NewService(fakes.NewUserStore(), nil),
+		Refs:     ids,
 	}, nil, controlplane.Options{Authn: authn.InterceptorOptions{
 		Chain:        authn.Chain{storeAuthn{store: ts.store}},
 		KeyPrefix:    "oagent_",
@@ -105,7 +113,7 @@ func newTestServer(t *testing.T) *testServer {
 	mux.Handle("/api/", api)
 	auth.NewWeb(layout.Kit{}, fakeSignIn{store: ts.store, p: p}, auth.CookieSessions{
 		Store: ts.store, Secret: ts.secret, Cookie: session.CookieOptions{Path: "/"}, TTL: time.Hour,
-	}).Register(mux)
+	}, ids).Register(mux)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ts.mu.Lock()
@@ -301,10 +309,12 @@ func TestAuthWhoami_RefreshesTheProfile(t *testing.T) {
 
 func TestAuthWhoami_JSON(t *testing.T) {
 	cliEnv(t)
-	login(t, newTestServer(t), "default")
+	srv := newTestServer(t)
+	login(t, srv, "default")
 	out, _, err := runCLI(t, "", "auth", "whoami", "--output", "json")
 	require.NoError(t, err)
 	assert.Contains(t, out, `"email": "`+testEmail+`"`)
+	assert.Contains(t, out, `"active_org_id": "`+srv.orgID+`"`)
 	assert.Contains(t, out, `"active_org_slug": "acme"`)
 }
 

@@ -185,9 +185,6 @@ components:
         id:
           type: string
           title: id
-        publicId:
-          type: string
-          title: public_id
         orgId:
           type: string
           title: org_id
@@ -475,3 +472,4 @@ components:
 security: []
 tags:
   - name: agent.v1.AgentService
+    description: AgentService manages agents. Every id is a public id.

@@ -6,7 +6,6 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
-	"altalune.id/oagent/apperror"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	"altalune.id/oagent/internal/kernel/authz"
@@ -41,14 +40,7 @@ func (s *OrgService) GetOrg(
 	ctx context.Context,
 	req *connect.Request[orgv1.GetOrgRequest],
 ) (*connect.Response[orgv1.GetOrgResponse], error) {
-	id, err := uuid.Parse(req.Msg.GetId())
-	if err != nil {
-		return nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
-	}
-	if !authz.ReachOrg(ctx, id) {
-		return nil, &NotFoundError{ID: id.String()}
-	}
-	o, err := s.orgs.Get(ctx, id)
+	o, err := s.reachable(ctx, req.Msg.GetId(), authz.ReachOrg)
 	if err != nil {
 		return nil, err
 	}
@@ -78,16 +70,28 @@ func (s *OrgService) UpdateOrg(
 	ctx context.Context,
 	req *connect.Request[orgv1.UpdateOrgRequest],
 ) (*connect.Response[orgv1.UpdateOrgResponse], error) {
-	id, err := uuid.Parse(req.Msg.GetId())
+	o, err := s.reachable(ctx, req.Msg.GetId(), authz.ReachWholeOrg)
 	if err != nil {
-		return nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
+		return nil, err
 	}
-	if !authz.ReachWholeOrg(ctx, id) {
-		return nil, &NotFoundError{ID: id.String()}
-	}
-	o, err := s.orgs.Update(ctx, id, req.Msg.GetName(), req.Msg.GetSlug())
+	o, err = s.orgs.Update(ctx, o.ID, req.Msg.GetName(), req.Msg.GetSlug())
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&orgv1.UpdateOrgResponse{Org: orgToProto(o)}), nil
+}
+
+// SECURITY: an unknown public id and an org out of reach answer the same not-found.
+func (s *OrgService) reachable(ctx context.Context, publicID string, reach func(context.Context, uuid.UUID) bool) (*Org, error) {
+	o, err := s.orgs.ByPublicID(ctx, publicID)
+	if IsNotFoundError(err) {
+		return nil, &NotFoundError{}
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !reach(ctx, o.ID) {
+		return nil, &NotFoundError{}
+	}
+	return o, nil
 }

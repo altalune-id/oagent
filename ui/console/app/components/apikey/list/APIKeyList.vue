@@ -22,10 +22,10 @@ function kindLabel(kind: string): string {
   return t('apikeys.kind_project')
 }
 
-async function revoke(id: string) {
+async function revoke(hint: string) {
   try {
-    await client.revokeAPIKey({ orgId, id })
-    keys.markRevoked(id)
+    await client.revokeAPIKey({ orgId, hint })
+    keys.markRevoked(hint)
   }
   catch (e) {
     keys.error = errorMessage(e, 'error.revoke_apikey')
@@ -51,7 +51,7 @@ async function revoke(id: string) {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="k in keys.items" :key="k.id" class="hover:bg-base-200">
+        <tr v-for="k in keys.items" :key="k.rowKey" class="hover:bg-base-200">
           <td>{{ k.name }}</td>
           <td>{{ kindLabel(k.kind) }}</td>
           <td class="text-base-content/60">
@@ -66,7 +66,7 @@ async function revoke(id: string) {
             </span>
           </td>
           <td class="whitespace-nowrap text-right">
-            <button v-if="!k.revokedAt" class="btn btn-ghost btn-xs text-error" @click="revoke(k.id)">
+            <button v-if="!k.revokedAt" class="btn btn-ghost btn-xs text-error" @click="revoke(k.secretHint)">
               <Icon name="lucide:ban" size="14" />
               {{ t('common.revoke') }}
             </button>

@@ -3,7 +3,6 @@ import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export interface Agent {
   id: string
-  publicId: string
   projectId: string
   slug: string
   name: string
@@ -49,7 +48,7 @@ export const useAgentsStore = defineStore('agents', () => {
       if (mine !== latest) {
         return
       }
-      items.value = (res.agents ?? []).map(a => ({ id: a.id, publicId: a.publicId, projectId: a.projectId, slug: a.slug, name: a.name, description: a.description }))
+      items.value = (res.agents ?? []).map(a => ({ id: a.id, projectId: a.projectId, slug: a.slug, name: a.name, description: a.description }))
       loadedFor = projectId
     }
     catch (e) {

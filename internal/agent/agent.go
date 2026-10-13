@@ -145,12 +145,11 @@ func (r *agentRow) toAgent() *Agent {
 	}
 }
 
-func agentToProto(a *Agent) *agentv1.Agent {
+func agentToProto(a *Agent, orgPublicID, projectPublicID string) *agentv1.Agent {
 	return &agentv1.Agent{
-		Id:          a.ID.String(),
-		PublicId:    a.PublicID,
-		OrgId:       a.OrgID.String(),
-		ProjectId:   a.ProjectID.String(),
+		Id:          a.PublicID,
+		OrgId:       orgPublicID,
+		ProjectId:   projectPublicID,
 		Slug:        a.Slug,
 		Name:        a.Name,
 		Description: a.Description,

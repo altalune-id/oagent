@@ -112,9 +112,6 @@ components:
     apikey.v1.APIKey:
       type: object
       properties:
-        id:
-          type: string
-          title: id
         orgId:
           type: string
           title: org_id
@@ -163,6 +160,7 @@ components:
           $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: APIKey
       additionalProperties: false
+      description: 'APIKey has no id: within its org a live key is named by secret_hint.'
     apikey.v1.CreateAPIKeyRequest:
       type: object
       properties:
@@ -239,9 +237,10 @@ components:
         orgId:
           type: string
           title: org_id
-        id:
+        hint:
           type: string
-          title: id
+          title: hint
+          description: The last 4 characters of the key's secret, as secret_hint shows them.
       title: RevokeAPIKeyRequest
       additionalProperties: false
     apikey.v1.RevokeAPIKeyResponse:
@@ -416,3 +415,4 @@ components:
 security: []
 tags:
   - name: apikey.v1.APIKeyService
+    description: APIKeyService mints, lists and revokes API keys. Every id is a public id.

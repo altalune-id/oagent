@@ -15,7 +15,7 @@ const org = computed(() => orgs.bySlug(route.params.org as string))
 const members = useMembers(org.value?.id ?? '')
 const { rows, canLeave, loading, loadError, busy, error, confirming, confirmMessage } = members
 const viewerRole = computed(() => members.viewer.value.role)
-const invite = useInvite(org.value?.publicId ?? '', viewerRole)
+const invite = useInvite(org.value?.id ?? '', viewerRole)
 const {
   pending, drafts, canInvite, roles: inviteRoles, modalOpen, email: inviteEmail, role: inviteRole,
   busy: inviteBusy, error: inviteError, sent, sentMessage, rowLink, notice: inviteNotice, confirming: inviteConfirming, confirmMessage: inviteConfirmMessage,

@@ -62,7 +62,7 @@ func newCreateCmd(clientFn ClientFn) *cobra.Command {
 			if isJSON(cmd) {
 				return render.JSON(cmd.OutOrStdout(), map[string]any{"key": keyMap(k), "plaintext": resp.Msg.GetPlaintext()})
 			}
-			cmd.Printf("Created API key %s (%s)\n", k.GetName(), k.GetId())
+			cmd.Printf("Created API key %s (…%s)\n", k.GetName(), k.GetSecretHint())
 			cmd.Printf("Secret: %s\n", resp.Msg.GetPlaintext())
 			cmd.PrintErrln("Store this secret now; it will not be shown again.")
 			return nil
@@ -106,9 +106,9 @@ func newListCmd(clientFn ClientFn) *cobra.Command {
 			}
 			rows := make([][]string, 0, len(keys))
 			for _, k := range keys {
-				rows = append(rows, []string{k.GetId(), k.GetKind(), k.GetName(), strings.Join(k.GetScopes(), ","), k.GetSecretHint()})
+				rows = append(rows, []string{k.GetSecretHint(), k.GetKind(), k.GetName(), strings.Join(k.GetScopes(), ",")})
 			}
-			return render.Table(cmd.OutOrStdout(), []string{"ID", "KIND", "NAME", "SCOPES", "HINT"}, rows)
+			return render.Table(cmd.OutOrStdout(), []string{"HINT", "KIND", "NAME", "SCOPES"}, rows)
 		},
 	}
 	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
@@ -117,29 +117,31 @@ func newListCmd(clientFn ClientFn) *cobra.Command {
 }
 
 func newRevokeCmd(clientFn ClientFn) *cobra.Command {
-	var orgID string
+	var orgID, hint string
 	cmd := &cobra.Command{
-		Use:   "revoke <id>",
-		Short: "Revoke an API key",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Use:   "revoke",
+		Short: "Revoke an API key by its hint",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			client, err := clientFn(cmd)
 			if err != nil {
 				return err
 			}
 			_, err = client.RevokeAPIKey(
 				cmd.Context(),
-				connect.NewRequest(&apikeyv1.RevokeAPIKeyRequest{OrgId: orgID, Id: args[0]}),
+				connect.NewRequest(&apikeyv1.RevokeAPIKeyRequest{OrgId: orgID, Hint: hint}),
 			)
 			if err != nil {
 				return err
 			}
-			cmd.Printf("Revoked API key %s\n", args[0])
+			cmd.Printf("Revoked API key …%s\n", hint)
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
+	cmd.Flags().StringVar(&hint, "hint", "", "The key's hint: the last 4 characters of its secret")
 	_ = cmd.MarkFlagRequired("org-id")
+	_ = cmd.MarkFlagRequired("hint")
 	return cmd
 }
 
@@ -168,7 +170,6 @@ func isJSON(cmd *cobra.Command) bool {
 
 func keyMap(k *apikeyv1.APIKey) map[string]any {
 	return map[string]any{
-		"id":          k.GetId(),
 		"orgId":       k.GetOrgId(),
 		"projectId":   k.GetProjectId(),
 		"kind":        k.GetKind(),

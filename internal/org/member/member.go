@@ -82,12 +82,14 @@ func (r *membershipRow) toMembership() *Membership {
 // Member is a membership with the person's email and name, as listed to the org.
 type Member struct {
 	Membership
-	Email string
-	Name  string
+	UserPublicID string
+	Email        string
+	Name         string
 }
 
 type memberRow struct {
-	Membership membershipRow
-	Email      string `alias:"users.email"`
-	Name       string `alias:"users.name"`
+	Membership   membershipRow
+	UserPublicID string `alias:"users.public_id"`
+	Email        string `alias:"users.email"`
+	Name         string `alias:"users.name"`
 }

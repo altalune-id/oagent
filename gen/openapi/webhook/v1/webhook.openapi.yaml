@@ -829,9 +829,6 @@ components:
         id:
           type: string
           title: id
-        publicId:
-          type: string
-          title: public_id
         orgId:
           type: string
           title: org_id
@@ -941,3 +938,4 @@ components:
 security: []
 tags:
   - name: webhook.v1.WebhookService
+    description: WebhookService manages webhook endpoints and their deliveries. Every id is a public id.

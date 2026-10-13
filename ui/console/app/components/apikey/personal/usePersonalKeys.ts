@@ -56,11 +56,11 @@ export function usePersonalKeys(orgId: string) {
     }
   }
 
-  async function revoke(id: string) {
+  async function revoke(hint: string) {
     error.value = null
     try {
-      await client.revokeAPIKey({ orgId, id })
-      keys.markRevoked(id)
+      await client.revokeAPIKey({ orgId, hint })
+      keys.markRevoked(hint)
     }
     catch (e) {
       error.value = errorMessage(e, 'error.revoke_apikey')

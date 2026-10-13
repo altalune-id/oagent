@@ -6,7 +6,7 @@ import ErrorText from '../../ui/ErrorText.vue'
 import SecretField from '../../ui/SecretField.vue'
 
 export interface PersonalKey {
-  id: string
+  rowKey: string
   name: string
   scopes: string[]
   secretHint: string
@@ -99,7 +99,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   create: [form: PersonalKeyForm]
-  revoke: [id: string]
+  revoke: [hint: string]
   dismiss: []
 }>()
 
@@ -118,9 +118,9 @@ function submit() {
   }
 }
 
-function revoke(id: string) {
+function revoke(hint: string) {
   confirming.value = ''
-  emit('revoke', id)
+  emit('revoke', hint)
 }
 </script>
 
@@ -205,7 +205,7 @@ function revoke(id: string) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="k in keys" :key="k.id" class="hover:bg-base-200">
+          <tr v-for="k in keys" :key="k.rowKey" class="hover:bg-base-200">
             <td>{{ k.name }}</td>
             <td class="text-base-content/60">
               {{ k.scopes.join(', ') }}
@@ -220,16 +220,16 @@ function revoke(id: string) {
             </td>
             <td class="whitespace-nowrap text-right">
               <template v-if="!k.revokedAt">
-                <template v-if="confirming === k.id">
+                <template v-if="confirming === k.secretHint">
                   <span class="mr-1 text-xs">{{ labels.revokeConfirm }}</span>
-                  <button type="button" class="btn btn-error btn-xs" @click="revoke(k.id)">
+                  <button type="button" class="btn btn-error btn-xs" @click="revoke(k.secretHint)">
                     {{ labels.revoke }}
                   </button>
                   <button type="button" class="btn btn-ghost btn-xs" @click="confirming = ''">
                     {{ labels.cancel }}
                   </button>
                 </template>
-                <button v-else type="button" class="btn btn-ghost btn-xs text-error" @click="confirming = k.id">
+                <button v-else type="button" class="btn btn-ghost btn-xs text-error" @click="confirming = k.secretHint">
                   <Icon name="lucide:ban" size="14" />
                   {{ labels.revoke }}
                 </button>

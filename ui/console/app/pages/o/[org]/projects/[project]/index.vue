@@ -32,8 +32,8 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · oagent` 
       <h1 class="text-2xl font-bold">{{ project.name }}</h1>
       <p class="text-sm text-base-content/60">{{ t('nav.overview') }}</p>
       <div class="mt-1 flex items-center gap-1 text-xs text-base-content/60">
-        <span class="font-mono">{{ project.publicId }}</span>
-        <CopyButton :value="project.publicId" :label="t('common.copy')" />
+        <span class="font-mono">{{ project.id }}</span>
+        <CopyButton :value="project.id" :label="t('common.copy')" />
       </div>
     </div>
 

@@ -35,7 +35,7 @@ export function useOrgCreate() {
       const res = await client.createOrg({ name: value, slug: slug.value.trim() })
       const org = res.org
       if (org) {
-        orgs.add({ id: org.id, publicId: org.publicId, slug: org.slug, name: org.name })
+        orgs.add({ id: org.id, slug: org.slug, name: org.name })
         ui.closeOrgCreate()
         name.value = ''
         slug.value = ''

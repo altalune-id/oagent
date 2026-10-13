@@ -7,6 +7,7 @@ import "mcp/v1/annotations.proto";
 
 option go_package = "altalune.id/oagent/gen/go/org/v1;orgv1";
 
+// OrgService manages organizations. Every id is a public id.
 service OrgService {
   rpc CreateOrg(CreateOrgRequest) returns (CreateOrgResponse) {
     option (mcp.v1.tool) = {
@@ -36,8 +37,9 @@ service OrgService {
 }
 
 message Org {
+  reserved 2;
+  reserved "public_id";
   string id = 1;
-  string public_id = 2;
   string slug = 3;
   string name = 4;
   google.protobuf.Timestamp created_at = 5;

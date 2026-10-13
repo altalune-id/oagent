@@ -13,6 +13,7 @@ import (
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
 	"altalune.id/oagent/internal/kernel/outbox"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/nanoid"
 )
 
 func TestServiceRetry(t *testing.T) {
@@ -55,29 +56,34 @@ func TestServiceRetryFailed(t *testing.T) {
 }
 
 func TestControlPlaneRetry(t *testing.T) {
-	org, project := uuid.New(), uuid.New()
-	e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project}
-	cp := NewControlPlane(testService(t, &fakeStore{endpoints: []*Endpoint{e}}, &fakeOutbox{requeued: 2}))
+	s := newScope()
+	e := s.endpoint()
+	entry := outbox.Entry{ID: uuid.New(), PublicID: nanoid.MustNew(21), Target: e.ID.String(), Status: outbox.StatusFailed}
+	cp := NewControlPlane(testService(t, &fakeStore{endpoints: []*Endpoint{e}}, &fakeOutbox{entries: []outbox.Entry{entry}, requeued: 2}), s.refs)
 	ctx := session.PrincipalInto(context.Background(), session.System())
 
 	_, err := cp.RetryWebhookDelivery(ctx, connect.NewRequest(&webhookv1.RetryWebhookDeliveryRequest{
-		OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String(), DeliveryId: uuid.New().String(),
+		OrgId: s.o, ProjectId: s.p, Id: e.PublicID, DeliveryId: entry.PublicID,
 	}))
 	require.NoError(t, err)
 
-	_, err = cp.RetryWebhookDelivery(ctx, connect.NewRequest(&webhookv1.RetryWebhookDeliveryRequest{
-		OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String(), DeliveryId: "bad",
-	}))
-	assert.Error(t, err)
+	for _, id := range []string{"bad", entry.ID.String()} {
+		_, err = cp.RetryWebhookDelivery(ctx, connect.NewRequest(&webhookv1.RetryWebhookDeliveryRequest{
+			OrgId: s.o, ProjectId: s.p, Id: e.PublicID, DeliveryId: id,
+		}))
+		assert.True(t, IsDeliveryNotFoundError(err), "%s: %v", id, err)
+	}
 
 	resp, err := cp.RetryFailedWebhookDeliveries(ctx, connect.NewRequest(&webhookv1.RetryFailedWebhookDeliveriesRequest{
-		OrgId: org.String(), ProjectId: project.String(), Id: e.ID.String(),
+		OrgId: s.o, ProjectId: s.p, Id: e.PublicID,
 	}))
 	require.NoError(t, err)
 	assert.Equal(t, int32(2), resp.Msg.GetRequeued())
 
-	_, err = cp.RetryFailedWebhookDeliveries(ctx, connect.NewRequest(&webhookv1.RetryFailedWebhookDeliveriesRequest{
-		OrgId: org.String(), ProjectId: project.String(), Id: "bad",
-	}))
-	assert.Error(t, err)
+	for _, id := range []string{"bad", e.ID.String()} {
+		_, err = cp.RetryFailedWebhookDeliveries(ctx, connect.NewRequest(&webhookv1.RetryFailedWebhookDeliveriesRequest{
+			OrgId: s.o, ProjectId: s.p, Id: id,
+		}))
+		assert.True(t, IsNotFoundError(err), "%s: %v", id, err)
+	}
 }

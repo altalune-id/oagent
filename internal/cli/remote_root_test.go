@@ -38,16 +38,23 @@ func TestRoot_OrgGet_Remote(t *testing.T) {
 	root := cli.NewRootCmd(nil, clientFn)
 	root.SetOut(buf)
 	root.SetErr(buf)
-	root.SetArgs([]string{"org", "get", store.Org.ID.String(), "--output", "json"})
+	root.SetArgs([]string{"org", "get", store.Org.PublicID, "--output", "json"})
 
 	require.NoError(t, root.ExecuteContext(t.Context()))
 	assert.Contains(t, buf.String(), `"slug": "acme"`)
+	assert.Contains(t, buf.String(), `"id": "pub"`)
+	assert.NotContains(t, buf.String(), store.Org.ID.String())
 }
 
 func TestRoot_ProjectGet_Remote(t *testing.T) {
 	p, err := project.NewProject(uuid.New(), "acme", "Acme", uuid.New())
 	require.NoError(t, err)
-	srv := controlplane.New(controlplane.Services{Projects: project.NewService(&fakes.ProjectStore{Project: p}, nil)}, nil, cptest.OperatorOptions())
+	refs := fakes.NewPublicIDs()
+	orgPublicID := refs.Org(p.OrgID)
+	srv := controlplane.New(controlplane.Services{
+		Projects: project.NewService(&fakes.ProjectStore{Project: p}, nil),
+		Refs:     refs,
+	}, nil, cptest.OperatorOptions())
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
 
@@ -55,20 +62,38 @@ func TestRoot_ProjectGet_Remote(t *testing.T) {
 	clientFn := func(context.Context, config.Config, *slog.Logger, string, apiclient.Credential) (*apiclient.Client, error) {
 		return apiclient.New(ts.URL, cptest.OperatorCredential()), nil
 	}
-	buf := new(bytes.Buffer)
-	root := cli.NewRootCmd(nil, clientFn)
-	root.SetOut(buf)
-	root.SetErr(buf)
-	root.SetArgs([]string{"project", "get", p.ID.String(), "--output", "json"})
+	run := func(id string) (string, error) {
+		buf := new(bytes.Buffer)
+		root := cli.NewRootCmd(nil, clientFn)
+		root.SetOut(buf)
+		root.SetErr(buf)
+		root.SetArgs([]string{"project", "get", id, "--output", "json"})
+		err := root.ExecuteContext(t.Context())
+		return buf.String(), err
+	}
 
-	require.NoError(t, root.ExecuteContext(t.Context()))
-	assert.Contains(t, buf.String(), `"slug": "acme"`)
+	out, err := run(p.PublicID)
+	require.NoError(t, err)
+	assert.Contains(t, out, `"slug": "acme"`)
+	assert.Contains(t, out, `"id": "`+p.PublicID+`"`)
+	assert.Contains(t, out, orgPublicID)
+	assert.NotContains(t, out, p.ID.String())
+
+	_, err = run(p.ID.String())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not_found", "a UUID is not an id the API answers to")
 }
 
 func TestRoot_AgentGet_Remote(t *testing.T) {
 	a, err := agent.New(uuid.New(), uuid.New(), "acme", "Acme", "", uuid.New())
 	require.NoError(t, err)
-	srv := controlplane.New(controlplane.Services{Agents: agent.NewService(&fakes.AgentStore{Agent: a}, fakes.Transactor{}, nil)}, nil, cptest.OperatorOptions())
+	refs := fakes.NewPublicIDs()
+	refs.Org(a.OrgID)
+	refs.Project(a.ProjectID, a.OrgID)
+	srv := controlplane.New(controlplane.Services{
+		Agents: agent.NewService(&fakes.AgentStore{Agent: a}, fakes.Transactor{}, nil),
+		Refs:   refs,
+	}, nil, cptest.OperatorOptions())
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
 
@@ -80,8 +105,10 @@ func TestRoot_AgentGet_Remote(t *testing.T) {
 	root := cli.NewRootCmd(nil, clientFn)
 	root.SetOut(buf)
 	root.SetErr(buf)
-	root.SetArgs([]string{"agent", "get", a.ID.String(), "--output", "json"})
+	root.SetArgs([]string{"agent", "get", a.PublicID, "--output", "json"})
 
 	require.NoError(t, root.ExecuteContext(t.Context()))
 	assert.Contains(t, buf.String(), `"slug": "acme"`)
+	assert.Contains(t, buf.String(), `"id": "`+a.PublicID+`"`)
+	assert.NotContains(t, buf.String(), a.ID.String())
 }

@@ -54,8 +54,8 @@ function edit(project: Project) {
             </td>
             <td>
               <span class="inline-flex items-center gap-1">
-                <span class="font-mono text-xs text-base-content/60">{{ project.publicId }}</span>
-                <CopyButton :value="project.publicId" :label="t('common.copy')" />
+                <span class="font-mono text-xs text-base-content/60">{{ project.id }}</span>
+                <CopyButton :value="project.id" :label="t('common.copy')" />
               </span>
             </td>
             <td class="text-base-content/60">{{ project.slug }}</td>

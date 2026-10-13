@@ -6,20 +6,20 @@ import (
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 
-	"altalune.id/oagent/apperror"
 	agentv1 "altalune.id/oagent/gen/go/agent/v1"
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	"altalune.id/oagent/internal/kernel/authz"
 )
 
-// AgentService implements agent.v1.AgentService.
+// AgentService implements agent.v1.AgentService; every id it takes and returns is a public id.
 type AgentService struct {
 	agents *Service
+	refs   Refs
 }
 
-// NewControlPlane binds the handler to the agent service.
-func NewControlPlane(agents *Service) *AgentService {
-	return &AgentService{agents: agents}
+// NewControlPlane binds the handler to the agent service and the org and project public id lookups.
+func NewControlPlane(agents *Service, refs Refs) *AgentService {
+	return &AgentService{agents: agents, refs: refs}
 }
 
 var _ agentv1connect.AgentServiceHandler = (*AgentService)(nil)
@@ -29,11 +29,15 @@ func (s *AgentService) CreateAgent(
 	ctx context.Context,
 	req *connect.Request[agentv1.CreateAgentRequest],
 ) (*connect.Response[agentv1.CreateAgentResponse], error) {
-	orgID, projectID, err := parseScope(req.Msg.GetOrgId(), req.Msg.GetProjectId())
+	orgID, ok, err := s.refs.OrgID(ctx, req.Msg.GetOrgId())
 	if err != nil {
 		return nil, err
 	}
-	if !authz.ReachWholeProject(ctx, orgID, projectID) {
+	projectID, err := s.project(ctx, req.Msg.GetProjectId(), authz.ReachWholeProject)
+	if err != nil {
+		return nil, err
+	}
+	if !ok || !authz.ReachWholeProject(ctx, orgID, projectID) {
 		return nil, &NotFoundError{}
 	}
 	a, err := s.agents.Create(ctx, CreateRequest{
@@ -46,7 +50,9 @@ func (s *AgentService) CreateAgent(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&agentv1.CreateAgentResponse{Agent: agentToProto(a)}), nil
+	return connect.NewResponse(&agentv1.CreateAgentResponse{
+		Agent: agentToProto(a, req.Msg.GetOrgId(), req.Msg.GetProjectId()),
+	}), nil
 }
 
 // GetAgent loads an agent by id.
@@ -54,15 +60,15 @@ func (s *AgentService) GetAgent(
 	ctx context.Context,
 	req *connect.Request[agentv1.GetAgentRequest],
 ) (*connect.Response[agentv1.GetAgentResponse], error) {
-	id, err := parseID(req.Msg.GetId())
+	a, err := s.reachable(ctx, req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
-	a, err := s.reachable(ctx, id)
+	out, err := s.toProto(ctx, a)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&agentv1.GetAgentResponse{Agent: agentToProto(a)}), nil
+	return connect.NewResponse(&agentv1.GetAgentResponse{Agent: out}), nil
 }
 
 // ListAgents lists the project's agents the caller reaches, ordered by creation time.
@@ -70,11 +76,8 @@ func (s *AgentService) ListAgents(
 	ctx context.Context,
 	req *connect.Request[agentv1.ListAgentsRequest],
 ) (*connect.Response[agentv1.ListAgentsResponse], error) {
-	projectID, err := uuid.Parse(req.Msg.GetProjectId())
+	projectID, err := s.project(ctx, req.Msg.GetProjectId(), authz.ReachProject)
 	if err != nil {
-		return nil, apperror.Invalid("project_id", apperror.FieldInvalid).WithCause(err)
-	}
-	if err := s.reachProject(ctx, projectID); err != nil {
 		return nil, err
 	}
 	agents, err := s.agents.List(ctx, projectID)
@@ -82,10 +85,17 @@ func (s *AgentService) ListAgents(
 		return nil, err
 	}
 	out := make([]*agentv1.Agent, 0, len(agents))
+	orgPublicID := ""
 	for _, a := range agents {
-		if authz.ReachResource(ctx, a.OrgID, a.ProjectID, a.ID) {
-			out = append(out, agentToProto(a))
+		if !authz.ReachResource(ctx, a.OrgID, a.ProjectID, a.ID) {
+			continue
 		}
+		if orgPublicID == "" {
+			if orgPublicID, err = s.refs.OrgPublicID(ctx, a.OrgID); err != nil {
+				return nil, err
+			}
+		}
+		out = append(out, agentToProto(a, orgPublicID, req.Msg.GetProjectId()))
 	}
 	return connect.NewResponse(&agentv1.ListAgentsResponse{Agents: out}), nil
 }
@@ -95,18 +105,19 @@ func (s *AgentService) UpdateAgent(
 	ctx context.Context,
 	req *connect.Request[agentv1.UpdateAgentRequest],
 ) (*connect.Response[agentv1.UpdateAgentResponse], error) {
-	id, err := parseID(req.Msg.GetId())
+	a, err := s.reachable(ctx, req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.reachable(ctx, id); err != nil {
-		return nil, err
-	}
-	a, err := s.agents.Update(ctx, id, req.Msg.GetName(), req.Msg.GetDescription())
+	a, err = s.agents.Update(ctx, a.ID, req.Msg.GetName(), req.Msg.GetDescription())
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&agentv1.UpdateAgentResponse{Agent: agentToProto(a)}), nil
+	out, err := s.toProto(ctx, a)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&agentv1.UpdateAgentResponse{Agent: out}), nil
 }
 
 // DeleteAgent deletes an agent by id.
@@ -114,59 +125,53 @@ func (s *AgentService) DeleteAgent(
 	ctx context.Context,
 	req *connect.Request[agentv1.DeleteAgentRequest],
 ) (*connect.Response[agentv1.DeleteAgentResponse], error) {
-	id, err := parseID(req.Msg.GetId())
+	a, err := s.reachable(ctx, req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.reachable(ctx, id); err != nil {
-		return nil, err
-	}
-	if err := s.agents.Delete(ctx, id); err != nil {
+	if err := s.agents.Delete(ctx, a.ID); err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&agentv1.DeleteAgentResponse{}), nil
 }
 
-// SECURITY: an agent outside the caller's reach is reported as absent.
-func (s *AgentService) reachable(ctx context.Context, id uuid.UUID) (*Agent, error) {
-	a, err := s.agents.Get(ctx, id)
+// SECURITY: an unknown agent and an agent outside the caller's reach answer the same not-found.
+func (s *AgentService) reachable(ctx context.Context, publicID string) (*Agent, error) {
+	a, err := s.agents.ByPublicID(ctx, publicID)
+	if IsNotFoundError(err) {
+		return nil, &NotFoundError{}
+	}
 	if err != nil {
 		return nil, err
 	}
 	if !authz.ReachResource(ctx, a.OrgID, a.ProjectID, a.ID) {
-		return nil, &NotFoundError{ID: id.String()}
+		return nil, &NotFoundError{}
 	}
 	return a, nil
 }
 
-// SECURITY: a project outside the caller's reach, or one that does not exist, is reported as an absent agent.
-func (s *AgentService) reachProject(ctx context.Context, projectID uuid.UUID) error {
-	orgID, ok, err := s.agents.ProjectOrg(ctx, projectID)
-	if err != nil || !ok {
-		return err
-	}
-	if !authz.ReachProject(ctx, orgID, projectID) {
-		return &NotFoundError{}
-	}
-	return nil
-}
-
-func parseID(raw string) (uuid.UUID, error) {
-	id, err := uuid.Parse(raw)
+// SECURITY: an unknown project and a project outside the caller's reach are reported as an absent agent.
+func (s *AgentService) project(
+	ctx context.Context, publicID string, reach func(ctx context.Context, orgID, projectID uuid.UUID) bool,
+) (uuid.UUID, error) {
+	id, orgID, ok, err := s.refs.ProjectID(ctx, publicID)
 	if err != nil {
-		return uuid.Nil, apperror.Invalid("agent_id", apperror.FieldInvalid).WithCause(err)
+		return uuid.Nil, err
+	}
+	if !ok || !reach(ctx, orgID, id) {
+		return uuid.Nil, &NotFoundError{}
 	}
 	return id, nil
 }
 
-func parseScope(orgRaw, projectRaw string) (orgID, projectID uuid.UUID, err error) {
-	orgID, err = uuid.Parse(orgRaw)
+func (s *AgentService) toProto(ctx context.Context, a *Agent) (*agentv1.Agent, error) {
+	orgPublicID, err := s.refs.OrgPublicID(ctx, a.OrgID)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
+		return nil, err
 	}
-	projectID, err = uuid.Parse(projectRaw)
+	projectPublicID, err := s.refs.ProjectPublicID(ctx, a.ProjectID)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, apperror.Invalid("project_id", apperror.FieldInvalid).WithCause(err)
+		return nil, err
 	}
-	return orgID, projectID, nil
+	return agentToProto(a, orgPublicID, projectPublicID), nil
 }

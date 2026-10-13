@@ -68,7 +68,7 @@ func buildAPIHandler(
 		Users:    svcs.Users,
 		Members:  svcs.Members,
 		Invites:  svcs.Invites,
-		OrgIDs:   orgPublicIDs{orgs: svcs.Orgs},
+		Refs:     newPublicIDs(svcs),
 	}, unexpected, opts).Handler(basePath)
 	if requireCredentials && svcs.Caps.BasicAuth {
 		h = auth.BasicChallenge(h)
@@ -166,7 +166,7 @@ func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected
 	legalOpts.RequireAcceptance = cfg.Compliance.RequireAcceptance
 	return []web.Registrar{
 		legal.NewWeb(legalOpts),
-		auth.NewWeb(kit, svcs.Auth, sessions),
+		auth.NewWeb(kit, svcs.Auth, sessions, newPublicIDs(svcs)),
 		install.NewWeb(install.WebOpts{
 			Kit:       kit,
 			Installer: svcs.Install,

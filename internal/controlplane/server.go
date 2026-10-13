@@ -46,7 +46,18 @@ type Services struct {
 	Users    *user.Service
 	Members  *member.Service
 	Invites  *invite.Service
-	OrgIDs   invite.OrgIDs
+	Refs     Refs
+}
+
+// Refs turns the public ids every surface carries into ids and back, for every domain's handler.
+type Refs interface {
+	invite.OrgIDs
+	project.OrgRefs
+	agent.Refs
+	apikey.Refs
+	webhook.Refs
+	member.Refs
+	auth.PublicIDs
 }
 
 // Server holds the wired Connect handlers.
@@ -88,25 +99,25 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 		unexpected:       unexpected,
 	}
 	if svcs.Projects != nil {
-		s.ProjectSvc = project.NewControlPlane(svcs.Projects)
+		s.ProjectSvc = project.NewControlPlane(svcs.Projects, svcs.Refs)
 	}
 	if svcs.Agents != nil {
-		s.AgentSvc = agent.NewControlPlane(svcs.Agents)
+		s.AgentSvc = agent.NewControlPlane(svcs.Agents, svcs.Refs)
 	}
 	if svcs.APIKeys != nil {
-		s.APIKeySvc = apikey.NewControlPlane(svcs.APIKeys)
+		s.APIKeySvc = apikey.NewControlPlane(svcs.APIKeys, svcs.Refs)
 	}
 	if svcs.Webhooks != nil {
-		s.WebhookSvc = webhook.NewControlPlane(svcs.Webhooks)
+		s.WebhookSvc = webhook.NewControlPlane(svcs.Webhooks, svcs.Refs)
 	}
 	if svcs.Members != nil {
-		s.MemberSvc = member.NewControlPlane(svcs.Members)
+		s.MemberSvc = member.NewControlPlane(svcs.Members, svcs.Refs)
 	}
-	if svcs.Invites != nil && svcs.OrgIDs != nil {
-		s.InviteSvc = invite.NewControlPlane(svcs.Invites, svcs.OrgIDs)
+	if svcs.Invites != nil {
+		s.InviteSvc = invite.NewControlPlane(svcs.Invites, svcs.Refs)
 	}
-	if svcs.Orgs != nil && svcs.Users != nil {
-		s.AuthSvc = auth.NewControlPlane(svcs.Orgs, svcs.Users)
+	if svcs.Orgs != nil && svcs.Projects != nil && svcs.Users != nil {
+		s.AuthSvc = auth.NewControlPlane(svcs.Orgs, svcs.Projects, svcs.Users)
 	}
 	return s
 }

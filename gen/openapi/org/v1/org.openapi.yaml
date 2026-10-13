@@ -364,9 +364,6 @@ components:
         id:
           type: string
           title: id
-        publicId:
-          type: string
-          title: public_id
         slug:
           type: string
           title: slug
@@ -406,3 +403,4 @@ components:
 security: []
 tags:
   - name: org.v1.OrgService
+    description: OrgService manages organizations. Every id is a public id.

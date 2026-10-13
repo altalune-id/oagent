@@ -22,9 +22,9 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// APIKey has no id: within its org a live key is named by secret_hint.
 type APIKey struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
-	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	OrgId     string                 `protobuf:"bytes,2,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
 	ProjectId string                 `protobuf:"bytes,3,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// project, org or personal; a personal key acts for the person who created it.
@@ -71,13 +71,6 @@ func (x *APIKey) ProtoReflect() protoreflect.Message {
 // Deprecated: Use APIKey.ProtoReflect.Descriptor instead.
 func (*APIKey) Descriptor() ([]byte, []int) {
 	return file_apikey_v1_apikey_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *APIKey) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
 }
 
 func (x *APIKey) GetOrgId() string {
@@ -423,9 +416,10 @@ func (x *ListAPIKeysResponse) GetKeys() []*APIKey {
 }
 
 type RevokeAPIKeyRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	OrgId         string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
-	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	OrgId string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	// The last 4 characters of the key's secret, as secret_hint shows them.
+	Hint          string `protobuf:"bytes,3,opt,name=hint,proto3" json:"hint,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -467,9 +461,9 @@ func (x *RevokeAPIKeyRequest) GetOrgId() string {
 	return ""
 }
 
-func (x *RevokeAPIKeyRequest) GetId() string {
+func (x *RevokeAPIKeyRequest) GetHint() string {
 	if x != nil {
-		return x.Id
+		return x.Hint
 	}
 	return ""
 }
@@ -514,9 +508,8 @@ var File_apikey_v1_apikey_proto protoreflect.FileDescriptor
 
 const file_apikey_v1_apikey_proto_rawDesc = "" +
 	"\n" +
-	"\x16apikey/v1/apikey.proto\x12\tapikey.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x85\x04\n" +
-	"\x06APIKey\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
+	"\x16apikey/v1/apikey.proto\x12\tapikey.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xff\x03\n" +
+	"\x06APIKey\x12\x15\n" +
 	"\x06org_id\x18\x02 \x01(\tR\x05orgId\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x03 \x01(\tR\tprojectId\x12\x12\n" +
@@ -537,7 +530,7 @@ const file_apikey_v1_apikey_proto_rawDesc = "" +
 	"\n" +
 	"revoked_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\trevokedAt\x12<\n" +
 	"\flast_used_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"lastUsedAt\"\xad\x02\n" +
+	"lastUsedAtJ\x04\b\x01\x10\x02R\x02id\"\xad\x02\n" +
 	"\x13CreateAPIKeyRequest\x12\x15\n" +
 	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
 	"\n" +
@@ -557,10 +550,10 @@ const file_apikey_v1_apikey_proto_rawDesc = "" +
 	"\x12ListAPIKeysRequest\x12\x15\n" +
 	"\x06org_id\x18\x01 \x01(\tR\x05orgId\"<\n" +
 	"\x13ListAPIKeysResponse\x12%\n" +
-	"\x04keys\x18\x01 \x03(\v2\x11.apikey.v1.APIKeyR\x04keys\"<\n" +
+	"\x04keys\x18\x01 \x03(\v2\x11.apikey.v1.APIKeyR\x04keys\"J\n" +
 	"\x13RevokeAPIKeyRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id\"\x16\n" +
+	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x12\n" +
+	"\x04hint\x18\x03 \x01(\tR\x04hintJ\x04\b\x02\x10\x03R\x02id\"\x16\n" +
 	"\x14RevokeAPIKeyResponse2\xff\x01\n" +
 	"\rAPIKeyService\x12O\n" +
 	"\fCreateAPIKey\x12\x1e.apikey.v1.CreateAPIKeyRequest\x1a\x1f.apikey.v1.CreateAPIKeyResponse\x12L\n" +

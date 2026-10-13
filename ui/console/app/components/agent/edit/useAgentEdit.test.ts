@@ -5,7 +5,7 @@ import { connectError, deferred, setClient, setKnownKeys } from '../../../../tes
 import { useAgentsStore } from '~/stores/agents'
 import { useAgentEdit } from './useAgentEdit'
 
-const agent = { id: 'a1', publicId: 'agt_1', projectId: 'p1', slug: 'bot', name: 'Bot', description: 'Helps' }
+const agent = { id: 'EW7HBToNTTOAuNhPZB60M', projectId: 'x6LH9WPWiktLwCBKHy4oF', slug: 'bot', name: 'Bot', description: 'Helps' }
 
 describe('useAgentEdit', () => {
   let updateAgent: ReturnType<typeof vi.fn>
@@ -32,7 +32,7 @@ describe('useAgentEdit', () => {
     form.name.value = ' Robot '
     form.description.value = 'New'
     await form.submit()
-    expect(updateAgent).toHaveBeenCalledWith({ id: 'a1', name: 'Robot', description: 'New' })
+    expect(updateAgent).toHaveBeenCalledWith({ id: 'EW7HBToNTTOAuNhPZB60M', name: 'Robot', description: 'New' })
     expect(useAgentsStore().items[0]).toEqual({ ...agent, name: 'Robot', description: 'New' })
     expect(form.open.value).toBe(false)
     expect(form.name.value).toBe('')

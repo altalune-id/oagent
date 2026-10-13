@@ -17,3 +17,14 @@ type Projects interface {
 type OwnerRoles interface {
 	Role(ctx context.Context, orgID, userID uuid.UUID) (role member.Role, ok bool, err error)
 }
+
+// Refs turns org, project and resource public ids into ids and back; ok is false for an unknown public id.
+type Refs interface {
+	OrgID(ctx context.Context, publicID string) (id uuid.UUID, ok bool, err error)
+	ProjectID(ctx context.Context, publicID string) (id, orgID uuid.UUID, ok bool, err error)
+	ProjectPublicID(ctx context.Context, id uuid.UUID) (string, error)
+	// ResourceID resolves an agent's or a webhook endpoint's public id within orgID.
+	ResourceID(ctx context.Context, orgID uuid.UUID, publicID string) (id uuid.UUID, ok bool, err error)
+	// ResourcePublicID reports ok false for a resource that no longer exists.
+	ResourcePublicID(ctx context.Context, orgID, id uuid.UUID) (publicID string, ok bool, err error)
+}

@@ -122,11 +122,10 @@ func (r *projectRow) toProject() *Project {
 	}
 }
 
-func projectToProto(p *Project) *projectv1.Project {
+func projectToProto(p *Project, orgPublicID string) *projectv1.Project {
 	return &projectv1.Project{
-		Id:        p.ID.String(),
-		PublicId:  p.PublicID,
-		OrgId:     p.OrgID.String(),
+		Id:        p.PublicID,
+		OrgId:     orgPublicID,
 		Slug:      p.Slug,
 		Name:      p.Name,
 		CreatedAt: timestamppb.New(p.CreatedAt),

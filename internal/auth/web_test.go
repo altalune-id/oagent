@@ -17,6 +17,7 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/testutil/fakes"
 	"altalune.id/oagent/internal/web"
 	"altalune.id/oagent/internal/web/layout"
 	"altalune.id/oagent/internal/web/middleware"
@@ -25,6 +26,7 @@ import (
 type loginFixture struct {
 	srv   http.Handler
 	auth  *fakeAuth
+	ids   *fakes.PublicIDs
 	store *session.MemoryStore
 	base  string
 }
@@ -33,12 +35,20 @@ func newLoginFixture(t *testing.T, base string) *loginFixture {
 	t.Helper()
 	f := &loginFixture{
 		base:  base,
+		ids:   fakes.NewPublicIDs(),
 		store: session.NewMemoryStore(),
 		auth: &fakeAuth{
-			users:     map[string]string{"ada@example.com": "correct horse battery"},
-			principal: session.Principal{UserID: uuid.New(), Source: session.SourceLocal, Name: "Ada", ActiveOrgID: uuid.New(), Scopes: []string{"*"}},
+			users: map[string]string{"ada@example.com": "correct horse battery"},
+			principal: session.Principal{
+				UserID: uuid.New(), Source: session.SourceLocal, Name: "Ada",
+				ActiveOrgID: uuid.New(), ActiveProjectID: uuid.New(), Scopes: []string{"*"},
+			},
 		},
 	}
+	p := f.auth.principal
+	f.ids.User(p.UserID)
+	f.ids.Org(p.ActiveOrgID)
+	f.ids.Project(p.ActiveProjectID, p.ActiveOrgID)
 	sessions := testSessions(f.store)
 	sessions.Cookie.Path = layout.Path(base, "")
 	console := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +58,7 @@ func newLoginFixture(t *testing.T, base string) *loginFixture {
 		BasePath: base,
 		Console:  console,
 		Session:  middleware.Session(middleware.SessionConfig{Store: f.store, Secret: testSecret, Auth: f.auth}),
-		Routes:   []web.Registrar{NewWeb(layout.Kit{BasePath: base}, f.auth, sessions)},
+		Routes:   []web.Registrar{NewWeb(layout.Kit{BasePath: base}, f.auth, sessions, f.ids)},
 	})
 	return f
 }
@@ -173,13 +183,14 @@ func TestLogin_SuccessJSON(t *testing.T) {
 		Session   string    `json:"session"`
 		ExpiresAt time.Time `json:"expires_at"`
 		Principal struct {
-			Source      string   `json:"source"`
-			UserID      string   `json:"user_id"`
-			Email       string   `json:"email"`
-			Name        string   `json:"name"`
-			ActiveOrgID string   `json:"active_org_id"`
-			Permissions []string `json:"permissions"`
-			Operator    bool     `json:"operator"`
+			Source          string   `json:"source"`
+			UserID          string   `json:"user_id"`
+			Email           string   `json:"email"`
+			Name            string   `json:"name"`
+			ActiveOrgID     string   `json:"active_org_id"`
+			ActiveProjectID string   `json:"active_project_id"`
+			Permissions     []string `json:"permissions"`
+			Operator        bool     `json:"operator"`
 		} `json:"principal"`
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
@@ -188,9 +199,14 @@ func TestLogin_SuccessJSON(t *testing.T) {
 	assert.Equal(t, c.Value, body.Session)
 	assert.WithinDuration(t, time.Now().Add(time.Hour), body.ExpiresAt, time.Minute)
 	assert.Equal(t, "local", body.Principal.Source)
-	assert.Equal(t, f.auth.principal.UserID.String(), body.Principal.UserID)
+	p := f.auth.principal
+	assert.Equal(t, f.ids.User(p.UserID), body.Principal.UserID)
 	assert.Equal(t, "ada@example.com", body.Principal.Email)
-	assert.Equal(t, f.auth.principal.ActiveOrgID.String(), body.Principal.ActiveOrgID)
+	assert.Equal(t, f.ids.Org(p.ActiveOrgID), body.Principal.ActiveOrgID)
+	assert.Equal(t, f.ids.Project(p.ActiveProjectID, p.ActiveOrgID), body.Principal.ActiveProjectID)
+	assert.NotContains(t, rec.Body.String(), p.UserID.String())
+	assert.NotContains(t, rec.Body.String(), p.ActiveOrgID.String())
+	assert.NotContains(t, rec.Body.String(), p.ActiveProjectID.String())
 	assert.Equal(t, []string{"*"}, body.Principal.Permissions)
 
 	sid, err := session.Verify(testSecret, body.Session)
@@ -198,6 +214,18 @@ func TestLogin_SuccessJSON(t *testing.T) {
 	_, ok, err := f.store.Load(context.Background(), sid)
 	require.NoError(t, err)
 	assert.True(t, ok)
+}
+
+func TestLogin_JSONPublicIDLookupFailureIs500(t *testing.T) {
+	f := newLoginFixture(t, "")
+	f.ids.Err = errors.New("db down")
+	rec := f.do(jsonLogin("", url.Values{"email": {"ada@example.com"}, "password": {"correct horse battery"}}))
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.NotContains(t, rec.Body.String(), "db down")
+	assert.NotContains(t, rec.Body.String(), f.auth.principal.UserID.String())
+	for _, c := range rec.Result().Cookies() {
+		assert.NotEqual(t, session.CookieName, c.Name, "no session starts when the login view fails")
+	}
 }
 
 func TestLogin_FailureJSON(t *testing.T) {
@@ -263,7 +291,7 @@ func TestLogin_SessionStartFailureIs500(t *testing.T) {
 	signIn := &fakeAuth{users: map[string]string{"ada@example.com": "correct horse battery"}}
 	sessions := testSessions(failingStore{MemoryStore: session.NewMemoryStore(), saveErr: errors.New("store down")})
 	mux := http.NewServeMux()
-	NewWeb(layout.Kit{}, signIn, sessions).Register(mux)
+	NewWeb(layout.Kit{}, signIn, sessions, fakes.NewPublicIDs()).Register(mux)
 
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, jsonLogin("", url.Values{"email": {"ada@example.com"}, "password": {"correct horse battery"}}))
@@ -283,7 +311,7 @@ func TestLogout_ServiceErrorIsReportedAndCookieCleared(t *testing.T) {
 		return nil
 	}}
 	mux := http.NewServeMux()
-	NewWeb(kit, signIn, sessions).Register(mux)
+	NewWeb(kit, signIn, sessions, fakes.NewPublicIDs()).Register(mux)
 
 	login := httptest.NewRecorder()
 	_, _, err := sessions.Start(context.Background(), login, session.Principal{UserID: uuid.New(), Source: session.SourceLocal})

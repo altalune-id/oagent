@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/testutil/fakes"
 	"altalune.id/oagent/internal/web"
 	"altalune.id/oagent/internal/web/layout"
 )
@@ -112,7 +113,7 @@ func TestConsoleGate_OnlyTheConsoleIsWrapped(t *testing.T) {
 	kit := layout.Kit{}
 	srv := web.NewServer(web.ServerOpts{
 		Console:     http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }),
-		Routes:      []web.Registrar{NewWeb(kit, &fakeAuth{}, CookieSessions{Store: session.NewMemoryStore(), Secret: []byte("0123456789abcdef0123456789abcdef")})},
+		Routes:      []web.Registrar{NewWeb(kit, &fakeAuth{}, CookieSessions{Store: session.NewMemoryStore(), Secret: []byte("0123456789abcdef0123456789abcdef")}, fakes.NewPublicIDs())},
 		ConsoleGate: ConsoleGate("", nil),
 	})
 

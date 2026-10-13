@@ -22,7 +22,7 @@ export const Person: Story = {
 }
 
 export const APIKey: Story = {
-  args: { me: { source: 'apikey', keyId: '0b6c0f8e-7a9e-4d0e-9a51-2c1d7c4b8f10' } },
+  args: { me: { source: 'apikey', keyHint: 'uAuE' } },
   render,
 }
 

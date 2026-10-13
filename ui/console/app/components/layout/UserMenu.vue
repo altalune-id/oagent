@@ -5,7 +5,7 @@ export interface UserMenuIdentity {
   source: string
   name?: string
   email?: string
-  keyId?: string
+  keyHint?: string
   operator?: boolean
 }
 

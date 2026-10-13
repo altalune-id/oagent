@@ -48,32 +48,29 @@ var limitedKeyAllowed = map[string]string{
 }
 
 type reachOrg struct {
-	orgA, orgB, project, otherProject, agent, key, webhook, member uuid.UUID
-	orgBPublic, invite                                             string
+	orgA, orgB, otherProject uuid.UUID
+	// SECURITY: every request aims org B's public ids; a UUID would be refused for the wrong reason.
+	pub reachIDs
+	// uuids holds the same objects' internal ids, which no surface may accept.
+	uuids reachIDs
 }
 
-// SECURITY: invite.v1 takes public ids; aiming UUIDs at it would test nothing.
-func (s reachOrg) publicIDs(service protoreflect.FullName) map[protoreflect.Name]string {
-	if service != "invite.v1.InviteService" {
-		return nil
-	}
-	return map[protoreflect.Name]string{"org_id": s.orgBPublic, "invite_id": s.invite}
+type reachIDs struct {
+	org, project, otherProject, agent, webhook, delivery, member, invite, keyHint string
 }
 
-func (s reachOrg) serviceID(service protoreflect.FullName) uuid.UUID {
+func (ids reachIDs) serviceID(service protoreflect.FullName) string {
 	switch service {
 	case "org.v1.OrgService":
-		return s.orgB
+		return ids.org
 	case "project.v1.ProjectService":
-		return s.project
+		return ids.project
 	case "agent.v1.AgentService":
-		return s.agent
-	case "apikey.v1.APIKeyService":
-		return s.key
+		return ids.agent
 	case "webhook.v1.WebhookService":
-		return s.webhook
+		return ids.webhook
 	}
-	return uuid.Nil
+	return ""
 }
 
 func seedReach(t *testing.T, f *apiFixture) reachOrg {
@@ -92,24 +89,32 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 	require.NoError(t, err)
 	other, err := f.svcs.Projects.Create(ctx, project.CreateRequest{OrgID: b.ID, Slug: "side", Name: "Side"})
 	require.NoError(t, err)
-	s.project, s.otherProject = prj.ID, other.ID
-	ag, err := f.svcs.Agents.Create(ctx, agent.CreateRequest{OrgID: b.ID, ProjectID: prj.ID, Slug: "bot", Name: "Bot"})
-	require.NoError(t, err)
-	s.agent = ag.ID
+	s.otherProject = other.ID
 	hook, _, err := f.svcs.Webhooks.Create(tenant.Into(ctx, tenant.Context{OrgID: b.ID, ProjectID: prj.ID}),
 		"https://example.com/hook", "", []events.Type{events.AgentCreated})
 	require.NoError(t, err)
-	s.webhook = hook.ID
-	s.key = uuid.MustParse(f.keyIDOf(t, f.mintKey(t, apikey.CreateRequest{OrgID: b.ID, Kind: apikey.KindOrg, Scopes: []string{scope.AgentRead}, AllProjects: true})))
+	ag, err := f.svcs.Agents.Create(ctx, agent.CreateRequest{OrgID: b.ID, ProjectID: prj.ID, Slug: "bot", Name: "Bot"})
+	require.NoError(t, err)
+	var delivery, deliveryID string
+	require.NoError(t, f.db.QueryRowContext(ctx, `SELECT public_id, id::text FROM outbox_entries WHERE target = $1`, hook.ID.String()).
+		Scan(&delivery, &deliveryID))
+	key := f.mintKey(t, apikey.CreateRequest{OrgID: b.ID, Kind: apikey.KindOrg, Scopes: []string{scope.AgentRead}, AllProjects: true})
 	u, err := f.svcs.Users.Create(ctx, user.CreateRequest{Email: "b-member@example.com", Name: "B Member", Password: "quiet-forest-lamp-9"})
 	require.NoError(t, err)
 	_, err = f.svcs.Members.Add(ctx, b.ID, u.ID, member.RoleAdmin)
 	require.NoError(t, err)
-	s.member = u.ID
-	s.orgBPublic = b.PublicID
 	c, err := f.svcs.Invites.Create(ctx, member.Requester{Operator: true}, b.ID, "b-invitee@example.com", member.RoleMember)
 	require.NoError(t, err)
-	s.invite = c.Invite.PublicID
+	s.pub = reachIDs{
+		org: b.PublicID, project: prj.PublicID, otherProject: other.PublicID, agent: ag.PublicID, webhook: hook.PublicID, delivery: delivery,
+		member: u.PublicID, invite: c.Invite.PublicID, keyHint: hintOf(key),
+	}
+	var keyID string
+	require.NoError(t, f.db.QueryRowContext(ctx, `SELECT id::text FROM api_keys WHERE org_id = $1 AND secret_hint = $2`, b.ID, hintOf(key)).Scan(&keyID))
+	s.uuids = reachIDs{
+		org: b.ID.String(), project: prj.ID.String(), otherProject: other.ID.String(), agent: ag.ID.String(), webhook: hook.ID.String(),
+		delivery: deliveryID, member: u.ID.String(), invite: c.Invite.ID.String(), keyHint: keyID,
+	}
 	return s
 }
 
@@ -131,15 +136,20 @@ func (s reachOrg) snapshot(t *testing.T, f *apiFixture) string {
 
 func (s reachOrg) request(t *testing.T, procedure string) (protoreflect.MethodDescriptor, *dynamicpb.Message, bool) {
 	t.Helper()
+	return s.pub.request(t, procedure)
+}
+
+func (ids reachIDs) request(t *testing.T, procedure string) (protoreflect.MethodDescriptor, *dynamicpb.Message, bool) {
+	t.Helper()
 	d, err := protoregistry.GlobalFiles.FindDescriptorByName(protoreflect.FullName(strings.ReplaceAll(strings.TrimPrefix(procedure, "/"), "/", ".")))
 	require.NoError(t, err, procedure)
 	method, ok := d.(protoreflect.MethodDescriptor)
 	require.True(t, ok, procedure)
 	msg := dynamicpb.NewMessage(method.Input())
-	tenantIDs := map[protoreflect.Name]uuid.UUID{
-		"org_id": s.orgB, "project_id": s.project, "user_id": s.member, "id": s.serviceID(method.Parent().FullName()),
+	tenantIDs := map[protoreflect.Name]string{
+		"org_id": ids.org, "project_id": ids.project, "user_id": ids.member, "invite_id": ids.invite,
+		"delivery_id": ids.delivery, "hint": ids.keyHint, "id": ids.serviceID(method.Parent().FullName()),
 	}
-	public := s.publicIDs(method.Parent().FullName())
 	aimed := false
 	fields := method.Input().Fields()
 	for i := range fields.Len() {
@@ -147,15 +157,8 @@ func (s reachOrg) request(t *testing.T, procedure string) (protoreflect.MethodDe
 		if fd.Kind() != protoreflect.StringKind || fd.IsList() {
 			continue
 		}
-		if public != nil {
-			if id, ok := public[fd.Name()]; ok {
-				msg.Set(fd, protoreflect.ValueOfString(id))
-				aimed = true
-			}
-			continue
-		}
-		if id, ok := tenantIDs[fd.Name()]; ok && id != uuid.Nil {
-			msg.Set(fd, protoreflect.ValueOfString(id.String()))
+		if id, ok := tenantIDs[fd.Name()]; ok && id != "" {
+			msg.Set(fd, protoreflect.ValueOfString(id))
 			aimed = true
 		}
 	}
@@ -281,7 +284,7 @@ func TestReach_ProjectLimitedKeyCannotSubscribeToOrgEvents(t *testing.T) {
 	client := webhookv1connect.NewWebhookServiceClient(http.DefaultClient, f.url)
 	create := func(typ events.Type) error {
 		_, err := client.CreateWebhook(t.Context(), withBearer(connect.NewRequest(&webhookv1.CreateWebhookRequest{
-			OrgId: s.orgB.String(), ProjectId: s.otherProject.String(), Url: "https://example.com/side", EventTypes: []string{string(typ)},
+			OrgId: s.pub.org, ProjectId: s.pub.otherProject, Url: "https://example.com/side", EventTypes: []string{string(typ)},
 		}), key))
 		return err
 	}
@@ -290,4 +293,25 @@ func TestReach_ProjectLimitedKeyCannotSubscribeToOrgEvents(t *testing.T) {
 		assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%s: %v", typ, err)
 	}
 	require.NoError(t, create(events.AgentCreated), "the key still subscribes to its project's events")
+}
+
+// Z9, Review Focus 2: a UUID or garbage in place of a public id is the same not-found, even for a caller who sees org B.
+func TestReach_UUIDsAndGarbageAreNotFound(t *testing.T) {
+	f := newAPIFixture(t)
+	s := seedReach(t, f)
+	cookie, _, _ := f.personCookieIn(t, s.orgB, "b-owner@example.com", member.RoleOwner)
+	garbage := reachIDs{"nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope"}
+	before := s.snapshot(t, f)
+	for name, ids := range map[string]reachIDs{"uuid": s.uuids, "garbage": garbage} {
+		for _, proc := range reachOrder() {
+			if _, skip := noTenantInput[proc]; skip {
+				continue
+			}
+			method, msg, aimed := ids.request(t, proc)
+			require.True(t, aimed, proc)
+			err := f.callDynamic(t, proc, method, msg, "Cookie", cookie)
+			assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err), "%s with %s ids: %v", proc, name, err)
+		}
+	}
+	assert.Equal(t, before, s.snapshot(t, f), "org B is unchanged")
 }

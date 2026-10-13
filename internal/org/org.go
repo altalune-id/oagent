@@ -131,8 +131,7 @@ func (r *orgRow) toOrg() *Org {
 
 func orgToProto(o *Org) *orgv1.Org {
 	return &orgv1.Org{
-		Id:        o.ID.String(),
-		PublicId:  o.PublicID,
+		Id:        o.PublicID,
 		Slug:      o.Slug,
 		Name:      o.Name,
 		CreatedAt: timestamppb.New(o.CreatedAt),

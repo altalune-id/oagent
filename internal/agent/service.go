@@ -34,7 +34,7 @@ func (s *Service) WithPublisher(p Publisher) *Service {
 	return s
 }
 
-// WithProjects makes Create refuse a project outside the request's org and lets ListAgents check project reach; nil skips both.
+// WithProjects makes Create refuse a project outside the request's org; nil skips the check.
 func (s *Service) WithProjects(r tenant.ProjectResolver) *Service {
 	s.projects = r
 	return s
@@ -117,21 +117,6 @@ func (s *Service) List(ctx context.Context, projectID uuid.UUID) ([]*Agent, erro
 		return nil, s.errOrReport(ctx, "agent: list", err)
 	}
 	return agents, nil
-}
-
-// ProjectOrg returns the org projectID belongs to; ok is false when no resolver is set. A missing project is a *NotFoundError.
-func (s *Service) ProjectOrg(ctx context.Context, projectID uuid.UUID) (orgID uuid.UUID, ok bool, err error) {
-	if s.projects == nil {
-		return uuid.Nil, false, nil
-	}
-	orgID, err = s.projects.OrgOf(ctx, projectID)
-	if ae, isApp := apperror.AsAppError(err); isApp && apperror.KindOf(ae.Code()) == apperror.KindNotFound {
-		return uuid.Nil, true, &NotFoundError{}
-	}
-	if err != nil {
-		return uuid.Nil, true, s.unexpected(ctx, "agent: project org", err)
-	}
-	return orgID, true, nil
 }
 
 // Update changes an agent's name and description.

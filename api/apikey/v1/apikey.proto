@@ -6,14 +6,17 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "altalune.id/oagent/gen/go/apikey/v1;apikeyv1";
 
+// APIKeyService mints, lists and revokes API keys. Every id is a public id.
 service APIKeyService {
   rpc CreateAPIKey(CreateAPIKeyRequest) returns (CreateAPIKeyResponse);
   rpc ListAPIKeys(ListAPIKeysRequest) returns (ListAPIKeysResponse);
   rpc RevokeAPIKey(RevokeAPIKeyRequest) returns (RevokeAPIKeyResponse);
 }
 
+// APIKey has no id: within its org a live key is named by secret_hint.
 message APIKey {
-  string id = 1;
+  reserved 1;
+  reserved "id";
   string org_id = 2;
   string project_id = 3;
   // project, org or personal; a personal key acts for the person who created it.
@@ -59,8 +62,11 @@ message ListAPIKeysResponse {
 }
 
 message RevokeAPIKeyRequest {
+  reserved 2;
+  reserved "id";
   string org_id = 1;
-  string id = 2;
+  // The last 4 characters of the key's secret, as secret_hint shows them.
+  string hint = 3;
 }
 
 message RevokeAPIKeyResponse {}

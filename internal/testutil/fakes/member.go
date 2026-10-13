@@ -94,8 +94,8 @@ func (f *MemberStore) CountOwners(_ context.Context, orgID uuid.UUID) (int, erro
 	return n, nil
 }
 
-// MemberContact is the email and name the fake joins into ListByOrg rows.
-type MemberContact struct{ Email, Name string }
+// MemberContact is the public id, email and name the fake joins into ListByOrg rows.
+type MemberContact struct{ PublicID, Email, Name string }
 
 // SetContact records the email and name ListByOrg returns for userID.
 func (f *MemberStore) SetContact(userID uuid.UUID, c MemberContact) {
@@ -172,7 +172,7 @@ func (f *MemberStore) ListByOrg(_ context.Context, orgID uuid.UUID) ([]member.Me
 	for _, r := range f.rows {
 		if r.OrgID == orgID {
 			c := f.contacts[r.UserID]
-			out = append(out, member.Member{Membership: r, Email: c.Email, Name: c.Name})
+			out = append(out, member.Member{Membership: r, UserPublicID: c.PublicID, Email: c.Email, Name: c.Name})
 		}
 	}
 	rank := map[member.Role]int{member.RoleOwner: 0, member.RoleAdmin: 1, member.RoleMember: 2}

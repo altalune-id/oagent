@@ -401,3 +401,4 @@ components:
 security: []
 tags:
   - name: member.v1.MemberService
+    description: MemberService manages an organization's members, named by the user's public id.

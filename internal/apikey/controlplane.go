@@ -17,14 +17,15 @@ import (
 	"altalune.id/oagent/scope"
 )
 
-// APIKeyService implements apikey.v1.APIKeyService.
+// APIKeyService implements apikey.v1.APIKeyService; ids are public ids and a key is named by its hint.
 type APIKeyService struct {
 	keys *Service
+	refs Refs
 }
 
-// NewControlPlane binds the handler to the api key service.
-func NewControlPlane(keys *Service) *APIKeyService {
-	return &APIKeyService{keys: keys}
+// NewControlPlane binds the handler to the api key service and the public id lookups.
+func NewControlPlane(keys *Service, refs Refs) *APIKeyService {
+	return &APIKeyService{keys: keys, refs: refs}
 }
 
 var _ apikeyv1connect.APIKeyServiceHandler = (*APIKeyService)(nil)
@@ -34,24 +35,34 @@ func (s *APIKeyService) CreateAPIKey(
 	ctx context.Context,
 	req *connect.Request[apikeyv1.CreateAPIKeyRequest],
 ) (*connect.Response[apikeyv1.CreateAPIKeyResponse], error) {
-	orgID, err := uuid.Parse(req.Msg.GetOrgId())
-	if err != nil {
-		return nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
-	}
-	if !authz.ReachOrg(ctx, orgID) {
-		return nil, &NotFoundError{}
-	}
-	projectID, err := optionalUUID(req.Msg.GetProjectId())
+	orgID, err := s.org(ctx, req.Msg.GetOrgId(), authz.ReachOrg)
 	if err != nil {
 		return nil, err
 	}
-	projectIDs, err := parseUUIDs(req.Msg.GetProjectIds())
-	if err != nil {
-		return nil, err
+	var projectID uuid.UUID
+	if raw := req.Msg.GetProjectId(); raw != "" {
+		if projectID, err = s.project(ctx, orgID, raw); err != nil {
+			return nil, err
+		}
 	}
-	resourceIDs, err := parseUUIDs(req.Msg.GetResourceIds())
-	if err != nil {
-		return nil, err
+	projectIDs := make([]uuid.UUID, 0, len(req.Msg.GetProjectIds()))
+	for _, raw := range req.Msg.GetProjectIds() {
+		id, err := s.project(ctx, orgID, raw)
+		if err != nil {
+			return nil, err
+		}
+		projectIDs = append(projectIDs, id)
+	}
+	resourceIDs := make([]uuid.UUID, 0, len(req.Msg.GetResourceIds()))
+	for _, raw := range req.Msg.GetResourceIds() {
+		id, ok, err := s.refs.ResourceID(ctx, orgID, raw)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, apperror.Invalid("resource_ids", apperror.FieldInvalid)
+		}
+		resourceIDs = append(resourceIDs, id)
 	}
 	var expiresAt *time.Time
 	if ts := req.Msg.GetExpiresAt(); ts != nil {
@@ -85,7 +96,11 @@ func (s *APIKeyService) CreateAPIKey(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&apikeyv1.CreateAPIKeyResponse{Key: keyToProto(k), Plaintext: plaintext}), nil
+	out, err := s.toProto(ctx, k, req.Msg.GetOrgId())
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&apikeyv1.CreateAPIKeyResponse{Key: out, Plaintext: plaintext}), nil
 }
 
 // ListAPIKeys lists an org's keys, without plaintext. SECURITY: keys never see personal keys; project-limited keys see none.
@@ -93,12 +108,9 @@ func (s *APIKeyService) ListAPIKeys(
 	ctx context.Context,
 	req *connect.Request[apikeyv1.ListAPIKeysRequest],
 ) (*connect.Response[apikeyv1.ListAPIKeysResponse], error) {
-	orgID, err := uuid.Parse(req.Msg.GetOrgId())
+	orgID, err := s.org(ctx, req.Msg.GetOrgId(), authz.ReachWholeOrg)
 	if err != nil {
-		return nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
-	}
-	if !authz.ReachWholeOrg(ctx, orgID) {
-		return nil, &NotFoundError{}
+		return nil, err
 	}
 	p := session.PrincipalFrom(ctx)
 	keys, err := s.keys.List(ctx, orgID, p.UserID)
@@ -110,33 +122,30 @@ func (s *APIKeyService) ListAPIKeys(
 		if p.Source == session.SourceAPIKey && k.Kind == KindPersonal {
 			continue
 		}
-		out = append(out, keyToProto(k))
+		pk, err := s.toProto(ctx, k, req.Msg.GetOrgId())
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, pk)
 	}
 	return connect.NewResponse(&apikeyv1.ListAPIKeysResponse{Keys: out}), nil
 }
 
-// RevokeAPIKey revokes a key by id.
+// RevokeAPIKey revokes the org's live key with the given hint.
 func (s *APIKeyService) RevokeAPIKey(
 	ctx context.Context,
 	req *connect.Request[apikeyv1.RevokeAPIKeyRequest],
 ) (*connect.Response[apikeyv1.RevokeAPIKeyResponse], error) {
-	orgID, err := uuid.Parse(req.Msg.GetOrgId())
+	orgID, err := s.org(ctx, req.Msg.GetOrgId(), authz.ReachOrg)
 	if err != nil {
-		return nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
-	}
-	if !authz.ReachOrg(ctx, orgID) {
-		return nil, &NotFoundError{}
-	}
-	id, err := uuid.Parse(req.Msg.GetId())
-	if err != nil {
-		return nil, apperror.Invalid("key_id", apperror.FieldInvalid).WithCause(err)
+		return nil, err
 	}
 	p := session.PrincipalFrom(ctx)
 	manage := manages(p)
 	if !manage && !p.IsPerson() {
 		return nil, &authz.ForbiddenError{Permission: scope.ApikeyWrite}
 	}
-	if err := s.keys.Revoke(ctx, orgID, id, p.UserID, manage); err != nil {
+	if err := s.keys.RevokeByHint(ctx, orgID, req.Msg.GetHint(), p.UserID, manage); err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&apikeyv1.RevokeAPIKeyResponse{}), nil
@@ -147,10 +156,33 @@ func manages(p session.Principal) bool {
 	return p.Source == "" || authz.Allowed(p, scope.ApikeyWrite)
 }
 
-func keyToProto(k *APIKey) *apikeyv1.APIKey {
+// SECURITY: an unknown org and an org out of reach answer the same not-found.
+func (s *APIKeyService) org(ctx context.Context, publicID string, reach func(context.Context, uuid.UUID) bool) (uuid.UUID, error) {
+	id, ok, err := s.refs.OrgID(ctx, publicID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if !ok || !reach(ctx, id) {
+		return uuid.Nil, &NotFoundError{}
+	}
+	return id, nil
+}
+
+// SECURITY: an unknown project and another org's project are the same refused grant.
+func (s *APIKeyService) project(ctx context.Context, orgID uuid.UUID, publicID string) (uuid.UUID, error) {
+	id, projectOrg, ok, err := s.refs.ProjectID(ctx, publicID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if !ok || projectOrg != orgID {
+		return uuid.Nil, &GrantOutsideOrgError{}
+	}
+	return id, nil
+}
+
+func (s *APIKeyService) toProto(ctx context.Context, k *APIKey, orgPublicID string) (*apikeyv1.APIKey, error) {
 	out := &apikeyv1.APIKey{
-		Id:          k.ID.String(),
-		OrgId:       k.OrgID.String(),
+		OrgId:       orgPublicID,
 		Kind:        string(k.Kind),
 		Name:        k.Name,
 		Scopes:      k.Scopes,
@@ -158,14 +190,27 @@ func keyToProto(k *APIKey) *apikeyv1.APIKey {
 		SecretHint:  k.SecretHint,
 		CreatedAt:   timestamppb.New(k.CreatedAt),
 	}
+	var err error
 	if k.ProjectID != uuid.Nil {
-		out.ProjectId = k.ProjectID.String()
+		if out.ProjectId, err = s.refs.ProjectPublicID(ctx, k.ProjectID); err != nil {
+			return nil, err
+		}
 	}
 	for _, id := range k.ProjectIDs {
-		out.ProjectIds = append(out.ProjectIds, id.String())
+		pub, err := s.refs.ProjectPublicID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out.ProjectIds = append(out.ProjectIds, pub)
 	}
 	for _, id := range k.ResourceIDs {
-		out.ResourceIds = append(out.ResourceIds, id.String())
+		pub, ok, err := s.refs.ResourcePublicID(ctx, k.OrgID, id)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			out.ResourceIds = append(out.ResourceIds, pub)
+		}
 	}
 	if k.ExpiresAt != nil {
 		out.ExpiresAt = timestamppb.New(*k.ExpiresAt)
@@ -175,29 +220,6 @@ func keyToProto(k *APIKey) *apikeyv1.APIKey {
 	}
 	if k.LastUsedAt != nil {
 		out.LastUsedAt = timestamppb.New(*k.LastUsedAt)
-	}
-	return out
-}
-
-func optionalUUID(raw string) (uuid.UUID, error) {
-	if raw == "" {
-		return uuid.Nil, nil
-	}
-	id, err := uuid.Parse(raw)
-	if err != nil {
-		return uuid.Nil, apperror.Invalid("project_id", apperror.FieldInvalid).WithCause(err)
-	}
-	return id, nil
-}
-
-func parseUUIDs(raw []string) ([]uuid.UUID, error) {
-	out := make([]uuid.UUID, 0, len(raw))
-	for _, s := range raw {
-		id, err := uuid.Parse(s)
-		if err != nil {
-			return nil, apperror.Invalid("project_ids", apperror.FieldInvalid).WithCause(err)
-		}
-		out = append(out, id)
 	}
 	return out, nil
 }

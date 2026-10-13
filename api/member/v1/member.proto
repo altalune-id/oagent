@@ -7,6 +7,7 @@ import "mcp/v1/annotations.proto";
 
 option go_package = "altalune.id/oagent/gen/go/member/v1;memberv1";
 
+// MemberService manages an organization's members, named by the user's public id.
 service MemberService {
   rpc ListMembers(ListMembersRequest) returns (ListMembersResponse) {
     option (mcp.v1.tool) = {

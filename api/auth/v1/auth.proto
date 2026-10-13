@@ -19,6 +19,7 @@ service AuthService {
 
 message WhoamiRequest {}
 
+// Every id is a public id.
 message WhoamiResponse {
   // local, basic, apikey or system.
   string source = 1;
@@ -26,8 +27,10 @@ message WhoamiResponse {
   string email = 3;
   string name = 4;
   string avatar_url = 5;
-  // Set for API keys.
-  string key_id = 6;
+  reserved 6;
+  reserved "key_id";
+  // Set for API keys: the last 4 characters of the key's secret.
+  string key_hint = 13;
   // Personal keys: the person the key acts for.
   string owner_id = 7;
   string active_org_id = 8;

@@ -49,3 +49,10 @@ type Effects struct {
 	From     string
 	BaseURL  string
 }
+
+// Refs turns org and user public ids into ids and back; ok is false for an unknown public id.
+type Refs interface {
+	OrgID(ctx context.Context, publicID string) (id uuid.UUID, ok bool, err error)
+	UserID(ctx context.Context, publicID string) (id uuid.UUID, ok bool, err error)
+	UserPublicID(ctx context.Context, id uuid.UUID) (string, error)
+}

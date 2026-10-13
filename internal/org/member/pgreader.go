@@ -60,7 +60,7 @@ func (s *postgresStore) CountOwners(ctx context.Context, orgID uuid.UUID) (int, 
 // ListByOrg returns orgID's members with their email and name, owners first, then admins, then members, each by email.
 func (s *postgresStore) ListByOrg(ctx context.Context, orgID uuid.UUID) ([]Member, error) {
 	t, u := s.memberships, s.users
-	stmt := postgres.SELECT(t.AllColumns, u.Email, u.Name).
+	stmt := postgres.SELECT(t.AllColumns, u.PublicID, u.Email, u.Name).
 		FROM(t.INNER_JOIN(u, u.ID.EQ(t.UserID))).
 		WHERE(t.OrgID.EQ(postgres.UUID(orgID))).
 		ORDER_BY(
@@ -74,7 +74,9 @@ func (s *postgresStore) ListByOrg(ctx context.Context, orgID uuid.UUID) ([]Membe
 	}
 	out := make([]Member, 0, len(rows))
 	for i := range rows {
-		out = append(out, Member{Membership: *rows[i].Membership.toMembership(), Email: rows[i].Email, Name: rows[i].Name})
+		out = append(out, Member{
+			Membership: *rows[i].Membership.toMembership(), UserPublicID: rows[i].UserPublicID, Email: rows[i].Email, Name: rows[i].Name,
+		})
 	}
 	return out, nil
 }

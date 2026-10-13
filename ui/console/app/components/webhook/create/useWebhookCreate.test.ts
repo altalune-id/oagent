@@ -7,7 +7,7 @@ import { connectError, deferred, setClient, setKnownKeys } from '../../../../tes
 import { useWebhooksStore } from '~/stores/webhooks'
 import { useWebhookCreate } from './useWebhookCreate'
 
-const hookPB = create(WebhookSchema, { id: 'w1', orgId: 'o1', projectId: 'p1', url: 'https://a.test', eventTypes: ['agent.created'], active: true })
+const hookPB = create(WebhookSchema, { id: 'UxVy4UK3vmrHzOZ073hCA', orgId: 'V1StGXR8Z5jdHi6BmyT2a', projectId: 'x6LH9WPWiktLwCBKHy4oF', url: 'https://a.test', eventTypes: ['agent.created'], active: true })
 
 describe('useWebhookCreate', () => {
   let createWebhook: ReturnType<typeof vi.fn>
@@ -21,7 +21,7 @@ describe('useWebhookCreate', () => {
   })
 
   function filled() {
-    const form = useWebhookCreate('o1', 'p1')
+    const form = useWebhookCreate('V1StGXR8Z5jdHi6BmyT2a', 'x6LH9WPWiktLwCBKHy4oF')
     form.show()
     form.url.value = ' https://a.test '
     form.description.value = 'd'
@@ -30,7 +30,7 @@ describe('useWebhookCreate', () => {
   }
 
   it('resets the form when shown', () => {
-    const form = useWebhookCreate('o1', 'p1')
+    const form = useWebhookCreate('V1StGXR8Z5jdHi6BmyT2a', 'x6LH9WPWiktLwCBKHy4oF')
     form.url.value = 'x'
     form.secret.value = 's'
     form.pinged.value = true
@@ -43,8 +43,8 @@ describe('useWebhookCreate', () => {
   it('creates a webhook, adds it and shows the secret', async () => {
     const form = filled()
     await form.submit()
-    expect(createWebhook).toHaveBeenCalledWith({ orgId: 'o1', projectId: 'p1', url: 'https://a.test', description: 'd', eventTypes: ['agent.created'] })
-    expect(useWebhooksStore().items.map(w => w.id)).toEqual(['w1'])
+    expect(createWebhook).toHaveBeenCalledWith({ orgId: 'V1StGXR8Z5jdHi6BmyT2a', projectId: 'x6LH9WPWiktLwCBKHy4oF', url: 'https://a.test', description: 'd', eventTypes: ['agent.created'] })
+    expect(useWebhooksStore().items.map(w => w.id)).toEqual(['UxVy4UK3vmrHzOZ073hCA'])
     expect(form.secret.value).toBe('whsec_1')
     form.hide()
     expect(form.open.value).toBe(false)
@@ -92,7 +92,7 @@ describe('useWebhookCreate', () => {
     expect(pingWebhook).not.toHaveBeenCalled()
     await form.submit()
     await form.ping()
-    expect(pingWebhook).toHaveBeenCalledWith({ orgId: 'o1', projectId: 'p1', id: 'w1' })
+    expect(pingWebhook).toHaveBeenCalledWith({ orgId: 'V1StGXR8Z5jdHi6BmyT2a', projectId: 'x6LH9WPWiktLwCBKHy4oF', id: 'UxVy4UK3vmrHzOZ073hCA' })
     expect(form.pinged.value).toBe(true)
     expect(form.pingBusy.value).toBe(false)
   })

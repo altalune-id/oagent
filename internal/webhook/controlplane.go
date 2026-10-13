@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"altalune.id/oagent/apperror"
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
 	"altalune.id/oagent/internal/kernel/authz"
@@ -18,14 +17,15 @@ import (
 	"altalune.id/oagent/scope"
 )
 
-// WebhookControlPlane implements webhook.v1.WebhookService.
+// WebhookControlPlane implements webhook.v1.WebhookService; every id it takes and returns is a public id.
 type WebhookControlPlane struct {
 	webhooks *Service
+	refs     Refs
 }
 
-// NewControlPlane binds the handler to the webhook service.
-func NewControlPlane(webhooks *Service) *WebhookControlPlane {
-	return &WebhookControlPlane{webhooks: webhooks}
+// NewControlPlane binds the handler to the webhook service and the org and project public id lookups.
+func NewControlPlane(webhooks *Service, refs Refs) *WebhookControlPlane {
+	return &WebhookControlPlane{webhooks: webhooks, refs: refs}
 }
 
 var _ webhookv1connect.WebhookServiceHandler = (*WebhookControlPlane)(nil)
@@ -35,7 +35,7 @@ func (s *WebhookControlPlane) CreateWebhook(
 	ctx context.Context,
 	req *connect.Request[webhookv1.CreateWebhookRequest],
 ) (*connect.Response[webhookv1.CreateWebhookResponse], error) {
-	ctx, err := scopeCtx(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId())
+	ctx, err := s.scopeCtx(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId())
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,9 @@ func (s *WebhookControlPlane) CreateWebhook(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&webhookv1.CreateWebhookResponse{Webhook: webhookToProto(e), Secret: secret}), nil
+	return connect.NewResponse(&webhookv1.CreateWebhookResponse{
+		Webhook: webhookToProto(e, req.Msg.GetOrgId(), req.Msg.GetProjectId()), Secret: secret,
+	}), nil
 }
 
 // GetWebhook loads a project endpoint by id.
@@ -55,7 +57,7 @@ func (s *WebhookControlPlane) GetWebhook(
 	ctx context.Context,
 	req *connect.Request[webhookv1.GetWebhookRequest],
 ) (*connect.Response[webhookv1.GetWebhookResponse], error) {
-	ctx, id, err := scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
+	ctx, id, err := s.scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +65,7 @@ func (s *WebhookControlPlane) GetWebhook(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&webhookv1.GetWebhookResponse{Webhook: webhookToProto(e)}), nil
+	return connect.NewResponse(&webhookv1.GetWebhookResponse{Webhook: webhookToProto(e, req.Msg.GetOrgId(), req.Msg.GetProjectId())}), nil
 }
 
 // ListWebhooks lists a project's endpoints, newest first.
@@ -71,7 +73,7 @@ func (s *WebhookControlPlane) ListWebhooks(
 	ctx context.Context,
 	req *connect.Request[webhookv1.ListWebhooksRequest],
 ) (*connect.Response[webhookv1.ListWebhooksResponse], error) {
-	ctx, err := scopeCtx(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId())
+	ctx, err := s.scopeCtx(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId())
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +83,7 @@ func (s *WebhookControlPlane) ListWebhooks(
 	}
 	out := make([]*webhookv1.Webhook, 0, len(endpoints))
 	for _, e := range endpoints {
-		out = append(out, webhookToProto(e))
+		out = append(out, webhookToProto(e, req.Msg.GetOrgId(), req.Msg.GetProjectId()))
 	}
 	return connect.NewResponse(&webhookv1.ListWebhooksResponse{Webhooks: out}), nil
 }
@@ -91,7 +93,7 @@ func (s *WebhookControlPlane) UpdateWebhook(
 	ctx context.Context,
 	req *connect.Request[webhookv1.UpdateWebhookRequest],
 ) (*connect.Response[webhookv1.UpdateWebhookResponse], error) {
-	ctx, id, err := scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
+	ctx, id, err := s.scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,7 @@ func (s *WebhookControlPlane) UpdateWebhook(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&webhookv1.UpdateWebhookResponse{Webhook: webhookToProto(e)}), nil
+	return connect.NewResponse(&webhookv1.UpdateWebhookResponse{Webhook: webhookToProto(e, req.Msg.GetOrgId(), req.Msg.GetProjectId())}), nil
 }
 
 // DeleteWebhook removes an endpoint.
@@ -111,7 +113,7 @@ func (s *WebhookControlPlane) DeleteWebhook(
 	ctx context.Context,
 	req *connect.Request[webhookv1.DeleteWebhookRequest],
 ) (*connect.Response[webhookv1.DeleteWebhookResponse], error) {
-	ctx, id, err := scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
+	ctx, id, err := s.scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +128,7 @@ func (s *WebhookControlPlane) RotateWebhookSecret(
 	ctx context.Context,
 	req *connect.Request[webhookv1.RotateWebhookSecretRequest],
 ) (*connect.Response[webhookv1.RotateWebhookSecretResponse], error) {
-	ctx, id, err := scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
+	ctx, id, err := s.scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +144,7 @@ func (s *WebhookControlPlane) PingWebhook(
 	ctx context.Context,
 	req *connect.Request[webhookv1.PingWebhookRequest],
 ) (*connect.Response[webhookv1.PingWebhookResponse], error) {
-	ctx, id, err := scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
+	ctx, id, err := s.scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -157,13 +159,13 @@ func (s *WebhookControlPlane) RetryWebhookDelivery(
 	ctx context.Context,
 	req *connect.Request[webhookv1.RetryWebhookDeliveryRequest],
 ) (*connect.Response[webhookv1.RetryWebhookDeliveryResponse], error) {
-	ctx, id, err := scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
+	ctx, id, err := s.scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
-	deliveryID, err := uuid.Parse(req.Msg.GetDeliveryId())
+	deliveryID, err := s.webhooks.DeliveryIDByPublicID(ctx, id, req.Msg.GetDeliveryId())
 	if err != nil {
-		return nil, apperror.Invalid("delivery_id", apperror.FieldInvalid).WithCause(err)
+		return nil, err
 	}
 	if err := s.webhooks.Retry(ctx, id, deliveryID); err != nil {
 		return nil, err
@@ -176,7 +178,7 @@ func (s *WebhookControlPlane) RetryFailedWebhookDeliveries(
 	ctx context.Context,
 	req *connect.Request[webhookv1.RetryFailedWebhookDeliveriesRequest],
 ) (*connect.Response[webhookv1.RetryFailedWebhookDeliveriesResponse], error) {
-	ctx, id, err := scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
+	ctx, id, err := s.scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +194,7 @@ func (s *WebhookControlPlane) ListWebhookDeliveries(
 	ctx context.Context,
 	req *connect.Request[webhookv1.ListWebhookDeliveriesRequest],
 ) (*connect.Response[webhookv1.ListWebhookDeliveriesResponse], error) {
-	ctx, id, err := scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
+	ctx, id, err := s.scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
@@ -217,13 +219,13 @@ func (s *WebhookControlPlane) ListWebhookDeliveryAttempts(
 	ctx context.Context,
 	req *connect.Request[webhookv1.ListWebhookDeliveryAttemptsRequest],
 ) (*connect.Response[webhookv1.ListWebhookDeliveryAttemptsResponse], error) {
-	ctx, id, err := scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
+	ctx, id, err := s.scopedID(ctx, req.Msg.GetOrgId(), req.Msg.GetProjectId(), req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
-	deliveryID, err := uuid.Parse(req.Msg.GetDeliveryId())
+	deliveryID, err := s.webhooks.DeliveryIDByPublicID(ctx, id, req.Msg.GetDeliveryId())
 	if err != nil {
-		return nil, apperror.Invalid("delivery_id", apperror.FieldInvalid).WithCause(err)
+		return nil, err
 	}
 	attempts, err := s.webhooks.Attempts(ctx, id, deliveryID)
 	if err != nil {
@@ -236,32 +238,46 @@ func (s *WebhookControlPlane) ListWebhookDeliveryAttempts(
 	return connect.NewResponse(&webhookv1.ListWebhookDeliveryAttemptsResponse{Attempts: out}), nil
 }
 
-// SECURITY: a project outside the caller's reach is reported as an absent webhook.
-func scopeCtx(ctx context.Context, orgID, projectID string) (context.Context, error) {
-	org, project, err := parseScope(orgID, projectID)
+// SECURITY: an unknown project and a project outside the caller's reach are reported as an absent webhook.
+func (s *WebhookControlPlane) scopeCtx(ctx context.Context, orgPublicID, projectPublicID string) (context.Context, error) {
+	orgID, ok, err := s.refs.OrgID(ctx, orgPublicID)
 	if err != nil {
 		return ctx, err
 	}
-	if !authz.ReachWholeProject(ctx, org, project) {
+	projectID, projectOrg, projectOK, err := s.refs.ProjectID(ctx, projectPublicID)
+	if err != nil {
+		return ctx, err
+	}
+	if !ok || !projectOK || projectOrg != orgID || !authz.ReachWholeProject(ctx, orgID, projectID) {
 		return ctx, &NotFoundError{}
 	}
-	return tenant.Into(ctx, tenant.Context{OrgID: org, ProjectID: project}), nil
+	return tenant.Into(ctx, tenant.Context{OrgID: orgID, ProjectID: projectID}), nil
 }
 
-// SECURITY: an endpoint outside the caller's reach is reported as absent.
-func scopedID(ctx context.Context, orgID, projectID, id string) (context.Context, uuid.UUID, error) {
-	org, project, err := parseScope(orgID, projectID)
+// SECURITY: an unknown endpoint and an endpoint outside the caller's reach answer the same not-found.
+func (s *WebhookControlPlane) scopedID(
+	ctx context.Context, orgPublicID, projectPublicID, publicID string,
+) (context.Context, uuid.UUID, error) {
+	orgID, ok, err := s.refs.OrgID(ctx, orgPublicID)
 	if err != nil {
 		return ctx, uuid.Nil, err
 	}
-	parsed, err := uuid.Parse(id)
+	projectID, projectOrg, projectOK, err := s.refs.ProjectID(ctx, projectPublicID)
 	if err != nil {
-		return ctx, uuid.Nil, apperror.Invalid("webhook_id", apperror.FieldInvalid).WithCause(err)
+		return ctx, uuid.Nil, err
 	}
-	if !authz.ReachResource(ctx, org, project, parsed) {
-		return ctx, uuid.Nil, &NotFoundError{ID: parsed.String()}
+	if !ok || !projectOK || projectOrg != orgID {
+		return ctx, uuid.Nil, &NotFoundError{}
 	}
-	return tenant.Into(ctx, tenant.Context{OrgID: org, ProjectID: project}), parsed, nil
+	ctx = tenant.Into(ctx, tenant.Context{OrgID: orgID, ProjectID: projectID})
+	id, err := s.webhooks.IDByPublicID(ctx, publicID)
+	if err != nil {
+		return ctx, uuid.Nil, err
+	}
+	if !authz.ReachResource(ctx, orgID, projectID, id) {
+		return ctx, uuid.Nil, &NotFoundError{}
+	}
+	return ctx, id, nil
 }
 
 // SECURITY: org events carry every invitee's and member's email; only a caller reaching the whole org with member:read subscribes.
@@ -280,16 +296,6 @@ func seesOrgEvents(ctx context.Context) bool {
 	return err == nil && authz.ReachWholeOrg(ctx, tc.OrgID) && authz.Allowed(session.PrincipalFrom(ctx), scope.MemberRead)
 }
 
-func parseScope(orgID, projectID string) (org, project uuid.UUID, err error) {
-	if org, err = uuid.Parse(orgID); err != nil {
-		return uuid.Nil, uuid.Nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
-	}
-	if project, err = uuid.Parse(projectID); err != nil {
-		return uuid.Nil, uuid.Nil, apperror.Invalid("project_id", apperror.FieldInvalid).WithCause(err)
-	}
-	return org, project, nil
-}
-
 func toEventTypes(names []string) []events.Type {
 	out := make([]events.Type, len(names))
 	for i, n := range names {
@@ -298,16 +304,15 @@ func toEventTypes(names []string) []events.Type {
 	return out
 }
 
-func webhookToProto(e *Endpoint) *webhookv1.Webhook {
+func webhookToProto(e *Endpoint, orgPublicID, projectPublicID string) *webhookv1.Webhook {
 	types := make([]string, len(e.EventTypes))
 	for i, t := range e.EventTypes {
 		types[i] = string(t)
 	}
 	return &webhookv1.Webhook{
-		Id:          e.ID.String(),
-		PublicId:    e.PublicID,
-		OrgId:       e.OrgID.String(),
-		ProjectId:   e.ProjectID.String(),
+		Id:          e.PublicID,
+		OrgId:       orgPublicID,
+		ProjectId:   projectPublicID,
 		Url:         e.URL,
 		Description: e.Description,
 		EventTypes:  types,
@@ -319,8 +324,8 @@ func webhookToProto(e *Endpoint) *webhookv1.Webhook {
 
 func deliveryToProto(d Delivery) *webhookv1.WebhookDelivery {
 	return &webhookv1.WebhookDelivery{
-		Id:            d.ID.String(),
-		EventId:       d.EventID.String(),
+		Id:            d.PublicID,
+		EventId:       d.EventPublicID,
 		EventType:     string(d.EventType),
 		Attempt:       int32(d.Attempt), //nolint:gosec // G115: bounded
 		Status:        string(d.Status),

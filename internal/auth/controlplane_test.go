@@ -17,6 +17,7 @@ import (
 	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/user"
 )
 
@@ -29,6 +30,15 @@ func (m orgByID) Get(_ context.Context, id uuid.UUID) (*org.Org, error) {
 	return nil, &org.NotFoundError{}
 }
 
+type projectByID map[uuid.UUID]*project.Project
+
+func (m projectByID) Get(_ context.Context, id uuid.UUID) (*project.Project, error) {
+	if p, ok := m[id]; ok {
+		return p, nil
+	}
+	return nil, &project.NotFoundError{}
+}
+
 type userByID map[uuid.UUID]*user.User
 
 func (m userByID) ByID(_ context.Context, id uuid.UUID) (*user.User, error) {
@@ -38,7 +48,7 @@ func (m userByID) ByID(_ context.Context, id uuid.UUID) (*user.User, error) {
 	return nil, &user.NotFoundError{}
 }
 
-func whoamiClient(t *testing.T, orgs OrgGetter, users UserGetter, p session.Principal) authv1connect.AuthServiceClient {
+func whoamiClient(t *testing.T, orgs OrgGetter, projects ProjectGetter, users UserGetter, p session.Principal) authv1connect.AuthServiceClient {
 	t.Helper()
 	inject := connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
@@ -52,7 +62,7 @@ func whoamiClient(t *testing.T, orgs OrgGetter, users UserGetter, p session.Prin
 			return resp, err
 		}
 	})
-	_, h := authv1connect.NewAuthServiceHandler(NewControlPlane(orgs, users), connect.WithInterceptors(inject))
+	_, h := authv1connect.NewAuthServiceHandler(NewControlPlane(orgs, projects, users), connect.WithInterceptors(inject))
 	ts := httptest.NewServer(h)
 	t.Cleanup(ts.Close)
 	return authv1connect.NewAuthServiceClient(http.DefaultClient, ts.URL)
@@ -68,51 +78,54 @@ func whoami(t *testing.T, c authv1connect.AuthServiceClient) (*authv1.WhoamiResp
 }
 
 func TestWhoami(t *testing.T) {
-	acme := &org.Org{ID: uuid.New(), Slug: "acme"}
+	acme := &org.Org{ID: uuid.New(), PublicID: "acmeOrgPublicId000001", Slug: "acme"}
 	orgs := orgByID{acme.ID: acme}
-	owner := &user.User{ID: uuid.New(), Email: "ada@example.com", Name: "Ada"}
+	owner := &user.User{ID: uuid.New(), PublicID: "adaUserPublicId000001", Email: "ada@example.com", Name: "Ada"}
 	users := userByID{owner.ID: owner}
-	prj := uuid.New()
+	prj := &project.Project{ID: uuid.New(), PublicID: "webProjectPublicId001", OrgID: acme.ID}
+	projects := projectByID{prj.ID: prj}
 
 	t.Run("session", func(t *testing.T) {
-		got, err := whoami(t, whoamiClient(t, orgs, users, session.Principal{
+		got, err := whoami(t, whoamiClient(t, orgs, projects, users, session.Principal{
 			UserID: owner.ID, Email: owner.Email, Name: "Ada", AvatarURL: "https://x/a.png", Source: session.SourceLocal,
-			ActiveOrgID: acme.ID, ActiveProjectID: prj, Scopes: []string{"agent:*"}, Operator: true,
+			ActiveOrgID: acme.ID, ActiveProjectID: prj.ID, Scopes: []string{"agent:*"}, Operator: true,
 		}))
 		require.NoError(t, err)
 		assert.Equal(t, "local", got.GetSource())
-		assert.Equal(t, owner.ID.String(), got.GetUserId())
+		assert.Equal(t, owner.PublicID, got.GetUserId())
 		assert.Equal(t, "ada@example.com", got.GetEmail())
 		assert.Equal(t, "https://x/a.png", got.GetAvatarUrl())
+		assert.Equal(t, acme.PublicID, got.GetActiveOrgId())
 		assert.Equal(t, "acme", got.GetActiveOrgSlug())
-		assert.Equal(t, prj.String(), got.GetActiveProjectId())
+		assert.Equal(t, prj.PublicID, got.GetActiveProjectId())
 		assert.Equal(t, []string{"agent:*"}, got.GetPermissions())
 		assert.True(t, got.GetOperator())
-		assert.Empty(t, got.GetKeyId())
+		assert.Empty(t, got.GetKeyHint())
 	})
 
 	t.Run("org key", func(t *testing.T) {
-		key := uuid.New()
-		got, err := whoami(t, whoamiClient(t, orgs, users, session.Principal{
-			KeyID: key, Name: "ci", Source: session.SourceAPIKey, ActiveOrgID: acme.ID, Scopes: []string{"agent:read"},
+		got, err := whoami(t, whoamiClient(t, orgs, projects, users, session.Principal{
+			KeyID: uuid.New(), KeyHint: "a1b2", Name: "ci", Source: session.SourceAPIKey, ActiveOrgID: acme.ID, Scopes: []string{"agent:read"},
 		}))
 		require.NoError(t, err)
 		assert.Equal(t, "apikey", got.GetSource())
-		assert.Equal(t, key.String(), got.GetKeyId())
+		assert.Equal(t, "a1b2", got.GetKeyHint())
 		assert.Equal(t, "ci", got.GetName())
 		assert.Empty(t, got.GetUserId())
 		assert.Empty(t, got.GetOwnerId())
+		assert.Equal(t, acme.PublicID, got.GetActiveOrgId())
 		assert.Equal(t, "acme", got.GetActiveOrgSlug())
 		assert.Equal(t, []string{"agent:read"}, got.GetPermissions())
 		assert.False(t, got.GetOperator())
 	})
 
 	t.Run("personal key shows its owner", func(t *testing.T) {
-		got, err := whoami(t, whoamiClient(t, orgs, users, session.Principal{
-			KeyID: uuid.New(), OwnerID: owner.ID, Name: "laptop", Source: session.SourceAPIKey, ActiveOrgID: acme.ID,
+		got, err := whoami(t, whoamiClient(t, orgs, projects, users, session.Principal{
+			KeyID: uuid.New(), KeyHint: "c3d4", OwnerID: owner.ID, Name: "laptop", Source: session.SourceAPIKey, ActiveOrgID: acme.ID,
 		}))
 		require.NoError(t, err)
-		assert.Equal(t, owner.ID.String(), got.GetOwnerId())
+		assert.Equal(t, owner.PublicID, got.GetOwnerId())
+		assert.Equal(t, "c3d4", got.GetKeyHint())
 		assert.Equal(t, "ada@example.com", got.GetEmail())
 		assert.Equal(t, "Ada", got.GetName())
 		assert.Empty(t, got.GetUserId())
@@ -120,7 +133,7 @@ func TestWhoami(t *testing.T) {
 	})
 
 	t.Run("basic", func(t *testing.T) {
-		got, err := whoami(t, whoamiClient(t, orgs, users, session.Principal{
+		got, err := whoami(t, whoamiClient(t, orgs, projects, users, session.Principal{
 			Source: session.SourceBasic, Name: "ops", ActiveOrgID: acme.ID, Scopes: []string{"*"}, Operator: true,
 		}))
 		require.NoError(t, err)
@@ -130,14 +143,42 @@ func TestWhoami(t *testing.T) {
 	})
 
 	t.Run("none", func(t *testing.T) {
-		_, err := whoami(t, whoamiClient(t, orgs, users, session.Principal{}))
+		_, err := whoami(t, whoamiClient(t, orgs, projects, users, session.Principal{}))
 		assert.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err))
 	})
 
-	t.Run("missing org leaves the slug empty", func(t *testing.T) {
-		got, err := whoami(t, whoamiClient(t, orgs, users, session.Principal{Source: session.SourceBasic, ActiveOrgID: uuid.New()}))
+	t.Run("missing org leaves the id and slug empty", func(t *testing.T) {
+		got, err := whoami(t, whoamiClient(t, orgs, projects, users, session.Principal{Source: session.SourceBasic, ActiveOrgID: uuid.New()}))
 		require.NoError(t, err)
+		assert.Empty(t, got.GetActiveOrgId())
 		assert.Empty(t, got.GetActiveOrgSlug())
+	})
+
+	t.Run("missing project leaves its id empty", func(t *testing.T) {
+		got, err := whoami(t, whoamiClient(t, orgs, projects, users, session.Principal{
+			Source: session.SourceLocal, UserID: owner.ID, ActiveOrgID: acme.ID, ActiveProjectID: uuid.New(),
+		}))
+		require.NoError(t, err)
+		assert.Empty(t, got.GetActiveProjectId())
+		assert.Equal(t, acme.PublicID, got.GetActiveOrgId())
+	})
+
+	t.Run("missing user leaves its id empty", func(t *testing.T) {
+		got, err := whoami(t, whoamiClient(t, orgs, projects, users, session.Principal{
+			Source: session.SourceLocal, UserID: uuid.New(), Email: "gone@example.com",
+		}))
+		require.NoError(t, err)
+		assert.Empty(t, got.GetUserId())
+		assert.Equal(t, "gone@example.com", got.GetEmail())
+	})
+
+	t.Run("missing owner leaves its id empty", func(t *testing.T) {
+		got, err := whoami(t, whoamiClient(t, orgs, projects, users, session.Principal{
+			Source: session.SourceAPIKey, KeyHint: "e5f6", OwnerID: uuid.New(), Name: "laptop",
+		}))
+		require.NoError(t, err)
+		assert.Empty(t, got.GetOwnerId())
+		assert.Equal(t, "laptop", got.GetName())
 	})
 }
 
@@ -147,7 +188,33 @@ func (brokenOrgs) Get(context.Context, uuid.UUID) (*org.Org, error) {
 	return nil, errors.New("db down")
 }
 
+type brokenProjects struct{}
+
+func (brokenProjects) Get(context.Context, uuid.UUID) (*project.Project, error) {
+	return nil, errors.New("db down")
+}
+
+type brokenUsers struct{}
+
+func (brokenUsers) ByID(context.Context, uuid.UUID) (*user.User, error) {
+	return nil, errors.New("db down")
+}
+
 func TestWhoami_LookupErrorFails(t *testing.T) {
-	_, err := whoami(t, whoamiClient(t, brokenOrgs{}, userByID{}, session.Principal{Source: session.SourceBasic, ActiveOrgID: uuid.New()}))
-	assert.Error(t, err)
+	for name, tc := range map[string]struct {
+		orgs     OrgGetter
+		projects ProjectGetter
+		users    UserGetter
+		p        session.Principal
+	}{
+		"org":     {brokenOrgs{}, projectByID{}, userByID{}, session.Principal{Source: session.SourceBasic, ActiveOrgID: uuid.New()}},
+		"project": {orgByID{}, brokenProjects{}, userByID{}, session.Principal{Source: session.SourceBasic, ActiveProjectID: uuid.New()}},
+		"user":    {orgByID{}, projectByID{}, brokenUsers{}, session.Principal{Source: session.SourceLocal, UserID: uuid.New()}},
+		"owner":   {orgByID{}, projectByID{}, brokenUsers{}, session.Principal{Source: session.SourceAPIKey, OwnerID: uuid.New()}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := whoami(t, whoamiClient(t, tc.orgs, tc.projects, tc.users, tc.p))
+			assert.Error(t, err)
+		})
+	}
 }

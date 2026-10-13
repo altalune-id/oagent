@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"altalune.id/oagent/apperror"
 	memberv1 "altalune.id/oagent/gen/go/member/v1"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
 	"altalune.id/oagent/internal/kernel/authn"
@@ -16,14 +15,15 @@ import (
 	"altalune.id/oagent/scope"
 )
 
-// MemberService implements member.v1.MemberService.
+// MemberService implements member.v1.MemberService; orgs and members are named by public ids.
 type MemberService struct {
 	members *Service
+	refs    Refs
 }
 
-// NewControlPlane binds the handler to the membership service.
-func NewControlPlane(members *Service) *MemberService {
-	return &MemberService{members: members}
+// NewControlPlane binds the handler to the membership service and the org and user public id lookups.
+func NewControlPlane(members *Service, refs Refs) *MemberService {
+	return &MemberService{members: members, refs: refs}
 }
 
 var _ memberv1connect.MemberServiceHandler = (*MemberService)(nil)
@@ -33,12 +33,9 @@ func (s *MemberService) ListMembers(
 	ctx context.Context,
 	req *connect.Request[memberv1.ListMembersRequest],
 ) (*connect.Response[memberv1.ListMembersResponse], error) {
-	orgID, err := parseOrgID(req.Msg.GetOrgId())
+	orgID, err := s.org(ctx, req.Msg.GetOrgId())
 	if err != nil {
 		return nil, err
-	}
-	if !authz.ReachWholeOrg(ctx, orgID) {
-		return nil, &NotFoundError{}
 	}
 	ms, err := s.members.List(ctx, orgID)
 	if err != nil {
@@ -68,7 +65,7 @@ func (s *MemberService) SetMemberRole(
 	if err != nil {
 		return nil, err
 	}
-	out := &Member{Membership: *m}
+	out := &Member{Membership: *m, UserPublicID: req.Msg.GetUserId()}
 	if ms, err := s.members.List(ctx, orgID); err == nil {
 		for i := range ms {
 			if ms[i].UserID == userID {
@@ -104,12 +101,9 @@ func (s *MemberService) LeaveOrg(
 	ctx context.Context,
 	req *connect.Request[memberv1.LeaveOrgRequest],
 ) (*connect.Response[memberv1.LeaveOrgResponse], error) {
-	orgID, err := parseOrgID(req.Msg.GetOrgId())
+	orgID, err := s.org(ctx, req.Msg.GetOrgId())
 	if err != nil {
 		return nil, err
-	}
-	if !authz.ReachWholeOrg(ctx, orgID) {
-		return nil, &NotFoundError{}
 	}
 	p := session.PrincipalFrom(ctx)
 	if !p.IsPerson() {
@@ -121,15 +115,29 @@ func (s *MemberService) LeaveOrg(
 	return connect.NewResponse(&memberv1.LeaveOrgResponse{}), nil
 }
 
-func (s *MemberService) target(ctx context.Context, rawOrg, rawUser string) (orgID, userID uuid.UUID, err error) {
-	if orgID, err = parseOrgID(rawOrg); err != nil {
+// SECURITY: an unknown org and an org out of reach answer the same not-found.
+func (s *MemberService) org(ctx context.Context, publicID string) (uuid.UUID, error) {
+	id, ok, err := s.refs.OrgID(ctx, publicID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if !ok || !authz.ReachWholeOrg(ctx, id) {
+		return uuid.Nil, &NotFoundError{}
+	}
+	return id, nil
+}
+
+// SECURITY: an unknown user answers the same not-found as a user who is not a member.
+func (s *MemberService) target(ctx context.Context, orgPublicID, userPublicID string) (orgID, userID uuid.UUID, err error) {
+	if orgID, err = s.org(ctx, orgPublicID); err != nil {
 		return uuid.Nil, uuid.Nil, err
 	}
-	if !authz.ReachWholeOrg(ctx, orgID) {
+	userID, ok, err := s.refs.UserID(ctx, userPublicID)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	if !ok {
 		return uuid.Nil, uuid.Nil, &NotFoundError{}
-	}
-	if userID, err = parseUserID(rawUser); err != nil {
-		return uuid.Nil, uuid.Nil, err
 	}
 	return orgID, userID, nil
 }
@@ -147,25 +155,9 @@ func RequesterFrom(ctx context.Context) (Requester, error) {
 	return Requester{}, &authz.ForbiddenError{Permission: scope.MemberWrite}
 }
 
-func parseOrgID(raw string) (uuid.UUID, error) {
-	id, err := uuid.Parse(raw)
-	if err != nil {
-		return uuid.Nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
-	}
-	return id, nil
-}
-
-func parseUserID(raw string) (uuid.UUID, error) {
-	id, err := uuid.Parse(raw)
-	if err != nil {
-		return uuid.Nil, apperror.Invalid("user_id", apperror.FieldInvalid).WithCause(err)
-	}
-	return id, nil
-}
-
 func memberToProto(m *Member) *memberv1.Member {
 	return &memberv1.Member{
-		UserId:   m.UserID.String(),
+		UserId:   m.UserPublicID,
 		Email:    m.Email,
 		Name:     m.Name,
 		Role:     string(m.Role),

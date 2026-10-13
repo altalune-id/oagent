@@ -31,11 +31,23 @@ func TestOrgReach_IDOnlyRPCs(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			ctx := session.PrincipalInto(context.Background(), p)
-			_, err := cp.GetOrg(ctx, connect.NewRequest(&orgv1.GetOrgRequest{Id: orgB.ID.String()}))
+			_, err := cp.GetOrg(ctx, connect.NewRequest(&orgv1.GetOrgRequest{Id: orgB.PublicID}))
 			assert.True(t, org.IsNotFoundError(err), "GetOrg: %v", err)
-			_, err = cp.UpdateOrg(ctx, connect.NewRequest(&orgv1.UpdateOrgRequest{Id: orgB.ID.String(), Name: "Hacked"}))
+			_, err = cp.UpdateOrg(ctx, connect.NewRequest(&orgv1.UpdateOrgRequest{Id: orgB.PublicID, Name: "Hacked"}))
 			assert.True(t, org.IsNotFoundError(err), "UpdateOrg: %v", err)
 		})
+	}
+}
+
+func TestOrgReach_UnknownOrUUIDIDIsNotFound(t *testing.T) {
+	orgA := mustOrg(t, "org-a")
+	cp := org.NewControlPlane(org.NewService(&fakes.OrgStore{Err: &org.NotFoundError{}}, fakes.Transactor{}, nil))
+	ctx := session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceLocal, UserID: uuid.New(), ActiveOrgID: orgA.ID, Scopes: []string{"*"}})
+	for _, id := range []string{"not-a-public-id", orgA.ID.String()} {
+		_, err := cp.GetOrg(ctx, connect.NewRequest(&orgv1.GetOrgRequest{Id: id}))
+		assert.True(t, org.IsNotFoundError(err), "GetOrg %s: %v", id, err)
+		_, err = cp.UpdateOrg(ctx, connect.NewRequest(&orgv1.UpdateOrgRequest{Id: id, Name: "Hacked"}))
+		assert.True(t, org.IsNotFoundError(err), "UpdateOrg %s: %v", id, err)
 	}
 }
 
@@ -48,12 +60,12 @@ func TestOrgReach_OwnOrgAndTrustedCallers(t *testing.T) {
 		"operator": session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceBasic, Operator: true}),
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := cp.GetOrg(ctx, connect.NewRequest(&orgv1.GetOrgRequest{Id: o.ID.String()}))
+			_, err := cp.GetOrg(ctx, connect.NewRequest(&orgv1.GetOrgRequest{Id: o.PublicID}))
 			require.NoError(t, err)
 		})
 	}
 
-	_, err := cp.GetOrg(context.Background(), connect.NewRequest(&orgv1.GetOrgRequest{Id: o.ID.String()}))
+	_, err := cp.GetOrg(context.Background(), connect.NewRequest(&orgv1.GetOrgRequest{Id: o.PublicID}))
 	assert.True(t, org.IsNotFoundError(err), "no principal reaches nothing: %v", err)
 }
 
@@ -72,8 +84,8 @@ func TestOrgReach_ListOrgs(t *testing.T) {
 	assert.Empty(t, ids(context.Background()), "no principal sees nothing")
 	assert.Len(t, ids(fakes.OperatorContext(context.Background())), 2, "system sees all")
 	assert.Len(t, ids(session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceBasic, Operator: true})), 2, "operator sees all")
-	assert.Equal(t, []string{orgA.ID.String()}, ids(session.PrincipalInto(context.Background(),
+	assert.Equal(t, []string{orgA.PublicID}, ids(session.PrincipalInto(context.Background(),
 		session.Principal{Source: session.SourceLocal, UserID: uuid.New(), ActiveOrgID: orgA.ID})), "person sees the active org")
-	assert.Equal(t, []string{orgB.ID.String()}, ids(session.PrincipalInto(context.Background(),
+	assert.Equal(t, []string{orgB.PublicID}, ids(session.PrincipalInto(context.Background(),
 		session.Principal{Source: session.SourceAPIKey, ActiveOrgID: orgB.ID})), "key sees its org")
 }

@@ -5,7 +5,7 @@ import { connectError, deferred, setClient, setKnownKeys } from '../../../../tes
 import { useProjectsStore } from '~/stores/projects'
 import { useProjectEdit } from './useProjectEdit'
 
-const project = { id: 'p1', publicId: 'prj_1', orgId: 'o1', slug: 'web', name: 'Web' }
+const project = { id: 'x6LH9WPWiktLwCBKHy4oF', orgId: 'V1StGXR8Z5jdHi6BmyT2a', slug: 'web', name: 'Web' }
 
 describe('useProjectEdit', () => {
   let updateProject: ReturnType<typeof vi.fn>
@@ -24,7 +24,7 @@ describe('useProjectEdit', () => {
     form.name.value = ' Site '
     form.slug.value = ' site '
     await form.submit()
-    expect(updateProject).toHaveBeenCalledWith({ id: 'p1', name: 'Site', slug: 'site' })
+    expect(updateProject).toHaveBeenCalledWith({ id: 'x6LH9WPWiktLwCBKHy4oF', name: 'Site', slug: 'site' })
     expect(useProjectsStore().items[0]).toEqual({ ...project, name: 'Site', slug: 'site' })
     expect([form.open.value, form.name.value, form.slug.value]).toEqual([false, '', ''])
   })
