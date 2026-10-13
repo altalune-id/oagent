@@ -78,9 +78,10 @@ func TestOpen_SetsTheRoleOnEveryConnection(t *testing.T) {
 }
 
 func TestOpen_UnknownRoleFailsFastWithoutRetrying(t *testing.T) {
+	dsn := pgtest.New(t).DSN
 	start := time.Now()
 	_, err := db.Open(t.Context(), db.DBConfig{
-		DSN: pgtest.New(t).DSN, Role: "pgt_role_does_not_exist", ConnectTimeout: 20 * time.Second,
+		DSN: dsn, Role: "pgt_role_does_not_exist", ConnectTimeout: 20 * time.Second,
 	}, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "SET ROLE")
