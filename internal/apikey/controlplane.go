@@ -88,7 +88,7 @@ func (s *APIKeyService) CreateAPIKey(
 	return connect.NewResponse(&apikeyv1.CreateAPIKeyResponse{Key: keyToProto(k), Plaintext: plaintext}), nil
 }
 
-// ListAPIKeys lists an organization's keys, never carrying a plaintext secret. SECURITY: a key never sees personal keys.
+// ListAPIKeys lists an org's keys, without plaintext. SECURITY: keys never see personal keys; project-limited keys see none.
 func (s *APIKeyService) ListAPIKeys(
 	ctx context.Context,
 	req *connect.Request[apikeyv1.ListAPIKeysRequest],
@@ -97,7 +97,7 @@ func (s *APIKeyService) ListAPIKeys(
 	if err != nil {
 		return nil, apperror.Invalid("organization_id", apperror.FieldInvalid).WithCause(err)
 	}
-	if !authz.ReachOrg(ctx, orgID) {
+	if !authz.ReachWholeOrg(ctx, orgID) {
 		return nil, &NotFoundError{}
 	}
 	p := session.PrincipalFrom(ctx)

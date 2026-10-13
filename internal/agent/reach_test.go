@@ -85,3 +85,29 @@ func TestAgentReach_OwnAgentWorks(t *testing.T) {
 	_, err = cp.DeleteAgent(ctx, connect.NewRequest(&agentv1.DeleteAgentRequest{Id: a.ID.String()}))
 	require.NoError(t, err)
 }
+
+// D7: listing a project's agents needs reach into that project; an unknown project looks the same.
+func TestAgentReach_ListNeedsProjectReach(t *testing.T) {
+	orgA, orgB, prjB, prjB2 := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	agentB := mustAgent(t, orgB, prjB)
+	cp := agent.NewControlPlane(agent.NewService(&fakes.AgentStore{Agents: []*agent.Agent{agentB}}, nil).
+		WithProjects(projectOrgs{prjB: orgB, prjB2: orgB}))
+	list := func(p session.Principal, project uuid.UUID) (*connect.Response[agentv1.ListAgentsResponse], error) {
+		return cp.ListAgents(session.PrincipalInto(context.Background(), p), connect.NewRequest(&agentv1.ListAgentsRequest{ProjectId: project.String()}))
+	}
+
+	for name, p := range map[string]session.Principal{
+		"member of A":         {Source: session.SourceLocal, UserID: uuid.New(), ActiveOrgID: orgA, Scopes: []string{"*"}},
+		"key of A":            {Source: session.SourceAPIKey, ActiveOrgID: orgA, AllProjects: true},
+		"key of B, other prj": {Source: session.SourceAPIKey, ActiveOrgID: orgB, ProjectIDs: []uuid.UUID{prjB2}},
+	} {
+		_, err := list(p, prjB)
+		assert.True(t, agent.IsNotFoundError(err), "%s: %v", name, err)
+	}
+	memberB := session.Principal{Source: session.SourceLocal, UserID: uuid.New(), ActiveOrgID: orgB, Scopes: []string{"*"}}
+	_, err := list(memberB, uuid.New())
+	assert.True(t, agent.IsNotFoundError(err), "an unknown project: %v", err)
+	resp, err := list(memberB, prjB)
+	require.NoError(t, err)
+	assert.Len(t, resp.Msg.GetAgents(), 1)
+}

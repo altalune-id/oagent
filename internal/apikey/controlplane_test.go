@@ -16,6 +16,7 @@ import (
 	apikeyv1 "altalune.id/oagent/gen/go/apikey/v1"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	"altalune.id/oagent/internal/apikey"
+	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/testutil/fakes"
 )
 
@@ -119,4 +120,23 @@ func TestAPIKeyService_Revoke_InvalidOrg(t *testing.T) {
 
 	_, err := c.RevokeAPIKey(context.Background(), connect.NewRequest(&apikeyv1.RevokeAPIKeyRequest{OrgId: "bad", Id: uuid.New().String()}))
 	assert.Error(t, err)
+}
+
+// Review Focus 5: listing an org's keys is org-wide, so a key limited to some projects is refused.
+func TestAPIKeyService_List_ProjectLimitedKeyRefused(t *testing.T) {
+	orgID := uuid.New()
+	k, _, err := apikey.NewScheme("").MintOrg(orgID, "x", nil, apikey.ProjectGrant{All: true}, future(), time.Now().UTC())
+	require.NoError(t, err)
+	svc := apikey.NewService(&fakes.APIKeyStore{Keys: []*apikey.APIKey{k}}, apikey.NewScheme(""), stubProjects{ids: []uuid.UUID{knownProject}}, nil)
+	cp := apikey.NewControlPlane(svc)
+	list := func(p session.Principal) error {
+		_, err := cp.ListAPIKeys(session.PrincipalInto(context.Background(), p), connect.NewRequest(&apikeyv1.ListAPIKeysRequest{OrgId: orgID.String()}))
+		return err
+	}
+
+	err = list(session.Principal{Source: session.SourceAPIKey, ActiveOrgID: orgID, Scopes: []string{"apikey:read"}, ProjectIDs: []uuid.UUID{knownProject}})
+	assert.True(t, apikey.IsNotFoundError(err), "%v", err)
+	err = list(session.Principal{Source: session.SourceAPIKey, ActiveOrgID: orgID, Scopes: []string{"apikey:read"}, AllProjects: true, ResourceIDs: []uuid.UUID{uuid.New()}})
+	assert.True(t, apikey.IsNotFoundError(err), "a key limited to some resources is refused too: %v", err)
+	require.NoError(t, list(session.Principal{Source: session.SourceAPIKey, ActiveOrgID: orgID, Scopes: []string{"apikey:read"}, AllProjects: true}))
 }

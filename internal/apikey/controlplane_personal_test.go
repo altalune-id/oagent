@@ -124,7 +124,7 @@ func TestAPIKeyService_List_Visibility(t *testing.T) {
 		want []string
 	}{
 		"person sees own personal keys": {person(me, orgID), []string{mine.ID.String(), machine.ID.String()}},
-		"key sees no personal keys":     {session.Principal{Source: session.SourceAPIKey, ActiveOrgID: orgID}, []string{machine.ID.String()}},
+		"key sees no personal keys":     {session.Principal{Source: session.SourceAPIKey, ActiveOrgID: orgID, AllProjects: true}, []string{machine.ID.String()}},
 		"operator sees all":             {session.Principal{Source: session.SourceBasic, Operator: true}, []string{mine.ID.String(), theirs.ID.String(), machine.ID.String()}},
 	}
 	for name, tc := range cases {

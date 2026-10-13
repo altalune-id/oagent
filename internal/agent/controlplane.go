@@ -74,6 +74,9 @@ func (s *AgentService) ListAgents(
 	if err != nil {
 		return nil, apperror.Invalid("project_id", apperror.FieldInvalid).WithCause(err)
 	}
+	if err := s.reachProject(ctx, projectID); err != nil {
+		return nil, err
+	}
 	agents, err := s.agents.List(ctx, projectID)
 	if err != nil {
 		return nil, err
@@ -134,6 +137,18 @@ func (s *AgentService) reachable(ctx context.Context, id uuid.UUID) (*Agent, err
 		return nil, &NotFoundError{ID: id.String()}
 	}
 	return a, nil
+}
+
+// SECURITY: a project outside the caller's reach, or one that does not exist, is reported as an absent agent.
+func (s *AgentService) reachProject(ctx context.Context, projectID uuid.UUID) error {
+	orgID, ok, err := s.agents.ProjectOrg(ctx, projectID)
+	if err != nil || !ok {
+		return err
+	}
+	if !authz.ReachProject(ctx, orgID, projectID) {
+		return &NotFoundError{}
+	}
+	return nil
 }
 
 func parseID(raw string) (uuid.UUID, error) {

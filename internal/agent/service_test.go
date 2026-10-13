@@ -188,3 +188,28 @@ func TestService_Create_ProjectMustBelongToOrg(t *testing.T) {
 	_, err := svc.Create(context.Background(), agent.CreateRequest{OrgID: orgB, ProjectID: prjB, Slug: "bot", Name: "Bot"})
 	require.NoError(t, err)
 }
+
+type failingProjects struct{}
+
+func (failingProjects) OrgOf(context.Context, uuid.UUID) (uuid.UUID, error) {
+	return uuid.Nil, errors.New("db down")
+}
+
+func TestService_ProjectOrg(t *testing.T) {
+	orgB, prjB := uuid.New(), uuid.New()
+	_, ok, err := agent.NewService(&fakes.AgentStore{}, nil).ProjectOrg(context.Background(), prjB)
+	require.NoError(t, err)
+	assert.False(t, ok, "no resolver, no check")
+
+	svc := agent.NewService(&fakes.AgentStore{}, testUnexpected()).WithProjects(projectOrgs{prjB: orgB})
+	got, ok, err := svc.ProjectOrg(context.Background(), prjB)
+	require.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, orgB, got)
+	_, _, err = svc.ProjectOrg(context.Background(), uuid.New())
+	assert.True(t, agent.IsNotFoundError(err))
+
+	_, _, err = agent.NewService(&fakes.AgentStore{}, testUnexpected()).WithProjects(failingProjects{}).ProjectOrg(context.Background(), prjB)
+	require.Error(t, err)
+	assert.False(t, agent.IsNotFoundError(err))
+}
