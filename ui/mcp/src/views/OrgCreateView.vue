@@ -55,7 +55,6 @@ function again() {
         <dt>id</dt><dd>{{ created.id }}</dd>
         <dt>slug</dt><dd>{{ created.slug }}</dd>
         <dt>name</dt><dd>{{ created.name }}</dd>
-        <dt>publicId</dt><dd>{{ created.publicId }}</dd>
       </dl>
       <button class="ghost" type="button" @click="again">Create another</button>
     </template>

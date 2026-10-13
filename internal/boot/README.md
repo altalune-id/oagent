@@ -167,8 +167,8 @@ off in selfhosted): staff (an operator who is a person) follow their role in org
 to, and manage other orgs with the admin permission set only when it is on (selfhosted refuses
 them there). No one acts on or grants more permissions than they hold, so only owners touch
 owners. The stdio System principal, basic auth and the CLI `App` keep full operator power.
-`WithDirectory(memberDirectory{…})` lets `member add` find the user by email and the org by
-slug.
+`WithDirectory(memberDirectory{…})` lets `member add --org-id` find the user by email and the org by
+its public id.
 `install → auth` and `legal → auth` exist only on the web side, wired in
 `http.go`. `buildLegal` builds `Services.Legal`. With local login, `firstBoot` publishes the built-in
 documents: each `updated` value is a version, stored once with its text in `legal_documents`

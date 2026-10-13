@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -262,6 +263,8 @@ type errReader struct{}
 
 func (errReader) Read([]byte) (int, error) { return 0, errRead }
 
+var addOrgUUID, addUserUUID = uuid.New(), uuid.New()
+
 type addCall struct {
 	email, org string
 	role       member.Role
@@ -270,12 +273,15 @@ type addCall struct {
 func runMemberAdd(t *testing.T, err error, args ...string) (*bytes.Buffer, []addCall, error) {
 	t.Helper()
 	var calls []addCall
-	add := func(_ context.Context, email, orgSlug string, role member.Role) (*member.Membership, error) {
-		calls = append(calls, addCall{email, orgSlug, role})
+	add := func(_ context.Context, email, orgPublicID string, role member.Role) (*member.Member, error) {
+		calls = append(calls, addCall{email, orgPublicID, role})
 		if err != nil {
 			return nil, err
 		}
-		return &member.Membership{Role: role, CreatedAt: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)}, nil
+		return &member.Member{
+			Membership:   member.Membership{OrgID: addOrgUUID, UserID: addUserUUID, Role: role, CreatedAt: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)},
+			UserPublicID: "u5tQ8hJ2mK9pR3wX7yZaB",
+		}, nil
 	}
 	buf := new(bytes.Buffer)
 	root := &cobra.Command{Use: "x", SilenceUsage: true, SilenceErrors: true}
@@ -293,28 +299,33 @@ func runMemberAdd(t *testing.T, err error, args ...string) (*bytes.Buffer, []add
 }
 
 func TestMemberAdd_DefaultRoleIsMember(t *testing.T) {
-	buf, calls, err := runMemberAdd(t, nil, "--email", "ada@example.com", "--org", "acme", "--output", "text")
+	buf, calls, err := runMemberAdd(t, nil, "--email", "ada@example.com", "--org-id", "V1StGXR8Z5jdHi6BmyT2a", "--output", "text")
 
 	require.NoError(t, err)
-	assert.Equal(t, []addCall{{"ada@example.com", "acme", member.RoleMember}}, calls)
-	assert.Equal(t, "Added ada@example.com to acme as member\n", buf.String())
+	assert.Equal(t, []addCall{{"ada@example.com", "V1StGXR8Z5jdHi6BmyT2a", member.RoleMember}}, calls)
+	assert.Equal(t, "Added ada@example.com to V1StGXR8Z5jdHi6BmyT2a as member\n", buf.String())
 }
 
 func TestMemberAdd_Role(t *testing.T) {
-	buf, calls, err := runMemberAdd(t, nil, "--email", "ada@example.com", "--org", "acme", "--role", "admin", "--output", "text")
+	buf, calls, err := runMemberAdd(t, nil, "--email", "ada@example.com", "--org-id", "V1StGXR8Z5jdHi6BmyT2a", "--role", "admin", "--output", "text")
 
 	require.NoError(t, err)
-	assert.Equal(t, []addCall{{"ada@example.com", "acme", member.RoleAdmin}}, calls)
-	assert.Contains(t, buf.String(), "Added ada@example.com to acme as admin")
+	assert.Equal(t, []addCall{{"ada@example.com", "V1StGXR8Z5jdHi6BmyT2a", member.RoleAdmin}}, calls)
+	assert.Contains(t, buf.String(), "Added ada@example.com to V1StGXR8Z5jdHi6BmyT2a as admin")
 }
 
 func TestMemberAdd_JSON(t *testing.T) {
-	buf, _, err := runMemberAdd(t, nil, "--email", "ada@example.com", "--org", "acme", "--output", "json")
+	buf, _, err := runMemberAdd(t, nil, "--email", "ada@example.com", "--org-id", "V1StGXR8Z5jdHi6BmyT2a", "--output", "json")
 
 	require.NoError(t, err)
-	for _, want := range []string{`"email": "ada@example.com"`, `"org": "acme"`, `"role": "member"`, `"joinedAt": "2026-10-01T00:00:00Z"`} {
+	for _, want := range []string{
+		`"email": "ada@example.com"`, `"orgId": "V1StGXR8Z5jdHi6BmyT2a"`, `"userId": "u5tQ8hJ2mK9pR3wX7yZaB"`,
+		`"role": "member"`, `"joinedAt": "2026-10-01T00:00:00Z"`,
+	} {
 		assert.Contains(t, buf.String(), want)
 	}
+	assert.NotContains(t, buf.String(), addOrgUUID.String())
+	assert.NotContains(t, buf.String(), addUserUUID.String())
 }
 
 func TestMemberAdd_RequiresEmailAndOrg(t *testing.T) {
@@ -323,14 +334,14 @@ func TestMemberAdd_RequiresEmailAndOrg(t *testing.T) {
 	assert.Contains(t, err.Error(), "org")
 	assert.Empty(t, calls)
 
-	_, calls, err = runMemberAdd(t, nil, "--org", "acme")
+	_, calls, err = runMemberAdd(t, nil, "--org-id", "V1StGXR8Z5jdHi6BmyT2a")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "email")
 	assert.Empty(t, calls)
 }
 
 func TestMemberAdd_Error(t *testing.T) {
-	buf, _, err := runMemberAdd(t, &member.AlreadyMemberError{}, "--email", "ada@example.com", "--org", "acme")
+	buf, _, err := runMemberAdd(t, &member.AlreadyMemberError{}, "--email", "ada@example.com", "--org-id", "V1StGXR8Z5jdHi6BmyT2a")
 
 	assert.True(t, member.IsAlreadyMemberError(err))
 	assert.NotContains(t, buf.String(), "Added")

@@ -5,7 +5,7 @@ export interface WhoamiData {
   email?: string;
   name?: string;
   avatarUrl?: string;
-  keyId?: string;
+  keyHint?: string;
   ownerId?: string;
   activeOrgId?: string;
   activeOrgSlug?: string;
@@ -49,7 +49,7 @@ export function whoamiRows(data: WhoamiData): Row[] {
   };
   if (data.source === 'apikey') {
     if (data.ownerId) add('Acts for', data.name && data.email ? `${data.name} <${data.email}>` : data.email || data.name);
-    add('Key', data.keyId);
+    if (data.keyHint) add('Key', `…${data.keyHint}`);
   } else if (data.source !== 'system' && data.source !== 'basic') {
     if (data.name) add('Email', data.email);
   }

@@ -23,7 +23,7 @@ describe('whoamiTitle', () => {
   });
 
   it('labels a key, system and basic', () => {
-    expect(whoamiTitle({ source: 'apikey', keyId: 'k1' })).toBe('API key');
+    expect(whoamiTitle({ source: 'apikey', keyHint: 'k1x9' })).toBe('API key');
     expect(whoamiTitle({ source: 'system', name: 'stdio', operator: true })).toBe('System (stdio)');
     expect(whoamiTitle({ source: 'basic', name: 'admin', operator: true })).toBe('Operator (basic)');
   });
@@ -38,17 +38,17 @@ describe('whoamiRows', () => {
   });
 
   it('shows an org key by its id', () => {
-    expect(whoamiRows({ source: 'apikey', keyId: 'k1', activeOrgSlug: 'acme', permissions: ['agent:read'] })).toEqual([
-      { label: 'Key', value: 'k1' },
+    expect(whoamiRows({ source: 'apikey', keyHint: 'k1x9', activeOrgSlug: 'acme', permissions: ['agent:read'] })).toEqual([
+      { label: 'Key', value: '…k1x9' },
       { label: 'Org', value: 'acme' },
     ]);
   });
 
   it('shows the owner of a personal key', () => {
-    const rows = whoamiRows({ source: 'apikey', keyId: 'k2', ownerId: 'u1', email: 'ada@example.com', name: 'Ada', activeOrgSlug: 'acme' });
+    const rows = whoamiRows({ source: 'apikey', keyHint: 'k2y8', ownerId: 'V1StGXR8Z5jdHi6BmyT2a', email: 'ada@example.com', name: 'Ada', activeOrgSlug: 'acme' });
     expect(rows).toEqual([
       { label: 'Acts for', value: 'Ada <ada@example.com>' },
-      { label: 'Key', value: 'k2' },
+      { label: 'Key', value: '…k2y8' },
       { label: 'Org', value: 'acme' },
     ]);
   });

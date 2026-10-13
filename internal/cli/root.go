@@ -41,7 +41,7 @@ type App interface {
 	Run(ctx context.Context) error
 	RunMCP(ctx context.Context) error
 	SetPassword(ctx context.Context, email, password string) error
-	AddMember(ctx context.Context, email, orgSlug string, role member.Role) (*member.Membership, error)
+	AddMember(ctx context.Context, email, orgPublicID string, role member.Role) (*member.Member, error)
 	Close(ctx context.Context) error
 }
 
@@ -316,9 +316,9 @@ func setPasswordFn(bootServer ServerBootFn) user.SetPasswordFn {
 }
 
 func addMemberFn(bootServer ServerBootFn) member.AddFn {
-	return func(ctx context.Context, email, orgSlug string, role member.Role) (m *member.Membership, err error) {
+	return func(ctx context.Context, email, orgPublicID string, role member.Role) (m *member.Member, err error) {
 		err = withOperatorApp(ctx, bootServer, func(app App) error {
-			m, err = app.AddMember(ctx, email, orgSlug, role)
+			m, err = app.AddMember(ctx, email, orgPublicID, role)
 			return err
 		})
 		return m, err

@@ -41,9 +41,9 @@ async function submit() {
     <header><span class="dot" /><strong>Retry failed deliveries</strong></header>
 
     <form class="stack" @submit.prevent="submit">
-      <label>Organization ID<input v-model="orgID" required placeholder="uuid" /></label>
-      <label>Project ID<input v-model="projectID" required placeholder="uuid" /></label>
-      <label>Webhook ID<input v-model="id" required placeholder="uuid" /></label>
+      <label>Organization ID<input v-model="orgID" required placeholder="public id" /></label>
+      <label>Project ID<input v-model="projectID" required placeholder="public id" /></label>
+      <label>Webhook ID<input v-model="id" required placeholder="public id" /></label>
       <button type="submit" :disabled="busy">{{ busy ? "Retrying…" : "Retry failed" }}</button>
     </form>
 

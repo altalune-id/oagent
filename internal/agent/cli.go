@@ -54,8 +54,8 @@ func newCreateCmd(clientFn ClientFn) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
-	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project public id")
 	cmd.Flags().StringVar(&slug, "slug", "", "URL-safe agent slug (generated when omitted)")
 	cmd.Flags().StringVar(&name, "name", "", "Agent name")
 	cmd.Flags().StringVar(&description, "description", "", "Agent description")
@@ -67,7 +67,7 @@ func newCreateCmd(clientFn ClientFn) *cobra.Command {
 
 func newGetCmd(clientFn ClientFn) *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <id>",
+		Use:   "get <public-id>",
 		Short: "Get an agent by id",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -119,7 +119,7 @@ func newListCmd(clientFn ClientFn) *cobra.Command {
 			return render.Table(cmd.OutOrStdout(), []string{"ID", "PROJECT_ID", "SLUG", "NAME"}, rows)
 		},
 	}
-	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project public id")
 	_ = cmd.MarkFlagRequired("project-id")
 	return cmd
 }
@@ -127,7 +127,7 @@ func newListCmd(clientFn ClientFn) *cobra.Command {
 func newUpdateCmd(clientFn ClientFn) *cobra.Command {
 	var name, description string
 	cmd := &cobra.Command{
-		Use:   "update <id>",
+		Use:   "update <public-id>",
 		Short: "Update an agent's name and description",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -158,7 +158,7 @@ func newUpdateCmd(clientFn ClientFn) *cobra.Command {
 
 func newDeleteCmd(clientFn ClientFn) *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete <id>",
+		Use:   "delete <public-id>",
 		Short: "Delete an agent by id",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -53,7 +53,7 @@ func newCreateCmd(clientFn ClientFn) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
 	cmd.Flags().StringVar(&slug, "slug", "", "URL-safe project slug (generated when omitted)")
 	cmd.Flags().StringVar(&name, "name", "", "Project name")
 	_ = cmd.MarkFlagRequired("org-id")
@@ -63,7 +63,7 @@ func newCreateCmd(clientFn ClientFn) *cobra.Command {
 
 func newGetCmd(clientFn ClientFn) *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <id>",
+		Use:   "get <public-id>",
 		Short: "Get a project by id",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -115,7 +115,7 @@ func newListCmd(clientFn ClientFn) *cobra.Command {
 			return render.Table(cmd.OutOrStdout(), []string{"ID", "ORG_ID", "SLUG", "NAME"}, rows)
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
 	_ = cmd.MarkFlagRequired("org-id")
 	return cmd
 }

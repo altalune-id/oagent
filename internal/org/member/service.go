@@ -204,8 +204,8 @@ func (s *Service) ActorFor(ctx context.Context, r Requester, orgID uuid.UUID) (A
 	return a, nil
 }
 
-// AddByEmail makes the existing user with email a member of the org orgSlug with role, on behalf of r.
-func (s *Service) AddByEmail(ctx context.Context, r Requester, email, orgSlug string, role Role) (*Membership, error) {
+// AddByEmail makes the existing user with email a member of the org orgPublicID with role, on behalf of r.
+func (s *Service) AddByEmail(ctx context.Context, r Requester, email, orgPublicID string, role Role) (*Member, error) {
 	if s.directory == nil {
 		return nil, s.unexpected(ctx, "member: add by email", errNoDirectory)
 	}
@@ -213,11 +213,19 @@ func (s *Service) AddByEmail(ctx context.Context, r Requester, email, orgSlug st
 	if err != nil {
 		return nil, err
 	}
-	orgID, err := s.directory.OrgIDBySlug(ctx, orgSlug)
+	userPublicID, err := s.directory.UserPublicID(ctx, userID)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "member: add by email", err)
+	}
+	orgID, err := s.directory.OrgIDByPublicID(ctx, orgPublicID)
 	if err != nil {
 		return nil, err
 	}
-	return s.AddExisting(ctx, r, orgID, userID, role)
+	m, err := s.AddExisting(ctx, r, orgID, userID, role)
+	if err != nil {
+		return nil, err
+	}
+	return &Member{Membership: *m, UserPublicID: userPublicID, Email: email}, nil
 }
 
 func (s *Service) guarded(

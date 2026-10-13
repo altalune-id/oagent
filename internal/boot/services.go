@@ -207,8 +207,16 @@ func (d memberDirectory) UserIDByEmail(ctx context.Context, email string) (uuid.
 	return u.ID, nil
 }
 
-func (d memberDirectory) OrgIDBySlug(ctx context.Context, slug string) (uuid.UUID, error) {
-	o, err := d.orgs.BySlug(ctx, slug)
+func (d memberDirectory) UserPublicID(ctx context.Context, id uuid.UUID) (string, error) {
+	u, err := d.users.ByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return u.PublicID, nil
+}
+
+func (d memberDirectory) OrgIDByPublicID(ctx context.Context, publicID string) (uuid.UUID, error) {
+	o, err := d.orgs.ByPublicID(ctx, publicID)
 	if err != nil {
 		return uuid.Nil, err
 	}

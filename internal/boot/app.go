@@ -44,9 +44,9 @@ func (a *App) SetPassword(ctx context.Context, email, password string) error {
 	return a.Services.Auth.SetPassword(ctx, email, password)
 }
 
-// AddMember makes the existing user with email a member of the org orgSlug, acting as the operator.
-func (a *App) AddMember(ctx context.Context, email, orgSlug string, role member.Role) (*member.Membership, error) {
-	return a.Services.Members.AddByEmail(ctx, member.Requester{Operator: true}, email, orgSlug, role)
+// AddMember makes the existing user with email a member of the org orgPublicID, acting as the operator.
+func (a *App) AddMember(ctx context.Context, email, orgPublicID string, role member.Role) (*member.Member, error) {
+	return a.Services.Members.AddByEmail(ctx, member.Requester{Operator: true}, email, orgPublicID, role)
 }
 
 // Close drains telemetry then closes the kernel's resources.

@@ -24,12 +24,12 @@ type memberAddApp struct {
 	closed     bool
 }
 
-func (a *memberAddApp) AddMember(_ context.Context, email, orgSlug string, role member.Role) (*member.Membership, error) {
-	a.email, a.org, a.role = email, orgSlug, role
+func (a *memberAddApp) AddMember(_ context.Context, email, orgPublicID string, role member.Role) (*member.Member, error) {
+	a.email, a.org, a.role = email, orgPublicID, role
 	if a.err != nil {
 		return nil, a.err
 	}
-	return &member.Membership{Role: role}, nil
+	return &member.Member{Membership: member.Membership{Role: role}}, nil
 }
 
 func (a *memberAddApp) Close(context.Context) error {
@@ -59,20 +59,20 @@ func runMemberAdd(t *testing.T, app *memberAddApp, args ...string) (string, int,
 func TestMemberAdd_BootsWithoutWorkers(t *testing.T) {
 	setServeEnv(t)
 	app := &memberAddApp{}
-	out, opts, _, err := runMemberAdd(t, app, "--email", "ada@example.com", "--org", "acme", "--role", "admin", "--output", "text")
+	out, opts, _, err := runMemberAdd(t, app, "--email", "ada@example.com", "--org-id", "V1StGXR8Z5jdHi6BmyT2a", "--role", "admin", "--output", "text")
 	require.NoError(t, err)
 
 	assert.Equal(t, "ada@example.com", app.email)
-	assert.Equal(t, "acme", app.org)
+	assert.Equal(t, "V1StGXR8Z5jdHi6BmyT2a", app.org)
 	assert.Equal(t, member.RoleAdmin, app.role)
 	assert.True(t, app.closed)
 	assert.Equal(t, 3, opts, "install URL, scheduler and consumer are off")
-	assert.Contains(t, out, "Added ada@example.com to acme as admin")
+	assert.Contains(t, out, "Added ada@example.com to V1StGXR8Z5jdHi6BmyT2a as admin")
 }
 
 func TestMemberAdd_ValidatesServerConfig(t *testing.T) {
 	t.Setenv("OAGENT_DB_DSN", "")
-	_, _, booted, err := runMemberAdd(t, &memberAddApp{}, "--email", "ada@example.com", "--org", "acme")
+	_, _, booted, err := runMemberAdd(t, &memberAddApp{}, "--email", "ada@example.com", "--org-id", "V1StGXR8Z5jdHi6BmyT2a")
 
 	require.Error(t, err, "member add is an operator command: it needs the server config, not --url")
 	assert.False(t, booted)
@@ -81,7 +81,7 @@ func TestMemberAdd_ValidatesServerConfig(t *testing.T) {
 func TestMemberAdd_UnknownEmail(t *testing.T) {
 	setServeEnv(t)
 	app := &memberAddApp{err: &user.UnknownEmailError{Email: "nobody@example.com"}}
-	out, _, _, err := runMemberAdd(t, app, "--email", "nobody@example.com", "--org", "acme")
+	out, _, _, err := runMemberAdd(t, app, "--email", "nobody@example.com", "--org-id", "V1StGXR8Z5jdHi6BmyT2a")
 
 	require.Error(t, err)
 	assert.Contains(t, out, "No user with email nobody@example.com")
@@ -91,7 +91,7 @@ func TestMemberAdd_UnknownEmail(t *testing.T) {
 
 func TestMemberAdd_AlreadyMember(t *testing.T) {
 	setServeEnv(t)
-	out, _, _, err := runMemberAdd(t, &memberAddApp{err: &member.AlreadyMemberError{}}, "--email", "ada@example.com", "--org", "acme")
+	out, _, _, err := runMemberAdd(t, &memberAddApp{err: &member.AlreadyMemberError{}}, "--email", "ada@example.com", "--org-id", "V1StGXR8Z5jdHi6BmyT2a")
 
 	assert.True(t, member.IsAlreadyMemberError(err))
 	assert.Contains(t, out, "User is already a member")
@@ -104,7 +104,7 @@ func TestMemberAdd_RefusesRemoteFlags(t *testing.T) {
 		t.Run(flag, func(t *testing.T) {
 			setServeEnv(t)
 			app := &memberAddApp{}
-			out, _, booted, err := runMemberAdd(t, app, "--email", "ada@example.com", "--org", "acme", "--"+flag, "x")
+			out, _, booted, err := runMemberAdd(t, app, "--email", "ada@example.com", "--org-id", "V1StGXR8Z5jdHi6BmyT2a", "--"+flag, "x")
 
 			require.Error(t, err)
 			assert.False(t, booted, "the local database is never touched")

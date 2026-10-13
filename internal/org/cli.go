@@ -58,7 +58,7 @@ func newCreateCmd(clientFn ClientFn) *cobra.Command {
 
 func newGetCmd(clientFn ClientFn) *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <id>",
+		Use:   "get <public-id>",
 		Short: "Get an organization by id",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

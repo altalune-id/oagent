@@ -7,13 +7,13 @@ describe('memberRows', () => {
     expect(
       memberRows({
         members: [
-          { userId: 'u1', email: 'ada@example.com', name: 'Ada', role: 'owner', joinedAt: '2026-10-01T00:00:00Z' },
-          { userId: 'u2', email: 'bob@example.com', role: 'member' },
+          { userId: 'V1StGXR8Z5jdHi6BmyT2a', email: 'ada@example.com', name: 'Ada', role: 'owner', joinedAt: '2026-10-01T00:00:00Z' },
+          { userId: 'Uakgb2cmtHq8nRb7PfCzM', email: 'bob@example.com', role: 'member' },
         ],
       }),
     ).toEqual([
-      { id: 'u1', name: 'Ada', email: 'ada@example.com', role: 'Owner' },
-      { id: 'u2', name: '', email: 'bob@example.com', role: 'Member' },
+      { id: 'V1StGXR8Z5jdHi6BmyT2a', name: 'Ada', email: 'ada@example.com', role: 'Owner' },
+      { id: 'Uakgb2cmtHq8nRb7PfCzM', name: '', email: 'bob@example.com', role: 'Member' },
     ]);
   });
 

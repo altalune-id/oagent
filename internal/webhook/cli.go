@@ -71,8 +71,8 @@ func newCreateCmd(clientFn ClientFn) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
-	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project public id")
 	cmd.Flags().StringVar(&endpointURL, "endpoint-url", "", "HTTPS endpoint URL")
 	cmd.Flags().StringVar(&description, "description", "", "Description")
 	cmd.Flags().StringSliceVar(&types, "event", nil, "Event type (repeatable), e.g. agent.created")
@@ -86,7 +86,7 @@ func newCreateCmd(clientFn ClientFn) *cobra.Command {
 func newGetCmd(clientFn ClientFn) *cobra.Command {
 	var orgID, projectID string
 	cmd := &cobra.Command{
-		Use:   "get <id>",
+		Use:   "get <public-id>",
 		Short: "Get a webhook endpoint by id",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -106,8 +106,8 @@ func newGetCmd(clientFn ClientFn) *cobra.Command {
 			return render.Table(cmd.OutOrStdout(), webhookColumns(), [][]string{webhookRow(e)})
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
-	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project public id")
 	_ = cmd.MarkFlagRequired("org-id")
 	_ = cmd.MarkFlagRequired("project-id")
 	return cmd
@@ -143,8 +143,8 @@ func newListCmd(clientFn ClientFn) *cobra.Command {
 			return render.Table(cmd.OutOrStdout(), webhookColumns(), rows)
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
-	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project public id")
 	_ = cmd.MarkFlagRequired("org-id")
 	_ = cmd.MarkFlagRequired("project-id")
 	return cmd
@@ -155,7 +155,7 @@ func newUpdateCmd(clientFn ClientFn) *cobra.Command {
 	var types []string
 	var active bool
 	cmd := &cobra.Command{
-		Use:   "update <id>",
+		Use:   "update <public-id>",
 		Short: "Update a webhook endpoint",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -182,8 +182,8 @@ func newUpdateCmd(clientFn ClientFn) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
-	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project public id")
 	cmd.Flags().StringVar(&endpointURL, "endpoint-url", "", "HTTPS endpoint URL")
 	cmd.Flags().StringVar(&description, "description", "", "Description")
 	cmd.Flags().StringSliceVar(&types, "event", nil, "Event type (repeatable)")
@@ -198,7 +198,7 @@ func newUpdateCmd(clientFn ClientFn) *cobra.Command {
 func newDeleteCmd(clientFn ClientFn) *cobra.Command {
 	var orgID, projectID string
 	cmd := &cobra.Command{
-		Use:   "delete <id>",
+		Use:   "delete <public-id>",
 		Short: "Delete a webhook endpoint",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -215,8 +215,8 @@ func newDeleteCmd(clientFn ClientFn) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
-	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project public id")
 	_ = cmd.MarkFlagRequired("org-id")
 	_ = cmd.MarkFlagRequired("project-id")
 	return cmd
@@ -225,7 +225,7 @@ func newDeleteCmd(clientFn ClientFn) *cobra.Command {
 func newRotateCmd(clientFn ClientFn) *cobra.Command {
 	var orgID, projectID string
 	cmd := &cobra.Command{
-		Use:   "rotate <id>",
+		Use:   "rotate <public-id>",
 		Short: "Rotate a webhook endpoint's signing secret",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -242,8 +242,8 @@ func newRotateCmd(clientFn ClientFn) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
-	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project public id")
 	_ = cmd.MarkFlagRequired("org-id")
 	_ = cmd.MarkFlagRequired("project-id")
 	return cmd
@@ -252,7 +252,7 @@ func newRotateCmd(clientFn ClientFn) *cobra.Command {
 func newPingCmd(clientFn ClientFn) *cobra.Command {
 	var orgID, projectID string
 	cmd := &cobra.Command{
-		Use:   "ping <id>",
+		Use:   "ping <public-id>",
 		Short: "Queue a webhook.ping to an endpoint",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -269,8 +269,8 @@ func newPingCmd(clientFn ClientFn) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
-	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project public id")
 	_ = cmd.MarkFlagRequired("org-id")
 	_ = cmd.MarkFlagRequired("project-id")
 	return cmd
@@ -279,7 +279,7 @@ func newPingCmd(clientFn ClientFn) *cobra.Command {
 func newRetryCmd(clientFn ClientFn) *cobra.Command {
 	var orgID, projectID string
 	cmd := &cobra.Command{
-		Use:   "retry <id> <delivery-id>",
+		Use:   "retry <public-id> <delivery-public-id>",
 		Short: "Requeue one failed delivery of an endpoint",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -295,8 +295,8 @@ func newRetryCmd(clientFn ClientFn) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
-	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project public id")
 	_ = cmd.MarkFlagRequired("org-id")
 	_ = cmd.MarkFlagRequired("project-id")
 	return cmd
@@ -305,7 +305,7 @@ func newRetryCmd(clientFn ClientFn) *cobra.Command {
 func newRetryFailedCmd(clientFn ClientFn) *cobra.Command {
 	var orgID, projectID string
 	cmd := &cobra.Command{
-		Use:   "retry-failed <id>",
+		Use:   "retry-failed <public-id>",
 		Short: "Requeue every failed delivery of an endpoint",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -322,8 +322,8 @@ func newRetryFailedCmd(clientFn ClientFn) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
-	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project public id")
 	_ = cmd.MarkFlagRequired("org-id")
 	_ = cmd.MarkFlagRequired("project-id")
 	return cmd
@@ -333,7 +333,7 @@ func newDeliveriesCmd(clientFn ClientFn) *cobra.Command {
 	var orgID, projectID string
 	var limit int
 	cmd := &cobra.Command{
-		Use:   "deliveries <id>",
+		Use:   "deliveries <public-id>",
 		Short: "List a webhook endpoint's recent deliveries",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -367,8 +367,8 @@ func newDeliveriesCmd(clientFn ClientFn) *cobra.Command {
 			return render.Table(cmd.OutOrStdout(), []string{"ID", "EVENT", "STATUS", "ATTEMPT", "CREATED_AT"}, rows)
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
-	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project public id")
 	cmd.Flags().IntVar(&limit, "limit", 20, "Max deliveries")
 	_ = cmd.MarkFlagRequired("org-id")
 	_ = cmd.MarkFlagRequired("project-id")
@@ -378,7 +378,7 @@ func newDeliveriesCmd(clientFn ClientFn) *cobra.Command {
 func newAttemptsCmd(clientFn ClientFn) *cobra.Command {
 	var orgID, projectID string
 	cmd := &cobra.Command{
-		Use:   "attempts <id> <delivery-id>",
+		Use:   "attempts <public-id> <delivery-public-id>",
 		Short: "List the attempts of one delivery",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -409,8 +409,8 @@ func newAttemptsCmd(clientFn ClientFn) *cobra.Command {
 			return render.Table(cmd.OutOrStdout(), []string{"ATTEMPT", "STATUS", "DURATION", "ERROR"}, rows)
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
-	cmd.Flags().StringVar(&projectID, "project-id", "", "Project id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
+	cmd.Flags().StringVar(&projectID, "project-id", "", "Project public id")
 	_ = cmd.MarkFlagRequired("org-id")
 	_ = cmd.MarkFlagRequired("project-id")
 	return cmd

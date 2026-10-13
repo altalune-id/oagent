@@ -193,9 +193,10 @@ func TestService_RulesApply(t *testing.T) {
 }
 
 type fakeDirectory struct {
-	users   map[string]uuid.UUID
-	orgs    map[string]uuid.UUID
-	userErr error
+	users     map[string]uuid.UUID
+	orgs      map[string]uuid.UUID
+	userErr   error
+	publicErr error
 }
 
 func (d fakeDirectory) UserIDByEmail(_ context.Context, email string) (uuid.UUID, error) {
@@ -205,8 +206,12 @@ func (d fakeDirectory) UserIDByEmail(_ context.Context, email string) (uuid.UUID
 	return uuid.Nil, d.userErr
 }
 
-func (d fakeDirectory) OrgIDBySlug(_ context.Context, slug string) (uuid.UUID, error) {
-	if id, ok := d.orgs[slug]; ok {
+func (d fakeDirectory) UserPublicID(_ context.Context, id uuid.UUID) (string, error) {
+	return "pub-" + id.String()[:8], d.publicErr
+}
+
+func (d fakeDirectory) OrgIDByPublicID(_ context.Context, publicID string) (uuid.UUID, error) {
+	if id, ok := d.orgs[publicID]; ok {
 		return id, nil
 	}
 	return uuid.Nil, errUnknownOrg
@@ -228,12 +233,22 @@ func TestService_AddByEmail(t *testing.T) {
 		return f, alice
 	}
 
-	t.Run("adds the user found by email to the org found by slug", func(t *testing.T) {
+	t.Run("adds the user found by email to the org found by public id", func(t *testing.T) {
 		f, alice := setup(t)
 		m, err := f.svc.AddByEmail(f.ctx, operator, "alice@example.com", "acme", member.RoleAdmin)
 		require.NoError(t, err)
 		assert.Equal(t, alice, m.UserID)
+		assert.Equal(t, "pub-"+alice.String()[:8], m.UserPublicID)
+		assert.Equal(t, "alice@example.com", m.Email)
 		assert.Equal(t, member.RoleAdmin, f.role(alice))
+	})
+	t.Run("a failed public id lookup adds nobody", func(t *testing.T) {
+		f, alice := setup(t)
+		f.svc.WithDirectory(fakeDirectory{users: map[string]uuid.UUID{"alice@example.com": alice}, publicErr: errors.New("down")})
+		_, err := f.svc.AddByEmail(f.ctx, operator, "alice@example.com", "acme", member.RoleAdmin)
+		assert.True(t, isUnexpected(err), "got %v", err)
+		_, err = f.svc.Find(f.ctx, f.org, alice)
+		assert.True(t, member.IsNotFoundError(err))
 	})
 	t.Run("an unknown email or org is returned as the directory reports it", func(t *testing.T) {
 		f, _ := setup(t)

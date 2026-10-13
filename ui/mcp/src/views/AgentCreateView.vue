@@ -49,8 +49,8 @@ function again() {
     <header><span class="dot" /><strong>Create agent</strong></header>
 
     <form v-if="showForm" class="stack" @submit.prevent="submit">
-      <label>Organization ID<input v-model="orgID" required placeholder="uuid" /></label>
-      <label>Project ID<input v-model="projectID" required placeholder="uuid" /></label>
+      <label>Organization ID<input v-model="orgID" required placeholder="public id" /></label>
+      <label>Project ID<input v-model="projectID" required placeholder="public id" /></label>
       <label>Name<input v-model="name" required placeholder="Support Bot" /></label>
       <label>Slug<input v-model="slug" placeholder="support-bot (generated when empty)" /></label>
       <label>Description<textarea v-model="description" rows="2" placeholder="What this agent does" /></label>

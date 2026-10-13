@@ -37,10 +37,11 @@ func TestAddMember(t *testing.T) {
 	require.NoError(t, err)
 	app := &App{Services: svcs}
 
-	m, err := app.AddMember(ctx, "  Bob@Example.com ", sys.Slug, member.RoleAdmin)
+	m, err := app.AddMember(ctx, "  Bob@Example.com ", sys.PublicID, member.RoleAdmin)
 	require.NoError(t, err)
 	assert.Equal(t, sys.ID, m.OrgID)
 	assert.Equal(t, bob.ID, m.UserID)
+	assert.Equal(t, bob.PublicID, m.UserPublicID)
 	got, err := svcs.Members.Find(ctx, sys.ID, bob.ID)
 	require.NoError(t, err)
 	assert.Equal(t, member.RoleAdmin, got.Role)
@@ -48,15 +49,17 @@ func TestAddMember(t *testing.T) {
 	require.NoError(t, sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM mail_queue`).Scan(&queued))
 	assert.Zero(t, queued, "adding an existing user queues no email")
 
-	_, err = app.AddMember(ctx, "bob@example.com", sys.Slug, member.RoleMember)
+	_, err = app.AddMember(ctx, "bob@example.com", sys.PublicID, member.RoleMember)
 	assert.True(t, member.IsAlreadyMemberError(err), "an existing membership is never changed")
 
-	_, err = app.AddMember(ctx, "nobody@example.com", sys.Slug, member.RoleMember)
+	_, err = app.AddMember(ctx, "nobody@example.com", sys.PublicID, member.RoleMember)
 	require.True(t, user.IsUnknownEmailError(err))
 	ae, ok := apperror.AsAppError(err)
 	require.True(t, ok)
 	assert.Equal(t, "No user with email nobody@example.com", ae.Message())
 
-	_, err = app.AddMember(ctx, "bob@example.com", "no-such-org", member.RoleMember)
-	assert.True(t, org.IsNotFoundError(err))
+	for _, notPublic := range []string{sys.Slug, sys.ID.String()} {
+		_, err = app.AddMember(ctx, "bob@example.com", notPublic, member.RoleMember)
+		assert.True(t, org.IsNotFoundError(err), "%q is not an org's public id", notPublic)
+	}
 }

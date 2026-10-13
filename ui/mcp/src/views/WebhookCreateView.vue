@@ -53,8 +53,8 @@ function again() {
     <header><span class="dot" /><strong>Create webhook</strong></header>
 
     <form v-if="showForm" class="stack" @submit.prevent="submit">
-      <label>Organization ID<input v-model="orgID" required placeholder="uuid" /></label>
-      <label>Project ID<input v-model="projectID" required placeholder="uuid" /></label>
+      <label>Organization ID<input v-model="orgID" required placeholder="public id" /></label>
+      <label>Project ID<input v-model="projectID" required placeholder="public id" /></label>
       <label>URL<input v-model="url" required placeholder="https://example.com/hook" /></label>
       <label>Description<input v-model="description" placeholder="optional" /></label>
       <label>Event types<input v-model="eventTypes" placeholder="agent.created, agent.updated" /></label>

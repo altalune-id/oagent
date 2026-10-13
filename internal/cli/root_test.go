@@ -26,7 +26,7 @@ func (f fakeApp) Close(context.Context) error  { return nil }
 
 func (f fakeApp) SetPassword(context.Context, string, string) error { return f.runErr }
 
-func (f fakeApp) AddMember(context.Context, string, string, member.Role) (*member.Membership, error) {
+func (f fakeApp) AddMember(context.Context, string, string, member.Role) (*member.Member, error) {
 	return nil, f.runErr
 }
 

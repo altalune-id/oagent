@@ -41,7 +41,7 @@ function again() {
     <header><span class="dot" /><strong>Organization</strong></header>
 
     <form v-if="showForm" class="stack" @submit.prevent="submit">
-      <label>ID<input v-model="id" required placeholder="uuid" /></label>
+      <label>ID<input v-model="id" required placeholder="public id" /></label>
       <button type="submit">Get</button>
     </form>
 
@@ -51,7 +51,6 @@ function again() {
         <dt>id</dt><dd>{{ org.id }}</dd>
         <dt>slug</dt><dd>{{ org.slug }}</dd>
         <dt>name</dt><dd>{{ org.name }}</dd>
-        <dt>publicId</dt><dd>{{ org.publicId }}</dd>
       </dl>
       <button class="ghost" type="button" @click="again">Look up another</button>
     </template>

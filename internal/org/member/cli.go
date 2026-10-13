@@ -17,8 +17,8 @@ import (
 // ClientFn returns the Member Connect client for a command; the caller resolves URL and token.
 type ClientFn func(cmd *cobra.Command) (memberv1connect.MemberServiceClient, error)
 
-// AddFn adds the existing user with email to the org orgSlug as the operator; the caller boots the server graph.
-type AddFn func(ctx context.Context, email, orgSlug string, role Role) (*Membership, error)
+// AddFn adds the existing user with email to the org orgPublicID as the operator; the caller boots the server graph.
+type AddFn func(ctx context.Context, email, orgPublicID string, role Role) (*Member, error)
 
 // NewCmd builds the `member` command tree.
 func NewCmd(clientFn ClientFn) *cobra.Command {
@@ -38,35 +38,34 @@ func NewCmd(clientFn ClientFn) *cobra.Command {
 
 // NewAddCmd builds `member add`, the operator command that needs database access, not a remote server.
 func NewAddCmd(add AddFn) *cobra.Command {
-	var email, orgSlug, role string
+	var email, orgID, role string
 	cmd := &cobra.Command{
 		Use:   "add",
 		Short: "Add an existing user to an organization (operator, needs database access)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			m, err := add(cmd.Context(), email, orgSlug, Role(role))
+			m, err := add(cmd.Context(), email, orgID, Role(role))
 			if err != nil {
 				return err
 			}
 			if isJSON(cmd) {
 				return render.JSON(cmd.OutOrStdout(), map[string]any{
 					"email":    email,
-					"org":      orgSlug,
-					"orgId":    m.OrgID.String(),
-					"userId":   m.UserID.String(),
+					"orgId":    orgID,
+					"userId":   m.UserPublicID,
 					"role":     string(m.Role),
 					"joinedAt": m.CreatedAt.UTC().Format(time.RFC3339),
 				})
 			}
-			cmd.Printf("Added %s to %s as %s\n", email, orgSlug, m.Role)
+			cmd.Printf("Added %s to %s as %s\n", email, orgID, m.Role)
 			return nil
 		},
 	}
 	cmd.Flags().StringVar(&email, "email", "", "The user's email")
-	cmd.Flags().StringVar(&orgSlug, "org", "", "Organization slug")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
 	cmd.Flags().StringVar(&role, "role", string(RoleMember), "Role: owner|admin|member")
 	_ = cmd.MarkFlagRequired("email")
-	_ = cmd.MarkFlagRequired("org")
+	_ = cmd.MarkFlagRequired("org-id")
 	return cmd
 }
 
@@ -100,7 +99,7 @@ func newListCmd(clientFn ClientFn) *cobra.Command {
 			return render.Table(cmd.OutOrStdout(), []string{"USER ID", "NAME", "EMAIL", "ROLE"}, rows)
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
 	_ = cmd.MarkFlagRequired("org-id")
 	return cmd
 }
@@ -130,8 +129,8 @@ func newRoleCmd(clientFn ClientFn) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
-	cmd.Flags().StringVar(&userID, "user-id", "", "The member's user id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
+	cmd.Flags().StringVar(&userID, "user-id", "", "The member's user public id")
 	cmd.Flags().StringVar(&role, "role", "", "New role: owner|admin|member")
 	_ = cmd.MarkFlagRequired("org-id")
 	_ = cmd.MarkFlagRequired("user-id")
@@ -168,8 +167,8 @@ func newRemoveCmd(clientFn ClientFn) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
-	cmd.Flags().StringVar(&userID, "user-id", "", "The member's user id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
+	cmd.Flags().StringVar(&userID, "user-id", "", "The member's user public id")
 	cmd.Flags().BoolVar(&yes, "yes", false, "Do not ask for confirmation")
 	_ = cmd.MarkFlagRequired("org-id")
 	_ = cmd.MarkFlagRequired("user-id")
@@ -200,7 +199,7 @@ func newLeaveCmd(clientFn ClientFn) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization id")
+	cmd.Flags().StringVar(&orgID, "org-id", "", "Organization public id")
 	cmd.Flags().BoolVar(&yes, "yes", false, "Do not ask for confirmation")
 	_ = cmd.MarkFlagRequired("org-id")
 	return cmd
