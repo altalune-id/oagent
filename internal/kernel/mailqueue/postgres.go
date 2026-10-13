@@ -1,12 +1,9 @@
 package mailqueue
 
 import (
-	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 
-	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
@@ -33,38 +30,6 @@ func NewStore(pool db.Pool, schema, prefix string, sl sealer.Sealer, allowPlain 
 		sl = sealer.Disabled()
 	}
 	return &postgresStore{pool: pool, q: entity.NewMailQueue(schema, prefix), sealer: sl, allowPlain: allowPlain}
-}
-
-func (s *postgresStore) writer(ctx context.Context) qrm.DB {
-	if tx, ok := db.CurrentTx(ctx); ok {
-		return tx
-	}
-	return s.pool.W
-}
-
-func (s *postgresStore) txAcquire(ctx context.Context) (*sql.Tx, bool, error) {
-	if tx, ok := db.CurrentTx(ctx); ok {
-		return tx, false, nil
-	}
-	tx, err := s.pool.W.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, false, fmt.Errorf("mailqueue.postgres: begin: %w", err)
-	}
-	return tx, true, nil
-}
-
-func endTx(tx *sql.Tx, owned bool, err error) error {
-	if !owned {
-		return err
-	}
-	if err != nil {
-		_ = tx.Rollback()
-		return err
-	}
-	if cerr := tx.Commit(); cerr != nil {
-		return fmt.Errorf("mailqueue.postgres: commit: %w", cerr)
-	}
-	return nil
 }
 
 func (s *postgresStore) seal(id uuid.UUID, m mailer.Message) (payload []byte, sealed bool, err error) {

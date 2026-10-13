@@ -8,6 +8,7 @@ import (
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
 
+	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/schema/entity"
 )
 
@@ -23,7 +24,7 @@ func (s *postgresStore) Save(ctx context.Context, a *Agent) error {
 			s.agents.Description.SET(postgres.String(a.Description)),
 			s.agents.UpdatedAt.SET(postgres.TimestampzT(now)),
 		))
-	if _, err := stmt.ExecContext(ctx, s.writer(ctx)); err != nil {
+	if _, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool)); err != nil {
 		if IsUniqueViolation(err) {
 			return &AlreadyExistsError{Slug: a.Slug}
 		}
@@ -35,7 +36,7 @@ func (s *postgresStore) Save(ctx context.Context, a *Agent) error {
 // Delete removes an agent by id.
 func (s *postgresStore) Delete(ctx context.Context, id uuid.UUID) error {
 	stmt := s.agents.DELETE().WHERE(s.agents.ID.EQ(postgres.UUID(id)))
-	res, err := stmt.ExecContext(ctx, s.writer(ctx))
+	res, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool))
 	if err != nil {
 		return fmt.Errorf("agent.postgres: Delete: %w", err)
 	}

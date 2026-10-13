@@ -1,10 +1,7 @@
 package invite
 
 import (
-	"context"
 	"errors"
-
-	"github.com/go-jet/jet/v2/qrm"
 
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/schema/entity"
@@ -22,11 +19,4 @@ type postgresStore struct {
 // NewStore builds the Postgres store over pool.
 func NewStore(pool db.Pool, schema, tablePrefix string) *postgresStore {
 	return &postgresStore{pool: pool, invites: entity.NewInvites(schema, tablePrefix), users: entity.NewUsers(schema, tablePrefix)}
-}
-
-func (s *postgresStore) writer(ctx context.Context) qrm.DB {
-	if tx, ok := db.CurrentTx(ctx); ok {
-		return tx
-	}
-	return s.pool.W
 }

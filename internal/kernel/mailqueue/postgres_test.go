@@ -150,24 +150,11 @@ func TestOpenRejectsBadPayloads(t *testing.T) {
 	assert.NotContains(t, err.Error(), "not json")
 }
 
-func TestTxHelpers(t *testing.T) {
-	t.Run("begin error", func(t *testing.T) {
-		s, mock, _ := newTestStore(t, testSealer(t), false)
-		mock.ExpectBegin().WillReturnError(errors.New("down"))
-		_, err := s.ClaimDue(context.Background(), now(), 1)
-		assert.ErrorContains(t, err, "down")
-	})
-	t.Run("commit error", func(t *testing.T) {
-		_, mock, sqlDB := newTestStore(t, testSealer(t), false)
-		mock.ExpectBegin()
-		mock.ExpectCommit().WillReturnError(errors.New("lost"))
-		tx, err := sqlDB.Begin()
-		require.NoError(t, err)
-		assert.ErrorContains(t, endTx(tx, true, nil), "lost")
-	})
-	t.Run("ambient tx is left open", func(t *testing.T) {
-		assert.Equal(t, errBoom, endTx(nil, false, errBoom))
-	})
+func TestClaimDueBeginError(t *testing.T) {
+	s, mock, _ := newTestStore(t, testSealer(t), false)
+	mock.ExpectBegin().WillReturnError(errors.New("down"))
+	_, err := s.ClaimDue(context.Background(), now(), 1)
+	assert.ErrorContains(t, err, "down")
 }
 
 var errBoom = errors.New("boom")

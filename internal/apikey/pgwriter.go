@@ -2,6 +2,7 @@ package apikey
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -13,15 +14,15 @@ import (
 
 // Save upserts a key and syncs its project grant in one transaction.
 func (s *postgresStore) Save(ctx context.Context, k *APIKey) error {
-	return db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
-		if err := s.save(ctx, k); err != nil {
+	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error {
+		if err := s.save(ctx, tx, k); err != nil {
 			return err
 		}
-		return s.syncGrants(ctx, k)
+		return s.syncGrants(ctx, tx, k)
 	})
 }
 
-func (s *postgresStore) save(ctx context.Context, k *APIKey) error {
+func (s *postgresStore) save(ctx context.Context, tx *sql.Tx, k *APIKey) error {
 	stmt := s.keys.INSERT(s.keys.AllColumns).
 		VALUES(
 			k.ID, k.OrgID, pgNullableUUID(k.ProjectID), string(k.Kind), k.AllProjects, k.Name, k.SecretHash[:], k.SecretHint,
@@ -38,14 +39,14 @@ func (s *postgresStore) save(ctx context.Context, k *APIKey) error {
 			s.keys.RevokedAt.SET(pgNullableTimeExpr(k.RevokedAt)),
 			s.keys.LastUsedAt.SET(pgNullableTimeExpr(k.LastUsedAt)),
 		))
-	if _, err := stmt.ExecContext(ctx, s.writer(ctx)); err != nil {
+	if _, err := stmt.ExecContext(ctx, tx); err != nil {
 		return fmt.Errorf("apikey.postgres: Save: %w", err)
 	}
 	return nil
 }
 
 // syncGrants writes the key's project grant: rows not kept are pruned, kept ones upserted.
-func (s *postgresStore) syncGrants(ctx context.Context, k *APIKey) error {
+func (s *postgresStore) syncGrants(ctx context.Context, tx *sql.Tx, k *APIKey) error {
 	keep := make([]postgres.Expression, 0, len(k.ProjectIDs))
 	for _, id := range k.ProjectIDs {
 		keep = append(keep, postgres.UUID(id))
@@ -54,7 +55,7 @@ func (s *postgresStore) syncGrants(ctx context.Context, k *APIKey) error {
 	if len(keep) > 0 {
 		where = where.AND(s.grants.ProjectID.NOT_IN(keep...))
 	}
-	if _, err := s.grants.DELETE().WHERE(where).ExecContext(ctx, s.writer(ctx)); err != nil {
+	if _, err := s.grants.DELETE().WHERE(where).ExecContext(ctx, tx); err != nil {
 		return fmt.Errorf("apikey.postgres: prune grants: %w", err)
 	}
 	if len(k.ProjectIDs) == 0 {
@@ -65,7 +66,7 @@ func (s *postgresStore) syncGrants(ctx context.Context, k *APIKey) error {
 	for _, id := range k.ProjectIDs {
 		ins = ins.VALUES(k.OrgID, k.ID, id, now)
 	}
-	if _, err := ins.ON_CONFLICT(s.grants.KeyID, s.grants.ProjectID).DO_NOTHING().ExecContext(ctx, s.writer(ctx)); err != nil {
+	if _, err := ins.ON_CONFLICT(s.grants.KeyID, s.grants.ProjectID).DO_NOTHING().ExecContext(ctx, tx); err != nil {
 		return fmt.Errorf("apikey.postgres: add grants: %w", err)
 	}
 	return nil
@@ -76,13 +77,13 @@ func (s *postgresStore) TouchLastUsed(ctx context.Context, used map[uuid.UUID]ti
 	if len(used) == 0 {
 		return nil
 	}
-	return db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
+	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error {
 		for id, at := range used {
 			ts := postgres.TimestampzT(at.UTC())
 			stmt := s.keys.UPDATE(s.keys.LastUsedAt).
 				SET(postgres.GREATEST(postgres.COALESCE(s.keys.LastUsedAt, ts), ts)).
 				WHERE(s.keys.ID.EQ(postgres.UUID(id)))
-			if _, err := stmt.ExecContext(ctx, s.writer(ctx)); err != nil {
+			if _, err := stmt.ExecContext(ctx, tx); err != nil {
 				return fmt.Errorf("apikey.postgres: TouchLastUsed: %w", err)
 			}
 		}
@@ -99,7 +100,7 @@ func (s *postgresStore) RevokePersonalOf(ctx context.Context, orgID, ownerID uui
 			AND(t.Kind.EQ(postgres.String(string(KindPersonal)))).
 			AND(t.CreatedBy.EQ(postgres.UUID(ownerID))).
 			AND(t.RevokedAt.IS_NULL()))
-	res, err := stmt.ExecContext(ctx, s.writer(ctx))
+	res, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool))
 	if err != nil {
 		return 0, fmt.Errorf("apikey.postgres: RevokePersonalOf: %w", err)
 	}

@@ -17,7 +17,7 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*Project, error
 		WHERE(s.projects.ID.EQ(postgres.UUID(id))).
 		LIMIT(1)
 	var row projectRow
-	if err := stmt.QueryContext(ctx, s.reader(ctx), &row); err != nil {
+	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{ID: id.String()}
 		}
@@ -33,7 +33,7 @@ func (s *postgresStore) BySlug(ctx context.Context, orgID uuid.UUID, slug string
 		WHERE(s.projects.OrgID.EQ(postgres.UUID(orgID)).AND(s.projects.Slug.EQ(postgres.String(slug)))).
 		LIMIT(1)
 	var row projectRow
-	if err := stmt.QueryContext(ctx, s.reader(ctx), &row); err != nil {
+	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{Slug: slug}
 		}
@@ -49,7 +49,7 @@ func (s *postgresStore) List(ctx context.Context, orgID uuid.UUID) ([]*Project, 
 		WHERE(s.projects.OrgID.EQ(postgres.UUID(orgID))).
 		ORDER_BY(s.projects.CreatedAt.ASC())
 	var rows []projectRow
-	if err := stmt.QueryContext(ctx, s.reader(ctx), &rows); err != nil {
+	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &rows); err != nil {
 		return nil, fmt.Errorf("project.postgres: List: %w", err)
 	}
 	out := make([]*Project, 0, len(rows))

@@ -20,11 +20,11 @@ func (s *postgresStore) Enqueue(ctx context.Context, e Entry) error {
 	if err := e.validate(); err != nil {
 		return err
 	}
-	tx, owned, tc, err := s.txAcquire(ctx)
+	tc, err := tenant.From(ctx)
 	if err != nil {
 		return err
 	}
-	return s.endTx(tx, owned, s.enqueue(ctx, tx, tc, e))
+	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error { return s.enqueue(ctx, tx, tc, e) })
 }
 
 func (s *postgresStore) enqueue(ctx context.Context, tx *sql.Tx, tc tenant.Context, e Entry) error {
@@ -56,13 +56,18 @@ func (s *postgresStore) enqueue(ctx context.Context, tx *sql.Tx, tc tenant.Conte
 
 // ClaimDue takes up to limit due entries exclusively, bumping Attempt and leasing each for ClaimLease.
 func (s *postgresStore) ClaimDue(ctx context.Context, now time.Time, limit int) ([]Entry, error) {
-	tx, owned, tc, err := s.txAcquire(ctx)
+	tc, err := tenant.From(ctx)
 	if err != nil {
 		return nil, err
 	}
-	claimed, claimErr := s.claimDue(ctx, tx, tc, now, limit)
-	if txErr := s.endTx(tx, owned, claimErr); txErr != nil {
-		return nil, txErr
+	var claimed []Entry
+	err = db.InTx(ctx, s.pool, func(tx *sql.Tx) error {
+		var inErr error
+		claimed, inErr = s.claimDue(ctx, tx, tc, now, limit)
+		return inErr
+	})
+	if err != nil {
+		return nil, err
 	}
 	return claimed, nil
 }
@@ -117,19 +122,19 @@ func (s *postgresStore) reapExhausted(ctx context.Context, tx *sql.Tx, tc tenant
 
 // Succeed settles the claimed entry e as delivered, refusing a settle from a superseded claim.
 func (s *postgresStore) Succeed(ctx context.Context, e Entry, at time.Time) error {
-	tx, owned, tc, err := s.txAcquire(ctx)
+	tc, err := tenant.From(ctx)
 	if err != nil {
 		return err
 	}
 	stmt := s.entries.UPDATE(s.entries.Status, s.entries.DeliveredAt, s.entries.LastError).
 		SET(postgres.String(string(StatusDelivered)), postgres.TimestampzT(at.UTC()), postgres.String("")).
 		WHERE(s.claimedRow(tc, e))
-	return s.endTx(tx, owned, s.settle(ctx, tx, tc, e, stmt))
+	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error { return s.settle(ctx, tx, tc, e, stmt) })
 }
 
 // Fail reschedules the claimed entry e for retryAt, or settles it as failed once MaxAttempts is reached.
 func (s *postgresStore) Fail(ctx context.Context, e Entry, retryAt time.Time, cause string) error {
-	tx, owned, tc, err := s.txAcquire(ctx)
+	tc, err := tenant.From(ctx)
 	if err != nil {
 		return err
 	}
@@ -140,7 +145,7 @@ func (s *postgresStore) Fail(ctx context.Context, e Entry, retryAt time.Time, ca
 	stmt := s.entries.UPDATE(s.entries.Status, s.entries.NextAttemptAt, s.entries.LastError).
 		SET(nextStatus, postgres.TimestampzT(retryAt.UTC()), postgres.String(truncateCause(cause))).
 		WHERE(s.claimedRow(tc, e))
-	return s.endTx(tx, owned, s.settle(ctx, tx, tc, e, stmt))
+	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error { return s.settle(ctx, tx, tc, e, stmt) })
 }
 
 // SECURITY/correctness: the attempt fences the settle, so a dispatcher whose lease expired cannot overwrite a re-claim.
@@ -192,11 +197,11 @@ func (s *postgresStore) refuseReason(ctx context.Context, tx *sql.Tx, tc tenant.
 
 // Requeue resets the failed entry id/target to pending, attempt 0, for a fresh claim.
 func (s *postgresStore) Requeue(ctx context.Context, id uuid.UUID, target string) error {
-	tx, owned, tc, err := s.txAcquire(ctx)
+	tc, err := tenant.From(ctx)
 	if err != nil {
 		return err
 	}
-	return s.endTx(tx, owned, s.requeue(ctx, tx, tc, id, target))
+	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error { return s.requeue(ctx, tx, tc, id, target) })
 }
 
 func (s *postgresStore) requeue(ctx context.Context, tx *sql.Tx, tc tenant.Context, id uuid.UUID, target string) error {
@@ -244,13 +249,18 @@ func (s *postgresStore) refuseRequeue(ctx context.Context, tx *sql.Tx, tc tenant
 
 // RequeueFailed resets every failed entry of target to pending, attempt 0, returning how many it touched.
 func (s *postgresStore) RequeueFailed(ctx context.Context, target string) (int, error) {
-	tx, owned, tc, err := s.txAcquire(ctx)
+	tc, err := tenant.From(ctx)
 	if err != nil {
 		return 0, err
 	}
-	n, reqErr := s.requeueFailed(ctx, tx, tc, target)
-	if txErr := s.endTx(tx, owned, reqErr); txErr != nil {
-		return 0, txErr
+	var n int
+	err = db.InTx(ctx, s.pool, func(tx *sql.Tx) error {
+		var inErr error
+		n, inErr = s.requeueFailed(ctx, tx, tc, target)
+		return inErr
+	})
+	if err != nil {
+		return 0, err
 	}
 	return n, nil
 }

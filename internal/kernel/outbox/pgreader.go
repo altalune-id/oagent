@@ -24,7 +24,7 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID, target string) (
 			AND(s.entries.Target.EQ(postgres.String(target))))
 
 	var row entryRow
-	if err := stmt.QueryContext(ctx, s.reader(ctx), &row); err != nil {
+	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
 		if db.IsNoRows(err) {
 			return Entry{}, &NotFoundError{ID: id.String()}
 		}
@@ -47,7 +47,7 @@ func (s *postgresStore) ListByTarget(ctx context.Context, target string, limit i
 		LIMIT(listBatch(limit))
 
 	var rows []entryRow
-	if err := stmt.QueryContext(ctx, s.reader(ctx), &rows); err != nil && !db.IsNoRows(err) {
+	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &rows); err != nil && !db.IsNoRows(err) {
 		return nil, fmt.Errorf("outbox.postgres: ListByTarget: %w", err)
 	}
 	out := make([]Entry, 0, len(rows))

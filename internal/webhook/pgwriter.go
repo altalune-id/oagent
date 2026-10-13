@@ -18,11 +18,11 @@ import (
 
 // Save upserts e, writing its secrets only on insert.
 func (s *postgresStore) Save(ctx context.Context, e *Endpoint) error {
-	tx, owned, tc, err := s.txAcquire(ctx)
+	tc, err := tenant.From(ctx)
 	if err != nil {
 		return err
 	}
-	return s.endTx(tx, owned, s.save(ctx, tx, tc, e))
+	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error { return s.save(ctx, tx, tc, e) })
 }
 
 func (s *postgresStore) save(ctx context.Context, tx *sql.Tx, tc tenant.Context, e *Endpoint) error {
@@ -71,11 +71,11 @@ func (s *postgresStore) save(ctx context.Context, tx *sql.Tx, tc tenant.Context,
 
 // SaveSecrets replaces the endpoint's secrets when the stored pair still equals expected.
 func (s *postgresStore) SaveSecrets(ctx context.Context, id uuid.UUID, expected, next SealedSecrets) error {
-	tx, owned, tc, err := s.txAcquire(ctx)
+	tc, err := tenant.From(ctx)
 	if err != nil {
 		return err
 	}
-	return s.endTx(tx, owned, s.saveSecrets(ctx, tx, tc, id, expected, next))
+	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error { return s.saveSecrets(ctx, tx, tc, id, expected, next) })
 }
 
 func (s *postgresStore) saveSecrets(ctx context.Context, tx *sql.Tx, tc tenant.Context, id uuid.UUID, expected, next SealedSecrets) error {
@@ -118,11 +118,11 @@ func (s *postgresStore) saveSecrets(ctx context.Context, tx *sql.Tx, tc tenant.C
 
 // Delete removes the endpoint and its attempts, or returns a *NotFoundError.
 func (s *postgresStore) Delete(ctx context.Context, id uuid.UUID) error {
-	tx, owned, tc, err := s.txAcquire(ctx)
+	tc, err := tenant.From(ctx)
 	if err != nil {
 		return err
 	}
-	return s.endTx(tx, owned, s.delete(ctx, tx, tc, id))
+	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error { return s.delete(ctx, tx, tc, id) })
 }
 
 func (s *postgresStore) delete(ctx context.Context, tx *sql.Tx, tc tenant.Context, id uuid.UUID) error {
@@ -145,11 +145,11 @@ func (s *postgresStore) delete(ctx context.Context, tx *sql.Tx, tc tenant.Contex
 
 // SaveAttempt appends a, returning an *InvalidAttemptError on a scope mismatch or a *NotFoundError when the endpoint is gone.
 func (s *postgresStore) SaveAttempt(ctx context.Context, a Attempt) error {
-	tx, owned, tc, err := s.txAcquire(ctx)
+	tc, err := tenant.From(ctx)
 	if err != nil {
 		return err
 	}
-	return s.endTx(tx, owned, s.saveAttempt(ctx, tx, tc, a))
+	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error { return s.saveAttempt(ctx, tx, tc, a) })
 }
 
 func (s *postgresStore) saveAttempt(ctx context.Context, tx *sql.Tx, tc tenant.Context, a Attempt) error {

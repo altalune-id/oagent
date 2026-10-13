@@ -13,7 +13,7 @@ import (
 
 // ByID loads a user by id.
 func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*User, error) {
-	return s.one(ctx, s.reader(ctx), "ByID", s.users.ID.EQ(postgres.UUID(id)))
+	return s.one(ctx, db.Reader(ctx, s.pool), "ByID", s.users.ID.EQ(postgres.UUID(id)))
 }
 
 // ByEmail loads a user by normalized email from the primary.
@@ -22,7 +22,7 @@ func (s *postgresStore) ByEmail(ctx context.Context, email string) (*User, error
 	if err != nil {
 		return nil, &NotFoundError{}
 	}
-	return s.one(ctx, s.writer(ctx), "ByEmail", s.users.Email.EQ(postgres.String(e)))
+	return s.one(ctx, db.Writer(ctx, s.pool), "ByEmail", s.users.Email.EQ(postgres.String(e)))
 }
 
 func (s *postgresStore) one(ctx context.Context, conn qrm.DB, op string, where postgres.BoolExpression) (*User, error) {

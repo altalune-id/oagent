@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 	"time"
 
@@ -43,25 +42,6 @@ func TestAgentRow_ToAgent(t *testing.T) {
 
 func TestNewStore(t *testing.T) {
 	assert.NotNil(t, NewStore(db.Pool{}, "public", ""))
-}
-
-func TestReaderWriterSelection(t *testing.T) {
-	writer, wMock, err := sqlmock.New()
-	require.NoError(t, err)
-	reader, _, err := sqlmock.New()
-	require.NoError(t, err)
-	s := &postgresStore{pool: db.Pool{W: writer, R: reader}, agents: entity.NewAgents("public", "")}
-
-	assert.Same(t, reader, s.reader(context.Background()).(*sql.DB))
-	assert.Same(t, writer, s.writer(context.Background()).(*sql.DB))
-
-	wMock.ExpectBegin()
-	tx, err := writer.BeginTx(context.Background(), nil)
-	require.NoError(t, err)
-
-	ctx := db.ContextWithTx(context.Background(), tx)
-	assert.Same(t, tx, s.reader(ctx).(*sql.Tx))
-	assert.Same(t, tx, s.writer(ctx).(*sql.Tx))
 }
 
 func agentRowColumns() []string {

@@ -24,7 +24,7 @@ func (s *postgresStore) Insert(ctx context.Context, i *Invite) error {
 		i.ID, i.PublicID, i.OrgID, i.Email, string(i.Role), tokenExpr(i.TokenHash), i.Draft, userExpr(i.InvitedBy),
 		i.ExpiresAt.UTC(), entity.NullTimestampz(), entity.NullUUID(), entity.NullTimestampz(), i.CreatedAt.UTC(), i.UpdatedAt.UTC(),
 	)
-	if _, err := stmt.ExecContext(ctx, s.writer(ctx)); err != nil {
+	if _, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool)); err != nil {
 		return fmt.Errorf("invite.postgres: Insert: %w", err)
 	}
 	return nil
@@ -57,7 +57,7 @@ func (s *postgresStore) MarkAccepted(ctx context.Context, id, userID uuid.UUID, 
 		AND(t.Draft.IS_FALSE()).AND(t.ExpiresAt.GT(at)),
 	).RETURNING(t.AllColumns)
 	var row inviteRow
-	if err := stmt.QueryContext(ctx, s.writer(ctx), &row); err != nil {
+	if err := stmt.QueryContext(ctx, db.Writer(ctx, s.pool), &row); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{}
 		}
@@ -76,7 +76,7 @@ func (s *postgresStore) Revoke(ctx context.Context, id uuid.UUID, now time.Time)
 }
 
 func (s *postgresStore) execOne(ctx context.Context, op string, stmt postgres.Statement) error {
-	res, err := stmt.ExecContext(ctx, s.writer(ctx))
+	res, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool))
 	if err != nil {
 		return fmt.Errorf("invite.postgres: %s: %w", op, err)
 	}

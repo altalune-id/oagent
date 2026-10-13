@@ -32,7 +32,7 @@ func (s *postgresStore) Enqueue(ctx context.Context, m mailer.Message) (uuid.UUI
 	now := time.Now().UTC()
 	stmt := s.q.INSERT(s.q.AllColumns).
 		VALUES(id, payload, sealed, string(StatusPending), 0, now, "", now, entity.NullTimestampz())
-	if _, err := stmt.ExecContext(ctx, s.writer(ctx)); err != nil {
+	if _, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool)); err != nil {
 		return uuid.Nil, fmt.Errorf("mailqueue.postgres.Enqueue: %w", err)
 	}
 	return id, nil
@@ -40,13 +40,14 @@ func (s *postgresStore) Enqueue(ctx context.Context, m mailer.Message) (uuid.UUI
 
 // ClaimDue takes up to limit due entries exclusively, bumping Attempt and leasing each for ClaimLease.
 func (s *postgresStore) ClaimDue(ctx context.Context, now time.Time, limit int) ([]Entry, error) {
-	tx, owned, err := s.txAcquire(ctx)
+	var claimed []Entry
+	err := db.InTx(ctx, s.pool, func(tx *sql.Tx) error {
+		var inErr error
+		claimed, inErr = s.claimDue(ctx, tx, now, limit)
+		return inErr
+	})
 	if err != nil {
 		return nil, err
-	}
-	claimed, claimErr := s.claimDue(ctx, tx, now, limit)
-	if txErr := endTx(tx, owned, claimErr); txErr != nil {
-		return nil, txErr
 	}
 	return claimed, nil
 }
@@ -127,7 +128,7 @@ func (s *postgresStore) PruneSettled(ctx context.Context, before time.Time) (int
 	stmt := s.q.DELETE().
 		WHERE(s.q.Status.NOT_EQ(postgres.String(string(StatusPending))).
 			AND(s.q.SettledAt.LT(postgres.TimestampzT(before.UTC()))))
-	res, err := stmt.ExecContext(ctx, s.writer(ctx))
+	res, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool))
 	if err != nil {
 		return 0, fmt.Errorf("mailqueue.postgres.PruneSettled: %w", err)
 	}
@@ -150,7 +151,7 @@ type pgExecutable interface {
 }
 
 func (s *postgresStore) settle(ctx context.Context, e Entry, stmt pgExecutable) error {
-	res, err := stmt.ExecContext(ctx, s.writer(ctx))
+	res, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool))
 	if err != nil {
 		return fmt.Errorf("mailqueue.postgres: settle: %w", err)
 	}

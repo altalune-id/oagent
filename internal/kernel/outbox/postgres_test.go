@@ -58,70 +58,10 @@ func TestNewStoreNotNil(t *testing.T) {
 	assert.NotNil(t, NewStore(db.Pool{}, "public", ""))
 }
 
-func TestReaderSelection(t *testing.T) {
-	s, mock, sqlDB := newTestStore(t)
-	assert.Same(t, sqlDB, s.reader(context.Background()).(*sql.DB))
-
-	mock.ExpectBegin()
-	tx, err := sqlDB.Begin()
-	require.NoError(t, err)
-	assert.Same(t, tx, s.reader(db.ContextWithTx(context.Background(), tx)).(*sql.Tx))
-}
-
-func TestTxAcquire(t *testing.T) {
-	org, project := uuid.New(), uuid.New()
-
-	t.Run("missing tenant", func(t *testing.T) {
-		s, _, _ := newTestStore(t)
-		_, _, _, err := s.txAcquire(context.Background())
-		assert.True(t, tenant.IsMissingError(err))
-	})
-
-	t.Run("begins when no ambient tx", func(t *testing.T) {
-		s, mock, _ := newTestStore(t)
-		mock.ExpectBegin()
-		tx, owned, tc, err := s.txAcquire(tenantedCtx(org, project))
-		require.NoError(t, err)
-		assert.True(t, owned)
-		assert.Equal(t, org, tc.OrgID)
-		assert.NotNil(t, tx)
-	})
-
-	t.Run("reuses ambient tx", func(t *testing.T) {
-		s, mock, sqlDB := newTestStore(t)
-		mock.ExpectBegin()
-		tx, err := sqlDB.Begin()
-		require.NoError(t, err)
-		got, owned, _, err := s.txAcquire(db.ContextWithTx(tenantedCtx(org, project), tx))
-		require.NoError(t, err)
-		assert.False(t, owned)
-		assert.Same(t, tx, got)
-	})
-}
-
-func TestEndTx(t *testing.T) {
-	t.Run("not owned passes err through", func(t *testing.T) {
-		s, _, _ := newTestStore(t)
-		assert.Equal(t, errBoom, s.endTx(nil, false, errBoom))
-	})
-
-	t.Run("owned rolls back on error", func(t *testing.T) {
-		_, mock, sqlDB := newTestStore(t)
-		mock.ExpectBegin()
-		mock.ExpectRollback()
-		tx, err := sqlDB.Begin()
-		require.NoError(t, err)
-		assert.Equal(t, errBoom, (&postgresStore{}).endTx(tx, true, errBoom))
-	})
-
-	t.Run("owned commits on success", func(t *testing.T) {
-		_, mock, sqlDB := newTestStore(t)
-		mock.ExpectBegin()
-		mock.ExpectCommit()
-		tx, err := sqlDB.Begin()
-		require.NoError(t, err)
-		assert.NoError(t, (&postgresStore{}).endTx(tx, true, nil))
-	})
+func TestWritesRequireATenant(t *testing.T) {
+	s, _, _ := newTestStore(t)
+	err := s.Requeue(context.Background(), uuid.New(), "t")
+	assert.True(t, tenant.IsMissingError(err))
 }
 
 var errBoom = errors.New("boom")

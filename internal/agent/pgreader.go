@@ -17,7 +17,7 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*Agent, error) 
 		WHERE(s.agents.ID.EQ(postgres.UUID(id))).
 		LIMIT(1)
 	var row agentRow
-	if err := stmt.QueryContext(ctx, s.reader(ctx), &row); err != nil {
+	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{ID: id.String()}
 		}
@@ -33,7 +33,7 @@ func (s *postgresStore) List(ctx context.Context, projectID uuid.UUID) ([]*Agent
 		WHERE(s.agents.ProjectID.EQ(postgres.UUID(projectID))).
 		ORDER_BY(s.agents.CreatedAt.ASC())
 	var rows []agentRow
-	if err := stmt.QueryContext(ctx, s.reader(ctx), &rows); err != nil {
+	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &rows); err != nil {
 		return nil, fmt.Errorf("agent.postgres: List: %w", err)
 	}
 	out := make([]*Agent, 0, len(rows))

@@ -17,7 +17,7 @@ var errLockOutsideTx = errors.New("member.postgres: a row lock needs a transacti
 func (s *postgresStore) Add(ctx context.Context, m *Membership) error {
 	t := s.memberships
 	stmt := t.INSERT(t.AllColumns).VALUES(m.ID, m.PublicID, m.OrgID, m.UserID, string(m.Role), m.CreatedAt.UTC())
-	if _, err := stmt.ExecContext(ctx, s.writer(ctx)); err != nil {
+	if _, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool)); err != nil {
 		if IsUniqueViolation(err) {
 			return &AlreadyMemberError{OrgID: m.OrgID, UserID: m.UserID}
 		}
@@ -31,7 +31,7 @@ func (s *postgresStore) AddIfAbsent(ctx context.Context, m *Membership) (bool, e
 	t := s.memberships
 	stmt := t.INSERT(t.AllColumns).VALUES(m.ID, m.PublicID, m.OrgID, m.UserID, string(m.Role), m.CreatedAt.UTC()).
 		ON_CONFLICT(t.OrgID, t.UserID).DO_NOTHING()
-	res, err := stmt.ExecContext(ctx, s.writer(ctx))
+	res, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool))
 	if err != nil {
 		return false, fmt.Errorf("member.postgres: AddIfAbsent: %w", err)
 	}
@@ -102,7 +102,7 @@ func (s *postgresStore) Delete(ctx context.Context, orgID, userID uuid.UUID) err
 }
 
 func (s *postgresStore) execOne(ctx context.Context, op string, stmt postgres.Statement) error {
-	res, err := stmt.ExecContext(ctx, s.writer(ctx))
+	res, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool))
 	if err != nil {
 		return fmt.Errorf("member.postgres: %s: %w", op, err)
 	}

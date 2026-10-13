@@ -30,7 +30,7 @@ func (s *postgresStore) Save(ctx context.Context, u *User) error {
 			s.users.TermsAcceptedAt.SET(termsExpr(u)),
 			s.users.UpdatedAt.SET(postgres.TimestampzT(now)),
 		))
-	if _, err := stmt.ExecContext(ctx, s.writer(ctx)); err != nil {
+	if _, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool)); err != nil {
 		if IsUniqueViolation(err) {
 			return &AlreadyExistsError{Email: u.Email}
 		}
@@ -47,7 +47,7 @@ func (s *postgresStore) AcceptTerms(ctx context.Context, id uuid.UUID) (*User, e
 		WHERE(s.users.ID.EQ(postgres.UUID(id))).
 		RETURNING(s.users.AllColumns)
 	var row userRow
-	if err := stmt.QueryContext(ctx, s.writer(ctx), &row); err != nil {
+	if err := stmt.QueryContext(ctx, db.Writer(ctx, s.pool), &row); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{}
 		}

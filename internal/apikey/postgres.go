@@ -1,13 +1,11 @@
 package apikey
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
-	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
@@ -34,20 +32,6 @@ func NewStore(pool db.Pool, schema, tablePrefix string) *postgresStore {
 		grantsExpr: postgres.Raw("COALESCE((SELECT array_agg(g.project_id ORDER BY g.created_at, g.project_id) FROM " +
 			schema + "." + tablePrefix + "api_key_projects g WHERE g.org_id = api_keys.org_id AND g.key_id = api_keys.id), '{}')::text"),
 	}
-}
-
-func (s *postgresStore) reader(ctx context.Context) qrm.DB {
-	if tx, ok := db.CurrentTx(ctx); ok {
-		return tx
-	}
-	return s.pool.R
-}
-
-func (s *postgresStore) writer(ctx context.Context) qrm.DB {
-	if tx, ok := db.CurrentTx(ctx); ok {
-		return tx
-	}
-	return s.pool.W
 }
 
 func (s *postgresStore) selectColumns() postgres.ProjectionList {
