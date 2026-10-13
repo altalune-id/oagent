@@ -103,6 +103,11 @@ func samples() []error {
 		&member.NotFoundError{},
 		&member.AlreadyMemberError{OrgID: nobody, UserID: nobody},
 		errOf(member.New(nobody, nobody, member.Role("root"))),
+		&member.LastOwnerError{Reason: member.LastOwnerRemove},
+		&member.LastOwnerError{Reason: member.LastOwnerDemote},
+		&member.LastOwnerError{Reason: member.LastOwnerLeave},
+		&member.RoleNotAllowedError{Role: string(member.RoleOwner)},
+		&member.SelfChangeError{},
 
 		&auth.InvalidCredentialsError{},
 		password.Check("short", password.Hints{}),

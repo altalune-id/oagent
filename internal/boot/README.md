@@ -67,7 +67,7 @@ flowchart TD
 | Domain | Service deps (ports) | Connect + CLI | MCP tools | Web routes |
 |---|---|---|---|---|
 | `org` | — | ✓ | ✓ | — |
-| `org/member` | — | — | — | — |
+| `org/member` | effects: sessions, apikey (personal keys), user (contact), org (name), mail queue | — | — | — |
 | `project` | — | ✓ | ✓ | — |
 | `agent` | webhook (publisher), project (org of project) | ✓ | ✓ | — |
 | `apikey` | project (ids), member (owner roles) | ✓ | — | — |
@@ -92,8 +92,8 @@ Connect client lives in `internal/apiclient`, which imports no domain.
 
 `buildServices` (`services.go`) builds each service once and passes it to
 whoever needs it. An arrow means "depends on". Small adapters in `services.go`
-(`projectIDs`, `projectOrgs`, `ownerRoles`, `refResolver`) fit one service to
-another domain's port.
+(`projectIDs`, `projectOrgs`, `ownerRoles`, `refResolver`, `memberPeople`, `memberOrgs`) fit
+one service to another domain's port.
 
 ```mermaid
 flowchart TD
@@ -131,12 +131,23 @@ flowchart TD
     webhook --> project & org
     apikey --> project & member
     keyAuthn --> member
+    member -. effects .-> sessions & apikey & user & org & mailqueue
     health --> dbh[(db-health monitor)]
 
     org --> project
 ```
 
 `org → project` is the after-create hook that adds the default project.
+`member → …` (dotted) are the effects set by `memberEffects` after every service exists
+(`apikey` already depends on `member`). A removal ends the person's sessions, revokes their
+personal keys in that org and queues a notice; a role change queues a notice and, when it lowers
+the role, ends their sessions; leaving revokes their personal keys. All of it runs in the
+membership change's transaction. Notice links start at `publicBase(cfg.HTTP)` (also used for
+the install URL). `member` gets `WithOperatorSupport(caps.OperatorOrgSupport)` (on in cloud,
+off in selfhosted): staff (an operator who is a person) follow their role in orgs they belong
+to, and manage other orgs with the admin permission set only when it is on (selfhosted refuses
+them there). No one acts on or grants more permissions than they hold, so only owners touch
+owners. The stdio System principal, basic auth and the CLI `App` keep full operator power.
 `install → auth` and `legal → auth` exist only on the web side, wired in
 `http.go`.
 

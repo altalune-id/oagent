@@ -86,7 +86,8 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 
 	agents := agent.NewService(agentStore, k.Reporter.Unexpected).WithPublisher(webhooks).WithProjects(projectOwners)
 	users := user.NewService(user.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Reporter.Unexpected)
-	members := member.NewService(member.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Reporter.Unexpected)
+	members := member.NewService(member.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Pool, k.Reporter.Unexpected).
+		WithOperatorSupport(caps.OperatorOrgSupport)
 
 	keyScheme := apikey.NewScheme("")
 	owners := ownerRoles{members: members}
@@ -107,7 +108,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	})
 	installer := install.NewService(k.Pool, users, orgs, members, projects)
 
-	return &Services{
+	svcs := &Services{
 		OrgStore:     orgStore,
 		Orgs:         orgs,
 		ProjectStore: projectStore,
@@ -131,6 +132,40 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Install:      installer,
 		Caps:         caps,
 	}
+	members.WithEffects(memberEffects(cfg, svcs))
+	return svcs
+}
+
+func memberEffects(cfg config.Config, s *Services) member.Effects {
+	return member.Effects{
+		Sessions: s.Sessions,
+		Keys:     s.APIKeys,
+		People:   memberPeople{users: s.Users},
+		Orgs:     memberOrgs{orgs: s.Orgs},
+		Mail:     s.MailQueue,
+		From:     cfg.Mail.From,
+		BaseURL:  publicBase(cfg.HTTP),
+	}
+}
+
+type memberPeople struct{ users *user.Service }
+
+func (p memberPeople) Contact(ctx context.Context, userID uuid.UUID) (email, name string, err error) {
+	u, err := p.users.ByID(ctx, userID)
+	if err != nil {
+		return "", "", err
+	}
+	return u.Email, u.Name, nil
+}
+
+type memberOrgs struct{ orgs *org.Service }
+
+func (o memberOrgs) Name(ctx context.Context, orgID uuid.UUID) (string, error) {
+	got, err := o.orgs.Get(ctx, orgID)
+	if err != nil {
+		return "", err
+	}
+	return got.Name, nil
 }
 
 // webhookServiceOpts allows http:// endpoint URLs outside production (dev/self-hosted).

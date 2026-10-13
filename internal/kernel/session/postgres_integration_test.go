@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/kernel/session/sessiontest"
 	"altalune.id/oagent/internal/testutil/pgtest"
@@ -154,4 +155,22 @@ func TestPostgresStore_SaveRefreshesExpiry(t *testing.T) {
 	_, ok, err = s.Load(ctx, "sid")
 	require.NoError(t, err)
 	assert.True(t, ok, "a second Save extends the same sid")
+}
+
+func TestPostgresStore_DeleteByUserJoinsTheTransaction(t *testing.T) {
+	s, sqlDB, _ := newPGSessionStore(t)
+	store := withUsers{PostgresStore: s, db: sqlDB}
+	ctx := t.Context()
+	p := session.Principal{UserID: uuid.New()}
+	require.NoError(t, store.Save(ctx, "kept", p, time.Now().Add(time.Hour)))
+
+	rollback := errors.New("rollback")
+	err := db.RunInTx(ctx, db.Pool{W: sqlDB, R: sqlDB}, func(ctx context.Context) error {
+		require.NoError(t, s.DeleteByUser(ctx, p.UserID))
+		return rollback
+	})
+	require.ErrorIs(t, err, rollback)
+	_, ok, err := s.Load(ctx, "kept")
+	require.NoError(t, err)
+	assert.True(t, ok, "a rolled back removal keeps the session")
 }

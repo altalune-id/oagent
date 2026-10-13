@@ -201,6 +201,15 @@ func (s *Service) Revoke(ctx context.Context, orgID, id, viewer uuid.UUID, manag
 	return nil
 }
 
+// RevokePersonalOf revokes every live personal key userID owns in orgID; it joins the transaction on ctx.
+func (s *Service) RevokePersonalOf(ctx context.Context, orgID, userID uuid.UUID) (int, error) {
+	n, err := s.store.RevokePersonalOf(ctx, orgID, userID, s.now())
+	if err != nil {
+		return 0, s.errOrReport(ctx, "apikey: revoke personal keys", err)
+	}
+	return n, nil
+}
+
 func visibleTo(k *APIKey, viewer uuid.UUID) bool {
 	return viewer == uuid.Nil || k.Kind != KindPersonal || k.CreatedBy == viewer
 }

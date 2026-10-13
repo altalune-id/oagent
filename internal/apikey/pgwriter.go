@@ -90,6 +90,26 @@ func (s *postgresStore) TouchLastUsed(ctx context.Context, used map[uuid.UUID]ti
 	})
 }
 
+// RevokePersonalOf revokes ownerID's live personal keys in orgID at at.
+func (s *postgresStore) RevokePersonalOf(ctx context.Context, orgID, ownerID uuid.UUID, at time.Time) (int, error) {
+	t := s.keys
+	stmt := t.UPDATE(t.RevokedAt).
+		SET(postgres.TimestampzT(at.UTC())).
+		WHERE(t.OrgID.EQ(postgres.UUID(orgID)).
+			AND(t.Kind.EQ(postgres.String(string(KindPersonal)))).
+			AND(t.CreatedBy.EQ(postgres.UUID(ownerID))).
+			AND(t.RevokedAt.IS_NULL()))
+	res, err := stmt.ExecContext(ctx, s.writer(ctx))
+	if err != nil {
+		return 0, fmt.Errorf("apikey.postgres: RevokePersonalOf: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("apikey.postgres: RevokePersonalOf: rows affected: %w", err)
+	}
+	return int(n), nil
+}
+
 func pgNullableUUID(id uuid.UUID) any {
 	if id == uuid.Nil {
 		return nil

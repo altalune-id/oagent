@@ -10,6 +10,8 @@ type Capabilities struct {
 	OrgCreation  bool
 	EnvGenesis   bool
 	PersonalKeys bool
+	// OperatorOrgSupport lets staff (an operator who is a person) manage, as an admin, the members of an org they do not belong to.
+	OperatorOrgSupport bool
 }
 
 // From derives Capabilities from a validated Config.
@@ -17,10 +19,11 @@ func From(c *config.Config) Capabilities {
 	selfhosted := c.Mode == config.ModeSelfhosted
 	basic := c.Auth.Mode == config.AuthModeBasic
 	return Capabilities{
-		LocalLogin:   selfhosted && !basic,
-		BasicAuth:    selfhosted && basic,
-		OrgCreation:  c.Mode == config.ModeCloud,
-		EnvGenesis:   selfhosted && !basic && c.Auth.Genesis.Email != "",
-		PersonalKeys: !basic,
+		LocalLogin:         selfhosted && !basic,
+		BasicAuth:          selfhosted && basic,
+		OrgCreation:        c.Mode == config.ModeCloud,
+		EnvGenesis:         selfhosted && !basic && c.Auth.Genesis.Email != "",
+		PersonalKeys:       !basic,
+		OperatorOrgSupport: c.Mode == config.ModeCloud,
 	}
 }

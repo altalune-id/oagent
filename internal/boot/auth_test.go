@@ -125,6 +125,20 @@ func TestInstallURL(t *testing.T) {
 	}
 }
 
+func TestPublicBase(t *testing.T) {
+	for name, tc := range map[string]struct {
+		http config.HTTPConfig
+		want string
+	}{
+		"default port":      {config.HTTPConfig{Addr: ":5150"}, "http://localhost:5150"},
+		"no port":           {config.HTTPConfig{}, "http://localhost"},
+		"base path":         {config.HTTPConfig{Addr: "0.0.0.0:8080", BasePath: "/app/"}, "http://localhost:8080/app"},
+		"base url and path": {config.HTTPConfig{Addr: ":5150", BaseURL: "https://example.com/", BasePath: "/oagent"}, "https://example.com/oagent"},
+	} {
+		t.Run(name, func(t *testing.T) { assert.Equal(t, tc.want, publicBase(tc.http)) })
+	}
+}
+
 func authCredentials(email, pass string) auth.Credentials {
 	return auth.Credentials{Email: email, Password: pass}
 }

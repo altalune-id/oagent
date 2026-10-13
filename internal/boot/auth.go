@@ -124,6 +124,10 @@ func logsInstallURL(o *options) bool {
 }
 
 func installURL(c config.HTTPConfig, token string) string {
+	return publicBase(c) + "/install?token=" + url.QueryEscape(token)
+}
+
+func publicBase(c config.HTTPConfig) string {
 	base := strings.TrimSuffix(c.BaseURL, "/")
 	if base == "" {
 		base = "http://localhost"
@@ -131,7 +135,7 @@ func installURL(c config.HTTPConfig, token string) string {
 			base += ":" + port
 		}
 	}
-	return base + strings.TrimSuffix(c.BasePath, "/") + "/install?token=" + url.QueryEscape(token)
+	return base + strings.TrimSuffix(c.BasePath, "/")
 }
 
 func orDiscard(log *slog.Logger) *slog.Logger {

@@ -697,3 +697,72 @@ func TestPostgres_KeyCreatorMustExist(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, "23503", pgCode(err))
 }
+
+func TestPostgres_RevokePersonalOf(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	otherOrg := f.seedOrg(t)
+	owner, someoneElse := f.seedUser(t), f.seedUser(t)
+	personal := func(org, user uuid.UUID) *apikey.APIKey {
+		k, _, err := apikey.NewScheme("").MintPersonal(org, user, "laptop", []string{"agent:read"},
+			apikey.ProjectGrant{All: true}, expiry(), time.Now().UTC())
+		require.NoError(t, err)
+		return k
+	}
+	mine, mineToo := personal(orgID, owner), personal(orgID, owner)
+	elsewhere := personal(otherOrg, owner)
+	theirs := personal(orgID, someoneElse)
+	machine := projectKey(t, orgID, projectID)
+	machine.CreatedBy = owner
+	org := orgKey(t, orgID, apikey.ProjectGrant{All: true})
+	org.CreatedBy = owner
+	already := personal(orgID, owner)
+	earlier := time.Now().UTC().Add(-time.Hour).Truncate(time.Microsecond)
+	already.RevokedAt = &earlier
+	for _, k := range []*apikey.APIKey{mine, mineToo, elsewhere, theirs, machine, org, already} {
+		require.NoError(t, f.store.Save(t.Context(), k))
+	}
+
+	at := time.Now().UTC().Truncate(time.Microsecond)
+	n, err := f.store.RevokePersonalOf(t.Context(), orgID, owner, at)
+	require.NoError(t, err)
+	assert.Equal(t, 2, n, "only the owner's live personal keys in that org")
+
+	for _, k := range []*apikey.APIKey{mine, mineToo} {
+		got, err := f.store.ByID(t.Context(), k.ID)
+		require.NoError(t, err)
+		if assert.NotNil(t, got.RevokedAt) {
+			assert.True(t, got.RevokedAt.Equal(at))
+		}
+	}
+	for _, k := range []*apikey.APIKey{elsewhere, theirs, machine, org} {
+		got, err := f.store.ByID(t.Context(), k.ID)
+		require.NoError(t, err)
+		assert.Nil(t, got.RevokedAt, "key %s stays live", got.Kind)
+	}
+	got, err := f.store.ByID(t.Context(), already.ID)
+	require.NoError(t, err)
+	assert.True(t, got.RevokedAt.Equal(earlier), "the first revocation wins")
+}
+
+func TestPostgres_RevokePersonalOfJoinsTheTransaction(t *testing.T) {
+	f := newPgFixture(t)
+	orgID := f.seedOrg(t)
+	owner := f.seedUser(t)
+	k, _, err := apikey.NewScheme("").MintPersonal(orgID, owner, "laptop", []string{"agent:read"},
+		apikey.ProjectGrant{All: true}, expiry(), time.Now().UTC())
+	require.NoError(t, err)
+	require.NoError(t, f.store.Save(t.Context(), k))
+
+	rollback := errors.New("rollback")
+	err = db.RunInTx(t.Context(), f.pool, func(ctx context.Context) error {
+		n, err := f.store.RevokePersonalOf(ctx, orgID, owner, time.Now().UTC())
+		require.NoError(t, err)
+		assert.Equal(t, 1, n)
+		return rollback
+	})
+	require.ErrorIs(t, err, rollback)
+	got, err := f.store.ByID(t.Context(), k.ID)
+	require.NoError(t, err)
+	assert.Nil(t, got.RevokedAt)
+}

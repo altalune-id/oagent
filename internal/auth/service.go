@@ -16,6 +16,7 @@ import (
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/password"
+	"altalune.id/oagent/scope"
 )
 
 // Service signs people in, checks basic credentials and rebuilds authority.
@@ -162,7 +163,7 @@ func (s *Service) refreshBasic(ctx context.Context, p session.Principal) (sessio
 	return s.withActiveOrg(ctx, p, sys.ID)
 }
 
-// SECURITY: only an owner or admin of the system org is an operator; managing any other org is not enough.
+// SECURITY: only a person who holds member:write in the system org is an operator; managing any other org is not enough.
 func (s *Service) managesSystemOrg(ctx context.Context, ms []*member.Membership) (bool, error) {
 	sys, err := s.deps.Orgs.System(ctx)
 	if org.IsNotFoundError(err) {
@@ -171,7 +172,9 @@ func (s *Service) managesSystemOrg(ctx context.Context, ms []*member.Membership)
 	if err != nil {
 		return false, err
 	}
-	return slices.ContainsFunc(ms, func(m *member.Membership) bool { return m.OrgID == sys.ID && m.Role.CanManage() }), nil
+	return slices.ContainsFunc(ms, func(m *member.Membership) bool {
+		return m.OrgID == sys.ID && scope.Grants(member.BuiltinPermissions(m.Role), scope.MemberWrite)
+	}), nil
 }
 
 func (s *Service) withActiveOrg(ctx context.Context, p session.Principal, orgID uuid.UUID) (session.Principal, error) {

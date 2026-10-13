@@ -58,3 +58,17 @@ func TestGrants(t *testing.T) {
 		t.Run(name, func(t *testing.T) { assert.Equal(t, tc.want, Grants(tc.granted, tc.required)) })
 	}
 }
+
+func TestCovers(t *testing.T) {
+	admin := []string{OrgRead, "project:*", "agent:*", "webhook:*", "member:*", "apikey:*"}
+	plain := []string{OrgRead, ProjectRead, "agent:*", "webhook:*", MemberRead, ApikeyRead}
+	assert.True(t, Covers([]string{"*"}, admin), "* covers everything")
+	assert.True(t, Covers(admin, admin), "a set covers itself")
+	assert.True(t, Covers(admin, plain))
+	assert.False(t, Covers(admin, []string{"*"}), "admin lacks org:write")
+	assert.False(t, Covers(plain, admin))
+	assert.True(t, Covers(plain, nil), "anything covers nothing")
+	assert.False(t, Covers(nil, []string{MemberRead}))
+	assert.True(t, Covers([]string{AgentRead, AgentWrite}, []string{"agent:*"}), "a wildcard is the catalog permissions it names")
+	assert.False(t, Covers([]string{AgentRead}, []string{"agent:*"}))
+}

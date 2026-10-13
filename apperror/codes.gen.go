@@ -44,9 +44,12 @@ const (
 	CodeUserInvalidEmail  Code = "USR003"
 	CodeUserInvalidName   Code = "USR004"
 
-	CodeMemberNotFound      Code = "MBR001"
-	CodeMemberAlreadyExists Code = "MBR002"
-	CodeMemberInvalidRole   Code = "MBR003"
+	CodeMemberNotFound       Code = "MBR001"
+	CodeMemberAlreadyExists  Code = "MBR002"
+	CodeMemberInvalidRole    Code = "MBR003"
+	CodeMemberLastOwner      Code = "MBR004"
+	CodeMemberRoleNotAllowed Code = "MBR005"
+	CodeMemberSelfChange     Code = "MBR006"
 
 	CodeAuthInvalidCredentials Code = "AUT001"
 	CodeAuthPasswordPolicy     Code = "AUT002"
@@ -106,9 +109,12 @@ var kinds = map[Code]Kind{
 	CodeUserInvalidEmail:  KindInvalid,
 	CodeUserInvalidName:   KindInvalid,
 
-	CodeMemberNotFound:      KindNotFound,
-	CodeMemberAlreadyExists: KindAlreadyExists,
-	CodeMemberInvalidRole:   KindInvalid,
+	CodeMemberNotFound:       KindNotFound,
+	CodeMemberAlreadyExists:  KindAlreadyExists,
+	CodeMemberInvalidRole:    KindInvalid,
+	CodeMemberLastOwner:      KindFailedPrecondition,
+	CodeMemberRoleNotAllowed: KindForbidden,
+	CodeMemberSelfChange:     KindFailedPrecondition,
 
 	CodeAuthInvalidCredentials: KindUnauthenticated,
 	CodeAuthPasswordPolicy:     KindInvalid,

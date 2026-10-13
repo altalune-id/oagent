@@ -249,3 +249,21 @@ func TestService_MachineKeyCreatorMustBeMember(t *testing.T) {
 	})
 	assert.True(t, apikey.IsScopeExceedsRoleError(err))
 }
+
+func TestService_RevokePersonalOf(t *testing.T) {
+	store := &fakes.APIKeyStore{RevokeCount: 2}
+	orgID, ownerID := uuid.New(), uuid.New()
+	n, err := newService(store, stubProjects{}).RevokePersonalOf(context.Background(), orgID, ownerID)
+	require.NoError(t, err)
+	assert.Equal(t, 2, n)
+	require.Len(t, store.Revocations, 1)
+	got := store.Revocations[0]
+	assert.Equal(t, orgID, got.OrgID)
+	assert.Equal(t, ownerID, got.OwnerID)
+	assert.WithinDuration(t, time.Now(), got.At, time.Minute)
+
+	store.Err = errors.New("db down")
+	_, err = newService(store, stubProjects{}).RevokePersonalOf(context.Background(), orgID, ownerID)
+	_, ok := apperror.AsAppError(err)
+	assert.True(t, ok, "got %v", err)
+}

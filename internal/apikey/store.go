@@ -24,4 +24,6 @@ type Reader interface {
 type Writer interface {
 	Save(ctx context.Context, k *APIKey) error
 	TouchLastUsed(ctx context.Context, used map[uuid.UUID]time.Time) error
+	// RevokePersonalOf sets revoked_at to at on ownerID's live personal keys in orgID and reports how many; it joins the transaction on ctx.
+	RevokePersonalOf(ctx context.Context, orgID, ownerID uuid.UUID, at time.Time) (int, error)
 }

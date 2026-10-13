@@ -11,16 +11,22 @@ import (
 )
 
 func TestRole(t *testing.T) {
-	for role, want := range map[Role][2]bool{
-		RoleOwner:    {true, true},
-		RoleAdmin:    {true, true},
-		RoleMember:   {true, false},
-		Role("root"): {false, false},
-		Role(""):     {false, false},
+	for role, want := range map[Role]bool{
+		RoleOwner:    true,
+		RoleAdmin:    true,
+		RoleMember:   true,
+		Role("root"): false,
+		Role(""):     false,
 	} {
-		assert.Equal(t, want[0], role.IsValid(), "%q valid", role)
-		assert.Equal(t, want[1], role.CanManage(), "%q manage", role)
+		assert.Equal(t, want, role.IsValid(), "%q valid", role)
 	}
+}
+
+func TestRole_Label(t *testing.T) {
+	assert.Equal(t, "Owner", RoleOwner.Label())
+	assert.Equal(t, "Admin", RoleAdmin.Label())
+	assert.Equal(t, "Member", RoleMember.Label())
+	assert.Equal(t, "auditor", Role("auditor").Label(), "an unknown role is never shown as Member")
 }
 
 func TestNew(t *testing.T) {

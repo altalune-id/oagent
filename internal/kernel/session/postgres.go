@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/apperror"
@@ -86,9 +87,13 @@ func (s *PostgresStore) Delete(ctx context.Context, sid string) error {
 	return nil
 }
 
-// DeleteByUser removes every session of userID.
+// DeleteByUser removes every session of userID; it joins the transaction on ctx when there is one.
 func (s *PostgresStore) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
-	if _, err := s.table.DELETE().WHERE(s.table.UserID.EQ(postgres.UUID(userID))).ExecContext(ctx, s.db); err != nil {
+	var conn qrm.DB = s.db
+	if tx, ok := db.CurrentTx(ctx); ok {
+		conn = tx
+	}
+	if _, err := s.table.DELETE().WHERE(s.table.UserID.EQ(postgres.UUID(userID))).ExecContext(ctx, conn); err != nil {
 		return fmt.Errorf("session.postgres: DeleteByUser: %w", err)
 	}
 	return nil

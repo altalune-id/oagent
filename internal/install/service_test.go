@@ -19,7 +19,7 @@ import (
 func newRequiredService(t *testing.T, sys *org.Org) (*Service, *member.Service) {
 	t.Helper()
 	unexpected := apperror.NewReporter(nil, false).Unexpected
-	members := member.NewService(&fakes.MemberStore{}, unexpected)
+	members := member.NewService(&fakes.MemberStore{}, fakes.TxPool(), unexpected)
 	orgs := org.NewService(&fakes.OrgStore{Org: sys}, unexpected)
 	return NewService(db.Pool{}, nil, orgs, members, nil), members
 }
@@ -68,12 +68,12 @@ func TestRequired_PropagatesErrors(t *testing.T) {
 	require.NoError(t, err)
 
 	orgs := org.NewService(&fakes.OrgStore{Err: errors.New("org store down")}, unexpected)
-	svc := NewService(db.Pool{}, nil, orgs, member.NewService(&fakes.MemberStore{}, unexpected), nil)
+	svc := NewService(db.Pool{}, nil, orgs, member.NewService(&fakes.MemberStore{}, fakes.TxPool(), unexpected), nil)
 	_, err = svc.Required(ctx, true)
 	require.Error(t, err)
 
 	orgs = org.NewService(&fakes.OrgStore{Org: sys}, unexpected)
-	svc = NewService(db.Pool{}, nil, orgs, member.NewService(&fakes.MemberStore{Err: errors.New("member store down")}, unexpected), nil)
+	svc = NewService(db.Pool{}, nil, orgs, member.NewService(&fakes.MemberStore{Err: errors.New("member store down")}, fakes.TxPool(), unexpected), nil)
 	_, err = svc.Required(ctx, true)
 	require.NoError(t, err, "basic mode never counts owners")
 	_, err = svc.Required(ctx, false)

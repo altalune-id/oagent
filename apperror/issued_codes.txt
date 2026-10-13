@@ -35,6 +35,9 @@ USR004 UserInvalidName
 MBR001 MemberNotFound
 MBR002 MemberAlreadyExists
 MBR003 MemberInvalidRole
+MBR004 MemberLastOwner
+MBR005 MemberRoleNotAllowed
+MBR006 MemberSelfChange
 AUT001 AuthInvalidCredentials
 AUT002 AuthPasswordPolicy
 INS001 InstallAlreadyDone

@@ -10,14 +10,16 @@ import (
 	"altalune.id/oagent/internal/apikey"
 )
 
-// APIKeyStore is an apikey.Store test double. ByID/List/BySecretHash return Key/Keys (or Err); Save records the key and returns SaveFn/Err.
+// APIKeyStore is an apikey.Store test double: reads return Key/Keys or Err, writes record their input.
 type APIKeyStore struct {
-	Err        error
-	Key        *apikey.APIKey
-	Keys       []*apikey.APIKey
-	SaveFn     func(*apikey.APIKey) error
-	Saved      *apikey.APIKey
-	HashLookup int
+	Err         error
+	Key         *apikey.APIKey
+	Keys        []*apikey.APIKey
+	SaveFn      func(*apikey.APIKey) error
+	Saved       *apikey.APIKey
+	HashLookup  int
+	RevokeCount int
+	Revocations []PersonalRevocation
 
 	mu      sync.Mutex
 	Touched []map[uuid.UUID]time.Time
@@ -32,6 +34,23 @@ func (f *APIKeyStore) Save(_ context.Context, k *apikey.APIKey) error {
 		return f.SaveFn(k)
 	}
 	return f.Err
+}
+
+// PersonalRevocation is one recorded RevokePersonalOf call.
+type PersonalRevocation struct {
+	OrgID, OwnerID uuid.UUID
+	At             time.Time
+}
+
+// RevokePersonalOf implements apikey.Store and records the call.
+func (f *APIKeyStore) RevokePersonalOf(_ context.Context, orgID, ownerID uuid.UUID, at time.Time) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Err != nil {
+		return 0, f.Err
+	}
+	f.Revocations = append(f.Revocations, PersonalRevocation{OrgID: orgID, OwnerID: ownerID, At: at})
+	return f.RevokeCount, nil
 }
 
 // ByID implements apikey.Store.

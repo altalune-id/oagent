@@ -25,8 +25,18 @@ const (
 // IsValid reports whether r is a built-in role.
 func (r Role) IsValid() bool { return r == RoleOwner || r == RoleAdmin || r == RoleMember }
 
-// CanManage reports whether r may manage the org's members and settings.
-func (r Role) CanManage() bool { return r == RoleOwner || r == RoleAdmin }
+// Label is r's display name in English.
+func (r Role) Label() string {
+	switch r {
+	case RoleOwner:
+		return "Owner"
+	case RoleAdmin:
+		return "Admin"
+	case RoleMember:
+		return "Member"
+	}
+	return string(r)
+}
 
 // Membership links one user to one org with a role.
 type Membership struct {
@@ -67,4 +77,17 @@ type membershipRow struct {
 
 func (r *membershipRow) toMembership() *Membership {
 	return &Membership{ID: r.ID, PublicID: r.PublicID, OrgID: r.OrgID, UserID: r.UserID, Role: Role(r.Role), CreatedAt: r.CreatedAt}
+}
+
+// Member is a membership with the person's email and name, as listed to the org.
+type Member struct {
+	Membership
+	Email string
+	Name  string
+}
+
+type memberRow struct {
+	Membership membershipRow
+	Email      string `alias:"users.email"`
+	Name       string `alias:"users.name"`
 }

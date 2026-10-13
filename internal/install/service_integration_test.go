@@ -50,7 +50,7 @@ func newInstallFixtureWithConns(t *testing.T, maxOpen int) *installFixture {
 		pool:     pool,
 		users:    user.NewService(user.NewStore(pool, schemaName, ""), unexpected),
 		orgs:     org.NewService(org.NewStore(pool, schemaName, ""), unexpected).WithCreation(false),
-		members:  member.NewService(member.NewStore(pool, schemaName, ""), unexpected),
+		members:  member.NewService(member.NewStore(pool, schemaName, ""), pool, unexpected),
 		projects: project.NewService(project.NewStore(pool, schemaName, ""), unexpected),
 	}
 	f.svc = install.NewService(pool, f.users, f.orgs, f.members, f.projects)

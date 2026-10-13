@@ -30,7 +30,7 @@ func TestFrom(t *testing.T) {
 		},
 		"cloud": {
 			cfg:  config.Config{Mode: config.ModeCloud, Auth: config.AuthConfig{Mode: config.AuthModeLocal}},
-			want: capabilities.Capabilities{OrgCreation: true, PersonalKeys: true},
+			want: capabilities.Capabilities{OrgCreation: true, PersonalKeys: true, OperatorOrgSupport: true},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

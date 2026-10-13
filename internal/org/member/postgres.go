@@ -13,11 +13,12 @@ import (
 type postgresStore struct {
 	pool        db.Pool
 	memberships *entity.Memberships
+	users       *entity.Users
 }
 
 // NewStore builds the Postgres store over pool.
 func NewStore(pool db.Pool, schema, tablePrefix string) *postgresStore {
-	return &postgresStore{pool: pool, memberships: entity.NewMemberships(schema, tablePrefix)}
+	return &postgresStore{pool: pool, memberships: entity.NewMemberships(schema, tablePrefix), users: entity.NewUsers(schema, tablePrefix)}
 }
 
 func (s *postgresStore) writer(ctx context.Context) qrm.DB {

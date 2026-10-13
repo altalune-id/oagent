@@ -83,3 +83,13 @@ func Grants(granted []string, required string) bool {
 	}
 	return false
 }
+
+// Covers reports whether have grants every catalog permission want grants, so wildcards compare by what they cover.
+func Covers(have, want []string) bool {
+	for _, s := range catalog {
+		if Grants(want, s.Name) && !Grants(have, s.Name) {
+			return false
+		}
+	}
+	return true
+}
