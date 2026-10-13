@@ -18,6 +18,7 @@ import (
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/legal"
 	mcpinternal "altalune.id/oagent/internal/mcp"
+	"altalune.id/oagent/internal/permission"
 	"altalune.id/oagent/internal/web"
 	"altalune.id/oagent/internal/web/layout"
 	"altalune.id/oagent/internal/web/middleware"
@@ -48,7 +49,7 @@ func buildAPIHandler(
 			Chain:        apiChain(svcs),
 			KeyPrefix:    svcs.KeyScheme.Prefix(),
 			CookieSecret: svcs.StateSecret,
-			Permissions:  controlplane.PermissionTable(),
+			Permissions:  permission.Table(),
 			Required:     requireCredentials,
 			Logger:       log,
 		},

@@ -50,7 +50,7 @@ func wireFreezeServer(t *testing.T, opts ...mcp.Option) *mcp.Server {
 	reg.Register(mcp.ToolSpec{
 		Name:        "blog_list",
 		Description: "List a project's blog posts.",
-		Scope:       "posts:read",
+		Scopes:      []string{"posts:read"},
 		UI:          "ui://oagent/app",
 		InputSchema: map[string]any{
 			"type":       "object",
@@ -62,7 +62,7 @@ func wireFreezeServer(t *testing.T, opts ...mcp.Option) *mcp.Server {
 	reg.Register(mcp.ToolSpec{
 		Name:        "blog_publish",
 		Description: "Publish a draft blog post.",
-		Scope:       "posts:write",
+		Scopes:      []string{"posts:write"},
 		Mutation:    true,
 		Handler:     okHandler,
 	}, nil)

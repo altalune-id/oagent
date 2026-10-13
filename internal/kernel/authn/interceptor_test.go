@@ -19,12 +19,15 @@ import (
 
 const (
 	procRead     = "/test.v1.TestService/Read"
+	procBoth     = "/test.v1.TestService/Both"
+	procEmpty    = "/test.v1.TestService/Empty"
 	procUnmapped = "/test.v1.TestService/Unmapped"
 )
 
 type seen struct {
 	called bool
 	p      session.Principal
+	err    error
 }
 
 func toConnect() connect.UnaryInterceptorFunc {
@@ -50,17 +53,27 @@ func toConnect() connect.UnaryInterceptorFunc {
 	}
 }
 
+func recordErr(s *seen) connect.UnaryInterceptorFunc {
+	return func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			resp, err := next(ctx, req)
+			s.err = err
+			return resp, err
+		}
+	}
+}
+
 func serve(t *testing.T, o InterceptorOptions, s *seen) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
-	for _, proc := range []string{procRead, procUnmapped} {
+	for _, proc := range []string{procRead, procBoth, procEmpty, procUnmapped} {
 		mux.Handle(proc, connect.NewUnaryHandler(proc,
 			func(ctx context.Context, _ *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error) {
 				s.called = true
 				s.p = session.PrincipalFrom(ctx)
 				return connect.NewResponse(&emptypb.Empty{}), nil
 			},
-			connect.WithInterceptors(toConnect(), Interceptor(o)),
+			connect.WithInterceptors(toConnect(), recordErr(s), Interceptor(o)),
 		))
 	}
 	srv := httptest.NewServer(mux)
@@ -111,7 +124,7 @@ func TestInterceptor(t *testing.T) {
 				Chain:        Chain{tc.authn},
 				KeyPrefix:    testPrefix,
 				CookieSecret: testSecret,
-				Permissions:  PermissionTable{procRead: "agent:read"},
+				Permissions:  PermissionTable{procRead: {"agent:read"}},
 				Required:     tc.required,
 			}, s)
 
@@ -133,7 +146,7 @@ func TestInterceptor_PrincipalInContext(t *testing.T) {
 	srv := serve(t, InterceptorOptions{
 		Chain:       Chain{&fakeAuthn{p: want}},
 		KeyPrefix:   testPrefix,
-		Permissions: PermissionTable{procRead: "agent:read"},
+		Permissions: PermissionTable{procRead: {"agent:read"}},
 	}, s)
 
 	require.NoError(t, call(t, srv, procRead, "Bearer oagent_x"))
@@ -153,9 +166,46 @@ func TestInterceptor_AnyAuthenticated(t *testing.T) {
 	srv := serve(t, InterceptorOptions{
 		Chain:       Chain{&fakeAuthn{p: session.Principal{Source: session.SourceAPIKey}}},
 		KeyPrefix:   testPrefix,
-		Permissions: PermissionTable{procRead: authz.AnyAuthenticated},
+		Permissions: PermissionTable{procRead: {authz.AnyAuthenticated}},
 	}, s)
 
 	require.NoError(t, call(t, srv, procRead, "Bearer oagent_x"))
 	assert.True(t, s.called)
+}
+
+// SECURITY: a procedure that lists several permissions needs every one of them.
+func TestInterceptor_AllOf(t *testing.T) {
+	table := PermissionTable{procBoth: {"agent:read", "webhook:read"}, procEmpty: {}}
+	cases := []struct {
+		name    string
+		proc    string
+		scopes  []string
+		denied  string
+		reached bool
+	}{
+		{"holds both", procBoth, []string{"agent:read", "webhook:read"}, "", true},
+		{"holds only the first", procBoth, []string{"agent:read"}, "webhook:read", false},
+		{"holds only the second", procBoth, []string{"webhook:read"}, "agent:read", false},
+		{"empty entry", procEmpty, []string{"*"}, "", false},
+		{"unmapped", procUnmapped, []string{"*"}, "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &seen{}
+			p := session.Principal{Source: session.SourceLocal, Scopes: tc.scopes}
+			srv := serve(t, InterceptorOptions{Chain: Chain{&fakeAuthn{p: p}}, KeyPrefix: testPrefix, Permissions: table}, s)
+
+			err := call(t, srv, tc.proc, "Bearer oagent_x")
+			assert.Equal(t, tc.reached, s.called)
+			if tc.reached {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+			forbidden, ok := errors.AsType[*authz.ForbiddenError](s.err)
+			require.True(t, ok, "got %v", s.err)
+			assert.Equal(t, tc.denied, forbidden.Permission)
+		})
+	}
 }

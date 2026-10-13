@@ -23,6 +23,7 @@ import (
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/permission"
 	"altalune.id/oagent/internal/testutil/fakes"
 	"altalune.id/oagent/internal/user"
 )
@@ -45,7 +46,7 @@ func authServer(t *testing.T, p session.Principal) string {
 	}, nil, Options{Authn: authn.InterceptorOptions{
 		Chain:       authn.Chain{keyAuthn{p: p}},
 		KeyPrefix:   "oagent_",
-		Permissions: PermissionTable(),
+		Permissions: permission.Table(),
 	}})
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)

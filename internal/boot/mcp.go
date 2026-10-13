@@ -15,6 +15,7 @@ import (
 	mcpinternal "altalune.id/oagent/internal/mcp"
 	mcpui "altalune.id/oagent/internal/mcp/ui"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/permission"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/webhook"
 	rootmcp "altalune.id/oagent/mcp"
@@ -27,11 +28,11 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger) *roo
 		return nil
 	}
 	registry := rootmcp.NewRegistry()
-	orgv1mcp.RegisterOrgServiceTools(registry, org.NewControlPlane(svcs.Orgs), mcpinternal.ScopeFor)
-	projectv1mcp.RegisterProjectServiceTools(registry, project.NewControlPlane(svcs.Projects), mcpinternal.ScopeFor)
-	agentv1mcp.RegisterAgentServiceTools(registry, agent.NewControlPlane(svcs.Agents), mcpinternal.ScopeFor)
-	webhookv1mcp.RegisterWebhookServiceTools(registry, webhook.NewControlPlane(svcs.Webhooks), mcpinternal.ScopeFor)
-	authv1mcp.RegisterAuthServiceTools(registry, auth.NewControlPlane(svcs.Orgs, svcs.Users), mcpinternal.ScopeFor)
+	orgv1mcp.RegisterOrgServiceTools(registry, org.NewControlPlane(svcs.Orgs), permission.For)
+	projectv1mcp.RegisterProjectServiceTools(registry, project.NewControlPlane(svcs.Projects), permission.For)
+	agentv1mcp.RegisterAgentServiceTools(registry, agent.NewControlPlane(svcs.Agents), permission.For)
+	webhookv1mcp.RegisterWebhookServiceTools(registry, webhook.NewControlPlane(svcs.Webhooks), permission.For)
+	authv1mcp.RegisterAuthServiceTools(registry, auth.NewControlPlane(svcs.Orgs, svcs.Users), permission.For)
 
 	srv := rootmcp.NewServer(
 		rootmcp.WithImplementation("oagent", version.Default()),

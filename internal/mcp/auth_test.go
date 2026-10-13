@@ -18,6 +18,7 @@ import (
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org/member"
+	"altalune.id/oagent/internal/permission"
 	rootmcp "altalune.id/oagent/mcp"
 	"altalune.id/oagent/scope"
 )
@@ -157,9 +158,11 @@ func TestWWWAuthenticate(t *testing.T) {
 
 func allToolScopes() []string {
 	var out []string
-	for _, s := range ScopeTable() {
-		if !slices.Contains(out, s) {
-			out = append(out, s)
+	for _, perms := range permission.Table() {
+		for _, s := range perms {
+			if !slices.Contains(out, s) {
+				out = append(out, s)
+			}
 		}
 	}
 	slices.Sort(out)

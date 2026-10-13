@@ -32,13 +32,13 @@ func WebhookServiceToolNames() []string {
 	return []string{WebhookCreateToolName, WebhookListToolName, WebhookDeliveriesToolName, WebhookRetryFailedToolName}
 }
 
-// RegisterWebhookServiceTools registers every MCP-annotated WebhookService method on reg, against h and under the scope scopeFor resolves for each tool name.
-// SECURITY: this file declares no scope of its own; scopeFor is the single catalog every tool's scope comes from.
-func RegisterWebhookServiceTools(reg *mcp.Registry, h webhookv1connect.WebhookServiceHandler, scopeFor func(string) string) {
+// RegisterWebhookServiceTools registers every MCP-annotated WebhookService method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.
+// SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.
+func RegisterWebhookServiceTools(reg *mcp.Registry, h webhookv1connect.WebhookServiceHandler, permissionsFor func(string) []string) {
 	reg.Register(mcp.ToolSpec{
 		Name:        WebhookCreateToolName,
 		Description: "Create a webhook endpoint for a project, returning its signing secret once.",
-		Scope:       scopeFor(WebhookCreateToolName),
+		Scopes:      permissionsFor(webhookv1connect.WebhookServiceCreateWebhookProcedure),
 		Mutation:    true,
 		Destructive: false,
 		UI:          "ui://oagent/app",
@@ -65,7 +65,7 @@ func RegisterWebhookServiceTools(reg *mcp.Registry, h webhookv1connect.WebhookSe
 	reg.Register(mcp.ToolSpec{
 		Name:        WebhookListToolName,
 		Description: "List a project's webhook endpoints.",
-		Scope:       scopeFor(WebhookListToolName),
+		Scopes:      permissionsFor(webhookv1connect.WebhookServiceListWebhooksProcedure),
 		Mutation:    false,
 		Destructive: false,
 		UI:          "ui://oagent/app",
@@ -92,7 +92,7 @@ func RegisterWebhookServiceTools(reg *mcp.Registry, h webhookv1connect.WebhookSe
 	reg.Register(mcp.ToolSpec{
 		Name:        WebhookDeliveriesToolName,
 		Description: "List recent deliveries of a webhook endpoint, newest first.",
-		Scope:       scopeFor(WebhookDeliveriesToolName),
+		Scopes:      permissionsFor(webhookv1connect.WebhookServiceListWebhookDeliveriesProcedure),
 		Mutation:    false,
 		Destructive: false,
 		UI:          "ui://oagent/app",
@@ -119,7 +119,7 @@ func RegisterWebhookServiceTools(reg *mcp.Registry, h webhookv1connect.WebhookSe
 	reg.Register(mcp.ToolSpec{
 		Name:        WebhookRetryFailedToolName,
 		Description: "Requeue every failed delivery of a webhook endpoint.",
-		Scope:       scopeFor(WebhookRetryFailedToolName),
+		Scopes:      permissionsFor(webhookv1connect.WebhookServiceRetryFailedWebhookDeliveriesProcedure),
 		Mutation:    true,
 		Destructive: false,
 		UI:          "ui://oagent/app",

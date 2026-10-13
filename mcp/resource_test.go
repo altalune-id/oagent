@@ -15,7 +15,7 @@ func uiServer(t *testing.T, r mcp.UIResource, opts ...mcp.Option) *mcp.Server {
 	t.Helper()
 
 	reg := mcp.NewRegistry()
-	reg.Register(mcp.ToolSpec{Name: "blog_list", Scope: "posts:read", UI: "ui://blog/list", Handler: okHandler}, nil)
+	reg.Register(mcp.ToolSpec{Name: "blog_list", Scopes: []string{"posts:read"}, UI: "ui://blog/list", Handler: okHandler}, nil)
 	srv := mcp.NewServer(append(opts, mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext))...)
 	srv.AddUIResource(r)
 	return srv
@@ -119,7 +119,7 @@ func TestResourceMetaIsAbsentWhenNothingIsDeclared(t *testing.T) {
 // TestUnpublishedUIReferenceFailsTheBuild is the guard that this backlog item existed for: an advertised ui:// link that resolves to nothing renders a blank panel in every host.
 func TestUnpublishedUIReferenceFailsTheBuild(t *testing.T) {
 	reg := mcp.NewRegistry()
-	reg.Register(mcp.ToolSpec{Name: "blog_list", Scope: "posts:read", UI: "ui://blog/list", Handler: okHandler}, nil)
+	reg.Register(mcp.ToolSpec{Name: "blog_list", Scopes: []string{"posts:read"}, UI: "ui://blog/list", Handler: okHandler}, nil)
 	srv := mcp.NewServer(mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext), mcp.WithUI(true))
 
 	wantPanic(t, "references unpublished UI resource ui://blog/list", func() { _ = srv.Handler() })
@@ -127,7 +127,7 @@ func TestUnpublishedUIReferenceFailsTheBuild(t *testing.T) {
 
 func TestUnpublishedUIReferenceIsToleratedWithoutWithUI(t *testing.T) {
 	reg := mcp.NewRegistry()
-	reg.Register(mcp.ToolSpec{Name: "blog_list", Scope: "posts:read", UI: "ui://blog/list", Handler: okHandler}, nil)
+	reg.Register(mcp.ToolSpec{Name: "blog_list", Scopes: []string{"posts:read"}, UI: "ui://blog/list", Handler: okHandler}, nil)
 	srv := mcp.NewServer(mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext))
 
 	if _, err := connect(t, srv).ListTools(t.Context(), nil); err != nil {

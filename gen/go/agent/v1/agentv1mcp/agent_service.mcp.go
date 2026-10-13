@@ -35,13 +35,13 @@ func AgentServiceToolNames() []string {
 	return []string{AgentCreateToolName, AgentGetToolName, AgentListToolName, AgentUpdateToolName, AgentDeleteToolName}
 }
 
-// RegisterAgentServiceTools registers every MCP-annotated AgentService method on reg, against h and under the scope scopeFor resolves for each tool name.
-// SECURITY: this file declares no scope of its own; scopeFor is the single catalog every tool's scope comes from.
-func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceHandler, scopeFor func(string) string) {
+// RegisterAgentServiceTools registers every MCP-annotated AgentService method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.
+// SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.
+func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceHandler, permissionsFor func(string) []string) {
 	reg.Register(mcp.ToolSpec{
 		Name:        AgentCreateToolName,
 		Description: "Create an agent within a project, minting a slug when one is not supplied.",
-		Scope:       scopeFor(AgentCreateToolName),
+		Scopes:      permissionsFor(agentv1connect.AgentServiceCreateAgentProcedure),
 		Mutation:    true,
 		Destructive: false,
 		UI:          "ui://oagent/app",
@@ -68,7 +68,7 @@ func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceH
 	reg.Register(mcp.ToolSpec{
 		Name:        AgentGetToolName,
 		Description: "Get an agent by id.",
-		Scope:       scopeFor(AgentGetToolName),
+		Scopes:      permissionsFor(agentv1connect.AgentServiceGetAgentProcedure),
 		Mutation:    false,
 		Destructive: false,
 		UI:          "ui://oagent/app",
@@ -95,7 +95,7 @@ func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceH
 	reg.Register(mcp.ToolSpec{
 		Name:        AgentListToolName,
 		Description: "List agents in a project.",
-		Scope:       scopeFor(AgentListToolName),
+		Scopes:      permissionsFor(agentv1connect.AgentServiceListAgentsProcedure),
 		Mutation:    false,
 		Destructive: false,
 		UI:          "ui://oagent/app",
@@ -122,7 +122,7 @@ func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceH
 	reg.Register(mcp.ToolSpec{
 		Name:        AgentUpdateToolName,
 		Description: "Update an agent's name and description.",
-		Scope:       scopeFor(AgentUpdateToolName),
+		Scopes:      permissionsFor(agentv1connect.AgentServiceUpdateAgentProcedure),
 		Mutation:    true,
 		Destructive: false,
 		UI:          "ui://oagent/app",
@@ -149,7 +149,7 @@ func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceH
 	reg.Register(mcp.ToolSpec{
 		Name:        AgentDeleteToolName,
 		Description: "Delete an agent by id.",
-		Scope:       scopeFor(AgentDeleteToolName),
+		Scopes:      permissionsFor(agentv1connect.AgentServiceDeleteAgentProcedure),
 		Mutation:    true,
 		Destructive: true,
 		UI:          "ui://oagent/app",

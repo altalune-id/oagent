@@ -34,7 +34,7 @@ type ErrorPayload struct {
 	TraceID   string            `json:"trace_id,omitempty"`
 }
 
-// ScopeDeniedError reports a call missing the tool's scope.
+// ScopeDeniedError reports a call missing Scope, one of the scopes the tool needs.
 type ScopeDeniedError struct {
 	Tool  string
 	Scope string
@@ -50,7 +50,7 @@ func IsScopeDeniedError(err error) bool {
 	return errors.As(err, &target)
 }
 
-// ScopeUndeclaredError reports a tool registered without a Scope (always denied).
+// ScopeUndeclaredError reports a tool registered without Scopes (always denied).
 type ScopeUndeclaredError struct {
 	Tool string
 }

@@ -23,13 +23,13 @@ func AuthServiceToolNames() []string {
 	return []string{AuthWhoamiToolName}
 }
 
-// RegisterAuthServiceTools registers every MCP-annotated AuthService method on reg, against h and under the scope scopeFor resolves for each tool name.
-// SECURITY: this file declares no scope of its own; scopeFor is the single catalog every tool's scope comes from.
-func RegisterAuthServiceTools(reg *mcp.Registry, h authv1connect.AuthServiceHandler, scopeFor func(string) string) {
+// RegisterAuthServiceTools registers every MCP-annotated AuthService method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.
+// SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.
+func RegisterAuthServiceTools(reg *mcp.Registry, h authv1connect.AuthServiceHandler, permissionsFor func(string) []string) {
 	reg.Register(mcp.ToolSpec{
 		Name:        AuthWhoamiToolName,
 		Description: "Who this MCP client acts as: user or key, active org, permissions.",
-		Scope:       scopeFor(AuthWhoamiToolName),
+		Scopes:      permissionsFor(authv1connect.AuthServiceWhoamiProcedure),
 		Mutation:    false,
 		Destructive: false,
 		UI:          "ui://oagent/app",

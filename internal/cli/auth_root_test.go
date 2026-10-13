@@ -26,6 +26,7 @@ import (
 	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/permission"
 	"altalune.id/oagent/internal/testutil/fakes"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/web/layout"
@@ -98,7 +99,7 @@ func newTestServer(t *testing.T) *testServer {
 		Chain:        authn.Chain{storeAuthn{store: ts.store}},
 		KeyPrefix:    "oagent_",
 		CookieSecret: ts.secret,
-		Permissions:  controlplane.PermissionTable(),
+		Permissions:  permission.Table(),
 	}}).Handler("")
 	mux := http.NewServeMux()
 	mux.Handle("/api/", api)

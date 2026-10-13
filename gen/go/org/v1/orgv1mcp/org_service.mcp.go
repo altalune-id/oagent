@@ -29,13 +29,13 @@ func OrgServiceToolNames() []string {
 	return []string{OrgCreateToolName, OrgGetToolName, OrgListToolName}
 }
 
-// RegisterOrgServiceTools registers every MCP-annotated OrgService method on reg, against h and under the scope scopeFor resolves for each tool name.
-// SECURITY: this file declares no scope of its own; scopeFor is the single catalog every tool's scope comes from.
-func RegisterOrgServiceTools(reg *mcp.Registry, h orgv1connect.OrgServiceHandler, scopeFor func(string) string) {
+// RegisterOrgServiceTools registers every MCP-annotated OrgService method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.
+// SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.
+func RegisterOrgServiceTools(reg *mcp.Registry, h orgv1connect.OrgServiceHandler, permissionsFor func(string) []string) {
 	reg.Register(mcp.ToolSpec{
 		Name:        OrgCreateToolName,
 		Description: "Create an organization, minting a slug when one is not supplied.",
-		Scope:       scopeFor(OrgCreateToolName),
+		Scopes:      permissionsFor(orgv1connect.OrgServiceCreateOrgProcedure),
 		Mutation:    true,
 		Destructive: false,
 		UI:          "ui://oagent/app",
@@ -62,7 +62,7 @@ func RegisterOrgServiceTools(reg *mcp.Registry, h orgv1connect.OrgServiceHandler
 	reg.Register(mcp.ToolSpec{
 		Name:        OrgGetToolName,
 		Description: "Get an organization by id.",
-		Scope:       scopeFor(OrgGetToolName),
+		Scopes:      permissionsFor(orgv1connect.OrgServiceGetOrgProcedure),
 		Mutation:    false,
 		Destructive: false,
 		UI:          "ui://oagent/app",
@@ -89,7 +89,7 @@ func RegisterOrgServiceTools(reg *mcp.Registry, h orgv1connect.OrgServiceHandler
 	reg.Register(mcp.ToolSpec{
 		Name:        OrgListToolName,
 		Description: "List organizations, ordered by creation time.",
-		Scope:       scopeFor(OrgListToolName),
+		Scopes:      permissionsFor(orgv1connect.OrgServiceListOrgsProcedure),
 		Mutation:    false,
 		Destructive: false,
 		UI:          "ui://oagent/app",

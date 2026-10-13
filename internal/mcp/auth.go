@@ -1,3 +1,4 @@
+// Package mcp wires the MCP surface: request authentication, the scopes a caller holds and error payloads.
 package mcp
 
 import (
@@ -14,6 +15,7 @@ import (
 	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/permission"
 	rootmcp "altalune.id/oagent/mcp"
 	"altalune.id/oagent/reqid"
 )
@@ -91,16 +93,18 @@ func writeUnauthorized(w http.ResponseWriter, r *http.Request, challenge string)
 	}))
 }
 
-// ScopesFromContext lists the tool scopes the caller holds; no Principal holds none.
+// ScopesFromContext lists the permissions of permission.Table the caller holds; no Principal holds none.
 func ScopesFromContext(ctx context.Context) []string {
 	p := session.PrincipalFrom(ctx)
 	if p.Source == "" {
 		return nil
 	}
 	held := map[string]struct{}{}
-	for _, s := range ScopeTable() {
-		if authz.Allowed(p, s) {
-			held[s] = struct{}{}
+	for _, perms := range permission.Table() {
+		for _, perm := range perms {
+			if authz.Allowed(p, perm) {
+				held[perm] = struct{}{}
+			}
 		}
 	}
 	return slices.Sorted(maps.Keys(held))

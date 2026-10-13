@@ -219,10 +219,10 @@ func writeRegister(g *protogen.GeneratedFile, svc *protogen.Service, tools []too
 	errorf := g.QualifiedGoIdent(fmtPackage.Ident("Errorf"))
 
 	g.P("// Register", svc.GoName, "Tools registers every MCP-annotated ", svc.GoName,
-		" method on reg, against h and under the scope scopeFor resolves for each tool name.")
-	g.P("// SECURITY: this file declares no scope of its own; scopeFor is the single catalog every tool's scope comes from.")
+		" method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.")
+	g.P("// SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.")
 	g.P("func Register", svc.GoName, "Tools(reg *", g.QualifiedGoIdent(runtime.Ident("Registry")),
-		", h ", g.QualifiedGoIdent(connect.Ident(svc.GoName+"Handler")), ", scopeFor func(string) string) {")
+		", h ", g.QualifiedGoIdent(connect.Ident(svc.GoName+"Handler")), ", permissionsFor func(string) []string) {")
 	for _, t := range tools {
 		g.P("reg.Register(", g.QualifiedGoIdent(runtime.Ident("ToolSpec")), "{")
 		g.P("Name: ", t.constName, ",")
@@ -230,7 +230,7 @@ func writeRegister(g *protogen.GeneratedFile, svc *protogen.Service, tools []too
 			g.P("Title: ", strconv.Quote(t.title), ",")
 		}
 		g.P("Description: ", strconv.Quote(t.description), ",")
-		g.P("Scope: scopeFor(", t.constName, "),")
+		g.P("Scopes: permissionsFor(", g.QualifiedGoIdent(connect.Ident(svc.GoName+t.method.GoName+"Procedure")), "),")
 		g.P("Mutation: ", t.mutation, ",")
 		g.P("Destructive: ", t.destructive, ",")
 		if t.uiResource != "" {

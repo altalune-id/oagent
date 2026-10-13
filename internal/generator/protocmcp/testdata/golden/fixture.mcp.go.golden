@@ -29,13 +29,13 @@ func FixtureServiceToolNames() []string {
 	return []string{PingToolName, PokeTargetToolName, ApiKeyCreateToolName}
 }
 
-// RegisterFixtureServiceTools registers every MCP-annotated FixtureService method on reg, against h and under the scope scopeFor resolves for each tool name.
-// SECURITY: this file declares no scope of its own; scopeFor is the single catalog every tool's scope comes from.
-func RegisterFixtureServiceTools(reg *mcp.Registry, h oagenttestv1connect.FixtureServiceHandler, scopeFor func(string) string) {
+// RegisterFixtureServiceTools registers every MCP-annotated FixtureService method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.
+// SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.
+func RegisterFixtureServiceTools(reg *mcp.Registry, h oagenttestv1connect.FixtureServiceHandler, permissionsFor func(string) []string) {
 	reg.Register(mcp.ToolSpec{
 		Name:        PingToolName,
 		Description: "Ping echoes the target back and reports the server clock.",
-		Scope:       scopeFor(PingToolName),
+		Scopes:      permissionsFor(oagenttestv1connect.FixtureServicePingProcedure),
 		Mutation:    false,
 		Destructive: false,
 		UI:          "ui://oagenttest/app",
@@ -62,7 +62,7 @@ func RegisterFixtureServiceTools(reg *mcp.Registry, h oagenttestv1connect.Fixtur
 	reg.Register(mcp.ToolSpec{
 		Name:        PokeTargetToolName,
 		Description: "Poke the target once.",
-		Scope:       scopeFor(PokeTargetToolName),
+		Scopes:      permissionsFor(oagenttestv1connect.FixtureServicePokeProcedure),
 		Mutation:    true,
 		Destructive: true,
 		InputSchema: json.RawMessage(`{"type":"object","properties":{"target":{"type":"object","properties":{"org":{"type":"string","description":"Org is the organization slug."},"project":{"type":"string"}},"additionalProperties":false},"confirm":{"type":"boolean"}},"required":["target"],"additionalProperties":false}`),
@@ -89,7 +89,7 @@ func RegisterFixtureServiceTools(reg *mcp.Registry, h oagenttestv1connect.Fixtur
 		Name:        ApiKeyCreateToolName,
 		Title:       "Create an API key",
 		Description: "Mint a new API key for the target.",
-		Scope:       scopeFor(ApiKeyCreateToolName),
+		Scopes:      permissionsFor(oagenttestv1connect.FixtureServiceRekeyProcedure),
 		Mutation:    true,
 		Destructive: false,
 		InputSchema: json.RawMessage(`{"type":"object","properties":{"target":{"type":"object","properties":{"org":{"type":"string","description":"Org is the organization slug."},"project":{"type":"string"}},"additionalProperties":false},"label":{"type":"string"}},"required":["target"],"additionalProperties":false}`),

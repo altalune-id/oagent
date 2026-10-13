@@ -15,8 +15,8 @@ export const file_mcp_v1_annotations: GenFile = /*@__PURE__*/
   fileDesc("ChhtY3AvdjEvYW5ub3RhdGlvbnMucHJvdG8SBm1jcC52MSJ9CgRUb29sEgwKBG5hbWUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSEAoIcmVxdWlyZWQYAyADKAkSEAoIbXV0YXRpb24YBCABKAgSCgoCdWkYBSABKAkSEwoLZGVzdHJ1Y3RpdmUYBiABKAgSDQoFdGl0bGUYByABKAk6QgoEdG9vbBIeLmdvb2dsZS5wcm90b2J1Zi5NZXRob2RPcHRpb25zGLmOAyABKAsyDC5tY3AudjEuVG9vbFIEdG9vbEJ/Cgpjb20ubWNwLnYxQhBBbm5vdGF0aW9uc1Byb3RvUAFaJmFsdGFsdW5lLmlkL29hZ2VudC9nZW4vZ28vbWNwL3YxO21jcHYxogIDTVhYqgIGTWNwLlYxygIGTWNwXFYx4gISTWNwXFYxXEdQQk1ldGFkYXRh6gIHTWNwOjpWMWIGcHJvdG8z", [file_google_protobuf_descriptor]);
 
 /**
- * SECURITY: Tool carries no scope. A tool's scope is declared once, in internal/mcp's catalog, and
- * registration resolves it from there; never add an authorization field to this message.
+ * SECURITY: Tool carries no permission. A tool's permissions are its RPC's, declared once in
+ * internal/permission and resolved at registration; never add an authorization field to this message.
  *
  * @generated from message mcp.v1.Tool
  */

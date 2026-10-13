@@ -153,14 +153,17 @@ func (s *Server) listCallable(next sdkmcp.MethodHandler) sdkmcp.MethodHandler {
 }
 
 func (s *Server) authorize(ctx context.Context, spec ToolSpec) error {
-	if spec.Scope == "" {
+	if len(spec.Scopes) == 0 {
 		return &ScopeUndeclaredError{Tool: spec.Name}
 	}
-	if s.scopesFrom == nil {
-		return &ScopeDeniedError{Tool: spec.Name, Scope: spec.Scope}
+	var held []string
+	if s.scopesFrom != nil {
+		held = s.scopesFrom(ctx)
 	}
-	if !slices.Contains(s.scopesFrom(ctx), spec.Scope) {
-		return &ScopeDeniedError{Tool: spec.Name, Scope: spec.Scope}
+	for _, scope := range spec.Scopes {
+		if !slices.Contains(held, scope) {
+			return &ScopeDeniedError{Tool: spec.Name, Scope: scope}
+		}
 	}
 	return nil
 }

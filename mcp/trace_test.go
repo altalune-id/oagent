@@ -35,7 +35,7 @@ func traceServer(t *testing.T, sink *syncBuffer, handler mcp.ToolHandler) *mcp.S
 	t.Helper()
 
 	reg := mcp.NewRegistry()
-	reg.Register(mcp.ToolSpec{Name: "blog_list", Scope: "posts:read", Handler: handler}, nil)
+	reg.Register(mcp.ToolSpec{Name: "blog_list", Scopes: []string{"posts:read"}, Handler: handler}, nil)
 	return mcp.NewServer(
 		mcp.WithRegistry(reg),
 		mcp.WithScopes(scopesFromContext),

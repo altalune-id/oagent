@@ -11,12 +11,12 @@ import (
 // ToolHandler executes one tool call over raw JSON in and raw JSON out.
 type ToolHandler func(ctx context.Context, req json.RawMessage) (json.RawMessage, error)
 
-// ToolSpec describes one MCP tool; Scope is checked at call time.
+// ToolSpec describes one MCP tool; all of its Scopes are checked at call time.
 type ToolSpec struct {
 	Name        string
 	Title       string
 	Description string
-	Scope       string
+	Scopes      []string
 	Mutation    bool
 	Destructive bool
 	UI          string

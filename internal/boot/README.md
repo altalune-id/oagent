@@ -59,7 +59,8 @@ flowchart TD
 - **Reach:** after the permission check, each `controlplane.go` checks that the caller reaches the org, project or resource (`kernel/authz.Reach*`). Out of reach answers 404.
 - **MCP:** tools are generated from the same Connect services, so MCP and `/api` share one handler per RPC.
 - **Credentials required:** `requireCredentials` (`http.go`) makes `/api` and `/mcp` answer 401 and the console redirect to `/login?return_to=…` (local) or send a Basic challenge (basic mode) when no credential is sent. `/login`, `/logout`, `/install`, `/welcome`, `/terms`, `/privacy`, `/static`, `/healthz` and `/readyz` stay open. A request with no Principal reaches nothing (`kernel/authz`).
-- **MCP scopes:** `tools/list` and `tools/call` both check the tool's scope against the caller's expanded permissions (`mcpinternal.ScopesFromContext`). No Principal holds no scope.
+- **Permissions:** `internal/permission` is the one table of the permissions each RPC needs (all of them; a missing or empty entry is denied). The `/api` interceptor reads it, and every generated MCP tool takes its RPC's entry (`permission.For` in `mcp.go`).
+- **MCP scopes:** `tools/list` and `tools/call` both check every one of the tool's permissions against those the caller holds (`mcpinternal.ScopesFromContext`). No Principal holds none.
 - **stdio:** `oagent mcp` runs as `session.System()`, an operator, never as "no Principal".
 
 ## Domains and their surfaces
@@ -185,7 +186,7 @@ The supervisor runs these next to the HTTP server.
 1. Create `internal/<domain>` with the files above. Put its consumed interfaces in `ports.go`.
 2. In `services.go`, add the store and service to `Services` and build them in `buildServices`.
 3. For each surface it has:
-   - **Connect:** `controlplane.Services` + `server.go`, and every RPC in `controlplane/permissions.go`.
+   - **Connect:** `controlplane.Services` + `server.go`, and every RPC in `internal/permission`.
    - **CLI:** `<domain>/cli.go` (`NewCmd`), added in `internal/cli/root.go`.
    - **MCP:** `mcp.go`.
    - **Web:** `buildRoutes` in `http.go`.

@@ -29,13 +29,13 @@ func ProjectServiceToolNames() []string {
 	return []string{ProjectCreateToolName, ProjectGetToolName, ProjectListToolName}
 }
 
-// RegisterProjectServiceTools registers every MCP-annotated ProjectService method on reg, against h and under the scope scopeFor resolves for each tool name.
-// SECURITY: this file declares no scope of its own; scopeFor is the single catalog every tool's scope comes from.
-func RegisterProjectServiceTools(reg *mcp.Registry, h projectv1connect.ProjectServiceHandler, scopeFor func(string) string) {
+// RegisterProjectServiceTools registers every MCP-annotated ProjectService method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.
+// SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.
+func RegisterProjectServiceTools(reg *mcp.Registry, h projectv1connect.ProjectServiceHandler, permissionsFor func(string) []string) {
 	reg.Register(mcp.ToolSpec{
 		Name:        ProjectCreateToolName,
 		Description: "Create a project within an organization, minting a slug when one is not supplied.",
-		Scope:       scopeFor(ProjectCreateToolName),
+		Scopes:      permissionsFor(projectv1connect.ProjectServiceCreateProjectProcedure),
 		Mutation:    true,
 		Destructive: false,
 		UI:          "ui://oagent/app",
@@ -62,7 +62,7 @@ func RegisterProjectServiceTools(reg *mcp.Registry, h projectv1connect.ProjectSe
 	reg.Register(mcp.ToolSpec{
 		Name:        ProjectGetToolName,
 		Description: "Get a project by id.",
-		Scope:       scopeFor(ProjectGetToolName),
+		Scopes:      permissionsFor(projectv1connect.ProjectServiceGetProjectProcedure),
 		Mutation:    false,
 		Destructive: false,
 		UI:          "ui://oagent/app",
@@ -89,7 +89,7 @@ func RegisterProjectServiceTools(reg *mcp.Registry, h projectv1connect.ProjectSe
 	reg.Register(mcp.ToolSpec{
 		Name:        ProjectListToolName,
 		Description: "List projects in an organization.",
-		Scope:       scopeFor(ProjectListToolName),
+		Scopes:      permissionsFor(projectv1connect.ProjectServiceListProjectsProcedure),
 		Mutation:    false,
 		Destructive: false,
 		UI:          "ui://oagent/app",

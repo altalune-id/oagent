@@ -12,7 +12,7 @@ import (
 func TestRegistryHandlerForReturnsTheRegisteredHandler(t *testing.T) {
 	reg := mcp.NewRegistry()
 	sentinel := &struct{ n int }{n: 1}
-	reg.Register(mcp.ToolSpec{Name: "todo_create", Scope: "posts:write", Handler: nilHandler}, sentinel)
+	reg.Register(mcp.ToolSpec{Name: "todo_create", Scopes: []string{"posts:write"}, Handler: nilHandler}, sentinel)
 
 	got := reg.HandlerFor("todo_create")
 	if got != any(sentinel) {
@@ -30,7 +30,7 @@ func TestRegistryHandlerForUnknownToolReturnsNil(t *testing.T) {
 func TestRegistryNamesAreSorted(t *testing.T) {
 	reg := mcp.NewRegistry()
 	for _, name := range []string{"todo_create", "blog_publish", "blog_list"} {
-		reg.Register(mcp.ToolSpec{Name: name, Scope: "posts:read", Handler: nilHandler}, nil)
+		reg.Register(mcp.ToolSpec{Name: name, Scopes: []string{"posts:read"}, Handler: nilHandler}, nil)
 	}
 
 	want := []string{"blog_list", "blog_publish", "todo_create"}
@@ -41,13 +41,13 @@ func TestRegistryNamesAreSorted(t *testing.T) {
 
 func TestRegistrySpecReturnsTheRegisteredSpec(t *testing.T) {
 	reg := mcp.NewRegistry()
-	reg.Register(mcp.ToolSpec{Name: "blog_publish", Scope: "posts:write", Mutation: true, Handler: nilHandler}, nil)
+	reg.Register(mcp.ToolSpec{Name: "blog_publish", Scopes: []string{"posts:write"}, Mutation: true, Handler: nilHandler}, nil)
 
 	spec, ok := reg.Spec("blog_publish")
 	if !ok {
 		t.Fatal("Spec(blog_publish) not found")
 	}
-	if spec.Scope != "posts:write" || !spec.Mutation {
+	if !slices.Equal(spec.Scopes, []string{"posts:write"}) || !spec.Mutation {
 		t.Fatalf("Spec = %+v, want scope posts:write and Mutation true", spec)
 	}
 
@@ -65,20 +65,24 @@ func TestRegistryRejectsAnInvalidRegistration(t *testing.T) {
 		{
 			name: "duplicate name",
 			register: func(reg *mcp.Registry) {
-				reg.Register(mcp.ToolSpec{Name: "blog_list", Scope: "posts:read", Handler: nilHandler}, nil)
-				reg.Register(mcp.ToolSpec{Name: "blog_list", Scope: "posts:write", Handler: nilHandler}, nil)
+				reg.Register(mcp.ToolSpec{Name: "blog_list", Scopes: []string{"posts:read"}, Handler: nilHandler}, nil)
+				reg.Register(mcp.ToolSpec{Name: "blog_list", Scopes: []string{"posts:write"}, Handler: nilHandler}, nil)
 			},
 			want: "mcp: duplicate tool name blog_list",
 		},
 		{
-			name:     "empty name",
-			register: func(reg *mcp.Registry) { reg.Register(mcp.ToolSpec{Scope: "posts:read", Handler: nilHandler}, nil) },
-			want:     "mcp: ToolSpec.Name must not be empty",
+			name: "empty name",
+			register: func(reg *mcp.Registry) {
+				reg.Register(mcp.ToolSpec{Scopes: []string{"posts:read"}, Handler: nilHandler}, nil)
+			},
+			want: "mcp: ToolSpec.Name must not be empty",
 		},
 		{
-			name:     "nil handler",
-			register: func(reg *mcp.Registry) { reg.Register(mcp.ToolSpec{Name: "blog_list", Scope: "posts:read"}, nil) },
-			want:     "mcp: ToolSpec.Handler must not be nil for tool blog_list",
+			name: "nil handler",
+			register: func(reg *mcp.Registry) {
+				reg.Register(mcp.ToolSpec{Name: "blog_list", Scopes: []string{"posts:read"}}, nil)
+			},
+			want: "mcp: ToolSpec.Handler must not be nil for tool blog_list",
 		},
 	}
 
@@ -101,19 +105,19 @@ func TestRegistryRejectsAnInvalidRegistration(t *testing.T) {
 // TestRegistryKeepsTheFirstOfTwoToolsOfTheSameName pins that a rejected duplicate leaves the first registration intact.
 func TestRegistryKeepsTheFirstOfTwoToolsOfTheSameName(t *testing.T) {
 	reg := mcp.NewRegistry()
-	reg.Register(mcp.ToolSpec{Name: "blog_list", Scope: "posts:read", Handler: nilHandler}, "first")
+	reg.Register(mcp.ToolSpec{Name: "blog_list", Scopes: []string{"posts:read"}, Handler: nilHandler}, "first")
 
 	func() {
 		defer func() { _ = recover() }()
-		reg.Register(mcp.ToolSpec{Name: "blog_list", Scope: "posts:write", Handler: nilHandler}, "second")
+		reg.Register(mcp.ToolSpec{Name: "blog_list", Scopes: []string{"posts:write"}, Handler: nilHandler}, "second")
 	}()
 
 	if got := reg.HandlerFor("blog_list"); got != "first" {
 		t.Fatalf("HandlerFor(blog_list) = %v, want the first registration", got)
 	}
 	spec, _ := reg.Spec("blog_list")
-	if spec.Scope != "posts:read" {
-		t.Fatalf("Spec(blog_list).Scope = %q, want posts:read", spec.Scope)
+	if !slices.Equal(spec.Scopes, []string{"posts:read"}) {
+		t.Fatalf("Spec(blog_list).Scopes = %q, want posts:read", spec.Scopes)
 	}
 }
 

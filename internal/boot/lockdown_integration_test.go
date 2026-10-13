@@ -24,6 +24,7 @@ import (
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/session"
 	mcpinternal "altalune.id/oagent/internal/mcp"
+	"altalune.id/oagent/internal/permission"
 )
 
 type lockdown struct {
@@ -186,10 +187,12 @@ func TestLockdown_StdioStillTrusted(t *testing.T) {
 func allMCPScopes() []string {
 	seen := map[string]bool{}
 	var out []string
-	for _, s := range mcpinternal.ScopeTable() {
-		if !seen[s] {
-			seen[s] = true
-			out = append(out, s)
+	for _, perms := range permission.Table() {
+		for _, s := range perms {
+			if !seen[s] {
+				seen[s] = true
+				out = append(out, s)
+			}
 		}
 	}
 	slices.Sort(out)

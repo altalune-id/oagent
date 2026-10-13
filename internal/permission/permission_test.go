@@ -1,4 +1,4 @@
-package controlplane
+package permission
 
 import (
 	"testing"
@@ -41,17 +41,23 @@ func allProcedures() []string {
 func TestEveryRPCHasAPermission(t *testing.T) {
 	procs := allProcedures()
 	require.Len(t, procs, 28, "Org 4, Project 4, Agent 5, APIKey 3, Webhook 11, Auth 1")
-	table := PermissionTable()
+	table := Table()
 	for _, proc := range procs {
-		perm, ok := table[proc]
-		assert.True(t, ok, "%s has no permission", proc)
-		assert.True(t, perm == authz.AnyAuthenticated || scope.Valid(perm), "%s maps to unknown permission %q", proc, perm)
+		perms := table[proc]
+		assert.NotEmpty(t, perms, "%s has no permission", proc)
+		for _, perm := range perms {
+			if perm == authz.AnyAuthenticated {
+				assert.Len(t, perms, 1, "%s: %s is only ever the single entry", proc, authz.AnyAuthenticated)
+				continue
+			}
+			assert.True(t, scope.Valid(perm), "%s maps to unknown permission %q", proc, perm)
+		}
 	}
 	assert.Len(t, table, len(procs), "the table names no procedure that does not exist")
 }
 
 func TestPermissionTable_Spec15(t *testing.T) {
-	table := PermissionTable()
+	table := Table()
 	for proc, want := range map[string]string{
 		"/org.v1.OrgService/CreateOrg":                            "org:write",
 		"/org.v1.OrgService/ListOrgs":                             "org:read",
@@ -68,6 +74,11 @@ func TestPermissionTable_Spec15(t *testing.T) {
 		"/apikey.v1.APIKeyService/RevokeAPIKey":                   authz.AnyAuthenticated,
 		"/auth.v1.AuthService/Whoami":                             authz.AnyAuthenticated,
 	} {
-		assert.Equal(t, want, table[proc], proc)
+		assert.Equal(t, []string{want}, table[proc], proc)
 	}
+}
+
+func TestFor(t *testing.T) {
+	assert.Equal(t, []string{scope.AgentRead}, For("/agent.v1.AgentService/GetAgent"))
+	assert.Nil(t, For("/nope.v1.Nope/Nothing"), "an unknown procedure has no permission, so it is denied")
 }

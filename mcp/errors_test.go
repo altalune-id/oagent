@@ -25,7 +25,7 @@ func unmappedPayload(t *testing.T, opts ...mcp.Option) mcp.ErrorPayload {
 	reg := mcp.NewRegistry()
 	reg.Register(mcp.ToolSpec{
 		Name:    "blog_list",
-		Scope:   "posts:read",
+		Scopes:  []string{"posts:read"},
 		Handler: func(context.Context, json.RawMessage) (json.RawMessage, error) { return nil, errors.New("boom") },
 	}, nil)
 

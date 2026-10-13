@@ -45,11 +45,11 @@ func TestServerListsRegisteredTools(t *testing.T) {
 	reg.Register(mcp.ToolSpec{
 		Name:        "blog_list",
 		Description: "list posts",
-		Scope:       "posts:read",
+		Scopes:      []string{"posts:read"},
 		UI:          "ui://blog/list",
 		Handler:     okHandler,
 	}, nil)
-	reg.Register(mcp.ToolSpec{Name: "blog_publish", Scope: "posts:write", Mutation: true, Handler: okHandler}, nil)
+	reg.Register(mcp.ToolSpec{Name: "blog_publish", Scopes: []string{"posts:write"}, Mutation: true, Handler: okHandler}, nil)
 
 	srv := mcp.NewServer(
 		mcp.WithRegistry(reg),
@@ -82,8 +82,8 @@ func TestServerListsRegisteredTools(t *testing.T) {
 // TestUIMetaIsTheFixedMCPAppsShape pins the one _meta key MCP Apps defines and the object under it.
 func TestToolsListShowsOnlyCallableTools(t *testing.T) {
 	reg := mcp.NewRegistry()
-	reg.Register(mcp.ToolSpec{Name: "blog_list", Scope: "posts:read", Handler: okHandler}, nil)
-	reg.Register(mcp.ToolSpec{Name: "blog_publish", Scope: "posts:write", Mutation: true, Handler: okHandler}, nil)
+	reg.Register(mcp.ToolSpec{Name: "blog_list", Scopes: []string{"posts:read"}, Handler: okHandler}, nil)
+	reg.Register(mcp.ToolSpec{Name: "blog_publish", Scopes: []string{"posts:write"}, Mutation: true, Handler: okHandler}, nil)
 	reg.Register(mcp.ToolSpec{Name: "blog_unscoped", Handler: okHandler}, nil)
 	session := connect(t, mcp.NewServer(mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext)), "posts:read")
 
@@ -130,8 +130,8 @@ func TestServerCallsToolWhenScopeIsGranted(t *testing.T) {
 	args := make(chan json.RawMessage, 1)
 	reg := mcp.NewRegistry()
 	reg.Register(mcp.ToolSpec{
-		Name:  "blog_list",
-		Scope: "posts:read",
+		Name:   "blog_list",
+		Scopes: []string{"posts:read"},
 		Handler: func(_ context.Context, req json.RawMessage) (json.RawMessage, error) {
 			args <- req
 			return json.RawMessage(`{"count":2}`), nil
@@ -172,8 +172,8 @@ func TestCallWithoutArgumentsDeliversAnEmptyObject(t *testing.T) {
 	args := make(chan json.RawMessage, 1)
 	reg := mcp.NewRegistry()
 	reg.Register(mcp.ToolSpec{
-		Name:  "blog_list",
-		Scope: "posts:read",
+		Name:   "blog_list",
+		Scopes: []string{"posts:read"},
 		Handler: func(_ context.Context, req json.RawMessage) (json.RawMessage, error) {
 			args <- req
 			return json.RawMessage(`{}`), nil
@@ -193,8 +193,8 @@ func TestScopeDenialIsAToolResultNotAJSONRPCError(t *testing.T) {
 	var called atomic.Bool
 	reg := mcp.NewRegistry()
 	reg.Register(mcp.ToolSpec{
-		Name:  "blog_publish",
-		Scope: "posts:write",
+		Name:   "blog_publish",
+		Scopes: []string{"posts:write"},
 		Handler: func(context.Context, json.RawMessage) (json.RawMessage, error) {
 			called.Store(true)
 			return nil, nil
@@ -244,7 +244,7 @@ func TestScopeDenialIsAToolResultNotAJSONRPCError(t *testing.T) {
 
 func TestServerDeniesToolWhenNoScopesFuncIsWired(t *testing.T) {
 	reg := mcp.NewRegistry()
-	reg.Register(mcp.ToolSpec{Name: "blog_list", Scope: "posts:read", Handler: okHandler}, nil)
+	reg.Register(mcp.ToolSpec{Name: "blog_list", Scopes: []string{"posts:read"}, Handler: okHandler}, nil)
 
 	session := connect(t, mcp.NewServer(mcp.WithRegistry(reg)))
 
@@ -257,18 +257,66 @@ func TestServerDeniesToolWhenNoScopesFuncIsWired(t *testing.T) {
 	}
 }
 
+// SECURITY: a tool that lists several scopes needs every one of them, on call and in tools/list.
+func TestServer_ToolNeedsEveryScope(t *testing.T) {
+	reg := mcp.NewRegistry()
+	reg.Register(mcp.ToolSpec{Name: "blog_review", Scopes: []string{"a:read", "b:read"}, Handler: okHandler}, nil)
+	srv := mcp.NewServer(mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext), mcp.WithErrorMapper(testMapper))
+
+	for _, tc := range []struct {
+		name    string
+		held    []string
+		missing string
+	}{
+		{"holds only the first", []string{"a:read"}, "b:read"},
+		{"holds only the second", []string{"b:read"}, "a:read"},
+		{"holds both", []string{"a:read", "b:read"}, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			session := connect(t, srv, tc.held...)
+			res, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "blog_review"})
+			if err != nil {
+				t.Fatalf("CallTool: %v", err)
+			}
+			list, err := session.ListTools(t.Context(), nil)
+			if err != nil {
+				t.Fatalf("ListTools: %v", err)
+			}
+			if tc.missing == "" {
+				if res.IsError || len(list.Tools) != 1 {
+					t.Fatalf("a caller holding every scope was refused: %+v, %d listed", res.Content, len(list.Tools))
+				}
+				return
+			}
+			if !res.IsError || len(list.Tools) != 0 {
+				t.Fatalf("a caller missing %s was let through: isError=%v, %d listed", tc.missing, res.IsError, len(list.Tools))
+			}
+			var payload mcp.ErrorPayload
+			if err := json.Unmarshal([]byte(textOf(t, res)), &payload); err != nil {
+				t.Fatalf("decode payload: %v", err)
+			}
+			if payload.Meta["scope"] != tc.missing {
+				t.Fatalf("payload.Meta = %v, want the missing scope %s", payload.Meta, tc.missing)
+			}
+		})
+	}
+}
+
 func TestServerDeniesToolRegisteredWithoutAScope(t *testing.T) {
 	reg := mcp.NewRegistry()
 	reg.Register(mcp.ToolSpec{Name: "blog_list", Handler: okHandler}, nil)
+	reg.Register(mcp.ToolSpec{Name: "blog_empty", Scopes: []string{}, Handler: okHandler}, nil)
 
 	session := connect(t, mcp.NewServer(mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext)), "posts:read")
 
-	res, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "blog_list"})
-	if err != nil {
-		t.Fatalf("CallTool returned a protocol error, want a tool error result: %v", err)
-	}
-	if !res.IsError {
-		t.Fatal("CallTool succeeded on a tool that declares no scope")
+	for _, name := range []string{"blog_list", "blog_empty"} {
+		res, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: name})
+		if err != nil {
+			t.Fatalf("CallTool(%s) returned a protocol error, want a tool error result: %v", name, err)
+		}
+		if !res.IsError {
+			t.Fatalf("CallTool(%s) succeeded on a tool that declares no scope", name)
+		}
 	}
 }
 
@@ -279,7 +327,7 @@ func TestUnmappedFailureIsNotLeakedToTheCaller(t *testing.T) {
 	reg := mcp.NewRegistry()
 	reg.Register(mcp.ToolSpec{
 		Name:    "blog_list",
-		Scope:   "posts:read",
+		Scopes:  []string{"posts:read"},
 		Handler: func(context.Context, json.RawMessage) (json.RawMessage, error) { return nil, errors.New(secret) },
 	}, nil)
 
@@ -322,7 +370,7 @@ func TestMappedFailureAnswersTheMappedPayload(t *testing.T) {
 	reg := mcp.NewRegistry()
 	reg.Register(mcp.ToolSpec{
 		Name:    "blog_list",
-		Scope:   "posts:read",
+		Scopes:  []string{"posts:read"},
 		Handler: func(context.Context, json.RawMessage) (json.RawMessage, error) { return nil, errDecode },
 	}, nil)
 
@@ -348,7 +396,7 @@ func TestMappedFailureAnswersTheMappedPayload(t *testing.T) {
 // TestRegisteringAfterBuildPanics pins that a tool registered after the build fails loudly rather than vanishing.
 func TestRegisteringAfterBuildPanics(t *testing.T) {
 	reg := mcp.NewRegistry()
-	reg.Register(mcp.ToolSpec{Name: "blog_list", Scope: "posts:read", Handler: okHandler}, nil)
+	reg.Register(mcp.ToolSpec{Name: "blog_list", Scopes: []string{"posts:read"}, Handler: okHandler}, nil)
 	srv := mcp.NewServer(mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext))
 	_ = srv.Handler()
 
@@ -361,7 +409,7 @@ func TestRegisteringAfterBuildPanics(t *testing.T) {
 			t.Fatalf("panic = %q, want the late-registration message", got)
 		}
 	}()
-	reg.Register(mcp.ToolSpec{Name: "blog_publish", Scope: "posts:write", Handler: okHandler}, nil)
+	reg.Register(mcp.ToolSpec{Name: "blog_publish", Scopes: []string{"posts:write"}, Handler: okHandler}, nil)
 }
 
 func TestScopeDeniedError(t *testing.T) {
@@ -416,7 +464,7 @@ func uiTool(t *testing.T, opts ...mcp.Option) *sdkmcp.Tool {
 	t.Helper()
 
 	reg := mcp.NewRegistry()
-	reg.Register(mcp.ToolSpec{Name: "blog_list", Scope: "posts:read", UI: "ui://blog/list", Handler: okHandler}, nil)
+	reg.Register(mcp.ToolSpec{Name: "blog_list", Scopes: []string{"posts:read"}, UI: "ui://blog/list", Handler: okHandler}, nil)
 
 	srv := mcp.NewServer(append(opts, mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext))...)
 	srv.AddUIResource(testUIResource())

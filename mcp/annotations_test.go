@@ -15,7 +15,7 @@ func annotatedTool(t *testing.T, spec mcp.ToolSpec) *sdkmcp.Tool {
 	reg := mcp.NewRegistry()
 	reg.Register(spec, nil)
 
-	res, err := connect(t, mcp.NewServer(mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext)), spec.Scope).
+	res, err := connect(t, mcp.NewServer(mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext)), spec.Scopes...).
 		ListTools(t.Context(), &sdkmcp.ListToolsParams{})
 	if err != nil {
 		t.Fatalf("ListTools: %v", err)
@@ -33,9 +33,9 @@ func TestToolAnnotationsFollowTheSpec(t *testing.T) {
 		wantReadOnly    bool
 		wantDestructive bool
 	}{
-		{"read", mcp.ToolSpec{Name: "blog_list", Scope: "posts:read"}, true, false},
-		{"additive mutation", mcp.ToolSpec{Name: "blog_publish", Scope: "posts:write", Mutation: true}, false, false},
-		{"destructive mutation", mcp.ToolSpec{Name: "blog_delete", Scope: "posts:write", Mutation: true, Destructive: true}, false, true},
+		{"read", mcp.ToolSpec{Name: "blog_list", Scopes: []string{"posts:read"}}, true, false},
+		{"additive mutation", mcp.ToolSpec{Name: "blog_publish", Scopes: []string{"posts:write"}, Mutation: true}, false, false},
+		{"destructive mutation", mcp.ToolSpec{Name: "blog_delete", Scopes: []string{"posts:write"}, Mutation: true, Destructive: true}, false, true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -65,9 +65,9 @@ func TestToolTitleIsHumanReadable(t *testing.T) {
 		spec mcp.ToolSpec
 		want string
 	}{
-		{"derived from a snake_case name", mcp.ToolSpec{Name: "blog_publish", Scope: "posts:write"}, "Blog publish"},
-		{"derived from a single word", mcp.ToolSpec{Name: "ping", Scope: "posts:read"}, "Ping"},
-		{"explicit title wins", mcp.ToolSpec{Name: "api_key_create", Scope: "posts:write", Title: "Create an API key"}, "Create an API key"},
+		{"derived from a snake_case name", mcp.ToolSpec{Name: "blog_publish", Scopes: []string{"posts:write"}}, "Blog publish"},
+		{"derived from a single word", mcp.ToolSpec{Name: "ping", Scopes: []string{"posts:read"}}, "Ping"},
+		{"explicit title wins", mcp.ToolSpec{Name: "api_key_create", Scopes: []string{"posts:write"}, Title: "Create an API key"}, "Create an API key"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

@@ -22,8 +22,8 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// SECURITY: Tool carries no scope. A tool's scope is declared once, in internal/mcp's catalog, and
-// registration resolves it from there; never add an authorization field to this message.
+// SECURITY: Tool carries no permission. A tool's permissions are its RPC's, declared once in
+// internal/permission and resolved at registration; never add an authorization field to this message.
 type Tool struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	Name        string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`

@@ -12,8 +12,8 @@ import (
 	"altalune.id/oagent/reqid"
 )
 
-// PermissionTable maps a Connect procedure to the permission it needs.
-type PermissionTable map[string]string
+// PermissionTable maps a Connect procedure to the permissions it needs; the caller must hold all of them.
+type PermissionTable map[string][]string
 
 // InterceptorOptions configures Interceptor; Required refuses a request that carries no credential.
 type InterceptorOptions struct {
@@ -53,9 +53,14 @@ func Interceptor(o InterceptorOptions) connect.UnaryInterceptorFunc {
 				log.DebugContext(ctx, "authn: credential rejected", "request_id", reqid.FromContext(ctx), "cause", cause)
 				return nil, &UnauthorizedError{}
 			}
-			permission := o.Permissions[req.Spec().Procedure]
-			if !authz.Allowed(p, permission) {
-				return nil, &authz.ForbiddenError{Permission: permission}
+			perms := o.Permissions[req.Spec().Procedure]
+			if len(perms) == 0 {
+				return nil, &authz.ForbiddenError{}
+			}
+			for _, perm := range perms {
+				if !authz.Allowed(p, perm) {
+					return nil, &authz.ForbiddenError{Permission: perm}
+				}
 			}
 			return next(session.PrincipalInto(ctx, p), req)
 		}
