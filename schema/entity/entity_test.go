@@ -72,7 +72,7 @@ func TestBindings(t *testing.T) {
 			func(s, p string) binding { b := entity.NewOutboxEntries(s, p); return binding{b, b.AllColumns} },
 			[]string{
 				"id", "event_id", "org_id", "project_id", "target", "payload", "attempt",
-				"next_attempt_at", "status", "last_error", "created_at", "delivered_at",
+				"next_attempt_at", "status", "last_error", "created_at", "delivered_at", "public_id", "event_public_id",
 			},
 		},
 		{

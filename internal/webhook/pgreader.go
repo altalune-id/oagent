@@ -32,6 +32,27 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*Endpoint, erro
 	return row.toEndpoint()
 }
 
+// ByPublicID returns the endpoint with publicID in the caller's org, or a *NotFoundError.
+func (s *postgresStore) ByPublicID(ctx context.Context, publicID string) (*Endpoint, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stmt := postgres.SELECT(s.endpoints.AllColumns).
+		FROM(s.endpoints).
+		WHERE(s.endpoints.PublicID.EQ(postgres.String(publicID)).
+			AND(s.endpoints.OrgID.EQ(postgres.UUID(tc.OrgID)))).
+		LIMIT(1)
+	var row endpointRow
+	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
+		if db.IsNoRows(err) {
+			return nil, &NotFoundError{ID: publicID}
+		}
+		return nil, fmt.Errorf("webhook.postgres.ByPublicID: %w", err)
+	}
+	return row.toEndpoint()
+}
+
 // ListByOrg returns the endpoints of every project in orgID, oldest first.
 func (s *postgresStore) ListByOrg(ctx context.Context, orgID uuid.UUID) ([]*Endpoint, error) {
 	stmt := postgres.SELECT(s.endpoints.AllColumns).

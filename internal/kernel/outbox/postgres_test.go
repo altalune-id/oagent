@@ -64,6 +64,10 @@ func TestWritesRequireATenant(t *testing.T) {
 	assert.True(t, tenant.IsMissingError(err))
 }
 
+func lockedRows() *sqlmock.Rows {
+	return sqlmock.NewRows([]string{"outbox_entries.id"}).AddRow(uuid.New())
+}
+
 var errBoom = errors.New("boom")
 
 func TestEnqueue(t *testing.T) {
@@ -96,7 +100,7 @@ func TestEnqueue(t *testing.T) {
 		mock.ExpectBegin()
 		mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectCommit()
-		e := Entry{ID: uuid.New(), EventID: uuid.New(), OrgID: org, ProjectID: project, Target: "t", Payload: []byte("{}")}
+		e := Entry{ID: uuid.New(), PublicID: "d", EventID: uuid.New(), EventPublicID: "e", OrgID: org, ProjectID: project, Target: "t", Payload: []byte("{}")}
 		assert.NoError(t, s.Enqueue(ctx, e))
 	})
 }
@@ -111,6 +115,7 @@ func TestClaimDue(t *testing.T) {
 			AddRow(uuid.New(), uuid.New(), org, project, "ep", []byte("{}"), 1, time.Now(), string(StatusPending), "", time.Now(), nil)
 		mock.ExpectBegin()
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0)) // reap
+		mock.ExpectQuery("SELECT").WillReturnRows(lockedRows())             // lock
 		mock.ExpectQuery("UPDATE").WillReturnRows(rows)                     // claim
 		mock.ExpectCommit()
 
@@ -124,10 +129,33 @@ func TestClaimDue(t *testing.T) {
 		s, mock, _ := newTestStore(t)
 		mock.ExpectBegin()
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectQuery("SELECT").WillReturnRows(lockedRows())
 		mock.ExpectQuery("UPDATE").WillReturnError(errBoom)
 		mock.ExpectRollback()
 		_, err := s.ClaimDue(ctx, time.Now(), 10)
 		assert.Error(t, err)
+	})
+
+	t.Run("lock error rolls back", func(t *testing.T) {
+		s, mock, _ := newTestStore(t)
+		mock.ExpectBegin()
+		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectQuery("SELECT").WillReturnError(errBoom)
+		mock.ExpectRollback()
+		_, err := s.ClaimDue(ctx, time.Now(), 10)
+		assert.Error(t, err)
+	})
+
+	t.Run("nothing due claims nothing", func(t *testing.T) {
+		s, mock, _ := newTestStore(t)
+		mock.ExpectBegin()
+		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"outbox_entries.id"}))
+		mock.ExpectCommit()
+		got, err := s.ClaimDue(ctx, time.Now(), 10)
+		require.NoError(t, err)
+		assert.Empty(t, got)
+		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
 	t.Run("reap error rolls back", func(t *testing.T) {

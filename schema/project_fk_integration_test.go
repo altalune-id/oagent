@@ -57,10 +57,10 @@ func inserts(s twoOrgs) map[string]func(ctx context.Context, db *sql.DB, org, pr
 			VALUES ($1, $4, $2, $3, 'https://e.com', 'agent.created', '\x01', true, now(), now())`),
 		"webhook_deliveries": exec(`INSERT INTO webhook_deliveries (id, org_id, project_id, endpoint_id, delivery_id, event_id, event_type, attempt, duration_ms, error, created_at)
 			VALUES ($1, $2, $3, $5, $1, $1, 'agent.created', 1, 1, $4, now())`, s.endpointA),
-		"outbox_entries": exec(`INSERT INTO outbox_entries (id, event_id, org_id, project_id, target, payload, next_attempt_at, last_error, created_at)
-			VALUES ($1, $1, $2, $3, 'webhook', '\x01', now(), $4, now())`),
+		"outbox_entries": exec(`INSERT INTO outbox_entries (id, event_id, org_id, project_id, target, payload, next_attempt_at, last_error, created_at, public_id, event_public_id)
+			VALUES ($1, $1, $2, $3, 'webhook', '\x01', now(), $4, now(), gen_random_uuid()::text, 'e')`),
 		"api_keys": exec(`INSERT INTO api_keys (id, org_id, project_id, kind, name, secret_hash, secret_hint, created_at)
-			VALUES ($1, $2, $3, 'project', 'k', decode(md5($4), 'hex'), 'abcd', now())`),
+			VALUES ($1, $2, $3, 'project', 'k', decode(md5($4), 'hex'), substr(md5($4), 1, 4), now())`),
 	}
 }
 

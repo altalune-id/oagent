@@ -157,3 +157,17 @@ func TestService_Update_InvalidSlug(t *testing.T) {
 	_, err = project.NewService(&fakes.ProjectStore{Project: p}, testUnexpected()).Update(context.Background(), p.ID, "Acme", "Bad_Slug")
 	assert.True(t, project.IsInvalidSlugError(err))
 }
+
+func TestService_ByPublicID(t *testing.T) {
+	p, err := project.NewProject(uuid.New(), "web", "Web", uuid.Nil)
+	require.NoError(t, err)
+	got, err := project.NewService(&fakes.ProjectStore{Project: p}, testUnexpected()).ByPublicID(context.Background(), p.PublicID)
+	require.NoError(t, err)
+	assert.Same(t, p, got)
+
+	_, err = project.NewService(&fakes.ProjectStore{Project: p}, testUnexpected()).ByPublicID(context.Background(), "nope")
+	assert.True(t, project.IsNotFoundError(err))
+	_, err = project.NewService(&fakes.ProjectStore{Err: errors.New("down")}, testUnexpected()).ByPublicID(context.Background(), p.PublicID)
+	_, isApp := apperror.AsAppError(err)
+	assert.True(t, isApp)
+}

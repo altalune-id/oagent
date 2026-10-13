@@ -69,7 +69,7 @@ erDiagram
         bool all_projects
         text name
         bytea secret_hash UK
-        text secret_hint
+        text secret_hint "last 4 characters; names the key on every surface (no public_id)"
         text_array scopes
         uuid_array resource_ids
         uuid created_by FK "NULL when the user is deleted"
@@ -97,6 +97,8 @@ erDiagram
         text last_error
         timestamptz created_at
         timestamptz delivered_at
+        text public_id UK "the delivery id on the API and in the delivery-id header"
+        text event_public_id "the event id in the envelope and the event-id header"
     }
     webhook_endpoints {
         uuid id PK
@@ -223,8 +225,10 @@ Rules the diagram can't show. Names omit `{{.TablePrefix}}`.
 | `api_keys` | `api_keys_created_by_fkey` (`ON DELETE SET NULL`) | `created_by` is a real user; deleting the user keeps the key but clears the owner, and a personal key without an owner never authenticates |
 | `api_keys` | `api_keys_personal_idx` (`WHERE kind = 'personal'`) | lists one person's personal keys in an org |
 | `api_keys` | `api_keys_secret_hash_key` (unique) | keys are found by the hash of their secret |
+| `api_keys` | `api_keys_live_hint_key` (unique `(org_id, secret_hint)`, `WHERE revoked_at IS NULL`) | a live key is named by its hint within its org; minting tries a new secret when the hint is taken; revoked keys may share one |
 | `api_key_projects` | FKs on `(org_id, key_id)` and `(org_id, project_id)` | a key can only be granted projects of its own org |
 | `outbox_entries` | `UNIQUE (org_id, event_id, target)`, status check | one entry per event and target, per org |
+| `outbox_entries` | `outbox_entries_public_id_key` (unique) | a delivery is found by its public id; all entries of one event share `event_public_id` |
 | `webhook_endpoints` | `webhook_endpoints_secondary_nonempty` (check) | the secondary secret is NULL or non-empty |
 | `users` | `users_email_normalized` (check), `email` unique | email is stored trimmed and lowercase |
 | `users` | `users_idp_pair` (check), `users_idp_idx` (unique, `WHERE idp_issuer IS NOT NULL`) | issuer and subject are set together and identify one user |

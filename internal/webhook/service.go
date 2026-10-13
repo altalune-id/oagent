@@ -352,6 +352,40 @@ func (s *Service) toDelivery(ctx context.Context, endpointID uuid.UUID, e outbox
 	return Delivery{Entry: e, EventType: typ}
 }
 
+// IDByPublicID returns the id of the caller's project endpoint with publicID, or a *NotFoundError.
+func (s *Service) IDByPublicID(ctx context.Context, publicID string) (uuid.UUID, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	e, err := s.store.ByPublicID(ctx, publicID)
+	if err != nil {
+		if IsNotFoundError(err) {
+			return uuid.Nil, err
+		}
+		return uuid.Nil, s.unexpected(ctx, "webhook.IDByPublicID", err)
+	}
+	if e.OrgID != tc.OrgID || e.ProjectID != tc.ProjectID {
+		return uuid.Nil, &NotFoundError{ID: publicID}
+	}
+	return e.ID, nil
+}
+
+// DeliveryIDByPublicID returns the id of the endpoint's delivery with publicID, or a *DeliveryNotFoundError.
+func (s *Service) DeliveryIDByPublicID(ctx context.Context, id uuid.UUID, publicID string) (uuid.UUID, error) {
+	if _, err := s.load(ctx, "webhook.DeliveryIDByPublicID", id); err != nil {
+		return uuid.Nil, err
+	}
+	deliveryID, err := s.outbox.IDByPublicID(ctx, publicID, id.String())
+	switch {
+	case err == nil:
+		return deliveryID, nil
+	case outbox.IsNotFoundError(err):
+		return uuid.Nil, &DeliveryNotFoundError{ID: publicID}
+	}
+	return uuid.Nil, s.unexpected(ctx, "webhook.DeliveryIDByPublicID", err, "endpoint_id", id)
+}
+
 // Retry requeues one failed delivery of the identified endpoint.
 func (s *Service) Retry(ctx context.Context, id, deliveryID uuid.UUID) error {
 	if _, err := s.load(ctx, "webhook.Retry", id); err != nil {
@@ -415,13 +449,19 @@ func (s *Service) fanOut(ctx context.Context, orgID, projectID uuid.UUID, spec e
 		if err != nil {
 			return fmt.Errorf("entry id: %w", err)
 		}
+		entryPublicID, err := nanoid.New(21)
+		if err != nil {
+			return fmt.Errorf("entry id: %w", err)
+		}
 		if err := s.outbox.Enqueue(ctx, outbox.Entry{
-			ID:        entryID,
-			EventID:   eventUUID,
-			OrgID:     orgID,
-			ProjectID: projectID,
-			Target:    e.ID.String(),
-			Payload:   body,
+			ID:            entryID,
+			PublicID:      entryPublicID,
+			EventID:       eventUUID,
+			EventPublicID: eventPublicID,
+			OrgID:         orgID,
+			ProjectID:     projectID,
+			Target:        e.ID.String(),
+			Payload:       body,
 		}); err != nil {
 			return fmt.Errorf("outbox enqueue: endpoint_id=%s: %w", e.ID, err)
 		}

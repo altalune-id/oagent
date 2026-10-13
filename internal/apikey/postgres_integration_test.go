@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"errors"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/org"
@@ -767,4 +769,60 @@ func TestPostgres_RevokePersonalOfJoinsTheTransaction(t *testing.T) {
 	got, err := f.store.ByID(t.Context(), k.ID)
 	require.NoError(t, err)
 	assert.Nil(t, got.RevokedAt)
+}
+
+func TestPostgres_LiveHintsAreUniquePerOrg(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	otherOrg, otherProject := f.seedScope(t)
+	first := projectKey(t, orgID, projectID)
+	require.NoError(t, f.store.Save(t.Context(), first))
+
+	twin := projectKey(t, orgID, projectID)
+	twin.SecretHint = first.SecretHint
+	assert.True(t, apikey.IsHintTakenError(f.store.Save(t.Context(), twin)), "two live keys in one org never share a hint")
+
+	elsewhere := projectKey(t, otherOrg, otherProject)
+	elsewhere.SecretHint = first.SecretHint
+	require.NoError(t, f.store.Save(t.Context(), elsewhere), "another org may use the same hint")
+
+	first.Revoke(time.Now().UTC())
+	require.NoError(t, f.store.Save(t.Context(), first))
+	require.NoError(t, f.store.Save(t.Context(), twin), "a revoked key frees its hint")
+}
+
+func TestPostgres_RevokeByHintRevokesExactlyOneKey(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	otherOrg, otherProject := f.seedScope(t)
+	revoked := projectKey(t, orgID, projectID)
+	revoked.RevokedAt = expiry()
+	target := projectKey(t, orgID, projectID)
+	revoked.SecretHint = target.SecretHint
+	elsewhere := projectKey(t, otherOrg, otherProject)
+	elsewhere.SecretHint = target.SecretHint
+	bystander := projectKey(t, orgID, projectID)
+	for _, k := range []*apikey.APIKey{revoked, target, elsewhere, bystander} {
+		require.NoError(t, f.store.Save(t.Context(), k))
+	}
+
+	got, err := f.store.ByHint(t.Context(), orgID, target.SecretHint)
+	require.NoError(t, err)
+	assert.Equal(t, target.ID, got.ID, "ByHint finds the live key, not a revoked one with the same hint")
+
+	svc := apikey.NewService(f.store, apikey.NewScheme(""), nil, apperror.NewReporter(nil, false).Unexpected)
+	require.NoError(t, svc.RevokeByHint(t.Context(), orgID, target.SecretHint, uuid.Nil, true))
+	live := f.count(t, `SELECT count(*) FROM api_keys WHERE revoked_at IS NULL AND id = ANY($1)`,
+		pgUUIDs(target.ID, elsewhere.ID, bystander.ID))
+	assert.Equal(t, 2, live, "only the target is revoked")
+	_, err = f.store.ByHint(t.Context(), orgID, target.SecretHint)
+	assert.True(t, apikey.IsNotFoundError(err))
+}
+
+func pgUUIDs(ids ...uuid.UUID) string {
+	s := make([]string, len(ids))
+	for i, id := range ids {
+		s[i] = id.String()
+	}
+	return "{" + strings.Join(s, ",") + "}"
 }

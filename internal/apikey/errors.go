@@ -29,6 +29,17 @@ func IsNotFoundError(err error) bool {
 	return ok
 }
 
+// HintTakenError signals that a live key in the org already ends with the new key's hint; the service mints again.
+type HintTakenError struct{}
+
+func (e *HintTakenError) Error() string { return "apikey: hint already used by a live key in the org" }
+
+// IsHintTakenError reports whether err wraps a *HintTakenError.
+func IsHintTakenError(err error) bool {
+	_, ok := errors.AsType[*HintTakenError](err)
+	return ok
+}
+
 // NameReason is the stable cause of an InvalidNameError, sent to clients as meta.reason.
 type NameReason string
 

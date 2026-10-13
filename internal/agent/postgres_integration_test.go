@@ -409,3 +409,18 @@ func TestPostgres_AgentUpsertCannotRewriteAnotherOrgsAgent(t *testing.T) {
 		t.Skip("BUG: agent Save ON CONFLICT (id) DO UPDATE has no org/project guard; a colliding id from org B rewrites org A's agent")
 	}
 }
+
+func TestPostgres_ByPublicID(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	a := newAgent(t, orgID, projectID, "bot")
+	require.NoError(t, f.store.Save(t.Context(), a))
+
+	got, err := f.store.ByPublicID(t.Context(), a.PublicID)
+	require.NoError(t, err)
+	assert.Equal(t, a.ID, got.ID)
+	for _, bad := range []string{"", "nope", a.ID.String()} {
+		_, err = f.store.ByPublicID(t.Context(), bad)
+		assert.True(t, agent.IsNotFoundError(err), "%q is not a public id", bad)
+	}
+}

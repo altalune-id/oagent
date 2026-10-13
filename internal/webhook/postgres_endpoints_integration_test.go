@@ -682,3 +682,20 @@ func TestPostgresEndpoint_ListByOrg(t *testing.T) {
 	assert.Equal(t, second.ID, got[1].ID)
 	assert.Equal(t, sibling.ProjectID, got[1].ProjectID)
 }
+
+func TestPostgres_ByPublicIDStaysInTheCallersOrg(t *testing.T) {
+	f := newPgFixture(t)
+	mine, other := f.seedTenant(t), f.seedTenant(t)
+	e := newEndpoint(t, mine)
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), mine), e))
+
+	got, err := f.store.ByPublicID(tenant.Into(t.Context(), mine), e.PublicID)
+	require.NoError(t, err)
+	assert.Equal(t, e.ID, got.ID)
+	_, err = f.store.ByPublicID(tenant.Into(t.Context(), other), e.PublicID)
+	assert.True(t, webhook.IsNotFoundError(err), "another org's endpoint is not found")
+	_, err = f.store.ByPublicID(tenant.Into(t.Context(), mine), e.ID.String())
+	assert.True(t, webhook.IsNotFoundError(err), "a uuid is not a public id")
+	_, err = f.store.ByPublicID(t.Context(), e.PublicID)
+	assert.True(t, tenant.IsMissingError(err))
+}

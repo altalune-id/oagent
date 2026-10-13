@@ -50,6 +50,19 @@ func (f *AgentStore) ByID(_ context.Context, id uuid.UUID) (*agent.Agent, error)
 	return f.Agent, nil
 }
 
+// ByPublicID implements agent.Store; it finds Agent or one of Agents by public id.
+func (f *AgentStore) ByPublicID(_ context.Context, publicID string) (*agent.Agent, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	for _, a := range append([]*agent.Agent{f.Agent}, f.Agents...) {
+		if a != nil && a.PublicID == publicID {
+			return a, nil
+		}
+	}
+	return nil, &agent.NotFoundError{ID: publicID}
+}
+
 // List implements agent.Store.
 func (f *AgentStore) List(context.Context, uuid.UUID) ([]*agent.Agent, error) {
 	if f.Err != nil {

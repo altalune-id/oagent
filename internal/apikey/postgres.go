@@ -17,6 +17,7 @@ type postgresStore struct {
 	keys       *entity.APIKeys
 	grants     *entity.APIKeyProjects
 	grantsExpr postgres.Expression
+	hintIndex  string
 }
 
 // NewStore builds the Postgres store over pool.
@@ -25,9 +26,10 @@ func NewStore(pool db.Pool, schema, tablePrefix string) *postgresStore {
 		schema = "public"
 	}
 	return &postgresStore{
-		pool:   pool,
-		keys:   entity.NewAPIKeys(schema, tablePrefix),
-		grants: entity.NewAPIKeyProjects(schema, tablePrefix),
+		pool:      pool,
+		keys:      entity.NewAPIKeys(schema, tablePrefix),
+		grants:    entity.NewAPIKeyProjects(schema, tablePrefix),
+		hintIndex: tablePrefix + "api_keys_live_hint_key",
 		// NOTE: Raw because go-jet has no builder for a correlated array_agg subquery in a projection.
 		grantsExpr: postgres.Raw("COALESCE((SELECT array_agg(g.project_id ORDER BY g.created_at, g.project_id) FROM " +
 			schema + "." + tablePrefix + "api_key_projects g WHERE g.org_id = api_keys.org_id AND g.key_id = api_keys.id), '{}')::text"),

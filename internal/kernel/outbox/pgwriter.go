@@ -43,7 +43,7 @@ func (s *postgresStore) enqueue(ctx context.Context, tx *sql.Tx, tc tenant.Conte
 	stmt := s.entries.INSERT(s.entries.AllColumns).
 		VALUES(
 			e.ID, e.EventID, e.OrgID, e.ProjectID, e.Target, e.Payload,
-			0, due.UTC(), string(StatusPending), "", now, entity.NullTimestampz(),
+			0, due.UTC(), string(StatusPending), "", now, entity.NullTimestampz(), e.PublicID, e.EventPublicID,
 		).
 		ON_CONFLICT(s.entries.OrgID, s.entries.EventID, s.entries.Target).
 		// NOTE: a redelivered domain event must not become a second delivery.
@@ -86,13 +86,27 @@ func (s *postgresStore) claimDue(ctx context.Context, tx *sql.Tx, tc tenant.Cont
 		ORDER_BY(s.entries.NextAttemptAt.ASC()).
 		LIMIT(claimBatch(limit)).
 		FOR(postgres.UPDATE().SKIP_LOCKED())
+	// NOTE: locked first, then updated by id; an IN (subquery) may be rescanned and claim more than limit.
+	var locked []struct {
+		ID uuid.UUID `alias:"outbox_entries.id"`
+	}
+	if err := due.QueryContext(ctx, tx, &locked); err != nil && !db.IsNoRows(err) {
+		return nil, fmt.Errorf("outbox.postgres.ClaimDue: lock due: %w", err)
+	}
+	if len(locked) == 0 {
+		return []Entry{}, nil
+	}
+	ids := make([]postgres.Expression, len(locked))
+	for i, l := range locked {
+		ids[i] = postgres.UUID(l.ID)
+	}
 
 	stmt := s.entries.UPDATE(s.entries.Attempt, s.entries.NextAttemptAt).
 		SET(
 			s.entries.Attempt.ADD(postgres.Int(1)),
 			postgres.TimestampzT(now.UTC().Add(ClaimLease)),
 		).
-		WHERE(s.entries.OrgID.EQ(postgres.UUID(tc.OrgID)).AND(s.entries.ID.IN(due))).
+		WHERE(s.entries.OrgID.EQ(postgres.UUID(tc.OrgID)).AND(s.entries.ID.IN(ids...))).
 		RETURNING(s.entries.AllColumns)
 
 	var rows []entryRow

@@ -2,6 +2,7 @@ package apikey
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,6 +12,8 @@ import (
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/scope"
 )
+
+const mintAttempts = 5
 
 // Service is the API key application service: the driving port surfaces call.
 type Service struct {
@@ -75,44 +78,60 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*APIKey, strin
 			return nil, "", err
 		}
 	}
-	now := s.now()
-	var (
-		k         *APIKey
-		plaintext string
-		err       error
-	)
-	switch req.Kind {
-	case KindProject:
-		if req.ProjectID == uuid.Nil {
-			return nil, "", apperror.Invalid("project_id", apperror.FieldRequired)
-		}
-		if verr := s.requireOrgProjects(ctx, req.OrgID, ProjectGrant{ProjectIDs: []uuid.UUID{req.ProjectID}}); verr != nil {
-			return nil, "", verr
-		}
-		k, plaintext, err = s.scheme.MintProject(req.OrgID, req.ProjectID, req.Name, req.Scopes, req.ResourceIDs, req.ExpiresAt, now)
-	case KindOrg:
-		grant := ProjectGrant{All: req.AllProjects, ProjectIDs: req.ProjectIDs}
-		if verr := s.requireOrgProjects(ctx, req.OrgID, grant); verr != nil {
-			return nil, "", verr
-		}
-		k, plaintext, err = s.scheme.MintOrg(req.OrgID, req.Name, req.Scopes, grant, req.ExpiresAt, now)
-	case KindPersonal:
-		grant := ProjectGrant{All: req.AllProjects, ProjectIDs: req.ProjectIDs}
-		if verr := s.requireOrgProjects(ctx, req.OrgID, grant); verr != nil {
-			return nil, "", verr
-		}
-		k, plaintext, err = s.scheme.MintPersonal(req.OrgID, req.CreatedBy, req.Name, req.Scopes, grant, req.ExpiresAt, now)
-	default:
-		return nil, "", apperror.Invalid("kind", apperror.FieldInvalid)
-	}
+	mint, err := s.minter(ctx, req)
 	if err != nil {
 		return nil, "", err
 	}
-	k.CreatedBy = req.CreatedBy
-	if err := s.store.Save(ctx, k); err != nil {
-		return nil, "", s.errOrReport(ctx, "apikey: create", err)
+	for range mintAttempts {
+		k, plaintext, err := mint(s.now())
+		if err != nil {
+			return nil, "", err
+		}
+		k.CreatedBy = req.CreatedBy
+		err = s.store.Save(ctx, k)
+		if IsHintTakenError(err) {
+			continue
+		}
+		if err != nil {
+			return nil, "", s.errOrReport(ctx, "apikey: create", err)
+		}
+		return k, plaintext, nil
 	}
-	return k, plaintext, nil
+	return nil, "", s.unexpected(ctx, "apikey: create", &HintTakenError{})
+}
+
+type mintFunc func(now time.Time) (*APIKey, string, error)
+
+func (s *Service) minter(ctx context.Context, req CreateRequest) (mintFunc, error) {
+	switch req.Kind {
+	case KindProject:
+		if req.ProjectID == uuid.Nil {
+			return nil, apperror.Invalid("project_id", apperror.FieldRequired)
+		}
+		if err := s.requireOrgProjects(ctx, req.OrgID, ProjectGrant{ProjectIDs: []uuid.UUID{req.ProjectID}}); err != nil {
+			return nil, err
+		}
+		return func(now time.Time) (*APIKey, string, error) {
+			return s.scheme.MintProject(req.OrgID, req.ProjectID, req.Name, req.Scopes, req.ResourceIDs, req.ExpiresAt, now)
+		}, nil
+	case KindOrg:
+		grant := ProjectGrant{All: req.AllProjects, ProjectIDs: req.ProjectIDs}
+		if err := s.requireOrgProjects(ctx, req.OrgID, grant); err != nil {
+			return nil, err
+		}
+		return func(now time.Time) (*APIKey, string, error) {
+			return s.scheme.MintOrg(req.OrgID, req.Name, req.Scopes, grant, req.ExpiresAt, now)
+		}, nil
+	case KindPersonal:
+		grant := ProjectGrant{All: req.AllProjects, ProjectIDs: req.ProjectIDs}
+		if err := s.requireOrgProjects(ctx, req.OrgID, grant); err != nil {
+			return nil, err
+		}
+		return func(now time.Time) (*APIKey, string, error) {
+			return s.scheme.MintPersonal(req.OrgID, req.CreatedBy, req.Name, req.Scopes, grant, req.ExpiresAt, now)
+		}, nil
+	}
+	return nil, apperror.Invalid("kind", apperror.FieldInvalid)
 }
 
 func (s *Service) requirePersonalAllowed(ownerID uuid.UUID) error {
@@ -188,8 +207,12 @@ func (s *Service) Revoke(ctx context.Context, orgID, id, viewer uuid.UUID, manag
 	if err != nil {
 		return s.errOrReport(ctx, "apikey: revoke", err)
 	}
+	return s.revoke(ctx, orgID, k, viewer, manage)
+}
+
+func (s *Service) revoke(ctx context.Context, orgID uuid.UUID, k *APIKey, viewer uuid.UUID, manage bool) error {
 	if k.OrgID != orgID || !visibleTo(k, viewer) {
-		return &NotFoundError{ID: id.String()}
+		return &NotFoundError{ID: k.ID.String()}
 	}
 	if !manage && (k.Kind != KindPersonal || k.CreatedBy != viewer) {
 		return &authz.ForbiddenError{Permission: scope.ApikeyWrite}
@@ -199,6 +222,17 @@ func (s *Service) Revoke(ctx context.Context, orgID, id, viewer uuid.UUID, manag
 		return s.errOrReport(ctx, "apikey: revoke", err)
 	}
 	return nil
+}
+
+// RevokeByHint revokes orgID's live key whose secret ends with hint (a leading … as shown is ignored), under the same rules as Revoke.
+func (s *Service) RevokeByHint(ctx context.Context, orgID uuid.UUID, hint string, viewer uuid.UUID, manage bool) error {
+	hint = strings.TrimSpace(hint)
+	hint = strings.TrimPrefix(strings.TrimPrefix(hint, "…"), "...")
+	k, err := s.store.ByHint(ctx, orgID, hint)
+	if err != nil {
+		return s.errOrReport(ctx, "apikey: revoke", err)
+	}
+	return s.revoke(ctx, orgID, k, viewer, manage)
 }
 
 // RevokePersonalOf revokes every live personal key userID owns in orgID; it joins the transaction on ctx.

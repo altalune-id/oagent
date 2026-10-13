@@ -33,6 +33,30 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID, target string) (
 	return row.toEntry(), nil
 }
 
+// IDByPublicID returns the id of target's entry whose public id is publicID within the caller's org, or *NotFoundError.
+func (s *postgresStore) IDByPublicID(ctx context.Context, publicID, target string) (uuid.UUID, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	stmt := postgres.SELECT(s.entries.ID).
+		FROM(s.entries).
+		WHERE(s.entries.OrgID.EQ(postgres.UUID(tc.OrgID)).
+			AND(s.entries.PublicID.EQ(postgres.String(publicID))).
+			AND(s.entries.Target.EQ(postgres.String(target))))
+
+	var row struct {
+		ID uuid.UUID `alias:"outbox_entries.id"`
+	}
+	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
+		if db.IsNoRows(err) {
+			return uuid.Nil, &NotFoundError{ID: publicID}
+		}
+		return uuid.Nil, fmt.Errorf("outbox.postgres: IDByPublicID: %w", err)
+	}
+	return row.ID, nil
+}
+
 // ListByTarget returns up to limit entries of target, newest first.
 func (s *postgresStore) ListByTarget(ctx context.Context, target string, limit int) ([]Entry, error) {
 	tc, err := tenant.From(ctx)

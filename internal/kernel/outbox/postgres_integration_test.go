@@ -19,6 +19,7 @@ import (
 	"altalune.id/oagent/internal/kernel/outbox"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/testutil/pgtest"
+	"altalune.id/oagent/nanoid"
 )
 
 type fixture struct {
@@ -65,12 +66,14 @@ func (f *fixture) count(t *testing.T, query string, args ...any) int {
 
 func newEntry(tc tenant.Context, target string) outbox.Entry {
 	return outbox.Entry{
-		ID:        uuid.New(),
-		EventID:   uuid.New(),
-		OrgID:     tc.OrgID,
-		ProjectID: tc.ProjectID,
-		Target:    target,
-		Payload:   []byte(`{"k":"v"}`),
+		ID:            uuid.New(),
+		PublicID:      nanoid.MustNew(21),
+		EventID:       uuid.New(),
+		EventPublicID: nanoid.MustNew(21),
+		OrgID:         tc.OrgID,
+		ProjectID:     tc.ProjectID,
+		Target:        target,
+		Payload:       []byte(`{"k":"v"}`),
 	}
 }
 
@@ -135,11 +138,13 @@ func TestEnqueue_IsIdempotentPerOrgEventAndTarget(t *testing.T) {
 
 	repeat := first
 	repeat.ID = uuid.New()
+	repeat.PublicID = nanoid.MustNew(21)
 	repeat.Payload = []byte("changed")
 	require.NoError(t, f.store.Enqueue(ctx, repeat), "a repeat must be a silent no-op")
 
 	sameEventOtherTarget := first
 	sameEventOtherTarget.ID = uuid.New()
+	sameEventOtherTarget.PublicID = nanoid.MustNew(21)
 	sameEventOtherTarget.Target = "t2"
 	require.NoError(t, f.store.Enqueue(ctx, sameEventOtherTarget))
 
@@ -758,8 +763,8 @@ func TestListByTarget_NewestFirstScopedAndLimited(t *testing.T) {
 func TestListByTarget_CapsTheLimit(t *testing.T) {
 	f := newFixture(t)
 	ctx, tc := f.seedTenant(t)
-	f.exec(t, `INSERT INTO outbox_entries (id, event_id, org_id, project_id, target, payload, next_attempt_at, created_at)
-		SELECT gen_random_uuid(), gen_random_uuid(), $1, $2, 't', '\x00', now(), now() FROM generate_series(1, $3)`,
+	f.exec(t, `INSERT INTO outbox_entries (id, event_id, org_id, project_id, target, payload, next_attempt_at, created_at, public_id, event_public_id)
+		SELECT gen_random_uuid(), gen_random_uuid(), $1, $2, 't', '\x00', now(), now(), gen_random_uuid()::text, 'e' FROM generate_series(1, $3)`,
 		tc.OrgID, tc.ProjectID, outbox.MaxListLimit+5)
 
 	got, err := f.store.ListByTarget(ctx, "t", outbox.MaxListLimit*10)
@@ -784,4 +789,29 @@ func TestEnqueue_PayloadNullability(t *testing.T) {
 	require.Error(t, err, "a nil payload is not validated and reaches the NOT NULL constraint")
 	assert.False(t, outbox.IsInvalidEntryError(err))
 	assert.Contains(t, err.Error(), "payload")
+}
+
+func TestIDByPublicID(t *testing.T) {
+	f := newFixture(t)
+	ctx, tc := f.seedTenant(t)
+	otherCtx, _ := f.seedTenant(t)
+	e := newEntry(tc, "ep-1")
+	require.NoError(t, f.store.Enqueue(ctx, e))
+
+	got, err := f.store.IDByPublicID(ctx, e.PublicID, "ep-1")
+	require.NoError(t, err)
+	assert.Equal(t, e.ID, got)
+	stored, err := f.store.ByID(ctx, e.ID, "ep-1")
+	require.NoError(t, err)
+	assert.Equal(t, e.PublicID, stored.PublicID)
+	assert.Equal(t, e.EventPublicID, stored.EventPublicID)
+
+	_, err = f.store.IDByPublicID(ctx, e.PublicID, "ep-2")
+	assert.True(t, outbox.IsNotFoundError(err), "another target's delivery is not found")
+	_, err = f.store.IDByPublicID(otherCtx, e.PublicID, "ep-1")
+	assert.True(t, outbox.IsNotFoundError(err), "another org's delivery is not found")
+	_, err = f.store.IDByPublicID(ctx, e.ID.String(), "ep-1")
+	assert.True(t, outbox.IsNotFoundError(err), "a uuid is not a public id")
+	_, err = f.store.IDByPublicID(t.Context(), e.PublicID, "ep-1")
+	assert.True(t, tenant.IsMissingError(err))
 }

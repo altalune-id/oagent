@@ -42,7 +42,9 @@ const (
 // Entry is one durable delivery record.
 type Entry struct {
 	ID            uuid.UUID
+	PublicID      string
 	EventID       uuid.UUID
+	EventPublicID string
 	OrgID         uuid.UUID
 	ProjectID     uuid.UUID
 	Target        string
@@ -83,8 +85,12 @@ func (e Entry) validate() error {
 	switch {
 	case e.ID == uuid.Nil:
 		return &InvalidEntryError{Field: "ID", Reason: "must not be the zero uuid"}
+	case e.PublicID == "":
+		return &InvalidEntryError{Field: "PublicID", Reason: "must not be empty"}
 	case e.EventID == uuid.Nil:
 		return &InvalidEntryError{Field: "EventID", Reason: "must not be the zero uuid"}
+	case e.EventPublicID == "":
+		return &InvalidEntryError{Field: "EventPublicID", Reason: "must not be empty"}
 	case e.OrgID == uuid.Nil:
 		return &InvalidEntryError{Field: "OrgID", Reason: "must not be the zero uuid"}
 	case e.ProjectID == uuid.Nil:
@@ -119,12 +125,16 @@ type entryRow struct {
 	Status        string    `alias:"outbox_entries.status"`
 	LastError     string    `alias:"outbox_entries.last_error"`
 	CreatedAt     time.Time `alias:"outbox_entries.created_at"`
+	PublicID      string    `alias:"outbox_entries.public_id"`
+	EventPublicID string    `alias:"outbox_entries.event_public_id"`
 }
 
 func (r *entryRow) toEntry() Entry {
 	return Entry{
 		ID:            r.ID,
+		PublicID:      r.PublicID,
 		EventID:       r.EventID,
+		EventPublicID: r.EventPublicID,
 		OrgID:         r.OrgID,
 		ProjectID:     r.ProjectID,
 		Target:        r.Target,

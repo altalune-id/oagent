@@ -175,3 +175,20 @@ func TestService_AcceptTerms(t *testing.T) {
 	_, err = svc.AcceptTerms(context.Background(), uuid.New())
 	assert.True(t, user.IsNotFoundError(err))
 }
+
+func TestService_ByPublicID(t *testing.T) {
+	store := fakes.NewUserStore()
+	u, err := user.New("pub@example.com", "Pub")
+	require.NoError(t, err)
+	require.NoError(t, store.Save(context.Background(), u))
+
+	got, err := newService(store).ByPublicID(context.Background(), u.PublicID)
+	require.NoError(t, err)
+	assert.Equal(t, u.ID, got.ID)
+	_, err = newService(store).ByPublicID(context.Background(), "nope")
+	assert.True(t, user.IsNotFoundError(err))
+	store.Err = errors.New("down")
+	_, err = newService(store).ByPublicID(context.Background(), u.PublicID)
+	_, isApp := apperror.AsAppError(err)
+	assert.True(t, isApp)
+}

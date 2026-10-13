@@ -14,6 +14,8 @@ type Store interface {
 	SaveSecrets(ctx context.Context, id uuid.UUID, expected, next SealedSecrets) error
 	// ByID returns the endpoint in the caller's org, or a *NotFoundError.
 	ByID(ctx context.Context, id uuid.UUID) (*Endpoint, error)
+	// ByPublicID returns the endpoint with publicID in the caller's org, or a *NotFoundError.
+	ByPublicID(ctx context.Context, publicID string) (*Endpoint, error)
 	// List returns the project's endpoints, newest first.
 	List(ctx context.Context, orgID, projectID uuid.UUID) ([]*Endpoint, error)
 	// ListByOrg returns the endpoints of every project in orgID, oldest first.

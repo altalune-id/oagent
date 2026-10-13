@@ -26,6 +26,22 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*Project, error
 	return row.toProject(), nil
 }
 
+// ByPublicID loads a project by its public id.
+func (s *postgresStore) ByPublicID(ctx context.Context, publicID string) (*Project, error) {
+	stmt := postgres.SELECT(s.projects.AllColumns).
+		FROM(s.projects).
+		WHERE(s.projects.PublicID.EQ(postgres.String(publicID))).
+		LIMIT(1)
+	var row projectRow
+	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
+		if db.IsNoRows(err) {
+			return nil, &NotFoundError{ID: publicID}
+		}
+		return nil, fmt.Errorf("project.postgres: ByPublicID: %w", err)
+	}
+	return row.toProject(), nil
+}
+
 // BySlug loads a project by slug within an organization.
 func (s *postgresStore) BySlug(ctx context.Context, orgID uuid.UUID, slug string) (*Project, error) {
 	stmt := postgres.SELECT(s.projects.AllColumns).

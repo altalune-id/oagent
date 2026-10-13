@@ -65,10 +65,24 @@ func (s *postgresStore) claimDue(ctx context.Context, tx *sql.Tx, now time.Time,
 		ORDER_BY(s.q.NextAttemptAt.ASC()).
 		LIMIT(claimBatch(limit)).
 		FOR(postgres.UPDATE().SKIP_LOCKED())
+	// NOTE: locked first, then updated by id; an IN (subquery) may be rescanned and claim more than limit.
+	var locked []struct {
+		ID uuid.UUID `alias:"mail_queue.id"`
+	}
+	if err := due.QueryContext(ctx, tx, &locked); err != nil && !db.IsNoRows(err) {
+		return nil, fmt.Errorf("mailqueue.postgres.ClaimDue: lock due: %w", err)
+	}
+	if len(locked) == 0 {
+		return []Entry{}, nil
+	}
+	ids := make([]postgres.Expression, len(locked))
+	for i, l := range locked {
+		ids[i] = postgres.UUID(l.ID)
+	}
 
 	stmt := s.q.UPDATE(s.q.Attempt, s.q.NextAttemptAt).
 		SET(s.q.Attempt.ADD(postgres.Int(1)), postgres.TimestampzT(now.UTC().Add(ClaimLease))).
-		WHERE(s.q.ID.IN(due)).
+		WHERE(s.q.ID.IN(ids...)).
 		RETURNING(s.q.AllColumns)
 
 	var rows []entryRow

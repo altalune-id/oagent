@@ -361,3 +361,17 @@ func TestProjectStore_ConcurrentSameSlugExactlyOneWins(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, all, 1)
 }
+
+func TestProjectStore_ByPublicID(t *testing.T) {
+	f := newProjectFixture(t)
+	p := newProject(t, f.seedOrg(t, "acme"), "web", uuid.Nil)
+	require.NoError(t, f.projects.Save(t.Context(), p))
+
+	got, err := f.projects.ByPublicID(t.Context(), p.PublicID)
+	require.NoError(t, err)
+	assert.Equal(t, p.ID, got.ID)
+	for _, bad := range []string{"", "nope", p.ID.String()} {
+		_, err = f.projects.ByPublicID(t.Context(), bad)
+		assert.True(t, project.IsNotFoundError(err), "%q is not a public id", bad)
+	}
+}

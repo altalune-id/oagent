@@ -10,12 +10,14 @@ import (
 
 func validEntry() Entry {
 	return Entry{
-		ID:        uuid.New(),
-		EventID:   uuid.New(),
-		OrgID:     uuid.New(),
-		ProjectID: uuid.New(),
-		Target:    "endpoint",
-		Payload:   []byte("{}"),
+		ID:            uuid.New(),
+		PublicID:      "delivery",
+		EventID:       uuid.New(),
+		EventPublicID: "event",
+		OrgID:         uuid.New(),
+		ProjectID:     uuid.New(),
+		Target:        "endpoint",
+		Payload:       []byte("{}"),
 	}
 }
 
@@ -28,6 +30,14 @@ func TestValidate(t *testing.T) {
 
 	e = validEntry()
 	e.OrgID = uuid.Nil
+	assert.True(t, IsInvalidEntryError(e.validate()))
+
+	e = validEntry()
+	e.PublicID = ""
+	assert.True(t, IsInvalidEntryError(e.validate()))
+
+	e = validEntry()
+	e.EventPublicID = ""
 	assert.True(t, IsInvalidEntryError(e.validate()))
 
 	e = validEntry()

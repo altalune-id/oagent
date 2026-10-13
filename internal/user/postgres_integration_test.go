@@ -176,3 +176,17 @@ func TestPostgresStore_AcceptTermsUsesTheDatabaseClock(t *testing.T) {
 	_, err := s.AcceptTerms(ctx, uuid.New())
 	assert.True(t, user.IsNotFoundError(err))
 }
+
+func TestPostgresStore_ByPublicID(t *testing.T) {
+	s, _ := newPGStore(t)
+	u := mustNew(t, "pub@example.com")
+	require.NoError(t, s.Save(t.Context(), u))
+
+	got, err := s.ByPublicID(t.Context(), u.PublicID)
+	require.NoError(t, err)
+	assert.Equal(t, u.ID, got.ID)
+	for _, bad := range []string{"", "nope", u.ID.String()} {
+		_, err = s.ByPublicID(t.Context(), bad)
+		assert.True(t, user.IsNotFoundError(err), "%q is not a public id", bad)
+	}
+}

@@ -3,11 +3,13 @@ package apikey
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"altalune.id/oagent/internal/kernel/db"
 )
@@ -40,6 +42,9 @@ func (s *postgresStore) save(ctx context.Context, tx *sql.Tx, k *APIKey) error {
 			s.keys.LastUsedAt.SET(pgNullableTimeExpr(k.LastUsedAt)),
 		))
 	if _, err := stmt.ExecContext(ctx, tx); err != nil {
+		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" && pgErr.ConstraintName == s.hintIndex {
+			return &HintTakenError{}
+		}
 		return fmt.Errorf("apikey.postgres: Save: %w", err)
 	}
 	return nil

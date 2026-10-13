@@ -69,6 +69,21 @@ func (f *UserStore) ByID(_ context.Context, id uuid.UUID) (*user.User, error) {
 	return &u, nil
 }
 
+// ByPublicID implements user.Store.
+func (f *UserStore) ByPublicID(_ context.Context, publicID string) (*user.User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	for _, u := range f.users {
+		if u.PublicID == publicID {
+			return &u, nil
+		}
+	}
+	return nil, &user.NotFoundError{}
+}
+
 // ByEmail implements user.Store.
 func (f *UserStore) ByEmail(_ context.Context, email string) (*user.User, error) {
 	f.mu.Lock()

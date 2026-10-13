@@ -25,6 +25,11 @@ func (s *postgresStore) ByEmail(ctx context.Context, email string) (*User, error
 	return s.one(ctx, db.Writer(ctx, s.pool), "ByEmail", s.users.Email.EQ(postgres.String(e)))
 }
 
+// ByPublicID loads a user by public id.
+func (s *postgresStore) ByPublicID(ctx context.Context, publicID string) (*User, error) {
+	return s.one(ctx, db.Reader(ctx, s.pool), "ByPublicID", s.users.PublicID.EQ(postgres.String(publicID)))
+}
+
 func (s *postgresStore) one(ctx context.Context, conn qrm.DB, op string, where postgres.BoolExpression) (*User, error) {
 	stmt := postgres.SELECT(s.users.AllColumns).FROM(s.users).WHERE(where).LIMIT(1)
 	var row userRow

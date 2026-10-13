@@ -61,6 +61,19 @@ func (f *APIKeyStore) ByID(context.Context, uuid.UUID) (*apikey.APIKey, error) {
 	return f.Key, nil
 }
 
+// ByHint implements apikey.Store; it finds a live Key or one of Keys in orgID by hint.
+func (f *APIKeyStore) ByHint(_ context.Context, orgID uuid.UUID, hint string) (*apikey.APIKey, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	for _, k := range append([]*apikey.APIKey{f.Key}, f.Keys...) {
+		if k != nil && k.OrgID == orgID && k.SecretHint == hint && k.RevokedAt == nil {
+			return k, nil
+		}
+	}
+	return nil, &apikey.NotFoundError{}
+}
+
 // List implements apikey.Store.
 func (f *APIKeyStore) List(context.Context, uuid.UUID) ([]*apikey.APIKey, error) {
 	if f.Err != nil {

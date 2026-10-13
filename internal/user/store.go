@@ -16,6 +16,7 @@ type Store interface {
 type Reader interface {
 	ByID(ctx context.Context, id uuid.UUID) (*User, error)
 	ByEmail(ctx context.Context, email string) (*User, error)
+	ByPublicID(ctx context.Context, publicID string) (*User, error)
 }
 
 // Writer writes users.

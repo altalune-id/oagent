@@ -101,6 +101,15 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (*Agent, error) {
 	return a, nil
 }
 
+// ByPublicID loads an agent by its public id.
+func (s *Service) ByPublicID(ctx context.Context, publicID string) (*Agent, error) {
+	a, err := s.store.ByPublicID(ctx, publicID)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "agent: by public id", err)
+	}
+	return a, nil
+}
+
 // List returns a project's agents.
 func (s *Service) List(ctx context.Context, projectID uuid.UUID) ([]*Agent, error) {
 	agents, err := s.store.List(ctx, projectID)

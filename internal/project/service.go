@@ -71,6 +71,15 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (*Project, error) {
 	return p, nil
 }
 
+// ByPublicID loads a project by its public id.
+func (s *Service) ByPublicID(ctx context.Context, publicID string) (*Project, error) {
+	p, err := s.store.ByPublicID(ctx, publicID)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "project: by public id", err)
+	}
+	return p, nil
+}
+
 // BySlug loads a project by slug within an org.
 func (s *Service) BySlug(ctx context.Context, orgID uuid.UUID, slug string) (*Project, error) {
 	p, err := s.store.BySlug(ctx, orgID, slug)

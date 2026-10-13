@@ -18,6 +18,8 @@ type OutboxEntries struct {
 	LastError     postgres.ColumnString
 	CreatedAt     postgres.ColumnTimestampz
 	DeliveredAt   postgres.ColumnTimestampz
+	PublicID      postgres.ColumnString
+	EventPublicID postgres.ColumnString
 
 	AllColumns postgres.ColumnList
 }
@@ -40,9 +42,11 @@ func NewOutboxEntries(schema, tablePrefix string) *OutboxEntries {
 		lastError     = postgres.StringColumn("last_error")
 		createdAt     = postgres.TimestampzColumn("created_at")
 		deliveredAt   = postgres.TimestampzColumn("delivered_at")
+		publicID      = postgres.StringColumn("public_id")
+		eventPublicID = postgres.StringColumn("event_public_id")
 		all           = postgres.ColumnList{
 			id, eventID, orgID, projectID, target, payload, attempt,
-			nextAttemptAt, status, lastError, createdAt, deliveredAt,
+			nextAttemptAt, status, lastError, createdAt, deliveredAt, publicID, eventPublicID,
 		}
 	)
 	return &OutboxEntries{
@@ -59,6 +63,8 @@ func NewOutboxEntries(schema, tablePrefix string) *OutboxEntries {
 		LastError:     lastError,
 		CreatedAt:     createdAt,
 		DeliveredAt:   deliveredAt,
+		PublicID:      publicID,
+		EventPublicID: eventPublicID,
 		AllColumns:    all,
 	}
 }

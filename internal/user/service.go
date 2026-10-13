@@ -54,6 +54,15 @@ func (s *Service) ByID(ctx context.Context, id uuid.UUID) (*User, error) {
 	return u, nil
 }
 
+// ByPublicID returns the user with publicID.
+func (s *Service) ByPublicID(ctx context.Context, publicID string) (*User, error) {
+	u, err := s.store.ByPublicID(ctx, publicID)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "user: by public id", err)
+	}
+	return u, nil
+}
+
 // ByEmail returns the user with email, compared after normalization.
 func (s *Service) ByEmail(ctx context.Context, email string) (*User, error) {
 	u, err := s.store.ByEmail(ctx, email)

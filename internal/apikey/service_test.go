@@ -204,3 +204,76 @@ func TestService_Revoke_OtherKeysNeedManage(t *testing.T) {
 	assert.Equal(t, scope.ApikeyWrite, forbidden.Permission)
 	assert.Nil(t, store.Saved)
 }
+
+func TestService_Create_RemintsOnAHintCollision(t *testing.T) {
+	var hints []string
+	store := &fakes.APIKeyStore{SaveFn: func(k *apikey.APIKey) error {
+		hints = append(hints, k.SecretHint)
+		if len(hints) == 1 {
+			return &apikey.HintTakenError{}
+		}
+		return nil
+	}}
+	k, plaintext, err := newService(store, stubProjects{}).Create(context.Background(), apikey.CreateRequest{
+		OrgID: uuid.New(), Kind: apikey.KindOrg, Name: "ci", AllProjects: true, ExpiresAt: future(),
+	})
+	require.NoError(t, err)
+	require.Len(t, hints, 2, "a taken hint mints a new secret")
+	assert.Equal(t, k.SecretHint, hints[1])
+	assert.True(t, k.Matches(plaintext), "the returned secret is the one that was saved")
+}
+
+func TestService_Create_GivesUpAfterBoundedReMints(t *testing.T) {
+	saves := 0
+	store := &fakes.APIKeyStore{SaveFn: func(*apikey.APIKey) error {
+		saves++
+		return &apikey.HintTakenError{}
+	}}
+	_, _, err := newService(store, stubProjects{}).Create(context.Background(), apikey.CreateRequest{
+		OrgID: uuid.New(), Kind: apikey.KindOrg, Name: "ci", AllProjects: true, ExpiresAt: future(),
+	})
+	ae, ok := apperror.AsAppError(err)
+	require.True(t, ok)
+	assert.Equal(t, apperror.KindInternal, apperror.KindOf(ae.Code()))
+	assert.Equal(t, 5, saves)
+}
+
+func TestService_RevokeByHint(t *testing.T) {
+	orgID := uuid.New()
+	mint := func(org uuid.UUID) *apikey.APIKey {
+		k, _, err := apikey.NewScheme("").MintOrg(org, "x", nil, apikey.ProjectGrant{All: true}, future(), time.Now().UTC())
+		require.NoError(t, err)
+		return k
+	}
+	target, other := mint(orgID), mint(orgID)
+	store := &fakes.APIKeyStore{Keys: []*apikey.APIKey{other, target}}
+	svc := newService(store, stubProjects{})
+
+	require.NoError(t, svc.RevokeByHint(context.Background(), orgID, target.SecretHint, uuid.Nil, true))
+	require.Same(t, target, store.Saved, "only the key with that hint is revoked")
+	assert.NotNil(t, target.RevokedAt)
+	assert.Nil(t, other.RevokedAt)
+
+	err := svc.RevokeByHint(context.Background(), uuid.New(), other.SecretHint, uuid.Nil, true)
+	assert.True(t, apikey.IsNotFoundError(err), "another org's hint is not found")
+	err = svc.RevokeByHint(context.Background(), orgID, target.SecretHint, uuid.Nil, true)
+	assert.True(t, apikey.IsNotFoundError(err), "a revoked key is no longer found by its hint")
+}
+
+func TestService_RevokeByHint_StoreError(t *testing.T) {
+	err := newService(&fakes.APIKeyStore{Err: errors.New("boom")}, stubProjects{}).RevokeByHint(context.Background(), uuid.New(), "abcd", uuid.Nil, true)
+	_, ok := apperror.AsAppError(err)
+	assert.True(t, ok)
+}
+
+func TestService_RevokeByHint_AcceptsTheHintAsShown(t *testing.T) {
+	orgID := uuid.New()
+	k, _, err := apikey.NewScheme("").MintOrg(orgID, "x", nil, apikey.ProjectGrant{All: true}, future(), time.Now().UTC())
+	require.NoError(t, err)
+	for _, shown := range []string{"…" + k.SecretHint, "..." + k.SecretHint, " " + k.SecretHint + " "} {
+		k.RevokedAt = nil
+		store := &fakes.APIKeyStore{Keys: []*apikey.APIKey{k}}
+		require.NoError(t, newService(store, stubProjects{}).RevokeByHint(context.Background(), orgID, shown, uuid.Nil, true), "%q", shown)
+		assert.NotNil(t, k.RevokedAt, "%q", shown)
+	}
+}

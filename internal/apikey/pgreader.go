@@ -26,6 +26,24 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*APIKey, error)
 	return row.toKey()
 }
 
+// ByHint loads orgID's live key whose secret ends with hint.
+func (s *postgresStore) ByHint(ctx context.Context, orgID uuid.UUID, hint string) (*APIKey, error) {
+	stmt := postgres.SELECT(s.selectColumns()).
+		FROM(s.keys).
+		WHERE(s.keys.OrgID.EQ(postgres.UUID(orgID)).
+			AND(s.keys.SecretHint.EQ(postgres.String(hint))).
+			AND(s.keys.RevokedAt.IS_NULL())).
+		LIMIT(1)
+	var row apiKeyRow
+	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
+		if db.IsNoRows(err) {
+			return nil, &NotFoundError{}
+		}
+		return nil, fmt.Errorf("apikey.postgres: ByHint: %w", err)
+	}
+	return row.toKey()
+}
+
 // List returns an organization's keys, newest first.
 func (s *postgresStore) List(ctx context.Context, orgID uuid.UUID) ([]*APIKey, error) {
 	stmt := postgres.SELECT(s.selectColumns()).

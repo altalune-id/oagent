@@ -37,6 +37,19 @@ func (f *ProjectStore) ByID(context.Context, uuid.UUID) (*project.Project, error
 	return f.Project, nil
 }
 
+// ByPublicID implements project.Store; it finds Project or one of Projects by public id.
+func (f *ProjectStore) ByPublicID(_ context.Context, publicID string) (*project.Project, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	for _, p := range append([]*project.Project{f.Project}, f.Projects...) {
+		if p != nil && p.PublicID == publicID {
+			return p, nil
+		}
+	}
+	return nil, &project.NotFoundError{ID: publicID}
+}
+
 // BySlug implements project.Store.
 func (f *ProjectStore) BySlug(context.Context, uuid.UUID, string) (*project.Project, error) {
 	if f.Err != nil {

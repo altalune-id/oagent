@@ -59,6 +59,18 @@ func (s *fakeStore) ByID(_ context.Context, id uuid.UUID) (*Endpoint, error) {
 	return nil, &NotFoundError{ID: id.String()}
 }
 
+func (s *fakeStore) ByPublicID(_ context.Context, publicID string) (*Endpoint, error) {
+	if s.byIDErr != nil {
+		return nil, s.byIDErr
+	}
+	for _, e := range s.endpoints {
+		if e.PublicID == publicID {
+			return e, nil
+		}
+	}
+	return nil, &NotFoundError{ID: publicID}
+}
+
 func (s *fakeStore) List(_ context.Context, orgID, projectID uuid.UUID) ([]*Endpoint, error) {
 	if s.listErr != nil {
 		return nil, s.listErr
@@ -134,6 +146,18 @@ func (f *fakeOutbox) ListByTarget(context.Context, string, int) ([]outbox.Entry,
 		return nil, f.listErr
 	}
 	return f.entries, nil
+}
+
+func (f *fakeOutbox) IDByPublicID(_ context.Context, publicID, target string) (uuid.UUID, error) {
+	if f.listErr != nil {
+		return uuid.Nil, f.listErr
+	}
+	for _, e := range f.entries {
+		if e.PublicID == publicID && e.Target == target {
+			return e.ID, nil
+		}
+	}
+	return uuid.Nil, &outbox.NotFoundError{ID: publicID}
 }
 
 func (f *fakeOutbox) Requeue(context.Context, uuid.UUID, string) error { return f.requeueErr }

@@ -213,3 +213,17 @@ func TestService_ProjectOrg(t *testing.T) {
 	require.Error(t, err)
 	assert.False(t, agent.IsNotFoundError(err))
 }
+
+func TestService_ByPublicID(t *testing.T) {
+	a, err := agent.New(uuid.New(), uuid.New(), "bot", "Bot", "", uuid.Nil)
+	require.NoError(t, err)
+	got, err := agent.NewService(&fakes.AgentStore{Agent: a}, fakes.Transactor{}, testUnexpected()).ByPublicID(context.Background(), a.PublicID)
+	require.NoError(t, err)
+	assert.Same(t, a, got)
+
+	_, err = agent.NewService(&fakes.AgentStore{Agent: a}, fakes.Transactor{}, testUnexpected()).ByPublicID(context.Background(), "nope")
+	assert.True(t, agent.IsNotFoundError(err))
+	_, err = agent.NewService(&fakes.AgentStore{Err: errors.New("down")}, fakes.Transactor{}, testUnexpected()).ByPublicID(context.Background(), a.PublicID)
+	_, isApp := apperror.AsAppError(err)
+	assert.True(t, isApp)
+}
