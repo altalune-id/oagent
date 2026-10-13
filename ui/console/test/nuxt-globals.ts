@@ -9,7 +9,7 @@ import { ErrorDetailSchema } from '../gen/apperror/v1/error_pb'
 
 // Stand-ins for the Nuxt auto-imports the app uses (nuxt.config.ts has imports.scan: false, so only built-ins are globals).
 
-export type ClientName = '$orgClient' | '$projectClient' | '$agentClient' | '$apiKeyClient' | '$webhookClient' | '$authClient'
+export type ClientName = '$orgClient' | '$projectClient' | '$agentClient' | '$apiKeyClient' | '$webhookClient' | '$authClient' | '$memberClient'
 
 let clients: Partial<Record<ClientName, Record<string, unknown>>> = {}
 let known = new Set<string>()
