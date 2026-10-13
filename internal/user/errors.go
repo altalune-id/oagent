@@ -26,6 +26,25 @@ func IsNotFoundError(err error) bool {
 	return ok
 }
 
+// UnknownEmailError reports that no user has the email an operator asked for; it is a NotFoundError.
+type UnknownEmailError struct{ Email string }
+
+// SECURITY: Error leaves the address out because errors reach logs; only the operator-facing envelope echoes it.
+func (*UnknownEmailError) Error() string { return "user: no user with that email" }
+
+func (*UnknownEmailError) Unwrap() error { return &NotFoundError{} }
+
+// ToAppError maps UnknownEmailError to the not-found envelope, naming the email.
+func (e *UnknownEmailError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeUserNotFound, "No user with email "+apperror.Echo(e.Email)).WithCause(e)
+}
+
+// IsUnknownEmailError reports whether err's tree contains an *UnknownEmailError.
+func IsUnknownEmailError(err error) bool {
+	_, ok := errors.AsType[*UnknownEmailError](err)
+	return ok
+}
+
 // AlreadyExistsError reports an email already taken by another user.
 type AlreadyExistsError struct{ Email string }
 

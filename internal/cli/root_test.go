@@ -14,6 +14,7 @@ import (
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/boot"
 	"altalune.id/oagent/internal/cli"
+	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/reqid"
 )
 
@@ -24,6 +25,10 @@ func (f fakeApp) RunMCP(context.Context) error { return f.runErr }
 func (f fakeApp) Close(context.Context) error  { return nil }
 
 func (f fakeApp) SetPassword(context.Context, string, string) error { return f.runErr }
+
+func (f fakeApp) AddMember(context.Context, string, string, member.Role) (*member.Membership, error) {
+	return nil, f.runErr
+}
 
 func setServeEnv(t *testing.T) {
 	t.Helper()

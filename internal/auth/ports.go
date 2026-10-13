@@ -13,9 +13,10 @@ import (
 	"altalune.id/oagent/internal/user"
 )
 
-// UserReader finds a user by email.
+// UserReader finds a user by email: ByEmail takes a normalized address, FindByEmail one an operator typed.
 type UserReader interface {
 	ByEmail(ctx context.Context, email string) (*user.User, error)
+	FindByEmail(ctx context.Context, raw string) (*user.User, error)
 }
 
 // MemberReader lists a user's memberships, oldest first.

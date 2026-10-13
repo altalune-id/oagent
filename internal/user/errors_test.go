@@ -23,6 +23,7 @@ func TestErrors(t *testing.T) {
 		"already exist": {&AlreadyExistsError{Email: "a@example.com"}, IsAlreadyExistsError, apperror.CodeUserAlreadyExists},
 		"invalid email": {&InvalidEmailError{}, IsInvalidEmailError, apperror.CodeUserInvalidEmail},
 		"invalid name":  {&InvalidNameError{}, IsInvalidNameError, apperror.CodeUserInvalidName},
+		"unknown email": {&UnknownEmailError{Email: "a@example.com"}, IsUnknownEmailError, apperror.CodeUserNotFound},
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.True(t, tc.is(tc.err))
@@ -32,6 +33,15 @@ func TestErrors(t *testing.T) {
 		})
 	}
 	assert.False(t, IsExpectedError(errors.New("boom")))
+}
+
+func TestUnknownEmailError(t *testing.T) {
+	err := &UnknownEmailError{Email: "ada@example.com"}
+
+	assert.True(t, IsNotFoundError(err), "it is a not-found")
+	assert.NotContains(t, err.Error(), "ada@example.com", "the address stays out of logs")
+	assert.Equal(t, "No user with email ada@example.com", err.ToAppError().Message())
+	assert.False(t, IsUnknownEmailError(&NotFoundError{}))
 }
 
 func TestIsUniqueViolation(t *testing.T) {

@@ -2,6 +2,7 @@ package member
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -16,12 +17,15 @@ import (
 	"altalune.id/oagent/scope"
 )
 
+var errNoDirectory = errors.New("member: no directory wired")
+
 // Service is the membership application service.
 type Service struct {
 	store      Store
 	pool       db.Pool
 	unexpected apperror.UnexpectedFunc
 	effects    *Effects
+	directory  Directory
 	afterLock  func()
 	opSupport  bool
 }
@@ -34,6 +38,12 @@ func NewService(store Store, pool db.Pool, unexpected apperror.UnexpectedFunc) *
 // WithEffects sets what removals and role changes do besides the membership row; without it they only change the row.
 func (s *Service) WithEffects(e Effects) *Service {
 	s.effects = &e
+	return s
+}
+
+// WithDirectory sets how AddByEmail finds people and orgs.
+func (s *Service) WithDirectory(d Directory) *Service {
+	s.directory = d
 	return s
 }
 
@@ -170,6 +180,22 @@ func (s *Service) AddExisting(ctx context.Context, r Requester, orgID, userID uu
 		return nil, s.errOrReport(ctx, "member: add existing", err)
 	}
 	return m, nil
+}
+
+// AddByEmail makes the existing user with email a member of the org orgSlug with role, on behalf of r.
+func (s *Service) AddByEmail(ctx context.Context, r Requester, email, orgSlug string, role Role) (*Membership, error) {
+	if s.directory == nil {
+		return nil, s.unexpected(ctx, "member: add by email", errNoDirectory)
+	}
+	userID, err := s.directory.UserIDByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	orgID, err := s.directory.OrgIDBySlug(ctx, orgSlug)
+	if err != nil {
+		return nil, err
+	}
+	return s.AddExisting(ctx, r, orgID, userID, role)
 }
 
 func (s *Service) guarded(

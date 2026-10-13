@@ -132,7 +132,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Install:      installer,
 		Caps:         caps,
 	}
-	members.WithEffects(memberEffects(cfg, svcs))
+	members.WithEffects(memberEffects(cfg, svcs)).WithDirectory(memberDirectory{users: users, orgs: orgs})
 	return svcs
 }
 
@@ -156,6 +156,27 @@ func (p memberPeople) Contact(ctx context.Context, userID uuid.UUID) (email, nam
 		return "", "", err
 	}
 	return u.Email, u.Name, nil
+}
+
+type memberDirectory struct {
+	users *user.Service
+	orgs  *org.Service
+}
+
+func (d memberDirectory) UserIDByEmail(ctx context.Context, email string) (uuid.UUID, error) {
+	u, err := d.users.FindByEmail(ctx, email)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return u.ID, nil
+}
+
+func (d memberDirectory) OrgIDBySlug(ctx context.Context, slug string) (uuid.UUID, error) {
+	o, err := d.orgs.BySlug(ctx, slug)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return o.ID, nil
 }
 
 type memberOrgs struct{ orgs *org.Service }

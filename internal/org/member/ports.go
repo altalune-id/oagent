@@ -28,6 +28,12 @@ type Orgs interface {
 	Name(ctx context.Context, orgID uuid.UUID) (string, error)
 }
 
+// Directory finds the person and org an operator names by email and slug.
+type Directory interface {
+	UserIDByEmail(ctx context.Context, email string) (uuid.UUID, error)
+	OrgIDBySlug(ctx context.Context, slug string) (uuid.UUID, error)
+}
+
 // Mail queues an email; it joins the transaction on ctx.
 type Mail interface {
 	Enqueue(ctx context.Context, m mailer.Message) (uuid.UUID, error)

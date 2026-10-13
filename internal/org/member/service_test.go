@@ -192,6 +192,73 @@ func TestService_RulesApply(t *testing.T) {
 	require.NoError(t, f.svc.Leave(f.ctx, f.org, admin.UserID), "a non-owner may always leave")
 }
 
+type fakeDirectory struct {
+	users   map[string]uuid.UUID
+	orgs    map[string]uuid.UUID
+	userErr error
+}
+
+func (d fakeDirectory) UserIDByEmail(_ context.Context, email string) (uuid.UUID, error) {
+	if id, ok := d.users[email]; ok {
+		return id, nil
+	}
+	return uuid.Nil, d.userErr
+}
+
+func (d fakeDirectory) OrgIDBySlug(_ context.Context, slug string) (uuid.UUID, error) {
+	if id, ok := d.orgs[slug]; ok {
+		return id, nil
+	}
+	return uuid.Nil, errUnknownOrg
+}
+
+var errUnknownOrg = errors.New("unknown org")
+
+func TestService_AddByEmail(t *testing.T) {
+	unknownEmail := errors.New("unknown email")
+	setup := func(t *testing.T) (*orgFixture, uuid.UUID) {
+		f := newOrgFixture(t)
+		f.add(member.RoleOwner)
+		alice := uuid.New()
+		f.svc.WithDirectory(fakeDirectory{
+			users:   map[string]uuid.UUID{"alice@example.com": alice},
+			orgs:    map[string]uuid.UUID{"acme": f.org},
+			userErr: unknownEmail,
+		})
+		return f, alice
+	}
+
+	t.Run("adds the user found by email to the org found by slug", func(t *testing.T) {
+		f, alice := setup(t)
+		m, err := f.svc.AddByEmail(f.ctx, operator, "alice@example.com", "acme", member.RoleAdmin)
+		require.NoError(t, err)
+		assert.Equal(t, alice, m.UserID)
+		assert.Equal(t, member.RoleAdmin, f.role(alice))
+	})
+	t.Run("an unknown email or org is returned as the directory reports it", func(t *testing.T) {
+		f, _ := setup(t)
+		_, err := f.svc.AddByEmail(f.ctx, operator, "bob@example.com", "acme", member.RoleMember)
+		assert.ErrorIs(t, err, unknownEmail)
+		_, err = f.svc.AddByEmail(f.ctx, operator, "alice@example.com", "nope", member.RoleMember)
+		assert.ErrorIs(t, err, errUnknownOrg)
+	})
+	t.Run("the add rules still apply", func(t *testing.T) {
+		f, alice := setup(t)
+		_, err := f.svc.AddByEmail(f.ctx, operator, "alice@example.com", "acme", member.RoleMember)
+		require.NoError(t, err)
+		_, err = f.svc.AddByEmail(f.ctx, operator, "alice@example.com", "acme", member.RoleOwner)
+		assert.True(t, member.IsAlreadyMemberError(err), "got %v", err)
+		assert.Equal(t, member.RoleMember, f.role(alice))
+		_, err = f.svc.AddByEmail(f.ctx, operator, "alice@example.com", "acme", "root")
+		assert.True(t, member.IsInvalidRoleError(err))
+	})
+	t.Run("without a directory it is an unexpected error", func(t *testing.T) {
+		f := newOrgFixture(t)
+		_, err := f.svc.AddByEmail(f.ctx, operator, "alice@example.com", "acme", member.RoleMember)
+		assert.True(t, isUnexpected(err), "got %v", err)
+	})
+}
+
 func TestService_AddExisting(t *testing.T) {
 	f := newOrgFixture(t)
 	owner := f.add(member.RoleOwner)

@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/config"
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
@@ -32,11 +34,12 @@ import (
 	"altalune.id/oagent/version"
 )
 
-// App is the running server the serve, mcp and user commands drive.
+// App is the running server the serve, mcp, user and member add commands drive.
 type App interface {
 	Run(ctx context.Context) error
 	RunMCP(ctx context.Context) error
 	SetPassword(ctx context.Context, email, password string) error
+	AddMember(ctx context.Context, email, orgSlug string, role member.Role) (*member.Membership, error)
 	Close(ctx context.Context) error
 }
 
@@ -54,6 +57,8 @@ const ctxKeyRuntime ctxKey = iota + 1
 
 // clientAnnotation marks remote commands; their config is loaded without validation (no DB required).
 const clientAnnotation = "oagent/client"
+
+const operatorAnnotation = "oagent/operator"
 
 type runtime struct {
 	cfg *config.Config
@@ -87,6 +92,9 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 		switch cmd.Name() {
 		case "version", "completion", "help":
 			return nil
+		}
+		if err := refuseRemoteFlags(cmd); err != nil {
+			return err
 		}
 		var cfgOpts []config.Option
 		if configPath != "" {
@@ -123,6 +131,10 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 	orgCmd := org.NewCmd(orgClientFn(bootClient))
 	markClientTree(orgCmd)
 
+	memberCmd := member.NewCmd(memberClientFn(bootClient))
+	markClientTree(memberCmd)
+	memberCmd.AddCommand(markOperator(member.NewAddCmd(addMemberFn(bootServer))))
+
 	projectCmd := project.NewCmd(projectClientFn(bootClient))
 	markClientTree(projectCmd)
 
@@ -138,16 +150,13 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 	authCmd := auth.NewCmd(sessionProfiles{}, authClientFn(bootClient), authSessionClientFn(bootClient))
 	markClientTree(authCmd)
 
-	memberCmd := member.NewCmd(memberClientFn(bootClient))
-	markClientTree(memberCmd)
-
 	root.AddCommand(
 		newServeCmd(bootServer),
 		newMCPCmd(bootServer),
-		user.NewCmd(setPasswordFn(bootServer)),
-		memberCmd,
+		markOperator(user.NewCmd(setPasswordFn(bootServer))),
 		authCmd,
 		orgCmd,
+		memberCmd,
 		projectCmd,
 		agentCmd,
 		apiKeyCmd,
@@ -284,21 +293,37 @@ func authSessionClientFn(bootClient ClientBootFn) auth.SessionClientFn {
 
 func setPasswordFn(bootServer ServerBootFn) user.SetPasswordFn {
 	return func(ctx context.Context, email, password string) error {
-		rt, err := runtimeFromCtx(ctx)
-		if err != nil {
-			return err
-		}
-		app, err := bootServer(ctx, *rt.cfg, rt.log,
-			boot.WithInstallURL(false),
-			boot.WithScheduler(false),
-			boot.WithConsumer(false),
-		)
-		if err != nil {
-			return err
-		}
-		defer func() { _ = app.Close(context.WithoutCancel(ctx)) }()
-		return app.SetPassword(ctx, email, password)
+		return withOperatorApp(ctx, bootServer, func(app App) error {
+			return app.SetPassword(ctx, email, password)
+		})
 	}
+}
+
+func addMemberFn(bootServer ServerBootFn) member.AddFn {
+	return func(ctx context.Context, email, orgSlug string, role member.Role) (m *member.Membership, err error) {
+		err = withOperatorApp(ctx, bootServer, func(app App) error {
+			m, err = app.AddMember(ctx, email, orgSlug, role)
+			return err
+		})
+		return m, err
+	}
+}
+
+func withOperatorApp(ctx context.Context, bootServer ServerBootFn, run func(App) error) error {
+	rt, err := runtimeFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+	app, err := bootServer(ctx, *rt.cfg, rt.log,
+		boot.WithInstallURL(false),
+		boot.WithScheduler(false),
+		boot.WithConsumer(false),
+	)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = app.Close(context.WithoutCancel(ctx)) }()
+	return run(app)
 }
 
 // markClientTree marks a command subtree as remote so its config loads without validation.
@@ -310,6 +335,32 @@ func markClientTree(cmd *cobra.Command) {
 	for _, sub := range cmd.Commands() {
 		markClientTree(sub)
 	}
+}
+
+func markOperator(cmd *cobra.Command) *cobra.Command {
+	if cmd.Annotations == nil {
+		cmd.Annotations = map[string]string{}
+	}
+	cmd.Annotations[operatorAnnotation] = "true"
+	for _, sub := range cmd.Commands() {
+		markOperator(sub)
+	}
+	return cmd
+}
+
+func refuseRemoteFlags(cmd *cobra.Command) error {
+	if cmd.Annotations[operatorAnnotation] != "true" {
+		return nil
+	}
+	for _, name := range []string{"url", "token", "token-file", "profile"} {
+		if f := cmd.Flags().Lookup(name); f != nil && f.Changed {
+			path := strings.TrimPrefix(cmd.CommandPath(), cmd.Root().Name()+" ")
+			return apperror.New(apperror.CodeValidation, fmt.Sprintf(
+				"%s runs on the server with database access; it can't use --%s. Run it on the server without --url, --token, --token-file or --profile",
+				path, name))
+		}
+	}
+	return nil
 }
 
 // registerConfigFlags declares the flags that override config keys.

@@ -29,8 +29,9 @@ flowchart TD
 ```
 
 `App.Run` starts the supervisor (`serve`). `App.RunMCP` serves MCP over stdio
-instead (`oagent mcp`). `App.SetPassword` is an operator action (`oagent user
-set-password`), booted with the install URL, scheduler and consumer off.
+instead (`oagent mcp`). `App.SetPassword` (`oagent user set-password`) and
+`App.AddMember` (`oagent member add`) are operator actions, booted with the
+install URL, scheduler and consumer off.
 `BootRemote` (`remote.go`) is the CLI side: config, a logger and a Connect
 client (`internal/apiclient`) to a running server, with no database.
 
@@ -68,7 +69,7 @@ flowchart TD
 | Domain | Service deps (ports) | Connect + CLI | MCP tools | Web routes |
 |---|---|---|---|---|
 | `org` | — | ✓ | ✓ | — |
-| `org/member` | effects: sessions, apikey (personal keys), user (contact), org (name), mail queue | ✓ (role changes and removal: people and the operator only; leave: the signed-in person) | `member_list` | — |
+| `org/member` | effects: sessions, apikey (personal keys), user (contact), org (name), mail queue | ✓ (role changes and removal: people and the operator only; leave: the signed-in person); CLI `member add` (operator, boots the `App`) | `member_list` | — |
 | `project` | — | ✓ | ✓ | — |
 | `agent` | webhook (publisher), project (org of project) | ✓ | ✓ | — |
 | `apikey` | project (ids), member (owner roles) | ✓ | — | — |
@@ -93,8 +94,8 @@ Connect client lives in `internal/apiclient`, which imports no domain.
 
 `buildServices` (`services.go`) builds each service once and passes it to
 whoever needs it. An arrow means "depends on". Small adapters in `services.go`
-(`projectIDs`, `projectOrgs`, `ownerRoles`, `refResolver`, `memberPeople`, `memberOrgs`) fit
-one service to another domain's port.
+(`projectIDs`, `projectOrgs`, `ownerRoles`, `refResolver`, `memberPeople`, `memberDirectory`,
+`memberOrgs`) fit one service to another domain's port.
 
 ```mermaid
 flowchart TD
@@ -149,6 +150,8 @@ off in selfhosted): staff (an operator who is a person) follow their role in org
 to, and manage other orgs with the admin permission set only when it is on (selfhosted refuses
 them there). No one acts on or grants more permissions than they hold, so only owners touch
 owners. The stdio System principal, basic auth and the CLI `App` keep full operator power.
+`WithDirectory(memberDirectory{…})` lets `member add` find the user by email and the org by
+slug.
 `install → auth` and `legal → auth` exist only on the web side, wired in
 `http.go`.
 

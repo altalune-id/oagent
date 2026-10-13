@@ -104,6 +104,25 @@ func TestService_Lookups(t *testing.T) {
 	assert.True(t, user.IsNotFoundError(err))
 }
 
+func TestService_FindByEmail(t *testing.T) {
+	svc := newService(fakes.NewUserStore())
+	u, err := svc.Create(context.Background(), user.CreateRequest{Email: "alice@example.com", Password: "correct horse battery"})
+	require.NoError(t, err)
+
+	got, err := svc.FindByEmail(context.Background(), "  Alice@Example.com ")
+	require.NoError(t, err)
+	assert.Equal(t, u.ID, got.ID)
+
+	_, err = svc.FindByEmail(context.Background(), "Bob@example.com")
+	ue, ok := errors.AsType[*user.UnknownEmailError](err)
+	require.True(t, ok, "got %v", err)
+	assert.Equal(t, "bob@example.com", ue.Email, "the envelope names the normalized address")
+	assert.True(t, user.IsNotFoundError(err))
+
+	_, err = svc.FindByEmail(context.Background(), "not an email")
+	assert.True(t, user.IsInvalidEmailError(err), "got %v", err)
+}
+
 func TestService_SetPassword(t *testing.T) {
 	store := fakes.NewUserStore()
 	svc := newService(store)
@@ -136,6 +155,8 @@ func TestService_StoreFailureIsReported(t *testing.T) {
 	_, err = svc.ByEmail(context.Background(), "a@example.com")
 	_, ok = errors.AsType[*apperror.AppError](err)
 	assert.True(t, ok)
+	_, err = svc.FindByEmail(context.Background(), "a@example.com")
+	assert.False(t, user.IsUnknownEmailError(err), "a store failure is not an unknown email")
 }
 
 func TestService_AcceptTerms(t *testing.T) {

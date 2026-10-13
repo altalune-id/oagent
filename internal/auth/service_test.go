@@ -31,6 +31,18 @@ func (f *fakeUsers) ByEmail(_ context.Context, email string) (*user.User, error)
 	return nil, &user.NotFoundError{}
 }
 
+func (f *fakeUsers) FindByEmail(ctx context.Context, raw string) (*user.User, error) {
+	email, err := user.NormalizeEmail(raw)
+	if err != nil {
+		return nil, err
+	}
+	u, err := f.ByEmail(ctx, email)
+	if user.IsNotFoundError(err) {
+		return nil, &user.UnknownEmailError{Email: email}
+	}
+	return u, err
+}
+
 type fakePasswords struct {
 	users *fakeUsers
 	calls []uuid.UUID
@@ -438,6 +450,7 @@ func TestSetPassword_PolicyErrorChangesNothing(t *testing.T) {
 func TestSetPassword_UnknownEmailIsNotFound(t *testing.T) {
 	f := newFixture(t, BasicCredentials{})
 	err := f.svc.SetPassword(context.Background(), "nobody@example.com", "a brand new password")
+	assert.True(t, user.IsUnknownEmailError(err), "%v", err)
 	assert.True(t, user.IsNotFoundError(err), "%v", err)
 	assert.False(t, IsInvalidCredentialsError(err))
 	assert.Empty(t, f.passwords.calls)

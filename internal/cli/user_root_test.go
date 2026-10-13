@@ -69,3 +69,20 @@ func TestUserSetPassword_AppError(t *testing.T) {
 	assert.True(t, user.IsNotFoundError(err))
 	assert.True(t, app.closed)
 }
+
+// SECURITY: set-password changes the database in the local config, so a remote flag must never be silently ignored.
+func TestUserSetPassword_RefusesRemoteFlags(t *testing.T) {
+	for _, flag := range []string{"url", "token", "token-file", "profile"} {
+		t.Run(flag, func(t *testing.T) {
+			app := &passwordApp{}
+			_, opts, err := runSetPassword(t, app, "a brand new password\n", "--email", "ada@example.com", "--password-stdin", "--"+flag, "x")
+
+			require.Error(t, err)
+			assert.Zero(t, opts, "the server never boots")
+			assert.Empty(t, app.email)
+			assert.Equal(t, cli.ExitInvalidArg, cli.ExitCodeFor(err))
+			assert.Contains(t, err.Error(), "user set-password runs on the server with database access")
+			assert.Contains(t, err.Error(), "--"+flag)
+		})
+	}
+}

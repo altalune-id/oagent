@@ -64,6 +64,19 @@ func (s *Service) ByEmail(ctx context.Context, email string) (*User, error) {
 	return u, nil
 }
 
+// FindByEmail returns the user with the address an operator typed; an unknown address is an UnknownEmailError naming it.
+func (s *Service) FindByEmail(ctx context.Context, raw string) (*User, error) {
+	email, err := NormalizeEmail(raw)
+	if err != nil {
+		return nil, err
+	}
+	u, err := s.ByEmail(ctx, email)
+	if IsNotFoundError(err) {
+		return nil, &UnknownEmailError{Email: email}
+	}
+	return u, err
+}
+
 // SetPassword replaces the user's password after a policy check.
 func (s *Service) SetPassword(ctx context.Context, id uuid.UUID, plain string) error {
 	u, err := s.ByID(ctx, id)

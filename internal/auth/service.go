@@ -93,11 +93,7 @@ func (s *Service) Refresh(ctx context.Context, p session.Principal) (session.Pri
 
 // SetPassword replaces the password of the user with email and signs out every session of theirs.
 func (s *Service) SetPassword(ctx context.Context, email, plain string) error {
-	normalized, err := user.NormalizeEmail(email)
-	if err != nil {
-		return err
-	}
-	u, err := s.deps.Users.ByEmail(ctx, normalized)
+	u, err := s.deps.Users.FindByEmail(ctx, email)
 	if err != nil {
 		return err
 	}
