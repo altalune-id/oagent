@@ -140,6 +140,12 @@ func TestMemberPeople(t *testing.T) {
 
 	_, _, err = memberPeople{users: users}.Contact(context.Background(), uuid.New())
 	assert.Error(t, err)
+
+	publicID, err := memberPeople{users: users}.PublicID(context.Background(), u.ID)
+	require.NoError(t, err)
+	assert.Equal(t, u.PublicID, publicID)
+	_, err = memberPeople{users: users}.PublicID(context.Background(), uuid.New())
+	assert.Error(t, err)
 }
 
 func TestMemberOrgs(t *testing.T) {

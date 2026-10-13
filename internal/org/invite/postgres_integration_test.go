@@ -39,6 +39,14 @@ type pgFixture struct {
 
 type userPeople struct{ users user.Store }
 
+func (p userPeople) PublicID(ctx context.Context, id uuid.UUID) (string, error) {
+	u, err := p.users.ByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return u.PublicID, nil
+}
+
 func (p userPeople) Contact(ctx context.Context, id uuid.UUID) (string, string, error) {
 	u, err := p.users.ByID(ctx, id)
 	if err != nil {

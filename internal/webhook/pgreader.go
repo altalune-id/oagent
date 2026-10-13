@@ -32,6 +32,27 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*Endpoint, erro
 	return row.toEndpoint()
 }
 
+// ListByOrg returns the endpoints of every project in orgID, oldest first.
+func (s *postgresStore) ListByOrg(ctx context.Context, orgID uuid.UUID) ([]*Endpoint, error) {
+	stmt := postgres.SELECT(s.endpoints.AllColumns).
+		FROM(s.endpoints).
+		WHERE(s.endpoints.OrgID.EQ(postgres.UUID(orgID))).
+		ORDER_BY(s.endpoints.CreatedAt.ASC(), s.endpoints.ID.ASC())
+	var rows []endpointRow
+	if err := stmt.QueryContext(ctx, s.reader(ctx), &rows); err != nil {
+		return nil, fmt.Errorf("webhook.postgres.ListByOrg: %w", err)
+	}
+	out := make([]*Endpoint, 0, len(rows))
+	for i := range rows {
+		e, err := rows[i].toEndpoint()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, nil
+}
+
 // List returns the project's endpoints, newest first.
 func (s *postgresStore) List(ctx context.Context, orgID, projectID uuid.UUID) ([]*Endpoint, error) {
 	tc, err := tenant.From(ctx)

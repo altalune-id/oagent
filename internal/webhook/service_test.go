@@ -72,6 +72,19 @@ func (s *fakeStore) List(_ context.Context, orgID, projectID uuid.UUID) ([]*Endp
 	return out, nil
 }
 
+func (s *fakeStore) ListByOrg(_ context.Context, orgID uuid.UUID) ([]*Endpoint, error) {
+	if s.listErr != nil {
+		return nil, s.listErr
+	}
+	out := []*Endpoint{}
+	for _, e := range s.endpoints {
+		if e.OrgID == orgID {
+			out = append(out, e)
+		}
+	}
+	return out, nil
+}
+
 func (s *fakeStore) Delete(_ context.Context, id uuid.UUID) error {
 	if s.deleteErr != nil {
 		return s.deleteErr
@@ -339,4 +352,49 @@ func TestServiceSendTest(t *testing.T) {
 	inactive := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project, Active: false}
 	svc2 := testService(t, &fakeStore{endpoints: []*Endpoint{inactive}}, &fakeOutbox{})
 	assert.True(t, IsEndpointInactiveError(svc2.SendTest(tenantCtx(org, project), inactive.ID)))
+}
+
+func TestServiceEnqueueOrg_FansOutPerProject(t *testing.T) {
+	org, p1, p2 := uuid.New(), uuid.New(), uuid.New()
+	a := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: p1, Active: true, EventTypes: []events.Type{events.MemberAdded}}
+	b := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: p2, Active: true, EventTypes: []events.Type{events.MemberAdded, events.InviteCreated}}
+	c := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: p2, Active: true, EventTypes: []events.Type{events.MemberAdded}}
+	unsubscribed := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: p1, Active: true, EventTypes: []events.Type{events.AgentCreated}}
+	inactive := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: p1, Active: false, EventTypes: []events.Type{events.MemberAdded}}
+	elsewhere := &Endpoint{ID: uuid.New(), OrgID: uuid.New(), ProjectID: uuid.New(), Active: true, EventTypes: []events.Type{events.MemberAdded}}
+	ob := &fakeOutbox{}
+	svc := testService(t, &fakeStore{endpoints: []*Endpoint{a, b, c, unsubscribed, inactive, elsewhere}}, ob)
+
+	require.NoError(t, svc.EnqueueOrg(context.Background(), org, events.MemberAdded, events.MemberAddedV1{UserID: "u"}))
+	require.Len(t, ob.enqueued, 3)
+	byProject := map[uuid.UUID][]string{}
+	eventOf := map[uuid.UUID]uuid.UUID{}
+	for _, e := range ob.enqueued {
+		assert.Equal(t, org, e.OrgID)
+		byProject[e.ProjectID] = append(byProject[e.ProjectID], e.Target)
+		if prev, ok := eventOf[e.ProjectID]; ok {
+			assert.Equal(t, prev, e.EventID, "one event per project")
+		}
+		eventOf[e.ProjectID] = e.EventID
+	}
+	assert.ElementsMatch(t, []string{a.ID.String()}, byProject[p1])
+	assert.ElementsMatch(t, []string{b.ID.String(), c.ID.String()}, byProject[p2])
+	assert.NotEqual(t, eventOf[p1], eventOf[p2])
+
+	ob2 := &fakeOutbox{}
+	quiet := testService(t, &fakeStore{endpoints: []*Endpoint{unsubscribed}}, ob2)
+	require.NoError(t, quiet.EnqueueOrg(context.Background(), org, events.MemberAdded, events.MemberAddedV1{}))
+	assert.Empty(t, ob2.enqueued)
+}
+
+func TestServiceEnqueueOrgErrors(t *testing.T) {
+	org := uuid.New()
+	svc := testService(t, &fakeStore{}, &fakeOutbox{})
+	assert.True(t, events.IsUnknownTypeError(svc.EnqueueOrg(context.Background(), org, "nope", 1)))
+	assert.True(t, events.IsPayloadMismatchError(svc.EnqueueOrg(context.Background(), org, events.InviteCreated, 1)))
+	bad := testService(t, &fakeStore{listErr: errors.New("boom")}, &fakeOutbox{})
+	assert.Error(t, bad.EnqueueOrg(context.Background(), org, events.InviteCreated, events.InviteCreatedV1{}))
+	e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: uuid.New(), Active: true, EventTypes: []events.Type{events.InviteCreated}}
+	refless := NewService(&fakeStore{endpoints: []*Endpoint{e}}, nil, unexpectedStub, testSealer(t), &fakeOutbox{}, fakeResolver{err: errors.New("boom")})
+	assert.Error(t, refless.EnqueueOrg(context.Background(), org, events.InviteCreated, events.InviteCreatedV1{}))
 }

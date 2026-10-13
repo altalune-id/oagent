@@ -144,6 +144,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Members:    members,
 		Mail:       svcs.MailQueue,
 		Users:      users,
+		Events:     webhooks,
 		Orgs:       memberOrgs{orgs: orgs},
 		People:     memberPeople{users: users},
 		From:       cfg.Mail.From,
@@ -181,6 +182,14 @@ func (p memberPeople) Contact(ctx context.Context, userID uuid.UUID) (email, nam
 		return "", "", err
 	}
 	return u.Email, u.Name, nil
+}
+
+func (p memberPeople) PublicID(ctx context.Context, userID uuid.UUID) (string, error) {
+	u, err := p.users.ByID(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	return u.PublicID, nil
 }
 
 type memberDirectory struct {

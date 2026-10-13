@@ -71,12 +71,12 @@ flowchart TD
 | Domain | Service deps (ports) | Connect + CLI | MCP tools | Web routes |
 |---|---|---|---|---|
 | `org` | — | ✓ | ✓ | — |
-| `org/invite` | member (actor, add from invite), user (create, by email, accept terms), org (name, slug), user (contact), mail queue; auth (sign-in, sessions) on the web side; org (public id → id, `orgPublicIDs`) for the API | ✓ (every id is a public id; writes: people and the operator only); CLI `invite create/list/resend/revoke` | `member_invite` (drafts only); `member_invite_confirm`, `member_invite_discard` (app-only) | `/invite/{token}`, `/invite`, `POST /invite/join`, `/invite/accept`, `/invite/switch` (local login only) |
+| `org/invite` | member (actor, add from invite), user (create, by email, accept terms), org (name, slug), user (contact, public id), mail queue, webhook (`invite.created`, `member.added` to every project's subscribers, in the same transaction); auth (sign-in, sessions) on the web side; org (public id → id, `orgPublicIDs`) for the API | ✓ (every id is a public id; writes: people and the operator only); CLI `invite create/list/resend/revoke` | `member_invite` (drafts only); `member_invite_confirm`, `member_invite_discard` (app-only) | `/invite/{token}`, `/invite`, `POST /invite/join`, `/invite/accept`, `/invite/switch` (local login only) |
 | `org/member` | effects: sessions, apikey (personal keys), user (contact), org (name), mail queue | ✓ (role changes and removal: people and the operator only; leave: the signed-in person); CLI `member add` (operator, boots the `App`) | `member_list` | — |
 | `project` | — | ✓ | ✓ | — |
 | `agent` | webhook (publisher), project (org of project) | ✓ | ✓ | — |
 | `apikey` | project (ids), member (owner roles) | ✓ | — | — |
-| `webhook` | project + org (refs), project (org of project), outbox | ✓ | ✓ | — |
+| `webhook` | project + org (refs), project (org of project), outbox | ✓ (org events `invite.created`, `member.added`: only a caller who reaches the whole org and holds `member:read` subscribes or reads their payloads) | ✓ | — |
 | `user` | — | CLI `user set-password` (operator, boots the `App`) | — | — |
 | `auth` | user, member, org, project, sessions, passwords | whoami; CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | `auth_whoami` | `/login`, `/logout` |
 | `install` | user (create, accept terms), org, member, project; auth (sign-in) | — | — | `/install` (terms and privacy consent, `layout.Consent`) + `InstallGate` |
@@ -131,7 +131,7 @@ flowchart TD
     legal --> auth
     install --> user & org & member & project
     legal --> user
-    invite --> member & user & org & mailqueue
+    invite --> member & user & org & mailqueue & webhook
     invite -. web .-> auth & sessions
     auth --> user & member & org & project & sessions
 

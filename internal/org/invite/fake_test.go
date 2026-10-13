@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/mailer"
 )
@@ -170,4 +171,34 @@ func (p people) Contact(_ context.Context, userID uuid.UUID) (string, string, er
 		return c.email, c.name, nil
 	}
 	return "", "", errors.New("unknown person")
+}
+
+func publicIDOf(id uuid.UUID) string { return "pub-" + id.String()[:8] }
+
+type published struct {
+	org  uuid.UUID
+	t    events.Type
+	data any
+}
+
+type eventLog struct {
+	mu   sync.Mutex
+	sent []published
+	err  error
+}
+
+func (l *eventLog) EnqueueOrg(_ context.Context, orgID uuid.UUID, t events.Type, data any) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.err != nil {
+		return l.err
+	}
+	l.sent = append(l.sent, published{org: orgID, t: t, data: data})
+	return nil
+}
+
+func (l *eventLog) all() []published {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return append([]published(nil), l.sent...)
 }

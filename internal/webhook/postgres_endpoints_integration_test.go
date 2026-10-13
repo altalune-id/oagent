@@ -660,3 +660,25 @@ func TestPostgresEndpoint_UnitOfWork(t *testing.T) {
 	_, err = f.store.ByID(ctx, kept.ID)
 	assert.NoError(t, err, "a rolled-back Delete keeps the row")
 }
+
+func TestPostgresEndpoint_ListByOrg(t *testing.T) {
+	f := newPgFixture(t)
+	a := f.seedTenant(t)
+	b := f.seedTenant(t)
+	first := newEndpoint(t, a)
+	first.CreatedAt = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), a), first))
+	sibling := a
+	sibling.ProjectID = f.seedProject(t, a.OrgID)
+	second := newEndpoint(t, sibling)
+	second.CreatedAt = first.CreatedAt.Add(time.Hour)
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), sibling), second))
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), b), newEndpoint(t, b)))
+
+	got, err := f.store.ListByOrg(t.Context(), a.OrgID)
+	require.NoError(t, err)
+	require.Len(t, got, 2, "both projects of org A, none of org B")
+	assert.Equal(t, first.ID, got[0].ID)
+	assert.Equal(t, second.ID, got[1].ID)
+	assert.Equal(t, sibling.ProjectID, got[1].ProjectID)
+}

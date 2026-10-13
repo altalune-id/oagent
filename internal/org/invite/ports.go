@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/auth"
+	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/user"
@@ -65,7 +66,13 @@ type Users interface {
 	AcceptTerms(ctx context.Context, id uuid.UUID) (*user.User, error)
 }
 
-// People looks up how to reach a person.
+// People looks up how to reach a person and their public id.
 type People interface {
 	Contact(ctx context.Context, userID uuid.UUID) (email, name string, err error)
+	PublicID(ctx context.Context, userID uuid.UUID) (string, error)
+}
+
+// Events publishes an org event to its webhook subscribers; it joins the transaction on ctx.
+type Events interface {
+	EnqueueOrg(ctx context.Context, orgID uuid.UUID, t events.Type, data any) error
 }

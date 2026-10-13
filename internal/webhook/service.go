@@ -129,6 +129,39 @@ func (s *Service) Enqueue(ctx context.Context, t events.Type, data any) error {
 	return nil
 }
 
+// EnqueueOrg fans an org event out to the subscribed endpoints of every project in orgID, one event per project.
+func (s *Service) EnqueueOrg(ctx context.Context, orgID uuid.UUID, t events.Type, data any) error {
+	spec, ok := events.Lookup(t)
+	if !ok {
+		return &events.UnknownTypeError{Type: t}
+	}
+	if err := events.CheckPayload(t, data); err != nil {
+		return err
+	}
+	endpoints, err := s.store.ListByOrg(ctx, orgID)
+	if err != nil {
+		return fmt.Errorf("webhook.EnqueueOrg: %w", err)
+	}
+	var projects []uuid.UUID
+	targets := map[uuid.UUID][]*Endpoint{}
+	for _, e := range endpoints {
+		if !e.Active || !e.Subscribes(t) {
+			continue
+		}
+		if _, seen := targets[e.ProjectID]; !seen {
+			projects = append(projects, e.ProjectID)
+		}
+		targets[e.ProjectID] = append(targets[e.ProjectID], e)
+	}
+	for _, projectID := range projects {
+		scoped := tenant.Into(ctx, tenant.Context{OrgID: orgID, ProjectID: projectID})
+		if err := s.fanOut(scoped, orgID, projectID, spec, data, targets[projectID]); err != nil {
+			return fmt.Errorf("webhook.EnqueueOrg: %w", err)
+		}
+	}
+	return nil
+}
+
 // Create persists a new endpoint in the caller's project and returns its signing secret, shown only this once.
 func (s *Service) Create(ctx context.Context, rawURL, description string, types []events.Type) (*Endpoint, string, error) {
 	tc, err := tenant.From(ctx)

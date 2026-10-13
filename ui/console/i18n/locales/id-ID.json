@@ -314,6 +314,8 @@
   "webhooks.empty": "Belum ada webhook.",
   "webhooks.event_agent_created": "Agen dibuat",
   "webhooks.event_agent_updated": "Agen diperbarui",
+  "webhooks.event_invite_created": "Undangan dikirim",
+  "webhooks.event_member_added": "Anggota ditambahkan",
   "webhooks.events": "Event",
   "webhooks.inactive": "nonaktif",
   "webhooks.logs": "Log",

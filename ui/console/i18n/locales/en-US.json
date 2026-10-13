@@ -314,6 +314,8 @@
   "webhooks.empty": "No webhooks yet.",
   "webhooks.event_agent_created": "Agent created",
   "webhooks.event_agent_updated": "Agent updated",
+  "webhooks.event_invite_created": "Invite sent",
+  "webhooks.event_member_added": "Member added",
   "webhooks.events": "Events",
   "webhooks.inactive": "inactive",
   "webhooks.logs": "Logs",

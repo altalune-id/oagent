@@ -19,6 +19,8 @@ import (
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
+	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
+	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/kernel/events"
@@ -269,4 +271,23 @@ func TestReach_ProjectLimitedKeyIsRefused(t *testing.T) {
 		assert.True(t, isRefused(err), "%s reached a project the key does not hold: %v", proc, err)
 	}
 	assert.Equal(t, before, s.snapshot(t, f), "org B is unchanged")
+}
+
+// SECURITY: org events carry every invitee's email, so a key limited to one project cannot subscribe its endpoints to them.
+func TestReach_ProjectLimitedKeyCannotSubscribeToOrgEvents(t *testing.T) {
+	f := newAPIFixture(t)
+	s := seedReach(t, f)
+	key := f.mintKey(t, apikey.CreateRequest{OrgID: s.orgB, Kind: apikey.KindOrg, Scopes: mintableScopes(), ProjectIDs: []uuid.UUID{s.otherProject}})
+	client := webhookv1connect.NewWebhookServiceClient(http.DefaultClient, f.url)
+	create := func(typ events.Type) error {
+		_, err := client.CreateWebhook(t.Context(), withBearer(connect.NewRequest(&webhookv1.CreateWebhookRequest{
+			OrgId: s.orgB.String(), ProjectId: s.otherProject.String(), Url: "https://example.com/side", EventTypes: []string{string(typ)},
+		}), key))
+		return err
+	}
+	for _, typ := range []events.Type{events.InviteCreated, events.MemberAdded} {
+		err := create(typ)
+		assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "%s: %v", typ, err)
+	}
+	require.NoError(t, create(events.AgentCreated), "the key still subscribes to its project's events")
 }

@@ -13,6 +13,7 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/authz"
+	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/testutil/fakes"
@@ -28,6 +29,7 @@ type fixture struct {
 	store   *memStore
 	members *member.Service
 	mail    *mailBox
+	events  *eventLog
 	people  people
 	users   *user.Service
 	svc     *invite.Service
@@ -40,13 +42,13 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	f := &fixture{
-		t: t, ctx: context.Background(), store: newMemStore(), mail: &mailBox{}, people: people{},
+		t: t, ctx: context.Background(), store: newMemStore(), mail: &mailBox{}, events: &eventLog{}, people: people{},
 		org: uuid.New(), clock: time.Date(2026, 10, 13, 9, 0, 0, 0, time.UTC),
 	}
 	f.members = member.NewService(&fakes.MemberStore{}, fakes.TxPool(), apperror.NewReporter(nil, false).Unexpected)
 	f.users = user.NewService(fakes.NewUserStore(), apperror.NewReporter(nil, false).Unexpected)
 	f.svc = invite.NewService(invite.Deps{
-		Store: f.store, Pool: fakes.TxPool(), Members: f.members, Mail: f.mail, Users: f.users,
+		Store: f.store, Pool: fakes.TxPool(), Members: f.members, Mail: f.mail, Users: f.users, Events: f.events,
 		Orgs: orgNames{f.org: "Acme  Corp"}, People: directory{people: f.people, users: f.users}, From: "oagent@example.com", BaseURL: baseURL,
 		Unexpected: apperror.NewReporter(nil, false).Unexpected,
 	}).WithClock(func() time.Time { return f.clock })
@@ -483,6 +485,17 @@ type directory struct {
 	users  *user.Service
 }
 
+func (d directory) PublicID(ctx context.Context, id uuid.UUID) (string, error) {
+	if _, ok := d.people[id]; ok {
+		return publicIDOf(id), nil
+	}
+	u, err := d.users.ByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return u.PublicID, nil
+}
+
 func (d directory) Contact(ctx context.Context, id uuid.UUID) (string, string, error) {
 	if c, ok := d.people[id]; ok {
 		return c.email, c.name, nil
@@ -492,4 +505,55 @@ func (d directory) Contact(ctx context.Context, id uuid.UUID) (string, string, e
 		return "", "", err
 	}
 	return u.Email, u.Name, nil
+}
+
+func TestService_EventsOnSend(t *testing.T) {
+	f := newFixture(t)
+	c := f.create("bob@x.io", member.RoleAdmin)
+	got := f.events.all()
+	require.Len(t, got, 1)
+	assert.Equal(t, f.org, got[0].org)
+	assert.Equal(t, events.InviteCreated, got[0].t)
+	assert.Equal(t, events.InviteCreatedV1{
+		ID: c.Invite.PublicID, Email: "bob@x.io", Role: "admin", InvitedBy: publicIDOf(f.owner.UserID), ExpiresAt: c.Invite.ExpiresAt,
+	}, got[0].data)
+
+	_, err := f.svc.Resend(f.ctx, f.owner, f.org, c.Invite.ID)
+	require.NoError(t, err)
+	d, err := f.svc.Draft(f.ctx, f.owner, f.org, "dina@x.io")
+	require.NoError(t, err)
+	assert.Len(t, f.events.all(), 2, "a draft is not an invite yet")
+	_, err = f.svc.ConfirmDraft(f.ctx, f.owner, f.org, d.ID)
+	require.NoError(t, err)
+	assert.Len(t, f.events.all(), 3, "a confirmed draft is")
+
+	_, err = f.svc.Create(f.ctx, member.Requester{Operator: true}, f.org, "eve@x.io", member.RoleMember)
+	require.NoError(t, err)
+	last := f.events.all()[3].data.(events.InviteCreatedV1)
+	assert.Empty(t, last.InvitedBy, "an operator is nobody's public id")
+}
+
+func TestService_EventsOnJoin(t *testing.T) {
+	f := newFixture(t)
+	c := f.create("bob@x.io", member.RoleMember)
+	id, err := f.svc.Join(f.ctx, c.Invite.ID, "Bob", "a sturdy passphrase", true)
+	require.NoError(t, err)
+	u, err := f.users.ByID(f.ctx, id)
+	require.NoError(t, err)
+	got := f.events.all()
+	require.Len(t, got, 2)
+	assert.Equal(t, events.MemberAdded, got[1].t)
+	assert.Equal(t, events.MemberAddedV1{UserID: u.PublicID, Email: "bob@x.io", Name: "Bob", Role: "member", InviteID: c.Invite.PublicID}, got[1].data)
+
+	owned := f.create("olga@example.com", member.RoleMember)
+	_, err = f.svc.Accept(f.ctx, owned.Invite.ID, f.owner.UserID)
+	require.NoError(t, err)
+	assert.Len(t, f.events.all(), 3, "an existing member was not added: no member.added")
+}
+
+func TestService_EventFailureFailsTheChange(t *testing.T) {
+	f := newFixture(t)
+	f.events.err = errors.New("outbox down")
+	_, err := f.svc.Create(f.ctx, f.owner, f.org, "bob@x.io", member.RoleMember)
+	assert.True(t, isUnexpected(err), "got %v", err)
 }

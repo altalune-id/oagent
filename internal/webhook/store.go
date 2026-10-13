@@ -16,6 +16,8 @@ type Store interface {
 	ByID(ctx context.Context, id uuid.UUID) (*Endpoint, error)
 	// List returns the project's endpoints, newest first.
 	List(ctx context.Context, orgID, projectID uuid.UUID) ([]*Endpoint, error)
+	// ListByOrg returns the endpoints of every project in orgID, oldest first.
+	ListByOrg(ctx context.Context, orgID uuid.UUID) ([]*Endpoint, error)
 	// Delete removes the endpoint and its attempts, or returns a *NotFoundError.
 	Delete(ctx context.Context, id uuid.UUID) error
 	// SaveAttempt appends a, returning an *InvalidAttemptError on a scope mismatch or a *NotFoundError when the endpoint is gone.

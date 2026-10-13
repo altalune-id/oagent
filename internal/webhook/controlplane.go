@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"context"
+	"slices"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -12,7 +13,9 @@ import (
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/events"
+	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/scope"
 )
 
 // WebhookControlPlane implements webhook.v1.WebhookService.
@@ -36,7 +39,11 @@ func (s *WebhookControlPlane) CreateWebhook(
 	if err != nil {
 		return nil, err
 	}
-	e, secret, err := s.webhooks.Create(ctx, req.Msg.GetUrl(), req.Msg.GetDescription(), toEventTypes(req.Msg.GetEventTypes()))
+	types := toEventTypes(req.Msg.GetEventTypes())
+	if err := requireOrgEventsReach(ctx, types); err != nil {
+		return nil, err
+	}
+	e, secret, err := s.webhooks.Create(ctx, req.Msg.GetUrl(), req.Msg.GetDescription(), types)
 	if err != nil {
 		return nil, err
 	}
@@ -88,9 +95,11 @@ func (s *WebhookControlPlane) UpdateWebhook(
 	if err != nil {
 		return nil, err
 	}
-	e, err := s.webhooks.Update(
-		ctx, id, req.Msg.GetUrl(), req.Msg.GetDescription(), toEventTypes(req.Msg.GetEventTypes()), req.Msg.GetActive(),
-	)
+	types := toEventTypes(req.Msg.GetEventTypes())
+	if err := requireOrgEventsReach(ctx, types); err != nil {
+		return nil, err
+	}
+	e, err := s.webhooks.Update(ctx, id, req.Msg.GetUrl(), req.Msg.GetDescription(), types, req.Msg.GetActive())
 	if err != nil {
 		return nil, err
 	}
@@ -191,9 +200,14 @@ func (s *WebhookControlPlane) ListWebhookDeliveries(
 	if err != nil {
 		return nil, err
 	}
+	seesOrg := seesOrgEvents(ctx)
 	out := make([]*webhookv1.WebhookDelivery, 0, len(deliveries))
 	for _, d := range deliveries {
-		out = append(out, deliveryToProto(d))
+		pd := deliveryToProto(d)
+		if !seesOrg && events.IsOrgWide(d.EventType) {
+			pd.Payload = ""
+		}
+		out = append(out, pd)
 	}
 	return connect.NewResponse(&webhookv1.ListWebhookDeliveriesResponse{Deliveries: out}), nil
 }
@@ -248,6 +262,22 @@ func scopedID(ctx context.Context, orgID, projectID, id string) (context.Context
 		return ctx, uuid.Nil, &NotFoundError{ID: parsed.String()}
 	}
 	return tenant.Into(ctx, tenant.Context{OrgID: org, ProjectID: project}), parsed, nil
+}
+
+// SECURITY: org events carry every invitee's and member's email; only a caller reaching the whole org with member:read subscribes.
+func requireOrgEventsReach(ctx context.Context, types []events.Type) error {
+	if !slices.ContainsFunc(types, events.IsOrgWide) || seesOrgEvents(ctx) {
+		return nil
+	}
+	if tc, err := tenant.From(ctx); err != nil || !authz.ReachWholeOrg(ctx, tc.OrgID) {
+		return &authz.ForbiddenError{}
+	}
+	return &authz.ForbiddenError{Permission: scope.MemberRead}
+}
+
+func seesOrgEvents(ctx context.Context) bool {
+	tc, err := tenant.From(ctx)
+	return err == nil && authz.ReachWholeOrg(ctx, tc.OrgID) && authz.Allowed(session.PrincipalFrom(ctx), scope.MemberRead)
 }
 
 func parseScope(orgID, projectID string) (org, project uuid.UUID, err error) {

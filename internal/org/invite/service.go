@@ -9,6 +9,7 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/org/invite/views"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/user"
@@ -22,6 +23,7 @@ type Deps struct {
 	Members    Members
 	Mail       Mail
 	Users      Users
+	Events     Events
 	Orgs       Orgs
 	People     People
 	From       string
@@ -36,6 +38,7 @@ type Service struct {
 	members    Members
 	mail       Mail
 	users      Users
+	events     Events
 	orgs       Orgs
 	people     People
 	from       string
@@ -48,7 +51,7 @@ type Service struct {
 // NewService builds a Service from d.
 func NewService(d Deps) *Service {
 	return &Service{
-		store: d.Store, pool: d.Pool, members: d.Members, mail: d.Mail, users: d.Users,
+		store: d.Store, pool: d.Pool, members: d.Members, mail: d.Mail, users: d.Users, events: d.Events,
 		orgs: d.Orgs, people: d.People, from: d.From, baseURL: strings.TrimSuffix(d.BaseURL, "/"), unexpected: d.Unexpected, now: time.Now,
 	}
 }
@@ -260,7 +263,7 @@ func (s *Service) Join(ctx context.Context, inviteID uuid.UUID, name, password s
 
 // SECURITY: MarkAccepted's conditional UPDATE is the only gate on use; never check, then write.
 func (s *Service) accept(ctx context.Context, inviteID, userID uuid.UUID) (Outcome, error) {
-	email, _, err := s.people.Contact(ctx, userID)
+	email, name, err := s.people.Contact(ctx, userID)
 	if err != nil {
 		return 0, err
 	}
@@ -287,6 +290,16 @@ func (s *Service) accept(ctx context.Context, inviteID, userID uuid.UUID) (Outco
 	}
 	if !added {
 		return AlreadyMember, nil
+	}
+	userPublicID, err := s.people.PublicID(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	err = s.emit(ctx, inv.OrgID, events.MemberAdded, events.MemberAddedV1{
+		UserID: userPublicID, Email: email, Name: name, Role: string(inv.Role), InviteID: inv.PublicID,
+	})
+	if err != nil {
+		return 0, err
 	}
 	return Joined, nil
 }
@@ -374,7 +387,26 @@ func (s *Service) issue(ctx context.Context, inv *Invite) (*Created, error) {
 	if err := s.send(ctx, inv, link); err != nil {
 		return nil, err
 	}
+	var inviter string
+	if inv.InvitedBy != uuid.Nil {
+		if inviter, err = s.people.PublicID(ctx, inv.InvitedBy); err != nil {
+			return nil, err
+		}
+	}
+	err = s.emit(ctx, inv.OrgID, events.InviteCreated, events.InviteCreatedV1{
+		ID: inv.PublicID, Email: inv.Email, Role: string(inv.Role), InvitedBy: inviter, ExpiresAt: inv.ExpiresAt,
+	})
+	if err != nil {
+		return nil, err
+	}
 	return &Created{Invite: inv, Link: link}, nil
+}
+
+func (s *Service) emit(ctx context.Context, orgID uuid.UUID, t events.Type, data any) error {
+	if s.events == nil {
+		return nil
+	}
+	return s.events.EnqueueOrg(ctx, orgID, t, data)
 }
 
 func (s *Service) save(ctx context.Context, inv *Invite) error {
