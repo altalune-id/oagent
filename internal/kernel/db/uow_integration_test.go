@@ -91,18 +91,71 @@ func TestRunInTx_ReportsACommitFailure(t *testing.T) {
 	assert.False(t, probeExists(t, sqlDB, "a"))
 }
 
-func TestRunInTx_RefusesToNest(t *testing.T) {
+func TestRunInTx_NestedJoinsAndCommitsOnce(t *testing.T) {
 	pool, sqlDB := uowPool(t)
+	require.NoError(t, db.RunInTx(t.Context(), pool, func(ctx context.Context) error {
+		insertProbe(ctx, t, "outer")
+		require.NoError(t, db.RunInTx(ctx, pool, func(ctx context.Context) error {
+			insertProbe(ctx, t, "inner")
+			return nil
+		}))
+		assert.False(t, probeExists(t, sqlDB, "inner"), "the inner unit of work must not commit on its own")
+		return nil
+	}))
+	assert.True(t, probeExists(t, sqlDB, "outer"))
+	assert.True(t, probeExists(t, sqlDB, "inner"))
+}
+
+func TestRunInTx_InnerErrorRollsBackTheOuter(t *testing.T) {
+	pool, sqlDB := uowPool(t)
+	boom := errors.New("boom")
 	err := db.RunInTx(t.Context(), pool, func(ctx context.Context) error {
 		insertProbe(ctx, t, "outer")
 		return db.RunInTx(ctx, pool, func(ctx context.Context) error {
 			insertProbe(ctx, t, "inner")
-			return nil
+			return boom
 		})
 	})
-	require.ErrorIs(t, err, db.ErrNestedUnitOfWork)
-	assert.False(t, probeExists(t, sqlDB, "outer"), "the nesting error must roll back the outer unit of work")
+	require.ErrorIs(t, err, boom)
+	assert.False(t, probeExists(t, sqlDB, "outer"), "an inner error must roll back the outer unit of work")
 	assert.False(t, probeExists(t, sqlDB, "inner"))
+}
+
+func TestInTx_JoinsOrOwns(t *testing.T) {
+	pool, sqlDB := uowPool(t)
+	insert := func(v string) func(tx *sql.Tx) error {
+		return func(tx *sql.Tx) error {
+			_, err := tx.ExecContext(t.Context(), `INSERT INTO uow_probe (v) VALUES ($1)`, v)
+			return err
+		}
+	}
+	require.NoError(t, db.InTx(t.Context(), pool, insert("owned")))
+	assert.True(t, probeExists(t, sqlDB, "owned"), "InTx commits the transaction it owns")
+
+	err := db.RunInTx(t.Context(), pool, func(ctx context.Context) error {
+		require.NoError(t, db.InTx(ctx, pool, insert("joined")))
+		assert.False(t, probeExists(t, sqlDB, "joined"), "InTx must not commit an ambient transaction")
+		return errors.New("abort")
+	})
+	require.Error(t, err)
+	assert.False(t, probeExists(t, sqlDB, "joined"), "a joined InTx rolls back with the outer unit of work")
+}
+
+func TestTransactor_ComposesNestedUseCases(t *testing.T) {
+	pool, sqlDB := uowPool(t)
+	uow := db.NewTransactor(pool)
+	inner := func(ctx context.Context) error {
+		return uow.RunInTx(ctx, func(ctx context.Context) error {
+			insertProbe(ctx, t, "inner")
+			return nil
+		})
+	}
+	require.NoError(t, uow.RunInTx(t.Context(), func(ctx context.Context) error {
+		insertProbe(ctx, t, "outer")
+		return inner(ctx)
+	}))
+	assert.True(t, probeExists(t, sqlDB, "outer"))
+	assert.True(t, probeExists(t, sqlDB, "inner"))
 }
 
 func TestContextWithTx_BindsACallerOwnedTransaction(t *testing.T) {
@@ -115,8 +168,13 @@ func TestContextWithTx_BindsACallerOwnedTransaction(t *testing.T) {
 	require.True(t, ok)
 	require.Same(t, tx, got)
 	insertProbe(ctx, t, "a")
-	require.ErrorIs(t, db.RunInTx(ctx, pool, func(context.Context) error { return nil }), db.ErrNestedUnitOfWork)
+	require.NoError(t, db.RunInTx(ctx, pool, func(ctx context.Context) error {
+		insertProbe(ctx, t, "b")
+		return nil
+	}))
+	assert.False(t, probeExists(t, sqlDB, "b"), "joining a caller-owned transaction must not commit it")
 
 	require.NoError(t, tx.Rollback())
 	assert.False(t, probeExists(t, sqlDB, "a"))
+	assert.False(t, probeExists(t, sqlDB, "b"))
 }

@@ -504,13 +504,15 @@ func TestPostgres_KeyUnitOfWork(t *testing.T) {
 		require.NoError(t, rerr)
 		assert.Len(t, listed, 1)
 
-		serr := f.store.Save(ctx, fresh)
-		assert.ErrorIs(t, serr, db.ErrNestedUnitOfWork, "Save opens its own transaction, so it cannot join an outer one")
+		require.NoError(t, f.store.Save(ctx, fresh), "Save joins the outer unit of work")
+		saved, rerr := f.store.ByID(ctx, fresh.ID)
+		require.NoError(t, rerr, "the key is visible inside the outer transaction")
+		assert.Equal(t, fresh.ProjectID, saved.ProjectID)
 		return errAbort
 	})
 	require.ErrorIs(t, err, errAbort)
 	_, err = f.store.ByID(t.Context(), fresh.ID)
-	assert.True(t, apikey.IsNotFoundError(err), "nothing was written")
+	assert.True(t, apikey.IsNotFoundError(err), "the key rolled back with the outer unit of work")
 }
 
 func TestPostgres_ConcurrentSecretHashClaim(t *testing.T) {
