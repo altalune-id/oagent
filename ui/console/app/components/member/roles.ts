@@ -37,6 +37,18 @@ export function canRemove(viewer: Party, target: Party): boolean {
   return allowed(viewer, target, '')
 }
 
+// Mirrors invite.Authorize (internal/org/invite/rules.go): you invite only to a role you hold all of.
+export function inviteRoles(viewerRole: string): Role[] {
+  switch (viewerRole) {
+    case 'owner':
+      return [...roles]
+    case 'admin':
+      return ['admin', 'member']
+    default:
+      return []
+  }
+}
+
 // roleOptions is empty when the viewer may not change the target's role at all.
 export function roleOptions(viewer: Party, target: Party): Role[] {
   return roles.filter(r => canChange(viewer, target, r))

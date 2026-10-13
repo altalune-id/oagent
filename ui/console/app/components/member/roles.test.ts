@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { canChange, canRemove, roleOptions, roles } from './roles'
+import { canChange, canRemove, inviteRoles, roleOptions, roles } from './roles'
 import type { Role } from './roles'
 
 // Same rows as member.Authorize's table test (internal/org/member/rules_test.go), minus the operator: the console viewer is always a person.
@@ -49,6 +49,15 @@ describe('canChange and canRemove', () => {
 
   it('refuses a viewer with no user id', () => {
     expect(canRemove({ userId: '', role: 'owner' }, { userId: '', role: 'member' })).toBe(false)
+  })
+})
+
+describe('inviteRoles', () => {
+  it('lets owners invite to any role and admins to admin or member', () => {
+    expect(inviteRoles('owner')).toEqual(['owner', 'admin', 'member'])
+    expect(inviteRoles('admin')).toEqual(['admin', 'member'])
+    expect(inviteRoles('member')).toEqual([])
+    expect(inviteRoles('')).toEqual([])
   })
 })
 

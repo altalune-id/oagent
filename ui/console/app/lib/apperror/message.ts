@@ -15,6 +15,11 @@ export interface ErrorLabels {
   scope?: (name: string) => string
 }
 
+// errorCode is the app error code an RPC failed with, or '' when there is none.
+export function errorCode(err: unknown): string {
+  return err instanceof ConnectError ? (err.findDetails(ErrorDetailSchema)[0]?.code ?? '') : ''
+}
+
 // Operator diagnostics: never shown, never passed to a message.
 const hidden = new Set(['reason', 'trace_id', 'request_id', 'underlying_error'])
 
