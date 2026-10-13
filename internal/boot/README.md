@@ -68,7 +68,7 @@ flowchart TD
 | Domain | Service deps (ports) | Connect + CLI | MCP tools | Web routes |
 |---|---|---|---|---|
 | `org` | — | ✓ | ✓ | — |
-| `org/member` | effects: sessions, apikey (personal keys), user (contact), org (name), mail queue | — | — | — |
+| `org/member` | effects: sessions, apikey (personal keys), user (contact), org (name), mail queue | ✓ (role changes and removal: people and the operator only; leave: the signed-in person) | `member_list` | — |
 | `project` | — | ✓ | ✓ | — |
 | `agent` | webhook (publisher), project (org of project) | ✓ | ✓ | — |
 | `apikey` | project (ids), member (owner roles) | ✓ | — | — |

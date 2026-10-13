@@ -57,6 +57,23 @@ func Confirm(read func(label string) (string, error), label, again string) (stri
 	return first, nil
 }
 
+// ErrCancelled reports a yes/no question answered with anything but yes, including no answer at all.
+var ErrCancelled = errors.New("cancelled")
+
+// YesNo asks question on stderr and reads one line from stdin; only y or yes agree, anything else is ErrCancelled.
+func YesNo(cmd *cobra.Command, question string) error {
+	_, _ = fmt.Fprint(cmd.ErrOrStderr(), question)
+	answer, err := Line(bufio.NewReader(cmd.InOrStdin()))
+	if err != nil && !errors.Is(err, io.EOF) {
+		return err
+	}
+	switch strings.ToLower(strings.TrimSpace(answer)) {
+	case "y", "yes":
+		return nil
+	}
+	return ErrCancelled
+}
+
 // Terminal is a stdin that can read a line without echoing it; a terminal *os.File is one through term.
 type Terminal interface {
 	ReadPassword() ([]byte, error)

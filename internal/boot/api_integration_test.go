@@ -26,6 +26,8 @@ import (
 	apperrorv1 "altalune.id/oagent/gen/go/apperror/v1"
 	authv1 "altalune.id/oagent/gen/go/auth/v1"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
+	memberv1 "altalune.id/oagent/gen/go/member/v1"
+	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
@@ -87,12 +89,16 @@ func newAPIFixture(t *testing.T) *apiFixture {
 
 func (f *apiFixture) mint(t *testing.T, kind apikey.Kind, scopes ...string) string {
 	t.Helper()
-	exp := time.Now().Add(time.Hour)
 	sys, err := f.svcs.Orgs.System(t.Context())
 	require.NoError(t, err)
-	_, plain, err := f.svcs.APIKeys.Create(t.Context(), apikey.CreateRequest{
-		OrgID: sys.ID, Kind: kind, Name: "k", Scopes: scopes, AllProjects: true, ExpiresAt: &exp, CreatedBy: f.owner.ID,
-	})
+	return f.mintKey(t, apikey.CreateRequest{OrgID: sys.ID, Kind: kind, Scopes: scopes, AllProjects: true, CreatedBy: f.owner.ID})
+}
+
+func (f *apiFixture) mintKey(t *testing.T, req apikey.CreateRequest) string {
+	t.Helper()
+	exp := time.Now().Add(time.Hour)
+	req.Name, req.ExpiresAt = "k", &exp
+	_, plain, err := f.svcs.APIKeys.Create(t.Context(), req)
 	require.NoError(t, err)
 	return plain
 }
@@ -315,4 +321,109 @@ func TestAPI_WebhookBadSchemeIsInvalidArgument(t *testing.T) {
 	assert.Equal(t, "WHK002", det.GetCode())
 	assert.Equal(t, "https_required", det.GetMeta()["reason"])
 	assert.NotContains(t, det.GetMeta(), "underlying_error")
+}
+
+// Review Focus 3: a removed person loses access at once, and their personal key is revoked, not just inactive.
+func TestAPI_RemovedMemberLosesAccess(t *testing.T) {
+	f := newAPIFixture(t)
+	ctx := t.Context()
+	cookie, memberID := f.memberCookie(t)
+	sys, err := f.svcs.Orgs.System(ctx)
+	require.NoError(t, err)
+	exp := time.Now().Add(time.Hour)
+	key, plain, err := f.svcs.APIKeys.Create(ctx, apikey.CreateRequest{
+		OrgID: sys.ID, Kind: apikey.KindPersonal, Name: "laptop", Scopes: []string{"agent:read"}, AllProjects: true, ExpiresAt: &exp, CreatedBy: memberID,
+	})
+	require.NoError(t, err)
+	_, err = f.whoami(t, "Cookie", cookie)
+	require.NoError(t, err, "signed in before the removal")
+	_, err = f.whoami(t, "Authorization", "Bearer "+plain)
+	require.NoError(t, err, "the key works before the removal")
+
+	_, err = memberv1connect.NewMemberServiceClient(http.DefaultClient, f.url).RemoveMember(ctx, withCookie(connect.NewRequest(
+		&memberv1.RemoveMemberRequest{OrgId: sys.ID.String(), UserId: memberID.String()}), f.ownerCookie(t)))
+	require.NoError(t, err)
+
+	_, err = f.whoami(t, "Cookie", cookie)
+	assert.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err), "the cookie is dead")
+	_, err = f.whoami(t, "Authorization", "Bearer "+plain)
+	assert.Equal(t, connect.CodeUnauthenticated, connect.CodeOf(err), "the key is dead")
+	var revoked sql.NullTime
+	require.NoError(t, f.db.QueryRowContext(ctx, `SELECT revoked_at FROM api_keys WHERE org_id = $1 AND id = $2`, sys.ID, key.ID).Scan(&revoked))
+	assert.True(t, revoked.Valid, "the key row is revoked")
+	var pending int
+	require.NoError(t, f.db.QueryRowContext(ctx, `SELECT count(*) FROM mail_queue WHERE status = 'pending'`).Scan(&pending))
+	assert.Equal(t, 1, pending, "the notice is queued")
+}
+
+func (f *apiFixture) personCookie(t *testing.T, email string, role member.Role) (string, session.Principal, uuid.UUID) {
+	t.Helper()
+	return f.personCookieIn(t, uuid.MustParse(f.orgID), email, role)
+}
+
+func (f *apiFixture) personCookieIn(t *testing.T, orgID uuid.UUID, email string, role member.Role) (string, session.Principal, uuid.UUID) {
+	t.Helper()
+	ctx := t.Context()
+	u, err := f.svcs.Users.Create(ctx, user.CreateRequest{Email: email, Name: email, Password: "quiet-forest-lamp-9"})
+	require.NoError(t, err)
+	_, err = f.svcs.Members.Add(ctx, orgID, u.ID, role)
+	require.NoError(t, err)
+	p, err := f.svcs.Auth.LoginLocal(ctx, authCredentials(email, "quiet-forest-lamp-9"))
+	require.NoError(t, err)
+	sid, err := session.NewID()
+	require.NoError(t, err)
+	require.NoError(t, f.svcs.Sessions.Save(ctx, sid, p, time.Now().Add(time.Hour)))
+	return session.CookieName + "=" + session.Sign(f.svcs.StateSecret, sid), p, u.ID
+}
+
+func connectCode(t *testing.T, err error) string {
+	t.Helper()
+	var cerr *connect.Error
+	require.ErrorAs(t, err, &cerr)
+	require.NotEmpty(t, cerr.Details(), "%v", err)
+	value, derr := cerr.Details()[0].Value()
+	require.NoError(t, derr)
+	det, ok := value.(*apperrorv1.ErrorDetail)
+	require.True(t, ok)
+	return det.GetCode()
+}
+
+// SECURITY: in selfhosted the install org is the system org, so its admins are operators; they must still follow their org role there.
+func TestAPI_SystemOrgAdminFollowsMemberRules(t *testing.T) {
+	f := newAPIFixture(t)
+	ctx := t.Context()
+	_, _, carol := f.personCookie(t, "carol@example.com", member.RoleOwner)
+	_, _, dave := f.personCookie(t, "dave@example.com", member.RoleMember)
+	bobCookie, bob, _ := f.personCookie(t, "bob@example.com", member.RoleAdmin)
+	require.True(t, bob.Operator, "an admin of the system org is an operator")
+	c := memberv1connect.NewMemberServiceClient(http.DefaultClient, f.url)
+	setRole := func(userID uuid.UUID, role member.Role) error {
+		_, err := c.SetMemberRole(ctx, withCookie(connect.NewRequest(&memberv1.SetMemberRoleRequest{
+			OrgId: f.orgID, UserId: userID.String(), Role: string(role),
+		}), bobCookie))
+		return err
+	}
+
+	assert.Equal(t, "MBR006", connectCode(t, setRole(bob.UserID, member.RoleMember)), "no self-change")
+	assert.Equal(t, "MBR005", connectCode(t, setRole(f.owner.ID, member.RoleAdmin)), "an admin can't demote an owner")
+	_, err := c.RemoveMember(ctx, withCookie(connect.NewRequest(&memberv1.RemoveMemberRequest{OrgId: f.orgID, UserId: carol.String()}), bobCookie))
+	assert.Equal(t, "MBR005", connectCode(t, err), "an admin can't remove an owner")
+	assert.Equal(t, "MBR005", connectCode(t, setRole(dave, member.RoleOwner)), "an admin can't make an owner")
+
+	other, err := org.NewOrg("other-org", "Other", uuid.Nil)
+	require.NoError(t, err)
+	require.NoError(t, f.svcs.OrgStore.Save(ctx, other))
+	_, err = f.svcs.Members.Add(ctx, other.ID, dave, member.RoleMember)
+	require.NoError(t, err)
+	_, err = c.SetMemberRole(ctx, withCookie(connect.NewRequest(&memberv1.SetMemberRoleRequest{
+		OrgId: other.ID.String(), UserId: dave.String(), Role: string(member.RoleAdmin),
+	}), bobCookie))
+	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "selfhosted has no operator support in orgs Bob is not in")
+
+	sys := uuid.MustParse(f.orgID)
+	for id, want := range map[uuid.UUID]member.Role{bob.UserID: member.RoleAdmin, f.owner.ID: member.RoleOwner, carol: member.RoleOwner, dave: member.RoleMember} {
+		m, err := f.svcs.Members.Find(ctx, sys, id)
+		require.NoError(t, err)
+		assert.Equal(t, want, m.Role)
+	}
 }

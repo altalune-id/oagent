@@ -198,3 +198,30 @@ func TestNewSecret_OnATerminalAsksTwice(t *testing.T) {
 	_, err = prompt.NewSecret(cmd, bufio.NewReader(strings.NewReader("")), "New: ", "Again: ", false)
 	assert.ErrorIs(t, err, io.ErrUnexpectedEOF)
 }
+
+type failingReader struct{}
+
+func (failingReader) Read([]byte) (int, error) { return 0, errors.New("read failed") }
+
+func TestYesNo(t *testing.T) {
+	ask := func(in io.Reader) (asked string, err error) {
+		var errOut bytes.Buffer
+		cmd := &cobra.Command{}
+		cmd.SetIn(in)
+		cmd.SetErr(&errOut)
+		err = prompt.YesNo(cmd, "Go on? [y/N] ")
+		return errOut.String(), err
+	}
+
+	for _, answer := range []string{"y\n", "yes\n", " YES \r\n", "Y"} {
+		asked, err := ask(strings.NewReader(answer))
+		require.NoError(t, err, "%q", answer)
+		assert.Equal(t, "Go on? [y/N] ", asked)
+	}
+	for _, answer := range []string{"", "\n", "n\n", "no\n", "sure\n"} {
+		_, err := ask(strings.NewReader(answer))
+		assert.ErrorIs(t, err, prompt.ErrCancelled, "%q", answer)
+	}
+	_, err := ask(failingReader{})
+	assert.EqualError(t, err, "read failed")
+}

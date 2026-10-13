@@ -55,14 +55,14 @@ func connectErrorCode(err error) (apperror.Code, bool) {
 }
 
 func exitCode(code apperror.Code) int {
-	switch code {
-	case apperror.CodeValidation, apperror.CodeOrgInvalidSlug, apperror.CodeOrgInvalidName, apperror.CodeAuthPasswordPolicy:
+	switch apperror.KindOf(code) {
+	case apperror.KindInvalid:
 		return ExitInvalidArg
-	case apperror.CodeNotFound, apperror.CodeOrgNotFound:
+	case apperror.KindNotFound:
 		return ExitNotFound
-	case apperror.CodeAlreadyExists, apperror.CodeOrgAlreadyExists:
+	case apperror.KindAlreadyExists:
 		return ExitAlreadyExists
-	case apperror.CodeTenantMissing, apperror.CodeUnauthenticated, apperror.CodeAuthInvalidCredentials:
+	case apperror.KindUnauthenticated:
 		return ExitUnauth
 	default:
 		return ExitGeneral

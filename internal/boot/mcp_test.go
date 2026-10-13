@@ -14,6 +14,7 @@ import (
 	"altalune.id/oagent/config"
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
 	authv1mcp "altalune.id/oagent/gen/go/auth/v1/authv1mcp"
+	memberv1mcp "altalune.id/oagent/gen/go/member/v1/memberv1mcp"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
 	projectv1mcp "altalune.id/oagent/gen/go/project/v1/projectv1mcp"
@@ -114,6 +115,7 @@ func TestMCPTools_PermissionsComeFromTheTable(t *testing.T) {
 		webhookv1mcp.WebhookListToolName:        {scope.WebhookRead},
 		webhookv1mcp.WebhookDeliveriesToolName:  {scope.WebhookRead},
 		webhookv1mcp.WebhookRetryFailedToolName: {scope.WebhookWrite},
+		memberv1mcp.MemberListToolName:          {scope.MemberRead},
 		authv1mcp.AuthWhoamiToolName:            {authz.AnyAuthenticated},
 	}
 	names := srv.Registry().Names()

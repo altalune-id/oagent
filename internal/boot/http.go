@@ -64,6 +64,7 @@ func buildAPIHandler(
 		APIKeys:  svcs.APIKeys,
 		Webhooks: svcs.Webhooks,
 		Users:    svcs.Users,
+		Members:  svcs.Members,
 	}, unexpected, opts).Handler(basePath)
 	if requireCredentials && svcs.Caps.BasicAuth {
 		h = auth.BasicChallenge(h)

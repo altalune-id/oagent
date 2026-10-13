@@ -10,6 +10,7 @@ import WebhookCreateView from "./WebhookCreateView.vue";
 import WebhookDeliveriesView from "./WebhookDeliveriesView.vue";
 import WebhookListView from "./WebhookListView.vue";
 import WebhookRetryFailedView from "./WebhookRetryFailedView.vue";
+import MemberList from "./MemberList.vue";
 import AuthWhoami from "./AuthWhoami.vue";
 import DefaultView from "./DefaultView.vue";
 
@@ -25,6 +26,7 @@ const registry: Record<string, Component> = {
   webhook_list: WebhookListView,
   webhook_deliveries: WebhookDeliveriesView,
   webhook_retry_failed: WebhookRetryFailedView,
+  member_list: MemberList,
   auth_whoami: AuthWhoami,
 };
 

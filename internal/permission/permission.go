@@ -5,6 +5,7 @@ import (
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
+	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
@@ -46,6 +47,11 @@ func Table() map[string][]string {
 		webhookv1connect.WebhookServicePingWebhookProcedure:                  {scope.WebhookWrite},
 		webhookv1connect.WebhookServiceRetryWebhookDeliveryProcedure:         {scope.WebhookWrite},
 		webhookv1connect.WebhookServiceRetryFailedWebhookDeliveriesProcedure: {scope.WebhookWrite},
+
+		memberv1connect.MemberServiceListMembersProcedure:   {scope.MemberRead},
+		memberv1connect.MemberServiceSetMemberRoleProcedure: {scope.MemberWrite},
+		memberv1connect.MemberServiceRemoveMemberProcedure:  {scope.MemberWrite},
+		memberv1connect.MemberServiceLeaveOrgProcedure:      {authz.AnyAuthenticated},
 
 		authv1connect.AuthServiceWhoamiProcedure: {authz.AnyAuthenticated},
 	}

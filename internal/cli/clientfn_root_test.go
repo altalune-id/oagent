@@ -27,6 +27,7 @@ func remoteCommands() map[string][]string {
 		"project": {"project", "list", "--org-id", org},
 		"agent":   {"agent", "list", "--project-id", project},
 		"apikey":  {"apikey", "list", "--org-id", org},
+		"member":  {"member", "list", "--org-id", org},
 		"webhook": {"webhook", "list", "--org-id", org, "--project-id", project},
 		"auth":    {"auth", "whoami"},
 	}

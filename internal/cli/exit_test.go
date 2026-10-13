@@ -25,6 +25,35 @@ func TestExitCodeFor(t *testing.T) {
 	assert.Equal(t, ExitGeneral, ExitCodeFor(apperror.New(apperror.CodeUnexpected, "x")))
 }
 
+func TestExitCodeFor_UserAndMember(t *testing.T) {
+	for code, want := range map[apperror.Code]int{
+		apperror.CodeUserNotFound:        ExitNotFound,
+		apperror.CodeMemberNotFound:      ExitNotFound,
+		apperror.CodeUserAlreadyExists:   ExitAlreadyExists,
+		apperror.CodeMemberAlreadyExists: ExitAlreadyExists,
+		apperror.CodeUserInvalidEmail:    ExitInvalidArg,
+		apperror.CodeMemberInvalidRole:   ExitInvalidArg,
+	} {
+		assert.Equal(t, want, ExitCodeFor(apperror.New(code, "x")), code)
+	}
+}
+
+func TestExitCodeFor_EveryDomainFollowsTheKind(t *testing.T) {
+	for code, want := range map[apperror.Code]int{
+		apperror.CodeProjectNotFound:        ExitNotFound,
+		apperror.CodeAgentNotFound:          ExitNotFound,
+		apperror.CodeWebhookNotFound:        ExitNotFound,
+		apperror.CodeAuthInvalidCredentials: ExitUnauth,
+		apperror.CodeAuthPasswordPolicy:     ExitInvalidArg,
+		apperror.CodeMemberLastOwner:        ExitGeneral,
+		apperror.CodeMemberRoleNotAllowed:   ExitGeneral,
+		apperror.CodeMemberSelfChange:       ExitGeneral,
+		apperror.Code("ZZZ999"):             ExitGeneral,
+	} {
+		assert.Equal(t, want, ExitCodeFor(apperror.New(code, "x")), code)
+	}
+}
+
 func TestRuntimeFromCtx_Missing(t *testing.T) {
 	_, err := runtimeFromCtx(context.Background())
 	assert.Error(t, err)

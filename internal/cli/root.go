@@ -14,6 +14,7 @@ import (
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
+	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
@@ -23,6 +24,7 @@ import (
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/boot"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/webhook"
@@ -136,10 +138,14 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 	authCmd := auth.NewCmd(sessionProfiles{}, authClientFn(bootClient), authSessionClientFn(bootClient))
 	markClientTree(authCmd)
 
+	memberCmd := member.NewCmd(memberClientFn(bootClient))
+	markClientTree(memberCmd)
+
 	root.AddCommand(
 		newServeCmd(bootServer),
 		newMCPCmd(bootServer),
 		user.NewCmd(setPasswordFn(bootServer)),
+		memberCmd,
 		authCmd,
 		orgCmd,
 		projectCmd,
@@ -187,6 +193,16 @@ func orgClientFn(bootClient ClientBootFn) org.ClientFn {
 			return nil, err
 		}
 		return client.Org, nil
+	}
+}
+
+func memberClientFn(bootClient ClientBootFn) member.ClientFn {
+	return func(cmd *cobra.Command) (memberv1connect.MemberServiceClient, error) {
+		client, err := connectClient(cmd, bootClient)
+		if err != nil {
+			return nil, err
+		}
+		return client.Members, nil
 	}
 }
 

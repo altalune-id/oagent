@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package member.v1;
+
+import "google/protobuf/timestamp.proto";
+import "mcp/v1/annotations.proto";
+
+option go_package = "altalune.id/oagent/gen/go/member/v1;memberv1";
+
+service MemberService {
+  rpc ListMembers(ListMembersRequest) returns (ListMembersResponse) {
+    option (mcp.v1.tool) = {
+      name: "member_list"
+      title: "List members"
+      description: "List the members of an organization with their roles."
+      required: ["org_id"]
+      ui: "app"
+    };
+  }
+  rpc SetMemberRole(SetMemberRoleRequest) returns (SetMemberRoleResponse);
+  rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse);
+  rpc LeaveOrg(LeaveOrgRequest) returns (LeaveOrgResponse);
+}
+
+message Member {
+  string user_id = 1;
+  string email = 2;
+  string name = 3;
+  // owner, admin or member.
+  string role = 4;
+  google.protobuf.Timestamp joined_at = 5;
+}
+
+message ListMembersRequest {
+  string org_id = 1;
+}
+
+message ListMembersResponse {
+  repeated Member members = 1;
+}
+
+message SetMemberRoleRequest {
+  string org_id = 1;
+  string user_id = 2;
+  // owner, admin or member; only an owner grants or changes the owner role.
+  string role = 3;
+}
+
+message SetMemberRoleResponse {
+  Member member = 1;
+}
+
+message RemoveMemberRequest {
+  string org_id = 1;
+  string user_id = 2;
+}
+
+message RemoveMemberResponse {}
+
+message LeaveOrgRequest {
+  string org_id = 1;
+}
+
+message LeaveOrgResponse {}
