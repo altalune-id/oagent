@@ -7,4 +7,6 @@ type Request struct {
 	Email    string
 	Password string
 	OrgName  string
+	// AcceptTerms records that the owner accepted the terms, in the install transaction.
+	AcceptTerms bool
 }

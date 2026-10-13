@@ -48,6 +48,8 @@ compliance:
   requireAcceptance: ""
   # env: OAGENT_COMPLIANCE_TERMS_URL
   termsURL: ""
+  # env: OAGENT_COMPLIANCE_TERMS_UPDATED_AT
+  termsUpdatedAt: ""
 
 db:
   # env: OAGENT_DB_AUTO_MIGRATE

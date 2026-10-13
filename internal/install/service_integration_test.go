@@ -86,6 +86,7 @@ func TestInstall_Fresh(t *testing.T) {
 	m, err := f.members.Find(ctx, sys.ID, u.ID)
 	require.NoError(t, err)
 	assert.Equal(t, member.RoleOwner, m.Role)
+	assert.Nil(t, u.TermsAcceptedAt, "no box ticked, no acceptance")
 	_, err = f.projects.BySlug(ctx, sys.ID, project.DefaultSlug)
 	require.NoError(t, err)
 
@@ -285,4 +286,16 @@ func TestEnsureBasicSystemOrg_DependencyFailures(t *testing.T) {
 	err = install.NewService(f.pool, f.users, f.orgs, f.members, failProjectCreate{f.projects}).EnsureBasicSystemOrg(ctx)
 	require.ErrorIs(t, err, errInjected)
 	assert.Zero(t, f.orgCount(t), "the system org insert is rolled back with the failed project")
+}
+
+func TestInstall_RecordsAcceptedTerms(t *testing.T) {
+	f := newInstallFixture(t)
+	ctx := t.Context()
+	before := time.Now().Add(-time.Second)
+	u, err := f.svc.Install(ctx, install.Request{Email: "ada@example.com", Password: "a-good-password", AcceptTerms: true})
+	require.NoError(t, err)
+	stored, err := f.users.ByID(ctx, u.ID)
+	require.NoError(t, err)
+	require.NotNil(t, stored.TermsAcceptedAt)
+	assert.True(t, stored.TermsAcceptedAt.After(before))
 }

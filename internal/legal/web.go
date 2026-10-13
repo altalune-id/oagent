@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"net/http"
 	"net/url"
+	"time"
 
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/legal/views"
@@ -42,8 +43,8 @@ func (h *Web) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST "+h.o.Kit.Path("/welcome"), h.postWelcome)
 }
 
-// WelcomeGate sends a signed-in person who has not accepted the terms to /welcome while on is true.
-func WelcomeGate(basePath string, on bool) func(http.Handler) http.Handler {
+// WelcomeGate sends a signed-in person to /welcome, while on is true, until they accept the terms updated at termsUpdated.
+func WelcomeGate(basePath string, on bool, termsUpdated time.Time) func(http.Handler) http.Handler {
 	welcome := layout.Path(basePath, "/welcome")
 	skipped := []string{
 		welcome, layout.Path(basePath, "/login"), layout.Path(basePath, "/logout"), layout.Path(basePath, "/install"),
@@ -56,7 +57,7 @@ func WelcomeGate(basePath string, on bool) func(http.Handler) http.Handler {
 		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			p := session.PrincipalFrom(r.Context())
-			if !p.IsPerson() || !p.TermsAcceptedAt.IsZero() || layout.UnderAny(r.URL.Path, skipped) {
+			if !p.IsPerson() || !needsAcceptance(p.TermsAcceptedAt, termsUpdated) || layout.UnderAny(r.URL.Path, skipped) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -87,7 +88,7 @@ func (h *Web) getWelcome(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case !principal.IsPerson():
 		h.toLogin(w, r)
-	case !principal.TermsAcceptedAt.IsZero():
+	case !h.o.Service.NeedsAcceptance(principal.TermsAcceptedAt):
 		to := layout.ResolveReturnTo(h.o.Kit.BasePath, returnTo)
 		http.Redirect(w, r, to, http.StatusSeeOther) //nolint:gosec // G710: ResolveReturnTo sanitizes.
 	default:

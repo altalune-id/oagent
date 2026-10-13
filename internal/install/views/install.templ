@@ -8,6 +8,7 @@ type InstallData struct {
 	Email   string
 	OrgName string
 	Error   string
+	Consent layout.ConsentData
 }
 
 templ Install(d layout.LayoutData, v InstallData) {
@@ -31,6 +32,7 @@ templ Install(d layout.LayoutData, v InstallData) {
 					<span>Organization name</span>
 					<input class="input w-full" type="text" name="org_name" value={ v.OrgName } placeholder="Organization name"/>
 				</label>
+				@layout.Consent(d, v.Consent)
 				<button class="btn btn-primary mt-2" type="submit">Install</button>
 			</form>
 		}

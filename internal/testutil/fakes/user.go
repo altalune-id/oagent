@@ -3,6 +3,7 @@ package fakes
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -35,6 +36,23 @@ func (f *UserStore) Save(_ context.Context, u *user.User) error {
 	}
 	f.users[u.ID] = *u
 	return nil
+}
+
+// AcceptTerms implements user.Store with the process clock.
+func (f *UserStore) AcceptTerms(_ context.Context, id uuid.UUID) (*user.User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	u, ok := f.users[id]
+	if !ok {
+		return nil, &user.NotFoundError{}
+	}
+	now := time.Now().UTC()
+	u.TermsAcceptedAt = &now
+	f.users[id] = u
+	return &u, nil
 }
 
 // ByID implements user.Store.

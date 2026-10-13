@@ -16,6 +16,7 @@ type InstallData struct {
 	Email   string
 	OrgName string
 	Error   string
+	Consent layout.ConsentData
 }
 
 func Install(d layout.LayoutData, v InstallData) templ.Component {
@@ -75,7 +76,7 @@ func Install(d layout.LayoutData, v InstallData) templ.Component {
 					var templ_7745c5c3_Var4 string
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(v.Error)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `install/views/install.templ`, Line: 18, Col: 68}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `install/views/install.templ`, Line: 19, Col: 68}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 					if templ_7745c5c3_Err != nil {
@@ -93,7 +94,7 @@ func Install(d layout.LayoutData, v InstallData) templ.Component {
 				var templ_7745c5c3_Var5 templ.SafeURL
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(d.Href("/install"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `install/views/install.templ`, Line: 20, Col: 50}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `install/views/install.templ`, Line: 21, Col: 50}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -106,7 +107,7 @@ func Install(d layout.LayoutData, v InstallData) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `install/views/install.templ`, Line: 23, Col: 71}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `install/views/install.templ`, Line: 24, Col: 71}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 				if templ_7745c5c3_Err != nil {
@@ -119,7 +120,7 @@ func Install(d layout.LayoutData, v InstallData) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.Email)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `install/views/install.templ`, Line: 27, Col: 74}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `install/views/install.templ`, Line: 28, Col: 74}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 				if templ_7745c5c3_Err != nil {
@@ -140,13 +141,21 @@ func Install(d layout.LayoutData, v InstallData) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.OrgName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `install/views/install.templ`, Line: 32, Col: 78}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `install/views/install.templ`, Line: 33, Col: 78}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" placeholder=\"Organization name\"></label> <button class=\"btn btn-primary mt-2\" type=\"submit\">Install</button></form>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" placeholder=\"Organization name\"></label>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = layout.Consent(d, v.Consent).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<button class=\"btn btn-primary mt-2\" type=\"submit\">Install</button></form>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

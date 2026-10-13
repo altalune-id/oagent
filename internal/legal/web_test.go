@@ -23,6 +23,8 @@ import (
 	"altalune.id/oagent/internal/web/middleware"
 )
 
+var termsUpdated = NewService(nil).TermsUpdatedAt()
+
 type fakeUsers struct{ accepted []uuid.UUID }
 
 func (f *fakeUsers) AcceptTerms(_ context.Context, id uuid.UUID) (*user.User, error) {
@@ -52,7 +54,7 @@ func newWelcomeFixture(t *testing.T, base string, on bool) *welcomeFixture {
 		BasePath:    base,
 		Console:     console,
 		Session:     middleware.Session(middleware.SessionConfig{Store: f.store, Secret: testSecret, Auth: noRefresh{}}),
-		SessionGate: WelcomeGate(base, on),
+		SessionGate: WelcomeGate(base, on, termsUpdated),
 		Routes: []web.Registrar{NewWeb(WebOpts{
 			Kit:               layout.Kit{BasePath: base},
 			Service:           NewService(f.users),
@@ -152,6 +154,22 @@ func TestWelcome_AnonymousGoesToLogin(t *testing.T) {
 	assert.Equal(t, "/login?return_to=%2Fwelcome", rec.Header().Get("Location"))
 }
 
+func TestWelcomeGate_AsksAgainWhenTheTermsChange(t *testing.T) {
+	f := newWelcomeFixture(t, "", true)
+	before, after := newPerson(), newPerson()
+	before.TermsAcceptedAt = termsUpdated.Add(-time.Hour)
+	after.TermsAcceptedAt = termsUpdated.Add(time.Hour)
+
+	rec := f.get(f.cookieFor(t, before), "/console/")
+	assert.Equal(t, http.StatusSeeOther, rec.Code, "accepted before the terms changed")
+	page := f.get(f.cookieFor(t, before), "/welcome?return_to=/console/")
+	assert.Equal(t, http.StatusOK, page.Code)
+	assert.Contains(t, page.Body.String(), `name="accept_terms"`)
+
+	assert.Equal(t, http.StatusOK, f.get(f.cookieFor(t, after), "/console/").Code, "accepted after")
+	assert.Equal(t, http.StatusSeeOther, f.get(f.cookieFor(t, after), "/welcome").Code)
+}
+
 func TestWelcome_AlreadyAcceptedSkips(t *testing.T) {
 	f := newWelcomeFixture(t, "", true)
 	p := newPerson()
@@ -176,7 +194,7 @@ func TestWelcomeGate_NeverGatesNonPeople(t *testing.T) {
 
 func TestWelcomeGate_SkipList(t *testing.T) {
 	ok := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusTeapot) })
-	gate := WelcomeGate("/app", true)(ok)
+	gate := WelcomeGate("/app", true, termsUpdated)(ok)
 	for _, path := range []string{
 		"/app/welcome", "/app/login", "/app/logout", "/app/install", "/app/terms", "/app/privacy",
 		"/app/static/app.css", "/healthz", "/readyz", "/app/api/x.v1.S/M", "/app/mcp", "/app/mcp/x",

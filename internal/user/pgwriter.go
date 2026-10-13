@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/google/uuid"
 
+	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/schema/entity"
 )
 
@@ -36,6 +38,22 @@ func (s *postgresStore) Save(ctx context.Context, u *User) error {
 	}
 	u.UpdatedAt = now
 	return nil
+}
+
+// AcceptTerms sets terms_accepted_at to the database time and returns the stored user.
+func (s *postgresStore) AcceptTerms(ctx context.Context, id uuid.UUID) (*User, error) {
+	stmt := s.users.UPDATE(s.users.TermsAcceptedAt, s.users.UpdatedAt).
+		SET(postgres.NOW(), postgres.NOW()).
+		WHERE(s.users.ID.EQ(postgres.UUID(id))).
+		RETURNING(s.users.AllColumns)
+	var row userRow
+	if err := stmt.QueryContext(ctx, s.writer(ctx), &row); err != nil {
+		if db.IsNoRows(err) {
+			return nil, &NotFoundError{}
+		}
+		return nil, fmt.Errorf("user.postgres: AcceptTerms: %w", err)
+	}
+	return row.toUser(), nil
 }
 
 func nullText(v string) postgres.StringExpression {

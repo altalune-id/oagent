@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/config"
@@ -157,9 +158,7 @@ func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected
 		return []web.Registrar{legal.NewWeb(legalOpts)}
 	}
 	sessions := cookieSessions(cfg, svcs)
-	if svcs.Users != nil {
-		legalOpts.Service = legal.NewService(svcs.Users)
-	}
+	legalOpts.Service = svcs.Legal
 	legalOpts.Sessions = sessions
 	legalOpts.RequireAcceptance = cfg.Compliance.RequireAcceptance
 	return []web.Registrar{
@@ -174,7 +173,16 @@ func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected
 			Required:  svcs.InstallRequired,
 			Secret:    svcs.StateSecret,
 			Secure:    cfg.HTTP.CookieSecure,
+			Consent:   consentData(cfg),
 		}),
+	}
+}
+
+func consentData(cfg config.Config) layout.ConsentData {
+	return layout.ConsentData{
+		TermsURL:   cfg.Compliance.TermsURL,
+		PrivacyURL: cfg.Compliance.PrivacyURL,
+		Required:   cfg.Compliance.RequireAcceptance,
 	}
 }
 
@@ -214,6 +222,7 @@ type httpSurfaces struct {
 	consoleGate     func(http.Handler) http.Handler
 
 	requireAcceptance bool
+	termsUpdated      time.Time
 	crossOrigin       *http.CrossOriginProtection
 }
 
@@ -230,7 +239,7 @@ func buildHTTPHandler(s httpSurfaces) http.Handler {
 
 		Gate:        install.InstallGate(s.basePath, s.installRequired),
 		Session:     s.session,
-		SessionGate: legal.WelcomeGate(s.basePath, s.requireAcceptance),
+		SessionGate: legal.WelcomeGate(s.basePath, s.requireAcceptance, s.termsUpdated),
 		ConsoleGate: s.consoleGate,
 		CrossOrigin: s.crossOrigin,
 	})

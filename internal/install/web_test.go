@@ -38,6 +38,11 @@ type installFixture struct {
 
 func newInstallFixture(t *testing.T, base string) *installFixture {
 	t.Helper()
+	return newInstallFixtureTerms(t, base, false)
+}
+
+func newInstallFixtureTerms(t *testing.T, base string, requireTerms bool) *installFixture {
+	t.Helper()
 	token, err := NewToken(testToken)
 	require.NoError(t, err)
 	f := &installFixture{
@@ -65,6 +70,7 @@ func newInstallFixture(t *testing.T, base string) *installFixture {
 			Required:  f.required,
 			Secret:    testSecret,
 			Secure:    true,
+			Consent:   layout.ConsentData{Required: requireTerms},
 		})},
 	})
 	return f
@@ -443,4 +449,47 @@ func TestValidSetup(t *testing.T) {
 			assert.Equal(t, tt.want, validSetup(testSecret, tt.token, tt.raw, now))
 		})
 	}
+}
+
+func TestInstall_Consent(t *testing.T) {
+	t.Run("required", func(t *testing.T) {
+		f := newInstallFixtureTerms(t, "", true)
+		c := f.setupCookie(t, "")
+		req := httptest.NewRequest(http.MethodGet, "/install", nil)
+		req.AddCookie(c)
+		page := f.do(t, req)
+		assert.Contains(t, page.Body.String(), `name="accept_terms" value="1" required`)
+		assert.Contains(t, page.Body.String(), `href="/terms"`)
+
+		rec := f.do(t, installPost("", goodForm(), c))
+		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+		assert.Contains(t, rec.Body.String(), "Please accept the terms to continue.")
+		assert.NotContains(t, rec.Body.String(), "correct horse battery", "the password is not echoed")
+		assert.Empty(t, f.installer.calls, "no user is created")
+
+		form := goodForm()
+		form.Set("accept_terms", "1")
+		f.auth.users["ada@example.com"] = "correct horse battery"
+		rec = f.do(t, installPost("", form, c))
+		require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
+		require.Len(t, f.installer.calls, 1)
+		assert.True(t, f.installer.calls[0].AcceptTerms)
+	})
+	t.Run("not required", func(t *testing.T) {
+		f := newInstallFixture(t, "")
+		c := f.setupCookie(t, "")
+		req := httptest.NewRequest(http.MethodGet, "/install", nil)
+		req.AddCookie(c)
+		page := f.do(t, req).Body.String()
+		assert.NotContains(t, page, "accept_terms")
+		assert.Contains(t, page, "By continuing, you agree to the")
+
+		form := goodForm()
+		form.Set("accept_terms", "1")
+		f.auth.users["ada@example.com"] = "correct horse battery"
+		rec := f.do(t, installPost("", form, c))
+		require.Equal(t, http.StatusSeeOther, rec.Code)
+		require.Len(t, f.installer.calls, 1)
+		assert.False(t, f.installer.calls[0].AcceptTerms, "acceptance is recorded only when it is asked for")
+	})
 }

@@ -37,6 +37,14 @@ type ComplianceConfig struct {
 	RequireAcceptance bool   `yaml:"requireAcceptance" mapstructure:"requireAcceptance"`
 	TermsURL          string `yaml:"termsURL"          mapstructure:"termsURL"          validate:"omitempty,url"`
 	PrivacyURL        string `yaml:"privacyURL"        mapstructure:"privacyURL"        validate:"omitempty,url"`
+	// TermsUpdatedAt is the external terms' last change, as YYYY-MM-DD.
+	TermsUpdatedAt string `yaml:"termsUpdatedAt" mapstructure:"termsUpdatedAt" validate:"omitempty,datetime=2006-01-02"`
+}
+
+// TermsUpdated returns TermsUpdatedAt as a UTC date, or the zero time when it is unset.
+func (c ComplianceConfig) TermsUpdated() time.Time {
+	t, _ := time.Parse(time.DateOnly, c.TermsUpdatedAt)
+	return t
 }
 
 // SecretsConfig configures at-rest secret sealing (webhook signing secrets).
@@ -194,6 +202,10 @@ func (c *Config) Validate() error {
 	}
 	if err := c.validateAuth(); err != nil {
 		return err
+	}
+	// SECURITY: a future date would send every person back to /welcome on every request.
+	if c.Compliance.TermsUpdated().After(time.Now()) {
+		return fmt.Errorf("config: compliance.termsUpdatedAt %s is in the future", c.Compliance.TermsUpdatedAt)
 	}
 	return c.validateMail()
 }

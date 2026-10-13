@@ -21,13 +21,7 @@ templ Welcome(d layout.LayoutData, v WelcomeData) {
 				if v.ReturnTo != "" {
 					<input type="hidden" name="return_to" value={ v.ReturnTo }/>
 				}
-				<label class="label cursor-pointer items-start gap-3 whitespace-normal">
-					<input class="checkbox checkbox-primary" type="checkbox" name="accept_terms" value="1" required/>
-					<span class="text-base-content">
-						I accept the <a class="link" href={ templ.SafeURL(v.TermsURL) } target="_blank" rel="noopener">Terms of Service</a>
-						and the <a class="link" href={ templ.SafeURL(v.PrivacyURL) } target="_blank" rel="noopener">Privacy Policy</a>.
-					</span>
-				</label>
+				@layout.Consent(d, layout.ConsentData{TermsURL: v.TermsURL, PrivacyURL: v.PrivacyURL, Required: true})
 				<button class="btn btn-primary" type="submit">Continue</button>
 			</form>
 		}

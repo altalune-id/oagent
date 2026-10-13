@@ -52,14 +52,6 @@ func New(email, name string) (*User, error) {
 	return &User{ID: uuid.New(), PublicID: publicID, Email: e, Name: n, CreatedAt: now, UpdatedAt: now}, nil
 }
 
-// AcceptTerms records that the user accepted the terms at now; the first acceptance is kept.
-func (u *User) AcceptTerms(now time.Time) {
-	if u.TermsAcceptedAt == nil {
-		t := now.UTC()
-		u.TermsAcceptedAt = &t
-	}
-}
-
 // HasPassword reports whether u can sign in with a local password.
 func (u *User) HasPassword() bool { return u.PasswordHash != "" }
 

@@ -151,3 +151,28 @@ func TestPostgresStore_HonorsTransaction(t *testing.T) {
 	_, err = s.ByEmail(ctx, committed.Email)
 	assert.NoError(t, err)
 }
+
+func TestPostgresStore_AcceptTermsUsesTheDatabaseClock(t *testing.T) {
+	s, pool := newPGStore(t)
+	ctx := t.Context()
+	u := mustNew(t, "ada@example.com")
+	require.NoError(t, s.Save(ctx, u))
+
+	var dbNow time.Time
+	var got *user.User
+	require.NoError(t, db.RunInTx(ctx, pool, func(ctx context.Context) error {
+		tx, _ := db.CurrentTx(ctx)
+		if err := tx.QueryRowContext(ctx, `SELECT now()`).Scan(&dbNow); err != nil {
+			return err
+		}
+		var err error
+		got, err = s.AcceptTerms(ctx, u.ID)
+		return err
+	}))
+	require.NotNil(t, got.TermsAcceptedAt)
+	assert.True(t, dbNow.Equal(*got.TermsAcceptedAt), "%v vs %v", dbNow, *got.TermsAcceptedAt)
+	assert.Equal(t, u.Email, got.Email)
+
+	_, err := s.AcceptTerms(ctx, uuid.New())
+	assert.True(t, user.IsNotFoundError(err))
+}

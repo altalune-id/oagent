@@ -72,3 +72,28 @@ func TestSplitFrontmatter_SkipsUnknownAndMalformedLines(t *testing.T) {
 	assert.True(t, fm.Updated.IsZero())
 	assert.Equal(t, "body", string(body))
 }
+
+func TestService_TermsUpdatedAt(t *testing.T) {
+	builtIn := NewService(nil).TermsUpdatedAt()
+	terms, err := BySlug(TermsSlug)
+	require.NoError(t, err)
+	privacy, err := BySlug(PrivacySlug)
+	require.NoError(t, err)
+	want := terms.UpdatedAt
+	if privacy.UpdatedAt.After(want) {
+		want = privacy.UpdatedAt
+	}
+	assert.Equal(t, want, builtIn, "the newer of the two documents")
+	assert.False(t, builtIn.IsZero())
+
+	external := time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)
+	assert.Equal(t, external, NewService(nil).WithExternalTerms(external).TermsUpdatedAt(), "the configured date wins for external terms")
+	assert.True(t, NewService(nil).WithExternalTerms(time.Time{}).TermsUpdatedAt().IsZero(), "external terms without a date are never re-asked")
+}
+
+func TestLatest(t *testing.T) {
+	a := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	b := a.AddDate(0, 1, 0)
+	assert.Equal(t, b, latest(map[string]*Document{"x": {UpdatedAt: a}, "y": {UpdatedAt: b}}))
+	assert.True(t, latest(nil).IsZero())
+}

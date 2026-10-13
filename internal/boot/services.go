@@ -17,6 +17,7 @@ import (
 	"altalune.id/oagent/internal/kernel/mailqueue"
 	"altalune.id/oagent/internal/kernel/outbox"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
@@ -52,6 +53,7 @@ type Services struct {
 	Sessions        session.Store
 	Auth            *auth.Service
 	Install         *install.Service
+	Legal           *legal.Service
 	InstallToken    install.Token
 	InstallRequired *atomic.Bool
 	Caps            capabilities.Capabilities
@@ -130,10 +132,19 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Sessions:     sessions,
 		Auth:         authn,
 		Install:      installer,
+		Legal:        buildLegal(cfg, users),
 		Caps:         caps,
 	}
 	members.WithEffects(memberEffects(cfg, svcs)).WithDirectory(memberDirectory{users: users, orgs: orgs})
 	return svcs
+}
+
+func buildLegal(cfg config.Config, users *user.Service) *legal.Service {
+	l := legal.NewService(users)
+	if cfg.Compliance.TermsURL != "" || cfg.Compliance.PrivacyURL != "" {
+		l.WithExternalTerms(cfg.Compliance.TermsUpdated())
+	}
+	return l
 }
 
 func memberEffects(cfg config.Config, s *Services) member.Effects {

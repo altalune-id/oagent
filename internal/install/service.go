@@ -67,6 +67,11 @@ func (s *Service) Install(ctx context.Context, r Request) (*user.User, error) {
 		if err != nil {
 			return err
 		}
+		if r.AcceptTerms {
+			if _, err := s.users.AcceptTerms(ctx, u.ID); err != nil {
+				return err
+			}
+		}
 		if sys == nil {
 			name := cmp.Or(strings.TrimSpace(r.OrgName), defaultOrgName)
 			if sys, err = s.orgs.CreateSystem(ctx, org.CreateRequest{Name: name, CreatedBy: u.ID}); err != nil {

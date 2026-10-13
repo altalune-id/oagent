@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,9 @@ import (
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/kernel/capabilities"
+	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/user"
+	"altalune.id/oagent/internal/web/layout"
 )
 
 func TestHTTPConfig(t *testing.T) {
@@ -50,7 +53,8 @@ func TestBuildRoutes_TermsOverride(t *testing.T) {
 }
 
 func TestBuildRoutes_WelcomeFollowsFlag(t *testing.T) {
-	svcs := &Services{Caps: capabilities.Capabilities{LocalLogin: true}, Auth: &auth.Service{}, Users: &user.Service{}}
+	users := &user.Service{}
+	svcs := &Services{Caps: capabilities.Capabilities{LocalLogin: true}, Auth: &auth.Service{}, Users: users, Legal: legal.NewService(users)}
 	cfg := config.Config{}
 	assert.Equal(t, http.StatusNotFound, serveRoutes(cfg, svcs, http.MethodGet, "/welcome").Code)
 
@@ -132,4 +136,21 @@ func TestWarnSampleLegal_NamesOnlyTheMissingKey(t *testing.T) {
 	log, buf := bufferLogger()
 	warnSampleLegal(cfg, log, true)
 	assert.Contains(t, buf.String(), "missing=compliance.privacyURL")
+}
+
+func TestBuildLegal_TermsDate(t *testing.T) {
+	cfg := config.Config{}
+	builtIn := buildLegal(cfg, nil).TermsUpdatedAt()
+	assert.False(t, builtIn.IsZero(), "the built-in documents carry a date")
+
+	cfg.Compliance.TermsURL = "https://legal.example.com/terms"
+	cfg.Compliance.TermsUpdatedAt = "2027-01-02"
+	assert.Equal(t, time.Date(2027, 1, 2, 0, 0, 0, 0, time.UTC), buildLegal(cfg, nil).TermsUpdatedAt())
+}
+
+func TestConsentData(t *testing.T) {
+	cfg := config.Config{}
+	cfg.Compliance.RequireAcceptance = true
+	cfg.Compliance.PrivacyURL = "https://legal.example.com/privacy"
+	assert.Equal(t, layout.ConsentData{PrivacyURL: "https://legal.example.com/privacy", Required: true}, consentData(cfg))
 }

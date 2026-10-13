@@ -76,3 +76,10 @@ func (k Kit) log() *slog.Logger {
 }
 
 func isClientGone(ctx context.Context) bool { return ctx.Err() != nil }
+
+func consentURL(d LayoutData, configured, builtIn string) string {
+	if configured != "" {
+		return configured
+	}
+	return d.Href(builtIn)
+}

@@ -39,6 +39,7 @@ type WebOpts struct {
 	Required  *atomic.Bool
 	Secret    []byte
 	Secure    bool
+	Consent   layout.ConsentData
 }
 
 // Web serves the install layout.
@@ -96,7 +97,7 @@ func (h *Web) getInstall(w http.ResponseWriter, r *http.Request) {
 		h.locked(w, r)
 		return
 	}
-	h.o.Kit.Render(w, r, http.StatusOK, views.Install(h.o.Kit.Layout("Set up oagent"), views.InstallData{}))
+	h.render(w, r, http.StatusOK, views.InstallData{})
 }
 
 func (h *Web) postInstall(w http.ResponseWriter, r *http.Request) {
@@ -113,6 +114,13 @@ func (h *Web) postInstall(w http.ResponseWriter, r *http.Request) {
 		Email:    strings.TrimSpace(r.PostFormValue("email")),
 		Password: r.PostFormValue("password"),
 		OrgName:  strings.TrimSpace(r.PostFormValue("org_name")),
+	}
+	if h.o.Consent.Required {
+		if r.PostFormValue("accept_terms") != "1" {
+			h.render(w, r, http.StatusUnprocessableEntity, h.retry(req, "Please accept the terms to continue."))
+			return
+		}
+		req.AcceptTerms = true
 	}
 	_, err := h.o.Installer.Install(r.Context(), req)
 	switch {
@@ -150,8 +158,16 @@ func (h *Web) installFailed(w http.ResponseWriter, r *http.Request, req Request,
 		h.o.Kit.Fail(w, r, "web: install", err)
 		return
 	}
-	view := views.InstallData{Name: req.Name, Email: req.Email, OrgName: req.OrgName, Error: ae.Message()}
-	h.o.Kit.Render(w, r, http.StatusUnprocessableEntity, views.Install(h.o.Kit.Layout("Set up oagent"), view))
+	h.render(w, r, http.StatusUnprocessableEntity, h.retry(req, ae.Message()))
+}
+
+func (h *Web) retry(req Request, msg string) views.InstallData {
+	return views.InstallData{Name: req.Name, Email: req.Email, OrgName: req.OrgName, Error: msg}
+}
+
+func (h *Web) render(w http.ResponseWriter, r *http.Request, status int, v views.InstallData) {
+	v.Consent = h.o.Consent
+	h.o.Kit.Render(w, r, status, views.Install(h.o.Kit.Layout("Set up oagent"), v))
 }
 
 func (h *Web) locked(w http.ResponseWriter, r *http.Request) {

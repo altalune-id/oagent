@@ -15,9 +15,10 @@ import (
 	"altalune.id/oagent/internal/user"
 )
 
-// UserCreator creates the first owner.
+// UserCreator creates the first owner and records that they accepted the terms; both join the transaction on ctx.
 type UserCreator interface {
 	Create(ctx context.Context, req user.CreateRequest) (*user.User, error)
+	AcceptTerms(ctx context.Context, id uuid.UUID) (*user.User, error)
 }
 
 // SystemOrgs finds or creates the deployment's system org.

@@ -117,6 +117,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 			consoleGate:     buildConsoleGate(cfg, svcs),
 
 			requireAcceptance: cfg.Compliance.RequireAcceptance && svcs.Caps.LocalLogin,
+			termsUpdated:      svcs.Legal.TermsUpdatedAt(),
 			crossOrigin:       crossOrigin,
 		}),
 		log,

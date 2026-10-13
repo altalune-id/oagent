@@ -1,0 +1,27 @@
+package layout
+
+// ConsentData is where the terms and privacy policy live and whether a person must tick the box.
+type ConsentData struct {
+	TermsURL   string
+	PrivacyURL string
+	Required   bool
+}
+
+// Consent shows the terms and privacy links on an account form, with a required checkbox named accept_terms when c.Required.
+templ Consent(d LayoutData, c ConsentData) {
+	if c.Required {
+		<label class="label cursor-pointer items-start gap-3 whitespace-normal">
+			<input class="checkbox checkbox-primary" type="checkbox" name="accept_terms" value="1" required/>
+			<span class="text-base-content">
+				I agree to the @consentLinks(d, c)
+			</span>
+		</label>
+	} else {
+		<p class="text-sm text-base-content/70">By continuing, you agree to the @consentLinks(d, c)</p>
+	}
+}
+
+templ consentLinks(d LayoutData, c ConsentData) {
+	<a class="link" href={ templ.SafeURL(consentURL(d, c.TermsURL, "/terms")) } target="_blank" rel="noopener">Terms of Service</a>
+	and the <a class="link" href={ templ.SafeURL(consentURL(d, c.PrivacyURL, "/privacy")) } target="_blank" rel="noopener">Privacy Policy</a>.
+}

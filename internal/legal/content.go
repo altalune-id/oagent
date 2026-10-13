@@ -30,6 +30,16 @@ func BySlug(slug string) (*Document, error) {
 	return d, nil
 }
 
+func latest(m map[string]*Document) time.Time {
+	var out time.Time
+	for _, d := range m {
+		if d.UpdatedAt.After(out) {
+			out = d.UpdatedAt
+		}
+	}
+	return out
+}
+
 func loadAll() (map[string]*Document, error) {
 	out := make(map[string]*Document, 2)
 	for _, slug := range []string{TermsSlug, PrivacySlug} {

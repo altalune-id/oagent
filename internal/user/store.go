@@ -21,4 +21,6 @@ type Reader interface {
 // Writer writes users.
 type Writer interface {
 	Save(ctx context.Context, u *User) error
+	// AcceptTerms sets the user's terms_accepted_at to the database time and returns the stored user.
+	AcceptTerms(ctx context.Context, id uuid.UUID) (*User, error)
 }

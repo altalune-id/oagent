@@ -77,8 +77,8 @@ flowchart TD
 | `webhook` | project + org (refs), project (org of project), outbox | ✓ | ✓ | — |
 | `user` | — | CLI `user set-password` (operator, boots the `App`) | — | — |
 | `auth` | user, member, org, project, sessions, passwords | whoami; CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | `auth_whoami` | `/login`, `/logout` |
-| `install` | user, org, member, project; auth (sign-in) | — | — | `/install` + `InstallGate` |
-| `legal` | user (accept terms), auth (rotate session) | — | — | `/terms`, `/privacy`, `/welcome` + `WelcomeGate` |
+| `install` | user (create, accept terms), org, member, project; auth (sign-in) | — | — | `/install` (terms and privacy consent, `layout.Consent`) + `InstallGate` |
+| `legal` | user (accept terms), auth (rotate session) | — | — | `/terms`, `/privacy`, `/welcome` + `WelcomeGate` (asks again when the terms changed after the person accepted them) |
 | `health` | readiness checks (db-health monitor) | — | — | `/healthz`, `/readyz` (probes slot, root-anchored) |
 
 Every domain follows the same file layout: `<domain>.go`, `errors.go`,
@@ -154,7 +154,9 @@ owners. The stdio System principal, basic auth and the CLI `App` keep full opera
 `WithDirectory(memberDirectory{…})` lets `member add` find the user by email and the org by
 slug.
 `install → auth` and `legal → auth` exist only on the web side, wired in
-`http.go`.
+`http.go`. `buildLegal` builds `Services.Legal`. The `WelcomeGate` asks again when a person
+accepted before the built-in documents' newest `updated` date; with `compliance.termsURL` or
+`compliance.privacyURL` set it uses `compliance.termsUpdatedAt`, which may not be in the future.
 
 ## Background workers
 
