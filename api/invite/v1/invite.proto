@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package invite.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "altalune.id/oagent/gen/go/invite/v1;invitev1";
+
+// InviteService invites people into an organization by email. Every id is a public id.
+service InviteService {
+  rpc CreateInvite(CreateInviteRequest) returns (CreateInviteResponse);
+  rpc ResendInvite(ResendInviteRequest) returns (ResendInviteResponse);
+  rpc RevokeInvite(RevokeInviteRequest) returns (RevokeInviteResponse);
+  rpc ListInvites(ListInvitesRequest) returns (ListInvitesResponse);
+  rpc DraftInvite(DraftInviteRequest) returns (DraftInviteResponse);
+  rpc ConfirmDraftInvite(ConfirmDraftInviteRequest) returns (ConfirmDraftInviteResponse);
+  rpc DiscardDraftInvite(DiscardDraftInviteRequest) returns (DiscardDraftInviteResponse);
+}
+
+message Invite {
+  // The invite's public id.
+  string id = 1;
+  string email = 2;
+  // owner, admin or member.
+  string role = 3;
+  // pending, expired or draft.
+  string status = 4;
+  string invited_by_name = 5;
+  google.protobuf.Timestamp expires_at = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message CreateInviteRequest {
+  // The organization's public id.
+  string org_id = 1;
+  string email = 2;
+  // owner, admin or member; you can only invite to a role whose permissions you hold.
+  string role = 3;
+}
+
+message CreateInviteResponse {
+  Invite invite = 1;
+  // The accept link, shown only in this response; share it if the email does not arrive.
+  string link = 2;
+}
+
+message ResendInviteRequest {
+  string org_id = 1;
+  string invite_id = 2;
+}
+
+message ResendInviteResponse {
+  Invite invite = 1;
+  // The new accept link; the old one stops working.
+  string link = 2;
+}
+
+message RevokeInviteRequest {
+  string org_id = 1;
+  string invite_id = 2;
+}
+
+message RevokeInviteResponse {}
+
+message ListInvitesRequest {
+  string org_id = 1;
+}
+
+message ListInvitesResponse {
+  // Pending and expired invites, oldest first.
+  repeated Invite invites = 1;
+  // Drafts an assistant suggested that a person can still confirm.
+  repeated Invite drafts = 2;
+}
+
+message DraftInviteRequest {
+  string org_id = 1;
+  string email = 2;
+}
+
+message DraftInviteResponse {
+  Invite invite = 1;
+}
+
+message ConfirmDraftInviteRequest {
+  string org_id = 1;
+  string invite_id = 2;
+}
+
+message ConfirmDraftInviteResponse {
+  Invite invite = 1;
+  // The accept link, shown only in this response.
+  string link = 2;
+}
+
+message DiscardDraftInviteRequest {
+  string org_id = 1;
+  string invite_id = 2;
+}
+
+message DiscardDraftInviteResponse {}

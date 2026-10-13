@@ -46,6 +46,11 @@ type SignIn interface {
 	Logout(ctx context.Context, sid string) error
 }
 
+// OrgIDs resolves an org's public id to its id; an unknown public id is an *org.NotFoundError.
+type OrgIDs interface {
+	IDByPublicID(ctx context.Context, publicID string) (uuid.UUID, error)
+}
+
 // Sessions starts, reads and ends browser sessions.
 type Sessions interface {
 	Start(ctx context.Context, w http.ResponseWriter, p session.Principal) (string, time.Time, error)

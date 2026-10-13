@@ -202,6 +202,7 @@
   "error.update_webhook": "Failed to update webhook",
   "field.agent_id": "Agent ID",
   "field.delivery_id": "Delivery ID",
+  "field.invite_id": "Invite ID",
   "field.key_id": "Key ID",
   "field.kind": "Key type",
   "field.organization_id": "Organization ID",

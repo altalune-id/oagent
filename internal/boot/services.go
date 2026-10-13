@@ -214,6 +214,16 @@ func (o memberOrgs) Name(ctx context.Context, orgID uuid.UUID) (string, error) {
 	return got.Name, nil
 }
 
+type orgPublicIDs struct{ orgs *org.Service }
+
+func (o orgPublicIDs) IDByPublicID(ctx context.Context, publicID string) (uuid.UUID, error) {
+	got, err := o.orgs.ByPublicID(ctx, publicID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return got.ID, nil
+}
+
 func (o memberOrgs) Slug(ctx context.Context, orgID uuid.UUID) (string, error) {
 	got, err := o.orgs.Get(ctx, orgID)
 	if err != nil {

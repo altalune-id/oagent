@@ -12,6 +12,7 @@ import (
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
+	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
@@ -21,6 +22,7 @@ import (
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/user"
@@ -43,6 +45,8 @@ type Services struct {
 	Webhooks *webhook.Service
 	Users    *user.Service
 	Members  *member.Service
+	Invites  *invite.Service
+	OrgIDs   invite.OrgIDs
 }
 
 // Server holds the wired Connect handlers.
@@ -60,6 +64,7 @@ type Server struct {
 	WebhookSvc *webhook.WebhookControlPlane
 	AuthSvc    *auth.AuthService
 	MemberSvc  *member.MemberService
+	InviteSvc  *invite.InviteService
 
 	OpenAPIEnabled   bool
 	OpenAPIBasicAuth *BasicAuth
@@ -97,6 +102,9 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 	if svcs.Members != nil {
 		s.MemberSvc = member.NewControlPlane(svcs.Members)
 	}
+	if svcs.Invites != nil && svcs.OrgIDs != nil {
+		s.InviteSvc = invite.NewControlPlane(svcs.Invites, svcs.OrgIDs)
+	}
 	if svcs.Orgs != nil && svcs.Users != nil {
 		s.AuthSvc = auth.NewControlPlane(svcs.Orgs, svcs.Users)
 	}
@@ -127,6 +135,10 @@ func (s *Server) Handler(basePath string) http.Handler {
 	if s.MemberSvc != nil {
 		memberPath, memberHandler := memberv1connect.NewMemberServiceHandler(s.MemberSvc, s.handlerOptions()...)
 		inner.Handle(memberPath, memberHandler)
+	}
+	if s.InviteSvc != nil {
+		invitePath, inviteHandler := invitev1connect.NewInviteServiceHandler(s.InviteSvc, s.handlerOptions()...)
+		inner.Handle(invitePath, inviteHandler)
 	}
 
 	if s.AuthSvc != nil {

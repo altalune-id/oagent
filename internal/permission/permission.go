@@ -5,6 +5,7 @@ import (
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
+	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
@@ -52,6 +53,14 @@ func Table() map[string][]string {
 		memberv1connect.MemberServiceSetMemberRoleProcedure: {scope.MemberWrite},
 		memberv1connect.MemberServiceRemoveMemberProcedure:  {scope.MemberWrite},
 		memberv1connect.MemberServiceLeaveOrgProcedure:      {authz.AnyAuthenticated},
+
+		invitev1connect.InviteServiceListInvitesProcedure:        {scope.MemberRead},
+		invitev1connect.InviteServiceCreateInviteProcedure:       {scope.MemberWrite},
+		invitev1connect.InviteServiceResendInviteProcedure:       {scope.MemberWrite},
+		invitev1connect.InviteServiceRevokeInviteProcedure:       {scope.MemberWrite},
+		invitev1connect.InviteServiceDraftInviteProcedure:        {scope.MemberWrite},
+		invitev1connect.InviteServiceConfirmDraftInviteProcedure: {scope.MemberWrite},
+		invitev1connect.InviteServiceDiscardDraftInviteProcedure: {scope.MemberWrite},
 
 		authv1connect.AuthServiceWhoamiProcedure: {authz.AnyAuthenticated},
 	}

@@ -70,7 +70,7 @@ flowchart TD
 | Domain | Service deps (ports) | Connect + CLI | MCP tools | Web routes |
 |---|---|---|---|---|
 | `org` | — | ✓ | ✓ | — |
-| `org/invite` | member (actor, add from invite), user (create, by email, accept terms), org (name, slug), user (contact), mail queue; auth (sign-in, sessions) on the web side | — | — | `/invite/{token}`, `/invite`, `POST /invite/join`, `/invite/accept`, `/invite/switch` (local login only) |
+| `org/invite` | member (actor, add from invite), user (create, by email, accept terms), org (name, slug), user (contact), mail queue; auth (sign-in, sessions) on the web side; org (public id → id, `orgPublicIDs`) for the API | ✓ (every id is a public id; writes: people and the operator only); CLI `invite create/list/resend/revoke` | — | `/invite/{token}`, `/invite`, `POST /invite/join`, `/invite/accept`, `/invite/switch` (local login only) |
 | `org/member` | effects: sessions, apikey (personal keys), user (contact), org (name), mail queue | ✓ (role changes and removal: people and the operator only; leave: the signed-in person); CLI `member add` (operator, boots the `App`) | `member_list` | — |
 | `project` | — | ✓ | ✓ | — |
 | `agent` | webhook (publisher), project (org of project) | ✓ | ✓ | — |
@@ -97,7 +97,7 @@ Connect client lives in `internal/apiclient`, which imports no domain.
 `buildServices` (`services.go`) builds each service once and passes it to
 whoever needs it. An arrow means "depends on". Small adapters in `services.go`
 (`projectIDs`, `projectOrgs`, `ownerRoles`, `refResolver`, `memberPeople`, `memberDirectory`,
-`memberOrgs`) fit one service to another domain's port; `memberPeople` and `memberOrgs`
+`memberOrgs`, `orgPublicIDs`) fit one service to another domain's port; `memberPeople` and `memberOrgs`
 (name and slug) serve `invite` too.
 
 ```mermaid

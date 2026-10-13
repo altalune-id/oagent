@@ -47,6 +47,15 @@ var limitedKeyAllowed = map[string]string{
 
 type reachOrg struct {
 	orgA, orgB, project, otherProject, agent, key, webhook, member uuid.UUID
+	orgBPublic, invite                                             string
+}
+
+// SECURITY: invite.v1 takes public ids; aiming UUIDs at it would test nothing.
+func (s reachOrg) publicIDs(service protoreflect.FullName) map[protoreflect.Name]string {
+	if service != "invite.v1.InviteService" {
+		return nil
+	}
+	return map[protoreflect.Name]string{"org_id": s.orgBPublic, "invite_id": s.invite}
 }
 
 func (s reachOrg) serviceID(service protoreflect.FullName) uuid.UUID {
@@ -95,6 +104,10 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 	_, err = f.svcs.Members.Add(ctx, b.ID, u.ID, member.RoleAdmin)
 	require.NoError(t, err)
 	s.member = u.ID
+	s.orgBPublic = b.PublicID
+	c, err := f.svcs.Invites.Create(ctx, member.Requester{Operator: true}, b.ID, "b-invitee@example.com", member.RoleMember)
+	require.NoError(t, err)
+	s.invite = c.Invite.PublicID
 	return s
 }
 
@@ -109,7 +122,8 @@ func (s reachOrg) snapshot(t *testing.T, f *apiFixture) string {
 		(SELECT count(*) || md5(string_agg(url || active || updated_at || secret_primary::text, ',' ORDER BY id)) FROM webhook_endpoints WHERE org_id = $1),
 		(SELECT count(*) FROM webhook_deliveries WHERE org_id = $1),
 		(SELECT count(*) FROM api_keys WHERE org_id = $1 AND revoked_at IS NULL),
-		(SELECT string_agg(user_id || role, ',' ORDER BY user_id) FROM memberships WHERE org_id = $1))`, s.orgB).Scan(&got))
+		(SELECT string_agg(user_id || role, ',' ORDER BY user_id) FROM memberships WHERE org_id = $1),
+		(SELECT count(*) || md5(string_agg(coalesce(token_hash, '') || updated_at || coalesce(revoked_at::text, ''), ',' ORDER BY id)) FROM invites WHERE org_id = $1))`, s.orgB).Scan(&got))
 	return got
 }
 
@@ -123,11 +137,19 @@ func (s reachOrg) request(t *testing.T, procedure string) (protoreflect.MethodDe
 	tenantIDs := map[protoreflect.Name]uuid.UUID{
 		"org_id": s.orgB, "project_id": s.project, "user_id": s.member, "id": s.serviceID(method.Parent().FullName()),
 	}
+	public := s.publicIDs(method.Parent().FullName())
 	aimed := false
 	fields := method.Input().Fields()
 	for i := range fields.Len() {
 		fd := fields.Get(i)
 		if fd.Kind() != protoreflect.StringKind || fd.IsList() {
+			continue
+		}
+		if public != nil {
+			if id, ok := public[fd.Name()]; ok {
+				msg.Set(fd, protoreflect.ValueOfString(id))
+				aimed = true
+			}
 			continue
 		}
 		if id, ok := tenantIDs[fd.Name()]; ok && id != uuid.Nil {

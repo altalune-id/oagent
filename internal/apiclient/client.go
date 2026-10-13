@@ -11,6 +11,7 @@ import (
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
+	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
@@ -37,6 +38,7 @@ type Client struct {
 	Webhooks webhookv1connect.WebhookServiceClient
 	Auth     authv1connect.AuthServiceClient
 	Members  memberv1connect.MemberServiceClient
+	Invites  invitev1connect.InviteServiceClient
 }
 
 // New points every client at baseURL+"/api"; a token becomes the Bearer header, else a session becomes the cookie.
@@ -55,6 +57,7 @@ func New(baseURL string, cred Credential) *Client {
 		Webhooks: webhookv1connect.NewWebhookServiceClient(httpClient, base, opts...),
 		Auth:     authv1connect.NewAuthServiceClient(httpClient, base, opts...),
 		Members:  memberv1connect.NewMemberServiceClient(httpClient, base, opts...),
+		Invites:  invitev1connect.NewInviteServiceClient(httpClient, base, opts...),
 	}
 }
 

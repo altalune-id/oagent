@@ -202,6 +202,7 @@
   "error.update_webhook": "Gagal memperbarui webhook",
   "field.agent_id": "ID agen",
   "field.delivery_id": "ID pengiriman",
+  "field.invite_id": "ID undangan",
   "field.key_id": "ID kunci",
   "field.kind": "Jenis kunci",
   "field.organization_id": "ID organisasi",
