@@ -10,6 +10,7 @@ import (
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
+	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/schema/entity"
 )
@@ -89,8 +90,8 @@ func (s *postgresStore) claimDue(ctx context.Context, tx *sql.Tx, tc tenant.Cont
 		WHERE(s.entries.OrgID.EQ(postgres.UUID(tc.OrgID)).AND(s.entries.ID.IN(due))).
 		RETURNING(s.entries.AllColumns)
 
-	var rows []pgEntryRow
-	if err := stmt.QueryContext(ctx, tx, &rows); err != nil && !errorIsNoRows(err) {
+	var rows []entryRow
+	if err := stmt.QueryContext(ctx, tx, &rows); err != nil && !db.IsNoRows(err) {
 		return nil, fmt.Errorf("outbox.postgres.ClaimDue: %w", err)
 	}
 	out := make([]Entry, 0, len(rows))
@@ -178,7 +179,7 @@ func (s *postgresStore) refuseReason(ctx context.Context, tx *sql.Tx, tc tenant.
 		Attempt int32  `alias:"outbox_entries.attempt"`
 	}
 	if err := stmt.QueryContext(ctx, tx, &row); err != nil {
-		if errorIsNoRows(err) {
+		if db.IsNoRows(err) {
 			return &NotFoundError{ID: e.ID.String()}
 		}
 		return fmt.Errorf("outbox.postgres: settle: read status: %w", err)
@@ -233,7 +234,7 @@ func (s *postgresStore) refuseRequeue(ctx context.Context, tx *sql.Tx, tc tenant
 		Status string `alias:"outbox_entries.status"`
 	}
 	if err := stmt.QueryContext(ctx, tx, &row); err != nil {
-		if errorIsNoRows(err) {
+		if db.IsNoRows(err) {
 			return &NotFoundError{ID: id.String()}
 		}
 		return fmt.Errorf("outbox.postgres.Requeue: read status: %w", err)

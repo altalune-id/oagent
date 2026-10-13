@@ -40,6 +40,11 @@ func TestBindings(t *testing.T) {
 			},
 		},
 		{
+			"mail_queue",
+			func(s, p string) binding { b := entity.NewMailQueue(s, p); return binding{b, b.AllColumns} },
+			[]string{"id", "payload", "sealed", "status", "attempt", "next_attempt_at", "last_error", "created_at", "settled_at"},
+		},
+		{
 			"memberships",
 			func(s, p string) binding { b := entity.NewMemberships(s, p); return binding{b, b.AllColumns} },
 			[]string{"id", "public_id", "org_id", "user_id", "role", "created_at"},

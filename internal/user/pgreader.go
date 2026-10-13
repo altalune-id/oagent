@@ -2,13 +2,13 @@ package user
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
+
+	"altalune.id/oagent/internal/kernel/db"
 )
 
 // ByID loads a user by id.
@@ -29,7 +29,7 @@ func (s *postgresStore) one(ctx context.Context, conn qrm.DB, op string, where p
 	stmt := postgres.SELECT(s.users.AllColumns).FROM(s.users).WHERE(where).LIMIT(1)
 	var row userRow
 	if err := stmt.QueryContext(ctx, conn, &row); err != nil {
-		if errors.Is(err, qrm.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
+		if db.IsNoRows(err) {
 			return nil, &NotFoundError{}
 		}
 		return nil, fmt.Errorf("user.postgres: %s: %w", op, err)

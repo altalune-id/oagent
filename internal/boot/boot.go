@@ -67,6 +67,11 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 	k.AddCloser(qclient)
 
 	svcs := buildServices(k, cfg)
+	if svcs.Mailer, err = buildMailer(cfg); err != nil {
+		_ = pool.Close()
+		_ = shutdown(ctx)
+		return nil, err
+	}
 	if err := buildAuthSecrets(cfg, svcs, log); err != nil {
 		_ = pool.Close()
 		_ = shutdown(ctx)
@@ -118,6 +123,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 	))
 	sup.Register(dbHealth)
 	sup.Register(buildOutboxWorker(svcs, log))
+	sup.Register(buildMailWorker(svcs, log))
 	sup.Register(svcs.KeyUsage)
 
 	var runner *scheduler.Runner

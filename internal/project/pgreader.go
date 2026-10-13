@@ -2,13 +2,12 @@ package project
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 
 	"github.com/go-jet/jet/v2/postgres"
-	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
+
+	"altalune.id/oagent/internal/kernel/db"
 )
 
 // ByID loads a project by id.
@@ -19,7 +18,7 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*Project, error
 		LIMIT(1)
 	var row projectRow
 	if err := stmt.QueryContext(ctx, s.reader(ctx), &row); err != nil {
-		if errors.Is(err, qrm.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
+		if db.IsNoRows(err) {
 			return nil, &NotFoundError{ID: id.String()}
 		}
 		return nil, fmt.Errorf("project.postgres: ByID: %w", err)
@@ -35,7 +34,7 @@ func (s *postgresStore) BySlug(ctx context.Context, orgID uuid.UUID, slug string
 		LIMIT(1)
 	var row projectRow
 	if err := stmt.QueryContext(ctx, s.reader(ctx), &row); err != nil {
-		if errors.Is(err, qrm.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
+		if db.IsNoRows(err) {
 			return nil, &NotFoundError{Slug: slug}
 		}
 		return nil, fmt.Errorf("project.postgres: BySlug: %w", err)

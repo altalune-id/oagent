@@ -56,25 +56,25 @@ func storeCtx(org, project uuid.UUID) context.Context {
 
 func TestPgEndpointRowToEndpoint(t *testing.T) {
 	raw, _ := marshalEventTypes([]events.Type{events.AgentCreated})
-	row := pgEndpointRow{ID: uuid.New(), PublicID: "pub", OrgID: uuid.New(), ProjectID: uuid.New(), URL: "u", EventTypes: raw, Active: true}
+	row := endpointRow{ID: uuid.New(), PublicID: "pub", OrgID: uuid.New(), ProjectID: uuid.New(), URL: "u", EventTypes: raw, Active: true}
 	e, err := row.toEndpoint()
 	require.NoError(t, err)
 	assert.Equal(t, "u", e.URL)
 	assert.Equal(t, "pub", e.PublicID)
 	assert.Equal(t, []events.Type{events.AgentCreated}, e.EventTypes)
 
-	_, err = (&pgEndpointRow{EventTypes: "nope"}).toEndpoint()
+	_, err = (&endpointRow{EventTypes: "nope"}).toEndpoint()
 	assert.Error(t, err)
 }
 
 func TestPgAttemptRowToAttempt(t *testing.T) {
-	row := pgAttemptRow{ID: uuid.New(), EventType: string(events.AgentCreated), DurationMs: 5, ResponseHeaders: "[]"}
+	row := attemptRow{ID: uuid.New(), EventType: string(events.AgentCreated), DurationMs: 5, ResponseHeaders: "[]"}
 	a, err := row.toAttempt()
 	require.NoError(t, err)
 	assert.Equal(t, events.AgentCreated, a.EventType)
 	assert.Equal(t, 5*time.Millisecond, a.Duration)
 
-	_, err = (&pgAttemptRow{ResponseHeaders: "nope"}).toAttempt()
+	_, err = (&attemptRow{ResponseHeaders: "nope"}).toAttempt()
 	assert.Error(t, err)
 }
 
@@ -124,9 +124,4 @@ func TestTxAcquireAndEnd(t *testing.T) {
 		s, _ := newStoreTest(t)
 		assert.Equal(t, errBoom, s.endTx(nil, false, errBoom))
 	})
-}
-
-func TestErrorIsNoRows(t *testing.T) {
-	assert.False(t, errorIsNoRows(errBoom))
-	assert.True(t, errorIsNoRows(sql.ErrNoRows))
 }

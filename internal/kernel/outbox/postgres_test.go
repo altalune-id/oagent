@@ -37,7 +37,7 @@ func tenantedCtx(org, project uuid.UUID) context.Context {
 }
 
 func TestPgEntryRow_ToEntry(t *testing.T) {
-	in := pgEntryRow{
+	in := entryRow{
 		ID: uuid.New(), EventID: uuid.New(), OrgID: uuid.New(), ProjectID: uuid.New(),
 		Target: "ep", Payload: []byte("{}"), Attempt: 3,
 		NextAttemptAt: time.Unix(10, 0), Status: string(StatusPending), LastError: "",

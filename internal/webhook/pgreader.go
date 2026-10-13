@@ -7,6 +7,7 @@ import (
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
 
+	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/tenant"
 )
 
@@ -21,9 +22,9 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*Endpoint, erro
 		WHERE(s.endpoints.ID.EQ(postgres.UUID(id)).
 			AND(s.endpoints.OrgID.EQ(postgres.UUID(tc.OrgID)))).
 		LIMIT(1)
-	var row pgEndpointRow
+	var row endpointRow
 	if err := stmt.QueryContext(ctx, s.reader(ctx), &row); err != nil {
-		if errorIsNoRows(err) {
+		if db.IsNoRows(err) {
 			return nil, &NotFoundError{ID: id.String()}
 		}
 		return nil, fmt.Errorf("webhook.postgres.ByID: %w", err)
@@ -43,7 +44,7 @@ func (s *postgresStore) List(ctx context.Context, orgID, projectID uuid.UUID) ([
 			AND(s.endpoints.OrgID.EQ(postgres.UUID(tc.OrgID))).
 			AND(s.endpoints.ProjectID.EQ(postgres.UUID(projectID)))).
 		ORDER_BY(s.endpoints.CreatedAt.DESC(), s.endpoints.ID.DESC())
-	var rows []pgEndpointRow
+	var rows []endpointRow
 	if err := stmt.QueryContext(ctx, s.reader(ctx), &rows); err != nil {
 		return nil, fmt.Errorf("webhook.postgres.List: %w", err)
 	}
@@ -70,7 +71,7 @@ func (s *postgresStore) ListAttempts(ctx context.Context, endpointID, deliveryID
 			AND(s.attempts.EndpointID.EQ(postgres.UUID(endpointID))).
 			AND(s.attempts.DeliveryID.EQ(postgres.UUID(deliveryID)))).
 		ORDER_BY(s.attempts.CreatedAt.DESC(), s.attempts.ID.DESC())
-	var rows []pgAttemptRow
+	var rows []attemptRow
 	if err := stmt.QueryContext(ctx, s.reader(ctx), &rows); err != nil {
 		return nil, fmt.Errorf("webhook.postgres.ListAttempts: %w", err)
 	}

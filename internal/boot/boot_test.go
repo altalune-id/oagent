@@ -87,8 +87,11 @@ func TestBoot(t *testing.T) {
 	assert.NotNil(t, app.Kernel.Meter)
 	assert.NotNil(t, app.Kernel.Queue) // always non-nil; Disabled when queue.enabled=false
 	require.NotNil(t, app.Supervisor)
-	assert.Len(t, app.Supervisor.Workers(), 4) // http + db-health + outbox + apikey-usage
+	assert.Len(t, app.Supervisor.Workers(), 5) // http + db-health + outbox + mailqueue + apikey-usage
 	assert.Contains(t, workerNames(app), "apikey-usage")
+	assert.Contains(t, workerNames(app), "mailqueue.send")
+	assert.NotNil(t, app.Services.Mailer)
+	assert.NotNil(t, app.Services.MailQueue)
 	assert.NotNil(t, app.Services.KeyAuthn)
 
 	require.NoError(t, app.Close(context.Background()))
@@ -109,7 +112,7 @@ func TestBoot_SchedulerEnabled(t *testing.T) {
 		Scheduler: config.SchedulerConfig{Enabled: true},
 	}, testLogger())
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 5) // http + db-health + outbox + apikey-usage + scheduler
+	assert.Len(t, app.Supervisor.Workers(), 6) // http + db-health + outbox + mailqueue + apikey-usage + scheduler
 	require.NoError(t, app.Close(context.Background()))
 }
 
@@ -125,7 +128,7 @@ func TestBoot_WithSchedulerFalse(t *testing.T) {
 		config.Config{DB: config.DBConfig{DSN: "x"}, Scheduler: config.SchedulerConfig{Enabled: true}},
 		testLogger(), WithScheduler(false))
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 4) // http + db-health + outbox + apikey-usage
+	assert.Len(t, app.Supervisor.Workers(), 5) // http + db-health + outbox + mailqueue + apikey-usage
 	require.NoError(t, app.Close(context.Background()))
 }
 
@@ -178,7 +181,7 @@ func TestBoot_ConsumerEnabled(t *testing.T) {
 		Queue: config.QueueConfig{Enabled: true},
 	}, testLogger())
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 6) // http + db-health + outbox + apikey-usage + consumer + listener
+	assert.Len(t, app.Supervisor.Workers(), 7) // http + db-health + outbox + mailqueue + apikey-usage + consumer + listener
 	assert.False(t, app.Kernel.Queue.Enabled())
 	require.NoError(t, app.Close(context.Background()))
 }
@@ -453,4 +456,19 @@ func workerNames(app *App) []string {
 		names = append(names, w.Name())
 	}
 	return names
+}
+
+func TestBoot_MailerError(t *testing.T) {
+	restoreSeams(t)
+	poolDB, _ := newDB(t)
+	setupTelemetry = stubTelemetry(nil, nil)
+	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+		return db.Pool{W: poolDB, R: poolDB}, nil
+	}
+
+	_, err := Boot(context.Background(), config.Config{
+		DB:   config.DBConfig{DSN: "x"},
+		Mail: config.MailConfig{Driver: config.MailDriverSMTP},
+	}, testLogger())
+	assert.ErrorContains(t, err, "mail")
 }

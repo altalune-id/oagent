@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -252,4 +253,72 @@ func dedupe(ids []uuid.UUID) []uuid.UUID {
 		}
 	}
 	return out
+}
+
+type apiKeyRow struct {
+	ID          uuid.UUID  `alias:"api_keys.id"`
+	OrgID       uuid.UUID  `alias:"api_keys.org_id"`
+	ProjectID   *uuid.UUID `alias:"api_keys.project_id"`
+	Kind        string     `alias:"api_keys.kind"`
+	AllProjects bool       `alias:"api_keys.all_projects"`
+	ProjectIDs  string     `alias:"api_keys.project_ids"`
+	Name        string     `alias:"api_keys.name"`
+	SecretHash  []byte     `alias:"api_keys.secret_hash"`
+	SecretHint  string     `alias:"api_keys.secret_hint"`
+	Scopes      string     `alias:"api_keys.scopes"`
+	ResourceIDs string     `alias:"api_keys.resource_ids"`
+	CreatedBy   *uuid.UUID `alias:"api_keys.created_by"`
+	CreatedAt   time.Time  `alias:"api_keys.created_at"`
+	ExpiresAt   *time.Time `alias:"api_keys.expires_at"`
+	RevokedAt   *time.Time `alias:"api_keys.revoked_at"`
+	LastUsedAt  *time.Time `alias:"api_keys.last_used_at"`
+}
+
+func (r *apiKeyRow) toKey() (*APIKey, error) {
+	scopes, err := parsePgTextArray(r.Scopes)
+	if err != nil {
+		return nil, fmt.Errorf("apikey.postgres: parse scopes: %w", err)
+	}
+	resourceIDs, err := parsePgUUIDArray(r.ResourceIDs)
+	if err != nil {
+		return nil, fmt.Errorf("apikey.postgres: parse resource_ids: %w", err)
+	}
+	projectIDs, err := parsePgUUIDArray(r.ProjectIDs)
+	if err != nil {
+		return nil, fmt.Errorf("apikey.postgres: parse project_ids: %w", err)
+	}
+	var hash [32]byte
+	copy(hash[:], r.SecretHash)
+	k := &APIKey{
+		ID:          r.ID,
+		OrgID:       r.OrgID,
+		Kind:        Kind(r.Kind),
+		AllProjects: r.AllProjects,
+		ProjectIDs:  projectIDs,
+		Name:        r.Name,
+		SecretHash:  hash,
+		SecretHint:  r.SecretHint,
+		Scopes:      scopes,
+		ResourceIDs: resourceIDs,
+		CreatedAt:   r.CreatedAt.UTC(),
+	}
+	if r.ProjectID != nil {
+		k.ProjectID = *r.ProjectID
+	}
+	if r.CreatedBy != nil {
+		k.CreatedBy = *r.CreatedBy
+	}
+	if r.ExpiresAt != nil {
+		t := r.ExpiresAt.UTC()
+		k.ExpiresAt = &t
+	}
+	if r.RevokedAt != nil {
+		t := r.RevokedAt.UTC()
+		k.RevokedAt = &t
+	}
+	if r.LastUsedAt != nil {
+		t := r.LastUsedAt.UTC()
+		k.LastUsedAt = &t
+	}
+	return k, nil
 }

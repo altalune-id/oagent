@@ -147,6 +147,17 @@ erDiagram
         text role "owner, admin, member"
         timestamptz created_at
     }
+    mail_queue {
+        uuid id PK "uuid v7, not tenant-scoped"
+        bytea payload "sealed mailer.Message JSON, AAD = id, NULL once settled"
+        bool sealed "false only in development with the console driver"
+        text status "pending, sent, failed"
+        int attempt
+        timestamptz next_attempt_at
+        text last_error "redacted, at most 512 bytes"
+        timestamptz created_at
+        timestamptz settled_at
+    }
     sessions {
         text sid PK "opaque, no public_id"
         uuid user_id FK
@@ -180,6 +191,8 @@ Rules the diagram can't show. Names omit `{{.TablePrefix}}`.
 | `users` | `users_email_normalized` (check), `email` unique | email is stored trimmed and lowercase |
 | `users` | `users_idp_pair` (check), `users_idp_idx` (unique, `WHERE idp_issuer IS NOT NULL`) | issuer and subject are set together and identify one user |
 | `memberships` | `UNIQUE (org_id, user_id)`, role check | one membership per person per org |
+| `mail_queue` | `mail_queue_settled_erased`, `mail_queue_pending_payload` (checks) | a pending row holds its payload; a sent or failed row holds none |
+| `mail_queue` | `mail_queue_due_idx` (`WHERE status = 'pending'`) | the worker's claim of due mail |
 | `sessions` | `sessions_expires_idx`, `sessions_user_idx` | sweep of expired rows; delete all sessions of a user |
 
 ## External migrations

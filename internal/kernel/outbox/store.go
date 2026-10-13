@@ -2,10 +2,8 @@ package outbox
 
 import (
 	"context"
-	"errors"
 	"time"
 
-	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/apperror"
@@ -37,5 +35,3 @@ const MaxCauseLen = 1024
 func truncateCause(cause string) string {
 	return apperror.TruncateCause(cause, MaxCauseLen)
 }
-
-func errorIsNoRows(err error) bool { return errors.Is(err, qrm.ErrNoRows) }

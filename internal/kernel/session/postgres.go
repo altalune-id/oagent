@@ -3,15 +3,14 @@ package session
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
-	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/schema/entity"
 	"altalune.id/oagent/sealer"
 )
@@ -65,7 +64,7 @@ func (s *PostgresStore) Load(ctx context.Context, sid string) (Principal, bool, 
 		Payload []byte `alias:"sessions.payload"`
 	}
 	if err := stmt.QueryContext(ctx, s.db, &row); err != nil {
-		if errors.Is(err, qrm.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
+		if db.IsNoRows(err) {
 			return Principal{}, false, nil
 		}
 		return Principal{}, false, fmt.Errorf("session.postgres: Load: %w", err)

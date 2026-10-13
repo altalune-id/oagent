@@ -14,6 +14,7 @@ import (
 	"altalune.id/oagent/internal/install"
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/capabilities"
+	"altalune.id/oagent/internal/kernel/mailqueue"
 	"altalune.id/oagent/internal/kernel/outbox"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org"
@@ -21,6 +22,7 @@ import (
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/webhook"
+	"altalune.id/oagent/mailer"
 	"altalune.id/oagent/sealer"
 )
 
@@ -43,6 +45,8 @@ type Services struct {
 	WebhookStore    webhook.Store
 	Webhooks        *webhook.Service
 	Sealer          sealer.Sealer
+	Mailer          mailer.Mailer
+	MailQueue       mailqueue.Store
 	Users           *user.Service
 	Members         *member.Service
 	Sessions        session.Store
@@ -119,6 +123,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		WebhookStore: webhookStore,
 		Webhooks:     webhooks,
 		Sealer:       sl,
+		MailQueue:    buildMailQueue(k.Pool, cfg, sl),
 		Users:        users,
 		Members:      members,
 		Sessions:     sessions,

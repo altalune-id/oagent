@@ -2,13 +2,12 @@ package member
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 
 	"github.com/go-jet/jet/v2/postgres"
-	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
+
+	"altalune.id/oagent/internal/kernel/db"
 )
 
 // Find returns the membership of userID in orgID.
@@ -19,7 +18,7 @@ func (s *postgresStore) Find(ctx context.Context, orgID, userID uuid.UUID) (*Mem
 		LIMIT(1)
 	var row membershipRow
 	if err := stmt.QueryContext(ctx, s.writer(ctx), &row); err != nil {
-		if errors.Is(err, qrm.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
+		if db.IsNoRows(err) {
 			return nil, &NotFoundError{}
 		}
 		return nil, fmt.Errorf("member.postgres: Find: %w", err)
@@ -34,7 +33,7 @@ func (s *postgresStore) ListByUser(ctx context.Context, userID uuid.UUID) ([]*Me
 		WHERE(t.UserID.EQ(postgres.UUID(userID))).
 		ORDER_BY(t.CreatedAt.ASC(), t.ID.ASC())
 	var rows []membershipRow
-	if err := stmt.QueryContext(ctx, s.writer(ctx), &rows); err != nil && !errors.Is(err, qrm.ErrNoRows) {
+	if err := stmt.QueryContext(ctx, s.writer(ctx), &rows); err != nil && !db.IsNoRows(err) {
 		return nil, fmt.Errorf("member.postgres: ListByUser: %w", err)
 	}
 	out := make([]*Membership, 0, len(rows))

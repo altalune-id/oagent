@@ -2,6 +2,7 @@
 package webhook
 
 import (
+	"fmt"
 	"net/url"
 	"slices"
 	"strings"
@@ -200,4 +201,81 @@ func validateTypes(types []events.Type) ([]events.Type, error) {
 		}
 	}
 	return slices.Clone(types), nil
+}
+
+type endpointRow struct {
+	ID              uuid.UUID `alias:"webhook_endpoints.id"`
+	PublicID        string    `alias:"webhook_endpoints.public_id"`
+	OrgID           uuid.UUID `alias:"webhook_endpoints.org_id"`
+	ProjectID       uuid.UUID `alias:"webhook_endpoints.project_id"`
+	URL             string    `alias:"webhook_endpoints.url"`
+	Description     string    `alias:"webhook_endpoints.description"`
+	EventTypes      string    `alias:"webhook_endpoints.event_types"`
+	SecretPrimary   []byte    `alias:"webhook_endpoints.secret_primary"`
+	SecretSecondary []byte    `alias:"webhook_endpoints.secret_secondary"`
+	Active          bool      `alias:"webhook_endpoints.active"`
+	CreatedAt       time.Time `alias:"webhook_endpoints.created_at"`
+	UpdatedAt       time.Time `alias:"webhook_endpoints.updated_at"`
+}
+
+func (r *endpointRow) toEndpoint() (*Endpoint, error) {
+	types, err := unmarshalEventTypes(r.EventTypes)
+	if err != nil {
+		return nil, fmt.Errorf("webhook.postgres: %w", err)
+	}
+	return &Endpoint{
+		ID:          r.ID,
+		PublicID:    r.PublicID,
+		OrgID:       r.OrgID,
+		ProjectID:   r.ProjectID,
+		URL:         r.URL,
+		Description: r.Description,
+		EventTypes:  types,
+		Secrets:     SealedSecrets{Primary: r.SecretPrimary, Secondary: r.SecretSecondary},
+		Active:      r.Active,
+		CreatedAt:   r.CreatedAt.UTC(),
+		UpdatedAt:   r.UpdatedAt.UTC(),
+	}, nil
+}
+
+type attemptRow struct {
+	ID                uuid.UUID `alias:"webhook_deliveries.id"`
+	OrgID             uuid.UUID `alias:"webhook_deliveries.org_id"`
+	ProjectID         uuid.UUID `alias:"webhook_deliveries.project_id"`
+	EndpointID        uuid.UUID `alias:"webhook_deliveries.endpoint_id"`
+	DeliveryID        uuid.UUID `alias:"webhook_deliveries.delivery_id"`
+	EventID           uuid.UUID `alias:"webhook_deliveries.event_id"`
+	EventType         string    `alias:"webhook_deliveries.event_type"`
+	Attempt           int       `alias:"webhook_deliveries.attempt"`
+	StatusCode        int       `alias:"webhook_deliveries.status_code"`
+	Error             string    `alias:"webhook_deliveries.error"`
+	ResponseBody      string    `alias:"webhook_deliveries.response_body"`
+	ResponseTruncated bool      `alias:"webhook_deliveries.response_truncated"`
+	ResponseHeaders   string    `alias:"webhook_deliveries.response_headers"`
+	DurationMs        int64     `alias:"webhook_deliveries.duration_ms"`
+	CreatedAt         time.Time `alias:"webhook_deliveries.created_at"`
+}
+
+func (r *attemptRow) toAttempt() (Attempt, error) {
+	headers, err := unmarshalHeaders(r.ResponseHeaders)
+	if err != nil {
+		return Attempt{}, fmt.Errorf("webhook.postgres: attempt %w", err)
+	}
+	return Attempt{
+		ID:                r.ID,
+		OrgID:             r.OrgID,
+		ProjectID:         r.ProjectID,
+		EndpointID:        r.EndpointID,
+		DeliveryID:        r.DeliveryID,
+		EventID:           r.EventID,
+		EventType:         events.Type(r.EventType),
+		Attempt:           r.Attempt,
+		StatusCode:        r.StatusCode,
+		Error:             r.Error,
+		ResponseBody:      r.ResponseBody,
+		ResponseTruncated: r.ResponseTruncated,
+		ResponseHeaders:   headers,
+		Duration:          time.Duration(r.DurationMs) * time.Millisecond,
+		CreatedAt:         r.CreatedAt.UTC(),
+	}, nil
 }

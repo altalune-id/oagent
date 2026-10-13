@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/schema/entity"
 )
@@ -107,7 +108,7 @@ func (s *postgresStore) saveSecrets(ctx context.Context, tx *sql.Tx, tc tenant.C
 		ID uuid.UUID `alias:"webhook_endpoints.id"`
 	}
 	if err := probe.QueryContext(ctx, tx, &row); err != nil {
-		if errorIsNoRows(err) {
+		if db.IsNoRows(err) {
 			return &NotFoundError{ID: id.String()}
 		}
 		return fmt.Errorf("webhook.postgres.SaveSecrets: probe: %w", err)

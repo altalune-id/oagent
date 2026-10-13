@@ -4,10 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/go-jet/jet/v2/qrm"
-	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/tenant"
@@ -60,34 +58,4 @@ func (s *postgresStore) endTx(tx *sql.Tx, owned bool, err error) error {
 		return fmt.Errorf("outbox.postgres: commit: %w", cerr)
 	}
 	return nil
-}
-
-type pgEntryRow struct {
-	ID            uuid.UUID `alias:"outbox_entries.id"`
-	EventID       uuid.UUID `alias:"outbox_entries.event_id"`
-	OrgID         uuid.UUID `alias:"outbox_entries.org_id"`
-	ProjectID     uuid.UUID `alias:"outbox_entries.project_id"`
-	Target        string    `alias:"outbox_entries.target"`
-	Payload       []byte    `alias:"outbox_entries.payload"`
-	Attempt       int32     `alias:"outbox_entries.attempt"`
-	NextAttemptAt time.Time `alias:"outbox_entries.next_attempt_at"`
-	Status        string    `alias:"outbox_entries.status"`
-	LastError     string    `alias:"outbox_entries.last_error"`
-	CreatedAt     time.Time `alias:"outbox_entries.created_at"`
-}
-
-func (r *pgEntryRow) toEntry() Entry {
-	return Entry{
-		ID:            r.ID,
-		EventID:       r.EventID,
-		OrgID:         r.OrgID,
-		ProjectID:     r.ProjectID,
-		Target:        r.Target,
-		Payload:       r.Payload,
-		Attempt:       int(r.Attempt),
-		NextAttemptAt: r.NextAttemptAt.UTC(),
-		Status:        Status(r.Status),
-		LastError:     r.LastError,
-		CreatedAt:     r.CreatedAt.UTC(),
-	}
 }

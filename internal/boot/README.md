@@ -18,8 +18,9 @@ flowchart TD
     C -- yes --> D[migrate]
     C -- no --> E
     D --> E[kernel: log, pool, tracer, meter, reporter, queue]
-    E --> F[buildServices: every domain service]
-    F --> G[buildAuthSecrets: state secret, setup token]
+    E --> F[buildServices: every domain service, the mail queue]
+    F --> M[buildMailer: mail.driver picks mailer/console, mailer/smtp or mailer/resend]
+    M --> G[buildAuthSecrets: state secret, setup token]
     G --> H[firstBoot: basic system org / env genesis / log install URL]
     H --> I[installRequired: is the install gate shut?]
     I --> J[build surfaces: API, console, MCP, web routes]
@@ -116,6 +117,7 @@ flowchart TD
         member
         user
         sessions[(session store)]
+        mailqueue[(mail queue)]
     end
 
     install --> auth
@@ -147,6 +149,7 @@ The supervisor runs these next to the HTTP server.
 | `http` | the HTTP server (all surfaces above) | always |
 | `db-health` | pings the pool; `health` reads it for `/readyz` | always |
 | `outbox` | claims due outbox entries, delivers signed webhooks | always |
+| `mailqueue.send` | claims due queued mail, sends it through the mailer, erases the sealed payload once sent or failed | always |
 | `apikey-usage` | batches `last_used_at` writes every 30 s | always |
 | `scheduler` | cron jobs (expired-session sweep) | `scheduler.enabled`, unless `--no-scheduler` or consumer-only |
 | queue consumer / listener | queue handlers (none yet) | when `queue.enabled` |
@@ -162,6 +165,7 @@ The supervisor runs these next to the HTTP server.
 | `mcp.go` | MCP server and its tools |
 | `console.go` | console SPA handler |
 | `outbox.go`, `schedulers.go`, `consumers.go`, `queue.go` | workers |
+| `mail.go` | the mailer driver (`mailer/console`, `mailer/smtp` or `mailer/resend`, picked by `mail.driver`), the sealed mail queue (`Services.MailQueue`) and its send worker |
 | `db.go`, `sealer.go`, `telemetry.go` | pool, migrations, health, sealer, telemetry |
 | `options.go`, `app.go`, `remote.go` | boot options, the running `App` and its operator actions, the CLI graph |
 
