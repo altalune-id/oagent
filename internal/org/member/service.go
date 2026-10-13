@@ -182,6 +182,28 @@ func (s *Service) AddExisting(ctx context.Context, r Requester, orgID, userID uu
 	return m, nil
 }
 
+// AddFromInvite makes userID a member of orgID with role unless they already belong to it; it joins the transaction on ctx.
+func (s *Service) AddFromInvite(ctx context.Context, orgID, userID uuid.UUID, role Role) (added bool, err error) {
+	m, err := New(orgID, userID, role)
+	if err != nil {
+		return false, err
+	}
+	added, err = s.store.AddIfAbsent(ctx, m)
+	if err != nil {
+		return false, s.errOrReport(ctx, "member: add from invite", err)
+	}
+	return added, nil
+}
+
+// ActorFor resolves r for orgID with the rules SetRole and Remove use; it joins the transaction on ctx, where the membership row is locked.
+func (s *Service) ActorFor(ctx context.Context, r Requester, orgID uuid.UUID) (Actor, error) {
+	a, err := s.actor(ctx, r, orgID, nil)
+	if err != nil {
+		return Actor{}, s.errOrReport(ctx, "member: actor", err)
+	}
+	return a, nil
+}
+
 // AddByEmail makes the existing user with email a member of the org orgSlug with role, on behalf of r.
 func (s *Service) AddByEmail(ctx context.Context, r Requester, email, orgSlug string, role Role) (*Membership, error) {
 	if s.directory == nil {

@@ -24,6 +24,8 @@ erDiagram
     users |o--o{ orgs : "created_by"
     users |o--o{ api_keys : "created_by (owner of personal keys)"
     users ||--o{ sessions : owns
+    orgs ||--o{ invites : has
+    users |o--o{ invites : "invited_by, accepted_by"
 
     orgs {
         uuid id PK
@@ -147,6 +149,22 @@ erDiagram
         text role "owner, admin, member"
         timestamptz created_at
     }
+    invites {
+        uuid id PK
+        text public_id UK
+        uuid org_id FK
+        text email "normalized"
+        text role "owner, admin, member"
+        text token_hash UK "SHA-256 of the token, NULL only for a draft"
+        bool draft "an MCP suggestion a person must confirm"
+        uuid invited_by FK "NULL for a non-person operator"
+        timestamptz expires_at
+        timestamptz accepted_at
+        uuid accepted_by FK
+        timestamptz revoked_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
     mail_queue {
         uuid id PK "uuid v7, not tenant-scoped"
         bytea payload "sealed mailer.Message JSON, AAD = id, NULL once settled"
@@ -168,8 +186,8 @@ erDiagram
 ```
 
 Every foreign key to `orgs`, `projects`, `api_keys`, `webhook_endpoints` and
-`users` cascades on delete, except `orgs.created_by` and `api_keys.created_by`,
-which are set to NULL.
+`users` cascades on delete, except `orgs.created_by`, `api_keys.created_by`,
+`invites.invited_by` and `invites.accepted_by`, which are set to NULL.
 
 ## Constraints and indexes
 
@@ -191,6 +209,9 @@ Rules the diagram can't show. Names omit `{{.TablePrefix}}`.
 | `users` | `users_email_normalized` (check), `email` unique | email is stored trimmed and lowercase |
 | `users` | `users_idp_pair` (check), `users_idp_idx` (unique, `WHERE idp_issuer IS NOT NULL`) | issuer and subject are set together and identify one user |
 | `memberships` | `UNIQUE (org_id, user_id)`, role check | one membership per person per org |
+| `invites` | `invites_live_idx` (unique, `WHERE accepted_at IS NULL AND revoked_at IS NULL`) | one live invite per org and email; a re-invite updates that row |
+| `invites` | `invites_token_or_draft` (check), `token_hash` unique | every invite but a draft has a token; tokens are found by their hash |
+| `invites` | `email` check | email is stored trimmed and lowercase |
 | `mail_queue` | `mail_queue_settled_erased`, `mail_queue_pending_payload` (checks) | a pending row holds its payload; a sent or failed row holds none |
 | `mail_queue` | `mail_queue_due_idx` (`WHERE status = 'pending'`) | the worker's claim of due mail |
 | `sessions` | `sessions_expires_idx`, `sessions_user_idx` | sweep of expired rows; delete all sessions of a user |

@@ -32,6 +32,7 @@ import (
 	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/user"
@@ -108,6 +109,15 @@ func samples() []error {
 		&member.LastOwnerError{Reason: member.LastOwnerLeave},
 		&member.RoleNotAllowedError{Role: string(member.RoleOwner)},
 		&member.SelfChangeError{},
+
+		&invite.NotUsableError{Reason: invite.ReasonExpired},
+		&invite.NotUsableError{Reason: invite.ReasonRevoked},
+		&invite.NotUsableError{Reason: invite.ReasonUsed},
+		&invite.NotUsableError{Reason: invite.ReasonNotFound},
+		&invite.EmailMismatchError{},
+		&invite.DraftExpiredError{},
+		&invite.NotFoundError{},
+		&invite.PendingError{},
 
 		&auth.InvalidCredentialsError{},
 		password.Check("short", password.Hints{}),

@@ -37,6 +37,15 @@ func (f *MemberStore) Add(_ context.Context, m *member.Membership) error {
 	return nil
 }
 
+// AddIfAbsent implements member.Store.
+func (f *MemberStore) AddIfAbsent(ctx context.Context, m *member.Membership) (bool, error) {
+	err := f.Add(ctx, m)
+	if member.IsAlreadyMemberError(err) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
 // Find implements member.Store.
 func (f *MemberStore) Find(_ context.Context, orgID, userID uuid.UUID) (*member.Membership, error) {
 	f.mu.Lock()

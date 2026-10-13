@@ -91,6 +91,10 @@ func TestService_GetAndList(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, o, bySlug)
 
+	byPublicID, err := svc.ByPublicID(context.Background(), o.PublicID)
+	require.NoError(t, err)
+	assert.Equal(t, o, byPublicID)
+
 	all, err := svc.List(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, []*org.Org{o}, all)
@@ -102,6 +106,8 @@ func TestService_Get_StoreError(t *testing.T) {
 	_, err := svc.Get(context.Background(), uuid.New())
 	assert.Error(t, err)
 	_, err = svc.BySlug(context.Background(), "acme")
+	assert.Error(t, err)
+	_, err = svc.ByPublicID(context.Background(), "p")
 	assert.Error(t, err)
 	_, err = svc.List(context.Background())
 	assert.Error(t, err)

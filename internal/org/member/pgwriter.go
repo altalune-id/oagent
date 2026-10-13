@@ -26,6 +26,22 @@ func (s *postgresStore) Add(ctx context.Context, m *Membership) error {
 	return nil
 }
 
+// AddIfAbsent inserts m, doing nothing when the org already has the user; it reports whether a row was added.
+func (s *postgresStore) AddIfAbsent(ctx context.Context, m *Membership) (bool, error) {
+	t := s.memberships
+	stmt := t.INSERT(t.AllColumns).VALUES(m.ID, m.PublicID, m.OrgID, m.UserID, string(m.Role), m.CreatedAt.UTC()).
+		ON_CONFLICT(t.OrgID, t.UserID).DO_NOTHING()
+	res, err := stmt.ExecContext(ctx, s.writer(ctx))
+	if err != nil {
+		return false, fmt.Errorf("member.postgres: AddIfAbsent: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("member.postgres: AddIfAbsent: %w", err)
+	}
+	return n == 1, nil
+}
+
 // LockOwners locks orgID's owner rows FOR UPDATE, in user id order, and returns their user ids.
 func (s *postgresStore) LockOwners(ctx context.Context, orgID uuid.UUID) ([]uuid.UUID, error) {
 	tx, ok := db.CurrentTx(ctx)

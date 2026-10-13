@@ -42,6 +42,22 @@ func (s *postgresStore) BySlug(ctx context.Context, slug string) (*Org, error) {
 	return row.toOrg(), nil
 }
 
+// ByPublicID loads an org by public id; an unknown id is a *NotFoundError that does not echo it.
+func (s *postgresStore) ByPublicID(ctx context.Context, publicID string) (*Org, error) {
+	stmt := postgres.SELECT(s.orgs.AllColumns).
+		FROM(s.orgs).
+		WHERE(s.orgs.PublicID.EQ(postgres.String(publicID))).
+		LIMIT(1)
+	var row orgRow
+	if err := stmt.QueryContext(ctx, s.reader(ctx), &row); err != nil {
+		if db.IsNoRows(err) {
+			return nil, &NotFoundError{}
+		}
+		return nil, fmt.Errorf("org.postgres: ByPublicID: %w", err)
+	}
+	return row.toOrg(), nil
+}
+
 // List returns every org ordered by creation time.
 func (s *postgresStore) List(ctx context.Context) ([]*Org, error) {
 	stmt := postgres.SELECT(s.orgs.AllColumns).

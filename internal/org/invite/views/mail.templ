@@ -1,0 +1,15 @@
+package views
+
+import "altalune.id/oagent/internal/web/layout"
+
+// InviteHTML is the invite email: who invites whom to which org and role, and the link.
+templ InviteHTML(org string, inviter string, role string, link string, expires string) {
+	@layout.Mail(InviteSubject(inviter, org)) {
+		<p style="margin:0 0 12px;">{ inviter } invited you to join { org } on oagent as { role }.</p>
+		<p style="margin:0 0 20px;">
+			<a href={ templ.SafeURL(link) } style="display:inline-block;padding:10px 16px;background:#18181b;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">Join { org }</a>
+		</p>
+		<p style="margin:0 0 12px;word-break:break-all;color:#71717a;">Or copy this link: { link }</p>
+		<p style="margin:0;color:#71717a;">The link works until { expires }. If you were not expecting this invite, you can ignore this email.</p>
+	}
+}

@@ -44,6 +44,14 @@ func (f *OrgStore) BySlug(context.Context, string) (*org.Org, error) {
 	return f.Org, nil
 }
 
+// ByPublicID implements org.Store.
+func (f *OrgStore) ByPublicID(context.Context, string) (*org.Org, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	return f.Org, nil
+}
+
 // System implements org.Store; it returns Org when that is a system org, else *org.NotFoundError.
 func (f *OrgStore) System(context.Context) (*org.Org, error) {
 	if f.Err != nil {

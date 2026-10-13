@@ -18,6 +18,7 @@ import (
 	memberv1 "altalune.id/oagent/gen/go/member/v1"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
 	"altalune.id/oagent/internal/controlplane"
+	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/testutil/fakes"
@@ -409,6 +410,33 @@ func TestMemberService_OperatorPerson(t *testing.T) {
 			require.NoError(t, set(c, f.org, plain, "admin"), "an admin still manages members")
 			assert.Equal(t, member.RoleOwner, f.role(owner))
 			assert.Equal(t, member.RoleAdmin, f.role(admin))
+		})
+	}
+}
+
+func TestRequesterFrom(t *testing.T) {
+	person := uuid.New()
+	cases := []struct {
+		name string
+		p    session.Principal
+		want member.Requester
+		ok   bool
+	}{
+		{"person", session.Principal{UserID: person, Source: session.SourceLocal}, member.Requester{UserID: person}, true},
+		{"staff", session.Principal{UserID: person, Source: session.SourceLocal, Operator: true}, member.Requester{UserID: person, Operator: true}, true},
+		{"non-person operator", session.System(), member.Requester{Operator: true}, true},
+		{"key", session.Principal{KeyID: uuid.New(), OwnerID: person, Source: session.SourceAPIKey}, member.Requester{}, false},
+		{"nobody", session.Principal{}, member.Requester{}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := member.RequesterFrom(session.PrincipalInto(context.Background(), tc.p))
+			if !tc.ok {
+				assert.True(t, authz.IsForbiddenError(err), "got %v", err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }

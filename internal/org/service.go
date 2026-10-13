@@ -140,6 +140,15 @@ func (s *Service) BySlug(ctx context.Context, slug string) (*Org, error) {
 	return o, nil
 }
 
+// ByPublicID loads an org by public id.
+func (s *Service) ByPublicID(ctx context.Context, publicID string) (*Org, error) {
+	o, err := s.store.ByPublicID(ctx, publicID)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "org: by public id", err)
+	}
+	return o, nil
+}
+
 // System returns the deployment's system org.
 func (s *Service) System(ctx context.Context) (*Org, error) {
 	o, err := s.store.System(ctx)

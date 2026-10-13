@@ -51,6 +51,10 @@ const (
 	CodeMemberRoleNotAllowed Code = "MBR005"
 	CodeMemberSelfChange     Code = "MBR006"
 
+	CodeInviteNotUsable     Code = "INV001"
+	CodeInviteEmailMismatch Code = "INV002"
+	CodeInviteDraftExpired  Code = "INV003"
+
 	CodeAuthInvalidCredentials Code = "AUT001"
 	CodeAuthPasswordPolicy     Code = "AUT002"
 
@@ -115,6 +119,10 @@ var kinds = map[Code]Kind{
 	CodeMemberLastOwner:      KindFailedPrecondition,
 	CodeMemberRoleNotAllowed: KindForbidden,
 	CodeMemberSelfChange:     KindFailedPrecondition,
+
+	CodeInviteNotUsable:     KindFailedPrecondition,
+	CodeInviteEmailMismatch: KindForbidden,
+	CodeInviteDraftExpired:  KindFailedPrecondition,
 
 	CodeAuthInvalidCredentials: KindUnauthenticated,
 	CodeAuthPasswordPolicy:     KindInvalid,

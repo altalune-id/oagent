@@ -9,6 +9,8 @@ import (
 // Store persists memberships.
 type Store interface {
 	Add(ctx context.Context, m *Membership) error
+	// AddIfAbsent inserts m unless the user already belongs to the org, and reports whether it did.
+	AddIfAbsent(ctx context.Context, m *Membership) (bool, error)
 	Find(ctx context.Context, orgID, userID uuid.UUID) (*Membership, error)
 	ListByUser(ctx context.Context, userID uuid.UUID) ([]*Membership, error)
 	CountOwners(ctx context.Context, orgID uuid.UUID) (int, error)

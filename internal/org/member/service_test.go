@@ -518,3 +518,80 @@ func TestService_NobodyIsForbidden(t *testing.T) {
 	_, err = f.svc.AddExisting(f.ctx, member.Requester{}, f.org, uuid.New(), member.RoleMember)
 	assert.True(t, authz.IsForbiddenError(err), "got %v", err)
 }
+
+func TestService_ActorFor(t *testing.T) {
+	f := newOrgFixture(t)
+	owner := f.add(member.RoleOwner)
+	admin := f.add(member.RoleAdmin)
+	plain := f.add(member.RoleMember)
+	staff := member.Requester{UserID: uuid.New(), Operator: true}
+	support := newService(f.store).WithOperatorSupport(true)
+
+	cases := []struct {
+		name string
+		svc  *member.Service
+		r    member.Requester
+		want member.Actor
+	}{
+		{"owner", f.svc, owner, member.Actor{UserID: owner.UserID, Permissions: member.BuiltinPermissions(member.RoleOwner)}},
+		{"admin", f.svc, admin, member.Actor{UserID: admin.UserID, Permissions: member.BuiltinPermissions(member.RoleAdmin)}},
+		{"member", f.svc, plain, member.Actor{UserID: plain.UserID, Permissions: member.BuiltinPermissions(member.RoleMember)}},
+		{"staff, support off", f.svc, staff, member.Actor{UserID: staff.UserID}},
+		{"staff, support on", support, staff, member.Actor{UserID: staff.UserID, Permissions: member.BuiltinPermissions(member.RoleAdmin)}},
+		{"non-person operator", f.svc, operator, member.Actor{Operator: true}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := tc.svc.ActorFor(f.ctx, tc.r, f.org)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+
+	_, err := f.svc.ActorFor(f.ctx, member.Requester{}, f.org)
+	assert.True(t, authz.IsForbiddenError(err), "nobody is no actor")
+
+	f.store.Err = errors.New("db down")
+	_, err = f.svc.ActorFor(f.ctx, plain, f.org)
+	assert.True(t, isUnexpected(err), "a store failure is reported")
+}
+
+func TestService_ActorForMatchesTheRoleChangePath(t *testing.T) {
+	f := newOrgFixture(t)
+	admin := f.add(member.RoleAdmin)
+	target := f.add(member.RoleMember)
+	a, err := f.svc.ActorFor(f.ctx, admin, f.org)
+	require.NoError(t, err)
+	tm, err := f.svc.Find(f.ctx, f.org, target.UserID)
+	require.NoError(t, err)
+
+	for _, to := range []member.Role{member.RoleOwner, member.RoleAdmin, member.RoleMember} {
+		_, viaService := f.svc.SetRole(f.ctx, admin, f.org, target.UserID, to)
+		viaActor := member.Authorize(a, tm, to)
+		assert.Equal(t, viaActor == nil, viaService == nil, "role %s", to)
+		_, _ = f.svc.SetRole(f.ctx, operator, f.org, target.UserID, member.RoleMember)
+	}
+}
+
+func TestService_AddFromInvite(t *testing.T) {
+	f := newOrgFixture(t)
+	owner := f.add(member.RoleOwner)
+	newcomer := uuid.New()
+
+	added, err := f.svc.AddFromInvite(f.ctx, f.org, newcomer, member.RoleAdmin)
+	require.NoError(t, err)
+	assert.True(t, added)
+	assert.Equal(t, member.RoleAdmin, f.role(newcomer))
+
+	added, err = f.svc.AddFromInvite(f.ctx, f.org, owner.UserID, member.RoleMember)
+	require.NoError(t, err)
+	assert.False(t, added, "an existing member is left alone")
+	assert.Equal(t, member.RoleOwner, f.role(owner.UserID), "an owner is never downgraded by an invite")
+
+	_, err = f.svc.AddFromInvite(f.ctx, f.org, uuid.New(), member.Role("root"))
+	assert.True(t, member.IsInvalidRoleError(err))
+
+	f.store.Err = errors.New("db down")
+	_, err = f.svc.AddFromInvite(f.ctx, f.org, uuid.New(), member.RoleMember)
+	assert.True(t, isUnexpected(err))
+}

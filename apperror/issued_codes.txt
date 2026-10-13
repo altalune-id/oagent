@@ -51,3 +51,6 @@ WHK006 WebhookEndpointInactive
 WHK007 WebhookSecretConflict
 WHK008 WebhookDeliveryNotFound
 WHK009 WebhookDeliveryNotRetryable
+INV001 InviteNotUsable
+INV002 InviteEmailMismatch
+INV003 InviteDraftExpired

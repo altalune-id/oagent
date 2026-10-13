@@ -140,6 +140,8 @@ func TestStore_QueryErrors(t *testing.T) {
 	assert.Error(t, err)
 	_, err = s.BySlug(ctx, "x")
 	assert.Error(t, err)
+	_, err = s.ByPublicID(ctx, "x")
+	assert.Error(t, err)
 	_, err = s.List(ctx)
 	assert.Error(t, err)
 

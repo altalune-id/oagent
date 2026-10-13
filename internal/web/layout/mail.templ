@@ -1,0 +1,21 @@
+package layout
+
+// Mail is the shell of an HTML email: one card with heading and the children, styled inline for mail clients.
+templ Mail(heading string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ heading }</title>
+		</head>
+		<body style="margin:0;padding:24px 16px;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#18181b;">
+			<div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e4e4e7;border-radius:8px;padding:24px;">
+				<h1 style="margin:0 0 16px;font-size:20px;line-height:28px;font-weight:600;">{ heading }</h1>
+				<div style="font-size:15px;line-height:24px;">
+					{ children... }
+				</div>
+			</div>
+		</body>
+	</html>
+}

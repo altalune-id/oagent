@@ -71,6 +71,9 @@ func TestOrgStore_RoundTrip(t *testing.T) {
 			bySlug, err := store.BySlug(ctx, "acme")
 			require.NoError(t, err)
 			assert.Equal(t, byID, bySlug)
+			byPublicID, err := store.ByPublicID(ctx, o.PublicID)
+			require.NoError(t, err)
+			assert.Equal(t, byID, byPublicID)
 
 			assert.Equal(t, o.ID, byID.ID)
 			assert.Equal(t, o.PublicID, byID.PublicID)
@@ -177,6 +180,11 @@ func TestOrgStore_NotFound(t *testing.T) {
 
 	_, err = store.BySlug(ctx, "ACME")
 	assert.True(t, org.IsNotFoundError(err), "slug lookup is case sensitive")
+
+	_, err = store.ByPublicID(ctx, "missing")
+	nf, ok = errors.AsType[*org.NotFoundError](err)
+	require.True(t, ok, "want NotFoundError, got %T: %v", err, err)
+	assert.Empty(t, nf.ID+nf.Slug, "an unknown public id is not echoed")
 }
 
 func TestOrgStore_ListOrdersByCreatedAtAscending(t *testing.T) {

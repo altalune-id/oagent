@@ -363,3 +363,29 @@ func TestPostgresMember_ListByOrg(t *testing.T) {
 	assert.NotNil(t, none)
 	assert.Empty(t, none)
 }
+
+func TestPostgresMember_AddIfAbsent(t *testing.T) {
+	f := newMemberFixture(t)
+	u, o := f.user(), f.org()
+	f.add(o.ID, u.ID, member.RoleOwner)
+
+	again, err := member.New(o.ID, u.ID, member.RoleMember)
+	require.NoError(t, err)
+	added, err := f.store.AddIfAbsent(f.ctx, again)
+	require.NoError(t, err)
+	assert.False(t, added)
+	got, err := f.store.Find(f.ctx, o.ID, u.ID)
+	require.NoError(t, err)
+	assert.Equal(t, member.RoleOwner, got.Role, "the existing role is kept")
+
+	fresh, err := member.New(o.ID, f.user().ID, member.RoleMember)
+	require.NoError(t, err)
+	added, err = f.store.AddIfAbsent(f.ctx, fresh)
+	require.NoError(t, err)
+	assert.True(t, added)
+
+	broken, err := member.New(uuid.New(), u.ID, member.RoleMember)
+	require.NoError(t, err)
+	_, err = f.store.AddIfAbsent(f.ctx, broken)
+	assert.Equal(t, "23503", pgCode(err), "an unknown org is a foreign key failure")
+}

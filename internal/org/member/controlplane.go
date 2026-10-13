@@ -60,7 +60,7 @@ func (s *MemberService) SetMemberRole(
 	if err != nil {
 		return nil, err
 	}
-	r, err := requester(ctx)
+	r, err := RequesterFrom(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (s *MemberService) RemoveMember(
 	if err != nil {
 		return nil, err
 	}
-	r, err := requester(ctx)
+	r, err := RequesterFrom(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -134,8 +134,9 @@ func (s *MemberService) target(ctx context.Context, rawOrg, rawUser string) (org
 	return orgID, userID, nil
 }
 
-// SECURITY: keys never act; a person's role comes from the membership row inside the change, never from the session's scopes.
-func requester(ctx context.Context) (Requester, error) {
+// RequesterFrom builds the Requester from the Principal on ctx.
+func RequesterFrom(ctx context.Context) (Requester, error) {
+	// SECURITY: keys never act; a person's role comes from the membership row inside the change, never from the session's scopes.
 	p := session.PrincipalFrom(ctx)
 	switch {
 	case p.IsPerson():
