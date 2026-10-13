@@ -34,9 +34,9 @@ var _ outbox.Deliverer = (*Deliverer)(nil)
 
 func deliveryHeaders(e outbox.Entry, eventType events.Type) []Header {
 	return []Header{
-		{Name: HeaderEventID, Value: e.EventID.String()},
+		{Name: HeaderEventID, Value: e.EventPublicID},
 		{Name: HeaderEventType, Value: string(eventType)},
-		{Name: HeaderDeliveryID, Value: e.ID.String()},
+		{Name: HeaderDeliveryID, Value: e.PublicID},
 		{Name: headerContentType, Value: contentTypeJSON},
 		{Name: headerUserAgent, Value: userAgent},
 	}
@@ -93,7 +93,7 @@ func (d *Deliverer) deliver(ctx context.Context, e outbox.Entry) error {
 	}
 	ctx = tenant.WithProject(ctx, e.ProjectID)
 	if !ep.Active {
-		return &EndpointInactiveError{ID: ep.ID.String()}
+		return &EndpointInactiveError{ID: ep.PublicID}
 	}
 	secrets, err := d.openSecrets(ep)
 	if err != nil {

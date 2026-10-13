@@ -19,8 +19,6 @@ import (
 	"altalune.id/oagent/sealer"
 )
 
-const eventIDPrefix = "evt_"
-
 // Envelope is the JSON body every delivery of one event carries; it is the public wire contract.
 type Envelope struct {
 	ID         string         `json:"id"`
@@ -292,7 +290,7 @@ func (s *Service) SendTest(ctx context.Context, id uuid.UUID) error {
 		return err
 	}
 	if !e.Active {
-		return &EndpointInactiveError{ID: id.String()}
+		return &EndpointInactiveError{ID: e.PublicID}
 	}
 	spec, ok := events.Lookup(events.WebhookPing)
 	if !ok {
@@ -434,7 +432,7 @@ func (s *Service) fanOut(ctx context.Context, orgID, projectID uuid.UUID, spec e
 		return fmt.Errorf("event id: %w", err)
 	}
 	body, err := json.Marshal(Envelope{
-		ID:         eventIDPrefix + eventPublicID,
+		ID:         eventPublicID,
 		Type:       spec.Type,
 		APIVersion: spec.APIVersion(),
 		CreatedAt:  time.Now().UTC().Truncate(time.Second),
