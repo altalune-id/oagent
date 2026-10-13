@@ -74,7 +74,7 @@ flowchart TD
 | `org/invite` | member (actor, add from invite), user (create, by email, accept terms), org (name, slug), user (contact, public id), mail queue, webhook (`invite.created`, `member.added` to every project's subscribers, in the same transaction); auth (sign-in, sessions) on the web side; org (public id → id, `orgPublicIDs`) for the API | ✓ (every id is a public id; writes: people and the operator only); CLI `invite create/list/resend/revoke` | `member_invite` (drafts only); `member_invite_confirm`, `member_invite_discard` (app-only) | `/invite/{token}`, `/invite`, `POST /invite/join`, `/invite/accept`, `/invite/switch` (local login only) |
 | `org/member` | effects: sessions, apikey (personal keys), user (contact), org (name), mail queue | ✓ (role changes and removal: people and the operator only; leave: the signed-in person); CLI `member add` (operator, boots the `App`) | `member_list` | — |
 | `project` | — | ✓ | ✓ | — |
-| `agent` | webhook (publisher), project (org of project) | ✓ | ✓ | — |
+| `agent` | webhook (publisher, same transaction), project (org of project) | ✓ | ✓ | — |
 | `apikey` | project (ids), member (owner roles) | ✓ | — | — |
 | `webhook` | project + org (refs), project (org of project), outbox | ✓ (org events `invite.created`, `member.added`: only a caller who reaches the whole org and holds `member:read` subscribes or reads their payloads) | ✓ | — |
 | `user` | — | CLI `user set-password` (operator, boots the `App`) | — | — |
@@ -146,7 +146,15 @@ flowchart TD
     org --> project
 ```
 
-`org → project` is the after-create hook that adds the default project.
+**Unit of work:** a use case owns its transaction; stores never begin one. `buildServices` makes one
+`db.NewTransactor(k.Pool)` and hands it to every service that writes more than one row (`org`,
+`agent`, `org/member`, `org/invite`, `install`, `legal`). A store joins the transaction on `ctx`
+(`db.Reader`, `db.Writer`, `db.InTx`) or runs alone; a nested `RunInTx` joins the outer one.
+`kernel/db`'s guard test fails if any other package begins a transaction.
+
+`org → project` is the after-create hook that adds the default project, in the org's unit of work:
+if it fails, the org is not created. An agent's save and its `agent.created`/`agent.updated` event
+commit together; a failed enqueue fails the request.
 `member → …` (dotted) are the effects set by `memberEffects` after every service exists
 (`apikey` already depends on `member`). A removal ends the person's sessions, revokes their
 personal keys in that org and queues a notice; a role change queues a notice and, when it lowers

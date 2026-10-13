@@ -2,11 +2,13 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/kernel/tenant"
 	slugpkg "altalune.id/oagent/slug"
@@ -15,14 +17,15 @@ import (
 // Service is the agent application service: the driving port surfaces call.
 type Service struct {
 	store      Store
+	uow        db.Transactor
 	unexpected apperror.UnexpectedFunc
 	publisher  Publisher
 	projects   tenant.ProjectResolver
 }
 
-// NewService builds a Service over store.
-func NewService(store Store, unexpected apperror.UnexpectedFunc) *Service {
-	return &Service{store: store, unexpected: unexpected}
+// NewService builds a Service over store; a save and its event run as one unit of work on uow.
+func NewService(store Store, uow db.Transactor, unexpected apperror.UnexpectedFunc) *Service {
+	return &Service{store: store, uow: uow, unexpected: unexpected}
 }
 
 // WithPublisher emits agent.created/agent.updated events through p; nil disables emission.
@@ -68,10 +71,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*Agent, error)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.store.Save(ctx, a); err != nil {
+	if err := s.saveAndPublish(ctx, events.AgentCreated, a); err != nil {
 		return nil, s.errOrReport(ctx, "agent: create", err)
 	}
-	s.publish(ctx, events.AgentCreated, a)
 	return a, nil
 }
 
@@ -82,12 +84,11 @@ func (s *Service) createGenerated(ctx context.Context, req CreateRequest) (*Agen
 		if err != nil {
 			return nil, err
 		}
-		return a, s.store.Save(ctx, a)
+		return a, s.saveAndPublish(ctx, events.AgentCreated, a)
 	})
 	if err != nil {
 		return nil, s.errOrReport(ctx, "agent: create", err)
 	}
-	s.publish(ctx, events.AgentCreated, a)
 	return a, nil
 }
 
@@ -133,10 +134,9 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, name, description st
 	if err := a.Update(name, description); err != nil {
 		return nil, err
 	}
-	if err := s.store.Save(ctx, a); err != nil {
+	if err := s.saveAndPublish(ctx, events.AgentUpdated, a); err != nil {
 		return nil, s.errOrReport(ctx, "agent: update", err)
 	}
-	s.publish(ctx, events.AgentUpdated, a)
 	return a, nil
 }
 
@@ -148,10 +148,19 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// publish emits t for a as a best-effort side effect; it never fails the mutation.
-func (s *Service) publish(ctx context.Context, t events.Type, a *Agent) {
+// saveAndPublish saves a and enqueues its event t in one unit of work, so neither commits without the other.
+func (s *Service) saveAndPublish(ctx context.Context, t events.Type, a *Agent) error {
+	return s.uow.RunInTx(ctx, func(ctx context.Context) error {
+		if err := s.store.Save(ctx, a); err != nil {
+			return err
+		}
+		return s.publish(ctx, t, a)
+	})
+}
+
+func (s *Service) publish(ctx context.Context, t events.Type, a *Agent) error {
 	if s.publisher == nil {
-		return
+		return nil
 	}
 	snapshot := events.AgentSnapshotV1{
 		ID: a.PublicID, Slug: a.Slug, Name: a.Name, Description: a.Description, UpdatedAt: a.UpdatedAt,
@@ -162,8 +171,9 @@ func (s *Service) publish(ctx context.Context, t events.Type, a *Agent) {
 	}
 	ctx = tenant.Into(ctx, tenant.Context{OrgID: a.OrgID, ProjectID: a.ProjectID})
 	if err := s.publisher.Enqueue(ctx, t, payload); err != nil {
-		_ = s.unexpected(ctx, "agent: publish "+string(t), err)
+		return fmt.Errorf("agent: publish %s: %w", t, err)
 	}
+	return nil
 }
 
 // errOrReport returns err unchanged when it is an expected domain error, else reports it and returns an AppError.

@@ -24,7 +24,7 @@ func mustOrg(t *testing.T, slug string) *org.Org {
 
 func TestOrgReach_IDOnlyRPCs(t *testing.T) {
 	orgA, orgB := mustOrg(t, "org-a"), mustOrg(t, "org-b")
-	cp := org.NewControlPlane(org.NewService(&fakes.OrgStore{Org: orgB}, nil))
+	cp := org.NewControlPlane(org.NewService(&fakes.OrgStore{Org: orgB}, fakes.Transactor{}, nil))
 	for name, p := range map[string]session.Principal{
 		"member of A": {Source: session.SourceLocal, UserID: uuid.New(), ActiveOrgID: orgA.ID, Scopes: []string{"*"}},
 		"key of A":    {Source: session.SourceAPIKey, ActiveOrgID: orgA.ID, AllProjects: true, Scopes: []string{"org:read", "org:write"}},
@@ -41,7 +41,7 @@ func TestOrgReach_IDOnlyRPCs(t *testing.T) {
 
 func TestOrgReach_OwnOrgAndTrustedCallers(t *testing.T) {
 	o := mustOrg(t, "org-a")
-	cp := org.NewControlPlane(org.NewService(&fakes.OrgStore{Org: o}, nil))
+	cp := org.NewControlPlane(org.NewService(&fakes.OrgStore{Org: o}, fakes.Transactor{}, nil))
 	for name, ctx := range map[string]context.Context{
 		"system":   fakes.OperatorContext(context.Background()),
 		"member":   session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceLocal, UserID: uuid.New(), ActiveOrgID: o.ID}),
@@ -59,7 +59,7 @@ func TestOrgReach_OwnOrgAndTrustedCallers(t *testing.T) {
 
 func TestOrgReach_ListOrgs(t *testing.T) {
 	orgA, orgB := mustOrg(t, "org-a"), mustOrg(t, "org-b")
-	cp := org.NewControlPlane(org.NewService(&fakes.OrgStore{Orgs: []*org.Org{orgA, orgB}}, nil))
+	cp := org.NewControlPlane(org.NewService(&fakes.OrgStore{Orgs: []*org.Org{orgA, orgB}}, fakes.Transactor{}, nil))
 	ids := func(ctx context.Context) []string {
 		resp, err := cp.ListOrgs(ctx, connect.NewRequest(&orgv1.ListOrgsRequest{}))
 		require.NoError(t, err)

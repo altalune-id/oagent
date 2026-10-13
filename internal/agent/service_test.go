@@ -21,7 +21,7 @@ func testUnexpected() apperror.UnexpectedFunc {
 
 func TestService_Create(t *testing.T) {
 	store := &fakes.AgentStore{}
-	svc := agent.NewService(store, testUnexpected())
+	svc := agent.NewService(store, fakes.Transactor{}, testUnexpected())
 
 	projectID := uuid.New()
 	a, err := svc.Create(context.Background(), agent.CreateRequest{OrgID: uuid.New(), ProjectID: projectID, Slug: "acme", Name: "Acme", Description: "d"})
@@ -31,7 +31,7 @@ func TestService_Create(t *testing.T) {
 }
 
 func TestService_Create_MissingScope(t *testing.T) {
-	svc := agent.NewService(&fakes.AgentStore{}, testUnexpected())
+	svc := agent.NewService(&fakes.AgentStore{}, fakes.Transactor{}, testUnexpected())
 
 	_, err := svc.Create(context.Background(), agent.CreateRequest{ProjectID: uuid.New(), Name: "Acme"})
 	_, ok := apperror.AsAppError(err)
@@ -43,7 +43,7 @@ func TestService_Create_MissingScope(t *testing.T) {
 }
 
 func TestService_Create_GeneratedSlug(t *testing.T) {
-	svc := agent.NewService(&fakes.AgentStore{}, testUnexpected())
+	svc := agent.NewService(&fakes.AgentStore{}, fakes.Transactor{}, testUnexpected())
 
 	a, err := svc.Create(context.Background(), agent.CreateRequest{OrgID: uuid.New(), ProjectID: uuid.New(), Name: "Acme"})
 	require.NoError(t, err)
@@ -61,7 +61,7 @@ func TestService_Create_GeneratedSlugRetries(t *testing.T) {
 		return nil
 	}}
 
-	a, err := agent.NewService(store, testUnexpected()).Create(context.Background(), agent.CreateRequest{OrgID: uuid.New(), ProjectID: uuid.New(), Name: "Acme"})
+	a, err := agent.NewService(store, fakes.Transactor{}, testUnexpected()).Create(context.Background(), agent.CreateRequest{OrgID: uuid.New(), ProjectID: uuid.New(), Name: "Acme"})
 	require.NoError(t, err)
 	assert.Equal(t, 3, calls)
 	assert.NotEmpty(t, a.Slug)
@@ -70,13 +70,13 @@ func TestService_Create_GeneratedSlugRetries(t *testing.T) {
 func TestService_Create_GeneratedSlugExhausted(t *testing.T) {
 	store := &fakes.AgentStore{SaveFn: func(*agent.Agent) error { return &agent.AlreadyExistsError{} }}
 
-	_, err := agent.NewService(store, testUnexpected()).Create(context.Background(), agent.CreateRequest{OrgID: uuid.New(), ProjectID: uuid.New(), Name: "Acme"})
+	_, err := agent.NewService(store, fakes.Transactor{}, testUnexpected()).Create(context.Background(), agent.CreateRequest{OrgID: uuid.New(), ProjectID: uuid.New(), Name: "Acme"})
 	assert.True(t, agent.IsAlreadyExistsError(err))
 }
 
 func TestService_Create_Validation(t *testing.T) {
 	store := &fakes.AgentStore{}
-	svc := agent.NewService(store, testUnexpected())
+	svc := agent.NewService(store, fakes.Transactor{}, testUnexpected())
 
 	_, err := svc.Create(context.Background(), agent.CreateRequest{OrgID: uuid.New(), ProjectID: uuid.New(), Slug: "ab", Name: "Acme"})
 	assert.True(t, agent.IsInvalidSlugError(err))
@@ -85,7 +85,7 @@ func TestService_Create_Validation(t *testing.T) {
 
 func TestService_Create_StoreError(t *testing.T) {
 	store := &fakes.AgentStore{Err: &agent.AlreadyExistsError{Slug: "acme"}}
-	svc := agent.NewService(store, testUnexpected())
+	svc := agent.NewService(store, fakes.Transactor{}, testUnexpected())
 
 	_, err := svc.Create(context.Background(), agent.CreateRequest{OrgID: uuid.New(), ProjectID: uuid.New(), Slug: "acme", Name: "Acme"})
 	assert.True(t, agent.IsAlreadyExistsError(err))
@@ -95,7 +95,7 @@ func TestService_GetAndList(t *testing.T) {
 	a, err := agent.New(uuid.New(), uuid.New(), "acme", "Acme", "", uuid.New())
 	require.NoError(t, err)
 	store := &fakes.AgentStore{Agent: a, Agents: []*agent.Agent{a}}
-	svc := agent.NewService(store, testUnexpected())
+	svc := agent.NewService(store, fakes.Transactor{}, testUnexpected())
 
 	got, err := svc.Get(context.Background(), a.ID)
 	require.NoError(t, err)
@@ -107,7 +107,7 @@ func TestService_GetAndList(t *testing.T) {
 }
 
 func TestService_Get_StoreError(t *testing.T) {
-	svc := agent.NewService(&fakes.AgentStore{Err: errors.New("boom")}, testUnexpected())
+	svc := agent.NewService(&fakes.AgentStore{Err: errors.New("boom")}, fakes.Transactor{}, testUnexpected())
 
 	_, err := svc.Get(context.Background(), uuid.New())
 	assert.Error(t, err)
@@ -116,7 +116,7 @@ func TestService_Get_StoreError(t *testing.T) {
 }
 
 func TestService_Unexpected(t *testing.T) {
-	svc := agent.NewService(&fakes.AgentStore{Err: errors.New("boom")}, testUnexpected())
+	svc := agent.NewService(&fakes.AgentStore{Err: errors.New("boom")}, fakes.Transactor{}, testUnexpected())
 
 	_, err := svc.Get(context.Background(), uuid.New())
 	_, ok := apperror.AsAppError(err)
@@ -128,7 +128,7 @@ func TestService_Update(t *testing.T) {
 	require.NoError(t, err)
 	store := &fakes.AgentStore{Agent: a}
 
-	got, err := agent.NewService(store, testUnexpected()).Update(context.Background(), a.ID, "Acme Two", "new")
+	got, err := agent.NewService(store, fakes.Transactor{}, testUnexpected()).Update(context.Background(), a.ID, "Acme Two", "new")
 	require.NoError(t, err)
 	assert.Equal(t, "Acme Two", got.Name)
 	assert.Equal(t, "new", got.Description)
@@ -138,7 +138,7 @@ func TestService_Update(t *testing.T) {
 func TestService_Update_NotFound(t *testing.T) {
 	store := &fakes.AgentStore{Err: &agent.NotFoundError{ID: "x"}}
 
-	_, err := agent.NewService(store, testUnexpected()).Update(context.Background(), uuid.New(), "Acme Two", "")
+	_, err := agent.NewService(store, fakes.Transactor{}, testUnexpected()).Update(context.Background(), uuid.New(), "Acme Two", "")
 	assert.Error(t, err)
 }
 
@@ -146,7 +146,7 @@ func TestService_Update_InvalidName(t *testing.T) {
 	a, err := agent.New(uuid.New(), uuid.New(), "acme", "Acme", "", uuid.New())
 	require.NoError(t, err)
 
-	_, err = agent.NewService(&fakes.AgentStore{Agent: a}, testUnexpected()).Update(context.Background(), a.ID, "", "")
+	_, err = agent.NewService(&fakes.AgentStore{Agent: a}, fakes.Transactor{}, testUnexpected()).Update(context.Background(), a.ID, "", "")
 	assert.True(t, agent.IsInvalidNameError(err))
 }
 
@@ -154,14 +154,14 @@ func TestService_Delete(t *testing.T) {
 	store := &fakes.AgentStore{}
 	id := uuid.New()
 
-	require.NoError(t, agent.NewService(store, testUnexpected()).Delete(context.Background(), id))
+	require.NoError(t, agent.NewService(store, fakes.Transactor{}, testUnexpected()).Delete(context.Background(), id))
 	assert.Equal(t, id, store.Deleted)
 }
 
 func TestService_Delete_Error(t *testing.T) {
 	store := &fakes.AgentStore{Err: &agent.NotFoundError{ID: "x"}}
 
-	err := agent.NewService(store, testUnexpected()).Delete(context.Background(), uuid.New())
+	err := agent.NewService(store, fakes.Transactor{}, testUnexpected()).Delete(context.Background(), uuid.New())
 	assert.True(t, agent.IsNotFoundError(err))
 }
 
@@ -177,7 +177,7 @@ func (m projectOrgs) OrgOf(_ context.Context, id uuid.UUID) (uuid.UUID, error) {
 func TestService_Create_ProjectMustBelongToOrg(t *testing.T) {
 	orgA, orgB, prjB := uuid.New(), uuid.New(), uuid.New()
 	store := &fakes.AgentStore{}
-	svc := agent.NewService(store, nil).WithProjects(projectOrgs{prjB: orgB})
+	svc := agent.NewService(store, fakes.Transactor{}, nil).WithProjects(projectOrgs{prjB: orgB})
 
 	for _, slug := range []string{"bot", ""} {
 		_, err := svc.Create(context.Background(), agent.CreateRequest{OrgID: orgA, ProjectID: prjB, Slug: slug, Name: "Bot"})
@@ -197,11 +197,11 @@ func (failingProjects) OrgOf(context.Context, uuid.UUID) (uuid.UUID, error) {
 
 func TestService_ProjectOrg(t *testing.T) {
 	orgB, prjB := uuid.New(), uuid.New()
-	_, ok, err := agent.NewService(&fakes.AgentStore{}, nil).ProjectOrg(context.Background(), prjB)
+	_, ok, err := agent.NewService(&fakes.AgentStore{}, fakes.Transactor{}, nil).ProjectOrg(context.Background(), prjB)
 	require.NoError(t, err)
 	assert.False(t, ok, "no resolver, no check")
 
-	svc := agent.NewService(&fakes.AgentStore{}, testUnexpected()).WithProjects(projectOrgs{prjB: orgB})
+	svc := agent.NewService(&fakes.AgentStore{}, fakes.Transactor{}, testUnexpected()).WithProjects(projectOrgs{prjB: orgB})
 	got, ok, err := svc.ProjectOrg(context.Background(), prjB)
 	require.NoError(t, err)
 	assert.True(t, ok)
@@ -209,7 +209,7 @@ func TestService_ProjectOrg(t *testing.T) {
 	_, _, err = svc.ProjectOrg(context.Background(), uuid.New())
 	assert.True(t, agent.IsNotFoundError(err))
 
-	_, _, err = agent.NewService(&fakes.AgentStore{}, testUnexpected()).WithProjects(failingProjects{}).ProjectOrg(context.Background(), prjB)
+	_, _, err = agent.NewService(&fakes.AgentStore{}, fakes.Transactor{}, testUnexpected()).WithProjects(failingProjects{}).ProjectOrg(context.Background(), prjB)
 	require.Error(t, err)
 	assert.False(t, agent.IsNotFoundError(err))
 }

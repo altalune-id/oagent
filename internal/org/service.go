@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/db"
 	slugpkg "altalune.id/oagent/slug"
 )
 
@@ -15,14 +16,15 @@ const systemSlug = "default"
 // Service is the org application service: the driving port surfaces call.
 type Service struct {
 	store           Store
+	uow             db.Transactor
 	unexpected      apperror.UnexpectedFunc
 	afterCreate     func(ctx context.Context, o *Org) error
 	creationAllowed bool
 }
 
-// NewService builds a Service over store; org creation is allowed until WithCreation(false).
-func NewService(store Store, unexpected apperror.UnexpectedFunc) *Service {
-	return &Service{store: store, unexpected: unexpected, creationAllowed: true}
+// NewService builds a Service over store; Create runs as one unit of work on uow and is allowed until WithCreation(false).
+func NewService(store Store, uow db.Transactor, unexpected apperror.UnexpectedFunc) *Service {
+	return &Service{store: store, uow: uow, unexpected: unexpected, creationAllowed: true}
 }
 
 // WithCreation sets whether Create may add orgs; boot passes the OrgCreation capability.
@@ -44,48 +46,39 @@ type CreateRequest struct {
 	CreatedBy uuid.UUID
 }
 
-// Create validates and persists a new org. An empty slug is generated, retrying on collision.
+// Create persists a new org and runs the after-create hook in one unit of work; an empty slug is generated, retrying on collision.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (*Org, error) {
 	if !s.creationAllowed {
 		return nil, &CreationDisabledError{}
 	}
-	o, err := s.create(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	if s.afterCreate != nil {
-		if herr := s.afterCreate(ctx, o); herr != nil {
-			return nil, s.errOrReport(ctx, "org: after create", herr)
-		}
-	}
-	return o, nil
-}
-
-// create persists a new org; Create applies the afterCreate hook on success.
-func (s *Service) create(ctx context.Context, req CreateRequest) (*Org, error) {
-	if strings.TrimSpace(req.Slug) == "" {
-		return s.createGenerated(ctx, req)
-	}
-	o, err := NewOrg(req.Slug, req.Name, req.CreatedBy)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.store.Save(ctx, o); err != nil {
-		return nil, s.errOrReport(ctx, "org: create", err)
-	}
-	return o, nil
-}
-
-// createGenerated mints a default slug, retrying while the slug is already taken.
-func (s *Service) createGenerated(ctx context.Context, req CreateRequest) (*Org, error) {
-	o, err := slugpkg.Retry(slugpkg.MaxAttempts, IsAlreadyExistsError, func(candidate string) (*Org, error) {
-		o, err := NewOrg(candidate, req.Name, req.CreatedBy)
+	var hookErr error
+	save := func(slug string) (*Org, error) {
+		o, err := NewOrg(slug, req.Name, req.CreatedBy)
 		if err != nil {
 			return nil, err
 		}
-		return o, s.store.Save(ctx, o)
-	})
-	if err != nil {
+		return o, s.uow.RunInTx(ctx, func(ctx context.Context) error {
+			if err := s.store.Save(ctx, o); err != nil {
+				return err
+			}
+			if s.afterCreate == nil {
+				return nil
+			}
+			hookErr = s.afterCreate(ctx, o)
+			return hookErr
+		})
+	}
+	var o *Org
+	var err error
+	if strings.TrimSpace(req.Slug) == "" {
+		o, err = slugpkg.Retry(slugpkg.MaxAttempts, IsAlreadyExistsError, save)
+	} else {
+		o, err = save(req.Slug)
+	}
+	switch {
+	case hookErr != nil:
+		return nil, s.errOrReport(ctx, "org: after create", hookErr)
+	case err != nil:
 		return nil, s.errOrReport(ctx, "org: create", err)
 	}
 	return o, nil

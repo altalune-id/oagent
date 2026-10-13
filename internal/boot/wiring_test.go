@@ -47,7 +47,7 @@ func TestRefResolver(t *testing.T) {
 
 	r := refResolver{
 		projects: project.NewService(&fakes.ProjectStore{Project: p}, testUnexpected()),
-		orgs:     org.NewService(&fakes.OrgStore{Org: o}, testUnexpected()),
+		orgs:     org.NewService(&fakes.OrgStore{Org: o}, fakes.Transactor{}, testUnexpected()),
 	}
 
 	slug, publicID, err := r.ProjectRef(context.Background(), p.ID)
@@ -62,7 +62,7 @@ func TestRefResolver(t *testing.T) {
 
 func TestOwnerRoles(t *testing.T) {
 	store := &fakes.MemberStore{}
-	members := member.NewService(store, fakes.TxPool(), testUnexpected())
+	members := member.NewService(store, fakes.Transactor{}, testUnexpected())
 	orgID, userID := uuid.New(), uuid.New()
 	_, err := members.Add(context.Background(), orgID, userID, member.RoleAdmin)
 	require.NoError(t, err)
@@ -98,7 +98,7 @@ func TestProjectOrgs(t *testing.T) {
 func TestRefResolver_PropagatesNotFound(t *testing.T) {
 	r := refResolver{
 		projects: project.NewService(&fakes.ProjectStore{Err: &project.NotFoundError{}}, testUnexpected()),
-		orgs:     org.NewService(&fakes.OrgStore{Err: &org.NotFoundError{}}, testUnexpected()),
+		orgs:     org.NewService(&fakes.OrgStore{Err: &org.NotFoundError{}}, fakes.Transactor{}, testUnexpected()),
 	}
 
 	_, _, err := r.ProjectRef(context.Background(), uuid.New())
@@ -152,7 +152,7 @@ func TestMemberOrgs(t *testing.T) {
 	o, err := org.NewOrg("acme", "Acme Corp", uuid.Nil)
 	require.NoError(t, err)
 	store := &fakes.OrgStore{Org: o}
-	orgs := memberOrgs{orgs: org.NewService(store, testUnexpected())}
+	orgs := memberOrgs{orgs: org.NewService(store, fakes.Transactor{}, testUnexpected())}
 
 	name, err := orgs.Name(context.Background(), o.ID)
 	require.NoError(t, err)
@@ -170,7 +170,7 @@ func TestMemberOrgs(t *testing.T) {
 
 func TestMemberEffects(t *testing.T) {
 	svcs := &Services{
-		Users: user.NewService(fakes.NewUserStore(), testUnexpected()), Orgs: org.NewService(&fakes.OrgStore{}, testUnexpected()),
+		Users: user.NewService(fakes.NewUserStore(), testUnexpected()), Orgs: org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, testUnexpected()),
 		Sessions: session.NewMemoryStore(), APIKeys: apikey.NewService(&fakes.APIKeyStore{}, apikey.NewScheme(""), nil, testUnexpected()),
 		MailQueue: buildMailQueue(db.Pool{}, config.Config{}, buildSealer(config.SecretsConfig{})),
 	}

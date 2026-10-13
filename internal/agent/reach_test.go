@@ -31,7 +31,7 @@ func TestAgentReach_IDOnlyRPCs(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			store := &fakes.AgentStore{Agent: foreign}
-			cp := agent.NewControlPlane(agent.NewService(store, nil))
+			cp := agent.NewControlPlane(agent.NewService(store, fakes.Transactor{}, nil))
 			ctx := session.PrincipalInto(context.Background(), p)
 
 			_, err := cp.GetAgent(ctx, connect.NewRequest(&agentv1.GetAgentRequest{Id: foreign.ID.String()}))
@@ -53,7 +53,7 @@ func TestAgentReach_ListFiltersToReach(t *testing.T) {
 	orgA, prj := uuid.New(), uuid.New()
 	mine, other := mustAgent(t, orgA, prj), mustAgent(t, orgA, prj)
 	foreign := mustAgent(t, uuid.New(), prj)
-	cp := agent.NewControlPlane(agent.NewService(&fakes.AgentStore{Agents: []*agent.Agent{mine, other, foreign}}, nil))
+	cp := agent.NewControlPlane(agent.NewService(&fakes.AgentStore{Agents: []*agent.Agent{mine, other, foreign}}, fakes.Transactor{}, nil))
 	list := func(p session.Principal) []string {
 		ctx := context.Background()
 		if p.Source != "" {
@@ -78,7 +78,7 @@ func TestAgentReach_ListFiltersToReach(t *testing.T) {
 func TestAgentReach_OwnAgentWorks(t *testing.T) {
 	orgA, prj := uuid.New(), uuid.New()
 	a := mustAgent(t, orgA, prj)
-	cp := agent.NewControlPlane(agent.NewService(&fakes.AgentStore{Agent: a}, nil))
+	cp := agent.NewControlPlane(agent.NewService(&fakes.AgentStore{Agent: a}, fakes.Transactor{}, nil))
 	ctx := session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceAPIKey, ActiveOrgID: orgA, ProjectIDs: []uuid.UUID{prj}})
 	_, err := cp.GetAgent(ctx, connect.NewRequest(&agentv1.GetAgentRequest{Id: a.ID.String()}))
 	require.NoError(t, err)
@@ -90,7 +90,7 @@ func TestAgentReach_OwnAgentWorks(t *testing.T) {
 func TestAgentReach_ListNeedsProjectReach(t *testing.T) {
 	orgA, orgB, prjB, prjB2 := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	agentB := mustAgent(t, orgB, prjB)
-	cp := agent.NewControlPlane(agent.NewService(&fakes.AgentStore{Agents: []*agent.Agent{agentB}}, nil).
+	cp := agent.NewControlPlane(agent.NewService(&fakes.AgentStore{Agents: []*agent.Agent{agentB}}, fakes.Transactor{}, nil).
 		WithProjects(projectOrgs{prjB: orgB, prjB2: orgB}))
 	list := func(p session.Principal, project uuid.UUID) (*connect.Response[agentv1.ListAgentsResponse], error) {
 		return cp.ListAgents(session.PrincipalInto(context.Background(), p), connect.NewRequest(&agentv1.ListAgentsRequest{ProjectId: project.String()}))

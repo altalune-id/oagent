@@ -20,7 +20,7 @@ import (
 
 func agentClient(t *testing.T, store agent.Store) agentv1connect.AgentServiceClient {
 	t.Helper()
-	srv := controlplane.New(controlplane.Services{Agents: agent.NewService(store, nil)}, nil, cptest.OperatorOptions())
+	srv := controlplane.New(controlplane.Services{Agents: agent.NewService(store, fakes.Transactor{}, nil)}, nil, cptest.OperatorOptions())
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
 	return apiclient.New(ts.URL, cptest.OperatorCredential()).Agents

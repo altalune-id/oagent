@@ -22,7 +22,7 @@ var errNoDirectory = errors.New("member: no directory wired")
 // Service is the membership application service.
 type Service struct {
 	store      Store
-	pool       db.Pool
+	uow        db.Transactor
 	unexpected apperror.UnexpectedFunc
 	effects    *Effects
 	directory  Directory
@@ -30,9 +30,9 @@ type Service struct {
 	opSupport  bool
 }
 
-// NewService builds a Service over store; role changes run in transactions on pool.
-func NewService(store Store, pool db.Pool, unexpected apperror.UnexpectedFunc) *Service {
-	return &Service{store: store, pool: pool, unexpected: unexpected}
+// NewService builds a Service over store; role changes and removals run as units of work on uow.
+func NewService(store Store, uow db.Transactor, unexpected apperror.UnexpectedFunc) *Service {
+	return &Service{store: store, uow: uow, unexpected: unexpected}
 }
 
 // WithEffects sets what removals and role changes do besides the membership row; without it they only change the row.
@@ -170,7 +170,7 @@ func (s *Service) AddExisting(ctx context.Context, r Requester, orgID, userID uu
 		return nil, err
 	}
 	authorize := s.authorizer(r, orgID, role)
-	err = db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
+	err = s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		if err := authorize(ctx, nil, &Membership{OrgID: orgID, UserID: userID}); err != nil {
 			return err
 		}
@@ -224,7 +224,7 @@ func (s *Service) guarded(
 	ctx context.Context, orgID, userID uuid.UUID, reason LastOwnerReason,
 	authorize func(ctx context.Context, owners []uuid.UUID, m *Membership) error, apply func(context.Context, *Membership) error,
 ) error {
-	return db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
+	return s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		owners, err := s.store.LockOwners(ctx, orgID)
 		if err != nil {
 			return err

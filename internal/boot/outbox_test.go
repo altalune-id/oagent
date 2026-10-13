@@ -23,7 +23,7 @@ func testUnexpected() apperror.UnexpectedFunc { return apperror.NewReporter(nil,
 
 func TestOutboxTenantsEach(t *testing.T) {
 	o := &org.Org{ID: uuid.New(), Slug: "acme", Name: "Acme"}
-	svc := org.NewService(&fakes.OrgStore{Orgs: []*org.Org{o}}, testUnexpected())
+	svc := org.NewService(&fakes.OrgStore{Orgs: []*org.Org{o}}, fakes.Transactor{}, testUnexpected())
 
 	var seen uuid.UUID
 	err := outboxTenants{orgs: svc}.Each(context.Background(), func(ctx context.Context, _ string) error {
@@ -37,14 +37,14 @@ func TestOutboxTenantsEach(t *testing.T) {
 }
 
 func TestOutboxTenantsListError(t *testing.T) {
-	svc := org.NewService(&fakes.OrgStore{Err: errors.New("boom")}, testUnexpected())
+	svc := org.NewService(&fakes.OrgStore{Err: errors.New("boom")}, fakes.Transactor{}, testUnexpected())
 	err := outboxTenants{orgs: svc}.Each(context.Background(), func(context.Context, string) error { return nil })
 	assert.Error(t, err)
 }
 
 func TestOutboxTenantsFnError(t *testing.T) {
 	o := &org.Org{ID: uuid.New()}
-	svc := org.NewService(&fakes.OrgStore{Orgs: []*org.Org{o}}, testUnexpected())
+	svc := org.NewService(&fakes.OrgStore{Orgs: []*org.Org{o}}, fakes.Transactor{}, testUnexpected())
 	err := outboxTenants{orgs: svc}.Each(context.Background(), func(context.Context, string) error { return errors.New("boom") })
 	assert.Error(t, err)
 }
@@ -54,7 +54,7 @@ func TestBuildOutboxWorker(t *testing.T) {
 		Outbox:       outbox.NewStore(db.Pool{}, "public", ""),
 		WebhookStore: webhook.NewStore(db.Pool{}, "public", ""),
 		Sealer:       sealer.Disabled(),
-		Orgs:         org.NewService(&fakes.OrgStore{}, testUnexpected()),
+		Orgs:         org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, testUnexpected()),
 	}
 	w := buildOutboxWorker(svcs, nil)
 	require.NotNil(t, w)

@@ -26,8 +26,8 @@ func TestLoginLocal_AgainstPostgres(t *testing.T) {
 	unexpected := apperror.NewReporter(nil, false).Unexpected
 	orgStore := org.NewStore(pool, schemaName, "")
 	users := user.NewService(user.NewStore(pool, schemaName, ""), unexpected)
-	members := member.NewService(member.NewStore(pool, schemaName, ""), pool, unexpected)
-	orgs := org.NewService(orgStore, unexpected)
+	members := member.NewService(member.NewStore(pool, schemaName, ""), db.NewTransactor(pool), unexpected)
+	orgs := org.NewService(orgStore, db.NewTransactor(pool), unexpected)
 	projects := project.NewService(project.NewStore(pool, schemaName, ""), unexpected)
 	svc := auth.NewService(auth.Deps{Users: users, Members: members, Orgs: orgs, Projects: projects, Sessions: session.NewMemoryStore()})
 

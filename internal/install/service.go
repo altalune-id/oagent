@@ -22,7 +22,7 @@ const (
 
 // Service installs the instance and reports whether it still needs installing.
 type Service struct {
-	pool     db.Pool
+	uow      db.Transactor
 	users    UserCreator
 	orgs     SystemOrgs
 	members  Owners
@@ -31,8 +31,8 @@ type Service struct {
 }
 
 // NewService builds a Service over the domain services it writes through.
-func NewService(pool db.Pool, users UserCreator, orgs SystemOrgs, members Owners, projects DefaultProjects) *Service {
-	return &Service{pool: pool, users: users, orgs: orgs, members: members, projects: projects}
+func NewService(uow db.Transactor, users UserCreator, orgs SystemOrgs, members Owners, projects DefaultProjects) *Service {
+	return &Service{uow: uow, users: users, orgs: orgs, members: members, projects: projects}
 }
 
 // WithTerms records the owner's acceptance of the terms through t.
@@ -63,7 +63,7 @@ func (s *Service) Required(ctx context.Context, basic bool) (bool, error) {
 // Install creates the first owner and claims or creates the system org and its default project, all in one transaction.
 func (s *Service) Install(ctx context.Context, r Request) (*user.User, error) {
 	var created *user.User
-	err := db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
+	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		if err := db.LockInTx(ctx, lockName); err != nil {
 			return err
 		}
@@ -103,7 +103,7 @@ func (s *Service) Install(ctx context.Context, r Request) (*user.User, error) {
 
 // EnsureBasicSystemOrg creates the ownerless system org and its default project when missing.
 func (s *Service) EnsureBasicSystemOrg(ctx context.Context) error {
-	return db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
+	return s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		if err := db.LockInTx(ctx, lockName); err != nil {
 			return err
 		}

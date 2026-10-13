@@ -20,7 +20,7 @@ import (
 // Deps are what the invite service needs.
 type Deps struct {
 	Store      Store
-	Pool       db.Pool
+	Transactor db.Transactor
 	Members    Members
 	Mail       Mail
 	Users      Users
@@ -36,7 +36,7 @@ type Deps struct {
 // Service is the invite application service.
 type Service struct {
 	store      Store
-	pool       db.Pool
+	uow        db.Transactor
 	members    Members
 	mail       Mail
 	users      Users
@@ -54,7 +54,7 @@ type Service struct {
 // NewService builds a Service from d.
 func NewService(d Deps) *Service {
 	return &Service{
-		store: d.Store, pool: d.Pool, members: d.Members, mail: d.Mail, users: d.Users, terms: d.Terms, events: d.Events,
+		store: d.Store, uow: d.Transactor, members: d.Members, mail: d.Mail, users: d.Users, terms: d.Terms, events: d.Events,
 		orgs: d.Orgs, people: d.People, from: d.From, baseURL: strings.TrimSuffix(d.BaseURL, "/"), unexpected: d.Unexpected, now: time.Now,
 	}
 }
@@ -75,7 +75,7 @@ func (s *Service) Create(ctx context.Context, r member.Requester, orgID uuid.UUI
 		return nil, &member.InvalidRoleError{Role: string(role)}
 	}
 	var out *Created
-	err = db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
+	err = s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		a, err := s.actor(ctx, r, orgID, role)
 		if err != nil {
 			return err
@@ -97,7 +97,7 @@ func (s *Service) Create(ctx context.Context, r member.Requester, orgID uuid.UUI
 // Resend gives a pending or expired invite a new link and expiry, and emails it again.
 func (s *Service) Resend(ctx context.Context, r member.Requester, orgID, inviteID uuid.UUID) (*Created, error) {
 	var out *Created
-	err := db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
+	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		inv, err := s.locked(ctx, r, orgID, inviteID, false)
 		if err != nil {
 			return err
@@ -139,7 +139,7 @@ func (s *Service) Draft(ctx context.Context, r member.Requester, orgID uuid.UUID
 		return nil, err
 	}
 	var out *Invite
-	err = db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
+	err = s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		a, err := s.actor(ctx, r, orgID, member.RoleMember)
 		if err != nil {
 			return err
@@ -164,7 +164,7 @@ func (s *Service) Draft(ctx context.Context, r member.Requester, orgID uuid.UUID
 // ConfirmDraft turns a draft into an invite with a link and queues the email; a person must call it.
 func (s *Service) ConfirmDraft(ctx context.Context, r member.Requester, orgID, inviteID uuid.UUID) (*Created, error) {
 	var out *Created
-	err := db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
+	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		inv, err := s.locked(ctx, r, orgID, inviteID, true)
 		if err != nil {
 			return err
@@ -211,7 +211,7 @@ func (s *Service) ByPublicID(ctx context.Context, publicID string) (*Invite, err
 // Accept uses up inviteID for userID and adds them to the org; an existing member keeps their role.
 func (s *Service) Accept(ctx context.Context, inviteID, userID uuid.UUID) (Outcome, error) {
 	var out Outcome
-	err := db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
+	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		var err error
 		out, err = s.accept(ctx, inviteID, userID)
 		return err
@@ -225,7 +225,7 @@ func (s *Service) Accept(ctx context.Context, inviteID, userID uuid.UUID) (Outco
 // Join creates the account the invite inviteID names, records the terms when acceptTerms, and accepts the invite, in one transaction.
 func (s *Service) Join(ctx context.Context, inviteID uuid.UUID, name, password string, acceptTerms bool) (uuid.UUID, error) {
 	var userID uuid.UUID
-	err := db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
+	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		inv, err := s.store.ByID(ctx, inviteID)
 		if IsNotFoundError(err) {
 			return &NotUsableError{Reason: ReasonNotFound}
@@ -366,7 +366,7 @@ func (s *Service) locked(ctx context.Context, r member.Requester, orgID, inviteI
 }
 
 func (s *Service) revoke(ctx context.Context, r member.Requester, orgID, inviteID uuid.UUID, draft bool) error {
-	err := db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
+	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		if _, err := s.locked(ctx, r, orgID, inviteID, draft); err != nil {
 			return err
 		}

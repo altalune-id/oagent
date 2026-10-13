@@ -19,7 +19,7 @@ import (
 )
 
 func newService(store member.Store) *member.Service {
-	return member.NewService(store, fakes.TxPool(), apperror.NewReporter(nil, false).Unexpected)
+	return member.NewService(store, fakes.Transactor{}, apperror.NewReporter(nil, false).Unexpected)
 }
 
 func isUnexpected(err error) bool {
@@ -121,7 +121,7 @@ func TestService_StoreFailureIsReported(t *testing.T) {
 }
 
 func TestService_TxBeginFailureIsReported(t *testing.T) {
-	svc := member.NewService(&fakes.MemberStore{}, db.Pool{}, apperror.NewReporter(nil, false).Unexpected)
+	svc := member.NewService(&fakes.MemberStore{}, db.NewTransactor(db.Pool{}), apperror.NewReporter(nil, false).Unexpected)
 	assert.True(t, isUnexpected(svc.Remove(context.Background(), operator, uuid.New(), uuid.New())))
 }
 

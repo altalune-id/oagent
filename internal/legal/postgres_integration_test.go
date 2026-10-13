@@ -26,12 +26,12 @@ func TestPostgresLegal_PublishAndRecord(t *testing.T) {
 	ctx := t.Context()
 	users := user.NewService(user.NewStore(pool, schema, ""), apperror.NewReporter(nil, false).Unexpected)
 	store := legal.NewStore(pool, schema, "")
-	svc := legal.NewService(users).WithStore(store, pool)
+	svc := legal.NewService(users).WithStore(store, db.NewTransactor(pool))
 	require.NoError(t, svc.Publish(ctx))
 	first := svc.TermsUpdatedAt()
 	assert.False(t, first.IsZero())
 
-	later := legal.NewService(users).WithStore(store, pool)
+	later := legal.NewService(users).WithStore(store, db.NewTransactor(pool))
 	require.NoError(t, later.Publish(ctx))
 	assert.Equal(t, first, later.TermsUpdatedAt(), "a second boot keeps the first publish time")
 
@@ -53,7 +53,7 @@ func TestPostgresLegal_PublishAndRecord(t *testing.T) {
 
 	_, err = sqlDB.ExecContext(ctx, `UPDATE legal_documents SET sha256 = 'other' WHERE slug = 'terms'`)
 	require.NoError(t, err)
-	assert.Error(t, legal.NewService(users).WithStore(store, pool).Publish(ctx), "changed text under a version refuses to boot")
+	assert.Error(t, legal.NewService(users).WithStore(store, db.NewTransactor(pool)).Publish(ctx), "changed text under a version refuses to boot")
 
 	err = store.RecordAcceptance(ctx, legal.Acceptance{ID: uuid.New(), PublicID: "x", UserID: u.ID, TermsDocumentID: uuid.New(), PrivacyDocumentID: uuid.New(), Source: legal.SourceJoin, AcceptedAt: at})
 	pgErr, ok := errors.AsType[*pgconn.PgError](err)
@@ -66,7 +66,7 @@ func TestPostgresLegal_TimesFollowTheDatabaseClock(t *testing.T) {
 	pool := db.Pool{W: sqlDB, R: sqlDB}
 	ctx := t.Context()
 	users := user.NewService(user.NewStore(pool, schema, ""), apperror.NewReporter(nil, false).Unexpected)
-	svc := legal.NewService(users).WithStore(legal.NewStore(pool, schema, ""), pool)
+	svc := legal.NewService(users).WithStore(legal.NewStore(pool, schema, ""), db.NewTransactor(pool))
 	u, err := users.Create(ctx, user.CreateRequest{Email: "ada@example.com", Password: "a sturdy passphrase"})
 	require.NoError(t, err)
 

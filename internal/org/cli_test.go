@@ -20,7 +20,7 @@ import (
 
 func orgClient(t *testing.T, store org.Store) orgv1connect.OrgServiceClient {
 	t.Helper()
-	srv := controlplane.New(controlplane.Services{Orgs: org.NewService(store, nil)}, nil, cptest.OperatorOptions())
+	srv := controlplane.New(controlplane.Services{Orgs: org.NewService(store, fakes.Transactor{}, nil)}, nil, cptest.OperatorOptions())
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
 	return apiclient.New(ts.URL, cptest.OperatorCredential()).Org

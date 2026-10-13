@@ -13,11 +13,12 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/authz"
+	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/org/member"
 )
 
 func (f *memberFixture) service() *member.Service {
-	return member.NewService(f.store, f.pool, apperror.NewReporter(nil, false).Unexpected)
+	return member.NewService(f.store, db.NewTransactor(f.pool), apperror.NewReporter(nil, false).Unexpected)
 }
 
 func TestService_OwnersRemovingEachOther(t *testing.T) {

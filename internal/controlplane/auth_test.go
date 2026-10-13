@@ -40,8 +40,8 @@ func (k keyAuthn) Authenticate(_ context.Context, c authn.Credential) (session.P
 func authServer(t *testing.T, p session.Principal) string {
 	t.Helper()
 	srv := New(Services{
-		Orgs:   org.NewService(&fakes.OrgStore{}, nil).WithCreation(true),
-		Agents: agent.NewService(&fakes.AgentStore{}, nil),
+		Orgs:   org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, nil).WithCreation(true),
+		Agents: agent.NewService(&fakes.AgentStore{}, fakes.Transactor{}, nil),
 		Users:  user.NewService(fakes.NewUserStore(), nil),
 	}, nil, Options{Authn: authn.InterceptorOptions{
 		Chain:       authn.Chain{keyAuthn{p: p}},

@@ -50,11 +50,11 @@ func newInstallFixtureWithConns(t *testing.T, maxOpen int) *installFixture {
 	f := &installFixture{
 		pool:     pool,
 		users:    user.NewService(user.NewStore(pool, schemaName, ""), unexpected),
-		orgs:     org.NewService(org.NewStore(pool, schemaName, ""), unexpected).WithCreation(false),
-		members:  member.NewService(member.NewStore(pool, schemaName, ""), pool, unexpected),
+		orgs:     org.NewService(org.NewStore(pool, schemaName, ""), db.NewTransactor(pool), unexpected).WithCreation(false),
+		members:  member.NewService(member.NewStore(pool, schemaName, ""), db.NewTransactor(pool), unexpected),
 		projects: project.NewService(project.NewStore(pool, schemaName, ""), unexpected),
 	}
-	f.svc = install.NewService(pool, f.users, f.orgs, f.members, f.projects).WithTerms(legal.NewService(f.users))
+	f.svc = install.NewService(db.NewTransactor(pool), f.users, f.orgs, f.members, f.projects).WithTerms(legal.NewService(f.users))
 	return f
 }
 
@@ -246,16 +246,16 @@ func TestInstall_DependencyFailuresRollBack(t *testing.T) {
 		wrap  func(f *installFixture, pool db.Pool) *install.Service
 	}{
 		{"system org lookup", false, func(f *installFixture, pool db.Pool) *install.Service {
-			return install.NewService(pool, f.users, failSystem{f.orgs}, f.members, f.projects)
+			return install.NewService(db.NewTransactor(pool), f.users, failSystem{f.orgs}, f.members, f.projects)
 		}},
 		{"owner count", true, func(f *installFixture, pool db.Pool) *install.Service {
-			return install.NewService(pool, f.users, f.orgs, failCount{f.members}, f.projects)
+			return install.NewService(db.NewTransactor(pool), f.users, f.orgs, failCount{f.members}, f.projects)
 		}},
 		{"owner membership", false, func(f *installFixture, pool db.Pool) *install.Service {
-			return install.NewService(pool, f.users, f.orgs, failAdd{f.members}, f.projects)
+			return install.NewService(db.NewTransactor(pool), f.users, f.orgs, failAdd{f.members}, f.projects)
 		}},
 		{"default project", false, func(f *installFixture, pool db.Pool) *install.Service {
-			return install.NewService(pool, f.users, f.orgs, f.members, failProjectCreate{f.projects})
+			return install.NewService(db.NewTransactor(pool), f.users, f.orgs, f.members, failProjectCreate{f.projects})
 		}},
 	}
 	for _, tt := range cases {
@@ -281,10 +281,10 @@ func TestEnsureBasicSystemOrg_DependencyFailures(t *testing.T) {
 	f := newInstallFixture(t)
 	ctx := t.Context()
 
-	err := install.NewService(f.pool, f.users, failSystem{f.orgs}, f.members, f.projects).EnsureBasicSystemOrg(ctx)
+	err := install.NewService(db.NewTransactor(f.pool), f.users, failSystem{f.orgs}, f.members, f.projects).EnsureBasicSystemOrg(ctx)
 	require.ErrorIs(t, err, errInjected)
 
-	err = install.NewService(f.pool, f.users, f.orgs, f.members, failProjectCreate{f.projects}).EnsureBasicSystemOrg(ctx)
+	err = install.NewService(db.NewTransactor(f.pool), f.users, f.orgs, f.members, failProjectCreate{f.projects}).EnsureBasicSystemOrg(ctx)
 	require.ErrorIs(t, err, errInjected)
 	assert.Zero(t, f.orgCount(t), "the system org insert is rolled back with the failed project")
 }

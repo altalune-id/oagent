@@ -16,7 +16,7 @@ const publicIDLen = 21
 type Service struct {
 	users    TermsAcceptor
 	store    Store
-	pool     db.Pool
+	uow      db.Transactor
 	external *time.Time
 	terms    *Snapshot
 	privacy  *Snapshot
@@ -28,8 +28,8 @@ func NewService(users TermsAcceptor) *Service {
 }
 
 // WithStore keeps snapshots of the built-in documents and the acceptance history in store.
-func (s *Service) WithStore(store Store, pool db.Pool) *Service {
-	s.store, s.pool = store, pool
+func (s *Service) WithStore(store Store, uow db.Transactor) *Service {
+	s.store, s.uow = store, uow
 	return s
 }
 
@@ -126,10 +126,10 @@ func (s *Service) Accept(ctx context.Context, userID uuid.UUID, source Source) (
 }
 
 func (s *Service) inTx(ctx context.Context, fn func(context.Context) error) error {
-	if _, ok := db.CurrentTx(ctx); ok || s.store == nil {
+	if s.store == nil {
 		return fn(ctx)
 	}
-	return db.RunInTx(ctx, s.pool, fn)
+	return s.uow.RunInTx(ctx, fn)
 }
 
 func latestOf(a, b time.Time) time.Time {

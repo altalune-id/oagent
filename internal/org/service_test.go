@@ -20,7 +20,7 @@ func testUnexpected() apperror.UnexpectedFunc {
 
 func TestService_Create(t *testing.T) {
 	store := &fakes.OrgStore{}
-	svc := org.NewService(store, testUnexpected())
+	svc := org.NewService(store, fakes.Transactor{}, testUnexpected())
 
 	o, err := svc.Create(context.Background(), org.CreateRequest{Slug: "acme", Name: "Acme", CreatedBy: uuid.New()})
 	require.NoError(t, err)
@@ -29,7 +29,7 @@ func TestService_Create(t *testing.T) {
 }
 
 func TestService_Create_GeneratedSlug(t *testing.T) {
-	svc := org.NewService(&fakes.OrgStore{}, testUnexpected())
+	svc := org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, testUnexpected())
 
 	o, err := svc.Create(context.Background(), org.CreateRequest{Name: "Acme"})
 	require.NoError(t, err)
@@ -47,7 +47,7 @@ func TestService_Create_GeneratedSlugRetries(t *testing.T) {
 		return nil
 	}}
 
-	o, err := org.NewService(store, testUnexpected()).Create(context.Background(), org.CreateRequest{Name: "Acme"})
+	o, err := org.NewService(store, fakes.Transactor{}, testUnexpected()).Create(context.Background(), org.CreateRequest{Name: "Acme"})
 	require.NoError(t, err)
 	assert.Equal(t, 3, calls)
 	assert.NotEmpty(t, o.Slug)
@@ -56,13 +56,13 @@ func TestService_Create_GeneratedSlugRetries(t *testing.T) {
 func TestService_Create_GeneratedSlugExhausted(t *testing.T) {
 	store := &fakes.OrgStore{SaveFn: func(*org.Org) error { return &org.AlreadyExistsError{} }}
 
-	_, err := org.NewService(store, testUnexpected()).Create(context.Background(), org.CreateRequest{Name: "Acme"})
+	_, err := org.NewService(store, fakes.Transactor{}, testUnexpected()).Create(context.Background(), org.CreateRequest{Name: "Acme"})
 	assert.True(t, org.IsAlreadyExistsError(err))
 }
 
 func TestService_Create_Validation(t *testing.T) {
 	store := &fakes.OrgStore{}
-	svc := org.NewService(store, testUnexpected())
+	svc := org.NewService(store, fakes.Transactor{}, testUnexpected())
 
 	_, err := svc.Create(context.Background(), org.CreateRequest{Slug: "ab", Name: "Acme"})
 	assert.True(t, org.IsInvalidSlugError(err))
@@ -71,7 +71,7 @@ func TestService_Create_Validation(t *testing.T) {
 
 func TestService_Create_StoreError(t *testing.T) {
 	store := &fakes.OrgStore{Err: &org.AlreadyExistsError{Slug: "acme"}}
-	svc := org.NewService(store, testUnexpected())
+	svc := org.NewService(store, fakes.Transactor{}, testUnexpected())
 
 	_, err := svc.Create(context.Background(), org.CreateRequest{Slug: "acme", Name: "Acme"})
 	assert.True(t, org.IsAlreadyExistsError(err))
@@ -81,7 +81,7 @@ func TestService_GetAndList(t *testing.T) {
 	o, err := org.NewOrg("acme", "Acme", uuid.New())
 	require.NoError(t, err)
 	store := &fakes.OrgStore{Org: o, Orgs: []*org.Org{o}}
-	svc := org.NewService(store, testUnexpected())
+	svc := org.NewService(store, fakes.Transactor{}, testUnexpected())
 
 	got, err := svc.Get(context.Background(), o.ID)
 	require.NoError(t, err)
@@ -101,7 +101,7 @@ func TestService_GetAndList(t *testing.T) {
 }
 
 func TestService_Get_StoreError(t *testing.T) {
-	svc := org.NewService(&fakes.OrgStore{Err: errors.New("boom")}, testUnexpected())
+	svc := org.NewService(&fakes.OrgStore{Err: errors.New("boom")}, fakes.Transactor{}, testUnexpected())
 
 	_, err := svc.Get(context.Background(), uuid.New())
 	assert.Error(t, err)
@@ -114,7 +114,7 @@ func TestService_Get_StoreError(t *testing.T) {
 }
 
 func TestService_Unexpected(t *testing.T) {
-	svc := org.NewService(&fakes.OrgStore{Err: errors.New("boom")}, testUnexpected())
+	svc := org.NewService(&fakes.OrgStore{Err: errors.New("boom")}, fakes.Transactor{}, testUnexpected())
 
 	_, err := svc.Get(context.Background(), uuid.New())
 	_, ok := apperror.AsAppError(err)
@@ -126,7 +126,7 @@ func TestService_Update(t *testing.T) {
 	require.NoError(t, err)
 	store := &fakes.OrgStore{Org: o}
 
-	got, err := org.NewService(store, testUnexpected()).Update(context.Background(), o.ID, "Acme Two", "acme-two")
+	got, err := org.NewService(store, fakes.Transactor{}, testUnexpected()).Update(context.Background(), o.ID, "Acme Two", "acme-two")
 	require.NoError(t, err)
 	assert.Equal(t, "Acme Two", got.Name)
 	assert.Equal(t, "acme-two", got.Slug)
@@ -136,7 +136,7 @@ func TestService_Update(t *testing.T) {
 func TestService_Update_NotFound(t *testing.T) {
 	store := &fakes.OrgStore{Err: &org.NotFoundError{ID: "x"}}
 
-	_, err := org.NewService(store, testUnexpected()).Update(context.Background(), uuid.New(), "Acme Two", "acme-two")
+	_, err := org.NewService(store, fakes.Transactor{}, testUnexpected()).Update(context.Background(), uuid.New(), "Acme Two", "acme-two")
 	assert.Error(t, err)
 }
 
@@ -144,7 +144,7 @@ func TestService_Update_InvalidName(t *testing.T) {
 	o, err := org.NewOrg("acme", "Acme", uuid.New())
 	require.NoError(t, err)
 
-	_, err = org.NewService(&fakes.OrgStore{Org: o}, testUnexpected()).Update(context.Background(), o.ID, "", "acme-two")
+	_, err = org.NewService(&fakes.OrgStore{Org: o}, fakes.Transactor{}, testUnexpected()).Update(context.Background(), o.ID, "", "acme-two")
 	assert.True(t, org.IsInvalidNameError(err))
 }
 
@@ -152,13 +152,13 @@ func TestService_Update_InvalidSlug(t *testing.T) {
 	o, err := org.NewOrg("acme", "Acme", uuid.New())
 	require.NoError(t, err)
 
-	_, err = org.NewService(&fakes.OrgStore{Org: o}, testUnexpected()).Update(context.Background(), o.ID, "Acme", "Bad_Slug")
+	_, err = org.NewService(&fakes.OrgStore{Org: o}, fakes.Transactor{}, testUnexpected()).Update(context.Background(), o.ID, "Acme", "Bad_Slug")
 	assert.True(t, org.IsInvalidSlugError(err))
 }
 
 func TestService_Create_AfterCreateHook(t *testing.T) {
 	var hooked *org.Org
-	svc := org.NewService(&fakes.OrgStore{}, testUnexpected()).WithAfterCreate(func(_ context.Context, o *org.Org) error {
+	svc := org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, testUnexpected()).WithAfterCreate(func(_ context.Context, o *org.Org) error {
 		hooked = o
 		return nil
 	})
@@ -169,7 +169,7 @@ func TestService_Create_AfterCreateHook(t *testing.T) {
 }
 
 func TestService_Create_AfterCreateHookError(t *testing.T) {
-	svc := org.NewService(&fakes.OrgStore{}, testUnexpected()).WithAfterCreate(func(context.Context, *org.Org) error {
+	svc := org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, testUnexpected()).WithAfterCreate(func(context.Context, *org.Org) error {
 		return &org.AlreadyExistsError{Slug: "default"}
 	})
 
@@ -179,12 +179,12 @@ func TestService_Create_AfterCreateHookError(t *testing.T) {
 
 func TestService_CreationGate(t *testing.T) {
 	store := &fakes.OrgStore{}
-	svc := org.NewService(store, testUnexpected()).WithCreation(false)
+	svc := org.NewService(store, fakes.Transactor{}, testUnexpected()).WithCreation(false)
 	_, err := svc.Create(context.Background(), org.CreateRequest{Slug: "acme", Name: "Acme"})
 	assert.True(t, org.IsCreationDisabledError(err), "got %v", err)
 	assert.Nil(t, store.Saved, "nothing saved when creation is off")
 
-	svc = org.NewService(&fakes.OrgStore{}, testUnexpected())
+	svc = org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, testUnexpected())
 	_, err = svc.Create(context.Background(), org.CreateRequest{Slug: "acme", Name: "Acme"})
 	assert.NoError(t, err, "default stays allowed until boot passes capabilities")
 }
@@ -192,16 +192,16 @@ func TestService_CreationGate(t *testing.T) {
 func TestService_System(t *testing.T) {
 	sys, err := org.NewSystemOrg("acme", "Acme", uuid.Nil)
 	require.NoError(t, err)
-	svc := org.NewService(&fakes.OrgStore{Org: sys}, testUnexpected())
+	svc := org.NewService(&fakes.OrgStore{Org: sys}, fakes.Transactor{}, testUnexpected())
 	got, err := svc.System(context.Background())
 	require.NoError(t, err)
 	assert.True(t, got.IsSystem)
 
-	svc = org.NewService(&fakes.OrgStore{}, testUnexpected())
+	svc = org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, testUnexpected())
 	_, err = svc.System(context.Background())
 	assert.True(t, org.IsNotFoundError(err), "got %v", err)
 
-	svc = org.NewService(&fakes.OrgStore{Err: errors.New("db down")}, testUnexpected())
+	svc = org.NewService(&fakes.OrgStore{Err: errors.New("db down")}, fakes.Transactor{}, testUnexpected())
 	_, err = svc.System(context.Background())
 	ae, ok := errors.AsType[*apperror.AppError](err)
 	require.True(t, ok, "got %v", err)
@@ -211,7 +211,7 @@ func TestService_System(t *testing.T) {
 func TestService_CreateSystem_IgnoresGateAndHook(t *testing.T) {
 	store := &fakes.OrgStore{}
 	hookCalls := 0
-	svc := org.NewService(store, testUnexpected()).
+	svc := org.NewService(store, fakes.Transactor{}, testUnexpected()).
 		WithCreation(false).
 		WithAfterCreate(func(context.Context, *org.Org) error { hookCalls++; return nil })
 	owner := uuid.New()
@@ -230,7 +230,7 @@ func TestService_CreateSystem_IgnoresGateAndHook(t *testing.T) {
 
 func TestService_CreateSystem_ExplicitSlug(t *testing.T) {
 	store := &fakes.OrgStore{}
-	o, err := org.NewService(store, testUnexpected()).CreateSystem(context.Background(), org.CreateRequest{Slug: "acme", Name: "Acme"})
+	o, err := org.NewService(store, fakes.Transactor{}, testUnexpected()).CreateSystem(context.Background(), org.CreateRequest{Slug: "acme", Name: "Acme"})
 	require.NoError(t, err)
 	assert.Equal(t, "acme", o.Slug)
 	assert.False(t, o.CreatedBy.Valid)

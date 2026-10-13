@@ -53,7 +53,7 @@ func historyFixture(t *testing.T) (*Service, *memStore, *user.Service) {
 	t.Helper()
 	users := user.NewService(fakes.NewUserStore(), apperror.NewReporter(nil, false).Unexpected)
 	store := &memStore{snapshots: map[string]Snapshot{}, now: time.Date(2026, 10, 13, 9, 0, 0, 0, time.UTC)}
-	svc := NewService(acceptor{users}).WithStore(store, fakes.TxPool())
+	svc := NewService(acceptor{users}).WithStore(store, fakes.Transactor{})
 	return svc, store, users
 }
 

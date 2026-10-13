@@ -93,7 +93,7 @@ func newTestServer(t *testing.T) *testServer {
 	p := session.Principal{Source: session.SourceLocal, UserID: uuid.New(), Email: testEmail, Name: "Ada", ActiveOrgID: acme.ID}
 
 	api := controlplane.New(controlplane.Services{
-		Orgs:  org.NewService(&fakes.OrgStore{Org: acme}, nil),
+		Orgs:  org.NewService(&fakes.OrgStore{Org: acme}, fakes.Transactor{}, nil),
 		Users: user.NewService(fakes.NewUserStore(), nil),
 	}, nil, controlplane.Options{Authn: authn.InterceptorOptions{
 		Chain:        authn.Chain{storeAuthn{store: ts.store}},

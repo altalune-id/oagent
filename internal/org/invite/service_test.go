@@ -46,10 +46,10 @@ func newFixture(t *testing.T) *fixture {
 		t: t, ctx: context.Background(), store: newMemStore(), mail: &mailBox{}, events: &eventLog{}, people: people{},
 		org: uuid.New(), clock: time.Date(2026, 10, 13, 9, 0, 0, 0, time.UTC),
 	}
-	f.members = member.NewService(&fakes.MemberStore{}, fakes.TxPool(), apperror.NewReporter(nil, false).Unexpected)
+	f.members = member.NewService(&fakes.MemberStore{}, fakes.Transactor{}, apperror.NewReporter(nil, false).Unexpected)
 	f.users = user.NewService(fakes.NewUserStore(), apperror.NewReporter(nil, false).Unexpected)
 	f.svc = invite.NewService(invite.Deps{
-		Store: f.store, Pool: fakes.TxPool(), Members: f.members, Mail: f.mail, Users: f.users, Terms: legal.NewService(f.users), Events: f.events,
+		Store: f.store, Transactor: fakes.Transactor{}, Members: f.members, Mail: f.mail, Users: f.users, Terms: legal.NewService(f.users), Events: f.events,
 		Orgs: orgNames{f.org: "Acme  Corp"}, People: directory{people: f.people, users: f.users}, From: "oagent@example.com", BaseURL: baseURL,
 		Unexpected: apperror.NewReporter(nil, false).Unexpected,
 	}).WithClock(func() time.Time { return f.clock })

@@ -19,7 +19,7 @@ import (
 
 func newOrgServiceClient(t *testing.T, store org.Store) orgv1connect.OrgServiceClient {
 	t.Helper()
-	_, handler := orgv1connect.NewOrgServiceHandler(org.NewControlPlane(org.NewService(store, nil)),
+	_, handler := orgv1connect.NewOrgServiceHandler(org.NewControlPlane(org.NewService(store, fakes.Transactor{}, nil)),
 		connect.WithInterceptors(fakes.OperatorInterceptor()))
 	ts := httptest.NewServer(handler)
 	t.Cleanup(ts.Close)

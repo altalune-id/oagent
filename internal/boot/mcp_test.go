@@ -34,7 +34,7 @@ import (
 )
 
 func TestBuildMCPServer_RegistersWhoami(t *testing.T) {
-	srv := buildMCPServer(config.MCPConfig{Enabled: true}, &Services{Orgs: org.NewService(&fakes.OrgStore{}, nil)}, nil)
+	srv := buildMCPServer(config.MCPConfig{Enabled: true}, &Services{Orgs: org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, nil)}, nil)
 	require.NotNil(t, srv)
 	assert.Contains(t, srv.Registry().Names(), authv1mcp.AuthWhoamiToolName)
 }
@@ -53,7 +53,7 @@ func TestMCPChain(t *testing.T) {
 }
 
 func TestBuildMCPHandler(t *testing.T) {
-	svcs := &Services{Orgs: org.NewService(&fakes.OrgStore{}, nil), KeyScheme: apikey.NewScheme(""), KeyAuthn: &apikey.Authenticator{}}
+	svcs := &Services{Orgs: org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, nil), KeyScheme: apikey.NewScheme(""), KeyAuthn: &apikey.Authenticator{}}
 	assert.Nil(t, buildMCPHandler(nil, svcs, nil))
 
 	h := buildMCPHandler(buildMCPServer(config.MCPConfig{Enabled: true}, svcs, nil), svcs, nil)
@@ -92,7 +92,7 @@ func TestApp_RunMCPActsAsSystem(t *testing.T) {
 
 // SECURITY: every published tool takes its permissions from permission.Table, through its RPC.
 func TestMCPTools_PermissionsComeFromTheTable(t *testing.T) {
-	srv := buildMCPServer(config.MCPConfig{Enabled: true}, &Services{Orgs: org.NewService(&fakes.OrgStore{}, nil)}, nil)
+	srv := buildMCPServer(config.MCPConfig{Enabled: true}, &Services{Orgs: org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, nil)}, nil)
 	require.NotNil(t, srv)
 	inTable := map[string]bool{}
 	for _, perms := range permission.Table() {
@@ -138,7 +138,7 @@ func TestMCPTools_PermissionsComeFromTheTable(t *testing.T) {
 // SECURITY: a generated tool whose RPC is missing from the table is denied and hidden.
 func TestMCPTools_UnmappedProcedureIsDenied(t *testing.T) {
 	reg := rootmcp.NewRegistry()
-	orgv1mcp.RegisterOrgServiceTools(reg, org.NewControlPlane(org.NewService(&fakes.OrgStore{}, nil)), func(procedure string) []string {
+	orgv1mcp.RegisterOrgServiceTools(reg, org.NewControlPlane(org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, nil)), func(procedure string) []string {
 		if procedure == orgv1connect.OrgServiceGetOrgProcedure {
 			return nil
 		}
@@ -170,7 +170,7 @@ func TestMCPTools_UnmappedProcedureIsDenied(t *testing.T) {
 // SECURITY: the model must never be offered the tool that sends a drafted invite.
 func TestMCPTools_InviteConfirmIsForTheAppOnly(t *testing.T) {
 	list := func(appsUI bool) map[string]*sdkmcp.Tool {
-		srv := buildMCPServer(config.MCPConfig{Enabled: true, AppsUI: appsUI}, &Services{Orgs: org.NewService(&fakes.OrgStore{}, nil)}, nil)
+		srv := buildMCPServer(config.MCPConfig{Enabled: true, AppsUI: appsUI}, &Services{Orgs: org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, nil)}, nil)
 		app := &App{MCP: srv}
 		ctx, cancel := context.WithCancel(t.Context())
 		t.Cleanup(cancel)

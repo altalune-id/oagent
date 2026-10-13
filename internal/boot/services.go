@@ -14,6 +14,7 @@ import (
 	"altalune.id/oagent/internal/install"
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/capabilities"
+	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/mailqueue"
 	"altalune.id/oagent/internal/kernel/outbox"
 	"altalune.id/oagent/internal/kernel/session"
@@ -68,15 +69,14 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	agentStore := agent.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
 	apiKeyStore := apikey.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
 
+	uow := db.NewTransactor(k.Pool)
 	caps := capabilities.From(&cfg)
 	projects := project.NewService(projectStore, k.Reporter.Unexpected)
-	orgs := org.NewService(orgStore, k.Reporter.Unexpected).
+	orgs := org.NewService(orgStore, uow, k.Reporter.Unexpected).
 		WithCreation(caps.OrgCreation).
 		WithAfterCreate(func(ctx context.Context, o *org.Org) error {
-			if _, err := projects.Create(ctx, project.CreateRequest{OrgID: o.ID, Slug: project.DefaultSlug, Name: project.DefaultName}); err != nil {
-				_ = k.Reporter.Unexpected(ctx, "org: default project", err)
-			}
-			return nil
+			_, err := projects.Create(ctx, project.CreateRequest{OrgID: o.ID, Slug: project.DefaultSlug, Name: project.DefaultName})
+			return err
 		})
 
 	sl := buildSealer(cfg.Secrets)
@@ -88,9 +88,9 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		refResolver{projects: projects, orgs: orgs}, append(webhookServiceOpts(cfg), webhook.WithProjects(projectOwners))...,
 	)
 
-	agents := agent.NewService(agentStore, k.Reporter.Unexpected).WithPublisher(webhooks).WithProjects(projectOwners)
+	agents := agent.NewService(agentStore, uow, k.Reporter.Unexpected).WithPublisher(webhooks).WithProjects(projectOwners)
 	users := user.NewService(user.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Reporter.Unexpected)
-	members := member.NewService(member.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Pool, k.Reporter.Unexpected).
+	members := member.NewService(member.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), uow, k.Reporter.Unexpected).
 		WithOperatorSupport(caps.OperatorOrgSupport)
 
 	keyScheme := apikey.NewScheme("")
@@ -110,7 +110,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Passwords: users,
 		Basic:     basicCredentials(cfg, caps),
 	})
-	installer := install.NewService(k.Pool, users, orgs, members, projects)
+	installer := install.NewService(uow, users, orgs, members, projects)
 
 	svcs := &Services{
 		OrgStore:     orgStore,
@@ -141,7 +141,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	installer.WithTerms(svcs.Legal)
 	svcs.Invites = invite.NewService(invite.Deps{
 		Store:      invite.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix),
-		Pool:       k.Pool,
+		Transactor: uow,
 		Members:    members,
 		Mail:       svcs.MailQueue,
 		Users:      users,
@@ -157,7 +157,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 }
 
 func buildLegal(k kernel.Kernel, cfg config.Config, users *user.Service) *legal.Service {
-	l := legal.NewService(users).WithStore(legal.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Pool)
+	l := legal.NewService(users).WithStore(legal.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), db.NewTransactor(k.Pool))
 	if cfg.Compliance.TermsURL != "" || cfg.Compliance.PrivacyURL != "" {
 		l.WithExternalTerms(cfg.Compliance.TermsUpdated())
 	}
