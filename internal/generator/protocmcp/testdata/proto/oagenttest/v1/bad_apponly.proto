@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package oagenttest.v1;
+
+import "mcp/v1/annotations.proto";
+
+option go_package = "altalune.id/oagent/internal/generator/protocmcp/testdata/gen/oagenttest/v1;oagenttestv1";
+
+service BadAppOnlyService {
+  rpc Hidden(HiddenRequest) returns (HiddenResponse) {
+    option (mcp.v1.tool) = {
+      name: "hidden_tool"
+      description: "Only the app may call this."
+      app_only: true
+    };
+  }
+}
+
+message HiddenRequest {}
+
+message HiddenResponse {}

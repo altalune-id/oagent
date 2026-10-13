@@ -104,10 +104,16 @@ func (s *InviteService) DraftInvite(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&invitev1.DraftInviteResponse{Invite: s.toProto(ctx, d)}), nil
+	name, err := s.invites.orgs.Name(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&invitev1.DraftInviteResponse{
+		Invite: s.toProto(ctx, d), OrgId: req.Msg.GetOrgId(), OrgName: strings.Join(strings.Fields(name), " "),
+	}), nil
 }
 
-// ConfirmDraftInvite sends a drafted invite and returns the link once.
+// ConfirmDraftInvite sends a drafted invite; its link goes only to the invitee's email.
 func (s *InviteService) ConfirmDraftInvite(
 	ctx context.Context, req *connect.Request[invitev1.ConfirmDraftInviteRequest],
 ) (*connect.Response[invitev1.ConfirmDraftInviteResponse], error) {
@@ -119,7 +125,7 @@ func (s *InviteService) ConfirmDraftInvite(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&invitev1.ConfirmDraftInviteResponse{Invite: s.toProto(ctx, c.Invite), Link: c.Link}), nil
+	return connect.NewResponse(&invitev1.ConfirmDraftInviteResponse{Invite: s.toProto(ctx, c.Invite)}), nil
 }
 
 // DiscardDraftInvite drops a draft.

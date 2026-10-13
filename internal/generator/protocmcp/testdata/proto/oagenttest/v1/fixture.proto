@@ -34,6 +34,15 @@ service FixtureService {
       required: ["target"]
     };
   }
+  rpc Confirm(PokeRequest) returns (PokeResponse) {
+    option (mcp.v1.tool) = {
+      name: "poke_confirm"
+      description: "Confirm a poke a person approved."
+      mutation: true
+      ui: "app"
+      app_only: true
+    };
+  }
   rpc Untouched(PingRequest) returns (PingResponse);
 }
 

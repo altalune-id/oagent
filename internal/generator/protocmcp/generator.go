@@ -32,6 +32,7 @@ type tool struct {
 	description string
 	mutation    bool
 	destructive bool
+	appOnly     bool
 	method      *protogen.Method
 	schema      json.RawMessage
 	uiResource  string
@@ -138,6 +139,9 @@ func newTool(method *protogen.Method, spec *mcpv1.Tool, opts Options) (tool, err
 	if err != nil {
 		return tool{}, err
 	}
+	if spec.GetAppOnly() && uiURI == "" {
+		return tool{}, fmt.Errorf("%s: app_only needs a ui: only an MCP view can call an app-only tool", full)
+	}
 
 	name := cmp.Or(spec.GetName(), snakeCase(method.GoName))
 	if !toolNamePattern.MatchString(name) {
@@ -170,6 +174,7 @@ func newTool(method *protogen.Method, spec *mcpv1.Tool, opts Options) (tool, err
 		description: description,
 		mutation:    spec.GetMutation(),
 		destructive: spec.GetDestructive(),
+		appOnly:     spec.GetAppOnly(),
 		method:      method,
 		schema:      schema,
 		uiResource:  uiURI,
@@ -235,6 +240,9 @@ func writeRegister(g *protogen.GeneratedFile, svc *protogen.Service, tools []too
 		g.P("Destructive: ", t.destructive, ",")
 		if t.uiResource != "" {
 			g.P("UI: ", strconv.Quote(t.uiResource), ",")
+		}
+		if t.appOnly {
+			g.P("AppOnly: true,")
 		}
 		g.P("InputSchema: ", rawMessage, "(", goStringLiteral(string(t.schema)), "),")
 		g.P("Handler: func(ctx ", g.QualifiedGoIdent(contextPackage.Ident("Context")), ", input ", rawMessage,

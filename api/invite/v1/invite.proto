@@ -3,6 +3,7 @@ syntax = "proto3";
 package invite.v1;
 
 import "google/protobuf/timestamp.proto";
+import "mcp/v1/annotations.proto";
 
 option go_package = "altalune.id/oagent/gen/go/invite/v1;invitev1";
 
@@ -12,9 +13,41 @@ service InviteService {
   rpc ResendInvite(ResendInviteRequest) returns (ResendInviteResponse);
   rpc RevokeInvite(RevokeInviteRequest) returns (RevokeInviteResponse);
   rpc ListInvites(ListInvitesRequest) returns (ListInvitesResponse);
-  rpc DraftInvite(DraftInviteRequest) returns (DraftInviteResponse);
-  rpc ConfirmDraftInvite(ConfirmDraftInviteRequest) returns (ConfirmDraftInviteResponse);
-  rpc DiscardDraftInvite(DiscardDraftInviteRequest) returns (DiscardDraftInviteResponse);
+  rpc DraftInvite(DraftInviteRequest) returns (DraftInviteResponse) {
+    option (mcp.v1.tool) = {
+      name: "member_invite"
+      title: "Invite a member"
+      description: "Suggest inviting a person to an organization as a member. This only drafts the invite: a person must confirm it in the view before any email is sent."
+      required: ["org_id", "email"]
+      mutation: true
+      destructive: false
+      ui: "app"
+    };
+  }
+  rpc ConfirmDraftInvite(ConfirmDraftInviteRequest) returns (ConfirmDraftInviteResponse) {
+    option (mcp.v1.tool) = {
+      name: "member_invite_confirm"
+      title: "Confirm an invite"
+      description: "Send a drafted invite. Only the person in the view can call this."
+      required: ["org_id", "invite_id"]
+      mutation: true
+      destructive: false
+      ui: "app"
+      app_only: true
+    };
+  }
+  rpc DiscardDraftInvite(DiscardDraftInviteRequest) returns (DiscardDraftInviteResponse) {
+    option (mcp.v1.tool) = {
+      name: "member_invite_discard"
+      title: "Discard a draft invite"
+      description: "Drop a drafted invite. Only the person in the view can call this."
+      required: ["org_id", "invite_id"]
+      mutation: true
+      destructive: true
+      ui: "app"
+      app_only: true
+    };
+  }
 }
 
 message Invite {
@@ -80,6 +113,9 @@ message DraftInviteRequest {
 
 message DraftInviteResponse {
   Invite invite = 1;
+  // The organization's public id and name, for the confirmation view.
+  string org_id = 2;
+  string org_name = 3;
 }
 
 message ConfirmDraftInviteRequest {
@@ -88,9 +124,9 @@ message ConfirmDraftInviteRequest {
 }
 
 message ConfirmDraftInviteResponse {
+  reserved 2;
+  reserved "link";
   Invite invite = 1;
-  // The accept link, shown only in this response.
-  string link = 2;
 }
 
 message DiscardDraftInviteRequest {

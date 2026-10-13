@@ -120,6 +120,52 @@ func TestUIMetaIsTheFixedMCPAppsShape(t *testing.T) {
 	}
 }
 
+func TestAppOnlyToolCarriesTheAppVisibility(t *testing.T) {
+	session := connect(t, appOnlyServer(t, true), "posts:write")
+	res, err := session.ListTools(t.Context(), nil)
+	if err != nil {
+		t.Fatalf("ListTools: %v", err)
+	}
+	if len(res.Tools) != 1 {
+		t.Fatalf("ListTools returned %d tools, want 1", len(res.Tools))
+	}
+	raw, err := json.Marshal(map[string]any(res.Tools[0].Meta))
+	if err != nil {
+		t.Fatalf("marshal _meta: %v", err)
+	}
+	if got, want := string(raw), `{"ui":{"resourceUri":"ui://blog/list","visibility":["app"]}}`; got != want {
+		t.Fatalf("_meta = %s, want %s", got, want)
+	}
+}
+
+func TestAppOnlyToolIsAbsentWithoutTheApp(t *testing.T) {
+	session := connect(t, appOnlyServer(t, false), "posts:write")
+	res, err := session.ListTools(t.Context(), nil)
+	if err != nil {
+		t.Fatalf("ListTools: %v", err)
+	}
+	if len(res.Tools) != 0 {
+		t.Fatalf("ListTools = %v, want no app-only tool when no app can call it", res.Tools)
+	}
+	call, err := session.CallTool(t.Context(), &sdkmcp.CallToolParams{Name: "blog_confirm"})
+	if err == nil && !call.IsError {
+		t.Fatal("an app-only tool must not be callable without the app")
+	}
+}
+
+func appOnlyServer(t *testing.T, ui bool) *mcp.Server {
+	t.Helper()
+	reg := mcp.NewRegistry()
+	reg.Register(mcp.ToolSpec{
+		Name: "blog_confirm", Scopes: []string{"posts:write"}, Mutation: true, UI: "ui://blog/list", AppOnly: true, Handler: okHandler,
+	}, nil)
+	srv := mcp.NewServer(mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext), mcp.WithUI(ui))
+	if ui {
+		srv.AddUIResource(testUIResource())
+	}
+	return srv
+}
+
 func TestUIMetaIsAbsentWithoutWithUI(t *testing.T) {
 	if meta := uiTool(t).Meta; meta != nil {
 		t.Fatalf("_meta = %v, want none when WithUI is not set", meta)

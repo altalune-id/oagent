@@ -22,4 +22,6 @@ message Tool {
   bool destructive = 6;
   // Title overrides the title derived from the tool name, which mangles acronyms.
   string title = 7;
+  // SECURITY: app_only asks the host to offer the tool to the MCP view only; a host that ignores it shows it to the model. Needs ui.
+  bool app_only = 8;
 }

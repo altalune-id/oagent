@@ -7,6 +7,7 @@ import (
 	"altalune.id/oagent/config"
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
 	authv1mcp "altalune.id/oagent/gen/go/auth/v1/authv1mcp"
+	invitev1mcp "altalune.id/oagent/gen/go/invite/v1/invitev1mcp"
 	memberv1mcp "altalune.id/oagent/gen/go/member/v1/memberv1mcp"
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
 	projectv1mcp "altalune.id/oagent/gen/go/project/v1/projectv1mcp"
@@ -16,6 +17,7 @@ import (
 	mcpinternal "altalune.id/oagent/internal/mcp"
 	mcpui "altalune.id/oagent/internal/mcp/ui"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/permission"
 	"altalune.id/oagent/internal/project"
@@ -35,6 +37,7 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger) *roo
 	agentv1mcp.RegisterAgentServiceTools(registry, agent.NewControlPlane(svcs.Agents), permission.For)
 	webhookv1mcp.RegisterWebhookServiceTools(registry, webhook.NewControlPlane(svcs.Webhooks), permission.For)
 	memberv1mcp.RegisterMemberServiceTools(registry, member.NewControlPlane(svcs.Members), permission.For)
+	invitev1mcp.RegisterInviteServiceTools(registry, invite.NewControlPlane(svcs.Invites, orgPublicIDs{orgs: svcs.Orgs}), permission.For)
 	authv1mcp.RegisterAuthServiceTools(registry, auth.NewControlPlane(svcs.Orgs, svcs.Users), permission.For)
 
 	srv := rootmcp.NewServer(

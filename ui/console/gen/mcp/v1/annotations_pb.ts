@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file mcp/v1/annotations.proto.
  */
 export const file_mcp_v1_annotations: GenFile = /*@__PURE__*/
-  fileDesc("ChhtY3AvdjEvYW5ub3RhdGlvbnMucHJvdG8SBm1jcC52MSJ9CgRUb29sEgwKBG5hbWUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSEAoIcmVxdWlyZWQYAyADKAkSEAoIbXV0YXRpb24YBCABKAgSCgoCdWkYBSABKAkSEwoLZGVzdHJ1Y3RpdmUYBiABKAgSDQoFdGl0bGUYByABKAk6QgoEdG9vbBIeLmdvb2dsZS5wcm90b2J1Zi5NZXRob2RPcHRpb25zGLmOAyABKAsyDC5tY3AudjEuVG9vbFIEdG9vbEJ/Cgpjb20ubWNwLnYxQhBBbm5vdGF0aW9uc1Byb3RvUAFaJmFsdGFsdW5lLmlkL29hZ2VudC9nZW4vZ28vbWNwL3YxO21jcHYxogIDTVhYqgIGTWNwLlYxygIGTWNwXFYx4gISTWNwXFYxXEdQQk1ldGFkYXRh6gIHTWNwOjpWMWIGcHJvdG8z", [file_google_protobuf_descriptor]);
+  fileDesc("ChhtY3AvdjEvYW5ub3RhdGlvbnMucHJvdG8SBm1jcC52MSKPAQoEVG9vbBIMCgRuYW1lGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEhAKCHJlcXVpcmVkGAMgAygJEhAKCG11dGF0aW9uGAQgASgIEgoKAnVpGAUgASgJEhMKC2Rlc3RydWN0aXZlGAYgASgIEg0KBXRpdGxlGAcgASgJEhAKCGFwcF9vbmx5GAggASgIOkIKBHRvb2wSHi5nb29nbGUucHJvdG9idWYuTWV0aG9kT3B0aW9ucxi5jgMgASgLMgwubWNwLnYxLlRvb2xSBHRvb2xCfwoKY29tLm1jcC52MUIQQW5ub3RhdGlvbnNQcm90b1ABWiZhbHRhbHVuZS5pZC9vYWdlbnQvZ2VuL2dvL21jcC92MTttY3B2MaICA01YWKoCBk1jcC5WMcoCBk1jcFxWMeICEk1jcFxWMVxHUEJNZXRhZGF0YeoCB01jcDo6VjFiBnByb3RvMw", [file_google_protobuf_descriptor]);
 
 /**
  * SECURITY: Tool carries no permission. A tool's permissions are its RPC's, declared once in
@@ -59,6 +59,13 @@ export type Tool = Message<"mcp.v1.Tool"> & {
    * @generated from field: string title = 7;
    */
   title: string;
+
+  /**
+   * SECURITY: app_only asks the host to offer the tool to the MCP view only; a host that ignores it shows it to the model. Needs ui.
+   *
+   * @generated from field: bool app_only = 8;
+   */
+  appOnly: boolean;
 };
 
 /**

@@ -32,6 +32,10 @@ components:
           type: string
           title: title
           description: Title overrides the title derived from the tool name, which mangles acronyms.
+        appOnly:
+          type: boolean
+          title: app_only
+          description: 'SECURITY: app_only asks the host to offer the tool to the MCP view only; a host that ignores it shows it to the model. Needs ui.'
       title: Tool
       additionalProperties: false
       description: |-

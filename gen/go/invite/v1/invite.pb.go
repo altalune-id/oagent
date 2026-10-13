@@ -7,6 +7,7 @@
 package invitev1
 
 import (
+	_ "altalune.id/oagent/gen/go/mcp/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -576,8 +577,11 @@ func (x *DraftInviteRequest) GetEmail() string {
 }
 
 type DraftInviteResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invite        *Invite                `protobuf:"bytes,1,opt,name=invite,proto3" json:"invite,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Invite *Invite                `protobuf:"bytes,1,opt,name=invite,proto3" json:"invite,omitempty"`
+	// The organization's public id and name, for the confirmation view.
+	OrgId         string `protobuf:"bytes,2,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	OrgName       string `protobuf:"bytes,3,opt,name=org_name,json=orgName,proto3" json:"org_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -617,6 +621,20 @@ func (x *DraftInviteResponse) GetInvite() *Invite {
 		return x.Invite
 	}
 	return nil
+}
+
+func (x *DraftInviteResponse) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *DraftInviteResponse) GetOrgName() string {
+	if x != nil {
+		return x.OrgName
+	}
+	return ""
 }
 
 type ConfirmDraftInviteRequest struct {
@@ -672,10 +690,8 @@ func (x *ConfirmDraftInviteRequest) GetInviteId() string {
 }
 
 type ConfirmDraftInviteResponse struct {
-	state  protoimpl.MessageState `protogen:"open.v1"`
-	Invite *Invite                `protobuf:"bytes,1,opt,name=invite,proto3" json:"invite,omitempty"`
-	// The accept link, shown only in this response.
-	Link          string `protobuf:"bytes,2,opt,name=link,proto3" json:"link,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Invite        *Invite                `protobuf:"bytes,1,opt,name=invite,proto3" json:"invite,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -715,13 +731,6 @@ func (x *ConfirmDraftInviteResponse) GetInvite() *Invite {
 		return x.Invite
 	}
 	return nil
-}
-
-func (x *ConfirmDraftInviteResponse) GetLink() string {
-	if x != nil {
-		return x.Link
-	}
-	return ""
 }
 
 type DiscardDraftInviteRequest struct {
@@ -816,7 +825,7 @@ var File_invite_v1_invite_proto protoreflect.FileDescriptor
 
 const file_invite_v1_invite_proto_rawDesc = "" +
 	"\n" +
-	"\x16invite/v1/invite.proto\x12\tinvite.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf8\x01\n" +
+	"\x16invite/v1/invite.proto\x12\tinvite.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\"\xf8\x01\n" +
 	"\x06Invite\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
@@ -851,27 +860,31 @@ const file_invite_v1_invite_proto_rawDesc = "" +
 	"\x06drafts\x18\x02 \x03(\v2\x11.invite.v1.InviteR\x06drafts\"A\n" +
 	"\x12DraftInviteRequest\x12\x15\n" +
 	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x14\n" +
-	"\x05email\x18\x02 \x01(\tR\x05email\"@\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\"r\n" +
 	"\x13DraftInviteResponse\x12)\n" +
-	"\x06invite\x18\x01 \x01(\v2\x11.invite.v1.InviteR\x06invite\"O\n" +
+	"\x06invite\x18\x01 \x01(\v2\x11.invite.v1.InviteR\x06invite\x12\x15\n" +
+	"\x06org_id\x18\x02 \x01(\tR\x05orgId\x12\x19\n" +
+	"\borg_name\x18\x03 \x01(\tR\aorgName\"O\n" +
 	"\x19ConfirmDraftInviteRequest\x12\x15\n" +
 	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1b\n" +
-	"\tinvite_id\x18\x02 \x01(\tR\binviteId\"[\n" +
+	"\tinvite_id\x18\x02 \x01(\tR\binviteId\"S\n" +
 	"\x1aConfirmDraftInviteResponse\x12)\n" +
-	"\x06invite\x18\x01 \x01(\v2\x11.invite.v1.InviteR\x06invite\x12\x12\n" +
-	"\x04link\x18\x02 \x01(\tR\x04link\"O\n" +
+	"\x06invite\x18\x01 \x01(\v2\x11.invite.v1.InviteR\x06inviteJ\x04\b\x02\x10\x03R\x04link\"O\n" +
 	"\x19DiscardDraftInviteRequest\x12\x15\n" +
 	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1b\n" +
 	"\tinvite_id\x18\x02 \x01(\tR\binviteId\"\x1c\n" +
-	"\x1aDiscardDraftInviteResponse2\xe4\x04\n" +
+	"\x1aDiscardDraftInviteResponse2\xe6\b\n" +
 	"\rInviteService\x12O\n" +
 	"\fCreateInvite\x12\x1e.invite.v1.CreateInviteRequest\x1a\x1f.invite.v1.CreateInviteResponse\x12O\n" +
 	"\fResendInvite\x12\x1e.invite.v1.ResendInviteRequest\x1a\x1f.invite.v1.ResendInviteResponse\x12O\n" +
 	"\fRevokeInvite\x12\x1e.invite.v1.RevokeInviteRequest\x1a\x1f.invite.v1.RevokeInviteResponse\x12L\n" +
-	"\vListInvites\x12\x1d.invite.v1.ListInvitesRequest\x1a\x1e.invite.v1.ListInvitesResponse\x12L\n" +
-	"\vDraftInvite\x12\x1d.invite.v1.DraftInviteRequest\x1a\x1e.invite.v1.DraftInviteResponse\x12a\n" +
-	"\x12ConfirmDraftInvite\x12$.invite.v1.ConfirmDraftInviteRequest\x1a%.invite.v1.ConfirmDraftInviteResponse\x12a\n" +
-	"\x12DiscardDraftInvite\x12$.invite.v1.DiscardDraftInviteRequest\x1a%.invite.v1.DiscardDraftInviteResponseB\x8f\x01\n" +
+	"\vListInvites\x12\x1d.invite.v1.ListInvitesRequest\x1a\x1e.invite.v1.ListInvitesResponse\x12\xa2\x02\n" +
+	"\vDraftInvite\x12\x1d.invite.v1.DraftInviteRequest\x1a\x1e.invite.v1.DraftInviteResponse\"\xd3\x01\xca\xf3\x18\xce\x01\n" +
+	"\rmember_invite\x12\x95\x01Suggest inviting a person to an organization as a member. This only drafts the invite: a person must confirm it in the view before any email is sent.\x1a\x06org_id\x1a\x05email \x01*\x03app:\x0fInvite a member\x12\xf2\x01\n" +
+	"\x12ConfirmDraftInvite\x12$.invite.v1.ConfirmDraftInviteRequest\x1a%.invite.v1.ConfirmDraftInviteResponse\"\x8e\x01\xca\xf3\x18\x89\x01\n" +
+	"\x15member_invite_confirm\x12ASend a drafted invite. Only the person in the view can call this.\x1a\x06org_id\x1a\tinvite_id \x01*\x03app:\x11Confirm an invite@\x01\x12\xf9\x01\n" +
+	"\x12DiscardDraftInvite\x12$.invite.v1.DiscardDraftInviteRequest\x1a%.invite.v1.DiscardDraftInviteResponse\"\x95\x01\xca\xf3\x18\x90\x01\n" +
+	"\x15member_invite_discard\x12ADrop a drafted invite. Only the person in the view can call this.\x1a\x06org_id\x1a\tinvite_id \x01*\x03app0\x01:\x16Discard a draft invite@\x01B\x8f\x01\n" +
 	"\rcom.invite.v1B\vInviteProtoP\x01Z,altalune.id/oagent/gen/go/invite/v1;invitev1\xa2\x02\x03IXX\xaa\x02\tInvite.V1\xca\x02\tInvite\\V1\xe2\x02\x15Invite\\V1\\GPBMetadata\xea\x02\n" +
 	"Invite::V1b\x06proto3"
 

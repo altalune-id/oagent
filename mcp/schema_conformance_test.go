@@ -65,6 +65,22 @@ func TestEmittedUIMetaMatchesOfficialSchema(t *testing.T) {
 	}
 }
 
+func TestAppOnlyUIMetaMatchesOfficialSchema(t *testing.T) {
+	reg := mcp.NewRegistry()
+	reg.Register(mcp.ToolSpec{
+		Name: "blog_confirm", Scopes: []string{"posts:write"}, Mutation: true, UI: "ui://blog/list", AppOnly: true, Handler: okHandler,
+	}, nil)
+	srv := mcp.NewServer(mcp.WithRegistry(reg), mcp.WithScopes(scopesFromContext), mcp.WithUI(true))
+	srv.AddUIResource(testUIResource())
+	res, err := connect(t, srv, "posts:write").ListTools(t.Context(), nil)
+	if err != nil || len(res.Tools) != 1 {
+		t.Fatalf("ListTools = %v, %v", res, err)
+	}
+	if err := extAppsSchema(t, "McpUiToolMeta").Validate(roundTrip(t, res.Tools[0].Meta[metaKeyUI])); err != nil {
+		t.Errorf("app-only _meta[%q] violates McpUiToolMeta: %v", metaKeyUI, err)
+	}
+}
+
 // TestWholeMetaAlsoValidates pins that the whole _meta object still passes an additionalProperties:false host.
 func TestWholeMetaAlsoValidates(t *testing.T) {
 	whole, ok := roundTrip(t, map[string]any(uiTool(t, mcp.WithUI(true)).Meta)).(map[string]any)

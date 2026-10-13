@@ -2,6 +2,7 @@ package invite_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -20,11 +21,13 @@ import (
 	apperrorv1 "altalune.id/oagent/gen/go/apperror/v1"
 	invitev1 "altalune.id/oagent/gen/go/invite/v1"
 	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
+	invitev1mcp "altalune.id/oagent/gen/go/invite/v1/invitev1mcp"
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
+	rootmcp "altalune.id/oagent/mcp"
 )
 
 const orgPublicID = "acmePublicId000000001"
@@ -139,6 +142,8 @@ func TestInviteService_Flow(t *testing.T) {
 	require.NoError(t, err)
 	assertNoUUID(t, draft.Msg)
 	assert.Equal(t, "draft", draft.Msg.GetInvite().GetStatus())
+	assert.Equal(t, orgPublicID, draft.Msg.GetOrgId())
+	assert.Equal(t, "Acme Corp", draft.Msg.GetOrgName())
 	assert.Equal(t, "member", draft.Msg.GetInvite().GetRole())
 
 	list, err := c.ListInvites(ctx, connect.NewRequest(&invitev1.ListInvitesRequest{OrgId: orgPublicID}))
@@ -152,7 +157,6 @@ func TestInviteService_Flow(t *testing.T) {
 	require.NoError(t, err)
 	assertNoUUID(t, confirmed.Msg)
 	assert.Equal(t, "pending", confirmed.Msg.GetInvite().GetStatus())
-	assert.Contains(t, confirmed.Msg.GetLink(), "https://oagent.example.com/invite/")
 
 	again, err := c.DraftInvite(ctx, connect.NewRequest(&invitev1.DraftInviteRequest{OrgId: orgPublicID, Email: "zed@x.io"}))
 	require.NoError(t, err)
@@ -235,11 +239,11 @@ func TestInviteService_ActorComesFromTheMembership(t *testing.T) {
 func TestInviteService_LinkOnlyWhereItBelongs(t *testing.T) {
 	for _, m := range []proto.Message{
 		&invitev1.ListInvitesResponse{}, &invitev1.DraftInviteResponse{}, &invitev1.Invite{},
-		&invitev1.RevokeInviteResponse{}, &invitev1.DiscardDraftInviteResponse{},
+		&invitev1.RevokeInviteResponse{}, &invitev1.DiscardDraftInviteResponse{}, &invitev1.ConfirmDraftInviteResponse{},
 	} {
 		assert.Nil(t, m.ProtoReflect().Descriptor().Fields().ByName("link"), "%T", m)
 	}
-	for _, m := range []proto.Message{&invitev1.CreateInviteResponse{}, &invitev1.ResendInviteResponse{}, &invitev1.ConfirmDraftInviteResponse{}} {
+	for _, m := range []proto.Message{&invitev1.CreateInviteResponse{}, &invitev1.ResendInviteResponse{}} {
 		assert.NotNil(t, m.ProtoReflect().Descriptor().Fields().ByName("link"), "%T", m)
 	}
 }
@@ -254,4 +258,43 @@ func TestInviteService_ExpiredStatus(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, list.Msg.GetInvites(), 1)
 	assert.Equal(t, "expired", list.Msg.GetInvites()[0].GetStatus())
+}
+
+func TestMCPMemberInvite_DraftsOnly(t *testing.T) {
+	f := newCPFixture(t)
+	reg := rootmcp.NewRegistry()
+	invitev1mcp.RegisterInviteServiceTools(reg, invite.NewControlPlane(f.svc, f.ids), func(string) []string { return []string{"member:write"} })
+	spec, ok := reg.Spec(invitev1mcp.MemberInviteToolName)
+	require.True(t, ok)
+	ctx := session.PrincipalInto(context.Background(), f.as(f.admin))
+
+	out, err := spec.Handler(ctx, json.RawMessage(`{"orgId":"`+orgPublicID+`","email":"dina@x.io"}`))
+	require.NoError(t, err)
+	var got struct {
+		Invite  struct{ ID, Email, Role, Status string }
+		OrgID   string `json:"orgId"`
+		OrgName string `json:"orgName"`
+	}
+	require.NoError(t, json.Unmarshal(out, &got))
+	assert.Equal(t, "draft", got.Invite.Status)
+	assert.Equal(t, "member", got.Invite.Role)
+	assert.Equal(t, orgPublicID, got.OrgID)
+	assert.Equal(t, "Acme Corp", got.OrgName)
+	assert.NotContains(t, string(out), "link")
+	assert.False(t, uuidShape.MatchString(string(out)), "no UUID in the tool result")
+	assert.Zero(t, f.mail.count(), "a draft sends no email")
+	stored, err := f.svc.ByPublicID(context.Background(), got.Invite.ID)
+	require.NoError(t, err)
+	assert.Empty(t, stored.TokenHash, "a draft has no token")
+
+	_, err = spec.Handler(ctx, json.RawMessage(`{"orgId":"`+orgPublicID+`","email":"eve@x.io","role":"owner"}`))
+	assert.Error(t, err, "the tool takes no role")
+
+	confirm, ok := reg.Spec(invitev1mcp.MemberInviteConfirmToolName)
+	require.True(t, ok)
+	sent, err := confirm.Handler(ctx, json.RawMessage(`{"orgId":"`+orgPublicID+`","inviteId":"`+got.Invite.ID+`"}`))
+	require.NoError(t, err)
+	assert.Contains(t, string(sent), `"pending"`)
+	assert.NotContains(t, string(sent), "link", "the invite link never reaches a model")
+	assert.NotContains(t, string(sent), "/invite/")
 }

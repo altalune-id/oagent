@@ -87,6 +87,10 @@ func (s *Server) build() {
 	specs := s.registry.seal()
 	s.mustResolved(specs)
 	for _, spec := range specs {
+		// SECURITY: with no MCP view, only the model could ever call an app-only tool.
+		if spec.AppOnly && !s.ui {
+			continue
+		}
 		s.sdk.AddTool(s.tool(spec), s.dispatch(spec))
 	}
 	s.addResources()
@@ -117,7 +121,11 @@ func (s *Server) tool(spec ToolSpec) *sdkmcp.Tool {
 	}
 	if s.ui && spec.UI != "" {
 		// NOTE: exactly one _meta key; the deprecated flat sibling is rejected by strict hosts.
-		tool.Meta = sdkmcp.Meta{metaKeyUI: map[string]any{"resourceUri": spec.UI}}
+		ui := map[string]any{"resourceUri": spec.UI}
+		if spec.AppOnly {
+			ui["visibility"] = []string{"app"}
+		}
+		tool.Meta = sdkmcp.Meta{metaKeyUI: ui}
 	}
 	return tool
 }

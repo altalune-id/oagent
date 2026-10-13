@@ -24,9 +24,12 @@ const PokeTargetToolName = "poke_target"
 // ApiKeyCreateToolName is the MCP tool name for FixtureService.Rekey.
 const ApiKeyCreateToolName = "api_key_create"
 
+// PokeConfirmToolName is the MCP tool name for FixtureService.Confirm.
+const PokeConfirmToolName = "poke_confirm"
+
 // FixtureServiceToolNames returns every MCP tool name generated for FixtureService.
 func FixtureServiceToolNames() []string {
-	return []string{PingToolName, PokeTargetToolName, ApiKeyCreateToolName}
+	return []string{PingToolName, PokeTargetToolName, ApiKeyCreateToolName, PokeConfirmToolName}
 }
 
 // RegisterFixtureServiceTools registers every MCP-annotated FixtureService method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.
@@ -108,6 +111,34 @@ func RegisterFixtureServiceTools(reg *mcp.Registry, h oagenttestv1connect.Fixtur
 			body, err := protojson.Marshal(resp.Msg)
 			if err != nil {
 				return nil, fmt.Errorf("mcp: %s: encode result: %w", ApiKeyCreateToolName, err)
+			}
+			return json.RawMessage(body), nil
+		},
+	}, h)
+	reg.Register(mcp.ToolSpec{
+		Name:        PokeConfirmToolName,
+		Description: "Confirm a poke a person approved.",
+		Scopes:      permissionsFor(oagenttestv1connect.FixtureServiceConfirmProcedure),
+		Mutation:    true,
+		Destructive: false,
+		UI:          "ui://oagenttest/app",
+		AppOnly:     true,
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"target":{"type":"object","properties":{"org":{"type":"string","description":"Org is the organization slug."},"project":{"type":"string"}},"additionalProperties":false},"confirm":{"type":"boolean"}},"additionalProperties":false}`),
+		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
+			if len(input) == 0 {
+				input = json.RawMessage(`{}`)
+			}
+			var req v1.PokeRequest
+			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
+				return nil, mcp.NewInvalidArgumentsError(PokeConfirmToolName, err)
+			}
+			resp, err := h.Confirm(ctx, connect.NewRequest(&req))
+			if err != nil {
+				return nil, err
+			}
+			body, err := protojson.Marshal(resp.Msg)
+			if err != nil {
+				return nil, fmt.Errorf("mcp: %s: encode result: %w", PokeConfirmToolName, err)
 			}
 			return json.RawMessage(body), nil
 		},

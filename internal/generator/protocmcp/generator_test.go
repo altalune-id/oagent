@@ -53,6 +53,11 @@ func TestGenerateRefusals(t *testing.T) {
 			wants: []string{"BadUI", "App_1"},
 		},
 		{
+			name:  "app_only without a ui",
+			file:  "oagenttest/v1/bad_apponly.proto",
+			wants: []string{"Hidden", "app_only", "ui"},
+		},
+		{
 			name:  "required naming a field the request message does not have",
 			file:  "oagenttest/v1/bad_required.proto",
 			wants: []string{"RequireGhost", "ghostField", "projectId"},

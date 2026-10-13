@@ -431,10 +431,6 @@ components:
         invite:
           title: invite
           $ref: '#/components/schemas/invite.v1.Invite'
-        link:
-          type: string
-          title: link
-          description: The accept link, shown only in this response.
       title: ConfirmDraftInviteResponse
       additionalProperties: false
     invite.v1.CreateInviteRequest:
@@ -497,6 +493,13 @@ components:
         invite:
           title: invite
           $ref: '#/components/schemas/invite.v1.Invite'
+        orgId:
+          type: string
+          title: org_id
+          description: The organization's public id and name, for the confirmation view.
+        orgName:
+          type: string
+          title: org_name
       title: DraftInviteResponse
       additionalProperties: false
     invite.v1.Invite:

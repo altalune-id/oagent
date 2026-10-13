@@ -34,7 +34,9 @@ type Tool struct {
 	// NOTE: destructiveHint defaults to true when absent, so the server always sends it; an inaccurate value desensitizes the host's confirmation prompt.
 	Destructive bool `protobuf:"varint,6,opt,name=destructive,proto3" json:"destructive,omitempty"`
 	// Title overrides the title derived from the tool name, which mangles acronyms.
-	Title         string `protobuf:"bytes,7,opt,name=title,proto3" json:"title,omitempty"`
+	Title string `protobuf:"bytes,7,opt,name=title,proto3" json:"title,omitempty"`
+	// SECURITY: app_only asks the host to offer the tool to the MCP view only; a host that ignores it shows it to the model. Needs ui.
+	AppOnly       bool `protobuf:"varint,8,opt,name=app_only,json=appOnly,proto3" json:"app_only,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -118,6 +120,13 @@ func (x *Tool) GetTitle() string {
 	return ""
 }
 
+func (x *Tool) GetAppOnly() bool {
+	if x != nil {
+		return x.AppOnly
+	}
+	return false
+}
+
 var file_mcp_v1_annotations_proto_extTypes = []protoimpl.ExtensionInfo{
 	{
 		ExtendedType:  (*descriptorpb.MethodOptions)(nil),
@@ -139,7 +148,7 @@ var File_mcp_v1_annotations_proto protoreflect.FileDescriptor
 
 const file_mcp_v1_annotations_proto_rawDesc = "" +
 	"\n" +
-	"\x18mcp/v1/annotations.proto\x12\x06mcp.v1\x1a google/protobuf/descriptor.proto\"\xbc\x01\n" +
+	"\x18mcp/v1/annotations.proto\x12\x06mcp.v1\x1a google/protobuf/descriptor.proto\"\xd7\x01\n" +
 	"\x04Tool\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x1a\n" +
@@ -147,7 +156,8 @@ const file_mcp_v1_annotations_proto_rawDesc = "" +
 	"\bmutation\x18\x04 \x01(\bR\bmutation\x12\x0e\n" +
 	"\x02ui\x18\x05 \x01(\tR\x02ui\x12 \n" +
 	"\vdestructive\x18\x06 \x01(\bR\vdestructive\x12\x14\n" +
-	"\x05title\x18\a \x01(\tR\x05title:B\n" +
+	"\x05title\x18\a \x01(\tR\x05title\x12\x19\n" +
+	"\bapp_only\x18\b \x01(\bR\aappOnly:B\n" +
 	"\x04tool\x12\x1e.google.protobuf.MethodOptions\x18\xb9\x8e\x03 \x01(\v2\f.mcp.v1.ToolR\x04toolB\x7f\n" +
 	"\n" +
 	"com.mcp.v1B\x10AnnotationsProtoP\x01Z&altalune.id/oagent/gen/go/mcp/v1;mcpv1\xa2\x02\x03MXX\xaa\x02\x06Mcp.V1\xca\x02\x06Mcp\\V1\xe2\x02\x12Mcp\\V1\\GPBMetadata\xea\x02\aMcp::V1b\x06proto3"

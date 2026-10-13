@@ -11,6 +11,7 @@ import WebhookDeliveriesView from "./WebhookDeliveriesView.vue";
 import WebhookListView from "./WebhookListView.vue";
 import WebhookRetryFailedView from "./WebhookRetryFailedView.vue";
 import MemberList from "./MemberList.vue";
+import InviteConfirm from "./InviteConfirm.vue";
 import AuthWhoami from "./AuthWhoami.vue";
 import DefaultView from "./DefaultView.vue";
 
@@ -27,6 +28,7 @@ const registry: Record<string, Component> = {
   webhook_deliveries: WebhookDeliveriesView,
   webhook_retry_failed: WebhookRetryFailedView,
   member_list: MemberList,
+  member_invite: InviteConfirm,
   auth_whoami: AuthWhoami,
 };
 

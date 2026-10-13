@@ -14,6 +14,7 @@ import (
 	"altalune.id/oagent/config"
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
 	authv1mcp "altalune.id/oagent/gen/go/auth/v1/authv1mcp"
+	invitev1mcp "altalune.id/oagent/gen/go/invite/v1/invitev1mcp"
 	memberv1mcp "altalune.id/oagent/gen/go/member/v1/memberv1mcp"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
@@ -116,6 +117,9 @@ func TestMCPTools_PermissionsComeFromTheTable(t *testing.T) {
 		webhookv1mcp.WebhookDeliveriesToolName:  {scope.WebhookRead},
 		webhookv1mcp.WebhookRetryFailedToolName: {scope.WebhookWrite},
 		memberv1mcp.MemberListToolName:          {scope.MemberRead},
+		invitev1mcp.MemberInviteToolName:        {scope.MemberWrite},
+		invitev1mcp.MemberInviteConfirmToolName: {scope.MemberWrite},
+		invitev1mcp.MemberInviteDiscardToolName: {scope.MemberWrite},
 		authv1mcp.AuthWhoamiToolName:            {authz.AnyAuthenticated},
 	}
 	names := srv.Registry().Names()
@@ -161,4 +165,42 @@ func TestMCPTools_UnmappedProcedureIsDenied(t *testing.T) {
 	res, err := cs.CallTool(ctx, &sdkmcp.CallToolParams{Name: orgv1mcp.OrgGetToolName, Arguments: map[string]any{"id": "x"}})
 	require.NoError(t, err)
 	assert.True(t, res.IsError, "even the system operator cannot call a tool whose RPC has no permission")
+}
+
+// SECURITY: the model must never be offered the tool that sends a drafted invite.
+func TestMCPTools_InviteConfirmIsForTheAppOnly(t *testing.T) {
+	list := func(appsUI bool) map[string]*sdkmcp.Tool {
+		srv := buildMCPServer(config.MCPConfig{Enabled: true, AppsUI: appsUI}, &Services{Orgs: org.NewService(&fakes.OrgStore{}, nil)}, nil)
+		app := &App{MCP: srv}
+		ctx, cancel := context.WithCancel(t.Context())
+		t.Cleanup(cancel)
+		clientT, serverT := sdkmcp.NewInMemoryTransports()
+		go func() { _ = app.runMCP(ctx, serverT) }()
+		cs, err := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "t", Version: "v0"}, nil).Connect(ctx, clientT, nil)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = cs.Close() })
+		res, err := cs.ListTools(ctx, nil)
+		require.NoError(t, err)
+		out := map[string]*sdkmcp.Tool{}
+		for _, tool := range res.Tools {
+			out[tool.Name] = tool
+		}
+		return out
+	}
+
+	withApp := list(true)
+	for _, name := range []string{invitev1mcp.MemberInviteConfirmToolName, invitev1mcp.MemberInviteDiscardToolName} {
+		require.Contains(t, withApp, name)
+		ui, ok := withApp[name].Meta["ui"].(map[string]any)
+		require.True(t, ok, name)
+		assert.Equal(t, []any{"app"}, ui["visibility"], "%s is hidden from the model", name)
+	}
+	draft, ok := withApp[invitev1mcp.MemberInviteToolName].Meta["ui"].(map[string]any)
+	require.True(t, ok)
+	assert.NotContains(t, draft, "visibility", "the model may draft")
+
+	without := list(false)
+	assert.Contains(t, without, invitev1mcp.MemberInviteToolName)
+	assert.NotContains(t, without, invitev1mcp.MemberInviteConfirmToolName, "no app, no confirm tool")
+	assert.NotContains(t, without, invitev1mcp.MemberInviteDiscardToolName)
 }

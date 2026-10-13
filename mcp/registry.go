@@ -20,6 +20,7 @@ type ToolSpec struct {
 	Mutation    bool
 	Destructive bool
 	UI          string
+	AppOnly     bool
 	InputSchema any
 	Handler     ToolHandler
 }
