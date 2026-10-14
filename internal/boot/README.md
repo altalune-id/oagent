@@ -73,14 +73,14 @@ flowchart TD
 | Domain | Service deps (ports) | Connect + CLI | MCP tools | Web routes |
 |---|---|---|---|---|
 | `org` | — | ✓ | ✓ | — |
-| `org/invite` | member (actor, add from invite), user (create, by email, accept terms), org (name, slug), user (contact, public id), mail queue, webhook (`invite.created`, `member.added` to every project's subscribers, in the same transaction); auth (sign-in, sessions) on the web side; org (public id → id, `publicIDs`) for the API | ✓ (writes: people and the operator only); CLI `invite create/list/resend/revoke` | `member_invite` (drafts only); `member_invite_confirm`, `member_invite_discard` (app-only) | `/invite/{token}`, `/invite`, `POST /invite/join`, `/invite/accept`, `/invite/switch` (local login only) |
+| `org/invite` | member (actor, add from invite), user (create, by email, accept terms), org (name, slug), user (contact, public id), mail queue, webhook (`invite.created`, `member.added` to every project's subscribers, in the same transaction); auth (sign-in, sessions, the auth rate limiter) on the web side; org (public id → id, `publicIDs`) for the API | ✓ (writes: people and the operator only); CLI `invite create/list/resend/revoke` | `member_invite` (drafts only); `member_invite_confirm`, `member_invite_discard` (app-only) | `/invite/{token}`, `/invite`, `POST /invite/join`, `/invite/accept`, `/invite/switch` (local login only) |
 | `org/member` | effects: sessions, apikey (personal keys), user (contact), org (name), mail queue | ✓ (role changes and removal: people and the operator only; leave: the signed-in person); CLI `member add` (operator, boots the `App`) | `member_list` | — |
 | `project` | — | ✓ | ✓ | — |
 | `agent` | webhook (publisher, same transaction), project (org of project) | ✓ | ✓ | — |
 | `apikey` | project (ids), member (owner roles) | ✓ | — | — |
 | `webhook` | project + org (refs), project (org of project), outbox | ✓ (org events `invite.created`, `member.added`: only a caller who reaches the whole org and holds `member:read` subscribes or reads their payloads) | ✓ | — |
 | `user` | — | CLI `user set-password` (operator, boots the `App`) | — | — |
-| `auth` | user, member, org, project, sessions, passwords | whoami; CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | `auth_whoami` | `/login`, `/logout` |
+| `auth` | user, member, org, project, sessions, passwords; the auth rate limiter on the web side | whoami; CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | `auth_whoami` | `/login`, `/logout` |
 | `install` | user (create, accept terms), org, member, project; auth (sign-in) | — | — | `/install` (terms and privacy consent, `layout.Consent`) + `InstallGate` |
 | `legal` | user (accept terms), auth (rotate session); its own store (document snapshots, acceptance history) | — | — | `/terms`, `/privacy`, `/welcome` + `WelcomeGate` (asks again when the terms changed after the person accepted them) |
 | `health` | readiness checks (db-health monitor) | — | — | `/healthz`, `/readyz` (probes slot, root-anchored) |
@@ -196,6 +196,13 @@ group gets `ratelimit.Disabled()`, which allows every call.
   minutes; each key costs roughly 100 bytes, so the default is about 10 MB.
 - **Per instance:** the memory store counts on one replica only. With several replicas, limit at the
   edge or use the Redis store once it exists.
+- **Where (auth group):** `buildRoutes` hands one `auth.Limits` (the auth limiter and
+  `http.trustedProxyHops`) to the login page and the invite pages. `POST /login` counts every attempt per
+  client IP (60 per 15 minutes) and failed attempts per email hash (10 per 15 minutes, 5 at once; a
+  success clears it). The invite link and page count 60 an hour per IP; invite join and accept, 20
+  an hour per IP. A refused form answers 429 with `Retry-After` and a generic message (JSON
+  `AUT003` for `/login` with `Accept: application/json`); a failing store answers 503 (fail
+  closed). Known and unknown emails get the same answer, limiter on or off.
 - **Client IP:** `layout.ClientIP` keys on `RemoteAddr`, or, when `http.trustedProxyHops` (env
   `OAGENT_HTTP_TRUSTED_PROXY_HOPS`) is n >= 1, on the n-th `X-Forwarded-For` entry counted from the
   right. Each trusted proxy appends the address it saw, so entries further left are whatever the

@@ -161,12 +161,13 @@ func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected
 		return []web.Registrar{legal.NewWeb(legalOpts)}
 	}
 	sessions := cookieSessions(cfg, svcs)
+	limits := authLimits(cfg, svcs)
 	legalOpts.Service = svcs.Legal
 	legalOpts.Sessions = sessions
 	legalOpts.RequireAcceptance = cfg.Compliance.RequireAcceptance
 	return []web.Registrar{
 		legal.NewWeb(legalOpts),
-		auth.NewWeb(kit, svcs.Auth, sessions, newPublicIDs(svcs)),
+		auth.NewWeb(kit, svcs.Auth, sessions, newPublicIDs(svcs)).WithLimits(limits),
 		install.NewWeb(install.WebOpts{
 			Kit:       kit,
 			Installer: svcs.Install,
@@ -192,8 +193,13 @@ func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected
 			Methods:      []string{invite.MethodPassword},
 			StateSecret:  svcs.StateSecret,
 			CookieSecure: cfg.HTTP.CookieSecure,
+			Limits:       limits,
 		}),
 	}
+}
+
+func authLimits(cfg config.Config, svcs *Services) auth.Limits {
+	return auth.Limits{Limiter: svcs.AuthLimiter, TrustedProxyHops: cfg.HTTP.TrustedProxyHops}
 }
 
 func consentData(cfg config.Config) layout.ConsentData {

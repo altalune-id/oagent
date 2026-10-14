@@ -70,3 +70,14 @@ func TestBoot_RateLimitStoreError(t *testing.T) {
 	}, testLogger())
 	assert.ErrorContains(t, err, "rateLimit.store")
 }
+
+func TestAuthLimits(t *testing.T) {
+	l := authLimits(config.Config{}, &Services{AuthLimiter: ratelimit.Disabled()})
+	assert.Equal(t, ratelimit.Disabled(), l.Limiter)
+	assert.Zero(t, l.TrustedProxyHops)
+
+	m := memory.New(1)
+	l = authLimits(config.Config{HTTP: config.HTTPConfig{TrustedProxyHops: 2}}, &Services{AuthLimiter: m})
+	assert.Same(t, m, l.Limiter)
+	assert.Equal(t, 2, l.TrustedProxyHops)
+}

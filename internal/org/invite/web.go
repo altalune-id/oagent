@@ -15,6 +15,7 @@ import (
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/web/layout"
+	"altalune.id/oagent/ratelimit"
 )
 
 const cookieName = "oagent_invite"
@@ -38,6 +39,17 @@ type WebOpts struct {
 	StateSecret  []byte
 	CookieSecure bool
 	Now          func() time.Time
+	Limits       auth.Limits
+}
+
+// LandingRule limits opening invite links and the invite page per client IP: 60 an hour.
+func LandingRule() ratelimit.Rule {
+	return ratelimit.Rule{Name: "invite-landing-ip", Rate: 60, Per: time.Hour, Burst: 60}
+}
+
+// SubmitRule limits joining and accepting per client IP: 20 an hour.
+func SubmitRule() ratelimit.Rule {
+	return ratelimit.Rule{Name: "invite-submit-ip", Rate: 20, Per: time.Hour, Burst: 20}
 }
 
 // Web serves the invite landing, join, accept and switch pages.
@@ -53,12 +65,22 @@ func NewWeb(o WebOpts) *Web {
 
 // Register mounts the invite pages on mux.
 func (h *Web) Register(mux *http.ServeMux) {
-	// TODO(plan 10): rate limit per IP and email-hash.
-	mux.HandleFunc("GET "+h.o.Kit.Path("/invite/{token}"), h.getLink)
-	mux.HandleFunc("GET "+h.o.Kit.Path("/invite"), h.getInvite)
-	mux.HandleFunc("POST "+h.o.Kit.Path("/invite/join"), h.postJoin)
-	mux.HandleFunc("POST "+h.o.Kit.Path("/invite/accept"), h.postAccept)
+	mux.HandleFunc("GET "+h.o.Kit.Path("/invite/{token}"), h.limited(LandingRule(), h.getLink))
+	mux.HandleFunc("GET "+h.o.Kit.Path("/invite"), h.limited(LandingRule(), h.getInvite))
+	mux.HandleFunc("POST "+h.o.Kit.Path("/invite/join"), h.limited(SubmitRule(), h.postJoin))
+	mux.HandleFunc("POST "+h.o.Kit.Path("/invite/accept"), h.limited(SubmitRule(), h.postAccept))
 	mux.HandleFunc("POST "+h.o.Kit.Path("/invite/switch"), h.postSwitch)
+}
+
+func (h *Web) limited(rule ratelimit.Rule, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := h.o.Limits.LimitIP(r, rule); err != nil {
+			w.Header().Set("Referrer-Policy", "no-referrer")
+			auth.WriteLimited(w, r, h.o.Kit, "Invite", err)
+			return
+		}
+		next(w, r)
+	}
 }
 
 // SECURITY: the raw token must never reach the cookie, a log or a Referer.

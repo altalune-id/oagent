@@ -24,14 +24,20 @@ import (
 )
 
 type loginFixture struct {
-	srv   http.Handler
-	auth  *fakeAuth
-	ids   *fakes.PublicIDs
-	store *session.MemoryStore
-	base  string
+	reported []string
+	srv      http.Handler
+	auth     *fakeAuth
+	ids      *fakes.PublicIDs
+	store    *session.MemoryStore
+	base     string
 }
 
 func newLoginFixture(t *testing.T, base string) *loginFixture {
+	t.Helper()
+	return newLimitedLoginFixture(t, base, Limits{})
+}
+
+func newLimitedLoginFixture(t *testing.T, base string, limits Limits) *loginFixture {
 	t.Helper()
 	f := &loginFixture{
 		base:  base,
@@ -58,9 +64,14 @@ func newLoginFixture(t *testing.T, base string) *loginFixture {
 		BasePath: base,
 		Console:  console,
 		Session:  middleware.Session(middleware.SessionConfig{Store: f.store, Secret: testSecret, Auth: f.auth}),
-		Routes:   []web.Registrar{NewWeb(layout.Kit{BasePath: base}, f.auth, sessions, f.ids)},
+		Routes:   []web.Registrar{NewWeb(layout.Kit{BasePath: base, Unexpected: f.report}, f.auth, sessions, f.ids).WithLimits(limits)},
 	})
 	return f
+}
+
+func (f *loginFixture) report(_ context.Context, msg string, _ error, _ ...any) *apperror.AppError {
+	f.reported = append(f.reported, msg)
+	return nil
 }
 
 func (f *loginFixture) do(req *http.Request) *httptest.ResponseRecorder {

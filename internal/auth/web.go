@@ -3,9 +3,11 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"mime"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,11 +34,18 @@ type Web struct {
 	signIn   SignIn
 	sessions CookieSessions
 	ids      PublicIDs
+	limits   Limits
 }
 
 // NewWeb binds the login pages to the sign-in service, the browser sessions and the public id lookups.
 func NewWeb(kit layout.Kit, signIn SignIn, sessions CookieSessions, ids PublicIDs) *Web {
 	return &Web{kit: kit, signIn: signIn, sessions: sessions, ids: ids}
+}
+
+// WithLimits rate limits sign-in per client IP and per email.
+func (h *Web) WithLimits(l Limits) *Web {
+	h.limits = l
+	return h
 }
 
 // Register mounts GET/POST /login and POST /logout on mux.
@@ -119,6 +128,10 @@ func (h *Web) postLogin(w http.ResponseWriter, r *http.Request) {
 	returnTo := r.PostFormValue("return_to")
 	wantsJSON := acceptsJSON(r)
 
+	if err := h.limitLogin(r, email); err != nil {
+		h.loginLimited(w, r, err, wantsJSON, views.LoginData{Email: email, ReturnTo: layout.SanitizeReturnTo(h.kit.BasePath, returnTo)})
+		return
+	}
 	principal, err := h.signIn.LoginLocal(r.Context(), Credentials{Email: email, Password: r.PostFormValue("password")})
 	switch {
 	case IsInvalidCredentialsError(err) && wantsJSON:
@@ -131,6 +144,9 @@ func (h *Web) postLogin(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		h.kit.Fail(w, r, "web: login", err)
 		return
+	}
+	if err := h.limits.ForgetEmail(r.Context(), email, LoginEmailRule()); err != nil && h.kit.Unexpected != nil {
+		_ = h.kit.Unexpected(r.Context(), "web: rate limit reset", err)
 	}
 	var view principalView
 	if wantsJSON {
@@ -150,6 +166,37 @@ func (h *Web) postLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	to := layout.ResolveReturnTo(h.kit.BasePath, returnTo)
 	http.Redirect(w, r, to, http.StatusSeeOther) //nolint:gosec // G710: ResolveReturnTo sanitizes.
+}
+
+// SECURITY: both keys count before the password check; a success clears the email key, so only failures stay counted per email.
+func (h *Web) limitLogin(r *http.Request, email string) error {
+	if err := h.limits.LimitIP(r, LoginIPRule()); err != nil {
+		return err
+	}
+	return h.limits.LimitEmail(r.Context(), email, LoginEmailRule())
+}
+
+func (h *Web) loginLimited(w http.ResponseWriter, r *http.Request, err error, wantsJSON bool, view views.LoginData) {
+	rl, limited := errors.AsType[*RateLimitedError](err)
+	w.Header().Set("Cache-Control", "no-store")
+	switch {
+	case limited && wantsJSON:
+		w.Header().Set("Retry-After", strconv.Itoa(rl.RetryAfterSeconds()))
+		writeJSON(w, http.StatusTooManyRequests, map[string]any{
+			"code": string(apperror.CodeAuthRateLimited), "message": rl.Message(), "retry_after": rl.RetryAfterSeconds(),
+		})
+	case limited:
+		w.Header().Set("Retry-After", strconv.Itoa(rl.RetryAfterSeconds()))
+		view.Error = rl.Message()
+		h.kit.Render(w, r, http.StatusTooManyRequests, views.Login(h.kit.Layout("Sign in"), view))
+	case wantsJSON:
+		limiterFailed(w, r, h.kit, err)
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"code": string(apperror.CodeUnexpected), "message": limiterDown})
+	default:
+		limiterFailed(w, r, h.kit, err)
+		view.Error = limiterDown
+		h.kit.Render(w, r, http.StatusServiceUnavailable, views.Login(h.kit.Layout("Sign in"), view))
+	}
 }
 
 func (h *Web) postLogout(w http.ResponseWriter, r *http.Request) {

@@ -62,6 +62,10 @@ type slugs map[uuid.UUID]string
 func (s slugs) Slug(_ context.Context, orgID uuid.UUID) (string, error) { return s[orgID], nil }
 
 func newWebFixture(t *testing.T, requireTerms bool) *webFixture {
+	return newLimitedWebFixture(t, requireTerms, auth.Limits{})
+}
+
+func newLimitedWebFixture(t *testing.T, requireTerms bool, limits auth.Limits) *webFixture {
 	f := &webFixture{fixture: newFixture(t), sessions: session.NewMemoryStore()}
 	f.signIn = &fakeSignIn{users: f.users}
 	cookies := auth.CookieSessions{Store: f.sessions, Secret: webSecret, Cookie: session.CookieOptions{Path: "/", Secure: true}, TTL: time.Hour}
@@ -72,7 +76,7 @@ func newWebFixture(t *testing.T, requireTerms bool) *webFixture {
 			Orgs: orgNames{f.org: "Acme"}, OrgLinks: slugs{f.org: "acme"}, People: directory{people: f.people, users: f.users},
 			SignIn: f.signIn, Sessions: cookies, Consent: layout.ConsentData{Required: requireTerms},
 			Methods: []string{invite.MethodPassword}, StateSecret: webSecret, CookieSecure: true,
-			Now: func() time.Time { return f.clock },
+			Now: func() time.Time { return f.clock }, Limits: limits,
 		})},
 	})
 	return f
