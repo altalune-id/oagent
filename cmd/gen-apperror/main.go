@@ -32,6 +32,7 @@ var (
 		"forbidden":           "KindForbidden",
 		"failed_precondition": "KindFailedPrecondition",
 		"internal":            "KindInternal",
+		"resource_exhausted":  "KindResourceExhausted",
 	}
 )
 

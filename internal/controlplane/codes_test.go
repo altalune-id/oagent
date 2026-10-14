@@ -29,6 +29,7 @@ func TestConnectCodeOf(t *testing.T) {
 		apperror.CodeAuthInvalidCredentials: connect.CodeUnauthenticated,
 		apperror.CodeForbidden:              connect.CodePermissionDenied,
 		apperror.CodeOrgCreationDisabled:    connect.CodeFailedPrecondition,
+		apperror.CodeAuthRateLimited:        connect.CodeResourceExhausted,
 	}
 	for code, want := range cases {
 		t.Run(string(code), func(t *testing.T) {

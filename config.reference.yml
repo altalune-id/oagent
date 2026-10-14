@@ -112,6 +112,8 @@ http:
   cookieSecure: true
   # [secret] env: OAGENT_HTTP_STATE_SECRET
   stateSecret: ""
+  # env: OAGENT_HTTP_TRUSTED_PROXY_HOPS
+  trustedProxyHops: 0
 
 install:
   # [secret] env: OAGENT_INSTALL_TOKEN
@@ -165,6 +167,15 @@ queue:
   token: ""
   # env: OAGENT_QUEUE_URL
   url: ""
+
+rateLimit:
+  auth:
+    # env: OAGENT_RATE_LIMIT_AUTH_ENABLED
+    enabled: false
+  # env: OAGENT_RATE_LIMIT_MAX_KEYS
+  maxKeys: 100000
+  # env: OAGENT_RATE_LIMIT_STORE
+  store: memory
 
 scheduler:
   # env: OAGENT_SCHEDULER_ENABLED

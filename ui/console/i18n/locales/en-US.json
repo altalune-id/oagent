@@ -56,6 +56,7 @@
   "apperror.AUT002_sequential": "Password must not be a simple sequence like abcd or 1234",
   "apperror.AUT002_contains_email": "Password must not contain your email",
   "apperror.AUT002_contains_name": "Password must not contain your name",
+  "apperror.AUT003": "Too many attempts. Try again in {retry_after} seconds.",
   "apperror.GEN001": "Your request has no organization context. Please sign in again.",
   "apperror.GEN002": "Please sign in first.",
   "apperror.GEN004": "{field} is invalid",

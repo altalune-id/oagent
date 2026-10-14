@@ -20,6 +20,8 @@ func connectCodeOf(code apperror.Code) connect.Code {
 		return connect.CodePermissionDenied
 	case apperror.KindFailedPrecondition:
 		return connect.CodeFailedPrecondition
+	case apperror.KindResourceExhausted:
+		return connect.CodeResourceExhausted
 	case apperror.KindUnknown, apperror.KindInternal:
 		return connect.CodeInternal
 	default:

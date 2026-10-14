@@ -108,7 +108,7 @@ test-all: test test-integration ## unit + integration tests
 
 COVER_MIN ?= 85
 # generated code, templ views, test helpers and main wiring
-COVER_SKIP ?= /gen(/|$$)|/views$$|/testutil/|/sessiontest$$|/examples/|/cmd/oagent$$
+COVER_SKIP ?= /gen(/|$$)|/views$$|/testutil/|/sessiontest$$|/ratelimittest$$|/examples/|/cmd/oagent$$
 
 .PHONY: cover
 cover: ## unit + integration coverage; fails when a package is under COVER_MIN percent

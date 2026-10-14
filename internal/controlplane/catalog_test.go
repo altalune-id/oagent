@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -120,6 +121,7 @@ func samples() []error {
 		&invite.PendingError{},
 
 		&auth.InvalidCredentialsError{},
+		&auth.RateLimitedError{RetryAfter: 90 * time.Second},
 		password.Check("short", password.Hints{}),
 		password.Check(strings.Repeat("a", password.MaxLen+1), password.Hints{}),
 		password.Check("iloveyou1234", password.Hints{}),

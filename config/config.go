@@ -25,6 +25,7 @@ type Config struct {
 	Compliance ComplianceConfig `yaml:"compliance" mapstructure:"compliance"`
 	CLI        CLIConfig        `yaml:"cli"        mapstructure:"cli"`
 	Mail       MailConfig       `yaml:"mail"       mapstructure:"mail"`
+	RateLimit  RateLimitConfig  `yaml:"rateLimit"  mapstructure:"rateLimit"`
 }
 
 // CLIConfig configures the oagent CLI; SessionFile may start with "~/", expanded when used.
@@ -69,6 +70,8 @@ type HTTPConfig struct {
 	BaseURL      string `yaml:"baseURL"      mapstructure:"baseURL"      validate:"omitempty,url"`
 	CookieSecure bool   `yaml:"cookieSecure" mapstructure:"cookieSecure"`
 	StateSecret  string `yaml:"stateSecret"  mapstructure:"stateSecret"  awareness:"secret"`
+	// TrustedProxyHops is how many proxies that append to X-Forwarded-For sit in front of oagent; 0 keys on RemoteAddr.
+	TrustedProxyHops int `yaml:"trustedProxyHops" mapstructure:"trustedProxyHops"`
 }
 
 // APIConfig configures the Connect-RPC controlplane.
@@ -207,5 +210,8 @@ func (c *Config) Validate() error {
 	if c.Compliance.TermsUpdated().After(time.Now()) {
 		return fmt.Errorf("config: compliance.termsUpdatedAt %s is in the future", c.Compliance.TermsUpdatedAt)
 	}
-	return c.validateMail()
+	if err := c.validateMail(); err != nil {
+		return err
+	}
+	return c.validateRateLimit()
 }

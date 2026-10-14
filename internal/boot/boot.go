@@ -72,6 +72,13 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		_ = shutdown(ctx)
 		return nil, err
 	}
+	lims, err := buildLimiters(cfg, log)
+	if err != nil {
+		_ = pool.Close()
+		_ = shutdown(ctx)
+		return nil, err
+	}
+	svcs.AuthLimiter = lims.auth
 	if err := buildAuthSecrets(cfg, svcs, log); err != nil {
 		_ = pool.Close()
 		_ = shutdown(ctx)
@@ -126,6 +133,9 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 	sup.Register(buildOutboxWorker(svcs, log))
 	sup.Register(buildMailWorker(svcs, log))
 	sup.Register(svcs.KeyUsage)
+	if lims.janitor != nil {
+		sup.Register(lims.janitor)
+	}
 
 	var runner *scheduler.Runner
 	if off := schedulerOff(o, cfg); off == "" {

@@ -23,6 +23,7 @@ import (
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/testutil/fakes"
 	"altalune.id/oagent/migrator"
+	"altalune.id/oagent/ratelimit"
 	"altalune.id/oagent/reqid"
 	"altalune.id/oagent/telemetry"
 	"altalune.id/oagent/worker"
@@ -93,6 +94,8 @@ func TestBoot(t *testing.T) {
 	assert.NotNil(t, app.Services.Mailer)
 	assert.NotNil(t, app.Services.MailQueue)
 	assert.NotNil(t, app.Services.KeyAuthn)
+	assert.Equal(t, ratelimit.Disabled(), app.Services.AuthLimiter, "rate limits are off by default")
+	assert.NotContains(t, workerNames(app), "ratelimit.janitor")
 
 	require.NoError(t, app.Close(context.Background()))
 	assert.True(t, called)

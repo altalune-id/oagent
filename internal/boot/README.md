@@ -20,7 +20,8 @@ flowchart TD
     D --> E[kernel: log, pool, tracer, meter, reporter, queue]
     E --> F[buildServices: every domain service, the mail queue]
     F --> M[buildMailer: mail.driver picks mailer/console, mailer/smtp or mailer/resend]
-    M --> G[buildAuthSecrets: state secret, setup token]
+    M --> R[buildLimiters: one limiter per rate limit group, Disabled unless switched on]
+    R --> G[buildAuthSecrets: state secret, setup token]
     G --> H[firstBoot: basic system org / env genesis / log install URL]
     H --> I[installRequired: is the install gate shut?]
     I --> J[build surfaces: API, console, MCP, web routes]
@@ -179,6 +180,36 @@ versions were first published. With `compliance.termsURL` or `compliance.privacy
 is snapshotted and no history is kept (a known limit); the gate then uses
 `compliance.termsUpdatedAt`, which may not be in the future.
 
+## Rate limits
+
+oagent's own rate limiter is **off by default**: many deployments limit at the edge (a CDN, nginx,
+an API gateway). Each group has its own switch and all groups share one store. The only group now is
+`auth` (`rateLimit.auth.enabled`). With every group off, no store and no janitor exist and every
+group gets `ratelimit.Disabled()`, which allows every call.
+
+- **Store:** `rateLimit.store` picks the driver; only `memory` exists (`redis` is refused until its
+  driver lands as `ratelimit/redis`). The memory store runs GCRA over a map of at most
+  `rateLimit.maxKeys` keys (default 100 000), and the `ratelimit.janitor` worker drops refilled
+  keys every minute. When it is full, a new key first drops refilled keys (at most once a second),
+  then is refused (429) if the store is still full, so a flood of unique IPs or emails can lock out
+  new visitors until keys refill. Size `maxKeys` above the distinct IPs and emails you expect in 15
+  minutes; each key costs roughly 100 bytes, so the default is about 10 MB.
+- **Per instance:** the memory store counts on one replica only. With several replicas, limit at the
+  edge or use the Redis store once it exists.
+- **Client IP:** `layout.ClientIP` keys on `RemoteAddr`, or, when `http.trustedProxyHops` (env
+  `OAGENT_HTTP_TRUSTED_PROXY_HOPS`) is n >= 1, on the n-th `X-Forwarded-For` entry counted from the
+  right. Each trusted proxy appends the address it saw, so entries further left are whatever the
+  client sent. IPv6 is keyed by its /64. If the header has fewer than n entries, or that entry is
+  not an IP, `RemoteAddr` is used, never an entry further left.
+  - `0` (default): no proxy, oagent faces the internet.
+  - `1`: one proxy, e.g. Cloudflare only, or nginx only (`proxy_add_x_forwarded_for`).
+  - `2`: two proxies, e.g. Cloudflare in front of nginx.
+
+  **The origin must accept traffic only from the trusted proxies** (a firewall, or Cloudflare's
+  IP ranges only); a client that reaches oagent directly can write any `X-Forwarded-For` it likes.
+  With the setting too low behind proxies, every client shares a proxy IP, so the per-IP limits
+  (60 sign-ins per 15 minutes) apply to the whole site.
+
 ## Background workers
 
 The supervisor runs these next to the HTTP server.
@@ -190,6 +221,7 @@ The supervisor runs these next to the HTTP server.
 | `outbox` | claims due outbox entries, delivers signed webhooks | always |
 | `mailqueue.send` | claims due queued mail, sends it through the mailer, erases the sealed payload once sent or failed | always |
 | `apikey-usage` | batches `last_used_at` writes every 30 s | always |
+| `ratelimit.janitor` | drops rate limit keys that have fully refilled, every minute | when a rate limit group is on and `rateLimit.store` is `memory` |
 | `scheduler` | cron jobs (expired-session sweep) | `scheduler.enabled`, unless `--no-scheduler` or consumer-only |
 | queue consumer / listener | queue handlers (none yet) | when `queue.enabled` |
 
@@ -206,6 +238,7 @@ The supervisor runs these next to the HTTP server.
 | `console.go` | console SPA handler |
 | `outbox.go`, `schedulers.go`, `consumers.go`, `queue.go` | workers |
 | `mail.go` | the mailer driver (`mailer/console`, `mailer/smtp` or `mailer/resend`, picked by `mail.driver`), the sealed mail queue (`Services.MailQueue`) and its send worker |
+| `ratelimit.go` | the rate limit store (`ratelimit/memory`, picked by `rateLimit.store`) and one `ratelimit.Limiter` per group (`Services.AuthLimiter`); a group that is off gets `ratelimit.Disabled()` |
 | `db.go`, `sealer.go`, `telemetry.go` | pool, migrations, health, sealer, telemetry |
 | `options.go`, `app.go`, `remote.go` | boot options, the running `App` and its operator actions, the CLI graph |
 

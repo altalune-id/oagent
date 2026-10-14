@@ -26,6 +26,7 @@ import (
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/webhook"
 	"altalune.id/oagent/mailer"
+	"altalune.id/oagent/ratelimit"
 	"altalune.id/oagent/sealer"
 )
 
@@ -60,6 +61,7 @@ type Services struct {
 	InstallToken    install.Token
 	InstallRequired *atomic.Bool
 	Caps            capabilities.Capabilities
+	AuthLimiter     ratelimit.Limiter
 	StateSecret     []byte
 }
 
@@ -136,6 +138,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Install:      installer,
 		Legal:        buildLegal(k, cfg, users),
 		Caps:         caps,
+		AuthLimiter:  ratelimit.Disabled(),
 	}
 	members.WithEffects(memberEffects(cfg, svcs)).WithDirectory(memberDirectory{users: users, orgs: orgs})
 	installer.WithTerms(svcs.Legal)

@@ -44,6 +44,7 @@
   { "code": "INV003", "name": "InviteDraftExpired", "kind": "failed_precondition", "params": [], "reasons": [] },
   { "code": "AUT001", "name": "AuthInvalidCredentials", "kind": "unauthenticated", "params": [], "reasons": [] },
   { "code": "AUT002", "name": "AuthPasswordPolicy", "kind": "invalid", "params": ["min", "max"], "reasons": ["too_short", "too_long", "common", "repeated", "sequential", "contains_email", "contains_name"] },
+  { "code": "AUT003", "name": "AuthRateLimited", "kind": "resource_exhausted", "params": ["retry_after"], "reasons": [] },
   { "code": "INS001", "name": "InstallAlreadyDone", "kind": "already_exists", "params": [], "reasons": [] },
   { "code": "INS002", "name": "InstallRequired", "kind": "failed_precondition", "params": [], "reasons": [] },
   { "code": "WHK001", "name": "WebhookNotFound", "kind": "not_found", "params": [], "reasons": [] },

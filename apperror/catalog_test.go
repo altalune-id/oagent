@@ -37,6 +37,7 @@ func TestCatalog_EveryCodeHasItsKind(t *testing.T) {
 		"forbidden":           KindForbidden,
 		"failed_precondition": KindFailedPrecondition,
 		"internal":            KindInternal,
+		"resource_exhausted":  KindResourceExhausted,
 	}
 	entries := loadCatalog(t)
 	for _, e := range entries {

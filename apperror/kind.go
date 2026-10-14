@@ -16,6 +16,7 @@ const (
 	KindForbidden
 	KindFailedPrecondition
 	KindInternal
+	KindResourceExhausted
 )
 
 // KindOf returns the Kind of code; unknown codes are internal.
