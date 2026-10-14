@@ -320,3 +320,5 @@ The supervisor runs these next to the HTTP server.
    - **Readiness:** pass its check to `health.NewService` in `boot.go`.
 4. Add a worker or scheduler job in `boot.go` / `schedulers.go` if it needs one.
 5. Update this README: both diagrams, the domains table and the workers table.
+
+The full checklists for this and every other kind of change are in [docs/howto](../../docs/howto/README.md), starting with [module](../../docs/howto/module.md).
