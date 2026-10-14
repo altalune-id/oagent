@@ -56,6 +56,26 @@ It already covers orgs, projects, members, API keys and webhooks. The agent runt
 
 6. Open the one-time install link printed in the log, create the first owner account, and you land in the console at `http://localhost:5150/console/`.
 
+## Provision a production database
+
+`scripts/db/provision.sh` creates the database and three roles on any Postgres (self-hosted, RDS, Neon and others).
+It is safe to re-run, and a re-run sets the passwords you pass.
+
+| Role              | Purpose                                             |
+| ----------------- | --------------------------------------------------- |
+| `oagent_owner`    | owns the schema and tables; nobody logs in as it    |
+| `oagent_migrator` | runs migrations as the owner                        |
+| `oagent_service`  | used by the running app; reads and writes rows only |
+
+```sh
+ADMIN_URL='postgres://admin:...@db.example.com:5432?sslmode=require' \
+MIG_PW=gen SVC_PW=gen scripts/db/provision.sh
+```
+
+- Run it without the variables to be asked for each value.
+- `gen` creates a password and writes it to `oagent-db-credentials.env` (mode 0600). Passwords are never printed.
+- The script prints the matching `db.dsn`, `db.migrator.dsn`, `db.migrator.role` and `db.schema` settings.
+
 ## Run with Docker
 
 You don't need Go or Node to run oagent. The image holds the same binary with the UI embedded.

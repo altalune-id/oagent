@@ -8,6 +8,7 @@ coverage.*
 # Local config and secrets (examples live in config.example.yml and .env.example)
 /config.yml
 .env
+oagent-db-credentials.env
 
 # Node
 node_modules/
