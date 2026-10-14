@@ -79,9 +79,17 @@ func NewServer(opts ServerOpts) http.Handler {
 	} else {
 		outer.Handle("/", http.NotFoundHandler())
 	}
-	var root http.Handler = outer
+	mcpPrefix := layout.Path(opts.BasePath, "/mcp")
+	secured := middleware.SecurityHeaders(outer)
+	var root http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == mcpPrefix || strings.HasPrefix(r.URL.Path, mcpPrefix+"/") {
+			outer.ServeHTTP(w, r)
+			return
+		}
+		secured.ServeHTTP(w, r)
+	})
 	if opts.Gate != nil {
-		root = opts.Gate(outer)
+		root = opts.Gate(root)
 	}
 	return middleware.Recoverer(opts.Log, opts.Unexpected, middleware.RequestID(root))
 }

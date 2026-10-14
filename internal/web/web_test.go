@@ -202,3 +202,26 @@ func TestChain(t *testing.T) {
 		})
 	}
 }
+
+// SECURITY: pages and the console can't be framed by another site; /mcp is left alone because MCP hosts frame its views.
+func TestSecurityHeadersOnEverySurfaceButMCP(t *testing.T) {
+	ok := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
+	srv := NewServer(ServerOpts{
+		BasePath: "/app", APIHandler: ok, MCPHandler: ok, Console: ok,
+		Routes: []Registrar{registrarFunc(func(mux *http.ServeMux) { mux.Handle("GET /app/login", ok) })},
+	})
+	for _, p := range []string{"/app/login", "/app/console/", "/app/static/app.css", "/app/api/x.v1.S/M", "/app/nope"} {
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, p, nil))
+		assert.Equal(t, "DENY", rec.Header().Get("X-Frame-Options"), p)
+		assert.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"), p)
+	}
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/app/mcp", nil))
+	assert.Empty(t, rec.Header().Get("X-Frame-Options"), "/mcp")
+	assert.Empty(t, rec.Header().Get("Content-Security-Policy"), "/mcp")
+}
+
+type registrarFunc func(mux *http.ServeMux)
+
+func (f registrarFunc) Register(mux *http.ServeMux) { f(mux) }
