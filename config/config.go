@@ -26,6 +26,7 @@ type Config struct {
 	CLI        CLIConfig        `yaml:"cli"        mapstructure:"cli"`
 	Mail       MailConfig       `yaml:"mail"       mapstructure:"mail"`
 	RateLimit  RateLimitConfig  `yaml:"rateLimit"  mapstructure:"rateLimit"`
+	Redis      RedisConfig      `yaml:"redis"      mapstructure:"redis"`
 }
 
 // CLIConfig configures the oagent CLI; SessionFile may start with "~/", expanded when used.
@@ -213,5 +214,8 @@ func (c *Config) Validate() error {
 	if err := c.validateMail(); err != nil {
 		return err
 	}
-	return c.validateRateLimit()
+	if err := c.validateRateLimit(); err != nil {
+		return err
+	}
+	return c.validateRedis()
 }

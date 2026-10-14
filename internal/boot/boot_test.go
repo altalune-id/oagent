@@ -32,10 +32,10 @@ import (
 func restoreSeams(t *testing.T) {
 	t.Helper()
 	s, p, m, u, l := setupTelemetry, openPool, openMigrator, migrateUp, withLock
-	bq, nc, nl, ss := buildQueueFn, newConsumer, newListener, startSeq
+	bq, nc, nl, ss, or := buildQueueFn, newConsumer, newListener, startSeq, openRedisFn
 	t.Cleanup(func() {
 		setupTelemetry, openPool, openMigrator, migrateUp, withLock = s, p, m, u, l
-		buildQueueFn, newConsumer, newListener, startSeq = bq, nc, nl, ss
+		buildQueueFn, newConsumer, newListener, startSeq, openRedisFn = bq, nc, nl, ss, or
 	})
 }
 

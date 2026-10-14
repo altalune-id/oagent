@@ -89,6 +89,7 @@ func (l *Loader) Load(path string, opts ...Option) (*Config, error) {
 	if err := l.v.Unmarshal(&cfg, decode); err != nil {
 		return nil, fmt.Errorf("config: unmarshal: %w", err)
 	}
+	cfg.Redis.KeyPrefix = NormalizeRedisKeyPrefix(cfg.Redis.KeyPrefix)
 
 	if o.skipValidation {
 		return &cfg, nil
@@ -127,6 +128,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rateLimit.maxKeys", 100_000)
 	v.SetDefault("rateLimit.auth.enabled", false)
 	v.SetDefault("http.trustedProxyHops", 0)
+	v.SetDefault("redis.keyPrefix", "oagent:")
+	v.SetDefault("redis.maxConnections", 10)
+	v.SetDefault("redis.minIdleConnections", 0)
+	v.SetDefault("redis.maxIdleTime", "5m")
+	v.SetDefault("redis.connectTimeout", "5s")
+	v.SetDefault("redis.readTimeout", "3s")
+	v.SetDefault("redis.writeTimeout", "3s")
 	v.SetDefault("db.schema", "public")
 	v.SetDefault("db.autoMigrate", true)
 	v.SetDefault("db.health.interval", "30s")

@@ -17,7 +17,7 @@ import (
 )
 
 // Boot builds the runtime graph from cfg: telemetry, the DB pool, migrations, and the services.
-func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Option) (*App, error) {
+func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Option) (_ *App, err error) {
 	o := newOptions()
 	for _, opt := range opts {
 		opt(o)
@@ -66,6 +66,20 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 	k.Queue = qclient
 	k.AddCloser(qclient)
 
+	rh, err := buildRedis(ctx, &k, cfg, tp, log)
+	if err != nil {
+		_ = pool.Close()
+		_ = shutdown(ctx)
+		return nil, err
+	}
+	if rh != nil {
+		defer func() {
+			if err != nil {
+				_ = rh.client.Close()
+			}
+		}()
+	}
+
 	svcs := buildServices(k, cfg)
 	if svcs.Mailer, err = buildMailer(cfg); err != nil {
 		_ = pool.Close()
@@ -112,7 +126,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		buildHTTPHandler(httpSurfaces{
 			log:        log,
 			unexpected: k.Reporter.Unexpected,
-			probes:     health.NewWeb(health.NewService(dbHealth)),
+			probes:     health.NewWeb(health.NewService(readinessChecks(dbHealth, rh)...)),
 			basePath:   cfg.HTTP.BasePath,
 			api:        apiHandler,
 			console:    consoleHandler,
@@ -130,6 +144,9 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		log,
 	))
 	sup.Register(dbHealth)
+	if rh != nil {
+		sup.Register(rh)
+	}
 	sup.Register(buildOutboxWorker(svcs, log))
 	sup.Register(buildMailWorker(svcs, log))
 	sup.Register(svcs.KeyUsage)

@@ -177,6 +177,24 @@ rateLimit:
   # env: OAGENT_RATE_LIMIT_STORE
   store: memory
 
+redis:
+  # env: OAGENT_REDIS_CONNECT_TIMEOUT
+  connectTimeout: 5s
+  # env: OAGENT_REDIS_KEY_PREFIX
+  keyPrefix: "oagent:"
+  # env: OAGENT_REDIS_MAX_CONNECTIONS
+  maxConnections: 10
+  # env: OAGENT_REDIS_MAX_IDLE_TIME
+  maxIdleTime: 5m
+  # env: OAGENT_REDIS_MIN_IDLE_CONNECTIONS
+  minIdleConnections: 0
+  # env: OAGENT_REDIS_READ_TIMEOUT
+  readTimeout: 3s
+  # [secret] env: OAGENT_REDIS_URL
+  url: ""
+  # env: OAGENT_REDIS_WRITE_TIMEOUT
+  writeTimeout: 3s
+
 scheduler:
   # env: OAGENT_SCHEDULER_ENABLED
   enabled: true

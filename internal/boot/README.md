@@ -18,7 +18,8 @@ flowchart TD
     C -- yes --> D[migrate]
     C -- no --> E
     D --> E[kernel: log, pool, tracer, meter, reporter, queue]
-    E --> F[buildServices: every domain service, the mail queue]
+    E --> RD["buildRedis: opens Redis only when a feature selects it"]
+    RD --> F[buildServices: every domain service, the mail queue]
     F --> M[buildMailer: mail.driver picks mailer/console, mailer/smtp or mailer/resend]
     M --> R[buildLimiters: one limiter per rate limit group, Disabled unless switched on]
     R --> G[buildAuthSecrets: state secret, setup token]
@@ -52,6 +53,7 @@ flowchart TD
     MCPH["/mcp HTTP"] --> G4[InstallGate] --> A4["mcp.Authenticate: key or Basic, no cookie"] --> T4["tool scope check"] --> DC
     MCPS["oagent mcp stdio"] --> SYS["session.System() Principal"] --> T4
     LB["/healthz, /readyz"] --> HW["health web.go (no gate, session or CSRF)"] --> HS["health service.go"] --> DBH["db-health monitor"]
+    HS -. "when Redis is used" .-> RDH["redis-health monitor"]
 
     DC["domain controlplane.go"] --> SVC["domain service.go"]
     DW["domain web.go"] --> SVC
@@ -84,7 +86,7 @@ flowchart TD
 | `auth` | user, member, org, project, sessions, passwords; password resets (its own store, user, sessions, mail queue); the auth rate limiter on the web side | whoami; `UpdateProfile`, `ChangePassword`, `SignOutEverywhere` (people only; not MCP tools); CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | `auth_whoami` | `/login`, `/logout`, `/forgot-password`, `/reset-password/{token}`, `/reset-password` (local login only) |
 | `install` | user (create, accept terms), org, member, project; auth (sign-in) | — | — | `/install` (terms and privacy consent, `layout.Consent`) + `InstallGate` |
 | `legal` | user (accept terms), auth (rotate session); its own store (document snapshots, acceptance history) | — | — | `/terms`, `/privacy`, `/welcome` + `WelcomeGate` (asks again when the terms changed after the person accepted them) |
-| `health` | readiness checks (db-health monitor) | — | — | `/healthz`, `/readyz` (probes slot, root-anchored) |
+| `health` | readiness checks (db-health monitor; redis-health monitor when Redis is used) | — | — | `/healthz`, `/readyz` (probes slot, root-anchored) |
 
 Every domain follows the same file layout: `<domain>.go`, `errors.go`,
 `ports.go`, `store.go` + `pg*.go`, `service.go`, then one file per surface
@@ -193,6 +195,37 @@ versions were first published. With `compliance.termsURL` or `compliance.privacy
 is snapshotted and no history is kept (a known limit); the gate then uses
 `compliance.termsUpdatedAt`, which may not be in the future.
 
+## Redis
+
+oagent has one Redis connection, `redis.*`, and opens it **only when a feature selects it**. Each
+feature picks its store in its own block; today only `rateLimit.store: redis` does (with a rate
+limit group on). With the default config oagent never connects to Redis; a `redis.url` that no
+feature uses is ignored with one INFO line.
+
+- **Config:** `redis.url` (secret; `redis://[user:password@]host:port[/db]`, or `rediss://` for
+  TLS), `redis.keyPrefix` (default `oagent:`), `redis.maxConnections` (10),
+  `redis.minIdleConnections` (0), `redis.maxIdleTime` (5m), `redis.connectTimeout` (5s),
+  `redis.readTimeout` (3s), `redis.writeTimeout` (3s). Env: `OAGENT_REDIS_URL`,
+  `OAGENT_REDIS_KEY_PREFIX`, … A feature on `redis` with no `redis.url`, or a URL that is not
+  `redis://` or `rediss://`, is a config error. Single-node URLs only.
+- **Connection:** `redis.go` (`openRedis`) parses the URL, sets the pool and timeouts, adds
+  tracing (`redisotel`, without command text) and pings once within `redis.connectTimeout`. A Redis
+  that can't be reached fails boot with `redis: cannot connect to <host> (redis.url): …`; no error
+  carries the password. Consumers take the plain go-redis `redis.UniversalClient` and their key
+  prefix; there is no wrapper package. Every process that boots the `App` (server, workers,
+  operator commands) gets it here; remote CLI commands never touch Redis.
+- **Shutdown and readiness:** the kernel closes the connection on shutdown (and a failed boot
+  closes it). The `redis-health` worker pings every 5 s; while Redis does not answer, `/readyz`
+  answers 503. It never stops the process.
+- **Key prefix (shared Redis):** every key starts with `redis.keyPrefix` (letters, digits and
+  `. _ : -`, 1-64 characters; a trailing `:` is added), then a namespace per feature (`rl:` for
+  rate limits, `cache:` later). On a Redis shared by several deployments or environments, give
+  each its own prefix (`oagent:prod:`, `oagent:staging:`) or its own database number in the URL
+  (`redis://host:6379/2`). Never share a prefix between deployments that should not share limits.
+  oagent never runs `FLUSHDB`, `KEYS` or `SCAN` over the instance.
+- **Cache (later):** a cache gets its own `cache.*` block with `cache.store: memory | redis`,
+  reuses this connection and puts its keys under `<prefix>cache:`.
+
 ## Rate limits
 
 oagent's own rate limiter is **off by default**: many deployments limit at the edge (a CDN, nginx,
@@ -240,6 +273,7 @@ The supervisor runs these next to the HTTP server.
 |---|---|---|
 | `http` | the HTTP server (all surfaces above) | always |
 | `db-health` | pings the pool; `health` reads it for `/readyz` | always |
+| `redis-health` | pings Redis every 5 s; `health` reads it for `/readyz` | when a feature uses Redis |
 | `outbox` | claims due outbox entries, delivers signed webhooks | always |
 | `mailqueue.send` | claims due queued mail, sends it through the mailer, erases the sealed payload once sent or failed | always |
 | `apikey-usage` | batches `last_used_at` writes every 30 s | always |
@@ -261,6 +295,7 @@ The supervisor runs these next to the HTTP server.
 | `outbox.go`, `schedulers.go`, `consumers.go`, `queue.go` | workers |
 | `mail.go` | the mailer driver (`mailer/console`, `mailer/smtp` or `mailer/resend`, picked by `mail.driver`), the sealed mail queue (`Services.MailQueue`) and its send worker |
 | `ratelimit.go` | the rate limit store (`ratelimit/memory`, picked by `rateLimit.store`) and one `ratelimit.Limiter` per group (`Services.AuthLimiter`); a group that is off gets `ratelimit.Disabled()` |
+| `redis.go` | the shared Redis connection (only when a feature selects it), its closer and its `redis-health` readiness worker |
 | `db.go`, `sealer.go`, `telemetry.go` | pool, migrations, health, sealer, telemetry |
 | `options.go`, `app.go`, `remote.go` | boot options, the running `App` and its operator actions, the CLI graph |
 
