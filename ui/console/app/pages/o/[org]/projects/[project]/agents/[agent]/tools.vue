@@ -1,7 +1,7 @@
 <script setup lang="ts">
-const { t } = useI18n()
-const route = useRoute()
-useHead({ title: () => `${route.params.agent} · ${t('nav.tools')} · oagent` })
+const { t } = useI18n();
+const route = useRoute();
+useHead({ title: () => `${route.params.agent} · ${t('nav.tools')} · oagent` });
 </script>
 
 <template>

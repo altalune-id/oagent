@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest';
 
-import { mcpSnippet } from './mcpSnippet'
+import { mcpSnippet } from './mcpSnippet';
 
 describe('mcpSnippet', () => {
   it('is a valid .mcp.json entry with the bearer key and the URL', () => {
-    const snippet = mcpSnippet('oagent', 'https://oagent.example.com/app/mcp', 'oagent_secret')
-    const parsed = JSON.parse(snippet)
+    const snippet = mcpSnippet('oagent', 'https://oagent.example.com/app/mcp', 'oagent_secret');
+    const parsed = JSON.parse(snippet);
     expect(parsed).toEqual({
       mcpServers: {
         oagent: {
@@ -14,7 +14,7 @@ describe('mcpSnippet', () => {
           headers: { Authorization: 'Bearer oagent_secret' },
         },
       },
-    })
-    expect(snippet).toContain('\n  ')
-  })
-})
+    });
+    expect(snippet).toContain('\n  ');
+  });
+});

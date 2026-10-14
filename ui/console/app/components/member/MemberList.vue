@@ -1,46 +1,46 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { ShownError } from '../../lib/apperror/message'
-import AppModal from '../ui/AppModal.vue'
-import ErrorText from '../ui/ErrorText.vue'
-import { displayName } from './names'
+import type { ShownError } from '../../lib/apperror/message';
+import { computed } from 'vue';
+import AppModal from '../ui/AppModal.vue';
+import ErrorText from '../ui/ErrorText.vue';
+import { displayName } from './names';
 
 export interface MemberListRow {
-  userId: string
-  email: string
-  name: string
-  role: string
-  initials: string
-  self: boolean
-  roles: string[]
-  removable: boolean
+  userId: string;
+  email: string;
+  name: string;
+  role: string;
+  initials: string;
+  self: boolean;
+  roles: string[];
+  removable: boolean;
 }
 
 export interface MemberListLabels {
-  member: string
-  role: string
-  you: string
-  owner: string
-  admin: string
-  memberRole: string
-  remove: string
-  leave: string
-  cancel: string
-  removeTitle: string
-  leaveTitle: string
-  roleTitle: string
-  changeRole: string
-  empty: string
+  member: string;
+  role: string;
+  you: string;
+  owner: string;
+  admin: string;
+  memberRole: string;
+  remove: string;
+  leave: string;
+  cancel: string;
+  removeTitle: string;
+  leaveTitle: string;
+  roleTitle: string;
+  changeRole: string;
+  empty: string;
 }
 
 const props = withDefaults(defineProps<{
-  rows: MemberListRow[]
-  canLeave?: boolean
-  busy?: boolean
-  error?: ShownError | null
-  confirming?: { kind: 'remove' | 'leave' | 'role', name: string } | null
-  confirmMessage?: string
-  labels?: MemberListLabels
+  rows: MemberListRow[],
+  canLeave?: boolean,
+  busy?: boolean,
+  error?: ShownError | null,
+  confirming?: { kind: 'remove' | 'leave' | 'role', name: string } | null,
+  confirmMessage?: string,
+  labels?: MemberListLabels,
 }>(), {
   canLeave: false,
   busy: false,
@@ -63,56 +63,56 @@ const props = withDefaults(defineProps<{
     changeRole: 'Change role',
     empty: 'No members yet.',
   }),
-})
+});
 
 const emit = defineEmits<{
-  role: [userId: string, role: string]
-  remove: [userId: string]
-  leave: []
-  confirm: []
-  cancel: []
-}>()
+  role: [userId: string, role: string],
+  remove: [userId: string],
+  leave: [],
+  confirm: [],
+  cancel: [],
+}>();
 
 function roleLabel(role: string): string {
   switch (role) {
     case 'owner':
-      return props.labels.owner
+      return props.labels.owner;
     case 'admin':
-      return props.labels.admin
+      return props.labels.admin;
     case 'member':
-      return props.labels.memberRole
+      return props.labels.memberRole;
     default:
-      return role
+      return role;
   }
 }
 
 const confirmTitle = computed(() => {
   switch (props.confirming?.kind) {
     case 'leave':
-      return props.labels.leaveTitle
+      return props.labels.leaveTitle;
     case 'role':
-      return props.labels.roleTitle
+      return props.labels.roleTitle;
     default:
-      return props.labels.removeTitle
+      return props.labels.removeTitle;
   }
-})
+});
 
 const confirmAction = computed(() => {
   switch (props.confirming?.kind) {
     case 'leave':
-      return props.labels.leave
+      return props.labels.leave;
     case 'role':
-      return props.labels.changeRole
+      return props.labels.changeRole;
     default:
-      return props.labels.remove
+      return props.labels.remove;
   }
-})
+});
 
 function onRole(m: MemberListRow, event: Event) {
-  const select = event.target as HTMLSelectElement
-  const role = select.value
-  select.value = m.role
-  emit('role', m.userId, role)
+  const select = event.target as HTMLSelectElement;
+  const role = select.value;
+  select.value = m.role;
+  emit('role', m.userId, role);
 }
 </script>
 

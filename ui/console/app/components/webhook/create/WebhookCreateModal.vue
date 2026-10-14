@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import AppButton from '~/components/ui/AppButton.vue'
-import AppModal from '~/components/ui/AppModal.vue'
-import SecretField from '~/components/ui/SecretField.vue'
-import { webhookEvents } from '~/components/webhook/events'
-import { useWebhookCreate } from './useWebhookCreate'
-import ErrorText from '~/components/ui/ErrorText.vue'
-import FieldError from '~/components/ui/FieldError.vue'
+import AppButton from '~/components/ui/AppButton.vue';
+import AppModal from '~/components/ui/AppModal.vue';
+import ErrorText from '~/components/ui/ErrorText.vue';
+import FieldError from '~/components/ui/FieldError.vue';
+import SecretField from '~/components/ui/SecretField.vue';
+import { webhookEvents } from '~/components/webhook/events';
+import { useWebhookCreate } from './useWebhookCreate';
 
-const { orgId, projectId } = defineProps<{ orgId: string, projectId: string }>()
+const { orgId, projectId } = defineProps<{ orgId: string, projectId: string }>();
 
-const { t } = useI18n()
-const create = useWebhookCreate(orgId, projectId)
-const { open, url, description, eventTypes, busy, error, fieldErrors, secret, pingBusy, pingError, pinged } = create
+const { t } = useI18n();
+const create = useWebhookCreate(orgId, projectId);
+const { open, url, description, eventTypes, busy, error, fieldErrors, secret, pingBusy, pingError, pinged } = create;
 </script>
 
 <template>

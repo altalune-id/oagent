@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/vue3-vite'
-import AppStats from './AppStats.vue'
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import AppStats from './AppStats.vue';
 
 const meta = {
   title: 'UI/AppStats',
@@ -11,10 +11,10 @@ const meta = {
       { label: 'Members', value: 1 },
     ],
   },
-} satisfies Meta<typeof AppStats>
+} satisfies Meta<typeof AppStats>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: args => ({
@@ -22,4 +22,4 @@ export const Default: Story = {
     setup: () => ({ args }),
     template: '<AppStats v-bind="args" />',
   }),
-}
+};

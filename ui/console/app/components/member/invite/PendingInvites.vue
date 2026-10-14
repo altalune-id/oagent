@@ -1,44 +1,44 @@
 <script setup lang="ts">
-import type { Invite } from '../../../stores/invites'
-import type { ShownError } from '../../../lib/apperror/message'
-import AppModal from '../../ui/AppModal.vue'
-import ErrorText from '../../ui/ErrorText.vue'
-import SecretField from '../../ui/SecretField.vue'
+import type { ShownError } from '../../../lib/apperror/message';
+import type { Invite } from '../../../stores/invites';
+import AppModal from '../../ui/AppModal.vue';
+import ErrorText from '../../ui/ErrorText.vue';
+import SecretField from '../../ui/SecretField.vue';
 
 export interface PendingInvitesLabels {
-  title: string
-  draftsTitle: string
-  draftsHint: string
-  email: string
-  role: string
-  status: string
-  invitedBy: string
-  expires: string
-  pending: string
-  expired: string
-  owner: string
-  admin: string
-  member: string
-  resend: string
-  revoke: string
-  revokeTitle: string
-  confirmDraft: string
-  discard: string
-  cancel: string
-  newLink: string
-  copy: string
+  title: string;
+  draftsTitle: string;
+  draftsHint: string;
+  email: string;
+  role: string;
+  status: string;
+  invitedBy: string;
+  expires: string;
+  pending: string;
+  expired: string;
+  owner: string;
+  admin: string;
+  member: string;
+  resend: string;
+  revoke: string;
+  revokeTitle: string;
+  confirmDraft: string;
+  discard: string;
+  cancel: string;
+  newLink: string;
+  copy: string;
 }
 
 const props = withDefaults(defineProps<{
-  pending: Invite[]
-  drafts: Invite[]
-  canManage?: boolean
-  busy?: boolean
-  error?: ShownError | null
-  rowLink?: { id: string, link: string } | null
-  confirming?: { id: string } | null
-  confirmMessage?: string
-  labels?: PendingInvitesLabels
+  pending: Invite[],
+  drafts: Invite[],
+  canManage?: boolean,
+  busy?: boolean,
+  error?: ShownError | null,
+  rowLink?: { id: string, link: string } | null,
+  confirming?: { id: string } | null,
+  confirmMessage?: string,
+  labels?: PendingInvitesLabels,
 }>(), {
   canManage: false,
   busy: false,
@@ -69,27 +69,27 @@ const props = withDefaults(defineProps<{
     newLink: 'New link. Share it if the email doesn\'t arrive:',
     copy: 'Copy link',
   }),
-})
+});
 
 const emit = defineEmits<{
-  resend: [id: string]
-  revoke: [id: string]
-  confirmDraft: [id: string]
-  discard: [id: string]
-  confirm: []
-  cancel: []
-}>()
+  resend: [id: string],
+  revoke: [id: string],
+  confirmDraft: [id: string],
+  discard: [id: string],
+  confirm: [],
+  cancel: [],
+}>();
 
 function roleLabel(r: string): string {
-  return ({ owner: props.labels.owner, admin: props.labels.admin, member: props.labels.member } as Record<string, string>)[r] ?? r
+  return ({ owner: props.labels.owner, admin: props.labels.admin, member: props.labels.member } as Record<string, string>)[r] ?? r;
 }
 
 function statusLabel(s: string): string {
-  return s === 'expired' ? props.labels.expired : props.labels.pending
+  return s === 'expired' ? props.labels.expired : props.labels.pending;
 }
 
 function when(d?: Date): string {
-  return d ? d.toLocaleString() : ''
+  return d ? d.toLocaleString() : '';
 }
 </script>
 

@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/vue3-vite'
-import EntitySelect from './EntitySelect.vue'
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import EntitySelect from './EntitySelect.vue';
 
 const meta = {
   title: 'UI/EntitySelect',
@@ -16,10 +16,10 @@ const meta = {
     pinLabel: 'Pin',
     unpinLabel: 'Unpin',
   },
-} satisfies Meta<typeof EntitySelect>
+} satisfies Meta<typeof EntitySelect>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: args => ({
@@ -27,7 +27,7 @@ export const Default: Story = {
     setup: () => ({ args }),
     template: '<div class="p-24"><EntitySelect v-bind="args" /></div>',
   }),
-}
+};
 
 export const WithActions: Story = {
   render: args => ({
@@ -40,7 +40,7 @@ export const WithActions: Story = {
       </template>
     </EntitySelect></div>`,
   }),
-}
+};
 
 export const Empty: Story = {
   args: { items: [], label: 'Select organization', icon: '', placeholder: true, empty: 'No organizations yet.' },
@@ -49,4 +49,4 @@ export const Empty: Story = {
     setup: () => ({ args }),
     template: '<div class="p-24"><EntitySelect v-bind="args" /></div>',
   }),
-}
+};

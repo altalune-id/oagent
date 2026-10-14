@@ -1,16 +1,18 @@
 <script setup lang="ts">
 const { open = false, title = '' } = defineProps<{
-  open?: boolean
-  title?: string
-}>()
+  open?: boolean,
+  title?: string,
+}>();
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: [] }>();
 </script>
 
 <template>
   <dialog class="modal" :class="{ 'modal-open': open }" @cancel.prevent="emit('close')">
     <div class="modal-box">
-      <h3 v-if="title" class="text-lg font-bold">{{ title }}</h3>
+      <h3 v-if="title" class="text-lg font-bold">
+        {{ title }}
+      </h3>
       <div class="py-4">
         <slot />
       </div>
@@ -19,7 +21,9 @@ const emit = defineEmits<{ close: [] }>()
       </div>
     </div>
     <form method="dialog" class="modal-backdrop">
-      <button type="submit" @click="emit('close')">close</button>
+      <button type="submit" @click="emit('close')">
+        close
+      </button>
     </form>
   </dialog>
 </template>

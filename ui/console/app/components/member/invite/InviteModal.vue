@@ -1,33 +1,33 @@
 <script setup lang="ts">
-import type { ShownError } from '../../../lib/apperror/message'
-import AppModal from '../../ui/AppModal.vue'
-import ErrorText from '../../ui/ErrorText.vue'
-import FieldError from '../../ui/FieldError.vue'
-import SecretField from '../../ui/SecretField.vue'
+import type { ShownError } from '../../../lib/apperror/message';
+import AppModal from '../../ui/AppModal.vue';
+import ErrorText from '../../ui/ErrorText.vue';
+import FieldError from '../../ui/FieldError.vue';
+import SecretField from '../../ui/SecretField.vue';
 
 export interface InviteModalLabels {
-  title: string
-  email: string
-  role: string
-  owner: string
-  admin: string
-  member: string
-  send: string
-  cancel: string
-  done: string
-  linkHint: string
-  copy: string
+  title: string;
+  email: string;
+  role: string;
+  owner: string;
+  admin: string;
+  member: string;
+  send: string;
+  cancel: string;
+  done: string;
+  linkHint: string;
+  copy: string;
 }
 
 const props = withDefaults(defineProps<{
-  open: boolean
-  roles: string[]
-  busy?: boolean
-  error?: ShownError | null
-  fieldErrors?: Record<string, string>
-  sentLink?: string
-  sentMessage?: string
-  labels?: InviteModalLabels
+  open: boolean,
+  roles: string[],
+  busy?: boolean,
+  error?: ShownError | null,
+  fieldErrors?: Record<string, string>,
+  sentLink?: string,
+  sentMessage?: string,
+  labels?: InviteModalLabels,
 }>(), {
   busy: false,
   error: null,
@@ -47,14 +47,13 @@ const props = withDefaults(defineProps<{
     linkHint: 'Share this link if the email doesn\'t arrive. It is shown only now.',
     copy: 'Copy link',
   }),
-})
+});
 
-const email = defineModel<string>('email', { default: '' })
-const role = defineModel<string>('role', { default: 'member' })
-const emit = defineEmits<{ submit: [], close: [] }>()
-
+const emit = defineEmits<{ submit: [], close: [] }>();
+const email = defineModel<string>('email', { default: '' });
+const role = defineModel<string>('role', { default: 'member' });
 function roleLabel(r: string): string {
-  return ({ owner: props.labels.owner, admin: props.labels.admin, member: props.labels.member } as Record<string, string>)[r] ?? r
+  return ({ owner: props.labels.owner, admin: props.labels.admin, member: props.labels.member } as Record<string, string>)[r] ?? r;
 }
 </script>
 
@@ -69,7 +68,7 @@ function roleLabel(r: string): string {
       </p>
       <SecretField :value="sentLink" :label="labels.copy" />
     </div>
-    <form v-else novalidate id="invite-form" class="space-y-3" @submit.prevent="emit('submit')">
+    <form v-else id="invite-form" novalidate class="space-y-3" @submit.prevent="emit('submit')">
       <ErrorText :error="error" />
       <label class="floating-label block">
         <span>{{ labels.email }}</span>

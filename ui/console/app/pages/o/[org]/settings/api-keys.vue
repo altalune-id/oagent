@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import APIKeyCreateModal from '~/components/apikey/create/APIKeyCreateModal.vue'
-import APIKeyList from '~/components/apikey/list/APIKeyList.vue'
-import { grants } from '~/components/apikey/personal/grants'
-import { useAuthStore } from '~/stores/auth'
-import { useOrgsStore } from '~/stores/orgs'
+import APIKeyCreateModal from '~/components/apikey/create/APIKeyCreateModal.vue';
+import APIKeyList from '~/components/apikey/list/APIKeyList.vue';
+import { grants } from '~/components/apikey/personal/grants';
+import { useAuthStore } from '~/stores/auth';
+import { useOrgsStore } from '~/stores/orgs';
 
-const route = useRoute()
-const { t } = useI18n()
-const orgs = useOrgsStore()
-const org = computed(() => orgs.bySlug(route.params.org as string))
-const auth = useAuthStore()
-await auth.load()
+const route = useRoute();
+const { t } = useI18n();
+const orgs = useOrgsStore();
+const org = computed(() => orgs.bySlug(route.params.org as string));
+const auth = useAuthStore();
+await auth.load();
 // NOTE: with nobody signed in (before credentials are required) the button stays; the server decides.
-const canManage = computed(() => !auth.me || auth.me.operator || grants(auth.me.permissions, 'apikey:write'))
+const canManage = computed(() => !auth.me || auth.me.operator || grants(auth.me.permissions, 'apikey:write'));
 
-useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('apikeys.title')} · oagent` })
+useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('apikeys.title')} · oagent` });
 </script>
 
 <template>

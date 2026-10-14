@@ -1,24 +1,24 @@
 <script setup lang="ts">
-import AppButton from '~/components/ui/AppButton.vue'
-import CopyButton from '~/components/ui/CopyButton.vue'
-import ProjectEditModal from '~/components/project/edit/ProjectEditModal.vue'
-import type { Project } from '~/stores/projects'
-import { useOrgsStore } from '~/stores/orgs'
-import { useProjectsStore } from '~/stores/projects'
-import { useUIStore } from '~/stores/ui'
-import ErrorText from '~/components/ui/ErrorText.vue'
+import type { Project } from '~/stores/projects';
+import ProjectEditModal from '~/components/project/edit/ProjectEditModal.vue';
+import AppButton from '~/components/ui/AppButton.vue';
+import CopyButton from '~/components/ui/CopyButton.vue';
+import ErrorText from '~/components/ui/ErrorText.vue';
+import { useOrgsStore } from '~/stores/orgs';
+import { useProjectsStore } from '~/stores/projects';
+import { useUIStore } from '~/stores/ui';
 
-const route = useRoute()
-const { t } = useI18n()
-const orgs = useOrgsStore()
-const projects = useProjectsStore()
-const ui = useUIStore()
-const org = computed(() => orgs.bySlug(route.params.org as string))
-const items = computed(() => (org.value ? projects.forOrg(org.value.id) : []))
+const route = useRoute();
+const { t } = useI18n();
+const orgs = useOrgsStore();
+const projects = useProjectsStore();
+const ui = useUIStore();
+const org = computed(() => orgs.bySlug(route.params.org as string));
+const items = computed(() => (org.value ? projects.forOrg(org.value.id) : []));
 
-const editModal = ref<InstanceType<typeof ProjectEditModal>>()
+const editModal = ref<InstanceType<typeof ProjectEditModal>>();
 function edit(project: Project) {
-  editModal.value?.show(project)
+  editModal.value?.show(project);
 }
 </script>
 
@@ -58,7 +58,9 @@ function edit(project: Project) {
                 <CopyButton :value="project.id" :label="t('common.copy')" />
               </span>
             </td>
-            <td class="text-base-content/60">{{ project.slug }}</td>
+            <td class="text-base-content/60">
+              {{ project.slug }}
+            </td>
             <td class="whitespace-nowrap text-right">
               <NuxtLink :to="`/o/${org?.slug}/projects/${project.slug}`" class="btn btn-ghost btn-xs">
                 <Icon name="lucide:external-link" size="14" />

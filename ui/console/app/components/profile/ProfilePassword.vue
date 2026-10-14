@@ -1,35 +1,37 @@
 <script setup lang="ts">
-import ErrorText from '../ui/ErrorText.vue'
-import FieldError from '../ui/FieldError.vue'
-import type { ShownError } from '../../lib/apperror/message'
+import type { ShownError } from '../../lib/apperror/message';
+import ErrorText from '../ui/ErrorText.vue';
+import FieldError from '../ui/FieldError.vue';
 
 export interface ProfilePasswordLabels {
-  title: string
-  current: string
-  next: string
-  rules: string
-  hint: string
-  change: string
+  title: string;
+  current: string;
+  next: string;
+  rules: string;
+  hint: string;
+  change: string;
 }
 
-const current = defineModel<string>('current', { required: true })
-const next = defineModel<string>('next', { required: true })
 const { email = '', busy = false, notice = '', error = null, fieldErrors = {}, labels } = defineProps<{
-  email?: string
-  busy?: boolean
-  notice?: string
-  error?: ShownError | null
+  email?: string,
+  busy?: boolean,
+  notice?: string,
+  error?: ShownError | null,
   // fieldErrors are keyed by request field: current_password, new_password.
-  fieldErrors?: Record<string, string>
-  labels: ProfilePasswordLabels
-}>()
-const emit = defineEmits<{ submit: [] }>()
+  fieldErrors?: Record<string, string>,
+  labels: ProfilePasswordLabels,
+}>();
+const emit = defineEmits<{ submit: [] }>();
+const current = defineModel<string>('current', { required: true });
+const next = defineModel<string>('next', { required: true });
 </script>
 
 <template>
   <form novalidate class="card border border-base-300 bg-base-100" @submit.prevent="emit('submit')">
     <div class="card-body gap-3">
-      <h2 class="card-title text-base">{{ labels.title }}</h2>
+      <h2 class="card-title text-base">
+        {{ labels.title }}
+      </h2>
       <input type="email" name="email" :value="email" autocomplete="username" class="hidden" readonly>
       <label class="floating-label">
         <span>{{ labels.current }}</span>
@@ -47,12 +49,20 @@ const emit = defineEmits<{ submit: [] }>()
         >
         <FieldError id="new-password-error" :message="fieldErrors.new_password" />
       </label>
-      <p id="new-password-rules" class="text-xs text-base-content/60">{{ labels.rules }}</p>
+      <p id="new-password-rules" class="text-xs text-base-content/60">
+        {{ labels.rules }}
+      </p>
       <ErrorText :error="error" />
-      <p v-if="notice" role="status" class="text-sm text-success">{{ notice }}</p>
+      <p v-if="notice" role="status" class="text-sm text-success">
+        {{ notice }}
+      </p>
       <div class="card-actions items-center justify-between">
-        <p class="text-xs text-base-content/60">{{ labels.hint }}</p>
-        <button type="submit" class="btn btn-primary btn-sm" :disabled="busy">{{ labels.change }}</button>
+        <p class="text-xs text-base-content/60">
+          {{ labels.hint }}
+        </p>
+        <button type="submit" class="btn btn-primary btn-sm" :disabled="busy">
+          {{ labels.change }}
+        </button>
       </div>
     </div>
   </form>

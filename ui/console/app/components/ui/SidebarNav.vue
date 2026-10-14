@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import type { NavItem } from './types'
+import type { NavItem } from './types';
 
 withDefaults(defineProps<{
-  label?: string
-  items: NavItem[]
-  version?: string
+  label?: string,
+  items: NavItem[],
+  version?: string,
 }>(), {
   label: '',
   version: '',
-})
+});
 
-const emit = defineEmits<{ select: [key: string] }>()
-const slots = useSlots()
+const emit = defineEmits<{ select: [key: string] }>();
+const slots = useSlots();
 </script>
 
 <template>

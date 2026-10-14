@@ -112,7 +112,7 @@ lint-js: ## run ESLint over ui/, docs and every JS/TS/Vue/JSON/Markdown/CSS file
 lint-config: ## run yamllint, hadolint, actionlint and shellcheck (binary, else Docker, else skipped)
 	scripts/lint/tool.sh yamllint --strict -c .yamllint.yaml .
 	@if [ -f Dockerfile ]; then scripts/lint/tool.sh hadolint Dockerfile; fi
-	@if [ -d .github/workflows ]; then scripts/lint/tool.sh actionlint; fi
+	@if ls .github/workflows/*.y*ml >/dev/null 2>&1; then scripts/lint/tool.sh actionlint; fi
 	scripts/lint/tool.sh shellcheck $$(git ls-files -co --exclude-standard -- '*.sh' .husky/pre-commit .husky/pre-push ':!:.agents' ':!:.claude')
 
 .PHONY: comment-check

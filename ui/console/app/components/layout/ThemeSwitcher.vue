@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import ThemeToggle from '~/components/ui/ThemeToggle.vue'
-import { useTheme } from '~/components/layout/useTheme'
+import { useTheme } from '~/components/layout/useTheme';
+import ThemeToggle from '~/components/ui/ThemeToggle.vue';
 
-const { t } = useI18n()
-const { mode, supportsMode, toggle } = useTheme()
+const { t } = useI18n();
+const { mode, supportsMode, toggle } = useTheme();
 </script>
 
 <template>

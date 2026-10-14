@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue'
-import { useOrgCreate } from './useOrgCreate'
-import ErrorText from '~/components/ui/ErrorText.vue'
-import FieldError from '~/components/ui/FieldError.vue'
+import AppModal from '~/components/ui/AppModal.vue';
+import ErrorText from '~/components/ui/ErrorText.vue';
+import FieldError from '~/components/ui/FieldError.vue';
+import { useOrgCreate } from './useOrgCreate';
 
-const { t } = useI18n()
-const { open, name, slug, busy, error, fieldErrors, hide, submit } = useOrgCreate()
+const { t } = useI18n();
+const { open, name, slug, busy, error, fieldErrors, hide, submit } = useOrgCreate();
 </script>
 
 <template>

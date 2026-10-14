@@ -1,30 +1,30 @@
 <script setup lang="ts">
-import CopyButton from '~/components/ui/CopyButton.vue'
-import { useAgentsStore } from '~/stores/agents'
-import { useOrgsStore } from '~/stores/orgs'
-import { useProjectsStore } from '~/stores/projects'
+import CopyButton from '~/components/ui/CopyButton.vue';
+import { useAgentsStore } from '~/stores/agents';
+import { useOrgsStore } from '~/stores/orgs';
+import { useProjectsStore } from '~/stores/projects';
 
-const { t } = useI18n()
-const route = useRoute()
-const orgs = useOrgsStore()
-const projects = useProjectsStore()
-const agents = useAgentsStore()
+const { t } = useI18n();
+const route = useRoute();
+const orgs = useOrgsStore();
+const projects = useProjectsStore();
+const agents = useAgentsStore();
 
-const org = computed(() => orgs.bySlug(route.params.org as string))
+const org = computed(() => orgs.bySlug(route.params.org as string));
 const project = computed(() =>
   projects.items.find(item => item.orgId === org.value?.id && item.slug === route.params.project),
-)
+);
 const agent = computed(() =>
   (project.value ? agents.items.find(a => a.projectId === project.value!.id && a.slug === route.params.agent) : undefined),
-)
+);
 
 watch(project, (value) => {
   if (value) {
-    agents.ensureLoaded(value.id)
+    agents.ensureLoaded(value.id);
   }
-}, { immediate: true })
+}, { immediate: true });
 
-useHead({ title: () => `${agent.value?.name ?? route.params.agent} · ${t('nav.general')} · oagent` })
+useHead({ title: () => `${agent.value?.name ?? route.params.agent} · ${t('nav.general')} · oagent` });
 </script>
 
 <template>

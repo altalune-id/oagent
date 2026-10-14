@@ -45,19 +45,27 @@ export function whoamiTitle(data: WhoamiData): string {
 export function whoamiRows(data: WhoamiData): Row[] {
   const rows: Row[] = [];
   const add = (label: string, value: string | undefined) => {
-    if (value) rows.push({ label, value });
+    if (value) {
+      rows.push({ label, value });
+    }
   };
   if (data.source === 'apikey') {
-    if (data.ownerId) add('Acts for', data.name && data.email ? `${data.name} <${data.email}>` : data.email || data.name);
-    if (data.keyHint) add('Key', `…${data.keyHint}`);
+    if (data.ownerId) {
+      add('Acts for', data.name && data.email ? `${data.name} <${data.email}>` : data.email || data.name);
+    }
+    if (data.keyHint) {
+      add('Key', `…${data.keyHint}`);
+    }
   } else if (data.source !== 'system' && data.source !== 'basic') {
-    if (data.name) add('Email', data.email);
+    if (data.name) {
+      add('Email', data.email);
+    }
   }
   add('Org', data.activeOrgSlug);
   return rows;
 }
 
-export function permissionBadges(permissions: string[] | undefined, max = 8): { shown: string[]; more: number } {
+export function permissionBadges(permissions: string[] | undefined, max = 8): { shown: string[], more: number } {
   const all = permissions ?? [];
   return { shown: all.slice(0, max), more: Math.max(0, all.length - max) };
 }

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { useTheme } from '~/components/layout/useTheme'
+import { useTheme } from '~/components/layout/useTheme';
 
-const { init } = useTheme()
+const { init } = useTheme();
 
-onMounted(init)
+onMounted(init);
 </script>
 
 <template>

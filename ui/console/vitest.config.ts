@@ -1,6 +1,6 @@
-import { fileURLToPath } from 'node:url'
-import { defineConfig, mergeConfig } from 'vitest/config'
-import base from '@oagent/vitest-config/node'
+import { fileURLToPath } from 'node:url';
+import base from '@oagent/vitest-config/node';
+import { defineConfig, mergeConfig } from 'vitest/config';
 
 export default mergeConfig(base, defineConfig({
   // Nuxt sets import.meta.client at build time; the console is a client-only SPA.
@@ -23,4 +23,4 @@ export default mergeConfig(base, defineConfig({
       thresholds: { lines: 90, statements: 90, functions: 90, branches: 85 },
     },
   },
-}))
+}));

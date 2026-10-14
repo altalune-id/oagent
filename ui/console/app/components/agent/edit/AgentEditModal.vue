@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue'
-import { useAgentEdit } from './useAgentEdit'
-import ErrorText from '~/components/ui/ErrorText.vue'
-import FieldError from '~/components/ui/FieldError.vue'
+import AppModal from '~/components/ui/AppModal.vue';
+import ErrorText from '~/components/ui/ErrorText.vue';
+import FieldError from '~/components/ui/FieldError.vue';
+import { useAgentEdit } from './useAgentEdit';
 
-const { t } = useI18n()
-const { open, name, description, busy, error, fieldErrors, show, hide, submit } = useAgentEdit()
+const { t } = useI18n();
+const { open, name, description, busy, error, fieldErrors, show, hide, submit } = useAgentEdit();
 
-defineExpose({ show })
+defineExpose({ show });
 </script>
 
 <template>

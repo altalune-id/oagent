@@ -3,14 +3,14 @@
 [husky](https://typicode.github.io/husky/) installs these hooks on `pnpm install` (the `prepare` script).
 They run the same checks as CI, so a hook that fails here would fail CI too.
 
-| Hook | What runs | Fails when |
-|---|---|---|
+| Hook         | What runs                              | Fails when                                                                                                                                                                                                       |
+| ------------ | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pre-commit` | `lint-staged` on the staged files only | a staged `.go` file is not gofmt-formatted; ESLint can't fix a JS/TS/Vue/JSON/Markdown/CSS problem (it fixes and re-stages the rest); yamllint, hadolint, actionlint, shellcheck or `buf lint` reports a problem |
-| `pre-push` | signed-commit check | an outgoing commit has no signature |
-| `pre-push` | `make lint`, `make comment-check` | golangci-lint, ESLint, the config linters or comment-lint report a problem |
-| `pre-push` | `gen-config-example --check` | `.env.reference` / `config.reference.yml` drifted from the config structs (`make config-examples`) |
-| `pre-push` | `go test -race -shuffle=on ./...` | a unit test fails |
-| `pre-push` | `buf breaking` against `origin/main` | a proto change breaks the API (skipped when there is no `origin/main`) |
+| `pre-push`   | signed-commit check                    | an outgoing commit has no signature                                                                                                                                                                              |
+| `pre-push`   | `make lint`, `make comment-check`      | golangci-lint, ESLint, the config linters or comment-lint report a problem                                                                                                                                       |
+| `pre-push`   | `gen-config-example --check`           | `.env.reference` / `config.reference.yml` drifted from the config structs (`make config-examples`)                                                                                                               |
+| `pre-push`   | `go test -race -shuffle=on ./...`      | a unit test fails                                                                                                                                                                                                |
+| `pre-push`   | `buf breaking` against `origin/main`   | a proto change breaks the API (skipped when there is no `origin/main`)                                                                                                                                           |
 
 ## Node version
 

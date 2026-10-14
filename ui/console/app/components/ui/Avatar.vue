@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { avatarView } from './avatar'
+import { computed } from 'vue';
+import { avatarView } from './avatar';
 
 const { id, name = '', email = '', avatarUrl = '', size = 'md' } = defineProps<{
-  id: string
-  name?: string
-  email?: string
-  avatarUrl?: string
-  size?: 'sm' | 'md' | 'lg'
-}>()
+  id: string,
+  name?: string,
+  email?: string,
+  avatarUrl?: string,
+  size?: 'sm' | 'md' | 'lg',
+}>();
 
-const view = computed(() => avatarView({ id, name, email, avatarUrl }))
-const box = computed(() => ({ sm: 'size-7 text-xs', md: 'size-10 text-sm', lg: 'size-16 text-xl' })[size])
+const view = computed(() => avatarView({ id, name, email, avatarUrl }));
+const box = computed(() => ({ sm: 'size-7 text-xs', md: 'size-10 text-sm', lg: 'size-16 text-xl' })[size]);
 </script>
 
 <template>

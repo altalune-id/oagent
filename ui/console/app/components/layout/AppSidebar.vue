@@ -1,29 +1,29 @@
 <script setup lang="ts">
-import SidebarNav from '~/components/ui/SidebarNav.vue'
-import type { NavItem } from '~/components/ui/types'
-import { useOrgsStore } from '~/stores/orgs'
+import type { NavItem } from '~/components/ui/types';
+import SidebarNav from '~/components/ui/SidebarNav.vue';
+import { useOrgsStore } from '~/stores/orgs';
 
-const route = useRoute()
-const { t } = useI18n()
-const { appVersion } = useRuntimeConfig().public
-const orgs = useOrgsStore()
-const org = computed(() => route.params.org as string)
-const label = computed(() => orgs.bySlug(org.value)?.name ?? '')
+const route = useRoute();
+const { t } = useI18n();
+const { appVersion } = useRuntimeConfig().public;
+const orgs = useOrgsStore();
+const org = computed(() => route.params.org as string);
+const label = computed(() => orgs.bySlug(org.value)?.name ?? '');
 
 const targets: Record<string, string> = {
   overview: '',
   projects: '/projects',
   settings: '/settings',
-}
+};
 
 const items = computed<NavItem[]>(() => [
   { key: 'overview', label: t('nav.overview'), icon: 'lucide:layout-dashboard', active: route.path === `/o/${org.value}` },
   { key: 'projects', label: t('nav.projects'), icon: 'lucide:folder', active: route.path.startsWith(`/o/${org.value}/projects`) },
   { key: 'settings', label: t('nav.settings'), icon: 'lucide:settings', active: route.path.startsWith(`/o/${org.value}/settings`) },
-])
+]);
 
 function onSelect(key: string) {
-  return navigateTo(`/o/${org.value}${targets[key] ?? ''}`)
+  return navigateTo(`/o/${org.value}${targets[key] ?? ''}`);
 }
 </script>
 

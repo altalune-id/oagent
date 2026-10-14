@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { LanguageOption } from './types'
+import type { LanguageOption } from './types';
+import { computed } from 'vue';
 
 const props = withDefaults(defineProps<{
-  options: LanguageOption[]
-  modelValue: string
-  label?: string
-  open?: boolean
+  options: LanguageOption[],
+  modelValue: string,
+  label?: string,
+  open?: boolean,
 }>(), {
   label: 'Language',
   open: false,
-})
+});
 
-const emit = defineEmits<{ select: [code: string] }>()
+const emit = defineEmits<{ select: [code: string] }>();
 
-const current = computed(() => props.options.find(option => option.code === props.modelValue))
+const current = computed(() => props.options.find(option => option.code === props.modelValue));
 </script>
 
 <template>

@@ -1,5 +1,5 @@
-import { fileURLToPath } from 'node:url'
-import tailwindcss from '@tailwindcss/vite'
+import { fileURLToPath } from 'node:url';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-10-06',
@@ -58,8 +58,8 @@ export default defineNuxtConfig({
     ssr: false,
   },
   hooks: {
-    'prerender:routes'({ routes }) {
-      routes.clear()
+    'prerender:routes': function ({ routes }) {
+      routes.clear();
     },
   },
-})
+});

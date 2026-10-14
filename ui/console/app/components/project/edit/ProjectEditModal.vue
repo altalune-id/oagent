@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue'
-import { useProjectEdit } from './useProjectEdit'
-import ErrorText from '~/components/ui/ErrorText.vue'
-import FieldError from '~/components/ui/FieldError.vue'
+import AppModal from '~/components/ui/AppModal.vue';
+import ErrorText from '~/components/ui/ErrorText.vue';
+import FieldError from '~/components/ui/FieldError.vue';
+import { useProjectEdit } from './useProjectEdit';
 
-const { t } = useI18n()
-const { open, name, slug, busy, error, fieldErrors, show, hide, submit } = useProjectEdit()
+const { t } = useI18n();
+const { open, name, slug, busy, error, fieldErrors, show, hide, submit } = useProjectEdit();
 
-defineExpose({ show })
+defineExpose({ show });
 </script>
 
 <template>

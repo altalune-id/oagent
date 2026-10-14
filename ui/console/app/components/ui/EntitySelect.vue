@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import type { EntityItem } from './types'
+import type { EntityItem } from './types';
 
 withDefaults(defineProps<{
-  label: string
-  items: EntityItem[]
-  icon?: string
-  placeholder?: boolean
-  empty?: string
-  pinLabel?: string
-  unpinLabel?: string
-  open?: boolean
+  label: string,
+  items: EntityItem[],
+  icon?: string,
+  placeholder?: boolean,
+  empty?: string,
+  pinLabel?: string,
+  unpinLabel?: string,
+  open?: boolean,
 }>(), {
   icon: '',
   placeholder: false,
@@ -17,12 +17,12 @@ withDefaults(defineProps<{
   pinLabel: 'Pin',
   unpinLabel: 'Unpin',
   open: false,
-})
+});
 
 const emit = defineEmits<{
-  select: [key: string]
-  pin: [key: string]
-}>()
+  select: [key: string],
+  pin: [key: string],
+}>();
 </script>
 
 <template>

@@ -1,23 +1,23 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 @source "../../internal/**/*.templ";
 
 @plugin "daisyui" {
   themes: false;
 }
 
-@import "../theme.css";
+@import '../theme.css';
 
 @layer components {
-  [data-rule][data-met="true"] {
+  [data-rule][data-met='true'] {
     color: var(--color-success);
     list-style: none;
   }
 
-  [data-rule][data-met="true"]::before {
-    content: "✓ ";
+  [data-rule][data-met='true']::before {
+    content: '✓ ';
   }
 
-  [data-rule][data-met="false"] {
+  [data-rule][data-met='false'] {
     color: var(--color-base-content);
   }
 }

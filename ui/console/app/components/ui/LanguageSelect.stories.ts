@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/vue3-vite'
-import LanguageSelect from './LanguageSelect.vue'
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import LanguageSelect from './LanguageSelect.vue';
 
 const meta = {
   title: 'UI/LanguageSelect',
@@ -14,10 +14,10 @@ const meta = {
       { code: 'fr-FR', name: 'Français', icon: 'circle-flags:fr' },
     ],
   },
-} satisfies Meta<typeof LanguageSelect>
+} satisfies Meta<typeof LanguageSelect>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: args => ({
@@ -25,4 +25,4 @@ export const Default: Story = {
     setup: () => ({ args }),
     template: '<div class="flex justify-end p-24"><LanguageSelect v-bind="args" /></div>',
   }),
-}
+};

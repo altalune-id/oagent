@@ -1,56 +1,54 @@
 <script setup lang="ts">
-import AppButton from '~/components/ui/AppButton.vue'
-import CopyButton from '~/components/ui/CopyButton.vue'
-import { useOrgsStore } from '~/stores/orgs'
-import type { ShownError } from '~/lib/apperror/message'
-import { useErrorMessage } from '~/composables/useErrorMessage'
-import ErrorText from '~/components/ui/ErrorText.vue'
+import type { ShownError } from '~/lib/apperror/message';
+import AppButton from '~/components/ui/AppButton.vue';
+import CopyButton from '~/components/ui/CopyButton.vue';
+import ErrorText from '~/components/ui/ErrorText.vue';
+import { useErrorMessage } from '~/composables/useErrorMessage';
+import { useOrgsStore } from '~/stores/orgs';
 
-const route = useRoute()
-const { t } = useI18n()
-const errorMessage = useErrorMessage()
-const orgs = useOrgsStore()
-const { $orgClient: client } = useNuxtApp()
+const route = useRoute();
+const { t } = useI18n();
+const errorMessage = useErrorMessage();
+const orgs = useOrgsStore();
+const { $orgClient: client } = useNuxtApp();
 
-const org = computed(() => orgs.bySlug(route.params.org as string))
+const org = computed(() => orgs.bySlug(route.params.org as string));
 
 if (!org.value) {
-  throw createError({ statusCode: 404, statusMessage: t('error.org_not_found'), fatal: true })
+  throw createError({ statusCode: 404, statusMessage: t('error.org_not_found'), fatal: true });
 }
 
-const name = ref(org.value.name)
-const slug = ref(org.value.slug)
-const busy = ref(false)
-const error = ref<ShownError | null>(null)
-const saved = ref(false)
+const name = ref(org.value.name);
+const slug = ref(org.value.slug);
+const busy = ref(false);
+const error = ref<ShownError | null>(null);
+const saved = ref(false);
 
 async function save() {
-  const current = org.value
+  const current = org.value;
   if (!current || busy.value) {
-    return
+    return;
   }
-  busy.value = true
-  error.value = null
-  saved.value = false
+  busy.value = true;
+  error.value = null;
+  saved.value = false;
   try {
-    const res = await client.updateOrg({ id: current.id, name: name.value.trim(), slug: slug.value.trim() })
+    const res = await client.updateOrg({ id: current.id, name: name.value.trim(), slug: slug.value.trim() });
     if (res.org) {
-      orgs.update(res.org.id, { name: res.org.name, slug: res.org.slug })
+      orgs.update(res.org.id, { name: res.org.name, slug: res.org.slug });
       if (res.org.slug !== route.params.org) {
-        await navigateTo(`/o/${res.org.slug}/settings`, { replace: true })
+        await navigateTo(`/o/${res.org.slug}/settings`, { replace: true });
       }
     }
-    saved.value = true
-  }
-  catch (e) {
-    error.value = errorMessage(e, 'error.update_org')
-  }
-  finally {
-    busy.value = false
+    saved.value = true;
+  } catch (e) {
+    error.value = errorMessage(e, 'error.update_org');
+  } finally {
+    busy.value = false;
   }
 }
 
-useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('settings.title')} · oagent` })
+useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('settings.title')} · oagent` });
 </script>
 
 <template>

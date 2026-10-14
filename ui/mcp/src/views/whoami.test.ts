@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import type { WhoamiData } from './whoami';
 
-import { permissionBadges, sourceLabel, whoamiRows, whoamiTitle, type WhoamiData } from './whoami';
+import { describe, expect, it } from 'vitest';
+import { permissionBadges, sourceLabel, whoamiRows, whoamiTitle } from './whoami';
 
 const person: WhoamiData = {
   source: 'local',
@@ -13,7 +14,7 @@ const person: WhoamiData = {
 };
 
 function values(data: WhoamiData): string[] {
-  return whoamiRows(data).map((r) => r.value);
+  return whoamiRows(data).map(r => r.value);
 }
 
 describe('whoamiTitle', () => {

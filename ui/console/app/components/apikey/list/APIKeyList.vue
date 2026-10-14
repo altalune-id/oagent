@@ -1,34 +1,35 @@
 <script setup lang="ts">
-import { useAPIKeysStore } from '~/stores/apiKeys'
-import { useScopeLabel } from '~/composables/useScopeLabel'
-import { useErrorMessage } from '~/composables/useErrorMessage'
-import ErrorText from '~/components/ui/ErrorText.vue'
+import ErrorText from '~/components/ui/ErrorText.vue';
+import { useErrorMessage } from '~/composables/useErrorMessage';
+import { useScopeLabel } from '~/composables/useScopeLabel';
+import { useAPIKeysStore } from '~/stores/apiKeys';
 
-const { orgId } = defineProps<{ orgId: string }>()
+const { orgId } = defineProps<{ orgId: string }>();
 
-const { t } = useI18n()
-const errorMessage = useErrorMessage()
-const scopeLabel = useScopeLabel()
-const keys = useAPIKeysStore()
-const { $apiKeyClient: client } = useNuxtApp()
+const { t } = useI18n();
+const errorMessage = useErrorMessage();
+const scopeLabel = useScopeLabel();
+const keys = useAPIKeysStore();
+const { $apiKeyClient: client } = useNuxtApp();
 
-await keys.ensureLoaded(orgId)
+await keys.ensureLoaded(orgId);
 
 function kindLabel(kind: string): string {
-  if (kind === 'org')
-    return t('apikeys.kind_org')
-  if (kind === 'personal')
-    return t('apikeys.kind_personal')
-  return t('apikeys.kind_project')
+  if (kind === 'org') {
+    return t('apikeys.kind_org');
+  }
+  if (kind === 'personal') {
+    return t('apikeys.kind_personal');
+  }
+  return t('apikeys.kind_project');
 }
 
 async function revoke(hint: string) {
   try {
-    await client.revokeAPIKey({ orgId, hint })
-    keys.markRevoked(hint)
-  }
-  catch (e) {
-    keys.error = errorMessage(e, 'error.revoke_apikey')
+    await client.revokeAPIKey({ orgId, hint });
+    keys.markRevoked(hint);
+  } catch (e) {
+    keys.error = errorMessage(e, 'error.revoke_apikey');
   }
 }
 </script>

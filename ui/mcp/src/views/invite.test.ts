@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import type { ToolCaller } from './invite';
 
-import { confirmDraft, discardDraft, EXPIRED_MESSAGE, isExpired, parseDraft, type ToolCaller } from './invite';
+import { describe, expect, it } from 'vitest';
+import { confirmDraft, discardDraft, EXPIRED_MESSAGE, isExpired, parseDraft } from './invite';
 
 const now = new Date('2026-10-13T09:00:00Z');
 
@@ -24,7 +25,12 @@ function caller(reply: Awaited<ReturnType<ToolCaller['callServerTool']>>) {
 describe('parseDraft', () => {
   it('reads the draft as protojson sends it', () => {
     expect(parseDraft(result)).toEqual({
-      id: 'inv1', email: 'dina@x.io', role: 'Member', orgId: 'org1', orgName: 'Acme', invitedBy: 'Olga',
+      id: 'inv1',
+      email: 'dina@x.io',
+      role: 'Member',
+      orgId: 'org1',
+      orgName: 'Acme',
+      invitedBy: 'Olga',
       expiresAt: new Date('2026-10-13T09:15:00Z'),
     });
   });
@@ -72,7 +78,9 @@ describe('confirmDraft', () => {
     expect(await confirmDraft(app, parseDraft(result)!, now)).toEqual({ state: 'error', message: 'Forbidden' });
     const bad = caller({ isError: true, content: [{ type: 'text', text: 'not json' }] });
     expect(await confirmDraft(bad.app, parseDraft(result)!, now)).toEqual({ state: 'error', message: 'not json' });
-    const thrown: ToolCaller = { callServerTool: async () => { throw new Error('offline') } };
+    const thrown: ToolCaller = { callServerTool: async () => {
+      throw new Error('offline');
+    } };
     expect(await confirmDraft(thrown, parseDraft(result)!, now)).toEqual({ state: 'error', message: 'Error: offline' });
   });
 });

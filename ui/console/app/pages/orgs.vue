@@ -1,24 +1,28 @@
 <script setup lang="ts">
-import AppButton from '~/components/ui/AppButton.vue'
-import { useOrgsStore } from '~/stores/orgs'
-import { useUIStore } from '~/stores/ui'
-import ErrorText from '~/components/ui/ErrorText.vue'
+import AppButton from '~/components/ui/AppButton.vue';
+import ErrorText from '~/components/ui/ErrorText.vue';
+import { useOrgsStore } from '~/stores/orgs';
+import { useUIStore } from '~/stores/ui';
 
-const { t } = useI18n()
-const orgs = useOrgsStore()
-const ui = useUIStore()
+const { t } = useI18n();
+const orgs = useOrgsStore();
+const ui = useUIStore();
 
-await orgs.ensureLoaded()
+await orgs.ensureLoaded();
 
-useHead({ title: () => `${t('org.all')} · oagent` })
+useHead({ title: () => `${t('org.all')} · oagent` });
 </script>
 
 <template>
   <div class="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold">{{ t('org.title') }}</h1>
-        <p class="mt-1 text-sm text-base-content/60">{{ t('org.subtitle') }}</p>
+        <h1 class="text-2xl font-bold">
+          {{ t('org.title') }}
+        </h1>
+        <p class="mt-1 text-sm text-base-content/60">
+          {{ t('org.subtitle') }}
+        </p>
       </div>
       <AppButton size="sm" @click="ui.openOrgCreate()">
         <Icon name="lucide:plus" size="16" />
@@ -38,8 +42,12 @@ useHead({ title: () => `${t('org.all')} · oagent` })
         class="card border border-base-300 bg-base-100 transition-colors hover:border-primary"
       >
         <div class="card-body">
-          <h2 class="card-title text-base">{{ org.name }}</h2>
-          <p class="text-sm text-base-content/60">/{{ org.slug }}</p>
+          <h2 class="card-title text-base">
+            {{ org.name }}
+          </h2>
+          <p class="text-sm text-base-content/60">
+            /{{ org.slug }}
+          </p>
         </div>
       </NuxtLink>
     </div>

@@ -1,39 +1,39 @@
 <script setup lang="ts">
-import AppSidebar from '~/components/layout/AppSidebar.vue'
-import AgentSidebar from '~/components/agent/AgentSidebar.vue'
-import ProjectSidebar from '~/components/project/ProjectSidebar.vue'
-import SettingsSidebar from '~/components/org/SettingsSidebar.vue'
-import { useOrgsStore } from '~/stores/orgs'
-import { useProjectsStore } from '~/stores/projects'
-import { useUIStore } from '~/stores/ui'
+import AgentSidebar from '~/components/agent/AgentSidebar.vue';
+import AppSidebar from '~/components/layout/AppSidebar.vue';
+import SettingsSidebar from '~/components/org/SettingsSidebar.vue';
+import ProjectSidebar from '~/components/project/ProjectSidebar.vue';
+import { useOrgsStore } from '~/stores/orgs';
+import { useProjectsStore } from '~/stores/projects';
+import { useUIStore } from '~/stores/ui';
 
-const route = useRoute()
-const { t } = useI18n()
-const orgs = useOrgsStore()
-const projects = useProjectsStore()
-const ui = useUIStore()
-const { appVersion } = useRuntimeConfig().public
-await orgs.ensureLoaded()
+const route = useRoute();
+const { t } = useI18n();
+const orgs = useOrgsStore();
+const projects = useProjectsStore();
+const ui = useUIStore();
+const { appVersion } = useRuntimeConfig().public;
+await orgs.ensureLoaded();
 
 if (orgs.error) {
-  throw createError({ statusCode: 502, statusMessage: t('error.load_orgs'), fatal: true })
+  throw createError({ statusCode: 502, statusMessage: t('error.load_orgs'), fatal: true });
 }
 
-const org = computed(() => orgs.bySlug(route.params.org as string))
+const org = computed(() => orgs.bySlug(route.params.org as string));
 
 if (!org.value) {
-  throw createError({ statusCode: 404, statusMessage: t('error.org_not_found'), fatal: true })
+  throw createError({ statusCode: 404, statusMessage: t('error.org_not_found'), fatal: true });
 }
 
-const projectSlug = computed(() => route.params.project as string | undefined)
-const agentSlug = computed(() => route.params.agent as string | undefined)
-const inSettings = computed(() => route.path.startsWith(`/o/${route.params.org}/settings`))
+const projectSlug = computed(() => route.params.project as string | undefined);
+const agentSlug = computed(() => route.params.agent as string | undefined);
+const inSettings = computed(() => route.path.startsWith(`/o/${route.params.org}/settings`));
 
 watch(() => route.fullPath, () => {
-  ui.navOpen = false
-})
+  ui.navOpen = false;
+});
 
-await projects.ensureLoaded(org.value.id)
+await projects.ensureLoaded(org.value.id);
 </script>
 
 <template>

@@ -1,97 +1,94 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue'
-import SecretField from '~/components/ui/SecretField.vue'
-import { webhookEvents } from '~/components/webhook/events'
-import type { Webhook } from '~/stores/webhooks'
-import { toWebhook, useWebhooksStore } from '~/stores/webhooks'
-import { useErrorMessage } from '~/composables/useErrorMessage'
-import ErrorText from '~/components/ui/ErrorText.vue'
+import type { Webhook } from '~/stores/webhooks';
+import AppModal from '~/components/ui/AppModal.vue';
+import ErrorText from '~/components/ui/ErrorText.vue';
+import SecretField from '~/components/ui/SecretField.vue';
+import { webhookEvents } from '~/components/webhook/events';
+import { useErrorMessage } from '~/composables/useErrorMessage';
+import { toWebhook, useWebhooksStore } from '~/stores/webhooks';
 
-const { orgId, projectId } = defineProps<{ orgId: string, projectId: string }>()
+const { orgId, projectId } = defineProps<{ orgId: string, projectId: string }>();
 
-const route = useRoute()
-const { t } = useI18n()
-const errorMessage = useErrorMessage()
-const webhooks = useWebhooksStore()
-const { $webhookClient: client } = useNuxtApp()
+const route = useRoute();
+const { t } = useI18n();
+const errorMessage = useErrorMessage();
+const webhooks = useWebhooksStore();
+const { $webhookClient: client } = useNuxtApp();
 
-await webhooks.ensureLoaded(orgId, projectId)
+await webhooks.ensureLoaded(orgId, projectId);
 
-const items = computed(() => webhooks.forProject(projectId))
-const labelByName = new Map(webhookEvents.map(e => [e.name, e.labelKey]))
+const items = computed(() => webhooks.forProject(projectId));
+const labelByName = new Map(webhookEvents.map(e => [e.name, e.labelKey]));
 
 function events(webhook: Webhook) {
-  return webhook.eventTypes.map(n => t(labelByName.get(n) ?? n)).join(', ')
+  return webhook.eventTypes.map(n => t(labelByName.get(n) ?? n)).join(', ');
 }
 
-const rotating = ref<Webhook | null>(null)
-const rotatedSecret = ref('')
-const busyId = ref('')
+const rotating = ref<Webhook | null>(null);
+const rotatedSecret = ref('');
+const busyId = ref('');
 
 async function ping(webhook: Webhook) {
-  busyId.value = webhook.id
+  busyId.value = webhook.id;
   try {
-    await client.pingWebhook({ orgId, projectId, id: webhook.id })
-  }
-  catch (e) {
-    webhooks.error = errorMessage(e, 'error.ping_webhook')
-  }
-  finally {
-    busyId.value = ''
+    await client.pingWebhook({ orgId, projectId, id: webhook.id });
+  } catch (e) {
+    webhooks.error = errorMessage(e, 'error.ping_webhook');
+  } finally {
+    busyId.value = '';
   }
 }
 
 async function toggle(webhook: Webhook) {
-  busyId.value = webhook.id
+  busyId.value = webhook.id;
   try {
     const res = await client.updateWebhook({
-      orgId, projectId, id: webhook.id, url: webhook.url, description: webhook.description,
-      eventTypes: webhook.eventTypes, active: !webhook.active,
-    })
+      orgId,
+      projectId,
+      id: webhook.id,
+      url: webhook.url,
+      description: webhook.description,
+      eventTypes: webhook.eventTypes,
+      active: !webhook.active,
+    });
     if (res.webhook) {
-      webhooks.replace(toWebhook(res.webhook))
+      webhooks.replace(toWebhook(res.webhook));
     }
-  }
-  catch (e) {
-    webhooks.error = errorMessage(e, 'error.update_webhook')
-  }
-  finally {
-    busyId.value = ''
+  } catch (e) {
+    webhooks.error = errorMessage(e, 'error.update_webhook');
+  } finally {
+    busyId.value = '';
   }
 }
 
 async function rotate(webhook: Webhook) {
-  busyId.value = webhook.id
+  busyId.value = webhook.id;
   try {
-    const res = await client.rotateWebhookSecret({ orgId, projectId, id: webhook.id })
-    rotating.value = webhook
-    rotatedSecret.value = res.secret
-  }
-  catch (e) {
-    webhooks.error = errorMessage(e, 'error.rotate_webhook')
-  }
-  finally {
-    busyId.value = ''
+    const res = await client.rotateWebhookSecret({ orgId, projectId, id: webhook.id });
+    rotating.value = webhook;
+    rotatedSecret.value = res.secret;
+  } catch (e) {
+    webhooks.error = errorMessage(e, 'error.rotate_webhook');
+  } finally {
+    busyId.value = '';
   }
 }
 
 async function destroy(webhook: Webhook) {
-  busyId.value = webhook.id
+  busyId.value = webhook.id;
   try {
-    await client.deleteWebhook({ orgId, projectId, id: webhook.id })
-    webhooks.remove(webhook.id)
-  }
-  catch (e) {
-    webhooks.error = errorMessage(e, 'error.delete_webhook')
-  }
-  finally {
-    busyId.value = ''
+    await client.deleteWebhook({ orgId, projectId, id: webhook.id });
+    webhooks.remove(webhook.id);
+  } catch (e) {
+    webhooks.error = errorMessage(e, 'error.delete_webhook');
+  } finally {
+    busyId.value = '';
   }
 }
 
 function closeRotate() {
-  rotating.value = null
-  rotatedSecret.value = ''
+  rotating.value = null;
+  rotatedSecret.value = '';
 }
 </script>
 
@@ -115,7 +112,9 @@ function closeRotate() {
           <td>
             <span class="font-mono text-xs">{{ webhook.url }}</span>
           </td>
-          <td class="text-base-content/60">{{ events(webhook) }}</td>
+          <td class="text-base-content/60">
+            {{ events(webhook) }}
+          </td>
           <td>
             <span class="badge badge-sm" :class="webhook.active ? 'badge-success' : 'badge-ghost'">
               {{ webhook.active ? t('webhooks.active') : t('webhooks.inactive') }}

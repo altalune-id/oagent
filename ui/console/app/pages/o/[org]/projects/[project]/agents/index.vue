@@ -1,51 +1,50 @@
 <script setup lang="ts">
-import AgentCreateModal from '~/components/agent/create/AgentCreateModal.vue'
-import AgentEditModal from '~/components/agent/edit/AgentEditModal.vue'
-import CopyButton from '~/components/ui/CopyButton.vue'
-import type { Agent } from '~/stores/agents'
-import { useAgentsStore } from '~/stores/agents'
-import { useOrgsStore } from '~/stores/orgs'
-import { useProjectsStore } from '~/stores/projects'
-import { useErrorMessage } from '~/composables/useErrorMessage'
-import ErrorText from '~/components/ui/ErrorText.vue'
+import type { Agent } from '~/stores/agents';
+import AgentCreateModal from '~/components/agent/create/AgentCreateModal.vue';
+import AgentEditModal from '~/components/agent/edit/AgentEditModal.vue';
+import CopyButton from '~/components/ui/CopyButton.vue';
+import ErrorText from '~/components/ui/ErrorText.vue';
+import { useErrorMessage } from '~/composables/useErrorMessage';
+import { useAgentsStore } from '~/stores/agents';
+import { useOrgsStore } from '~/stores/orgs';
+import { useProjectsStore } from '~/stores/projects';
 
-const route = useRoute()
-const { t } = useI18n()
-const errorMessage = useErrorMessage()
-const orgs = useOrgsStore()
-const projects = useProjectsStore()
-const agents = useAgentsStore()
-const { $agentClient: client } = useNuxtApp()
+const route = useRoute();
+const { t } = useI18n();
+const errorMessage = useErrorMessage();
+const orgs = useOrgsStore();
+const projects = useProjectsStore();
+const agents = useAgentsStore();
+const { $agentClient: client } = useNuxtApp();
 
-const org = computed(() => orgs.bySlug(route.params.org as string))
+const org = computed(() => orgs.bySlug(route.params.org as string));
 const project = computed(() =>
   projects.items.find(item => item.orgId === org.value?.id && item.slug === route.params.project),
-)
+);
 
 if (!project.value) {
-  throw createError({ statusCode: 404, statusMessage: t('error.project_not_found'), fatal: true })
+  throw createError({ statusCode: 404, statusMessage: t('error.project_not_found'), fatal: true });
 }
 
-await agents.ensureLoaded(project.value.id)
+await agents.ensureLoaded(project.value.id);
 
-const items = computed(() => (project.value ? agents.forProject(project.value.id) : []))
+const items = computed(() => (project.value ? agents.forProject(project.value.id) : []));
 
-const editModal = ref<InstanceType<typeof AgentEditModal>>()
+const editModal = ref<InstanceType<typeof AgentEditModal>>();
 function edit(agent: Agent) {
-  editModal.value?.show(agent)
+  editModal.value?.show(agent);
 }
 
 async function destroy(id: string) {
   try {
-    await client.deleteAgent({ id })
-    agents.remove(id)
-  }
-  catch (e) {
-    agents.error = errorMessage(e, 'error.delete_agent')
+    await client.deleteAgent({ id });
+    agents.remove(id);
+  } catch (e) {
+    agents.error = errorMessage(e, 'error.delete_agent');
   }
 }
 
-useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav.agents')} · oagent` })
+useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav.agents')} · oagent` });
 </script>
 
 <template>
@@ -82,8 +81,12 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
                 <CopyButton :value="agent.id" :label="t('common.copy')" />
               </span>
             </td>
-            <td class="text-base-content/60">{{ agent.slug }}</td>
-            <td class="text-base-content/60">{{ agent.description }}</td>
+            <td class="text-base-content/60">
+              {{ agent.slug }}
+            </td>
+            <td class="text-base-content/60">
+              {{ agent.description }}
+            </td>
             <td class="whitespace-nowrap text-right">
               <button class="btn btn-ghost btn-xs" @click="edit(agent)">
                 <Icon name="lucide:pencil" size="14" />

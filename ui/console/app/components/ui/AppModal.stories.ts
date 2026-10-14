@@ -1,14 +1,14 @@
-import type { Meta, StoryObj } from '@storybook/vue3-vite'
-import AppModal from './AppModal.vue'
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import AppModal from './AppModal.vue';
 
 const meta = {
   title: 'UI/AppModal',
   component: AppModal,
   args: { open: true, title: 'New organization' },
-} satisfies Meta<typeof AppModal>
+} satisfies Meta<typeof AppModal>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: args => ({
@@ -24,4 +24,4 @@ export const Default: Story = {
       </AppModal>
     `,
   }),
-}
+};

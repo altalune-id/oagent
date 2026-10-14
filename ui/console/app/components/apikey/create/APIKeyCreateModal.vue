@@ -1,31 +1,31 @@
 <script setup lang="ts">
-import AppButton from '~/components/ui/AppButton.vue'
-import AppModal from '~/components/ui/AppModal.vue'
-import SecretField from '~/components/ui/SecretField.vue'
-import scopes from '@shared/scope/scopes.json'
-import { useProjectsStore } from '~/stores/projects'
-import { useScopeLabel } from '~/composables/useScopeLabel'
-import { useAPIKeyCreate } from './useAPIKeyCreate'
-import ErrorText from '~/components/ui/ErrorText.vue'
-import FieldError from '~/components/ui/FieldError.vue'
+import scopes from '@shared/scope/scopes.json';
+import AppButton from '~/components/ui/AppButton.vue';
+import AppModal from '~/components/ui/AppModal.vue';
+import ErrorText from '~/components/ui/ErrorText.vue';
+import FieldError from '~/components/ui/FieldError.vue';
+import SecretField from '~/components/ui/SecretField.vue';
+import { useScopeLabel } from '~/composables/useScopeLabel';
+import { useProjectsStore } from '~/stores/projects';
+import { useAPIKeyCreate } from './useAPIKeyCreate';
 
-const { orgId } = defineProps<{ orgId: string }>()
+const { orgId } = defineProps<{ orgId: string }>();
 
-const { t } = useI18n()
-const scopeLabel = useScopeLabel()
-const projects = useProjectsStore()
-const create = useAPIKeyCreate(orgId)
-const { open, kind, name, scopes: selectedScopes, allProjects, projectId, projectIds, expiresInHours, busy, error, fieldErrors, plaintext } = create
+const { t } = useI18n();
+const scopeLabel = useScopeLabel();
+const projects = useProjectsStore();
+const create = useAPIKeyCreate(orgId);
+const { open, kind, name, scopes: selectedScopes, allProjects, projectId, projectIds, expiresInHours, busy, error, fieldErrors, plaintext } = create;
 
-const availableScopes = computed(() => scopes.filter(s => !s.personOnly && (kind.value === 'org' || s.level === 'project')))
-const orgProjects = computed(() => projects.forOrg(orgId))
+const availableScopes = computed(() => scopes.filter(s => !s.personOnly && (kind.value === 'org' || s.level === 'project')));
+const orgProjects = computed(() => projects.forOrg(orgId));
 
 const expiryOptions = computed(() => [
   { value: 168, label: t('apikeys.days_7') },
   { value: 720, label: t('apikeys.days_30') },
   { value: 2160, label: t('apikeys.days_90') },
   { value: 8760, label: t('apikeys.days_365') },
-])
+]);
 </script>
 
 <template>

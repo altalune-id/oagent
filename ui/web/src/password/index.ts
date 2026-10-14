@@ -1,7 +1,7 @@
-import { enhance } from './field'
+import { enhance } from './field';
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => enhance(document))
+  document.addEventListener('DOMContentLoaded', () => enhance(document));
 } else {
-  enhance(document)
+  enhance(document);
 }

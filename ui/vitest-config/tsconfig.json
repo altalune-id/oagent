@@ -3,11 +3,11 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "strict": true,
-    "skipLibCheck": true,
-    "noEmit": true,
+    "types": ["node"],
     "allowImportingTsExtensions": true,
-    "types": ["node"]
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true
   },
   "include": ["base.ts", "node.ts", "browser.ts"]
 }

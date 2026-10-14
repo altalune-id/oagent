@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import CopyButton from './CopyButton.vue'
+import CopyButton from './CopyButton.vue';
 
-const { value, label = 'Copy' } = defineProps<{ value: string, label?: string }>()
+const { value, label = 'Copy' } = defineProps<{ value: string, label?: string }>();
 </script>
 
 <template>

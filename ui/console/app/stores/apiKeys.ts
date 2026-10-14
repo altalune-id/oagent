@@ -1,22 +1,22 @@
-import { timestampDate } from '@bufbuild/protobuf/wkt'
-import type { APIKey as APIKeyPB } from '~~/gen/apikey/v1/apikey_pb'
-import type { ShownError } from '~/lib/apperror/message'
-import { useErrorMessage } from '~/composables/useErrorMessage'
+import type { APIKey as APIKeyPB } from '~~/gen/apikey/v1/apikey_pb';
+import type { ShownError } from '~/lib/apperror/message';
+import { timestampDate } from '@bufbuild/protobuf/wkt';
+import { useErrorMessage } from '~/composables/useErrorMessage';
 
 export interface APIKey {
-  rowKey: string
-  kind: string
-  name: string
-  scopes: string[]
-  projectId: string
-  projectIds: string[]
-  allProjects: boolean
-  secretHint: string
-  expiresAt?: Date
-  revokedAt?: Date
+  rowKey: string;
+  kind: string;
+  name: string;
+  scopes: string[];
+  projectId: string;
+  projectIds: string[];
+  allProjects: boolean;
+  secretHint: string;
+  expiresAt?: Date;
+  revokedAt?: Date;
 }
 
-let rows = 0
+let rows = 0;
 
 export function toAPIKey(k: APIKeyPB): APIKey {
   return {
@@ -30,74 +30,72 @@ export function toAPIKey(k: APIKeyPB): APIKey {
     secretHint: k.secretHint,
     expiresAt: k.expiresAt ? timestampDate(k.expiresAt) : undefined,
     revokedAt: k.revokedAt ? timestampDate(k.revokedAt) : undefined,
-  }
+  };
 }
 
 export const useAPIKeysStore = defineStore('apiKeys', () => {
-  const items = ref<APIKey[]>([])
-  const loading = ref(false)
-  const error = ref<ShownError | null>(null)
+  const items = ref<APIKey[]>([]);
+  const loading = ref(false);
+  const error = ref<ShownError | null>(null);
 
-  const { $apiKeyClient: client } = useNuxtApp()
-  const errorMessage = useErrorMessage()
-  let loadedFor = ''
-  let inflight: Promise<void> | null = null
-  let inflightFor = ''
-  let latest = 0
+  const { $apiKeyClient: client } = useNuxtApp();
+  const errorMessage = useErrorMessage();
+  let loadedFor = '';
+  let inflight: Promise<void> | null = null;
+  let inflightFor = '';
+  let latest = 0;
 
   function isLive(k: APIKey, hint: string) {
-    return !k.revokedAt && k.secretHint === hint
+    return !k.revokedAt && k.secretHint === hint;
   }
 
   function add(key: APIKey) {
-    items.value = [key, ...items.value.filter(k => !isLive(k, key.secretHint))]
+    items.value = [key, ...items.value.filter(k => !isLive(k, key.secretHint))];
   }
 
   function markRevoked(hint: string) {
-    const at = new Date()
-    items.value = items.value.map(k => (isLive(k, hint) ? { ...k, revokedAt: at } : k))
+    const at = new Date();
+    items.value = items.value.map(k => (isLive(k, hint) ? { ...k, revokedAt: at } : k));
   }
 
   async function load(orgId: string) {
-    const mine = ++latest
-    loading.value = true
-    error.value = null
+    const mine = ++latest;
+    loading.value = true;
+    error.value = null;
     try {
-      const res = await client.listAPIKeys({ orgId })
+      const res = await client.listAPIKeys({ orgId });
       if (mine !== latest) {
-        return
+        return;
       }
-      items.value = (res.keys ?? []).map(toAPIKey)
-      loadedFor = orgId
-    }
-    catch (e) {
+      items.value = (res.keys ?? []).map(toAPIKey);
+      loadedFor = orgId;
+    } catch (e) {
       if (mine === latest) {
-        error.value = errorMessage(e, 'error.load_apikeys')
+        error.value = errorMessage(e, 'error.load_apikeys');
       }
-    }
-    finally {
+    } finally {
       if (mine === latest) {
-        loading.value = false
+        loading.value = false;
       }
     }
   }
 
   function ensureLoaded(orgId: string) {
     if (!orgId || loadedFor === orgId) {
-      return Promise.resolve()
+      return Promise.resolve();
     }
     if (inflight && inflightFor === orgId) {
-      return inflight
+      return inflight;
     }
-    inflightFor = orgId
+    inflightFor = orgId;
     const run = load(orgId).finally(() => {
       if (inflight === run) {
-        inflight = null
+        inflight = null;
       }
-    })
-    inflight = run
-    return run
+    });
+    inflight = run;
+    return run;
   }
 
-  return { items, loading, error, add, markRevoked, load, ensureLoaded }
-})
+  return { items, loading, error, add, markRevoked, load, ensureLoaded };
+});

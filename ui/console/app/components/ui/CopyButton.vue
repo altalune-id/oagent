@@ -1,19 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref } from 'vue';
 
-const { value, label = 'Copy' } = defineProps<{ value: string, label?: string }>()
+const { value, label = 'Copy' } = defineProps<{ value: string, label?: string }>();
 
-const copied = ref(false)
+const copied = ref(false);
 
 async function copy() {
   try {
-    await navigator.clipboard.writeText(value)
-    copied.value = true
+    await navigator.clipboard.writeText(value);
+    copied.value = true;
     setTimeout(() => {
-      copied.value = false
-    }, 1200)
-  }
-  catch {
+      copied.value = false;
+    }, 1200);
+  } catch {
     // clipboard unavailable
   }
 }

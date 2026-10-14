@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/vue3-vite'
-import ThemeSelect from './ThemeSelect.vue'
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import ThemeSelect from './ThemeSelect.vue';
 
 const meta = {
   title: 'UI/ThemeSelect',
@@ -16,10 +16,10 @@ const meta = {
       { id: 'night', label: 'Night', theme: 'night-dark' },
     ],
   },
-} satisfies Meta<typeof ThemeSelect>
+} satisfies Meta<typeof ThemeSelect>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: args => ({
@@ -27,4 +27,4 @@ export const Default: Story = {
     setup: () => ({ args }),
     template: '<div class="flex justify-end p-24"><ThemeSelect v-bind="args" /></div>',
   }),
-}
+};

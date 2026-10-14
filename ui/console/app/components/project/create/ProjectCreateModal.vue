@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue'
-import { useProjectCreate } from './useProjectCreate'
-import ErrorText from '~/components/ui/ErrorText.vue'
-import FieldError from '~/components/ui/FieldError.vue'
+import AppModal from '~/components/ui/AppModal.vue';
+import ErrorText from '~/components/ui/ErrorText.vue';
+import FieldError from '~/components/ui/FieldError.vue';
+import { useProjectCreate } from './useProjectCreate';
 
-const { orgId } = defineProps<{ orgId: string }>()
+const { orgId } = defineProps<{ orgId: string }>();
 
-const { t } = useI18n()
-const { open, name, slug, busy, error, fieldErrors, hide, submit } = useProjectCreate(orgId)
+const { t } = useI18n();
+const { open, name, slug, busy, error, fieldErrors, hide, submit } = useProjectCreate(orgId);
 </script>
 
 <template>

@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { ThemeFamilyOption } from './types'
+import type { ThemeFamilyOption } from './types';
+import { computed } from 'vue';
 
 const props = withDefaults(defineProps<{
-  families: ThemeFamilyOption[]
-  modelValue: string
-  label?: string
-  open?: boolean
+  families: ThemeFamilyOption[],
+  modelValue: string,
+  label?: string,
+  open?: boolean,
 }>(), {
   label: 'Theme',
   open: false,
-})
+});
 
-const emit = defineEmits<{ select: [id: string] }>()
+const emit = defineEmits<{ select: [id: string] }>();
 
-const current = computed(() => props.families.find(family => family.id === props.modelValue))
+const current = computed(() => props.families.find(family => family.id === props.modelValue));
 </script>
 
 <template>

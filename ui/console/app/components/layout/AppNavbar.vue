@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import LanguageSwitcher from '~/components/layout/LanguageSwitcher.vue'
-import NavbarShell from '~/components/ui/NavbarShell.vue'
-import OrgSelector from '~/components/org/OrgSelector.vue'
-import ProjectSelector from '~/components/project/ProjectSelector.vue'
-import ThemeFamilySwitcher from '~/components/layout/ThemeFamilySwitcher.vue'
-import ThemeSwitcher from '~/components/layout/ThemeSwitcher.vue'
-import UserMenu from '~/components/layout/UserMenu.vue'
-import { siblingURL } from '~/lib/auth/urls'
-import { useAuthStore } from '~/stores/auth'
-import { useUIStore } from '~/stores/ui'
+import LanguageSwitcher from '~/components/layout/LanguageSwitcher.vue';
+import ThemeFamilySwitcher from '~/components/layout/ThemeFamilySwitcher.vue';
+import ThemeSwitcher from '~/components/layout/ThemeSwitcher.vue';
+import UserMenu from '~/components/layout/UserMenu.vue';
+import OrgSelector from '~/components/org/OrgSelector.vue';
+import ProjectSelector from '~/components/project/ProjectSelector.vue';
+import NavbarShell from '~/components/ui/NavbarShell.vue';
+import { siblingURL } from '~/lib/auth/urls';
+import { useAuthStore } from '~/stores/auth';
+import { useUIStore } from '~/stores/ui';
 
-const route = useRoute()
-const { t } = useI18n()
-const ui = useUIStore()
+const route = useRoute();
+const { t } = useI18n();
+const ui = useUIStore();
 
-const hasNav = computed(() => !!route.params.org)
+const hasNav = computed(() => !!route.params.org);
 
-const auth = useAuthStore()
-const logoutUrl = siblingURL(useRuntimeConfig().public.apiUrl, '/logout')
+const auth = useAuthStore();
+const logoutUrl = siblingURL(useRuntimeConfig().public.apiUrl, '/logout');
 const userLabels = computed(() => ({
   signOut: t('auth.sign_out'),
   signedInAs: t('auth.signed_in_as'),
@@ -25,8 +25,8 @@ const userLabels = computed(() => ({
   apikey: t('auth.source_apikey'),
   basic: t('auth.source_basic'),
   profile: t('profile.title'),
-}))
-onMounted(() => auth.load())
+}));
+onMounted(() => auth.load());
 </script>
 
 <template>
@@ -41,7 +41,9 @@ onMounted(() => auth.load())
       >
         <Icon name="lucide:menu" size="18" />
       </button>
-      <NuxtLink to="/" class="btn btn-ghost px-2 text-base font-bold tracking-tight" :class="{ 'max-sm:hidden': hasNav }">oagent</NuxtLink>
+      <NuxtLink to="/" class="btn btn-ghost px-2 text-base font-bold tracking-tight" :class="{ 'max-sm:hidden': hasNav }">
+        oagent
+      </NuxtLink>
     </template>
     <OrgSelector @focusin="ui.navOpen = false" />
     <ProjectSelector @focusin="ui.navOpen = false" />

@@ -1,61 +1,60 @@
 export const usePinnedStore = defineStore('pinned', () => {
-  const orgSlug = ref('')
-  const projects = ref<Record<string, string>>({})
+  const orgSlug = ref('');
+  const projects = ref<Record<string, string>>({});
 
-  const STORAGE_KEY = 'oagent_pinned'
+  const STORAGE_KEY = 'oagent_pinned';
 
   function read() {
     if (!import.meta.client) {
-      return
+      return;
     }
     try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as { org?: string, projects?: Record<string, string> }
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as { org?: string, projects?: Record<string, string> };
       if (saved.org) {
-        orgSlug.value = saved.org
+        orgSlug.value = saved.org;
       }
       if (saved.projects) {
-        projects.value = saved.projects
+        projects.value = saved.projects;
       }
-    }
-    catch {
+    } catch {
     }
   }
 
   function persist() {
     if (!import.meta.client) {
-      return
+      return;
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ org: orgSlug.value, projects: projects.value }))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ org: orgSlug.value, projects: projects.value }));
   }
 
   function setOrg(slug: string) {
-    orgSlug.value = slug
-    persist()
+    orgSlug.value = slug;
+    persist();
   }
 
   function setProject(org: string, project: string) {
-    projects.value = { ...projects.value, [org]: project }
-    orgSlug.value = org
-    persist()
+    projects.value = { ...projects.value, [org]: project };
+    orgSlug.value = org;
+    persist();
   }
 
   function unpinOrg() {
-    orgSlug.value = ''
-    persist()
+    orgSlug.value = '';
+    persist();
   }
 
   function unpinProject(org: string) {
-    const next = { ...projects.value }
-    delete next[org]
-    projects.value = next
-    persist()
+    const next = { ...projects.value };
+    delete next[org];
+    projects.value = next;
+    persist();
   }
 
   function projectFor(org: string) {
-    return projects.value[org] ?? ''
+    return projects.value[org] ?? '';
   }
 
-  read()
+  read();
 
-  return { orgSlug, setOrg, setProject, unpinOrg, unpinProject, projectFor }
-})
+  return { orgSlug, setOrg, setProject, unpinOrg, unpinProject, projectFor };
+});

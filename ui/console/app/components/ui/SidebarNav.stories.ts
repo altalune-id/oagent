@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/vue3-vite'
-import SidebarNav from './SidebarNav.vue'
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import SidebarNav from './SidebarNav.vue';
 
 const meta = {
   title: 'UI/SidebarNav',
@@ -12,10 +12,10 @@ const meta = {
       { key: 'settings', label: 'Settings' },
     ],
   },
-} satisfies Meta<typeof SidebarNav>
+} satisfies Meta<typeof SidebarNav>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: args => ({
@@ -23,7 +23,7 @@ export const Default: Story = {
     setup: () => ({ args }),
     template: '<div class="flex h-64"><SidebarNav v-bind="args" /></div>',
   }),
-}
+};
 
 export const WithFooter: Story = {
   render: args => ({
@@ -31,4 +31,4 @@ export const WithFooter: Story = {
     setup: () => ({ args }),
     template: '<div class="flex h-64"><SidebarNav v-bind="args"><template #footer>oagent v0.1.0-dev</template></SidebarNav></div>',
   }),
-}
+};

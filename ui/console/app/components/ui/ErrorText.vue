@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { ShownError } from '../../lib/apperror/message'
+import type { ShownError } from '../../lib/apperror/message';
 
-defineProps<{ error: ShownError | null }>()
+defineProps<{ error: ShownError | null }>();
 </script>
 
 <template>

@@ -4,11 +4,11 @@ Shared Vitest presets. Every `ui/*` package with tests extends one of these, so 
 
 ## Presets
 
-| Entry | Environment |
-|---|---|
-| `@oagent/vitest-config/base` | none: base config only (10 s timeouts, CI reporter toggle) |
-| `@oagent/vitest-config/node` | Node: pure TS helpers (most tests) |
-| `@oagent/vitest-config/browser` | happy-dom: tests that need the DOM |
+| Entry                           | Environment                                                |
+| ------------------------------- | ---------------------------------------------------------- |
+| `@oagent/vitest-config/base`    | none: base config only (10 s timeouts, CI reporter toggle) |
+| `@oagent/vitest-config/node`    | Node: pure TS helpers (most tests)                         |
+| `@oagent/vitest-config/browser` | happy-dom: tests that need the DOM                         |
 
 ## Usage
 
@@ -20,8 +20,8 @@ export { default } from '@oagent/vitest-config/node';
 Or extend it:
 
 ```ts
-import { defineConfig, mergeConfig } from 'vitest/config';
 import base from '@oagent/vitest-config/node';
+import { defineConfig, mergeConfig } from 'vitest/config';
 
 export default mergeConfig(base, defineConfig({
   test: { setupFiles: ['./test/setup.ts'] },

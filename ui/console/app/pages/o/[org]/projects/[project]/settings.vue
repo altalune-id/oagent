@@ -1,61 +1,59 @@
 <script setup lang="ts">
-import AppButton from '~/components/ui/AppButton.vue'
-import CopyButton from '~/components/ui/CopyButton.vue'
-import { useOrgsStore } from '~/stores/orgs'
-import { useProjectsStore } from '~/stores/projects'
-import type { ShownError } from '~/lib/apperror/message'
-import { useErrorMessage } from '~/composables/useErrorMessage'
-import ErrorText from '~/components/ui/ErrorText.vue'
+import type { ShownError } from '~/lib/apperror/message';
+import AppButton from '~/components/ui/AppButton.vue';
+import CopyButton from '~/components/ui/CopyButton.vue';
+import ErrorText from '~/components/ui/ErrorText.vue';
+import { useErrorMessage } from '~/composables/useErrorMessage';
+import { useOrgsStore } from '~/stores/orgs';
+import { useProjectsStore } from '~/stores/projects';
 
-const route = useRoute()
-const { t } = useI18n()
-const errorMessage = useErrorMessage()
-const orgs = useOrgsStore()
-const projects = useProjectsStore()
-const { $projectClient: client } = useNuxtApp()
+const route = useRoute();
+const { t } = useI18n();
+const errorMessage = useErrorMessage();
+const orgs = useOrgsStore();
+const projects = useProjectsStore();
+const { $projectClient: client } = useNuxtApp();
 
-const org = computed(() => orgs.bySlug(route.params.org as string))
+const org = computed(() => orgs.bySlug(route.params.org as string));
 const project = computed(() =>
   projects.items.find(item => item.orgId === org.value?.id && item.slug === route.params.project),
-)
+);
 
 if (!project.value) {
-  throw createError({ statusCode: 404, statusMessage: t('error.project_not_found'), fatal: true })
+  throw createError({ statusCode: 404, statusMessage: t('error.project_not_found'), fatal: true });
 }
 
-const name = ref(project.value.name)
-const slug = ref(project.value.slug)
-const busy = ref(false)
-const error = ref<ShownError | null>(null)
-const saved = ref(false)
+const name = ref(project.value.name);
+const slug = ref(project.value.slug);
+const busy = ref(false);
+const error = ref<ShownError | null>(null);
+const saved = ref(false);
 
 async function save() {
-  const current = project.value
+  const current = project.value;
   if (!current || busy.value) {
-    return
+    return;
   }
-  busy.value = true
-  error.value = null
-  saved.value = false
+  busy.value = true;
+  error.value = null;
+  saved.value = false;
   try {
-    const res = await client.updateProject({ id: current.id, name: name.value.trim(), slug: slug.value.trim() })
+    const res = await client.updateProject({ id: current.id, name: name.value.trim(), slug: slug.value.trim() });
     if (res.project) {
-      projects.update(res.project.id, { name: res.project.name, slug: res.project.slug })
+      projects.update(res.project.id, { name: res.project.name, slug: res.project.slug });
       if (res.project.slug !== route.params.project) {
-        await navigateTo(`/o/${route.params.org}/projects/${res.project.slug}/settings`, { replace: true })
+        await navigateTo(`/o/${route.params.org}/projects/${res.project.slug}/settings`, { replace: true });
       }
     }
-    saved.value = true
-  }
-  catch (e) {
-    error.value = errorMessage(e, 'error.rename_project')
-  }
-  finally {
-    busy.value = false
+    saved.value = true;
+  } catch (e) {
+    error.value = errorMessage(e, 'error.rename_project');
+  } finally {
+    busy.value = false;
   }
 }
 
-useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('settings.title')} · oagent` })
+useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('settings.title')} · oagent` });
 </script>
 
 <template>

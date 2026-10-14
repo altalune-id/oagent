@@ -1,30 +1,30 @@
-import type { Meta, StoryObj } from '@storybook/vue3-vite'
-import { mcpSnippet } from './mcpSnippet'
-import PersonalKeys from './PersonalKeys.vue'
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import { mcpSnippet } from './mcpSnippet';
+import PersonalKeys from './PersonalKeys.vue';
 
 const scopes = [
   { name: 'agent:read', label: 'Read agents' },
   { name: 'agent:write', label: 'Write agents' },
   { name: 'webhook:read', label: 'Read webhooks' },
-]
-const projects = [{ id: 'x6MH9WPWjktMwCBKHy4pF', name: 'Default' }, { id: 'KdrF3t3FHtppBPmMgj4sy', name: 'Support' }]
+];
+const projects = [{ id: 'x6MH9WPWjktMwCBKHy4pF', name: 'Default' }, { id: 'KdrF3t3FHtppBPmMgj4sy', name: 'Support' }];
 
 const meta = {
   title: 'API keys/PersonalKeys',
   component: PersonalKeys,
   args: { keys: [], scopes, projects },
-} satisfies Meta<typeof PersonalKeys>
+} satisfies Meta<typeof PersonalKeys>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 const render: Story['render'] = args => ({
   components: { PersonalKeys },
   setup: () => ({ args }),
   template: '<div class="max-w-3xl p-8"><PersonalKeys v-bind="args" /></div>',
-})
+});
 
-export const Empty: Story = { render }
+export const Empty: Story = { render };
 
 export const List: Story = {
   args: {
@@ -34,7 +34,7 @@ export const List: Story = {
     ],
   },
   render,
-}
+};
 
 export const JustCreated: Story = {
   args: {
@@ -45,9 +45,9 @@ export const JustCreated: Story = {
     },
   },
   render,
-}
+};
 
 export const SignedOut: Story = {
   args: { signedIn: false },
   render,
-}
+};

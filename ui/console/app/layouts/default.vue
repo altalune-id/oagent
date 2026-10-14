@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import AppNavbar from '~/components/layout/AppNavbar.vue'
-import OrgCreateModal from '~/components/org/create/OrgCreateModal.vue'
-import ProjectCreateModal from '~/components/project/create/ProjectCreateModal.vue'
-import { useOrgsStore } from '~/stores/orgs'
+import AppNavbar from '~/components/layout/AppNavbar.vue';
+import OrgCreateModal from '~/components/org/create/OrgCreateModal.vue';
+import ProjectCreateModal from '~/components/project/create/ProjectCreateModal.vue';
+import { useOrgsStore } from '~/stores/orgs';
 
-const route = useRoute()
-const orgs = useOrgsStore()
+const route = useRoute();
+const orgs = useOrgsStore();
 
 const orgId = computed(() => {
-  const slug = route.params.org as string | undefined
-  return (slug ? orgs.bySlug(slug)?.id : '') ?? ''
-})
+  const slug = route.params.org as string | undefined;
+  return (slug ? orgs.bySlug(slug)?.id : '') ?? '';
+});
 </script>
 
 <template>

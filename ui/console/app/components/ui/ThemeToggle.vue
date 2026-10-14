@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import AppButton from './AppButton.vue'
+import AppButton from './AppButton.vue';
 
 withDefaults(defineProps<{
-  mode: 'light' | 'dark'
-  lightLabel?: string
-  darkLabel?: string
+  mode: 'light' | 'dark',
+  lightLabel?: string,
+  darkLabel?: string,
 }>(), {
   lightLabel: 'Light',
   darkLabel: 'Dark',
-})
+});
 
-const emit = defineEmits<{ toggle: [] }>()
+const emit = defineEmits<{ toggle: [] }>();
 </script>
 
 <template>

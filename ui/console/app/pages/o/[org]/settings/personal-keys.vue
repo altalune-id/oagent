@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import PersonalKeys from '~/components/apikey/personal/PersonalKeys.vue'
-import { usePersonalKeys } from '~/components/apikey/personal/usePersonalKeys'
-import { loginURL } from '~/lib/auth/urls'
-import { useOrgsStore } from '~/stores/orgs'
+import PersonalKeys from '~/components/apikey/personal/PersonalKeys.vue';
+import { usePersonalKeys } from '~/components/apikey/personal/usePersonalKeys';
+import { loginURL } from '~/lib/auth/urls';
+import { useOrgsStore } from '~/stores/orgs';
 
-const route = useRoute()
-const { t } = useI18n()
-const orgs = useOrgsStore()
-await orgs.ensureLoaded()
-const org = computed(() => orgs.bySlug(route.params.org as string))
-const personal = usePersonalKeys(org.value?.id ?? '')
-const { mine, mintable, orgProjects, signedIn, busy, error, created } = personal
-const loginUrl = computed(() => (import.meta.client ? loginURL(useRuntimeConfig().public.apiUrl, window.location) : ''))
+const route = useRoute();
+const { t } = useI18n();
+const orgs = useOrgsStore();
+await orgs.ensureLoaded();
+const org = computed(() => orgs.bySlug(route.params.org as string));
+const personal = usePersonalKeys(org.value?.id ?? '');
+const { mine, mintable, orgProjects, signedIn, busy, error, created } = personal;
+const loginUrl = computed(() => (import.meta.client ? loginURL(useRuntimeConfig().public.apiUrl, window.location) : ''));
 
 const labels = computed(() => ({
   name: t('common.name'),
@@ -40,11 +40,11 @@ const labels = computed(() => ({
   done: t('apikeys.done'),
   signIn: t('apikeys.personal_sign_in'),
   signInLink: t('auth.sign_in'),
-}))
+}));
 
-await personal.load()
+await personal.load();
 
-useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('apikeys.personal_title')} · oagent` })
+useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('apikeys.personal_title')} · oagent` });
 </script>
 
 <template>

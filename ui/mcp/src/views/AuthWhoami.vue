@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { permissionBadges, sourceLabel, whoamiRows, whoamiTitle, type WhoamiData } from "./whoami";
+import type { WhoamiData } from './whoami';
+import { permissionBadges, sourceLabel, whoamiRows, whoamiTitle } from './whoami';
 
 const props = defineProps<{ data: Record<string, unknown> }>();
 
 const who = computed(() => props.data as WhoamiData);
 const title = computed(() => whoamiTitle(who.value));
-const initial = computed(() => (title.value || "?").charAt(0).toUpperCase());
-const source = computed(() => (who.value.source === "local" ? "" : sourceLabel(who.value.source)));
+const initial = computed(() => (title.value || '?').charAt(0).toUpperCase());
+const source = computed(() => (who.value.source === 'local' ? '' : sourceLabel(who.value.source)));
 const rows = computed(() => whoamiRows(who.value));
 const badges = computed(() => permissionBadges(who.value.permissions));
 </script>
@@ -34,8 +35,30 @@ const badges = computed(() => permissionBadges(who.value.permissions));
 </template>
 
 <style scoped>
-.avatar { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #3b82f6; color: #fff; font-weight: 600; }
-.badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
-.badge { padding: 1px 8px; border: 1px solid rgba(128, 128, 128, 0.4); border-radius: 999px; font-size: 12px; }
-.operator { border-color: #f59e0b; color: #b45309; }
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #3b82f6;
+  color: #fff;
+  font-weight: 600;
+}
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 0;
+}
+.badge {
+  padding: 1px 8px;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 999px;
+  font-size: 12px;
+}
+.operator {
+  border-color: #f59e0b;
+  color: #b45309;
+}
 </style>

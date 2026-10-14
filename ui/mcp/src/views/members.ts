@@ -26,8 +26,10 @@ export function roleLabel(role: string | undefined): string {
 
 export function memberRows(data: Record<string, unknown> | undefined): MemberRow[] {
   const list = data?.members;
-  if (!Array.isArray(list)) return [];
+  if (!Array.isArray(list)) {
+    return [];
+  }
   return list
     .filter((m): m is MemberData => typeof m === 'object' && m !== null)
-    .map((m) => ({ id: m.userId ?? '', name: m.name ?? '', email: m.email ?? '', role: roleLabel(m.role) }));
+    .map(m => ({ id: m.userId ?? '', name: m.name ?? '', email: m.email ?? '', role: roleLabel(m.role) }));
 }

@@ -1,84 +1,82 @@
-import type { ShownError } from '~/lib/apperror/message'
-import { useErrorMessage } from '~/composables/useErrorMessage'
+import type { ShownError } from '~/lib/apperror/message';
+import { useErrorMessage } from '~/composables/useErrorMessage';
 
 export interface Agent {
-  id: string
-  projectId: string
-  slug: string
-  name: string
-  description: string
+  id: string;
+  projectId: string;
+  slug: string;
+  name: string;
+  description: string;
 }
 
 export const useAgentsStore = defineStore('agents', () => {
-  const items = ref<Agent[]>([])
-  const loading = ref(false)
-  const error = ref<ShownError | null>(null)
+  const items = ref<Agent[]>([]);
+  const loading = ref(false);
+  const error = ref<ShownError | null>(null);
 
-  const { $agentClient: client } = useNuxtApp()
-  const errorMessage = useErrorMessage()
-  let loadedFor = ''
-  let inflight: Promise<void> | null = null
-  let inflightFor = ''
-  let latest = 0
+  const { $agentClient: client } = useNuxtApp();
+  const errorMessage = useErrorMessage();
+  let loadedFor = '';
+  let inflight: Promise<void> | null = null;
+  let inflightFor = '';
+  let latest = 0;
 
   function forProject(projectId: string) {
-    return items.value.filter(agent => agent.projectId === projectId)
+    return items.value.filter(agent => agent.projectId === projectId);
   }
 
   function add(agent: Agent) {
     if (!items.value.some(a => a.id === agent.id)) {
-      items.value.push(agent)
+      items.value.push(agent);
     }
   }
 
   function remove(id: string) {
-    items.value = items.value.filter(a => a.id !== id)
+    items.value = items.value.filter(a => a.id !== id);
   }
 
   function update(patch: Pick<Agent, 'id' | 'name' | 'description'>) {
-    items.value = items.value.map(a => (a.id === patch.id ? { ...a, name: patch.name, description: patch.description } : a))
+    items.value = items.value.map(a => (a.id === patch.id ? { ...a, name: patch.name, description: patch.description } : a));
   }
 
   async function load(projectId: string) {
-    const mine = ++latest
-    loading.value = true
-    error.value = null
+    const mine = ++latest;
+    loading.value = true;
+    error.value = null;
     try {
-      const res = await client.listAgents({ projectId })
+      const res = await client.listAgents({ projectId });
       if (mine !== latest) {
-        return
+        return;
       }
-      items.value = (res.agents ?? []).map(a => ({ id: a.id, projectId: a.projectId, slug: a.slug, name: a.name, description: a.description }))
-      loadedFor = projectId
-    }
-    catch (e) {
+      items.value = (res.agents ?? []).map(a => ({ id: a.id, projectId: a.projectId, slug: a.slug, name: a.name, description: a.description }));
+      loadedFor = projectId;
+    } catch (e) {
       if (mine === latest) {
-        error.value = errorMessage(e, 'error.load_agents')
+        error.value = errorMessage(e, 'error.load_agents');
       }
-    }
-    finally {
+    } finally {
       if (mine === latest) {
-        loading.value = false
+        loading.value = false;
       }
     }
   }
 
   function ensureLoaded(projectId: string) {
     if (!projectId || loadedFor === projectId) {
-      return Promise.resolve()
+      return Promise.resolve();
     }
     if (inflight && inflightFor === projectId) {
-      return inflight
+      return inflight;
     }
-    inflightFor = projectId
+    inflightFor = projectId;
     const run = load(projectId).finally(() => {
       if (inflight === run) {
-        inflight = null
+        inflight = null;
       }
-    })
-    inflight = run
-    return run
+    });
+    inflight = run;
+    return run;
   }
 
-  return { items, loading, error, forProject, add, remove, update, load, ensureLoaded }
-})
+  return { items, loading, error, forProject, add, remove, update, load, ensureLoaded };
+});

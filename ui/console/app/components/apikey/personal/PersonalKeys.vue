@@ -1,66 +1,66 @@
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
-import type { ShownError } from '../../../lib/apperror/message'
-import CopyButton from '../../ui/CopyButton.vue'
-import ErrorText from '../../ui/ErrorText.vue'
-import SecretField from '../../ui/SecretField.vue'
+import type { ShownError } from '../../../lib/apperror/message';
+import { reactive, ref, watch } from 'vue';
+import CopyButton from '../../ui/CopyButton.vue';
+import ErrorText from '../../ui/ErrorText.vue';
+import SecretField from '../../ui/SecretField.vue';
 
 export interface PersonalKey {
-  rowKey: string
-  name: string
-  scopes: string[]
-  secretHint: string
-  expiresAt?: Date
-  revokedAt?: Date
+  rowKey: string;
+  name: string;
+  scopes: string[];
+  secretHint: string;
+  expiresAt?: Date;
+  revokedAt?: Date;
 }
 
 export interface PersonalKeyForm {
-  name: string
-  scopes: string[]
-  expiresInHours: number
-  allProjects: boolean
-  projectIds: string[]
+  name: string;
+  scopes: string[];
+  expiresInHours: number;
+  allProjects: boolean;
+  projectIds: string[];
 }
 
 export interface PersonalKeysLabels {
-  name: string
-  scopes: string
-  projects: string
-  allProjects: string
-  expires: string
-  days7: string
-  days30: string
-  days90: string
-  days365: string
-  create: string
-  creating: string
-  empty: string
-  hint: string
-  status: string
-  active: string
-  revoked: string
-  revoke: string
-  revokeConfirm: string
-  cancel: string
-  secretWarning: string
-  copy: string
-  snippet: string
-  copySnippet: string
-  done: string
-  signIn: string
-  signInLink: string
+  name: string;
+  scopes: string;
+  projects: string;
+  allProjects: string;
+  expires: string;
+  days7: string;
+  days30: string;
+  days90: string;
+  days365: string;
+  create: string;
+  creating: string;
+  empty: string;
+  hint: string;
+  status: string;
+  active: string;
+  revoked: string;
+  revoke: string;
+  revokeConfirm: string;
+  cancel: string;
+  secretWarning: string;
+  copy: string;
+  snippet: string;
+  copySnippet: string;
+  done: string;
+  signIn: string;
+  signInLink: string;
 }
 
 const props = withDefaults(defineProps<{
-  keys: PersonalKey[]
-  scopes: { name: string, label: string }[]
-  projects: { id: string, name: string }[]
-  created?: { plaintext: string, snippet: string } | null
-  busy?: boolean
-  error?: ShownError | null
-  signedIn?: boolean
-  loginUrl?: string
-  labels?: PersonalKeysLabels
+  keys: PersonalKey[],
+  scopes: { name: string, label: string }[],
+  projects: { id: string, name: string }[],
+  created?: { plaintext: string, snippet: string } | null,
+  busy?: boolean,
+  error?: ShownError | null,
+  signedIn?: boolean,
+  loginUrl?: string,
+  labels?: PersonalKeysLabels,
 }>(), {
   created: null,
   busy: false,
@@ -95,32 +95,32 @@ const props = withDefaults(defineProps<{
     signIn: 'Sign in to manage your personal keys.',
     signInLink: 'Sign in',
   }),
-})
+});
 
 const emit = defineEmits<{
-  create: [form: PersonalKeyForm]
-  revoke: [hint: string]
-  dismiss: []
-}>()
+  create: [form: PersonalKeyForm],
+  revoke: [hint: string],
+  dismiss: [],
+}>();
 
-const form = reactive<PersonalKeyForm>({ name: '', scopes: [], expiresInHours: 720, allProjects: true, projectIds: [] })
-const confirming = ref('')
+const form = reactive<PersonalKeyForm>({ name: '', scopes: [], expiresInHours: 720, allProjects: true, projectIds: [] });
+const confirming = ref('');
 
 watch(() => props.created, (created) => {
   if (created) {
-    Object.assign(form, { name: '', scopes: [], expiresInHours: 720, allProjects: true, projectIds: [] })
+    Object.assign(form, { name: '', scopes: [], expiresInHours: 720, allProjects: true, projectIds: [] });
   }
-})
+});
 
 function submit() {
   if (!props.busy && form.name.trim()) {
-    emit('create', { ...form, name: form.name.trim(), scopes: [...form.scopes], projectIds: [...form.projectIds] })
+    emit('create', { ...form, name: form.name.trim(), scopes: [...form.scopes], projectIds: [...form.projectIds] });
   }
 }
 
 function revoke(hint: string) {
-  confirming.value = ''
-  emit('revoke', hint)
+  confirming.value = '';
+  emit('revoke', hint);
 }
 </script>
 

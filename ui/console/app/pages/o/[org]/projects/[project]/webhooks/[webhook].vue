@@ -1,60 +1,63 @@
 <script setup lang="ts">
-import { timestampDate } from '@bufbuild/protobuf/wkt'
-import AppModal from '~/components/ui/AppModal.vue'
-import { useOrgsStore } from '~/stores/orgs'
-import { useProjectsStore } from '~/stores/projects'
-import type { ShownError } from '~/lib/apperror/message'
-import { useErrorMessage } from '~/composables/useErrorMessage'
-import ErrorText from '~/components/ui/ErrorText.vue'
+import type { ShownError } from '~/lib/apperror/message';
+import { timestampDate } from '@bufbuild/protobuf/wkt';
+import AppModal from '~/components/ui/AppModal.vue';
+import ErrorText from '~/components/ui/ErrorText.vue';
+import { useErrorMessage } from '~/composables/useErrorMessage';
+import { useOrgsStore } from '~/stores/orgs';
+import { useProjectsStore } from '~/stores/projects';
 
 interface Delivery {
-  id: string
-  eventType: string
-  attempt: number
-  status: string
-  lastError: string
-  payload: string
-  createdAt?: Date
+  id: string;
+  eventType: string;
+  attempt: number;
+  status: string;
+  lastError: string;
+  payload: string;
+  createdAt?: Date;
 }
 
 interface Attempt {
-  attempt: number
-  statusCode: number
-  error: string
-  durationMs: number
-  responseBody: string
-  responseTruncated: boolean
-  responseHeaders: { name: string, value: string }[]
+  attempt: number;
+  statusCode: number;
+  error: string;
+  durationMs: number;
+  responseBody: string;
+  responseTruncated: boolean;
+  responseHeaders: { name: string, value: string }[];
 }
 
-const route = useRoute()
-const { t } = useI18n()
-const errorMessage = useErrorMessage()
-const orgs = useOrgsStore()
-const projects = useProjectsStore()
-const { $webhookClient: client } = useNuxtApp()
+const route = useRoute();
+const { t } = useI18n();
+const errorMessage = useErrorMessage();
+const orgs = useOrgsStore();
+const projects = useProjectsStore();
+const { $webhookClient: client } = useNuxtApp();
 
-const org = computed(() => orgs.bySlug(route.params.org as string))
+const org = computed(() => orgs.bySlug(route.params.org as string));
 const project = computed(() =>
   projects.items.find(item => item.orgId === org.value?.id && item.slug === route.params.project),
-)
+);
 
 if (!project.value) {
-  throw createError({ statusCode: 404, statusMessage: t('error.project_not_found'), fatal: true })
+  throw createError({ statusCode: 404, statusMessage: t('error.project_not_found'), fatal: true });
 }
 
-const webhookId = computed(() => route.params.webhook as string)
-const deliveries = ref<Delivery[]>([])
-const error = ref<ShownError | null>(null)
-const busy = ref(false)
+const webhookId = computed(() => route.params.webhook as string);
+const deliveries = ref<Delivery[]>([]);
+const error = ref<ShownError | null>(null);
+const busy = ref(false);
 
 async function load() {
-  busy.value = true
-  error.value = null
+  busy.value = true;
+  error.value = null;
   try {
     const res = await client.listWebhookDeliveries({
-      orgId: org.value?.id ?? '', projectId: project.value?.id ?? '', id: webhookId.value, limit: 50,
-    })
+      orgId: org.value?.id ?? '',
+      projectId: project.value?.id ?? '',
+      id: webhookId.value,
+      limit: 50,
+    });
     deliveries.value = (res.deliveries ?? []).map(d => ({
       id: d.id,
       eventType: d.eventType,
@@ -63,28 +66,29 @@ async function load() {
       lastError: d.lastError,
       payload: d.payload,
       createdAt: d.createdAt ? timestampDate(d.createdAt) : undefined,
-    }))
-  }
-  catch (e) {
-    error.value = errorMessage(e, 'error.load_deliveries')
-  }
-  finally {
-    busy.value = false
+    }));
+  } catch (e) {
+    error.value = errorMessage(e, 'error.load_deliveries');
+  } finally {
+    busy.value = false;
   }
 }
 
-const selected = ref<Delivery | null>(null)
-const attempts = ref<Attempt[]>([])
-const attemptsError = ref<ShownError | null>(null)
+const selected = ref<Delivery | null>(null);
+const attempts = ref<Attempt[]>([]);
+const attemptsError = ref<ShownError | null>(null);
 
 async function showAttempts(delivery: Delivery) {
-  selected.value = delivery
-  attempts.value = []
-  attemptsError.value = null
+  selected.value = delivery;
+  attempts.value = [];
+  attemptsError.value = null;
   try {
     const res = await client.listWebhookDeliveryAttempts({
-      orgId: org.value?.id ?? '', projectId: project.value?.id ?? '', id: webhookId.value, deliveryId: delivery.id,
-    })
+      orgId: org.value?.id ?? '',
+      projectId: project.value?.id ?? '',
+      id: webhookId.value,
+      deliveryId: delivery.id,
+    });
     attempts.value = (res.attempts ?? []).map(a => ({
       attempt: a.attempt,
       statusCode: a.statusCode,
@@ -93,76 +97,75 @@ async function showAttempts(delivery: Delivery) {
       responseBody: a.responseBody,
       responseTruncated: a.responseTruncated,
       responseHeaders: (a.responseHeaders ?? []).map(h => ({ name: h.name, value: h.value })),
-    }))
-  }
-  catch (e) {
-    attemptsError.value = errorMessage(e, 'error.load_attempts')
+    }));
+  } catch (e) {
+    attemptsError.value = errorMessage(e, 'error.load_attempts');
   }
 }
 
 function closeAttempts() {
-  selected.value = null
-  attempts.value = []
-  attemptsError.value = null
+  selected.value = null;
+  attempts.value = [];
+  attemptsError.value = null;
 }
 
-const retrying = ref(false)
-const retryError = ref<ShownError | null>(null)
-const requeued = ref('')
-const retryOneError = ref<ShownError | null>(null)
+const retrying = ref(false);
+const retryError = ref<ShownError | null>(null);
+const requeued = ref('');
+const retryOneError = ref<ShownError | null>(null);
 
 async function retryFailed() {
-  retrying.value = true
-  retryError.value = null
-  requeued.value = ''
+  retrying.value = true;
+  retryError.value = null;
+  requeued.value = '';
   try {
     const res = await client.retryFailedWebhookDeliveries({
-      orgId: org.value?.id ?? '', projectId: project.value?.id ?? '', id: webhookId.value,
-    })
-    requeued.value = t('webhooks.requeued', { n: res.requeued })
-    await load()
-  }
-  catch (e) {
-    retryError.value = errorMessage(e, 'error.retry_deliveries')
-  }
-  finally {
-    retrying.value = false
+      orgId: org.value?.id ?? '',
+      projectId: project.value?.id ?? '',
+      id: webhookId.value,
+    });
+    requeued.value = t('webhooks.requeued', { n: res.requeued });
+    await load();
+  } catch (e) {
+    retryError.value = errorMessage(e, 'error.retry_deliveries');
+  } finally {
+    retrying.value = false;
   }
 }
 
 async function retryOne() {
   if (!selected.value) {
-    return
+    return;
   }
-  retrying.value = true
-  retryOneError.value = null
+  retrying.value = true;
+  retryOneError.value = null;
   try {
     await client.retryWebhookDelivery({
-      orgId: org.value?.id ?? '', projectId: project.value?.id ?? '', id: webhookId.value, deliveryId: selected.value.id,
-    })
-    closeAttempts()
-    await load()
-  }
-  catch (e) {
-    retryOneError.value = errorMessage(e, 'error.retry_deliveries')
-  }
-  finally {
-    retrying.value = false
+      orgId: org.value?.id ?? '',
+      projectId: project.value?.id ?? '',
+      id: webhookId.value,
+      deliveryId: selected.value.id,
+    });
+    closeAttempts();
+    await load();
+  } catch (e) {
+    retryOneError.value = errorMessage(e, 'error.retry_deliveries');
+  } finally {
+    retrying.value = false;
   }
 }
 
 const prettyPayload = computed(() => {
-  const raw = selected.value?.payload ?? ''
+  const raw = selected.value?.payload ?? '';
   try {
-    return JSON.stringify(JSON.parse(raw), null, 2)
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
   }
-  catch {
-    return raw
-  }
-})
+});
 
-await load()
-useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('webhooks.deliveries')} · oagent` })
+await load();
+useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('webhooks.deliveries')} · oagent` });
 </script>
 
 <template>
@@ -210,14 +213,18 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
         </thead>
         <tbody>
           <tr v-for="delivery in deliveries" :key="delivery.id" class="cursor-pointer hover:bg-base-200" @click="showAttempts(delivery)">
-            <td class="font-mono text-xs">{{ delivery.eventType || '—' }}</td>
+            <td class="font-mono text-xs">
+              {{ delivery.eventType || '—' }}
+            </td>
             <td>
               <span class="badge badge-sm" :class="delivery.status === 'delivered' ? 'badge-success' : delivery.status === 'failed' ? 'badge-error' : 'badge-ghost'">
                 {{ delivery.status }}
               </span>
             </td>
             <td>{{ delivery.attempt }}</td>
-            <td class="text-base-content/60">{{ delivery.createdAt?.toLocaleString() }}</td>
+            <td class="text-base-content/60">
+              {{ delivery.createdAt?.toLocaleString() }}
+            </td>
             <td class="text-right text-base-content/40">
               <Icon name="lucide:chevron-right" size="16" />
             </td>
@@ -255,8 +262,12 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
           </div>
           <dl v-if="attempt.responseHeaders.length" class="mt-2 grid grid-cols-[auto_1fr] gap-x-3 text-xs text-base-content/60">
             <template v-for="header in attempt.responseHeaders" :key="header.name">
-              <dt class="font-mono">{{ header.name }}</dt>
-              <dd class="truncate">{{ header.value }}</dd>
+              <dt class="font-mono">
+                {{ header.name }}
+              </dt>
+              <dd class="truncate">
+                {{ header.value }}
+              </dd>
             </template>
           </dl>
         </div>

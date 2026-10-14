@@ -1,19 +1,19 @@
-import type { Component } from "vue";
-import OrgCreateView from "./OrgCreateView.vue";
-import OrgGetView from "./OrgGetView.vue";
-import OrgListView from "./OrgListView.vue";
-import ProjectCreateView from "./ProjectCreateView.vue";
-import ProjectListView from "./ProjectListView.vue";
-import AgentCreateView from "./AgentCreateView.vue";
-import AgentListView from "./AgentListView.vue";
-import WebhookCreateView from "./WebhookCreateView.vue";
-import WebhookDeliveriesView from "./WebhookDeliveriesView.vue";
-import WebhookListView from "./WebhookListView.vue";
-import WebhookRetryFailedView from "./WebhookRetryFailedView.vue";
-import MemberList from "./MemberList.vue";
-import InviteConfirm from "./InviteConfirm.vue";
-import AuthWhoami from "./AuthWhoami.vue";
-import DefaultView from "./DefaultView.vue";
+import type { Component } from 'vue';
+import AgentCreateView from './AgentCreateView.vue';
+import AgentListView from './AgentListView.vue';
+import AuthWhoami from './AuthWhoami.vue';
+import DefaultView from './DefaultView.vue';
+import InviteConfirm from './InviteConfirm.vue';
+import MemberList from './MemberList.vue';
+import OrgCreateView from './OrgCreateView.vue';
+import OrgGetView from './OrgGetView.vue';
+import OrgListView from './OrgListView.vue';
+import ProjectCreateView from './ProjectCreateView.vue';
+import ProjectListView from './ProjectListView.vue';
+import WebhookCreateView from './WebhookCreateView.vue';
+import WebhookDeliveriesView from './WebhookDeliveriesView.vue';
+import WebhookListView from './WebhookListView.vue';
+import WebhookRetryFailedView from './WebhookRetryFailedView.vue';
 
 const registry: Record<string, Component> = {
   org_create: OrgCreateView,

@@ -1,26 +1,40 @@
 <script setup lang="ts">
-import InviteModal from '~/components/member/invite/InviteModal.vue'
-import PendingInvites from '~/components/member/invite/PendingInvites.vue'
-import { useInvite } from '~/components/member/invite/useInvite'
-import MemberList from '~/components/member/MemberList.vue'
-import { useMembers } from '~/components/member/useMembers'
-import ErrorText from '~/components/ui/ErrorText.vue'
-import { useOrgsStore } from '~/stores/orgs'
+import InviteModal from '~/components/member/invite/InviteModal.vue';
+import PendingInvites from '~/components/member/invite/PendingInvites.vue';
+import { useInvite } from '~/components/member/invite/useInvite';
+import MemberList from '~/components/member/MemberList.vue';
+import { useMembers } from '~/components/member/useMembers';
+import ErrorText from '~/components/ui/ErrorText.vue';
+import { useOrgsStore } from '~/stores/orgs';
 
-const route = useRoute()
-const { t } = useI18n()
-const orgs = useOrgsStore()
-await orgs.ensureLoaded()
-const org = computed(() => orgs.bySlug(route.params.org as string))
-const members = useMembers(org.value?.id ?? '')
-const { rows, canLeave, loading, loadError, busy, error, confirming, confirmMessage } = members
-const viewerRole = computed(() => members.viewer.value.role)
-const invite = useInvite(org.value?.id ?? '', viewerRole)
+const route = useRoute();
+const { t } = useI18n();
+const orgs = useOrgsStore();
+await orgs.ensureLoaded();
+const org = computed(() => orgs.bySlug(route.params.org as string));
+const members = useMembers(org.value?.id ?? '');
+const { rows, canLeave, loading, loadError, busy, error, confirming, confirmMessage } = members;
+const viewerRole = computed(() => members.viewer.value.role);
+const invite = useInvite(org.value?.id ?? '', viewerRole);
 const {
-  pending, drafts, canInvite, roles: inviteRoles, modalOpen, email: inviteEmail, role: inviteRole,
-  busy: inviteBusy, error: inviteError, fieldErrors: inviteFieldErrors, sent, sentMessage, rowLink, notice: inviteNotice, confirming: inviteConfirming, confirmMessage: inviteConfirmMessage,
+  pending,
+  drafts,
+  canInvite,
+  roles: inviteRoles,
+  modalOpen,
+  email: inviteEmail,
+  role: inviteRole,
+  busy: inviteBusy,
+  error: inviteError,
+  fieldErrors: inviteFieldErrors,
+  sent,
+  sentMessage,
+  rowLink,
+  notice: inviteNotice,
+  confirming: inviteConfirming,
+  confirmMessage: inviteConfirmMessage,
   loadError: inviteLoadError,
-} = invite
+} = invite;
 
 const labels = computed(() => ({
   member: t('members.col_member'),
@@ -37,9 +51,9 @@ const labels = computed(() => ({
   roleTitle: t('members.role_title'),
   changeRole: t('members.change_role'),
   empty: t('members.empty'),
-}))
+}));
 
-const roleLabels = computed(() => ({ owner: t('members.role_owner'), admin: t('members.role_admin'), member: t('members.role_member') }))
+const roleLabels = computed(() => ({ owner: t('members.role_owner'), admin: t('members.role_admin'), member: t('members.role_member') }));
 const modalLabels = computed(() => ({
   title: t('invites.invite'),
   email: t('invites.col_email'),
@@ -50,7 +64,7 @@ const modalLabels = computed(() => ({
   done: t('invites.done'),
   linkHint: t('invites.link_hint'),
   copy: t('invites.copy'),
-}))
+}));
 const inviteLabels = computed(() => ({
   title: t('invites.title'),
   draftsTitle: t('invites.drafts_title'),
@@ -71,14 +85,14 @@ const inviteLabels = computed(() => ({
   cancel: t('common.cancel'),
   newLink: t('invites.new_link'),
   copy: t('invites.copy'),
-}))
+}));
 
-await members.load()
+await members.load();
 if (canInvite.value) {
-  await invite.load()
+  await invite.load();
 }
 
-useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('members.title')} · oagent` })
+useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('members.title')} · oagent` });
 </script>
 
 <template>

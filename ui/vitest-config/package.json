@@ -1,17 +1,17 @@
 {
   "name": "@oagent/vitest-config",
+  "type": "module",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
-  "engines": {
-    "node": ">=24.15"
-  },
   "exports": {
     "./base": "./base.ts",
     "./node": "./node.ts",
     "./browser": "./browser.ts"
   },
-  "files": ["base.ts", "node.ts", "browser.ts"],
+  "files": ["base.ts", "browser.ts", "node.ts"],
+  "engines": {
+    "node": ">=24.15"
+  },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

@@ -2,10 +2,10 @@
 @custom-variant dark (&:where([data-theme="oagent-dark"], [data-theme="oagent-dark"] *, [data-theme="bumblebee-dark"], [data-theme="bumblebee-dark"] *, [data-theme="retro-dark"], [data-theme="retro-dark"] *, [data-theme="pastel-dark"], [data-theme="pastel-dark"] *, [data-theme="caramellatte-dark"], [data-theme="caramellatte-dark"] *, [data-theme="coffee-dark"], [data-theme="coffee-dark"] *, [data-theme="luxury-dark"], [data-theme="luxury-dark"] *, [data-theme="night-dark"], [data-theme="night-dark"] *, [data-theme="halloween-dark"], [data-theme="halloween-dark"] *));
 
 @plugin "daisyui/theme" {
-  name: "oagent-light";
+  name: 'oagent-light';
   default: true;
   prefersdark: false;
-  color-scheme: "light";
+  color-scheme: 'light';
 
   --color-base-100: oklch(100% 0 0);
   --color-base-200: oklch(98% 0 0);
@@ -38,10 +38,10 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "oagent-dark";
+  name: 'oagent-dark';
   default: false;
   prefersdark: true;
-  color-scheme: "dark";
+  color-scheme: 'dark';
 
   --color-base-100: oklch(25.33% 0.016 252.42);
   --color-base-200: oklch(23.26% 0.014 253.1);
@@ -74,10 +74,10 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "bumblebee-light";
+  name: 'bumblebee-light';
   default: false;
   prefersdark: false;
-  color-scheme: "light";
+  color-scheme: 'light';
 
   --color-base-100: oklch(100% 0 0);
   --color-base-200: oklch(97% 0 0);
@@ -110,10 +110,10 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "bumblebee-dark";
+  name: 'bumblebee-dark';
   default: false;
   prefersdark: false;
-  color-scheme: "dark";
+  color-scheme: 'dark';
 
   --color-base-100: oklch(24% 0 0);
   --color-base-200: oklch(22% 0 0);
@@ -146,10 +146,10 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "retro-light";
+  name: 'retro-light';
   default: false;
   prefersdark: false;
-  color-scheme: "light";
+  color-scheme: 'light';
 
   --color-base-100: oklch(91.637% 0.034 90.515);
   --color-base-200: oklch(88.272% 0.049 91.774);
@@ -182,10 +182,10 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "retro-dark";
+  name: 'retro-dark';
   default: false;
   prefersdark: false;
-  color-scheme: "dark";
+  color-scheme: 'dark';
 
   --color-base-100: oklch(24% 0.02 90.856);
   --color-base-200: oklch(22% 0.02 90.856);
@@ -218,10 +218,10 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "pastel-light";
+  name: 'pastel-light';
   default: false;
   prefersdark: false;
-  color-scheme: "light";
+  color-scheme: 'light';
 
   --color-base-100: oklch(100% 0 0);
   --color-base-200: oklch(98.462% 0.001 247.838);
@@ -254,10 +254,10 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "pastel-dark";
+  name: 'pastel-dark';
   default: false;
   prefersdark: false;
-  color-scheme: "dark";
+  color-scheme: 'dark';
 
   --color-base-100: oklch(24% 0.001 247.838);
   --color-base-200: oklch(22% 0.001 247.838);
@@ -290,10 +290,10 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "caramellatte-light";
+  name: 'caramellatte-light';
   default: false;
   prefersdark: false;
-  color-scheme: "light";
+  color-scheme: 'light';
 
   --color-base-100: oklch(98% 0.016 73.684);
   --color-base-200: oklch(95% 0.038 75.164);
@@ -326,10 +326,10 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "caramellatte-dark";
+  name: 'caramellatte-dark';
   default: false;
   prefersdark: false;
-  color-scheme: "dark";
+  color-scheme: 'dark';
 
   --color-base-100: oklch(24% 0.02 70.697);
   --color-base-200: oklch(22% 0.02 70.697);
@@ -362,10 +362,10 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "coffee-dark";
+  name: 'coffee-dark';
   default: false;
   prefersdark: false;
-  color-scheme: "dark";
+  color-scheme: 'dark';
 
   --color-base-100: oklch(24% 0.023 329.708);
   --color-base-200: oklch(21% 0.021 329.708);
@@ -398,10 +398,10 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "luxury-dark";
+  name: 'luxury-dark';
   default: false;
   prefersdark: false;
-  color-scheme: "dark";
+  color-scheme: 'dark';
 
   --color-base-100: oklch(14.076% 0.004 285.822);
   --color-base-200: oklch(20.219% 0.004 308.229);
@@ -434,10 +434,10 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "night-dark";
+  name: 'night-dark';
   default: false;
   prefersdark: false;
-  color-scheme: "dark";
+  color-scheme: 'dark';
 
   --color-base-100: oklch(20.768% 0.039 265.754);
   --color-base-200: oklch(19.314% 0.037 265.754);
@@ -470,10 +470,10 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "halloween-dark";
+  name: 'halloween-dark';
   default: false;
   prefersdark: false;
-  color-scheme: "dark";
+  color-scheme: 'dark';
 
   --color-base-100: oklch(21% 0.006 56.043);
   --color-base-200: oklch(14% 0.004 49.25);

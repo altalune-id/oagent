@@ -1,13 +1,13 @@
-import type { Meta, StoryObj } from '@storybook/vue3-vite'
-import NavbarShell from './NavbarShell.vue'
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import NavbarShell from './NavbarShell.vue';
 
 const meta = {
   title: 'UI/NavbarShell',
   component: NavbarShell,
-} satisfies Meta<typeof NavbarShell>
+} satisfies Meta<typeof NavbarShell>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: () => ({
@@ -24,4 +24,4 @@ export const Default: Story = {
       </NavbarShell>
     `,
   }),
-}
+};

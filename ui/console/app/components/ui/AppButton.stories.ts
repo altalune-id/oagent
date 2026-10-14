@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/vue3-vite'
-import AppButton from './AppButton.vue'
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import AppButton from './AppButton.vue';
 
 const meta = {
   title: 'UI/AppButton',
@@ -10,10 +10,10 @@ const meta = {
     size: { control: 'inline-radio', options: ['sm', 'md', 'lg'] },
     type: { control: 'select', options: ['button', 'submit', 'reset'] },
   },
-} satisfies Meta<typeof AppButton>
+} satisfies Meta<typeof AppButton>;
 
-export default meta
-type Story = StoryObj<typeof meta>
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 export const Primary: Story = {
   render: args => ({
@@ -21,7 +21,7 @@ export const Primary: Story = {
     setup: () => ({ args }),
     template: '<AppButton v-bind="args">Button</AppButton>',
   }),
-}
+};
 
 export const Outline: Story = {
   args: { variant: 'outline' },
@@ -30,7 +30,7 @@ export const Outline: Story = {
     setup: () => ({ args }),
     template: '<AppButton v-bind="args">Outline</AppButton>',
   }),
-}
+};
 
 export const Small: Story = {
   args: { size: 'sm' },
@@ -39,4 +39,4 @@ export const Small: Story = {
     setup: () => ({ args }),
     template: '<AppButton v-bind="args">Small</AppButton>',
   }),
-}
+};
