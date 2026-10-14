@@ -3,7 +3,8 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-10-06',
-  modules: ['@nuxt/icon', '@pinia/nuxt', '@vueuse/nuxt', '@nuxtjs/i18n'],
+  modules: ['@nuxt/eslint', '@nuxt/icon', '@pinia/nuxt', '@vueuse/nuxt', '@nuxtjs/i18n'],
+  eslint: { config: { standalone: false } },
   icon: {
     mode: 'svg',
     clientBundle: { scan: true, icons: ['circle-flags:us', 'circle-flags:id'] },

@@ -1,6 +1,9 @@
 packages:
   - "ui/*"
 
+onlyBuiltDependencies:
+  - esbuild
+
 minimumReleaseAge: 4320
 minimumReleaseAgeStrict: true
 

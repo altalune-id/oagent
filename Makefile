@@ -1,5 +1,6 @@
 GOTOOLCHAIN ?= auto
 GO := env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) go
+BUF ?= pnpm exec buf
 
 BIN     := bin/oagent
 VERSION := $(shell cat version/VERSION 2>/dev/null || echo dev)
@@ -14,7 +15,7 @@ LDFLAGS := -s -w \
 
 .PHONY: help
 help: ## list targets
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  make %-8s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  make %-16s %s\n", $$1, $$2}'
 
 .PHONY: build
 build: ## build the oagent binary into bin/
@@ -39,8 +40,8 @@ config-examples: ## regenerate .env.reference and config.reference.yml from stru
 
 .PHONY: generate
 generate: templ ## regenerate protos (connect, openapi, mcp tools), scope names, error codes and templ components
-	env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) buf generate
-	env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) buf generate --template buf.gen.mcp.yaml
+	env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) $(BUF) generate
+	env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) $(BUF) generate --template buf.gen.mcp.yaml
 	$(GO) tool gen-scope
 	$(GO) tool gen-apperror
 
@@ -97,8 +98,22 @@ vet: ## run go vet (unit and integration files)
 	$(GO) vet -tags integration ./...
 
 .PHONY: lint
-lint: ## run golangci-lint (GOLANGCI_VERSION)
+lint: lint-go lint-js lint-config ## run every linter
+
+.PHONY: lint-go
+lint-go: ## run golangci-lint (GOLANGCI_VERSION)
 	$(GOLANGCI) run --timeout=3m ./...
+
+.PHONY: lint-js
+lint-js: ## run ESLint over ui/, docs and every JS/TS/Vue/JSON/Markdown/CSS file
+	pnpm lint
+
+.PHONY: lint-config
+lint-config: ## run yamllint, hadolint, actionlint and shellcheck (binary, else Docker, else skipped)
+	scripts/lint/tool.sh yamllint --strict -c .yamllint.yaml .
+	@if [ -f Dockerfile ]; then scripts/lint/tool.sh hadolint Dockerfile; fi
+	@if [ -d .github/workflows ]; then scripts/lint/tool.sh actionlint; fi
+	scripts/lint/tool.sh shellcheck $$(git ls-files -co --exclude-standard -- '*.sh' .husky/pre-commit .husky/pre-push ':!:.agents' ':!:.claude')
 
 .PHONY: comment-check
 comment-check: ## fail on any comment that breaks the comment discipline

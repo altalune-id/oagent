@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=24"
+    "node": ">=24.15"
   },
   "scripts": {
     "dev": "nuxt dev",
@@ -36,6 +36,7 @@
     "@iconify-json/lucide": "^1.2.140",
     "@iconify/vue": "^5.0.3",
     "@intlify/message-compiler": "11.4.13",
+    "@nuxt/eslint": "^1.17.0",
     "@oagent/vitest-config": "workspace:*",
     "@storybook/addon-a11y": "^10.6.1",
     "@storybook/addon-docs": "^10.6.1",

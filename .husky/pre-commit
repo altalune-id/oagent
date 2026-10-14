@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+set -eu
+
+node -e 'process.exit(+process.versions.node.split(".")[0] >= 24 ? 0 : 1)' 2>/dev/null || {
+  echo "Node 24 is required (found $(node -v 2>/dev/null || echo none)); run: nvm alias default 24 — see .husky/README.md" >&2
+  exit 1
+}
+
+pnpm exec lint-staged
