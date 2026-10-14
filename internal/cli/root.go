@@ -57,7 +57,7 @@ type ctxKey int
 
 const ctxKeyRuntime ctxKey = iota + 1
 
-// clientAnnotation marks remote commands; their config is loaded without validation (no DB required).
+// NOTE: commands carrying this annotation load config without validation, so they need no DB.
 const clientAnnotation = "oagent/client"
 
 const operatorAnnotation = "oagent/operator"
@@ -200,7 +200,6 @@ func connectClient(cmd *cobra.Command, bootClient ClientBootFn) (*apiclient.Clie
 	return bootClient(cmd.Context(), *rt.cfg, rt.log, r.url, r.cred)
 }
 
-// orgClientFn adapts the resolved remote client to the org package's ClientFn.
 func orgClientFn(bootClient ClientBootFn) org.ClientFn {
 	return func(cmd *cobra.Command) (orgv1connect.OrgServiceClient, error) {
 		client, err := connectClient(cmd, bootClient)
@@ -231,7 +230,6 @@ func inviteClientFn(bootClient ClientBootFn) invite.ClientFn {
 	}
 }
 
-// projectClientFn adapts the resolved remote client to the project package's ClientFn.
 func projectClientFn(bootClient ClientBootFn) project.ClientFn {
 	return func(cmd *cobra.Command) (projectv1connect.ProjectServiceClient, error) {
 		client, err := connectClient(cmd, bootClient)
@@ -242,7 +240,6 @@ func projectClientFn(bootClient ClientBootFn) project.ClientFn {
 	}
 }
 
-// agentClientFn adapts the resolved remote client to the agent package's ClientFn.
 func agentClientFn(bootClient ClientBootFn) agent.ClientFn {
 	return func(cmd *cobra.Command) (agentv1connect.AgentServiceClient, error) {
 		client, err := connectClient(cmd, bootClient)
@@ -253,7 +250,6 @@ func agentClientFn(bootClient ClientBootFn) agent.ClientFn {
 	}
 }
 
-// apiKeyClientFn adapts the resolved remote client to the apikey package's ClientFn.
 func apiKeyClientFn(bootClient ClientBootFn) apikey.ClientFn {
 	return func(cmd *cobra.Command) (apikeyv1connect.APIKeyServiceClient, error) {
 		client, err := connectClient(cmd, bootClient)
@@ -264,7 +260,6 @@ func apiKeyClientFn(bootClient ClientBootFn) apikey.ClientFn {
 	}
 }
 
-// webhookClientFn adapts the resolved remote client to the webhook package's ClientFn.
 func webhookClientFn(bootClient ClientBootFn) webhook.ClientFn {
 	return func(cmd *cobra.Command) (webhookv1connect.WebhookServiceClient, error) {
 		client, err := connectClient(cmd, bootClient)
@@ -342,7 +337,6 @@ func withOperatorApp(ctx context.Context, bootServer ServerBootFn, run func(App)
 	return run(app)
 }
 
-// markClientTree marks a command subtree as remote so its config loads without validation.
 func markClientTree(cmd *cobra.Command) {
 	if cmd.Annotations == nil {
 		cmd.Annotations = map[string]string{}
@@ -379,7 +373,6 @@ func refuseRemoteFlags(cmd *cobra.Command) error {
 	return nil
 }
 
-// registerConfigFlags declares the flags that override config keys.
 func registerConfigFlags(fs *pflag.FlagSet) {
 	fs.String("mode", "", "config override: mode (selfhosted|cloud)")
 	fs.String("env", "", "config override: env (development|production)")
@@ -394,7 +387,6 @@ func registerConfigFlags(fs *pflag.FlagSet) {
 	fs.String("queue-url", "", "config override: queue.url")
 }
 
-// bindConfigFlags binds changed flags to their dotted config keys.
 func bindConfigFlags(loader *config.Loader, cmd *cobra.Command) error {
 	pairs := []struct{ key, flag string }{
 		{"mode", "mode"},

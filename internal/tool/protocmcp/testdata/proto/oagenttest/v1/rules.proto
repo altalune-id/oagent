@@ -6,7 +6,7 @@ import "buf/validate/validate.proto";
 import "mcp/v1/annotations.proto";
 import "oagent/v1/rules.proto";
 
-option go_package = "altalune.id/oagent/internal/generator/protocmcp/testdata/gen/oagenttest/v1;oagenttestv1";
+option go_package = "altalune.id/oagent/internal/tool/protocmcp/testdata/gen/oagenttest/v1;oagenttestv1";
 
 // RulesService exercises every request rule the schema builder maps.
 service RulesService {

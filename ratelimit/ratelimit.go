@@ -1,4 +1,4 @@
-// Package ratelimit defines the Limiter contract that the memory store (and later a Redis store) implements.
+// Package ratelimit defines the Limiter contract that the memory and Redis stores implement.
 package ratelimit
 
 import (

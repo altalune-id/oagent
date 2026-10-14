@@ -42,9 +42,7 @@ func Ensure(ctx context.Context) (_ context.Context, id string) {
 // MaxLength is the longest inbound request id that is propagated rather than replaced.
 const MaxLength = 128
 
-// Sanitize returns id when it is safe to propagate as a correlation id, and "" otherwise.
-// SECURITY: an attacker controls this on unauthenticated surfaces and it lands in every
-// correlated log line, so it is capped and held to the UUID/traceparent charset.
+// Sanitize returns id when it is safe to propagate, else "". SECURITY: attacker-controlled; capped to the UUID/traceparent charset.
 func Sanitize(id string) string {
 	if id == "" || len(id) > MaxLength {
 		return ""

@@ -40,7 +40,7 @@ func TestPasswordBundle_IsBuiltFromTheCurrentRules(t *testing.T) {
 	assert.Positive(t, n)
 }
 
-// builtAsset reads a file that make web builds (they are not committed): missing, it skips locally and fails in CI.
+// NOTE: make web builds these files (not committed); missing, the test skips locally and fails when CI is set.
 func builtAsset(t *testing.T, name string) []byte {
 	t.Helper()
 	b, err := fs.ReadFile(StaticFS(), name)

@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// bindEnv binds every leaf key to its env var so viper's Unmarshal honours environmental overrides.
 func bindEnv(v *viper.Viper, prefix string, t reflect.Type) {
 	for t.Kind() == reflect.Pointer {
 		t = t.Elem()

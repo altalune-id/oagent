@@ -8,7 +8,6 @@ import (
 	"altalune.id/oagent/version"
 )
 
-// buildConsoleHandler builds the console SPA handler mounted at BasePath+"/console".
 func buildConsoleHandler(basePath string) http.Handler {
 	return console.Handler(
 		layout.Path(basePath, "/console")+"/",

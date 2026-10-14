@@ -62,7 +62,6 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger) *roo
 	return srv
 }
 
-// mcpHTTPHandler returns srv's streamable-HTTP handler, or nil.
 func mcpHTTPHandler(srv *rootmcp.Server) http.Handler {
 	if srv == nil {
 		return nil

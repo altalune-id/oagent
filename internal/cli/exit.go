@@ -36,7 +36,6 @@ func ExitCodeFor(err error) int {
 	return ExitGeneral
 }
 
-// connectErrorCode extracts the apperror code from a remote connect.Error's typed detail.
 func connectErrorCode(err error) (apperror.Code, bool) {
 	cerr, ok := errors.AsType[*connect.Error](err)
 	if !ok {

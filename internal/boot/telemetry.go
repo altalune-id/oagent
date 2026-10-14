@@ -25,7 +25,6 @@ func (i *incidentCounter) Inc(ctx context.Context, code string) {
 	i.counter.Add(ctx, 1, metric.WithAttributes(attribute.String("code", code)))
 }
 
-// requestMeta surfaces the propagated request id into the error envelope.
 func requestMeta(ctx context.Context) map[string]string {
 	if id := reqid.FromContext(ctx); id != "" {
 		return map[string]string{"request_id": id}

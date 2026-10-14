@@ -53,7 +53,6 @@ func stubTelemetry(called *bool, err error) telemetrySetupFunc {
 	}
 }
 
-// passthroughLock runs fn directly, skipping the Postgres advisory lock.
 func passthroughLock(_ context.Context, _ *sql.DB, _ string, fn func(context.Context) error) error {
 	return fn(context.Background())
 }

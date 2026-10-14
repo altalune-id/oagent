@@ -12,7 +12,6 @@ import (
 	"altalune.id/oagent/schema"
 )
 
-// buildDBHealth builds the db-health monitor worker.
 func buildDBHealth(k kernel.Kernel, cfg config.Config, log *slog.Logger) *db.HealthMonitor {
 	return db.NewHealthMonitor(k.Pool, dbConfig(cfg.DB).Health, log, k.Meter)
 }
@@ -32,7 +31,7 @@ var (
 	withLock     withLockFunc     = db.RunWithAdvisoryLock
 )
 
-// migrate runs goose and any registered upgrades under a session advisory lock.
+// NOTE: runs under a session advisory lock so concurrent instances migrate once.
 func migrate(ctx context.Context, cfg config.DBConfig) error {
 	migCfg := migrator.Config{
 		Schema:      cfg.Schema,

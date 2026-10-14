@@ -1,4 +1,4 @@
-// Command gen-config-example regenerates .env.example and config.reference.yml from config struct tags.
+// Command gen-config-example regenerates .env.reference and config.reference.yml from config struct tags.
 package main
 
 import (

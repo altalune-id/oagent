@@ -116,7 +116,6 @@ func normalizeDescription(d string) (string, error) {
 	return d, nil
 }
 
-// agentRow is the jet scan target for the agents table.
 type agentRow struct {
 	ID          uuid.UUID     `alias:"agents.id"`
 	PublicID    string        `alias:"agents.public_id"`

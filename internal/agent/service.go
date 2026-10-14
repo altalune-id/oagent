@@ -77,7 +77,6 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*Agent, error)
 	return a, nil
 }
 
-// createGenerated mints a default slug, retrying while the slug is already taken in the project.
 func (s *Service) createGenerated(ctx context.Context, req CreateRequest) (*Agent, error) {
 	a, err := slugpkg.Retry(slugpkg.MaxAttempts, IsAlreadyExistsError, func(candidate string) (*Agent, error) {
 		a, err := New(req.OrgID, req.ProjectID, candidate, req.Name, req.Description, req.CreatedBy)
@@ -142,7 +141,7 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// saveAndPublish saves a and enqueues its event t in one unit of work, so neither commits without the other.
+// NOTE: one unit of work, so the save and its event commit together or not at all.
 func (s *Service) saveAndPublish(ctx context.Context, t events.Type, a *Agent) error {
 	return s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		if err := s.store.Save(ctx, a); err != nil {
@@ -170,7 +169,6 @@ func (s *Service) publish(ctx context.Context, t events.Type, a *Agent) error {
 	return nil
 }
 
-// errOrReport returns err unchanged when it is an expected domain error, else reports it and returns an AppError.
 func (s *Service) errOrReport(ctx context.Context, message string, err error) error {
 	if IsExpectedError(err) {
 		return err

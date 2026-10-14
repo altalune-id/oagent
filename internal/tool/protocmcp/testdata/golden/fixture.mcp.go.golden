@@ -5,8 +5,8 @@
 package oagenttestv1mcp
 
 import (
-	v1 "altalune.id/oagent/internal/generator/protocmcp/testdata/gen/oagenttest/v1"
-	oagenttestv1connect "altalune.id/oagent/internal/generator/protocmcp/testdata/gen/oagenttest/v1/oagenttestv1connect"
+	v1 "altalune.id/oagent/internal/tool/protocmcp/testdata/gen/oagenttest/v1"
+	oagenttestv1connect "altalune.id/oagent/internal/tool/protocmcp/testdata/gen/oagenttest/v1/oagenttestv1connect"
 	mcp "altalune.id/oagent/mcp"
 	connect "connectrpc.com/connect"
 	context "context"

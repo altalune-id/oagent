@@ -175,7 +175,6 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, name, slug string) (
 	return o, nil
 }
 
-// errOrReport returns err unchanged when it is an expected domain error, else reports it and returns an AppError.
 func (s *Service) errOrReport(ctx context.Context, message string, err error) error {
 	if IsExpectedError(err) {
 		return err

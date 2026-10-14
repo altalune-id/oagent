@@ -30,7 +30,6 @@ import (
 // SECURITY: the lockdown switch; /api, /mcp and the console refuse a request without a credential. Revert its commit to undo.
 const requireCredentials = true
 
-// httpConfig maps the operator config onto the HTTP server worker's config.
 func httpConfig(c config.HTTPConfig) httpserver.Config {
 	return httpserver.Config{Name: "http", Addr: c.Addr}
 }

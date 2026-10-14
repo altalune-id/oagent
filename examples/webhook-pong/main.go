@@ -1,5 +1,4 @@
-// Command webhook-pong is a localhost webhook receiver for testing: it verifies
-// X-Oagent-Signature, logs each delivery, and answers 200 PONG!!!.
+// Command webhook-pong is a localhost webhook receiver that verifies X-Oagent-Signature and answers 200 PONG!!!.
 package main
 
 import (

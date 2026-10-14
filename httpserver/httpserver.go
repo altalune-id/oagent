@@ -28,7 +28,6 @@ func New(cfg Config, h http.Handler, log *slog.Logger) worker.Worker {
 
 var _ worker.Worker = (*httpServer)(nil)
 
-// httpServer is a worker.Worker that serves an http.Handler until its context is cancelled.
 type httpServer struct {
 	name    string
 	addr    string

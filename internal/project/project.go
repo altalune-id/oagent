@@ -97,7 +97,6 @@ func ValidateName(n string) error {
 	return nil
 }
 
-// projectRow is the jet scan target for the projects table.
 type projectRow struct {
 	ID        uuid.UUID     `alias:"projects.id"`
 	PublicID  string        `alias:"projects.public_id"`

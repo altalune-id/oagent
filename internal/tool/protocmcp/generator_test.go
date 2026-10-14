@@ -25,8 +25,7 @@ const fixturePrefix = "ui://oagenttest"
 //nolint:gochecknoglobals // a -update flag for golden files has to be package level.
 var update = flag.Bool("update", false, "rewrite the golden files instead of comparing against them")
 
-// SECURITY: every refusal below is a build-time gate. Deleting one ships a tool whose annotation
-// and message have silently drifted apart, so each fixture must name the offending RPC.
+// SECURITY: each refusal is a build-time gate; a deleted one ships a tool whose annotation and message drifted.
 func TestGenerateRefusals(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -244,8 +243,6 @@ func TestToolNamePattern(t *testing.T) {
 	}
 }
 
-// TestFixtureAnnotationsMatchTheRealOne keeps the fixture module's copy of the annotation from
-// drifting away from the one the repo's own protos import.
 func TestFixtureAnnotationsMatchTheRealOne(t *testing.T) {
 	copied, err := os.ReadFile(filepath.Join("testdata", "proto", "mcp", "v1", "annotations.proto"))
 	if err != nil {
@@ -279,7 +276,7 @@ func TestFixtureDescriptorSetIsFresh(t *testing.T) {
 		t.Fatalf("reading the committed descriptor set: %v", err)
 	}
 	if !bytes.Equal(rebuilt, committed) {
-		t.Error("testdata/fixture.binpb is stale: it no longer matches testdata/proto. Rebuild it with `pnpm exec buf build internal/generator/protocmcp/testdata/proto -o internal/generator/protocmcp/testdata/fixture.binpb`, then rerun this package's tests with -update.")
+		t.Error("testdata/fixture.binpb is stale: it no longer matches testdata/proto. Rebuild it with `pnpm exec buf build internal/tool/protocmcp/testdata/proto -o internal/tool/protocmcp/testdata/fixture.binpb`, then rerun this package's tests with -update.")
 	}
 }
 

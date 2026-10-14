@@ -104,7 +104,6 @@ func ValidateName(n string) error {
 	return nil
 }
 
-// orgRow is the jet scan target for the orgs table.
 type orgRow struct {
 	ID        uuid.UUID     `alias:"orgs.id"`
 	PublicID  string        `alias:"orgs.public_id"`

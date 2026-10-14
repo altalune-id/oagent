@@ -16,7 +16,6 @@ import (
 	"altalune.id/oagent/schema/entity"
 )
 
-// errBoom is the shared sentinel error the store tests simulate driver failures with.
 var errBoom = context.DeadlineExceeded
 
 func endpointColumns() []string {

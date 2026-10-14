@@ -165,7 +165,6 @@ func (s *Service) requireWithinRole(ctx context.Context, orgID, userID uuid.UUID
 	return nil
 }
 
-// requireOrgProjects rejects a grant naming projects outside the org.
 func (s *Service) requireOrgProjects(ctx context.Context, orgID uuid.UUID, grant ProjectGrant) error {
 	if grant.All || s.projects == nil {
 		return nil
@@ -248,7 +247,6 @@ func visibleTo(k *APIKey, viewer uuid.UUID) bool {
 	return viewer == uuid.Nil || k.Kind != KindPersonal || k.CreatedBy == viewer
 }
 
-// errOrReport returns err unchanged when it is an expected domain error, else reports it and returns an AppError.
 func (s *Service) errOrReport(ctx context.Context, message string, err error) error {
 	if IsExpectedError(err) {
 		return err

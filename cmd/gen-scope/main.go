@@ -45,7 +45,6 @@ func run() error {
 	return os.WriteFile("scope/names.gen.go", src, 0o644) //nolint:gosec // G306: generated source is committed, not secrets.
 }
 
-// ident turns a scope name like "org:read" into the Go identifier "OrgRead".
 func ident(name string) string {
 	parts := strings.FieldsFunc(name, func(r rune) bool { return r == ':' || r == '-' || r == '_' })
 	var b strings.Builder

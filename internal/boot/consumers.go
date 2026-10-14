@@ -22,7 +22,6 @@ var (
 	}
 )
 
-// consumerOff returns the reason the queue consumer is disabled, or "" when it should run.
 func consumerOff(o *options, cfg config.Config) string {
 	switch {
 	case !o.consumer:
@@ -35,8 +34,6 @@ func consumerOff(o *options, cfg config.Config) string {
 	return ""
 }
 
-// queueHandlers returns the domain queue handlers; empty until domains contribute them.
 func queueHandlers(_ *Services) []queue.Handler { return nil }
 
-// queueListeners returns the per-instance broadcast listeners; empty until domains contribute them.
 func queueListeners(_ *Services) []queue.Listener { return nil }

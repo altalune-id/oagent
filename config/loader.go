@@ -146,7 +146,6 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("telemetry.metrics.prometheus.path", "/metrics")
 }
 
-// findConfigFile returns the first existing config file in configCandidates, or "".
 func findConfigFile() string {
 	for _, p := range configCandidates() {
 		if info, err := os.Stat(p); err == nil && !info.IsDir() {
@@ -156,7 +155,7 @@ func findConfigFile() string {
 	return ""
 }
 
-// configCandidates lists config files in priority order: user config dir, /etc, then cwd.
+// NOTE: priority order is the user config dir, then /etc, then the working directory.
 func configCandidates() []string {
 	var out []string
 	if dir := userConfigDir(); dir != "" {
@@ -171,7 +170,6 @@ func configCandidates() []string {
 	return out
 }
 
-// userConfigDir returns $XDG_CONFIG_HOME/oagent, falling back to ~/.config/oagent.
 func userConfigDir() string {
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
 		return filepath.Join(xdg, "oagent")

@@ -154,6 +154,7 @@ require (
 )
 
 tool (
+	altalune.id/oagent/cmd/comment-lint
 	altalune.id/oagent/cmd/gen-apperror
 	altalune.id/oagent/cmd/gen-config-example
 	altalune.id/oagent/cmd/gen-scope

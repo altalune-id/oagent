@@ -4,7 +4,7 @@ package oagenttest.v1;
 
 import "mcp/v1/annotations.proto";
 
-option go_package = "altalune.id/oagent/internal/generator/protocmcp/testdata/gen/oagenttest/v1;oagenttestv1";
+option go_package = "altalune.id/oagent/internal/tool/protocmcp/testdata/gen/oagenttest/v1;oagenttestv1";
 
 service BadDupService {
   // FirstTwin claims the twin_tool name.

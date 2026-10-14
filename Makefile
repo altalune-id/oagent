@@ -100,6 +100,14 @@ vet: ## run go vet (unit and integration files)
 lint: ## run golangci-lint (GOLANGCI_VERSION)
 	$(GOLANGCI) run --timeout=3m ./...
 
+.PHONY: comment-check
+comment-check: ## fail on any comment that breaks the comment discipline
+	$(GO) tool comment-lint .
+
+.PHONY: comment-list
+comment-list: ## list comment-discipline violations without failing
+	@$(GO) tool comment-lint -list .
+
 .PHONY: test
 test: ## run tests with the race detector
 	$(GO) test -race ./...

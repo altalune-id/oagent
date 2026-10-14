@@ -9,8 +9,7 @@ import (
 
 const swaggerUIVersion = "5.17.14"
 
-// NOTE: this page carries its own CSP, overriding the app policy, because its assets and inline
-// bootstrap are third-party and would otherwise be blocked.
+// NOTE: this page sets its own CSP so the third-party Swagger UI assets and inline bootstrap load.
 func docsHandler(specURL string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		nonce := docsNonce()

@@ -55,7 +55,6 @@ func (s *spa) serveIndex(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(s.rebase(string(b))))
 }
 
-// rebase rewrites Nuxt's baked asset URLs, baseURL, apiUrl and appVersion onto the runtime values.
 func (s *spa) rebase(html string) string {
 	if s.base == "" || s.base == "/" {
 		return html

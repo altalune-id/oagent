@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// openOnlyFS hides fs.ReadDirFS so the ReadDir fallback is exercised.
 type openOnlyFS struct{ fs.FS }
 
 func TestTemplatedFS_Open_RendersSQL(t *testing.T) {

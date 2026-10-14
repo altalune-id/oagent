@@ -60,7 +60,6 @@ func (m *Migrator) provider(sqldb *sql.DB) (*goose.Provider, error) {
 	return goose.NewProvider("", sqldb, tpl, goose.WithStore(store))
 }
 
-// gooseTableName qualifies goose's bookkeeping table with the configured schema.
 func gooseTableName(cfg Config) (string, error) {
 	cfg = cfg.withDefaults()
 	table := cfg.TablePrefix + "goose_db_version"

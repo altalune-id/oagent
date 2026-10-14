@@ -12,10 +12,8 @@ import (
 	"altalune.id/oagent/internal/webhook"
 )
 
-// webhookDeliveryTimeout bounds one outbound webhook POST attempt.
 const webhookDeliveryTimeout = 10 * time.Second
 
-// buildOutboxWorker wires the outbox dispatcher: it claims due entries and hands each to the signed webhook deliverer.
 func buildOutboxWorker(svcs *Services, log *slog.Logger) *outbox.Worker {
 	// Webhook endpoints are frequently internal in self-hosted deployments, so the SSRF filter is off here.
 	client := httpclient.New(httpclient.WithAllowPrivateHosts(true), httpclient.WithTimeout(webhookDeliveryTimeout))
@@ -23,7 +21,6 @@ func buildOutboxWorker(svcs *Services, log *slog.Logger) *outbox.Worker {
 	return outbox.NewWorker(svcs.Outbox, deliverer, outboxTenants{orgs: svcs.Orgs}, log, outbox.WorkerOpts{})
 }
 
-// outboxTenants enumerates every org as a tenant scope for one dispatch sweep.
 type outboxTenants struct{ orgs *org.Service }
 
 func (t outboxTenants) Each(ctx context.Context, fn func(context.Context, string) error) error {

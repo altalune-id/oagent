@@ -47,7 +47,6 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*Project, erro
 	return p, nil
 }
 
-// createGenerated mints a default slug, retrying while the slug is already taken in the org.
 func (s *Service) createGenerated(ctx context.Context, req CreateRequest) (*Project, error) {
 	p, err := slugpkg.Retry(slugpkg.MaxAttempts, IsAlreadyExistsError, func(candidate string) (*Project, error) {
 		p, err := NewProject(req.OrgID, candidate, req.Name, req.CreatedBy)
@@ -113,7 +112,6 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, name, slug string) (
 	return p, nil
 }
 
-// errOrReport returns err unchanged when it is an expected domain error, else reports it and returns an AppError.
 func (s *Service) errOrReport(ctx context.Context, message string, err error) error {
 	if IsExpectedError(err) {
 		return err

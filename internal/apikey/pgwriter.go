@@ -50,7 +50,6 @@ func (s *postgresStore) save(ctx context.Context, tx *sql.Tx, k *APIKey) error {
 	return nil
 }
 
-// syncGrants writes the key's project grant: rows not kept are pruned, kept ones upserted.
 func (s *postgresStore) syncGrants(ctx context.Context, tx *sql.Tx, k *APIKey) error {
 	keep := make([]postgres.Expression, 0, len(k.ProjectIDs))
 	for _, id := range k.ProjectIDs {

@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// resolveToken precedence: --token > --token-file > OAGENT_TOKEN.
+// NOTE: precedence is --token, then --token-file, then OAGENT_TOKEN.
 func resolveToken(cmd *cobra.Command) (string, error) {
 	root := cmd.Root()
 	if f := root.PersistentFlags().Lookup("token"); f != nil && f.Changed {

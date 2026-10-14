@@ -5,7 +5,7 @@ import (
 	"altalune.id/oagent/sealer"
 )
 
-// buildSealer returns a working sealer from the configured key, or a Disabled one when it is absent or invalid.
+// NOTE: a missing or invalid key yields a Disabled sealer, not a boot failure.
 func buildSealer(cfg config.SecretsConfig) sealer.Sealer {
 	key, err := sealer.ParseKey(cfg.EncryptionKey)
 	if err != nil {

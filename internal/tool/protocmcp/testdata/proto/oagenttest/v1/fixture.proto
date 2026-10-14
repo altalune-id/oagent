@@ -5,7 +5,7 @@ package oagenttest.v1;
 import "google/protobuf/timestamp.proto";
 import "mcp/v1/annotations.proto";
 
-option go_package = "altalune.id/oagent/internal/generator/protocmcp/testdata/gen/oagenttest/v1;oagenttestv1";
+option go_package = "altalune.id/oagent/internal/tool/protocmcp/testdata/gen/oagenttest/v1;oagenttestv1";
 
 // FixtureService exercises every schema shape the generator has to render.
 service FixtureService {

@@ -38,7 +38,6 @@ func errorPayload(msg, code string) map[string]string {
 
 const unauthenticatedHint = "not signed in or credential rejected; run `oagent auth login` or pass --token"
 
-// errorInfo returns the clean message and, when available, the stable apperror code.
 func errorInfo(err error) (msg, code string) {
 	if ae, ok := apperror.AsAppError(err); ok {
 		return ae.Message(), string(ae.Code())
