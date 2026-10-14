@@ -38,7 +38,7 @@ func (s *spa) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if f, err := s.fs.Open(upath); err == nil {
 		_ = f.Close()
-		http.ServeFileFS(w, r, s.fs, upath)
+		http.ServeFileFS(w, r, s.fs, upath) //nolint:gosec // G703: s.fs is the embedded build; fs.FS rejects paths that leave it
 		return
 	}
 	s.serveIndex(w, r)

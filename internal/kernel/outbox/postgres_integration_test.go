@@ -465,7 +465,7 @@ func TestClaimDue_ReapsExhaustedEntries(t *testing.T) {
 	assert.Equal(t, outbox.StatusPending, got.Status, "an exhausted entry still under lease is not reaped")
 }
 
-func claimOne(t *testing.T, f *fixture, ctx context.Context, tc tenant.Context, target string) outbox.Entry {
+func claimOne(t *testing.T, ctx context.Context, f *fixture, tc tenant.Context, target string) outbox.Entry {
 	t.Helper()
 	e := newEntry(tc, target)
 	e.NextAttemptAt = past()
@@ -480,7 +480,7 @@ func claimOne(t *testing.T, f *fixture, ctx context.Context, tc tenant.Context, 
 func TestSucceed_SettlesAsDelivered(t *testing.T) {
 	f := newFixture(t)
 	ctx, tc := f.seedTenant(t)
-	e := claimOne(t, f, ctx, tc, "t")
+	e := claimOne(t, ctx, f, tc, "t")
 	f.exec(t, `UPDATE outbox_entries SET last_error = 'earlier' WHERE id = $1`, e.ID)
 	at := time.Date(2026, 10, 1, 23, 30, 0, 0, time.FixedZone("WIB", 7*3600))
 
@@ -510,7 +510,7 @@ func TestSettle_RefusesUnknownAndForeignEntries(t *testing.T) {
 	f := newFixture(t)
 	ctx, tc := f.seedTenant(t)
 	otherCtx, _ := f.seedTenant(t)
-	e := claimOne(t, f, ctx, tc, "t")
+	e := claimOne(t, ctx, f, tc, "t")
 
 	unknown := e
 	unknown.ID = uuid.New()
@@ -527,7 +527,7 @@ func TestSettle_RefusesUnknownAndForeignEntries(t *testing.T) {
 func TestFail_ReschedulesThenSettlesAtMaxAttempts(t *testing.T) {
 	f := newFixture(t)
 	ctx, tc := f.seedTenant(t)
-	e := claimOne(t, f, ctx, tc, "t")
+	e := claimOne(t, ctx, f, tc, "t")
 	retryAt := time.Now().UTC().Add(time.Minute).Truncate(time.Microsecond)
 
 	require.NoError(t, f.store.Fail(ctx, e, retryAt, "502 from endpoint"))
@@ -571,7 +571,7 @@ func TestFail_ReschedulesThenSettlesAtMaxAttempts(t *testing.T) {
 func TestFail_TruncatesTheCause(t *testing.T) {
 	f := newFixture(t)
 	ctx, tc := f.seedTenant(t)
-	e := claimOne(t, f, ctx, tc, "t")
+	e := claimOne(t, ctx, f, tc, "t")
 	cause := strings.Repeat("a", outbox.MaxCauseLen-1) + "é" + "tail"
 
 	require.NoError(t, f.store.Fail(ctx, e, time.Now(), cause))
@@ -645,7 +645,7 @@ func TestRequeueFailed_TouchesOnlyFailedEntriesOfTheTargetInTheOrg(t *testing.T)
 	}
 	pending := newEntry(tc, "t")
 	require.NoError(t, f.store.Enqueue(ctx, pending))
-	delivered := claimOne(t, f, ctx, tc, "t")
+	delivered := claimOne(t, ctx, f, tc, "t")
 	require.NoError(t, f.store.Succeed(ctx, delivered, time.Now()))
 	otherTarget := newEntry(tc, "u")
 	require.NoError(t, f.store.Enqueue(ctx, otherTarget))

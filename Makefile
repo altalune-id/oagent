@@ -76,23 +76,29 @@ ui-console: ## build the console SPA and embed it
 	@cp -R ui/console/.output/public/. internal/web/console/public/
 
 .PHONY: ui
-ui: ui-mcp ui-console ## build all embedded web assets
+ui: web ui-mcp ui-console ## build all embedded web assets
 
 .PHONY: build-all
 build-all: ui ## build embedded web assets, then the oagent binary
 	@$(MAKE) build
 
+GOLANGCI_VERSION ?= v2.14.0
+# the installed golangci-lint when it is GOLANGCI_VERSION, else that exact version through go run
+GOLANGCI := $(shell v=$$(golangci-lint version --short 2>/dev/null); \
+	if [ "v$$v" = "$(GOLANGCI_VERSION)" ]; then echo "env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) golangci-lint"; \
+	else echo "$(GO) run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION)"; fi)
+
 .PHONY: fmt
-fmt: ## format all Go files
-	$(GO) fmt ./...
+fmt: ## format all Go files (gofmt + goimports, settings from .golangci.yml)
+	$(GOLANGCI) fmt ./...
 
 .PHONY: vet
 vet: ## run go vet (unit and integration files)
 	$(GO) vet -tags integration ./...
 
 .PHONY: lint
-lint: ## run golangci-lint
-	env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) golangci-lint run --timeout=3m ./...
+lint: ## run golangci-lint (GOLANGCI_VERSION)
+	$(GOLANGCI) run --timeout=3m ./...
 
 .PHONY: test
 test: ## run tests with the race detector

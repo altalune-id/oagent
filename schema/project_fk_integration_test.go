@@ -65,8 +65,7 @@ func inserts(s twoOrgs) map[string]func(ctx context.Context, db *sql.DB, org, pr
 }
 
 func pgCode(err error) string {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
+	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
 		return pgErr.Code
 	}
 	return ""

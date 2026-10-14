@@ -115,7 +115,7 @@ func TestLockdown_NoCredential(t *testing.T) {
 		assert.Equal(t, want, rec.Header().Get("Location"), path)
 	}
 
-	for _, path := range []string{"/login", "/terms", "/privacy", "/static/app.css", "/healthz", "/readyz"} {
+	for _, path := range []string{"/login", "/terms", "/privacy", "/static/favicon.svg", "/healthz", "/readyz"} {
 		rec = l.do(http.MethodGet, path, nil, "")
 		assert.Equal(t, http.StatusOK, rec.Code, path)
 	}

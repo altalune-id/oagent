@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"go/format"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -27,6 +29,14 @@ func TestGenerated_MatchesCatalog(t *testing.T) {
 	assert.Equal(t, string(want), string(got), "scope/names.gen.go is stale; run make generate")
 }
 
+func TestGenerated_IsGofmtClean(t *testing.T) {
+	src, err := os.ReadFile("../../scope/names.gen.go")
+	require.NoError(t, err)
+	formatted, err := format.Source(src)
+	require.NoError(t, err)
+	assert.Equal(t, string(formatted), string(src), "gen-scope must write gofmt-formatted source")
+}
+
 func TestGenerated_HasOneConstantPerScope(t *testing.T) {
 	raw, err := os.ReadFile("../../scope/scopes.json")
 	require.NoError(t, err)
@@ -37,7 +47,7 @@ func TestGenerated_HasOneConstantPerScope(t *testing.T) {
 	gen, err := os.ReadFile("../../scope/names.gen.go")
 	require.NoError(t, err)
 	for _, s := range specs {
-		assert.Contains(t, string(gen), "\t"+ident(s.Name)+" = \""+s.Name+"\"\n")
+		assert.Regexp(t, `(?m)^\t`+ident(s.Name)+` +=  *"`+regexp.QuoteMeta(s.Name)+`"$`, string(gen))
 	}
 }
 
@@ -75,7 +85,7 @@ package scope
 
 // Scope names, generated from scope/scopes.json.
 const (
-	OrgRead = "org:read"
+	OrgRead    = "org:read"
 	AgentWrite = "agent:write"
 )
 `, string(out))

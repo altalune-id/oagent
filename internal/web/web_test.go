@@ -87,6 +87,8 @@ func TestRoutes_UnknownPathIs404(t *testing.T) {
 }
 
 func TestStaticAssets(t *testing.T) {
+	builtAsset(t, "app.css")
+	builtAsset(t, "password.js")
 	for _, base := range []string{"", "/app"} {
 		srv := NewServer(ServerOpts{BasePath: base})
 

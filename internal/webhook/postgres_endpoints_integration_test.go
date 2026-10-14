@@ -94,8 +94,7 @@ func (f *pgFixture) count(t *testing.T, query string, args ...any) int {
 }
 
 func pgCode(err error) string {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
+	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
 		return pgErr.Code
 	}
 	return ""

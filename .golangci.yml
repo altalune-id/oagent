@@ -1,5 +1,7 @@
 version: "2"
 
+# Run locally: make lint (pinned golangci-lint version, see GOLANGCI_VERSION in the Makefile).
+
 run:
   timeout: 3m
   tests: true
@@ -54,7 +56,24 @@ linters:
         - name: package-comments
           disabled: true
         - name: unexported-return
-          disabled: true
+          disabled: true   # constructors returning *unexported are our pattern
+        # A rules list replaces revive's defaults, so the defaults we want are listed.
+        - name: var-naming
+        - name: error-return
+        - name: error-naming
+        - name: error-strings
+        - name: dot-imports
+        - name: blank-imports
+        - name: context-as-argument
+          arguments:
+            - allowTypesBefore: "*testing.T"
+        - name: context-keys-type
+        - name: increment-decrement
+        - name: range
+        - name: receiver-naming
+        - name: superfluous-else
+        - name: unreachable-code
+        - name: redefines-builtin-id
     forbidigo:
       forbid:
         - pattern: 'fmt\.Print(f|ln|)\('
@@ -94,18 +113,112 @@ linters:
             - github.com/modelcontextprotocol/go-sdk
             - github.com/google/jsonschema-go
             - altalune.id/oagent/apperror
+        scheduler-purity:
+          list-mode: strict
+          files:
+            - "**/scheduler/*.go"
+            - "!**/scheduler/*_test.go"
+          allow:
+            - $gostd
+            - github.com/robfig/cron/v3
+            - go.opentelemetry.io/otel
+            - altalune.id/oagent/reqid
+        domain-purity:
+          list-mode: strict
+          files:
+            - "**/internal/{agent,apikey,auth,install,legal,org,project,user,webhook}/{agent,apikey,auth,install,legal,org,project,user,webhook}.go"
+            - "**/internal/{agent,apikey,auth,install,legal,org,project,user,webhook}/{store,errors}.go"
+            # org/member and org/invite are excluded: they share role and error types with their parent domain.
+          allow:
+            - $gostd
+            - github.com/google/uuid
+            - github.com/jackc/pgx/v5/pgconn
+            - google.golang.org/protobuf/types/known/timestamppb
+            - altalune.id/oagent/apperror
+            - altalune.id/oagent/gen/go
+            - altalune.id/oagent/internal/kernel/events
+            - altalune.id/oagent/nanoid
+            - altalune.id/oagent/scope
+            - altalune.id/oagent/slug
+        application-purity:
+          list-mode: lax
+          files:
+            - "**/internal/*/service.go"
+            - "**/internal/*/*/service.go"
+          deny:
+            - pkg: "database/sql"
+              desc: "services reach the database through their Store and db.Transactor"
+            - pkg: "net/http"
+              desc: "services do not speak HTTP; surfaces (controlplane, web, mcp) do"
+        domain-boundary:
+          list-mode: lax
+          files:
+            - "**/internal/{agent,apikey,auth,install,legal,org,project,user,webhook}/**"
+            - "!**/*_test.go"
+          deny:
+            - pkg: "altalune.id/oagent/internal/cli"
+              desc: "domains never import the CLI shell"
+            - pkg: "altalune.id/oagent/internal/boot"
+              desc: "domains never import boot"
+            - pkg: "altalune.id/oagent/internal/controlplane"
+              desc: "domains never import controlplane"
+            - pkg: "altalune.id/oagent/internal/web$"
+              desc: "domains import only internal/web/layout"
+            - pkg: "altalune.id/oagent/internal/web/middleware"
+              desc: "domains import only internal/web/layout"
+            - pkg: "altalune.id/oagent/internal/web/console"
+              desc: "domains import only internal/web/layout"
+        kernel-boundary:
+          list-mode: lax
+          files:
+            - "**/internal/kernel/**"
+          deny:
+            - pkg: "altalune.id/oagent/internal/agent"
+              desc: "kernel must not import domain packages"
+            - pkg: "altalune.id/oagent/internal/apikey"
+              desc: "kernel must not import domain packages"
+            - pkg: "altalune.id/oagent/internal/auth"
+              desc: "kernel must not import domain packages"
+            - pkg: "altalune.id/oagent/internal/install"
+              desc: "kernel must not import domain packages"
+            - pkg: "altalune.id/oagent/internal/legal"
+              desc: "kernel must not import domain packages"
+            - pkg: "altalune.id/oagent/internal/org"
+              desc: "kernel must not import domain packages"
+            - pkg: "altalune.id/oagent/internal/project"
+              desc: "kernel must not import domain packages"
+            - pkg: "altalune.id/oagent/internal/user"
+              desc: "kernel must not import domain packages"
+            - pkg: "altalune.id/oagent/internal/webhook"
+              desc: "kernel must not import domain packages"
+            - pkg: "altalune.id/oagent/internal/controlplane"
+              desc: "kernel must not import surfaces"
+            - pkg: "altalune.id/oagent/internal/web"
+              desc: "kernel must not import surfaces"
+            - pkg: "altalune.id/oagent/internal/mcp"
+              desc: "kernel must not import surfaces"
+            - pkg: "altalune.id/oagent/internal/cli"
+              desc: "kernel must not import surfaces"
+            - pkg: "altalune.id/oagent/internal/boot"
+              desc: "kernel must not import boot"
         root-boundary:
           list-mode: lax
           files:
             - "**/apperror/**"
             - "**/config/**"
             - "**/httpclient/**"
+            - "**/httpserver/**"
+            - "**/mailer/**"
             - "**/mcp/**"
+            - "**/migrator/**"
             - "**/nanoid/**"
             - "**/password/**"
             - "**/pg/**"
+            - "**/ratelimit/**"
             - "**/reqid/**"
+            - "**/scheduler/**"
             - "**/scope/**"
+            - "**/sealer/**"
             - "**/slug/**"
             - "**/telemetry/**"
             - "**/version/**"
@@ -128,9 +241,17 @@ linters:
       - path: gen/
         linters:
           - all
+      - path: _templ\.go
+        linters:
+          - all
       - path: cmd/gen-config-example/
         linters:
           - lll
+      # A root package's integration test may use the shared Redis container helper.
+      - path: ratelimit/redis/redis_integration_test\.go
+        text: internal/testutil/redistest
+        linters:
+          - depguard
       - path: _test\.go
         linters:
           - lll
@@ -144,11 +265,14 @@ linters:
 formatters:
   enable:
     - gofmt
-    - goimports
+    - gci
   settings:
-    goimports:
-      local-prefixes:
-        - altalune.id/oagent
+    gci:
+      # stdlib, then third-party, then this module; each group sorted
+      sections:
+        - standard
+        - default
+        - localmodule
 
 issues:
   max-issues-per-linter: 0

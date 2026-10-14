@@ -484,8 +484,7 @@ func TestScopeUndeclaredError(t *testing.T) {
 var errDecode = errors.New("decode arguments")
 
 func testMapper(_ context.Context, err error) mcp.ErrorPayload {
-	var denied *mcp.ScopeDeniedError
-	if errors.As(err, &denied) {
+	if denied, ok := errors.AsType[*mcp.ScopeDeniedError](err); ok {
 		return mcp.ErrorPayload{
 			Code:    codeForbidden,
 			Message: "credential lacks the required scope",

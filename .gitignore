@@ -11,11 +11,13 @@ coverage.*
 # Node
 node_modules/
 
-# UI builds embedded into the binary (make ui); only the .gitkeep is tracked
+# UI builds embedded into the binary (make ui); only the .gitkeep and the favicon are tracked
 ui/*/dist/
 internal/web/console/public/*
 !internal/web/console/public/.gitkeep
 internal/mcp/ui/assets/app.html
+internal/web/static/*
+!internal/web/static/favicon.svg
 
 # SDD workspace (scratch, not shipped)
 /.superpowers/

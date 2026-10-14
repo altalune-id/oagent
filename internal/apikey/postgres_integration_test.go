@@ -100,8 +100,7 @@ func orgKey(t *testing.T, orgID uuid.UUID, grant apikey.ProjectGrant) *apikey.AP
 }
 
 func pgCode(err error) string {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
+	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
 		return pgErr.Code
 	}
 	return ""

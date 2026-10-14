@@ -172,8 +172,7 @@ func retryableResult(resp *http.Response, err error) bool {
 }
 
 func permanentTransportError(err error) bool {
-	var cert *tls.CertificateVerificationError
-	if errors.As(err, &cert) {
+	if _, ok := errors.AsType[*tls.CertificateVerificationError](err); ok {
 		return true
 	}
 	var dns *net.DNSError

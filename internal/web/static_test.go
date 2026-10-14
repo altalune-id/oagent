@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"regexp"
@@ -15,9 +16,7 @@ import (
 )
 
 func TestPasswordBundle_IsBuiltFromTheCurrentRules(t *testing.T) {
-	js, err := fs.ReadFile(StaticFS(), "password.js")
-	require.NoError(t, err)
-	bundle := string(js)
+	bundle := string(builtAsset(t, "password.js"))
 
 	for name, want := range map[string]int{"minLength": password.MinLen, "maxLength": password.MaxLen} {
 		re := regexp.MustCompile(`\b` + name + `:\s*` + strconv.Itoa(want) + `\b`)
@@ -33,9 +32,21 @@ func TestPasswordBundle_IsBuiltFromTheCurrentRules(t *testing.T) {
 			continue
 		}
 		n++
-		if !strings.Contains(bundle, "\n"+entry+"\n") {
+		// The bundler inlines the list as a template literal (real newlines) or a string literal (escaped \n).
+		if !strings.Contains(bundle, "\n"+entry+"\n") && !strings.Contains(bundle, `\n`+entry+`\n`) {
 			t.Fatalf("password.js has no %q from password/common.txt; run make web-js", entry)
 		}
 	}
 	assert.Positive(t, n)
+}
+
+// builtAsset reads a file that make web builds (they are not committed): missing, it skips locally and fails in CI.
+func builtAsset(t *testing.T, name string) []byte {
+	t.Helper()
+	b, err := fs.ReadFile(StaticFS(), name)
+	if errors.Is(err, fs.ErrNotExist) && os.Getenv("CI") == "" {
+		t.Skipf("internal/web/static/%s is not built; run make web", name)
+	}
+	require.NoError(t, err)
+	return b
 }

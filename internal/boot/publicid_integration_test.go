@@ -85,8 +85,7 @@ func errorText(t *testing.T, err error) string {
 	t.Helper()
 	var b strings.Builder
 	b.WriteString(err.Error())
-	var cerr *connect.Error
-	if errors.As(err, &cerr) {
+	if cerr, ok := errors.AsType[*connect.Error](err); ok {
 		for _, d := range cerr.Details() {
 			if v, derr := d.Value(); derr == nil {
 				b.WriteString(protojson.Format(v))

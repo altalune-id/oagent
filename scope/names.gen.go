@@ -4,16 +4,16 @@ package scope
 
 // Scope names, generated from scope/scopes.json.
 const (
-	OrgRead = "org:read"
-	OrgWrite = "org:write"
-	ProjectRead = "project:read"
+	OrgRead      = "org:read"
+	OrgWrite     = "org:write"
+	ProjectRead  = "project:read"
 	ProjectWrite = "project:write"
-	AgentRead = "agent:read"
-	AgentWrite = "agent:write"
-	WebhookRead = "webhook:read"
+	AgentRead    = "agent:read"
+	AgentWrite   = "agent:write"
+	WebhookRead  = "webhook:read"
 	WebhookWrite = "webhook:write"
-	MemberRead = "member:read"
-	MemberWrite = "member:write"
-	ApikeyRead = "apikey:read"
-	ApikeyWrite = "apikey:write"
+	MemberRead   = "member:read"
+	MemberWrite  = "member:write"
+	ApikeyRead   = "apikey:read"
+	ApikeyWrite  = "apikey:write"
 )
