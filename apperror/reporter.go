@@ -2,6 +2,7 @@ package apperror
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"maps"
 
@@ -72,11 +73,16 @@ func NewReporter(log *slog.Logger, isProduction bool, opts ...ReporterOption) *R
 
 var _ UnexpectedFunc = (*Reporter)(nil).Unexpected
 
-// Unexpected logs cause, fans out to sinks, and returns an AppError.
+// Unexpected logs cause, fans out to sinks, and returns an AppError; a request the client cancelled logs at debug only.
 func (r *Reporter) Unexpected(ctx context.Context, message string, cause error, attrs ...any) *AppError {
+	cancelled := errors.Is(cause, context.Canceled) && errors.Is(ctx.Err(), context.Canceled)
 	logAttrs := append([]any{slog.Any("error", cause)}, attrs...)
 	if r.log != nil {
-		r.log.ErrorContext(ctx, message, logAttrs...)
+		if cancelled {
+			r.log.DebugContext(ctx, "request cancelled by the client", logAttrs...)
+		} else {
+			r.log.ErrorContext(ctx, message, logAttrs...)
+		}
 	}
 
 	meta := r.collectMeta(ctx)
@@ -86,6 +92,9 @@ func (r *Reporter) Unexpected(ctx context.Context, message string, cause error, 
 		meta["underlying_error"] = cause.Error()
 	}
 	out := New(CodeUnexpected, wireMsg).WithCause(cause).WithMeta(meta)
+	if cancelled {
+		return out
+	}
 
 	if r.counter != nil {
 		r.counter.Inc(ctx, string(out.Code()))

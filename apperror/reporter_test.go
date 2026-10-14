@@ -134,3 +134,65 @@ func TestToSlogAttrs(t *testing.T) {
 type discard struct{}
 
 func (discard) Write(p []byte) (int, error) { return len(p), nil }
+
+func TestReporter_Cancellation(t *testing.T) {
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	expired, stop := context.WithTimeout(context.Background(), 0)
+	defer stop()
+	<-expired.Done()
+
+	tests := []struct {
+		name      string
+		ctx       context.Context
+		cause     error
+		wantLevel slog.Level
+		wantMsg   string
+		incident  bool
+	}{
+		{"client went away", cancelled, fmt.Errorf("org: list: %w", context.Canceled), slog.LevelDebug, "request cancelled by the client", false},
+		{"deadline is a fault", expired, fmt.Errorf("org: list: %w", context.DeadlineExceeded), slog.LevelError, "org: list", true},
+		{"canceled cause on a live context is a fault", context.Background(), context.Canceled, slog.LevelError, "org: list", true},
+		{"other error on a cancelled context is a fault", cancelled, errors.New("db down"), slog.LevelError, "org: list", true},
+		{"canceled cause on an expired context is a fault", expired, fmt.Errorf("org: list: %w", context.Canceled), slog.LevelError, "org: list", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logs := &recordingHandler{}
+			sink := &recordingSink{}
+			counter := &countingCounter{}
+			r := NewReporter(slog.New(logs), false, WithSinks(sink), WithIncidentCounter(counter))
+
+			out := r.Unexpected(tt.ctx, "org: list", tt.cause, "org_id", "o1")
+
+			assert.Equal(t, CodeUnexpected, out.Code())
+			assert.ErrorIs(t, out, tt.cause)
+			require.Len(t, logs.records, 1)
+			rec := logs.records[0]
+			assert.Equal(t, tt.wantLevel, rec.Level)
+			assert.Equal(t, tt.wantMsg, rec.Message)
+			attrs := map[string]string{}
+			rec.Attrs(func(a slog.Attr) bool {
+				attrs[a.Key] = a.Value.String()
+				return true
+			})
+			assert.Equal(t, "o1", attrs["org_id"])
+			assert.Equal(t, tt.cause.Error(), attrs["error"])
+			assert.Equal(t, tt.incident, sink.inc != nil)
+			assert.Equal(t, tt.incident, len(counter.codes) == 1)
+		})
+	}
+}
+
+type recordingHandler struct{ records []slog.Record }
+
+func (h *recordingHandler) Enabled(context.Context, slog.Level) bool { return true }
+
+func (h *recordingHandler) Handle(_ context.Context, r slog.Record) error {
+	h.records = append(h.records, r)
+	return nil
+}
+
+func (h *recordingHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+
+func (h *recordingHandler) WithGroup(string) slog.Handler { return h }
