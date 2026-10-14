@@ -7,6 +7,7 @@ import { useProjectsStore } from '~/stores/projects'
 import { useScopeLabel } from '~/composables/useScopeLabel'
 import { useAPIKeyCreate } from './useAPIKeyCreate'
 import ErrorText from '~/components/ui/ErrorText.vue'
+import FieldError from '~/components/ui/FieldError.vue'
 
 const { orgId } = defineProps<{ orgId: string }>()
 
@@ -14,7 +15,7 @@ const { t } = useI18n()
 const scopeLabel = useScopeLabel()
 const projects = useProjectsStore()
 const create = useAPIKeyCreate(orgId)
-const { open, kind, name, scopes: selectedScopes, allProjects, projectId, projectIds, expiresInHours, busy, error, plaintext } = create
+const { open, kind, name, scopes: selectedScopes, allProjects, projectId, projectIds, expiresInHours, busy, error, fieldErrors, plaintext } = create
 
 const availableScopes = computed(() => scopes.filter(s => !s.personOnly && (kind.value === 'org' || s.level === 'project')))
 const orgProjects = computed(() => projects.forOrg(orgId))
@@ -41,10 +42,14 @@ const expiryOptions = computed(() => [
       <SecretField :value="plaintext" :label="t('apikeys.copy')" />
     </div>
 
-    <form v-else class="space-y-3" @submit.prevent="create.submit()">
+    <form v-else novalidate class="space-y-3" @submit.prevent="create.submit()">
       <label class="block">
         <span class="mb-1 block text-xs text-base-content/60">{{ t('common.name') }}</span>
-        <input v-model="name" type="text" class="input input-sm input-bordered w-full" placeholder="deploy" :disabled="busy">
+        <input
+          v-model="name" type="text" class="input input-sm input-bordered w-full" :class="{ 'input-error': fieldErrors.name }"
+          placeholder="deploy" :disabled="busy" :aria-invalid="!!fieldErrors.name" aria-describedby="apikey-name-error"
+        >
+        <FieldError id="apikey-name-error" :message="fieldErrors.name" />
       </label>
 
       <div class="flex gap-4">

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ErrorText from '../ui/ErrorText.vue'
+import FieldError from '../ui/FieldError.vue'
 import type { ShownError } from '../../lib/apperror/message'
 
 export interface ProfileNameLabels {
@@ -10,10 +11,11 @@ export interface ProfileNameLabels {
 }
 
 const name = defineModel<string>('name', { required: true })
-const { busy = false, notice = '', error = null, labels } = defineProps<{
+const { busy = false, notice = '', error = null, fieldError = '', labels } = defineProps<{
   busy?: boolean
   notice?: string
   error?: ShownError | null
+  fieldError?: string
   labels: ProfileNameLabels
 }>()
 const emit = defineEmits<{ save: [] }>()
@@ -25,7 +27,11 @@ const emit = defineEmits<{ save: [] }>()
       <h2 class="card-title text-base">{{ labels.title }}</h2>
       <label class="floating-label">
         <span>{{ labels.name }}</span>
-        <input v-model="name" class="input w-full" type="text" name="name" maxlength="200" autocomplete="name" :placeholder="labels.name">
+        <input
+          v-model="name" class="input w-full" :class="{ 'input-error': fieldError }" type="text" name="name" maxlength="200" autocomplete="name"
+          :placeholder="labels.name" :aria-invalid="!!fieldError" aria-describedby="profile-name-error"
+        >
+        <FieldError id="profile-name-error" :message="fieldError" />
       </label>
       <p class="text-xs text-base-content/60">{{ labels.hint }}</p>
       <ErrorText :error="error" />

@@ -1,7 +1,10 @@
+import { create } from '@bufbuild/protobuf'
+
+import { UpdateProjectRequestSchema } from '~~/gen/project/v1/project_pb'
+import { useValidation } from '~/composables/useValidation'
 import { useProjectsStore } from '~/stores/projects'
 import type { Project } from '~/stores/projects'
 import type { ShownError } from '~/lib/apperror/message'
-import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export function useProjectEdit() {
   const open = ref(false)
@@ -12,7 +15,10 @@ export function useProjectEdit() {
   const error = ref<ShownError | null>(null)
 
   const projects = useProjectsStore()
-  const errorMessage = useErrorMessage()
+  const validation = useValidation(UpdateProjectRequestSchema, {
+    fields: ['name', 'slug'],
+    codes: { PRJ002: 'slug', PRJ003: 'slug', PRJ004: 'name' },
+  })
   const { $projectClient: client } = useNuxtApp()
 
   function show(project: Project) {
@@ -20,6 +26,7 @@ export function useProjectEdit() {
     name.value = project.name
     slug.value = project.slug
     error.value = null
+    validation.clear()
     open.value = true
   }
 
@@ -29,17 +36,22 @@ export function useProjectEdit() {
     }
     open.value = false
     error.value = null
+    validation.clear()
   }
 
   async function submit() {
-    const value = name.value.trim()
-    if (!value || busy.value) {
+    if (busy.value) {
+      return
+    }
+    const req = { id: id.value, name: name.value.trim(), slug: slug.value.trim() }
+    if (!validation.check(create(UpdateProjectRequestSchema, req))) {
+      error.value = validation.formError.value
       return
     }
     busy.value = true
     error.value = null
     try {
-      const res = await client.updateProject({ id: id.value, name: value, slug: slug.value.trim() })
+      const res = await client.updateProject(req)
       if (res.project) {
         projects.update(res.project.id, { name: res.project.name, slug: res.project.slug })
       }
@@ -48,12 +60,12 @@ export function useProjectEdit() {
       slug.value = ''
     }
     catch (e) {
-      error.value = errorMessage(e, 'error.rename_project')
+      error.value = validation.fromServer(e, 'error.rename_project')
     }
     finally {
       busy.value = false
     }
   }
 
-  return { open, name, slug, busy, error, show, hide, submit }
+  return { open, name, slug, busy, error, fieldErrors: validation.errors, show, hide, submit }
 }

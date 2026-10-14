@@ -23,25 +23,25 @@ const cases: Case[] = [
     name: 'projects', client: '$projectClient', method: 'listProjects', field: 'projects',
     key: 'id',
     item: id => ({ id, orgId: 'o', slug: id, name: id }),
-    store: () => useProjectsStore(), ids: [['V1StGXR8Z5jdHi6BmyT2a'], ['YeDxg2kMYznPJIG1wVmij']],
+    store: () => useProjectsStore(), ids: [['V3StGXR8Z5jdHj6BmyT2a'], ['YeDxg2kMYznPJJG3wVmjj']],
   },
   {
     name: 'agents', client: '$agentClient', method: 'listAgents', field: 'agents',
     key: 'id',
     item: id => ({ id, projectId: 'p', slug: id, name: id, description: '' }),
-    store: () => useAgentsStore(), ids: [['x6LH9WPWiktLwCBKHy4oF'], ['KdrF3t1FHtooBPmLgj4sy']],
+    store: () => useAgentsStore(), ids: [['x6MH9WPWjktMwCBKHy4pF'], ['KdrF3t3FHtppBPmMgj4sy']],
   },
   {
     name: 'apiKeys', client: '$apiKeyClient', method: 'listAPIKeys', field: 'keys',
     key: 'secretHint',
     item: id => ({ secretHint: id, name: id, kind: 1, scopes: [], projectIds: [] }),
-    store: () => useAPIKeysStore(), ids: [['V1StGXR8Z5jdHi6BmyT2a'], ['YeDxg2kMYznPJIG1wVmij']],
+    store: () => useAPIKeysStore(), ids: [['V3StGXR8Z5jdHj6BmyT2a'], ['YeDxg2kMYznPJJG3wVmjj']],
   },
   {
     name: 'webhooks', client: '$webhookClient', method: 'listWebhooks', field: 'webhooks',
     key: 'id',
     item: id => ({ id, projectId: 'p', url: 'https://x', eventTypes: [], active: true }),
-    store: () => useWebhooksStore(), ids: [['V1StGXR8Z5jdHi6BmyT2a', 'x6LH9WPWiktLwCBKHy4oF'], ['V1StGXR8Z5jdHi6BmyT2a', 'KdrF3t1FHtooBPmLgj4sy']],
+    store: () => useWebhooksStore(), ids: [['V3StGXR8Z5jdHj6BmyT2a', 'x6MH9WPWjktMwCBKHy4pF'], ['V3StGXR8Z5jdHj6BmyT2a', 'KdrF3t3FHtppBPmMgj4sy']],
   },
 ]
 

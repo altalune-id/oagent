@@ -1,3 +1,7 @@
+import { create } from '@bufbuild/protobuf'
+
+import { CreateWebhookRequestSchema } from '~~/gen/webhook/v1/webhook_pb'
+import { useValidation } from '~/composables/useValidation'
 import { toWebhook, useWebhooksStore } from '~/stores/webhooks'
 import type { ShownError } from '~/lib/apperror/message'
 import { useErrorMessage } from '~/composables/useErrorMessage'
@@ -18,6 +22,10 @@ export function useWebhookCreate(orgId: string, projectId: string) {
   const webhooks = useWebhooksStore()
   const { $webhookClient: client } = useNuxtApp()
   const errorMessage = useErrorMessage()
+  const validation = useValidation(CreateWebhookRequestSchema, {
+    fields: ['url', 'description', 'event_types'],
+    codes: { WHK002: 'url', WHK003: 'event_types', WHK004: 'description' },
+  })
 
   function show() {
     url.value = ''
@@ -28,6 +36,7 @@ export function useWebhookCreate(orgId: string, projectId: string) {
     id.value = ''
     pingError.value = null
     pinged.value = false
+    validation.clear()
     open.value = true
   }
 
@@ -40,14 +49,18 @@ export function useWebhookCreate(orgId: string, projectId: string) {
   }
 
   async function submit() {
-    const value = url.value.trim()
-    if (busy.value || !value || eventTypes.value.length === 0) {
+    if (busy.value) {
+      return
+    }
+    const req = { orgId, projectId, url: url.value.trim(), description: description.value, eventTypes: eventTypes.value }
+    if (!validation.check(create(CreateWebhookRequestSchema, req))) {
+      error.value = validation.formError.value
       return
     }
     busy.value = true
     error.value = null
     try {
-      const res = await client.createWebhook({ orgId, projectId, url: value, description: description.value, eventTypes: eventTypes.value })
+      const res = await client.createWebhook(req)
       if (res.webhook) {
         webhooks.add(toWebhook(res.webhook))
         id.value = res.webhook.id
@@ -55,7 +68,7 @@ export function useWebhookCreate(orgId: string, projectId: string) {
       secret.value = res.secret
     }
     catch (e) {
-      error.value = errorMessage(e, 'error.create_webhook')
+      error.value = validation.fromServer(e, 'error.create_webhook')
     }
     finally {
       busy.value = false
@@ -80,5 +93,5 @@ export function useWebhookCreate(orgId: string, projectId: string) {
     }
   }
 
-  return { open, url, description, eventTypes, busy, error, secret, pingBusy, pingError, pinged, show, hide, submit, ping }
+  return { open, url, description, eventTypes, busy, error, fieldErrors: validation.errors, secret, pingBusy, pingError, pinged, show, hide, submit, ping }
 }

@@ -1,6 +1,9 @@
+import { create } from '@bufbuild/protobuf'
+
+import { CreateAgentRequestSchema } from '~~/gen/agent/v1/agent_pb'
+import { useValidation } from '~/composables/useValidation'
 import { useAgentsStore } from '~/stores/agents'
 import type { ShownError } from '~/lib/apperror/message'
-import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export function useAgentCreate(orgId: string, projectId: string) {
   const open = ref(false)
@@ -11,11 +14,15 @@ export function useAgentCreate(orgId: string, projectId: string) {
   const error = ref<ShownError | null>(null)
 
   const agents = useAgentsStore()
-  const errorMessage = useErrorMessage()
+  const validation = useValidation(CreateAgentRequestSchema, {
+    fields: ['name', 'slug', 'description'],
+    codes: { AGT002: 'slug', AGT003: 'slug', AGT004: 'name', AGT005: 'description' },
+  })
   const { $agentClient: client } = useNuxtApp()
 
   function show() {
     error.value = null
+    validation.clear()
     open.value = true
   }
 
@@ -25,17 +32,22 @@ export function useAgentCreate(orgId: string, projectId: string) {
     }
     open.value = false
     error.value = null
+    validation.clear()
   }
 
   async function submit() {
-    const value = name.value.trim()
-    if (!value || busy.value) {
+    if (busy.value) {
+      return
+    }
+    const req = { orgId, projectId, slug: slug.value.trim(), name: name.value.trim(), description: description.value }
+    if (!validation.check(create(CreateAgentRequestSchema, req))) {
+      error.value = validation.formError.value
       return
     }
     busy.value = true
     error.value = null
     try {
-      const res = await client.createAgent({ orgId, projectId, slug: slug.value.trim(), name: value, description: description.value })
+      const res = await client.createAgent(req)
       const agent = res.agent
       if (agent) {
         agents.add({ id: agent.id, projectId: agent.projectId, slug: agent.slug, name: agent.name, description: agent.description })
@@ -46,12 +58,12 @@ export function useAgentCreate(orgId: string, projectId: string) {
       }
     }
     catch (e) {
-      error.value = errorMessage(e, 'error.create_agent')
+      error.value = validation.fromServer(e, 'error.create_agent')
     }
     finally {
       busy.value = false
     }
   }
 
-  return { open, name, slug, description, busy, error, show, hide, submit }
+  return { open, name, slug, description, busy, error, fieldErrors: validation.errors, show, hide, submit }
 }

@@ -19,7 +19,7 @@ export const Name: Story = {}
 
 export const NameSaved: Story = { args: { notice: 'Your name was saved.' } }
 
-export const NameRefused: Story = { args: { name: 'x'.repeat(40), error: { message: 'Name must be at most 200 characters' } } }
+export const NameRefused: Story = { args: { name: 'x'.repeat(40), fieldError: 'At most 200 characters' } }
 
 const passwordLabels = {
   title: 'Password', current: 'Current password', next: 'New password',
@@ -40,6 +40,14 @@ export const PasswordWrong: Story = {
     components: { ProfilePassword },
     setup: () => ({ labels: passwordLabels, error: { message: 'Invalid email or password' } }),
     template: '<ProfilePassword current="nope" next="" :error="error" :labels="labels" />',
+  }),
+}
+
+export const PasswordTooShort: Story = {
+  render: () => ({
+    components: { ProfilePassword },
+    setup: () => ({ labels: passwordLabels, fieldErrors: { new_password: 'At least 12 characters' } }),
+    template: '<ProfilePassword current="old one" next="short" :field-errors="fieldErrors" :labels="labels" />',
   }),
 }
 

@@ -18,7 +18,7 @@ const viewerRole = computed(() => members.viewer.value.role)
 const invite = useInvite(org.value?.id ?? '', viewerRole)
 const {
   pending, drafts, canInvite, roles: inviteRoles, modalOpen, email: inviteEmail, role: inviteRole,
-  busy: inviteBusy, error: inviteError, sent, sentMessage, rowLink, notice: inviteNotice, confirming: inviteConfirming, confirmMessage: inviteConfirmMessage,
+  busy: inviteBusy, error: inviteError, fieldErrors: inviteFieldErrors, sent, sentMessage, rowLink, notice: inviteNotice, confirming: inviteConfirming, confirmMessage: inviteConfirmMessage,
   loadError: inviteLoadError,
 } = invite
 
@@ -143,6 +143,7 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('members.tit
       :roles="inviteRoles"
       :busy="inviteBusy"
       :error="inviteError"
+      :field-errors="inviteFieldErrors"
       :sent-link="sent?.link ?? ''"
       :sent-message="sentMessage"
       :labels="modalLabels"

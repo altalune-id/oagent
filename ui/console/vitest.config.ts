@@ -7,6 +7,7 @@ export default mergeConfig(base, defineConfig({
   define: { 'import.meta.client': 'true' },
   resolve: {
     alias: {
+      '~~': fileURLToPath(new URL('.', import.meta.url)),
       '~': fileURLToPath(new URL('./app', import.meta.url)),
       '@shared/scope': fileURLToPath(new URL('../../scope', import.meta.url)),
       '@shared/apperror': fileURLToPath(new URL('../../apperror', import.meta.url)),

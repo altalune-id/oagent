@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { connectError, deferred, setClient, setKnownKeys } from '../../test/nuxt-globals'
 import { useOrgsStore } from './orgs'
 
-const acme = { id: 'V1StGXR8Z5jdHi6BmyT2a', slug: 'acme', name: 'Acme' }
+const acme = { id: 'V3StGXR8Z5jdHj6BmyT2a', slug: 'acme', name: 'Acme' }
 
 describe('useOrgsStore', () => {
   beforeEach(() => {
@@ -82,8 +82,8 @@ describe('useOrgsStore', () => {
     orgs.add(acme)
     orgs.add({ ...acme, id: 'dup' })
     expect(orgs.items).toEqual([acme])
-    orgs.add({ ...acme, id: 'YeDxg2kMYznPJIG1wVmij', slug: 'beta' })
-    orgs.update('V1StGXR8Z5jdHi6BmyT2a', { name: 'Acme Inc', slug: 'acme-inc' })
-    expect(orgs.items.map(o => [o.id, o.slug, o.name])).toEqual([['V1StGXR8Z5jdHi6BmyT2a', 'acme-inc', 'Acme Inc'], ['YeDxg2kMYznPJIG1wVmij', 'beta', 'Acme']])
+    orgs.add({ ...acme, id: 'YeDxg2kMYznPJJG3wVmjj', slug: 'beta' })
+    orgs.update('V3StGXR8Z5jdHj6BmyT2a', { name: 'Acme Inc', slug: 'acme-inc' })
+    expect(orgs.items.map(o => [o.id, o.slug, o.name])).toEqual([['V3StGXR8Z5jdHj6BmyT2a', 'acme-inc', 'Acme Inc'], ['YeDxg2kMYznPJJG3wVmjj', 'beta', 'Acme']])
   })
 })

@@ -1,4 +1,8 @@
+import { create } from '@bufbuild/protobuf'
+
+import { ChangePasswordRequestSchema, UpdateProfileRequestSchema } from '~~/gen/auth/v1/auth_pb'
 import type { AvatarPerson } from '~/components/ui/avatar'
+import { useValidation } from '~/composables/useValidation'
 import type { ShownError } from '~/lib/apperror/message'
 import { errorCode } from '~/lib/apperror/message'
 import { useErrorMessage } from '~/composables/useErrorMessage'
@@ -8,6 +12,8 @@ import { useAuthStore } from '~/stores/auth'
 export function useProfile() {
   const auth = useAuthStore()
   const errorMessage = useErrorMessage()
+  const nameValidation = useValidation(UpdateProfileRequestSchema, { fields: ['name'], codes: { USR004: 'name' } })
+  const passwordValidation = useValidation(ChangePasswordRequestSchema, { fields: ['current_password', 'new_password'] })
   const { t } = useI18n()
   const { $authClient: client } = useNuxtApp()
   const apiUrl = useRuntimeConfig().public.apiUrl
@@ -51,8 +57,12 @@ export function useProfile() {
     return run(async () => {
       nameNotice.value = ''
       nameError.value = null
+      const req = { name: name.value.trim() }
+      if (!nameValidation.check(create(UpdateProfileRequestSchema, req))) {
+        return
+      }
       try {
-        const res = await client.updateProfile({ name: name.value.trim() })
+        const res = await client.updateProfile(req)
         name.value = res.name
         if (auth.me) {
           auth.me = { ...auth.me, name: res.name }
@@ -60,7 +70,7 @@ export function useProfile() {
         nameNotice.value = 'profile.name_saved'
       }
       catch (e) {
-        nameError.value = errorMessage(e, 'error.update_profile')
+        nameError.value = nameValidation.fromServer(e, 'error.update_profile')
       }
     })
   }
@@ -69,15 +79,19 @@ export function useProfile() {
     return run(async () => {
       passwordNotice.value = ''
       passwordError.value = null
+      const req = { currentPassword: currentPassword.value, newPassword: newPassword.value }
+      if (!passwordValidation.check(create(ChangePasswordRequestSchema, req))) {
+        return
+      }
       try {
-        await client.changePassword({ currentPassword: currentPassword.value, newPassword: newPassword.value })
+        await client.changePassword(req)
         currentPassword.value = ''
         newPassword.value = ''
         passwordNotice.value = 'profile.password_changed'
       }
       catch (e) {
-        const shown = errorMessage(e, 'error.change_password')
-        passwordError.value = errorCode(e) === 'AUT001' ? { ...shown, message: t('profile.wrong_current_password') } : shown
+        const shown = passwordValidation.fromServer(e, 'error.change_password')
+        passwordError.value = shown && errorCode(e) === 'AUT001' ? { ...shown, message: t('profile.wrong_current_password') } : shown
       }
     })
   }
@@ -108,7 +122,8 @@ export function useProfile() {
   }
 
   return {
-    busy, name, nameNotice, nameError, currentPassword, newPassword, passwordNotice, passwordError,
+    busy, name, nameNotice, nameError, nameFieldErrors: nameValidation.errors, currentPassword, newPassword, passwordNotice, passwordError,
+    passwordFieldErrors: passwordValidation.errors,
     confirmingSignOut, signOutError, isPerson, person,
     load, saveName, changePassword, askSignOut, cancelSignOut, signOutEverywhere,
   }

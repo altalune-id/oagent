@@ -14,8 +14,8 @@ describe('initials', () => {
 
 describe('avatarColor', () => {
   it('is stable for one public id and spreads over the palette', () => {
-    expect(avatarColor('V1StGXR8Z5jdHi6BmyT2a')).toBe(avatarColor('V1StGXR8Z5jdHi6BmyT2a'))
-    const ids = ['V1StGXR8Z5jdHi6BmyT2a', 'FtGrdYskgDVDf8aoKsLdn', '5ieWO8_t8V9AC9GBMLHfx', 'izdsizt2UHJ1Cmr3uN0VP', 'adaUserPublicId000001', 'bobUserPublicId000002']
+    expect(avatarColor('V3StGXR8Z5jdHj6BmyT2a')).toBe(avatarColor('V3StGXR8Z5jdHj6BmyT2a'))
+    const ids = ['V3StGXR8Z5jdHj6BmyT2a', 'FtGrdYskgDVDf8apKsMdn', '5jeWP8ut8V9AC9GBMMHfx', 'jzdsjzt2UHJ3Cmr3uN2VP', 'adaUserPubkjcJd222223', 'bpbUserPubkjcJd222222']
     expect(new Set(ids.map(avatarColor)).size).toBeGreaterThan(2)
     for (const id of ids) {
       expect(avatarColors).toContain(avatarColor(id))
@@ -33,8 +33,8 @@ describe('avatarView', () => {
   })
 
   it('shows initials on a color picked by the public id otherwise', () => {
-    expect(avatarView({ id: 'V1StGXR8Z5jdHi6BmyT2a', name: 'Ana Maria', email: 'ana@x.io' }))
-      .toEqual({ kind: 'initials', text: 'AM', label: 'Ana Maria', color: avatarColor('V1StGXR8Z5jdHi6BmyT2a') })
+    expect(avatarView({ id: 'V3StGXR8Z5jdHj6BmyT2a', name: 'Ana Maria', email: 'ana@x.io' }))
+      .toEqual({ kind: 'initials', text: 'AM', label: 'Ana Maria', color: avatarColor('V3StGXR8Z5jdHj6BmyT2a') })
     expect(avatarView({ id: '', name: '', email: 'bob@x.io', avatarUrl: '' }))
       .toEqual({ kind: 'initials', text: 'B', label: 'bob@x.io', color: avatarColors[0] })
   })

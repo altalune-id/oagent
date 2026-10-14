@@ -11,11 +11,11 @@ import type { APIKey } from './apiKeys'
 const expires = new Date('2027-01-01T00:00:00Z')
 const revoked = new Date('2026-06-01T00:00:00Z')
 const keyPB = create(APIKeySchema, {
-  kind: 'org', name: 'CI', scopes: ['agent:read'], projectId: '', projectIds: ['x6LH9WPWiktLwCBKHy4oF'], allProjects: false, secretHint: 'abcd',
+  kind: 'org', name: 'CI', scopes: ['agent:read'], projectId: '', projectIds: ['x6MH9WPWjktMwCBKHy4pF'], allProjects: false, secretHint: 'abcd',
   expiresAt: timestampFromDate(expires),
 })
 const key: APIKey = {
-  rowKey: expect.any(String), kind: 'org', name: 'CI', scopes: ['agent:read'], projectId: '', projectIds: ['x6LH9WPWiktLwCBKHy4oF'], allProjects: false, secretHint: 'abcd',
+  rowKey: expect.any(String), kind: 'org', name: 'CI', scopes: ['agent:read'], projectId: '', projectIds: ['x6MH9WPWjktMwCBKHy4pF'], allProjects: false, secretHint: 'abcd',
   expiresAt: expires, revokedAt: undefined,
 }
 
@@ -45,8 +45,8 @@ describe('useAPIKeysStore', () => {
     const listAPIKeys = vi.fn().mockResolvedValue({ keys: [keyPB] })
     setClient('$apiKeyClient', { listAPIKeys })
     const keys = useAPIKeysStore()
-    await keys.load('V1StGXR8Z5jdHi6BmyT2a')
-    expect(listAPIKeys).toHaveBeenCalledWith({ orgId: 'V1StGXR8Z5jdHi6BmyT2a' })
+    await keys.load('V3StGXR8Z5jdHj6BmyT2a')
+    expect(listAPIKeys).toHaveBeenCalledWith({ orgId: 'V3StGXR8Z5jdHj6BmyT2a' })
     expect(keys.items).toEqual([key])
     expect(keys.loading).toBe(false)
   })
@@ -54,7 +54,7 @@ describe('useAPIKeysStore', () => {
   it('treats a missing list as empty', async () => {
     setClient('$apiKeyClient', { listAPIKeys: vi.fn().mockResolvedValue({}) })
     const keys = useAPIKeysStore()
-    await keys.load('V1StGXR8Z5jdHi6BmyT2a')
+    await keys.load('V3StGXR8Z5jdHj6BmyT2a')
     expect(keys.items).toEqual([])
   })
 
@@ -62,14 +62,14 @@ describe('useAPIKeysStore', () => {
     setKnownKeys('apperror.GEN900')
     setClient('$apiKeyClient', { listAPIKeys: vi.fn().mockRejectedValue(connectError('GEN900')) })
     const keys = useAPIKeysStore()
-    await keys.load('V1StGXR8Z5jdHi6BmyT2a')
+    await keys.load('V3StGXR8Z5jdHj6BmyT2a')
     expect(keys.error).toEqual({ message: 'apperror.GEN900', reference: 'error.ref|{"id":"req-1"}' })
   })
 
   it('shows the fallback for a plain error', async () => {
     setClient('$apiKeyClient', { listAPIKeys: vi.fn().mockRejectedValue(new Error('boom')) })
     const keys = useAPIKeysStore()
-    await keys.load('V1StGXR8Z5jdHi6BmyT2a')
+    await keys.load('V3StGXR8Z5jdHj6BmyT2a')
     expect(keys.error).toEqual({ message: 'error.load_apikeys' })
   })
 
@@ -79,12 +79,12 @@ describe('useAPIKeysStore', () => {
     setClient('$apiKeyClient', { listAPIKeys })
     const keys = useAPIKeysStore()
     await keys.ensureLoaded('')
-    const first = keys.ensureLoaded('V1StGXR8Z5jdHi6BmyT2a')
-    const second = keys.ensureLoaded('V1StGXR8Z5jdHi6BmyT2a')
+    const first = keys.ensureLoaded('V3StGXR8Z5jdHj6BmyT2a')
+    const second = keys.ensureLoaded('V3StGXR8Z5jdHj6BmyT2a')
     expect(listAPIKeys).toHaveBeenCalledTimes(1)
     pending.resolve({ keys: [keyPB] })
     await Promise.all([first, second])
-    await keys.ensureLoaded('V1StGXR8Z5jdHi6BmyT2a')
+    await keys.ensureLoaded('V3StGXR8Z5jdHj6BmyT2a')
     expect(listAPIKeys).toHaveBeenCalledTimes(1)
   })
 

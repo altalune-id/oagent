@@ -8,7 +8,7 @@ import Avatar from '~/components/ui/Avatar.vue'
 const { t } = useI18n()
 const profile = useProfile()
 const {
-  busy, name, nameNotice, nameError, currentPassword, newPassword, passwordNotice, passwordError,
+  busy, name, nameNotice, nameError, nameFieldErrors, currentPassword, newPassword, passwordNotice, passwordError, passwordFieldErrors,
   confirmingSignOut, signOutError, isPerson, person,
 } = profile
 
@@ -46,7 +46,7 @@ useHead({ title: () => `${t('profile.title')} · oagent` })
     </div>
     <p v-if="!isPerson" class="text-sm text-base-content/70">{{ t('profile.not_a_person') }}</p>
     <template v-else>
-      <ProfileName v-model:name="name" :busy="busy" :notice="nameNotice ? t(nameNotice) : ''" :error="nameError" :labels="nameLabels" @save="profile.saveName" />
+      <ProfileName v-model:name="name" :busy="busy" :notice="nameNotice ? t(nameNotice) : ''" :error="nameError" :field-error="nameFieldErrors.name" :labels="nameLabels" @save="profile.saveName" />
       <ProfilePassword
         v-model:current="currentPassword"
         v-model:next="newPassword"
@@ -54,6 +54,7 @@ useHead({ title: () => `${t('profile.title')} · oagent` })
         :busy="busy"
         :notice="passwordNotice ? t(passwordNotice) : ''"
         :error="passwordError"
+        :field-errors="passwordFieldErrors"
         :labels="passwordLabels"
         @submit="profile.changePassword"
       />

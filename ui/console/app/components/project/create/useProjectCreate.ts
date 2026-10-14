@@ -1,7 +1,10 @@
+import { create } from '@bufbuild/protobuf'
+
+import { CreateProjectRequestSchema } from '~~/gen/project/v1/project_pb'
+import { useValidation } from '~/composables/useValidation'
 import { useProjectsStore } from '~/stores/projects'
 import { useUIStore } from '~/stores/ui'
 import type { ShownError } from '~/lib/apperror/message'
-import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export function useProjectCreate(orgId: string) {
   const name = ref('')
@@ -11,7 +14,10 @@ export function useProjectCreate(orgId: string) {
 
   const projects = useProjectsStore()
   const ui = useUIStore()
-  const errorMessage = useErrorMessage()
+  const validation = useValidation(CreateProjectRequestSchema, {
+    fields: ['name', 'slug'],
+    codes: { PRJ002: 'slug', PRJ003: 'slug', PRJ004: 'name' },
+  })
   const { $projectClient: client } = useNuxtApp()
 
   const open = computed(() => ui.projectCreateOpen)
@@ -22,17 +28,22 @@ export function useProjectCreate(orgId: string) {
     }
     ui.closeProjectCreate()
     error.value = null
+    validation.clear()
   }
 
   async function submit() {
-    const value = name.value.trim()
-    if (!value || busy.value) {
+    if (busy.value) {
+      return
+    }
+    const req = { orgId, name: name.value.trim(), slug: slug.value.trim() }
+    if (!validation.check(create(CreateProjectRequestSchema, req))) {
+      error.value = validation.formError.value
       return
     }
     busy.value = true
     error.value = null
     try {
-      const res = await client.createProject({ orgId, name: value, slug: slug.value.trim() })
+      const res = await client.createProject(req)
       const project = res.project
       if (project) {
         projects.add({ id: project.id, orgId: project.orgId, slug: project.slug, name: project.name })
@@ -42,12 +53,12 @@ export function useProjectCreate(orgId: string) {
       }
     }
     catch (e) {
-      error.value = errorMessage(e, 'error.create_project')
+      error.value = validation.fromServer(e, 'error.create_project')
     }
     finally {
       busy.value = false
     }
   }
 
-  return { open, name, slug, busy, error, show: ui.openProjectCreate, hide, submit }
+  return { open, name, slug, busy, error, fieldErrors: validation.errors, show: ui.openProjectCreate, hide, submit }
 }

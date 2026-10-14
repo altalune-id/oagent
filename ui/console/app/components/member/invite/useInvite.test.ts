@@ -8,8 +8,8 @@ import { connectError, setClient, setKnownKeys } from '../../../../test/nuxt-glo
 import { useInvitesStore } from '~/stores/invites'
 import { useInvite } from './useInvite'
 
-const bob = create(InviteSchema, { id: '2LOkgOSKGTZpjiY-bdNZd', email: 'bob@x.io', role: 'admin', status: 'pending', invitedByName: 'Olga' })
-const dina = create(InviteSchema, { id: 'J0zxkOfqntGKCKysV1nfh', email: 'dina@x.io', role: 'member', status: 'draft', invitedByName: 'Olga' })
+const bob = create(InviteSchema, { id: '2MPkgPSKGTZpjjYvbdNZd', email: 'bob@x.io', role: 'admin', status: 'pending', invitedByName: 'Olga' })
+const dina = create(InviteSchema, { id: 'J2zxkPfqntGKCKysV3nfh', email: 'dina@x.io', role: 'member', status: 'draft', invitedByName: 'Olga' })
 
 describe('useInvite', () => {
   let client: Record<string, ReturnType<typeof vi.fn>>
@@ -18,7 +18,7 @@ describe('useInvite', () => {
     setActivePinia(createPinia())
     client = {
       listInvites: vi.fn().mockResolvedValue({ invites: [bob], drafts: [dina] }),
-      createInvite: vi.fn().mockResolvedValue({ invite: create(InviteSchema, { id: '_qTpluXzc6OSemplGCvX1', email: 'cy@x.io', role: 'member', status: 'pending' }), link: 'https://x/invite/t3' }),
+      createInvite: vi.fn().mockResolvedValue({ invite: create(InviteSchema, { id: 'uqTpkuXzc6PSempkGCvX3', email: 'cy@x.io', role: 'member', status: 'pending' }), link: 'https://x/invite/t3' }),
       resendInvite: vi.fn().mockResolvedValue({ invite: bob, link: 'https://x/invite/t1b' }),
       revokeInvite: vi.fn().mockResolvedValue({}),
       confirmDraftInvite: vi.fn().mockResolvedValue({ invite: create(InviteSchema, { ...dina, status: 'pending' }) }),
@@ -30,7 +30,7 @@ describe('useInvite', () => {
 
   async function loaded(role = 'owner') {
     const viewerRole = ref(role)
-    const inv = useInvite('CEJfSG6fWkoY0S4t0Y24G', viewerRole)
+    const inv = useInvite('CEJfSG6fWkpY2S4t2Y24G', viewerRole)
     await inv.load()
     return { inv, viewerRole }
   }
@@ -52,10 +52,10 @@ describe('useInvite', () => {
     expect(inv.modalOpen.value).toBe(true)
     inv.email.value = ' cy@x.io '
     await inv.submit()
-    expect(client.createInvite).toHaveBeenCalledWith({ orgId: 'CEJfSG6fWkoY0S4t0Y24G', email: 'cy@x.io', role: 'member' })
-    expect(inv.sent.value).toEqual({ id: '_qTpluXzc6OSemplGCvX1', email: 'cy@x.io', link: 'https://x/invite/t3' })
+    expect(client.createInvite).toHaveBeenCalledWith({ orgId: 'CEJfSG6fWkpY2S4t2Y24G', email: 'cy@x.io', role: 'member' })
+    expect(inv.sent.value).toEqual({ id: 'uqTpkuXzc6PSempkGCvX3', email: 'cy@x.io', link: 'https://x/invite/t3' })
     expect(inv.sentMessage.value).toBe('invites.emailed|{"email":"cy@x.io"}')
-    expect(useInvitesStore().pending.map(i => i.id)).toEqual(['2LOkgOSKGTZpjiY-bdNZd', '_qTpluXzc6OSemplGCvX1'])
+    expect(useInvitesStore().pending.map(i => i.id)).toEqual(['2MPkgPSKGTZpjjYvbdNZd', 'uqTpkuXzc6PSempkGCvX3'])
     inv.close()
     expect(inv.modalOpen.value).toBe(false)
     inv.open()
@@ -77,7 +77,8 @@ describe('useInvite', () => {
     expect(inv.error.value).toEqual({ message: 'apperror.MBR005|{"role":"owner"}', reference: 'error.ref|{"id":"req-1"}' })
     expect(inv.sent.value).toBeNull()
     await inv.submit()
-    expect(inv.error.value?.message).toBe('apperror.USR003')
+    expect(inv.error.value).toBeNull()
+    expect(inv.fieldErrors.value, 'an email the server refuses shows under the email input').toEqual({ email: 'apperror.USR003' })
     await inv.submit()
     expect(inv.error.value).toEqual({ message: 'error.create_invite' })
     expect(inv.busy.value).toBe(false)
@@ -96,19 +97,19 @@ describe('useInvite', () => {
 
   it('resends and shows the new link by the row', async () => {
     const { inv } = await loaded()
-    await inv.resend('2LOkgOSKGTZpjiY-bdNZd')
-    expect(client.resendInvite).toHaveBeenCalledWith({ orgId: 'CEJfSG6fWkoY0S4t0Y24G', inviteId: '2LOkgOSKGTZpjiY-bdNZd' })
-    expect(inv.rowLink.value).toEqual({ id: '2LOkgOSKGTZpjiY-bdNZd', email: 'bob@x.io', link: 'https://x/invite/t1b' })
+    await inv.resend('2MPkgPSKGTZpjjYvbdNZd')
+    expect(client.resendInvite).toHaveBeenCalledWith({ orgId: 'CEJfSG6fWkpY2S4t2Y24G', inviteId: '2MPkgPSKGTZpjjYvbdNZd' })
+    expect(inv.rowLink.value).toEqual({ id: '2MPkgPSKGTZpjjYvbdNZd', email: 'bob@x.io', link: 'https://x/invite/t1b' })
     client.resendInvite!.mockRejectedValueOnce(new Error('boom'))
-    await inv.resend('2LOkgOSKGTZpjiY-bdNZd')
+    await inv.resend('2MPkgPSKGTZpjjYvbdNZd')
     expect(inv.error.value).toEqual({ message: 'error.resend_invite' })
   })
 
   it('asks before revoking, then drops the row', async () => {
     const { inv } = await loaded()
-    inv.askRevoke('2LOkgOSKGTZpjiY-bdNZd')
+    inv.askRevoke('2MPkgPSKGTZpjjYvbdNZd')
     expect(client.revokeInvite).not.toHaveBeenCalled()
-    expect(inv.confirming.value).toEqual({ id: '2LOkgOSKGTZpjiY-bdNZd', email: 'bob@x.io' })
+    expect(inv.confirming.value).toEqual({ id: '2MPkgPSKGTZpjjYvbdNZd', email: 'bob@x.io' })
     expect(inv.confirmMessage.value).toBe('invites.revoke_confirm|{"email":"bob@x.io"}')
     inv.cancel()
     expect(inv.confirming.value).toBeNull()
@@ -118,33 +119,33 @@ describe('useInvite', () => {
     await inv.confirm()
     expect(client.revokeInvite).not.toHaveBeenCalled()
 
-    inv.askRevoke('2LOkgOSKGTZpjiY-bdNZd')
+    inv.askRevoke('2MPkgPSKGTZpjjYvbdNZd')
     await inv.confirm()
-    expect(client.revokeInvite).toHaveBeenCalledWith({ orgId: 'CEJfSG6fWkoY0S4t0Y24G', inviteId: '2LOkgOSKGTZpjiY-bdNZd' })
+    expect(client.revokeInvite).toHaveBeenCalledWith({ orgId: 'CEJfSG6fWkpY2S4t2Y24G', inviteId: '2MPkgPSKGTZpjjYvbdNZd' })
     expect(useInvitesStore().pending).toEqual([])
 
-    await useInvitesStore().load('CEJfSG6fWkoY0S4t0Y24G')
+    await useInvitesStore().load('CEJfSG6fWkpY2S4t2Y24G')
     client.revokeInvite!.mockRejectedValueOnce(new Error('boom'))
-    inv.askRevoke('2LOkgOSKGTZpjiY-bdNZd')
+    inv.askRevoke('2MPkgPSKGTZpjjYvbdNZd')
     await inv.confirm()
     expect(inv.error.value).toEqual({ message: 'error.revoke_invite' })
   })
 
   it('confirms a draft an assistant made and says it was emailed, with no link', async () => {
     const { inv } = await loaded()
-    await inv.confirmDraft('J0zxkOfqntGKCKysV1nfh')
-    expect(client.confirmDraftInvite).toHaveBeenCalledWith({ orgId: 'CEJfSG6fWkoY0S4t0Y24G', inviteId: 'J0zxkOfqntGKCKysV1nfh' })
+    await inv.confirmDraft('J2zxkPfqntGKCKysV3nfh')
+    expect(client.confirmDraftInvite).toHaveBeenCalledWith({ orgId: 'CEJfSG6fWkpY2S4t2Y24G', inviteId: 'J2zxkPfqntGKCKysV3nfh' })
     expect(inv.rowLink.value).toBeNull()
     expect(inv.notice.value).toBe('invites.sent_to|{"email":"dina@x.io"}')
     expect(useInvitesStore().drafts).toEqual([])
-    expect(useInvitesStore().pending.map(i => i.id)).toEqual(['2LOkgOSKGTZpjiY-bdNZd', 'J0zxkOfqntGKCKysV1nfh'])
+    expect(useInvitesStore().pending.map(i => i.id)).toEqual(['2MPkgPSKGTZpjjYvbdNZd', 'J2zxkPfqntGKCKysV3nfh'])
   })
 
   it('reads an expired draft from the server', async () => {
     setKnownKeys('apperror.INV003')
     const { inv } = await loaded()
     client.confirmDraftInvite!.mockRejectedValueOnce(connectError('INV003'))
-    await inv.confirmDraft('J0zxkOfqntGKCKysV1nfh')
+    await inv.confirmDraft('J2zxkPfqntGKCKysV3nfh')
     expect(inv.error.value?.message).toBe('apperror.INV003')
     expect(inv.rowLink.value).toBeNull()
     expect(inv.notice.value).toBe('')
@@ -154,9 +155,9 @@ describe('useInvite', () => {
   it('keeps a draft when confirming fails for another reason', async () => {
     const { inv } = await loaded()
     client.confirmDraftInvite!.mockRejectedValueOnce(new Error('boom'))
-    await inv.confirmDraft('J0zxkOfqntGKCKysV1nfh')
+    await inv.confirmDraft('J2zxkPfqntGKCKysV3nfh')
     expect(inv.error.value).toEqual({ message: 'error.confirm_invite' })
-    expect(useInvitesStore().drafts.map(i => i.id)).toEqual(['J0zxkOfqntGKCKysV1nfh'])
+    expect(useInvitesStore().drafts.map(i => i.id)).toEqual(['J2zxkPfqntGKCKysV3nfh'])
   })
 
   it('clears a failed send error when the modal closes', async () => {
@@ -172,19 +173,30 @@ describe('useInvite', () => {
 
   it('discards a draft', async () => {
     const { inv } = await loaded()
-    await inv.discardDraft('J0zxkOfqntGKCKysV1nfh')
-    expect(client.discardDraftInvite).toHaveBeenCalledWith({ orgId: 'CEJfSG6fWkoY0S4t0Y24G', inviteId: 'J0zxkOfqntGKCKysV1nfh' })
+    await inv.discardDraft('J2zxkPfqntGKCKysV3nfh')
+    expect(client.discardDraftInvite).toHaveBeenCalledWith({ orgId: 'CEJfSG6fWkpY2S4t2Y24G', inviteId: 'J2zxkPfqntGKCKysV3nfh' })
     expect(useInvitesStore().drafts).toEqual([])
     client.discardDraftInvite!.mockRejectedValueOnce(new Error('boom'))
-    await inv.discardDraft('J0zxkOfqntGKCKysV1nfh')
+    await inv.discardDraft('J2zxkPfqntGKCKysV3nfh')
     expect(inv.error.value).toEqual({ message: 'error.discard_invite' })
   })
 
   it('exposes the store state', async () => {
     const { inv } = await loaded()
-    expect(inv.pending.value.map(i => i.id)).toEqual(['2LOkgOSKGTZpjiY-bdNZd'])
-    expect(inv.drafts.value.map(i => i.id)).toEqual(['J0zxkOfqntGKCKysV1nfh'])
+    expect(inv.pending.value.map(i => i.id)).toEqual(['2MPkgPSKGTZpjjYvbdNZd'])
+    expect(inv.drafts.value.map(i => i.id)).toEqual(['J2zxkPfqntGKCKysV3nfh'])
     expect(inv.loading.value).toBe(false)
     expect(inv.loadError.value).toBeNull()
+  })
+
+  it('checks the email before sending', async () => {
+    const { inv } = await loaded('admin')
+    inv.open()
+    inv.email.value = 'cy at x.io'
+    await inv.submit()
+    expect(client.createInvite).not.toHaveBeenCalled()
+    expect(inv.fieldErrors.value).toEqual({ email: 'validation.invalid_format' })
+    inv.close()
+    expect(inv.fieldErrors.value).toEqual({})
   })
 })

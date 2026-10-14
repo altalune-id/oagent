@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { connectError, deferred, setClient, setKnownKeys } from '../../test/nuxt-globals'
 import { useAgentsStore } from './agents'
 
-const bot = { id: 'EW7HBToNTTOAuNhPZB60M', projectId: 'x6LH9WPWiktLwCBKHy4oF', slug: 'bot', name: 'Bot', description: 'Helps' }
-const other = { id: 'IpEPLcBEqr9DpQYIeDkjj', projectId: 'KdrF3t1FHtooBPmLgj4sy', slug: 'other', name: 'Other', description: '' }
+const bot = { id: 'EW7HBTpNTTPAuNhPZB62M', projectId: 'x6MH9WPWjktMwCBKHy4pF', slug: 'bot', name: 'Bot', description: 'Helps' }
+const other = { id: 'JpEPMcBEqr9DpQYJeDkjj', projectId: 'KdrF3t3FHtppBPmMgj4sy', slug: 'other', name: 'Other', description: '' }
 
 describe('useAgentsStore', () => {
   beforeEach(() => {
@@ -16,16 +16,16 @@ describe('useAgentsStore', () => {
     const listAgents = vi.fn().mockResolvedValue({ agents: [bot, other] })
     setClient('$agentClient', { listAgents })
     const agents = useAgentsStore()
-    await agents.load('x6LH9WPWiktLwCBKHy4oF')
-    expect(listAgents).toHaveBeenCalledWith({ projectId: 'x6LH9WPWiktLwCBKHy4oF' })
+    await agents.load('x6MH9WPWjktMwCBKHy4pF')
+    expect(listAgents).toHaveBeenCalledWith({ projectId: 'x6MH9WPWjktMwCBKHy4pF' })
     expect(agents.items).toEqual([bot, other])
-    expect(agents.forProject('x6LH9WPWiktLwCBKHy4oF')).toEqual([bot])
+    expect(agents.forProject('x6MH9WPWjktMwCBKHy4pF')).toEqual([bot])
   })
 
   it('treats a missing list as empty', async () => {
     setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({}) })
     const agents = useAgentsStore()
-    await agents.load('x6LH9WPWiktLwCBKHy4oF')
+    await agents.load('x6MH9WPWjktMwCBKHy4pF')
     expect(agents.items).toEqual([])
   })
 
@@ -33,7 +33,7 @@ describe('useAgentsStore', () => {
     setKnownKeys('apperror.GEN900')
     setClient('$agentClient', { listAgents: vi.fn().mockRejectedValue(connectError('GEN900')) })
     const agents = useAgentsStore()
-    await agents.load('x6LH9WPWiktLwCBKHy4oF')
+    await agents.load('x6MH9WPWjktMwCBKHy4pF')
     expect(agents.error).toEqual({ message: 'apperror.GEN900', reference: 'error.ref|{"id":"req-1"}' })
     expect(agents.loading).toBe(false)
   })
@@ -41,7 +41,7 @@ describe('useAgentsStore', () => {
   it('shows the fallback for a plain error', async () => {
     setClient('$agentClient', { listAgents: vi.fn().mockRejectedValue(new Error('boom')) })
     const agents = useAgentsStore()
-    await agents.load('x6LH9WPWiktLwCBKHy4oF')
+    await agents.load('x6MH9WPWjktMwCBKHy4pF')
     expect(agents.error).toEqual({ message: 'error.load_agents' })
   })
 
@@ -51,12 +51,12 @@ describe('useAgentsStore', () => {
     setClient('$agentClient', { listAgents })
     const agents = useAgentsStore()
     await agents.ensureLoaded('')
-    const first = agents.ensureLoaded('x6LH9WPWiktLwCBKHy4oF')
-    const second = agents.ensureLoaded('x6LH9WPWiktLwCBKHy4oF')
+    const first = agents.ensureLoaded('x6MH9WPWjktMwCBKHy4pF')
+    const second = agents.ensureLoaded('x6MH9WPWjktMwCBKHy4pF')
     expect(listAgents).toHaveBeenCalledTimes(1)
     pending.resolve({ agents: [bot] })
     await Promise.all([first, second])
-    await agents.ensureLoaded('x6LH9WPWiktLwCBKHy4oF')
+    await agents.ensureLoaded('x6MH9WPWjktMwCBKHy4pF')
     expect(listAgents).toHaveBeenCalledTimes(1)
   })
 
@@ -67,10 +67,10 @@ describe('useAgentsStore', () => {
     agents.add(bot)
     agents.add(other)
     expect(agents.items).toHaveLength(2)
-    agents.update({ id: 'EW7HBToNTTOAuNhPZB60M', name: 'Robot', description: 'New' })
+    agents.update({ id: 'EW7HBTpNTTPAuNhPZB62M', name: 'Robot', description: 'New' })
     expect(agents.items[0]).toEqual({ ...bot, name: 'Robot', description: 'New' })
     expect(agents.items[1]).toEqual(other)
-    agents.remove('EW7HBToNTTOAuNhPZB60M')
+    agents.remove('EW7HBTpNTTPAuNhPZB62M')
     expect(agents.items).toEqual([other])
   })
 })

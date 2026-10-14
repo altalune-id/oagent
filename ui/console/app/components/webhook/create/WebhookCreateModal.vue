@@ -5,12 +5,13 @@ import SecretField from '~/components/ui/SecretField.vue'
 import { webhookEvents } from '~/components/webhook/events'
 import { useWebhookCreate } from './useWebhookCreate'
 import ErrorText from '~/components/ui/ErrorText.vue'
+import FieldError from '~/components/ui/FieldError.vue'
 
 const { orgId, projectId } = defineProps<{ orgId: string, projectId: string }>()
 
 const { t } = useI18n()
 const create = useWebhookCreate(orgId, projectId)
-const { open, url, description, eventTypes, busy, error, secret, pingBusy, pingError, pinged } = create
+const { open, url, description, eventTypes, busy, error, fieldErrors, secret, pingBusy, pingError, pinged } = create
 </script>
 
 <template>
@@ -34,14 +35,22 @@ const { open, url, description, eventTypes, busy, error, secret, pingBusy, pingE
       <ErrorText :error="pingError" />
     </div>
 
-    <form v-else class="space-y-3" @submit.prevent="create.submit()">
+    <form v-else novalidate class="space-y-3" @submit.prevent="create.submit()">
       <label class="block">
         <span class="mb-1 block text-xs text-base-content/60">{{ t('webhooks.url') }}</span>
-        <input v-model="url" type="url" class="input input-sm input-bordered w-full" placeholder="https://example.com/hook" :disabled="busy">
+        <input
+          v-model="url" type="url" class="input input-sm input-bordered w-full" :class="{ 'input-error': fieldErrors.url }"
+          placeholder="https://example.com/hook" :disabled="busy" :aria-invalid="!!fieldErrors.url" aria-describedby="webhook-url-error"
+        >
+        <FieldError id="webhook-url-error" :message="fieldErrors.url" />
       </label>
       <label class="block">
         <span class="mb-1 block text-xs text-base-content/60">{{ t('common.description') }}</span>
-        <input v-model="description" type="text" class="input input-sm input-bordered w-full" :disabled="busy">
+        <input
+          v-model="description" type="text" class="input input-sm input-bordered w-full" :class="{ 'input-error': fieldErrors.description }"
+          :disabled="busy" :aria-invalid="!!fieldErrors.description" aria-describedby="webhook-description-error"
+        >
+        <FieldError id="webhook-description-error" :message="fieldErrors.description" />
       </label>
       <div>
         <span class="mb-1 block text-xs text-base-content/60">{{ t('webhooks.events') }}</span>
@@ -51,6 +60,7 @@ const { open, url, description, eventTypes, busy, error, secret, pingBusy, pingE
             {{ t(event.labelKey) }}
           </label>
         </div>
+        <FieldError id="webhook-event-types-error" :message="fieldErrors.event_types" />
       </div>
       <ErrorText :error="error" />
     </form>

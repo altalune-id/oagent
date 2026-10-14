@@ -7,7 +7,7 @@ const scopes = [
   { name: 'agent:write', label: 'Write agents' },
   { name: 'webhook:read', label: 'Read webhooks' },
 ]
-const projects = [{ id: 'x6LH9WPWiktLwCBKHy4oF', name: 'Default' }, { id: 'KdrF3t1FHtooBPmLgj4sy', name: 'Support' }]
+const projects = [{ id: 'x6MH9WPWjktMwCBKHy4pF', name: 'Default' }, { id: 'KdrF3t3FHtppBPmMgj4sy', name: 'Support' }]
 
 const meta = {
   title: 'API keys/PersonalKeys',

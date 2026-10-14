@@ -1,4 +1,8 @@
+import { create } from '@bufbuild/protobuf'
 import type { Ref } from 'vue'
+
+import { CreateInviteRequestSchema } from '~~/gen/invite/v1/invite_pb'
+import { useValidation } from '~/composables/useValidation'
 import { errorCode } from '~/lib/apperror/message'
 import type { ShownError } from '~/lib/apperror/message'
 import { useErrorMessage } from '~/composables/useErrorMessage'
@@ -16,6 +20,10 @@ export interface InviteLink {
 export function useInvite(orgId: string, viewerRole: Ref<string>) {
   const invites = useInvitesStore()
   const errorMessage = useErrorMessage()
+  const validation = useValidation(CreateInviteRequestSchema, {
+    fields: ['email', 'role'],
+    codes: { USR003: 'email', MBR003: 'role', GEN006: 'email' },
+  })
   const { t } = useI18n()
   const { $inviteClient: client } = useNuxtApp()
 
@@ -43,15 +51,17 @@ export function useInvite(orgId: string, viewerRole: Ref<string>) {
     role.value = 'member'
     error.value = null
     sent.value = null
+    validation.clear()
     modalOpen.value = true
   }
 
   function close() {
     modalOpen.value = false
     error.value = null
+    validation.clear()
   }
 
-  async function run(fallbackKey: string, action: () => Promise<void>) {
+  async function run(fallbackKey: string, action: () => Promise<void>, shown: (e: unknown) => ShownError | null = e => errorMessage(e, fallbackKey)) {
     if (busy.value) {
       return
     }
@@ -62,7 +72,7 @@ export function useInvite(orgId: string, viewerRole: Ref<string>) {
       await action()
     }
     catch (e) {
-      error.value = errorMessage(e, fallbackKey)
+      error.value = shown(e)
     }
     finally {
       busy.value = false
@@ -70,17 +80,21 @@ export function useInvite(orgId: string, viewerRole: Ref<string>) {
   }
 
   async function submit() {
-    const address = email.value.trim()
-    if (!address) {
+    if (busy.value) {
+      return
+    }
+    const req = { orgId, email: email.value.trim(), role: role.value }
+    if (!validation.check(create(CreateInviteRequestSchema, req))) {
+      error.value = validation.formError.value
       return
     }
     await run('error.create_invite', async () => {
-      const res = await client.createInvite({ orgId, email: address, role: role.value })
+      const res = await client.createInvite(req)
       if (res.invite) {
         invites.upsert(orgId, toInvite(res.invite))
         sent.value = { id: res.invite.id, email: res.invite.email, link: res.link }
       }
-    })
+    }, e => validation.fromServer(e, 'error.create_invite'))
   }
 
   async function resend(id: string) {
@@ -151,6 +165,7 @@ export function useInvite(orgId: string, viewerRole: Ref<string>) {
     role,
     busy,
     error,
+    fieldErrors: validation.errors,
     sent,
     sentMessage,
     rowLink,

@@ -1,7 +1,10 @@
+import { create } from '@bufbuild/protobuf'
 import { timestampFromDate } from '@bufbuild/protobuf/wkt'
+
+import { CreateAPIKeyRequestSchema } from '~~/gen/apikey/v1/apikey_pb'
+import { useValidation } from '~/composables/useValidation'
 import { toAPIKey, useAPIKeysStore } from '~/stores/apiKeys'
 import type { ShownError } from '~/lib/apperror/message'
-import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export function useAPIKeyCreate(orgId: string) {
   const open = ref(false)
@@ -17,7 +20,7 @@ export function useAPIKeyCreate(orgId: string) {
   const plaintext = ref('')
 
   const keys = useAPIKeysStore()
-  const errorMessage = useErrorMessage()
+  const validation = useValidation(CreateAPIKeyRequestSchema, { fields: ['name'], codes: { KEY002: 'name' } })
   const { $apiKeyClient: client } = useNuxtApp()
 
   function show() {
@@ -30,6 +33,7 @@ export function useAPIKeyCreate(orgId: string) {
     expiresInHours.value = 720
     error.value = null
     plaintext.value = ''
+    validation.clear()
     open.value = true
   }
 
@@ -42,29 +46,34 @@ export function useAPIKeyCreate(orgId: string) {
   }
 
   async function submit() {
-    if (busy.value || !name.value.trim()) {
+    if (busy.value) {
+      return
+    }
+    const req = {
+      orgId,
+      kind: kind.value,
+      name: name.value.trim(),
+      scopes: scopes.value,
+      projectId: kind.value === 'project' ? projectId.value : '',
+      allProjects: kind.value === 'org' ? allProjects.value : false,
+      projectIds: kind.value === 'org' && !allProjects.value ? projectIds.value : [],
+      expiresAt: timestampFromDate(new Date(Date.now() + expiresInHours.value * 3600_000)),
+    }
+    if (!validation.check(create(CreateAPIKeyRequestSchema, req))) {
+      error.value = validation.formError.value
       return
     }
     busy.value = true
     error.value = null
     try {
-      const res = await client.createAPIKey({
-        orgId,
-        kind: kind.value,
-        name: name.value.trim(),
-        scopes: scopes.value,
-        projectId: kind.value === 'project' ? projectId.value : '',
-        allProjects: kind.value === 'org' ? allProjects.value : false,
-        projectIds: kind.value === 'org' && !allProjects.value ? projectIds.value : [],
-        expiresAt: timestampFromDate(new Date(Date.now() + expiresInHours.value * 3600_000)),
-      })
+      const res = await client.createAPIKey(req)
       if (res.key) {
         keys.add(toAPIKey(res.key))
       }
       plaintext.value = res.plaintext
     }
     catch (e) {
-      error.value = errorMessage(e, 'error.create_apikey')
+      error.value = validation.fromServer(e, 'error.create_apikey')
     }
     finally {
       busy.value = false
@@ -73,6 +82,6 @@ export function useAPIKeyCreate(orgId: string) {
 
   return {
     open, kind, name, scopes, allProjects, projectId, projectIds, expiresInHours,
-    busy, error, plaintext, show, hide, submit,
+    busy, error, fieldErrors: validation.errors, plaintext, show, hide, submit,
   }
 }

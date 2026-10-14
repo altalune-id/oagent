@@ -7,7 +7,7 @@ import { connectError, deferred, setClient, setKnownKeys } from '../../../../tes
 import { useWebhooksStore } from '~/stores/webhooks'
 import { useWebhookCreate } from './useWebhookCreate'
 
-const hookPB = create(WebhookSchema, { id: 'UxVy4UK3vmrHzOZ073hCA', orgId: 'V1StGXR8Z5jdHi6BmyT2a', projectId: 'x6LH9WPWiktLwCBKHy4oF', url: 'https://a.test', eventTypes: ['agent.created'], active: true })
+const hookPB = create(WebhookSchema, { id: 'UxVy4UK3vmrHzPZ273hCA', orgId: 'V3StGXR8Z5jdHj6BmyT2a', projectId: 'x6MH9WPWjktMwCBKHy4pF', url: 'https://a.test', eventTypes: ['agent.created'], active: true })
 
 describe('useWebhookCreate', () => {
   let createWebhook: ReturnType<typeof vi.fn>
@@ -21,7 +21,7 @@ describe('useWebhookCreate', () => {
   })
 
   function filled() {
-    const form = useWebhookCreate('V1StGXR8Z5jdHi6BmyT2a', 'x6LH9WPWiktLwCBKHy4oF')
+    const form = useWebhookCreate('V3StGXR8Z5jdHj6BmyT2a', 'x6MH9WPWjktMwCBKHy4pF')
     form.show()
     form.url.value = ' https://a.test '
     form.description.value = 'd'
@@ -30,7 +30,7 @@ describe('useWebhookCreate', () => {
   }
 
   it('resets the form when shown', () => {
-    const form = useWebhookCreate('V1StGXR8Z5jdHi6BmyT2a', 'x6LH9WPWiktLwCBKHy4oF')
+    const form = useWebhookCreate('V3StGXR8Z5jdHj6BmyT2a', 'x6MH9WPWjktMwCBKHy4pF')
     form.url.value = 'x'
     form.secret.value = 's'
     form.pinged.value = true
@@ -43,8 +43,8 @@ describe('useWebhookCreate', () => {
   it('creates a webhook, adds it and shows the secret', async () => {
     const form = filled()
     await form.submit()
-    expect(createWebhook).toHaveBeenCalledWith({ orgId: 'V1StGXR8Z5jdHi6BmyT2a', projectId: 'x6LH9WPWiktLwCBKHy4oF', url: 'https://a.test', description: 'd', eventTypes: ['agent.created'] })
-    expect(useWebhooksStore().items.map(w => w.id)).toEqual(['UxVy4UK3vmrHzOZ073hCA'])
+    expect(createWebhook).toHaveBeenCalledWith({ orgId: 'V3StGXR8Z5jdHj6BmyT2a', projectId: 'x6MH9WPWjktMwCBKHy4pF', url: 'https://a.test', description: 'd', eventTypes: ['agent.created'] })
+    expect(useWebhooksStore().items.map(w => w.id)).toEqual(['UxVy4UK3vmrHzPZ273hCA'])
     expect(form.secret.value).toBe('whsec_1')
     form.hide()
     expect(form.open.value).toBe(false)
@@ -77,13 +77,31 @@ describe('useWebhookCreate', () => {
   })
 
   it('shows a Connect error with its reference, then the fallback for a plain error', async () => {
-    setKnownKeys('apperror.WHK002_https_required')
-    createWebhook.mockRejectedValueOnce(connectError('WHK002', { reason: 'https_required' })).mockRejectedValueOnce(new Error('boom'))
+    setKnownKeys('apperror.WHK005')
+    createWebhook.mockRejectedValueOnce(connectError('WHK005', { limit: '3' })).mockRejectedValueOnce(new Error('boom'))
     const form = filled()
     await form.submit()
-    expect(form.error.value).toEqual({ message: 'apperror.WHK002_https_required', reference: 'error.ref|{"id":"req-1"}' })
+    expect(form.error.value).toEqual({ message: 'apperror.WHK005|{"limit":"3"}', reference: 'error.ref|{"id":"req-1"}' })
     await form.submit()
     expect(form.error.value).toEqual({ message: 'error.create_webhook' })
+  })
+
+  it('shows a URL the server refuses under the URL input', async () => {
+    setKnownKeys('apperror.WHK002_https_required')
+    createWebhook.mockRejectedValueOnce(connectError('WHK002', { reason: 'https_required' }))
+    const form = filled()
+    await form.submit()
+    expect(form.fieldErrors.value).toEqual({ url: 'apperror.WHK002_https_required' })
+    expect(form.error.value).toBeNull()
+  })
+
+  it('checks the URL and events before sending', async () => {
+    const form = filled()
+    form.url.value = '/hook'
+    form.eventTypes.value = []
+    await form.submit()
+    expect(createWebhook).not.toHaveBeenCalled()
+    expect(form.fieldErrors.value).toEqual({ url: 'validation.invalid_format', event_types: 'validation.required' })
   })
 
   it('pings the created webhook', async () => {
@@ -92,7 +110,7 @@ describe('useWebhookCreate', () => {
     expect(pingWebhook).not.toHaveBeenCalled()
     await form.submit()
     await form.ping()
-    expect(pingWebhook).toHaveBeenCalledWith({ orgId: 'V1StGXR8Z5jdHi6BmyT2a', projectId: 'x6LH9WPWiktLwCBKHy4oF', id: 'UxVy4UK3vmrHzOZ073hCA' })
+    expect(pingWebhook).toHaveBeenCalledWith({ orgId: 'V3StGXR8Z5jdHj6BmyT2a', projectId: 'x6MH9WPWjktMwCBKHy4pF', id: 'UxVy4UK3vmrHzPZ273hCA' })
     expect(form.pinged.value).toBe(true)
     expect(form.pingBusy.value).toBe(false)
   })

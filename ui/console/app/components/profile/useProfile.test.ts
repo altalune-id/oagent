@@ -11,8 +11,8 @@ describe('useProfile', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     client = {
-      whoami: vi.fn().mockResolvedValue({ userId: 'V1StGXR8Z5jdHi6BmyT2a', source: 'local', name: 'Ana', email: 'ana@example.com', avatarUrl: '' }),
-      updateProfile: vi.fn().mockResolvedValue({ userId: 'V1StGXR8Z5jdHi6BmyT2a', name: 'Ana Maria' }),
+      whoami: vi.fn().mockResolvedValue({ userId: 'V3StGXR8Z5jdHj6BmyT2a', source: 'local', name: 'Ana', email: 'ana@example.com', avatarUrl: '' }),
+      updateProfile: vi.fn().mockResolvedValue({ userId: 'V3StGXR8Z5jdHj6BmyT2a', name: 'Ana Maria' }),
       changePassword: vi.fn().mockResolvedValue({}),
       signOutEverywhere: vi.fn().mockResolvedValue({ signedOut: true }),
     }
@@ -27,7 +27,7 @@ describe('useProfile', () => {
 
   it('starts from whoami: the person, their name and whether they can change a password', async () => {
     const p = await loaded()
-    expect(p.person.value).toEqual({ id: 'V1StGXR8Z5jdHi6BmyT2a', name: 'Ana', email: 'ana@example.com', avatarUrl: '' })
+    expect(p.person.value).toEqual({ id: 'V3StGXR8Z5jdHj6BmyT2a', name: 'Ana', email: 'ana@example.com', avatarUrl: '' })
     expect(p.name.value).toBe('Ana')
     expect(p.isPerson.value).toBe(true)
   })
@@ -122,5 +122,35 @@ describe('useProfile', () => {
     expect(client.updateProfile).not.toHaveBeenCalled()
     expect(client.changePassword).not.toHaveBeenCalled()
     expect(client.signOutEverywhere).not.toHaveBeenCalled()
+  })
+
+  it('checks the name before sending and shows the server refusal under it', async () => {
+    setKnownKeys('apperror.USR004')
+    const p = await loaded()
+    p.name.value = 'n'.repeat(201)
+    await p.saveName()
+    expect(client.updateProfile).not.toHaveBeenCalled()
+    expect(p.nameFieldErrors.value).toEqual({ name: 'validation.too_long|{"max":"200"}' })
+
+    client.updateProfile!.mockRejectedValueOnce(connectError('USR004', { max: '200' }))
+    p.name.value = 'Ana'
+    await p.saveName()
+    expect(p.nameFieldErrors.value).toEqual({ name: 'apperror.USR004|{"max":"200"}' })
+    expect(p.nameError.value).toBeNull()
+  })
+
+  it('checks the new password minimum before sending', async () => {
+    const p = await loaded()
+    p.currentPassword.value = 'old one'
+    p.newPassword.value = 'short'
+    await p.changePassword()
+    expect(client.changePassword).not.toHaveBeenCalled()
+    expect(p.passwordFieldErrors.value).toEqual({ new_password: 'validation.too_short|{"min":"12"}' })
+    expect(p.passwordError.value).toBeNull()
+
+    p.newPassword.value = 'a brand new passphrase'
+    await p.changePassword()
+    expect(client.changePassword).toHaveBeenCalled()
+    expect(p.passwordFieldErrors.value).toEqual({})
   })
 })

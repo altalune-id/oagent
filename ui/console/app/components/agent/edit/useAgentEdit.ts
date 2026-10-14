@@ -1,7 +1,10 @@
+import { create } from '@bufbuild/protobuf'
+
+import { UpdateAgentRequestSchema } from '~~/gen/agent/v1/agent_pb'
+import { useValidation } from '~/composables/useValidation'
 import { useAgentsStore } from '~/stores/agents'
 import type { Agent } from '~/stores/agents'
 import type { ShownError } from '~/lib/apperror/message'
-import { useErrorMessage } from '~/composables/useErrorMessage'
 
 export function useAgentEdit() {
   const open = ref(false)
@@ -12,7 +15,10 @@ export function useAgentEdit() {
   const error = ref<ShownError | null>(null)
 
   const agents = useAgentsStore()
-  const errorMessage = useErrorMessage()
+  const validation = useValidation(UpdateAgentRequestSchema, {
+    fields: ['name', 'description'],
+    codes: { AGT004: 'name', AGT005: 'description' },
+  })
   const { $agentClient: client } = useNuxtApp()
 
   function show(agent: Agent) {
@@ -20,6 +26,7 @@ export function useAgentEdit() {
     name.value = agent.name
     description.value = agent.description
     error.value = null
+    validation.clear()
     open.value = true
   }
 
@@ -29,17 +36,22 @@ export function useAgentEdit() {
     }
     open.value = false
     error.value = null
+    validation.clear()
   }
 
   async function submit() {
-    const value = name.value.trim()
-    if (!value || busy.value) {
+    if (busy.value) {
+      return
+    }
+    const req = { id: id.value, name: name.value.trim(), description: description.value }
+    if (!validation.check(create(UpdateAgentRequestSchema, req))) {
+      error.value = validation.formError.value
       return
     }
     busy.value = true
     error.value = null
     try {
-      const res = await client.updateAgent({ id: id.value, name: value, description: description.value })
+      const res = await client.updateAgent(req)
       if (res.agent) {
         agents.update({ id: res.agent.id, name: res.agent.name, description: res.agent.description })
       }
@@ -48,12 +60,12 @@ export function useAgentEdit() {
       description.value = ''
     }
     catch (e) {
-      error.value = errorMessage(e, 'error.update_agent')
+      error.value = validation.fromServer(e, 'error.update_agent')
     }
     finally {
       busy.value = false
     }
   }
 
-  return { open, name, description, busy, error, show, hide, submit }
+  return { open, name, description, busy, error, fieldErrors: validation.errors, show, hide, submit }
 }

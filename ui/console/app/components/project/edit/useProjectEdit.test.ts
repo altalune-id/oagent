@@ -5,7 +5,7 @@ import { connectError, deferred, setClient, setKnownKeys } from '../../../../tes
 import { useProjectsStore } from '~/stores/projects'
 import { useProjectEdit } from './useProjectEdit'
 
-const project = { id: 'x6LH9WPWiktLwCBKHy4oF', orgId: 'V1StGXR8Z5jdHi6BmyT2a', slug: 'web', name: 'Web' }
+const project = { id: 'x6MH9WPWjktMwCBKHy4pF', orgId: 'V3StGXR8Z5jdHj6BmyT2a', slug: 'web', name: 'Web' }
 
 describe('useProjectEdit', () => {
   let updateProject: ReturnType<typeof vi.fn>
@@ -24,7 +24,7 @@ describe('useProjectEdit', () => {
     form.name.value = ' Site '
     form.slug.value = ' site '
     await form.submit()
-    expect(updateProject).toHaveBeenCalledWith({ id: 'x6LH9WPWiktLwCBKHy4oF', name: 'Site', slug: 'site' })
+    expect(updateProject).toHaveBeenCalledWith({ id: 'x6MH9WPWjktMwCBKHy4pF', name: 'Site', slug: 'site' })
     expect(useProjectsStore().items[0]).toEqual({ ...project, name: 'Site', slug: 'site' })
     expect([form.open.value, form.name.value, form.slug.value]).toEqual([false, '', ''])
   })
@@ -57,16 +57,30 @@ describe('useProjectEdit', () => {
   })
 
   it('shows a Connect error with its reference, then the fallback for a plain error', async () => {
-    setKnownKeys('apperror.PRJ002')
-    updateProject.mockRejectedValueOnce(connectError('PRJ002')).mockRejectedValueOnce(new Error('boom'))
+    setKnownKeys('apperror.GEN007')
+    updateProject.mockRejectedValueOnce(connectError('GEN007')).mockRejectedValueOnce(new Error('boom'))
     const form = useProjectEdit()
     form.show(project)
     await form.submit()
-    expect(form.error.value).toEqual({ message: 'apperror.PRJ002', reference: 'error.ref|{"id":"req-1"}' })
+    expect(form.error.value).toEqual({ message: 'apperror.GEN007', reference: 'error.ref|{"id":"req-1"}' })
     await form.submit()
     expect(form.error.value).toEqual({ message: 'error.rename_project' })
     form.hide()
     expect(form.open.value).toBe(false)
     expect(form.error.value).toBeNull()
+  })
+
+  it('shows a taken slug under the slug input and never sends a request its rules refuse', async () => {
+    setKnownKeys('apperror.PRJ002')
+    updateProject.mockRejectedValueOnce(connectError('PRJ002'))
+    const form = useProjectEdit()
+    form.show(project)
+    await form.submit()
+    expect(form.fieldErrors.value).toEqual({ slug: 'apperror.PRJ002' })
+    expect(form.error.value).toBeNull()
+    form.name.value = ' '
+    await form.submit()
+    expect(updateProject).toHaveBeenCalledTimes(1)
+    expect(form.fieldErrors.value).toEqual({ name: 'validation.required' })
   })
 })

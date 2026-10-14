@@ -4,7 +4,7 @@ import Avatar from './Avatar.vue'
 const meta = {
   title: 'UI/Avatar',
   component: Avatar,
-  args: { id: 'V1StGXR8Z5jdHi6BmyT2a', name: 'Ana Maria', email: 'ana@example.com', size: 'md' },
+  args: { id: 'V3StGXR8Z5jdHj6BmyT2a', name: 'Ana Maria', email: 'ana@example.com', size: 'md' },
 } satisfies Meta<typeof Avatar>
 
 export default meta
@@ -12,7 +12,7 @@ type Story = StoryObj<typeof meta>
 
 export const Initials: Story = {}
 
-export const EmailOnly: Story = { args: { id: 'FtGrdYskgDVDf8aoKsLdn', name: '', email: 'bob@example.com' } }
+export const EmailOnly: Story = { args: { id: 'FtGrdYskgDVDf8apKsMdn', name: '', email: 'bob@example.com' } }
 
 export const Picture: Story = {
   args: { avatarUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1" fill="%23888"/></svg>' },

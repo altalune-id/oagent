@@ -6,7 +6,7 @@ import { useOrgsStore } from '~/stores/orgs'
 import { useUIStore } from '~/stores/ui'
 import { useOrgCreate } from './useOrgCreate'
 
-const org = { id: 'V1StGXR8Z5jdHi6BmyT2a', slug: 'acme', name: 'Acme' }
+const org = { id: 'V3StGXR8Z5jdHj6BmyT2a', slug: 'acme', name: 'Acme' }
 
 describe('useOrgCreate', () => {
   let createOrg: ReturnType<typeof vi.fn>
@@ -65,17 +65,41 @@ describe('useOrgCreate', () => {
   })
 
   it('shows a Connect error with its reference, then the fallback for a plain error', async () => {
-    setKnownKeys('apperror.ORG002')
-    createOrg.mockRejectedValueOnce(connectError('ORG002', { slug: 'acme' })).mockRejectedValueOnce(new Error('boom'))
+    setKnownKeys('apperror.ORG005')
+    createOrg.mockRejectedValueOnce(connectError('ORG005')).mockRejectedValueOnce(new Error('boom'))
     const form = useOrgCreate()
     form.show()
     form.name.value = 'Acme'
     await form.submit()
-    expect(form.error.value).toEqual({ message: 'apperror.ORG002|{"slug":"acme"}', reference: 'error.ref|{"id":"req-1"}' })
+    expect(form.error.value).toEqual({ message: 'apperror.ORG005', reference: 'error.ref|{"id":"req-1"}' })
     await form.submit()
     expect(form.error.value).toEqual({ message: 'error.create_org' })
     form.hide()
     expect(form.open.value).toBe(false)
     expect(form.error.value).toBeNull()
+  })
+
+  it('checks the request first and never sends one its own rules refuse', async () => {
+    const form = useOrgCreate()
+    form.show()
+    form.name.value = 'a'.repeat(201)
+    await form.submit()
+    expect(createOrg).not.toHaveBeenCalled()
+    expect(form.fieldErrors.value).toEqual({ name: 'validation.too_long|{"max":"200"}' })
+    expect(form.error.value).toBeNull()
+  })
+
+  it('shows a taken slug under the slug input', async () => {
+    setKnownKeys('apperror.ORG002')
+    createOrg.mockRejectedValueOnce(connectError('ORG002', { slug: 'acme' }))
+    const form = useOrgCreate()
+    form.show()
+    form.name.value = 'Acme'
+    form.slug.value = 'acme'
+    await form.submit()
+    expect(form.fieldErrors.value).toEqual({ slug: 'apperror.ORG002|{"slug":"acme"}' })
+    expect(form.error.value).toBeNull()
+    form.hide()
+    expect(form.fieldErrors.value).toEqual({})
   })
 })
