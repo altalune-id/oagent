@@ -1,0 +1,94 @@
+name: oagent
+
+# Local dependencies: `docker compose up -d`. The app itself runs with `make run`, or in a container with
+# `docker compose --profile app up -d --build`. Host ports can be moved with the *_PORT variables.
+services:
+  postgres:
+    image: postgres:18.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: oagent
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d oagent"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7.4.11-alpine
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  nats:
+    image: nats:2.14.8-alpine
+    restart: unless-stopped
+    command: ["-js", "-sd", "/data", "--auth", "oagent-dev"]
+    ports:
+      - "${NATS_PORT:-4222}:4222"
+    volumes:
+      - nats:/data
+
+  mailpit:
+    image: axllent/mailpit:v1.31.4
+    restart: unless-stopped
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025" # web UI at http://localhost:8025
+
+  oagent:
+    profiles: [app]
+    build:
+      context: .
+    image: oagent:dev
+    restart: unless-stopped
+    stop_grace_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_started
+      mailpit:
+        condition: service_started
+    ports:
+      - "${OAGENT_PORT:-5150}:5150"
+    environment:
+      OAGENT_ENV: development
+      OAGENT_HTTP_ADDR: ":5150"
+      OAGENT_HTTP_BASE_URL: "http://localhost:${OAGENT_PORT:-5150}"
+      OAGENT_DB_DSN: "postgres://postgres:postgres@postgres:5432/oagent?sslmode=disable"
+      OAGENT_DB_MIGRATOR_DSN: "postgres://postgres:postgres@postgres:5432/oagent?sslmode=disable"
+      # dev-only values; generate real ones with: openssl rand -hex 32
+      OAGENT_HTTP_STATE_SECRET: "6f1c0a3e2b9d4f7a8c5e1d0b3a6f9c2e4d7b0a1c3e5f7a9b2d4c6e8f0a1b3c5d"
+      OAGENT_SECRETS_ENCRYPTION_KEY: "0d2f4b6a8c1e3f5a7b9d2c4e6f8a0b1c3d5e7f9a2b4c6d8e0f1a3b5c7d9e2f4a"
+      OAGENT_MAIL_DRIVER: smtp
+      OAGENT_MAIL_FROM: "oagent <noreply@oagent.local>"
+      OAGENT_MAIL_SMTP_HOST: mailpit
+      OAGENT_MAIL_SMTP_PORT: "1025"
+      OAGENT_MAIL_SMTP_TLS: "none"
+      OAGENT_REDIS_URL: "redis://redis:6379/0"
+      OAGENT_RATE_LIMIT_STORE: redis
+      OAGENT_RATE_LIMIT_AUTH_ENABLED: "true"
+      OAGENT_QUEUE_ENABLED: "true"
+      OAGENT_QUEUE_URL: "nats://nats:4222"
+      OAGENT_QUEUE_TOKEN: "oagent-dev"
+
+volumes:
+  postgres:
+  nats:

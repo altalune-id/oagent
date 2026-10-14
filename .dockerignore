@@ -1,0 +1,43 @@
+# Version control and editors
+.git/
+.github/
+.husky/
+.vscode/
+.idea/
+
+# Build outputs, rebuilt inside the image
+bin/
+dist/
+**/node_modules/
+ui/*/dist/
+ui/console/.nuxt/
+ui/console/.output/
+ui/console/storybook-static/
+ui/console/coverage/
+ui/web/coverage/
+internal/web/console/public/*
+!internal/web/console/public/.gitkeep
+internal/mcp/ui/assets/app.html
+internal/web/static/app.css
+internal/web/static/password.js
+*.out
+coverage.*
+
+# Local config, secrets and notes
+config.yml
+.env
+.env.local
+oagent-db-credentials.env
+.agents/
+.claude/
+.superpowers/
+.playwright-mcp/
+docs/
+AUTH*.md
+OAGENT-NOTES.md
+*_BACKLOG.md
+.mcp.json
+
+# Tests never ship in the image
+**/*_test.go
+**/testdata/

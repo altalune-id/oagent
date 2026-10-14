@@ -1,0 +1,4 @@
+# apk packages follow the pinned base image; the base image version is what dependabot bumps
+ignored:
+  - DL3018
+failure-threshold: warning

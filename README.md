@@ -1,0 +1,94 @@
+# oagent
+
+oagent is a self-hosted platform for AI agents. It is one Go binary that serves:
+
+- an API (Connect RPC)
+- an MCP server
+- a CLI
+- a web console
+
+It already covers orgs, projects, members, API keys and webhooks. The agent runtime and most product features are still to come.
+
+## Requirements
+
+- Go 1.26.9
+- Node 24.15 or newer
+- pnpm 10 (`corepack enable` picks the version pinned in `package.json`)
+- Docker, for local dependencies and the integration tests
+
+## Set up the repo
+
+1. Clone the repo and install the JavaScript dependencies. This also installs the git hooks.
+
+   ```sh
+   git clone <repo-url> oagent && cd oagent
+   corepack enable
+   pnpm install
+   ```
+
+2. Turn on signed commits and the commit template. Pushes with unsigned commits are refused (see [.husky/README.md](.husky/README.md)).
+
+   ```sh
+   git config commit.gpgsign true
+   git config commit.template .gitmessage.txt
+   ```
+
+3. Start Postgres, Redis, NATS and Mailpit.
+
+   ```sh
+   docker compose up -d
+   ```
+
+4. Create your config. Point both DSNs at the compose Postgres (`postgres://postgres:postgres@localhost:5432/oagent?sslmode=disable`) and generate the two secrets with `openssl rand -hex 32`.
+
+   ```sh
+   cp config.example.yml config.yml
+   ```
+
+   Every key can also be set from the environment: see `.env.example` and the full list in `config.reference.yml`.
+
+5. Build the embedded UI (console, MCP views, sign-in page assets), then run the server.
+
+   ```sh
+   make ui
+   make run
+   ```
+
+6. Open the one-time install link printed in the log, create the first owner account, and you land in the console at `http://localhost:5150/console/`.
+
+## Run with Docker
+
+You don't need Go or Node to run oagent. The image holds the same binary with the UI embedded.
+
+```sh
+docker build -t oagent .
+docker run --rm -p 5150:5150 \
+  -e OAGENT_DB_DSN=postgres://... \
+  -e OAGENT_DB_MIGRATOR_DSN=postgres://... \
+  -e OAGENT_HTTP_STATE_SECRET=$(openssl rand -hex 32) \
+  -e OAGENT_SECRETS_ENCRYPTION_KEY=$(openssl rand -hex 32) \
+  oagent
+```
+
+- The image runs `serve` by default. Pass any other command after the image name, for example `docker run --rm oagent version`.
+- To run the whole stack in containers: `docker compose --profile app up -d --build`.
+
+## Everyday commands
+
+| Command                      | What it does                                                         |
+| ---------------------------- | -------------------------------------------------------------------- |
+| `make check`                 | vet, every linter, unit tests                                        |
+| `make cover`                 | unit + integration tests; fails when a package is under 85% coverage |
+| `make ui-test`               | UI tests                                                             |
+| `make generate`              | regenerate protos, MCP tools, scopes, error codes and templ views    |
+| `make fmt` / `pnpm lint:fix` | format Go / fix JS, TS, Vue, JSON, Markdown and CSS                  |
+| `make help`                  | every target                                                         |
+
+## Docs
+
+- [AGENTS.md](AGENTS.md): the rules for contributors and coding agents
+- [docs/](docs/README.md): architecture and how-to recipes
+
+## License
+
+[MIT](LICENSE)
