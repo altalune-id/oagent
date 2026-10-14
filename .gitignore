@@ -13,13 +13,16 @@ oagent-db-credentials.env
 # Node
 node_modules/
 
-# UI builds embedded into the binary (make ui); only the .gitkeep and the favicon are tracked
+# UI builds embedded into the binary (make ui); only the .gitkeep, the logo and the favicons are tracked
 ui/*/dist/
 internal/web/console/public/*
 !internal/web/console/public/.gitkeep
 internal/mcp/ui/assets/app.html
 internal/web/static/*
-!internal/web/static/favicon.svg
+!internal/web/static/altalune-logo.png
+!internal/web/static/apple-touch-icon.png
+!internal/web/static/favicon-32x32.png
+!internal/web/static/favicon.ico
 
 # SDD workspace (scratch, not shipped)
 /.superpowers/

@@ -98,9 +98,13 @@ func TestStaticAssets(t *testing.T) {
 		assert.Equal(t, "public, max-age=3600", rec.Header().Get("Cache-Control"))
 		assert.NotEmpty(t, rec.Body.String())
 
-		rec = get(t, srv, base+"/static/favicon.svg")
+		rec = get(t, srv, base+"/static/favicon.ico")
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "image/svg+xml", rec.Header().Get("Content-Type"))
+		assert.Equal(t, "image/x-icon", rec.Header().Get("Content-Type"))
+
+		rec = get(t, srv, base+"/static/altalune-logo.png")
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "image/png", rec.Header().Get("Content-Type"))
 
 		rec = get(t, srv, base+"/static/password.js")
 		assert.Equal(t, http.StatusOK, rec.Code)

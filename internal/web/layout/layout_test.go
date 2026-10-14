@@ -39,7 +39,7 @@ func TestLayoutDataHref(t *testing.T) {
 
 func TestLayoutDataStatic(t *testing.T) {
 	assert.Equal(t, "/app/static/app.css", LayoutData{BasePath: "/app/"}.Static("/app.css"))
-	assert.Equal(t, "/static/favicon.svg", LayoutData{}.Static("/favicon.svg"))
+	assert.Equal(t, "/static/favicon.ico", LayoutData{}.Static("/favicon.ico"))
 }
 
 func TestLayoutDataLang(t *testing.T) {
@@ -92,7 +92,9 @@ func TestLayoutTemplate(t *testing.T) {
 	assert.Contains(t, out, "<!doctype html>")
 	assert.Contains(t, out, `<html lang="id" data-theme="oagent-light">`)
 	assert.Contains(t, out, "<title>Home &lt;x&gt; · oagent</title>")
-	assert.Contains(t, out, `href="/app/static/favicon.svg"`)
+	assert.Contains(t, out, `href="/app/static/favicon.ico"`)
+	assert.Contains(t, out, `href="/app/static/favicon-32x32.png"`)
+	assert.Contains(t, out, `href="/app/static/apple-touch-icon.png"`)
 	assert.Contains(t, out, `href="/app/static/app.css"`)
 	assert.Contains(t, out, "<p>inner</p>")
 }

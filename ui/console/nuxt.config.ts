@@ -37,7 +37,7 @@ export default defineNuxtConfig({
     head: {
       title: 'oagent',
       htmlAttrs: { lang: 'en' },
-      link: [{ rel: 'icon', href: 'data:,' }],
+      link: [{ key: 'icon', rel: 'icon', href: 'data:,' }],
     },
   },
   runtimeConfig: {

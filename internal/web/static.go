@@ -11,7 +11,7 @@ import (
 //go:embed all:static
 var staticFS embed.FS
 
-// StaticFS returns the embedded static assets: the compiled app.css and password.js, and the favicon.
+// StaticFS returns the embedded static assets: the compiled app.css and password.js, the logo and the favicons.
 func StaticFS() fs.FS {
 	sub, err := fs.Sub(staticFS, "static")
 	if err != nil {

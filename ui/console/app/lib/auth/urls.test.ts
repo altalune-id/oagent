@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { loginURL, mcpURL, siblingURL } from './urls';
+import { loginURL, mcpURL, siblingURL, staticURL } from './urls';
 
 describe('siblingURL', () => {
   it.each([
@@ -35,5 +35,15 @@ describe('mcpURL', () => {
   it('is absolute and next to the API', () => {
     expect(mcpURL('/app/api', 'https://oagent.example.com')).toBe('https://oagent.example.com/app/mcp');
     expect(mcpURL('', 'http://localhost:5150')).toBe('http://localhost:5150/mcp');
+  });
+});
+
+describe('staticURL', () => {
+  it.each([
+    ['', '/static/favicon.ico'],
+    ['/app/api', '/app/static/favicon.ico'],
+    ['https://oagent.example.com/app/api/', 'https://oagent.example.com/app/static/favicon.ico'],
+  ])('%s → %s', (apiUrl, want) => {
+    expect(staticURL(apiUrl, 'favicon.ico')).toBe(want);
   });
 });

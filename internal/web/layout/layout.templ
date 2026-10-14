@@ -7,7 +7,9 @@ templ Layout(d LayoutData) {
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ d.Title } · oagent</title>
-			<link rel="icon" type="image/svg+xml" href={ d.Static("/favicon.svg") }/>
+			<link rel="icon" href={ d.Static("/favicon.ico") } sizes="any"/>
+			<link rel="icon" type="image/png" sizes="32x32" href={ d.Static("/favicon-32x32.png") }/>
+			<link rel="apple-touch-icon" href={ d.Static("/apple-touch-icon.png") }/>
 			<link rel="stylesheet" href={ d.Static("/app.css") }/>
 		</head>
 		<body class="min-h-screen bg-base-200 text-base-content">
