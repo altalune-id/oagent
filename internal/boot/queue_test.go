@@ -17,6 +17,10 @@ func TestQueueConfig(t *testing.T) {
 	o := queueConfig(config.QueueConfig{URL: "nats://x", Token: "t"})
 	assert.Equal(t, "nats://x", o.URL)
 	assert.Equal(t, "t", o.Token)
+
+	o = queueConfig(config.QueueConfig{URL: "nats://x", User: "oagent", Password: "p"})
+	assert.Equal(t, "oagent", o.User)
+	assert.Equal(t, "p", o.Password)
 }
 
 func TestBuildQueue_Disabled(t *testing.T) {

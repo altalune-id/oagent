@@ -94,6 +94,8 @@ type QueueConfig struct {
 	Enabled        bool          `yaml:"enabled"        mapstructure:"enabled"`
 	URL            string        `yaml:"url"            mapstructure:"url"`
 	Token          string        `yaml:"token"          mapstructure:"token"          awareness:"secret"`
+	User           string        `yaml:"user"           mapstructure:"user"`
+	Password       string        `yaml:"password"       mapstructure:"password"       awareness:"secret"`
 	ConnectTimeout time.Duration `yaml:"connectTimeout" mapstructure:"connectTimeout" validate:"gte=0"`
 }
 
@@ -202,6 +204,7 @@ func (c *Config) Validate() error {
 		c.validateMail,
 		c.validateRateLimit,
 		c.validateRedis,
+		c.validateQueue,
 	} {
 		if err := check(); err != nil {
 			return err

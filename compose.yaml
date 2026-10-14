@@ -31,14 +31,24 @@ services:
       timeout: 3s
       retries: 10
 
+  # One account per app, like the shared Altalune NATS (docker/nats/nats-server.conf).
   nats:
     image: nats:2.14.8-alpine
     restart: unless-stopped
-    command: ["-js", "-sd", "/data", "--auth", "oagent-dev"]
+    command: ["--config", "/etc/nats/nats-server.conf"]
+    environment:
+      OAGENT_NATS_PASSWORD: "${OAGENT_NATS_PASSWORD:-oagent-dev-nats-password}"
+      OTHER_NATS_PASSWORD: "${OTHER_NATS_PASSWORD:-other-dev-nats-password}"
     ports:
       - "${NATS_PORT:-4222}:4222"
     volumes:
+      - ./docker/nats/nats-server.conf:/etc/nats/nats-server.conf:ro
       - nats:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz?js-enabled-only=true"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   mailpit:
     image: axllent/mailpit:v1.31.4
@@ -63,7 +73,7 @@ services:
       redis:
         condition: service_healthy
       nats:
-        condition: service_started
+        condition: service_healthy
       mailpit:
         condition: service_started
     ports:
@@ -87,7 +97,8 @@ services:
       OAGENT_RATE_LIMIT_AUTH_ENABLED: "true"
       OAGENT_QUEUE_ENABLED: "true"
       OAGENT_QUEUE_URL: "nats://nats:4222"
-      OAGENT_QUEUE_TOKEN: "oagent-dev"
+      OAGENT_QUEUE_USER: oagent
+      OAGENT_QUEUE_PASSWORD: "${OAGENT_NATS_PASSWORD:-oagent-dev-nats-password}"
 
 volumes:
   postgres:

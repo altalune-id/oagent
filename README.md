@@ -93,6 +93,22 @@ docker run --rm -p 5150:5150 \
 - The image runs `serve` by default. Pass any other command after the image name, for example `docker run --rm oagent version`.
 - To run the whole stack in containers: `docker compose --profile app up -d --build`.
 
+### Queue (NATS)
+
+The queue is off unless `queue.enabled` is true. oagent connects as one NATS account, the same layout as the shared
+Altalune NATS ([altalune-id/nats](https://github.com/altalune-id/nats)): every app has its own account, so apps never
+see each other's streams.
+
+```sh
+OAGENT_QUEUE_ENABLED=true
+OAGENT_QUEUE_URL=nats://nats:4222
+OAGENT_QUEUE_USER=oagent
+OAGENT_QUEUE_PASSWORD=...   # the server's OAGENT_NATS_PASSWORD
+```
+
+`queue.token` is for a NATS server without accounts; set it or the user and password, not both. Locally,
+`docker compose up -d` runs NATS with the accounts in `docker/nats/nats-server.conf`.
+
 ## Everyday commands
 
 | Command                      | What it does                                                         |

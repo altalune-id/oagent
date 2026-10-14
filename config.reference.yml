@@ -163,10 +163,14 @@ queue:
   connectTimeout: 10s
   # env: OAGENT_QUEUE_ENABLED
   enabled: false
+  # [secret] env: OAGENT_QUEUE_PASSWORD
+  password: ""
   # [secret] env: OAGENT_QUEUE_TOKEN
   token: ""
   # env: OAGENT_QUEUE_URL
   url: ""
+  # env: OAGENT_QUEUE_USER
+  user: ""
 
 rateLimit:
   auth:

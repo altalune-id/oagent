@@ -13,6 +13,8 @@ func queueConfig(c config.QueueConfig) queue.Options {
 	return queue.Options{
 		URL:            c.URL,
 		Token:          c.Token,
+		User:           c.User,
+		Password:       c.Password,
 		ConnectTimeout: c.ConnectTimeout,
 	}
 }
