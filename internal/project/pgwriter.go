@@ -23,7 +23,7 @@ func (s *postgresStore) Save(ctx context.Context, p *Project) error {
 			s.projects.UpdatedAt.SET(postgres.TimestampzT(now)),
 		))
 	if _, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool)); err != nil {
-		if IsUniqueViolation(err) {
+		if db.IsUniqueViolation(err) {
 			return &AlreadyExistsError{Slug: p.Slug}
 		}
 		return fmt.Errorf("project.postgres: Save: %w", err)

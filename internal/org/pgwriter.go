@@ -24,7 +24,7 @@ func (s *postgresStore) Save(ctx context.Context, o *Org) error {
 			s.orgs.UpdatedAt.SET(postgres.TimestampzT(now)),
 		))
 	if _, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool)); err != nil {
-		if IsUniqueViolation(err) {
+		if db.IsUniqueViolation(err) {
 			return &AlreadyExistsError{Slug: o.Slug}
 		}
 		return fmt.Errorf("org.postgres: Save: %w", err)

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/jackc/pgx/v5/pgconn"
-
 	"altalune.id/oagent/apperror"
 )
 
@@ -97,10 +95,4 @@ func IsInvalidNameError(err error) bool {
 // IsExpectedError reports whether err is a domain outcome callers handle, not an incident to report.
 func IsExpectedError(err error) bool {
 	return IsNotFoundError(err) || IsAlreadyExistsError(err) || IsInvalidEmailError(err) || IsInvalidNameError(err)
-}
-
-// IsUniqueViolation reports whether err is a Postgres unique-violation (SQLSTATE 23505).
-func IsUniqueViolation(err error) bool {
-	pgErr, ok := errors.AsType[*pgconn.PgError](err)
-	return ok && pgErr.Code == "23505"
 }

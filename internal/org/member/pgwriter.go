@@ -18,7 +18,7 @@ func (s *postgresStore) Add(ctx context.Context, m *Membership) error {
 	t := s.memberships
 	stmt := t.INSERT(t.AllColumns).VALUES(m.ID, m.PublicID, m.OrgID, m.UserID, string(m.Role), m.CreatedAt.UTC())
 	if _, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool)); err != nil {
-		if IsUniqueViolation(err) {
+		if db.IsUniqueViolation(err) {
 			return &AlreadyMemberError{OrgID: m.OrgID, UserID: m.UserID}
 		}
 		return fmt.Errorf("member.postgres: Add: %w", err)

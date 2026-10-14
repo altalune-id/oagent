@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 
 	"altalune.id/oagent/apperror"
@@ -38,8 +37,6 @@ func TestErrors(t *testing.T) {
 	}
 	assert.False(t, IsExpectedError(errors.New("boom")))
 	assert.True(t, IsExpectedError(&authz.ForbiddenError{Permission: scope.MemberWrite}))
-	assert.True(t, IsUniqueViolation(&pgconn.PgError{Code: "23505"}))
-	assert.False(t, IsUniqueViolation(errors.New("x")))
 }
 
 func TestLastOwnerError_SendsItsReason(t *testing.T) {

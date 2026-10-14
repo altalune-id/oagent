@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgconn"
-
 	"altalune.id/oagent/apperror"
 )
 
@@ -282,10 +280,4 @@ func (e *ScopeExceedsRoleError) ToAppError() *apperror.AppError {
 // ToAppError maps PersonalKeysDisabledError to the canonical FailedPrecondition envelope.
 func (e *PersonalKeysDisabledError) ToAppError() *apperror.AppError {
 	return apperror.New(apperror.CodeAPIKeyPersonalKeysDisabled, "Personal API keys are not available on this instance").WithCause(e)
-}
-
-// IsUniqueViolation reports whether err is a Postgres unique-violation (SQLSTATE 23505).
-func IsUniqueViolation(err error) bool {
-	pgErr, ok := errors.AsType[*pgconn.PgError](err)
-	return ok && pgErr.Code == "23505"
 }

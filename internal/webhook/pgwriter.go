@@ -3,13 +3,11 @@ package webhook
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/tenant"
@@ -169,7 +167,7 @@ func (s *postgresStore) saveAttempt(ctx context.Context, tx *sql.Tx, tc tenant.C
 			a.Duration.Milliseconds(), a.CreatedAt,
 		)
 	if _, err := stmt.ExecContext(ctx, tx); err != nil {
-		if isPgForeignKeyViolation(err) {
+		if db.IsForeignKeyViolation(err) {
 			return &NotFoundError{ID: a.EndpointID.String()}
 		}
 		return fmt.Errorf("webhook.postgres.SaveAttempt: %w", err)
@@ -182,9 +180,4 @@ func pgSecondary(b []byte) postgres.ByteaExpression {
 		return entity.NullBytea()
 	}
 	return postgres.Bytea(b)
-}
-
-func isPgForeignKeyViolation(err error) bool {
-	pgErr, ok := errors.AsType[*pgconn.PgError](err)
-	return ok && pgErr.Code == "23503"
 }

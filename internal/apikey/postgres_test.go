@@ -8,7 +8,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -155,9 +154,4 @@ func TestStore_QueryErrors(t *testing.T) {
 	k, _, err := NewScheme("").MintProject(uuid.New(), uuid.New(), "ci", nil, nil, future(), time.Now().UTC())
 	require.NoError(t, err)
 	assert.Error(t, s.Save(ctx, k))
-}
-
-func TestIsUniqueViolation(t *testing.T) {
-	assert.True(t, IsUniqueViolation(&pgconn.PgError{Code: "23505"}))
-	assert.False(t, IsUniqueViolation(assert.AnError))
 }

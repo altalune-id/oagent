@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/jackc/pgx/v5/pgconn"
-
 	"altalune.id/oagent/apperror"
 )
 
@@ -156,10 +154,4 @@ func (e *InvalidSlugError) ToAppError() *apperror.AppError {
 func (e *InvalidNameError) ToAppError() *apperror.AppError {
 	return apperror.New(apperror.CodeOrgInvalidName, fmt.Sprintf("Organization name must be %d to %d characters", nameMinLen, nameMaxLen)).
 		WithMeta(map[string]string{"reason": string(e.Reason), "min": strconv.Itoa(nameMinLen), "max": strconv.Itoa(nameMaxLen)}).WithCause(e)
-}
-
-// IsUniqueViolation reports whether err is a Postgres unique-violation (SQLSTATE 23505).
-func IsUniqueViolation(err error) bool {
-	pgErr, ok := errors.AsType[*pgconn.PgError](err)
-	return ok && pgErr.Code == "23505"
 }

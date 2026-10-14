@@ -53,7 +53,7 @@ Use this when a service needs a database verb its `Store` does not have. The `St
    DO_UPDATE(postgres.SET(...).WHERE(s.endpoints.OrgID.EQ(postgres.UUID(tc.OrgID))))
    ```
 
-   Map a unique violation with the domain's `IsUniqueViolation(err)` to `*AlreadyExistsError`. A `Delete` checks `RowsAffected() == 0` → `*NotFoundError`. A SQL `NULL` uses the helpers in `schema/entity/null.go` (`entity.NullUUID()`).
+   Map a unique violation with `db.IsUniqueViolation(err)` to `*AlreadyExistsError` (also `db.IsForeignKeyViolation`, and `db.ViolatedConstraint` for a named constraint); a domain never imports the driver. A `Delete` checks `RowsAffected() == 0` → `*NotFoundError`. A SQL `NULL` uses the helpers in `schema/entity/null.go` (`entity.NullUUID()`).
 
 4. **Several statements in one verb?** Wrap them in `db.InTx(ctx, s.pool, func(tx *sql.Tx) error {...})`. It joins the outer transaction or owns one.
 5. **Raw SQL** only where go-jet has no builder. Mark it with a `NOTE:` naming what jet could not express (see `apikey.NewStore`). Bind values as parameters; never concatenate user input.
@@ -80,7 +80,7 @@ Use this when a service needs a database verb its `Store` does not have. The `St
 - Writes: [internal/agent/pgwriter.go](../../internal/agent/pgwriter.go) (`Save`, `Delete`, `createdByExpr`)
 - Guarded upsert and tenant on `ctx`: [internal/webhook/pgwriter.go](../../internal/webhook/pgwriter.go) (`Save`), [internal/webhook/pgreader.go](../../internal/webhook/pgreader.go) (`ByPublicID`)
 - Total order: [internal/apikey/pgreader.go](../../internal/apikey/pgreader.go), [internal/org/member/pgreader.go](../../internal/org/member/pgreader.go)
-- Unit of work: [internal/kernel/db/uow.go](../../internal/kernel/db/uow.go) (`Reader`, `Writer`, `InTx`), [internal/kernel/db/errors.go](../../internal/kernel/db/errors.go) (`IsNoRows`)
+- Unit of work: [internal/kernel/db/uow.go](../../internal/kernel/db/uow.go) (`Reader`, `Writer`, `InTx`), [internal/kernel/db/errors.go](../../internal/kernel/db/errors.go) (`IsNoRows`, `IsUniqueViolation`, `IsForeignKeyViolation`, `ViolatedConstraint`)
 - Guard test: [internal/kernel/db/guard_test.go](../../internal/kernel/db/guard_test.go) (`TestOnlyKernelDBBeginsTransactions`)
 - Binding: [schema/entity/agents.go](../../schema/entity/agents.go) (`NewAgents`)
 - Fake: [internal/testutil/fakes/agent.go](../../internal/testutil/fakes/agent.go) (`AgentStore`)

@@ -30,7 +30,7 @@ Use this when oagent needs a new bounded context: a new aggregate with its own t
    | File                                        | Holds                                                                                   |
    | ------------------------------------------- | --------------------------------------------------------------------------------------- |
    | `<domain>.go`                               | the aggregate, its constructor and verbs, the row struct (`toX`) and `xToProto`. No I/O |
-   | `errors.go`                                 | typed errors, `Is<Name>Error`, `IsExpectedError`, `ToAppError`, `IsUniqueViolation`     |
+   | `errors.go`                                 | typed errors, `Is<Name>Error`, `IsExpectedError`, `ToAppError`                          |
    | `ports.go`                                  | interfaces it consumes from other domains (`Publisher`, `Refs`…)                        |
    | `store.go`                                  | `Store` = `Reader` + `Writer` interfaces                                                |
    | `postgres.go`, `pgreader.go`, `pgwriter.go` | `postgresStore`, `NewStore(pool, schema, tablePrefix)`, reads, writes                   |

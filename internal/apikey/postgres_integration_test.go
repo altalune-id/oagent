@@ -342,7 +342,7 @@ func TestPostgres_KeySecretHashIsUnique(t *testing.T) {
 	dup.SecretHash = first.SecretHash
 	err := f.store.Save(t.Context(), dup)
 	require.Error(t, err)
-	assert.True(t, apikey.IsUniqueViolation(err), "the secret-hash index is global across orgs, got %v", err)
+	assert.True(t, db.IsUniqueViolation(err), "the secret-hash index is global across orgs, got %v", err)
 	assert.False(t, apikey.IsExpectedError(err), "the store does not map the collision to a domain error")
 	_, err = f.store.ByID(t.Context(), dup.ID)
 	assert.True(t, apikey.IsNotFoundError(err))
@@ -542,7 +542,7 @@ func TestPostgres_ConcurrentSecretHashClaim(t *testing.T) {
 			wins++
 			continue
 		}
-		assert.True(t, apikey.IsUniqueViolation(err), "a losing writer gets a unique violation, got %v", err)
+		assert.True(t, db.IsUniqueViolation(err), "a losing writer gets a unique violation, got %v", err)
 	}
 	assert.Equal(t, 1, wins, "exactly one key owns a secret hash")
 	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM api_keys WHERE secret_hash = $1`, hash[:]))

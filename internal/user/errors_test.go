@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 
 	"altalune.id/oagent/apperror"
@@ -42,10 +41,4 @@ func TestUnknownEmailError(t *testing.T) {
 	assert.NotContains(t, err.Error(), "ada@example.com", "the address stays out of logs")
 	assert.Equal(t, "No user with email ada@example.com", err.ToAppError().Message())
 	assert.False(t, IsUnknownEmailError(&NotFoundError{}))
-}
-
-func TestIsUniqueViolation(t *testing.T) {
-	assert.True(t, IsUniqueViolation(&pgconn.PgError{Code: "23505"}))
-	assert.False(t, IsUniqueViolation(&pgconn.PgError{Code: "23503"}))
-	assert.False(t, IsUniqueViolation(errors.New("x")))
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/authz"
@@ -131,10 +130,4 @@ func IsSelfChangeError(err error) bool {
 func IsExpectedError(err error) bool {
 	return IsNotFoundError(err) || IsAlreadyMemberError(err) || IsInvalidRoleError(err) ||
 		IsLastOwnerError(err) || IsRoleNotAllowedError(err) || IsSelfChangeError(err) || authz.IsForbiddenError(err)
-}
-
-// IsUniqueViolation reports whether err is a Postgres unique-violation (SQLSTATE 23505).
-func IsUniqueViolation(err error) bool {
-	pgErr, ok := errors.AsType[*pgconn.PgError](err)
-	return ok && pgErr.Code == "23505"
 }
