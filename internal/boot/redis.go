@@ -12,20 +12,18 @@ import (
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/health"
 	"altalune.id/oagent/internal/kernel"
-	"altalune.id/oagent/internal/kernel/db"
-	"altalune.id/oagent/internal/kernel/nats"
-	"altalune.id/oagent/internal/kernel/redis"
+	redisconn "altalune.id/oagent/redis"
 )
 
-type redisOpener func(context.Context, redis.Config, trace.TracerProvider) (goredis.UniversalClient, error)
+type redisOpener func(context.Context, redisconn.Config, trace.TracerProvider) (goredis.UniversalClient, error)
 
 //nolint:gochecknoglobals // test seam.
-var openRedisFn redisOpener = redis.Open
+var openRedisFn redisOpener = redisconn.Open
 
-var _ health.Check = (*redis.Health)(nil)
+var _ health.Check = (*redisconn.Health)(nil)
 
-func redisConfig(c config.RedisConfig) redis.Config {
-	return redis.Config{
+func redisConfig(c config.RedisConfig) redisconn.Config {
+	return redisconn.Config{
 		URL:                c.URL,
 		MaxConnections:     c.MaxConnections,
 		MinIdleConnections: c.MinIdleConnections,
@@ -38,7 +36,7 @@ func redisConfig(c config.RedisConfig) redis.Config {
 
 func buildRedis(
 	ctx context.Context, k *kernel.Kernel, cfg config.Config, tp trace.TracerProvider, log *slog.Logger,
-) (goredis.UniversalClient, *redis.Health, error) {
+) (goredis.UniversalClient, *redisconn.Health, error) {
 	features := cfg.RedisFeatures()
 	if len(features) == 0 {
 		if cfg.Redis.URL != "" && log != nil {
@@ -54,16 +52,5 @@ func buildRedis(
 	if log != nil {
 		log.InfoContext(ctx, "boot: redis connected", slog.String("used_by", strings.Join(features, ", ")))
 	}
-	return client, redis.NewHealth(client, cfg.Redis.ReadTimeout, log), nil
-}
-
-func readinessChecks(dbHealth *db.HealthMonitor, rh *redis.Health, nh *nats.Health) []health.Check {
-	checks := []health.Check{dbHealth}
-	if rh != nil {
-		checks = append(checks, rh)
-	}
-	if nh != nil {
-		checks = append(checks, nh)
-	}
-	return checks
+	return client, redisconn.NewHealth(client, cfg.Redis.ReadTimeout, log), nil
 }

@@ -20,3 +20,21 @@ func IsInvalidIdentifierError(err error) bool {
 	_, ok := errors.AsType[*InvalidIdentifierError](err)
 	return ok
 }
+
+type permanentError struct{ err error }
+
+func (e *permanentError) Error() string { return e.err.Error() }
+
+func (e *permanentError) Unwrap() error { return e.err }
+
+func permanent(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &permanentError{err: err}
+}
+
+func isPermanentError(err error) bool {
+	_, ok := errors.AsType[*permanentError](err)
+	return ok
+}

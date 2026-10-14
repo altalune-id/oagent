@@ -1,4 +1,4 @@
-package db_test
+package pg_test
 
 import (
 	"context"
@@ -10,14 +10,14 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 
-	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/pg"
 	"altalune.id/oagent/worker"
 )
 
 func testHealthLogger() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
 
-func healthCfg() db.HealthConfig {
-	return db.HealthConfig{Interval: 30 * time.Second, Timeout: 2 * time.Second}
+func healthCfg() pg.HealthConfig {
+	return pg.HealthConfig{Interval: 30 * time.Second, Timeout: 2 * time.Second}
 }
 
 func TestHealthMonitor_NotReadyBeforeFirstProbe(t *testing.T) {
@@ -25,7 +25,7 @@ func TestHealthMonitor_NotReadyBeforeFirstProbe(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = sqlDB.Close() })
 
-	m := db.NewHealthMonitor(db.Pool{W: sqlDB, R: sqlDB}, healthCfg(), testHealthLogger(), nil)
+	m := pg.NewHealthMonitor(sqlDB, sqlDB, healthCfg(), testHealthLogger(), nil)
 	require.False(t, m.Ready(), "readiness must be false until the first probe lands")
 	require.Nil(t, m.Snapshot())
 }
@@ -36,7 +36,7 @@ func TestHealthMonitor_ProbeSuccess(t *testing.T) {
 	t.Cleanup(func() { _ = sqlDB.Close() })
 	mock.ExpectPing()
 
-	m := db.NewHealthMonitor(db.Pool{W: sqlDB, R: sqlDB}, healthCfg(), testHealthLogger(), nil)
+	m := pg.NewHealthMonitor(sqlDB, sqlDB, healthCfg(), testHealthLogger(), nil)
 	require.NoError(t, m.Probe(t.Context()))
 
 	require.True(t, m.Ready())
@@ -55,7 +55,7 @@ func TestHealthMonitor_ProbeFailureClearsReadiness(t *testing.T) {
 	t.Cleanup(func() { _ = sqlDB.Close() })
 	mock.ExpectPing().WillReturnError(context.DeadlineExceeded)
 
-	m := db.NewHealthMonitor(db.Pool{W: sqlDB, R: sqlDB}, healthCfg(), testHealthLogger(), nil)
+	m := pg.NewHealthMonitor(sqlDB, sqlDB, healthCfg(), testHealthLogger(), nil)
 	require.Error(t, m.Probe(t.Context()))
 
 	require.False(t, m.Ready())
@@ -76,7 +76,7 @@ func TestHealthMonitor_ProbesEachDistinctHandle(t *testing.T) {
 	wm.ExpectPing()
 	rm.ExpectPing()
 
-	m := db.NewHealthMonitor(db.Pool{W: writer, R: reader}, healthCfg(), testHealthLogger(), nil)
+	m := pg.NewHealthMonitor(writer, reader, healthCfg(), testHealthLogger(), nil)
 	require.NoError(t, m.Probe(t.Context()))
 
 	snap := m.Snapshot()
@@ -90,8 +90,8 @@ func TestHealthMonitor_IsAStandaloneWorker(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = sqlDB.Close() })
 
-	var w worker.Worker = db.NewHealthMonitor(
-		db.Pool{W: sqlDB, R: sqlDB}, healthCfg(), testHealthLogger(), nil)
+	var w worker.Worker = pg.NewHealthMonitor(
+		sqlDB, sqlDB, healthCfg(), testHealthLogger(), nil)
 	require.Equal(t, "db-health", w.Name())
 }
 
@@ -101,7 +101,7 @@ func TestHealthMonitor_RunProbesOnceBeforeTheFirstTick(t *testing.T) {
 	t.Cleanup(func() { _ = sqlDB.Close() })
 	mock.ExpectPing()
 
-	m := db.NewHealthMonitor(db.Pool{W: sqlDB, R: sqlDB}, healthCfg(), testHealthLogger(), nil)
+	m := pg.NewHealthMonitor(sqlDB, sqlDB, healthCfg(), testHealthLogger(), nil)
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() { done <- m.Run(ctx) }()
@@ -117,8 +117,8 @@ func TestHealthMonitor_RunSwallowsProbeFailures(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = sqlDB.Close() })
 
-	m := db.NewHealthMonitor(db.Pool{W: sqlDB, R: sqlDB},
-		db.HealthConfig{Interval: time.Millisecond, Timeout: 50 * time.Millisecond},
+	m := pg.NewHealthMonitor(sqlDB, sqlDB,
+		pg.HealthConfig{Interval: time.Millisecond, Timeout: 50 * time.Millisecond},
 		testHealthLogger(), nil)
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
@@ -136,14 +136,14 @@ func TestHealthMonitor_RunSwallowsProbeFailures(t *testing.T) {
 func TestHealthMonitor_RunClampsNonPositiveConfigToDefaults(t *testing.T) {
 	tests := []struct {
 		name string
-		cfg  db.HealthConfig
+		cfg  pg.HealthConfig
 	}{
-		{"zero config", db.HealthConfig{}},
-		{"zero interval only", db.HealthConfig{Timeout: 5 * time.Second}},
-		{"zero timeout only", db.HealthConfig{Interval: time.Minute}},
-		{"negative interval", db.HealthConfig{Interval: -time.Minute, Timeout: 5 * time.Second}},
-		{"negative timeout", db.HealthConfig{Interval: time.Minute, Timeout: -5 * time.Second}},
-		{"both negative", db.HealthConfig{Interval: -time.Minute, Timeout: -5 * time.Second}},
+		{"zero config", pg.HealthConfig{}},
+		{"zero interval only", pg.HealthConfig{Timeout: 5 * time.Second}},
+		{"zero timeout only", pg.HealthConfig{Interval: time.Minute}},
+		{"negative interval", pg.HealthConfig{Interval: -time.Minute, Timeout: 5 * time.Second}},
+		{"negative timeout", pg.HealthConfig{Interval: time.Minute, Timeout: -5 * time.Second}},
+		{"both negative", pg.HealthConfig{Interval: -time.Minute, Timeout: -5 * time.Second}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -152,7 +152,7 @@ func TestHealthMonitor_RunClampsNonPositiveConfigToDefaults(t *testing.T) {
 			t.Cleanup(func() { _ = sqlDB.Close() })
 			mock.ExpectPing()
 
-			m := db.NewHealthMonitor(db.Pool{W: sqlDB, R: sqlDB}, tt.cfg, testHealthLogger(), nil)
+			m := pg.NewHealthMonitor(sqlDB, sqlDB, tt.cfg, testHealthLogger(), nil)
 			ctx, cancel := context.WithCancel(t.Context())
 			done := make(chan error, 1)
 			require.NotPanics(t, func() { go func() { done <- m.Run(ctx) }() },
@@ -171,7 +171,7 @@ func TestHealthMonitor_ProbeSucceedsWithZeroConfiguredTimeout(t *testing.T) {
 	t.Cleanup(func() { _ = sqlDB.Close() })
 	mock.ExpectPing()
 
-	m := db.NewHealthMonitor(db.Pool{W: sqlDB, R: sqlDB}, db.HealthConfig{}, testHealthLogger(), nil)
+	m := pg.NewHealthMonitor(sqlDB, sqlDB, pg.HealthConfig{}, testHealthLogger(), nil)
 	require.NoError(t, m.Probe(t.Context()))
 	require.True(t, m.Ready())
 	require.NoError(t, mock.ExpectationsWereMet())

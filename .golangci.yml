@@ -144,24 +144,22 @@ linters:
           list-mode: lax
           files:
             - $all
-            - "!**/internal/kernel/nats/**"
-            - "!**/internal/kernel/queue/nats/**"
+            - "!**/nats/**"
             - "!**/internal/boot/**"
             - "!**/internal/testutil/natstest/**"
           deny:
             - pkg: github.com/nats-io
-              desc: "only internal/kernel/nats, the queue/nats driver, boot and natstest import NATS"
+              desc: "only the nats connection, the queue/nats driver, boot and natstest import NATS"
         redis-boundary:
           list-mode: lax
           files:
             - $all
-            - "!**/internal/kernel/redis/**"
-            - "!**/ratelimit/redis/**"
+            - "!**/redis/**"
             - "!**/internal/boot/**"
             - "!**/internal/testutil/redistest/**"
           deny:
             - pkg: github.com/redis/go-redis
-              desc: "only internal/kernel/redis, ratelimit/redis, boot and redistest import go-redis"
+              desc: "only the redis connection, the ratelimit/redis driver, boot and redistest import go-redis"
         application-purity:
           list-mode: lax
           files:
@@ -234,9 +232,11 @@ linters:
             - "**/mcp/**"
             - "**/migrator/**"
             - "**/nanoid/**"
+            - "**/nats/**"
             - "**/password/**"
             - "**/pg/**"
             - "**/ratelimit/**"
+            - "**/redis/**"
             - "**/reqid/**"
             - "**/scheduler/**"
             - "**/scope/**"
@@ -245,7 +245,7 @@ linters:
             - "**/telemetry/**"
             - "**/version/**"
             - "**/worker/**"
-            - "!**/internal/mcp/**"
+            - "!**/internal/**"
           deny:
             - pkg: "altalune.id/oagent/internal"
               desc: "root-level shared packages must NOT depend on any internal/ package (import inversion)"
@@ -269,9 +269,9 @@ linters:
       - path: cmd/gen-config-example/
         linters:
           - lll
-      # A root package's integration test may use the shared Redis container helper.
-      - path: ratelimit/redis/redis_integration_test\.go
-        text: internal/testutil/redistest
+      # A root package's tests may use the shared container helpers.
+      - path: _test\.go
+        text: internal/testutil/(pgtest|natstest|redistest)
         linters:
           - depguard
       - path: _test\.go

@@ -17,7 +17,7 @@ import (
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/db"
-	rediskernel "altalune.id/oagent/internal/kernel/redis"
+	redisconn "altalune.id/oagent/redis"
 )
 
 const redisTestPassword = "hunter2-redis-secret"
@@ -41,7 +41,7 @@ func redisFeatureConfig() config.Config {
 
 func TestRedisConfig(t *testing.T) {
 	c := redisTestConfig("redis://h:6379/0")
-	assert.Equal(t, rediskernel.Config{
+	assert.Equal(t, redisconn.Config{
 		URL: "redis://h:6379/0", MaxConnections: 10, MaxIdleTime: 5 * time.Minute,
 		ConnectTimeout: 300 * time.Millisecond, ReadTimeout: time.Second, WriteTimeout: time.Second,
 	}, redisConfig(c))
@@ -51,7 +51,7 @@ func stubRedis(t *testing.T) (calls *int, client *redis.Client) {
 	t.Helper()
 	calls = new(int)
 	client = redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})
-	openRedisFn = func(context.Context, rediskernel.Config, trace.TracerProvider) (redis.UniversalClient, error) {
+	openRedisFn = func(context.Context, redisconn.Config, trace.TracerProvider) (redis.UniversalClient, error) {
 		*calls++
 		return client, nil
 	}
@@ -104,7 +104,7 @@ func TestBuildRedis_FeatureConnectsOnceAndClosesWithTheKernel(t *testing.T) {
 
 func TestBuildRedis_ConnectErrorFailsBoot(t *testing.T) {
 	restoreSeams(t)
-	openRedisFn = func(context.Context, rediskernel.Config, trace.TracerProvider) (redis.UniversalClient, error) {
+	openRedisFn = func(context.Context, redisconn.Config, trace.TracerProvider) (redis.UniversalClient, error) {
 		return nil, errors.New("redis: cannot connect to 127.0.0.1:1 (redis.url): refused")
 	}
 	k := &kernel.Kernel{}
@@ -117,7 +117,7 @@ func TestBoot_DefaultConfigNeverOpensRedis(t *testing.T) {
 	calls, _ := stubRedis(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 
@@ -134,7 +134,7 @@ func TestBoot_LaterFailureClosesRedis(t *testing.T) {
 	calls, client := stubRedis(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 
@@ -150,7 +150,7 @@ func TestBoot_RedisConnectErrorFailsBoot(t *testing.T) {
 	restoreSeams(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	_, err := Boot(context.Background(), redisFeatureConfig(), testLogger())

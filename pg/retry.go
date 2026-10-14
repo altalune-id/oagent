@@ -1,4 +1,4 @@
-package db
+package pg
 
 import (
 	"context"
@@ -45,7 +45,7 @@ func retry(ctx context.Context, budget, backoff time.Duration, attempt func(cont
 		}
 		sleep := min(backoff, remaining)
 		if log := loggerFrom(ctx); log != nil {
-			log.WarnContext(ctx, "db: connect attempt failed, retrying",
+			log.WarnContext(ctx, "pg: connect attempt failed, retrying",
 				slog.Int("attempt", n),
 				slog.Duration("elapsed", time.Since(start)),
 				slog.Duration("backoff", sleep),

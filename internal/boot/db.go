@@ -3,21 +3,25 @@ package boot
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/migrator"
+	"altalune.id/oagent/pg"
 	"altalune.id/oagent/schema"
 )
 
-func buildDBHealth(k kernel.Kernel, cfg config.Config, log *slog.Logger) *db.HealthMonitor {
-	return db.NewHealthMonitor(k.Pool, dbConfig(cfg.Postgres).Health, log, k.Meter)
+func buildDBHealth(k kernel.Kernel, cfg config.Config, log *slog.Logger) *pg.HealthMonitor {
+	h := cfg.Postgres.Health
+	return pg.NewHealthMonitor(k.Pool.W, k.Pool.R, pg.HealthConfig{Interval: h.Interval, Timeout: h.Timeout}, log, k.Meter)
 }
 
 type (
-	openPoolFunc     func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error)
+	openPostgresFunc func(context.Context, pg.Config, *slog.Logger) (*sql.DB, error)
+	openPoolFunc     func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error)
 	openMigratorFunc func(context.Context, string, migrator.Config) (*sql.DB, error)
 	migrateUpFunc    func(context.Context, *sql.DB, migrator.Config) error
 	withLockFunc     func(context.Context, *sql.DB, string, func(context.Context) error) error
@@ -25,11 +29,63 @@ type (
 
 //nolint:gochecknoglobals // test seams.
 var (
-	openPool     openPoolFunc     = db.OpenPool
+	openPostgres openPostgresFunc = pg.Open
+	openPool     openPoolFunc     = openPostgresPool
 	openMigrator openMigratorFunc = migrator.Open
 	migrateUp    migrateUpFunc    = schema.MigrateUp
-	withLock     withLockFunc     = db.RunWithAdvisoryLock
+	withLock     withLockFunc     = pg.RunWithAdvisoryLock
 )
+
+func openDB(ctx context.Context, cfg config.Config, log *slog.Logger) (db.Pool, error) {
+	switch cfg.DB.Driver {
+	case "", config.DBDriverPostgres:
+		return openPool(ctx, cfg.Postgres, log)
+	default:
+		return db.Pool{}, fmt.Errorf("boot: db.driver %q is not supported", cfg.DB.Driver)
+	}
+}
+
+func openPostgresPool(ctx context.Context, c config.PostgresConfig, log *slog.Logger) (db.Pool, error) {
+	writer, err := openPostgres(ctx, writerConfig(c), log)
+	if err != nil {
+		return db.Pool{}, err
+	}
+	if c.Reader.DSN == "" {
+		return db.Pool{W: writer, R: writer}, nil
+	}
+	reader, err := openPostgres(ctx, readerConfig(c), log)
+	if err != nil {
+		_ = writer.Close()
+		return db.Pool{}, err
+	}
+	return db.Pool{W: writer, R: reader}, nil
+}
+
+func writerConfig(c config.PostgresConfig) pg.Config {
+	return pg.Config{
+		DSN:             c.DSN,
+		Role:            c.Role,
+		MaxOpenConns:    c.MaxOpenConns,
+		MaxIdleConns:    c.MaxIdleConns,
+		ConnMaxLifetime: c.ConnMaxLifetime,
+		ConnMaxIdleTime: c.ConnMaxIdleTime,
+		ConnectTimeout:  c.ConnectTimeout,
+		ConnectBackoff:  c.ConnectBackoff,
+	}
+}
+
+func readerConfig(c config.PostgresConfig) pg.Config {
+	return pg.Config{
+		DSN:             c.Reader.DSN,
+		Role:            c.Reader.Role,
+		MaxOpenConns:    c.Reader.MaxOpenConns,
+		MaxIdleConns:    c.Reader.MaxIdleConns,
+		ConnMaxLifetime: c.Reader.ConnMaxLifetime,
+		ConnMaxIdleTime: c.Reader.ConnMaxIdleTime,
+		ConnectTimeout:  c.ConnectTimeout,
+		ConnectBackoff:  c.ConnectBackoff,
+	}
+}
 
 // NOTE: runs under a session advisory lock so concurrent instances migrate once.
 func migrate(ctx context.Context, cfg config.PostgresConfig) error {
@@ -57,29 +113,4 @@ func migratorDSN(c config.PostgresConfig) string {
 		return c.Migrator.DSN
 	}
 	return c.DSN
-}
-
-func dbConfig(c config.PostgresConfig) db.DBConfig {
-	return db.DBConfig{
-		DSN:         c.DSN,
-		Schema:      c.Schema,
-		TablePrefix: c.TablePrefix,
-		Role:        c.Role,
-		Reader: db.ReaderConfig{
-			DSN:             c.Reader.DSN,
-			Role:            c.Reader.Role,
-			MaxOpenConns:    c.Reader.MaxOpenConns,
-			MaxIdleConns:    c.Reader.MaxIdleConns,
-			ConnMaxLifetime: c.Reader.ConnMaxLifetime,
-			ConnMaxIdleTime: c.Reader.ConnMaxIdleTime,
-		},
-		Migrator:        db.MigratorConfig{DSN: c.Migrator.DSN, Role: c.Migrator.Role},
-		Health:          db.HealthConfig{Interval: c.Health.Interval, Timeout: c.Health.Timeout},
-		MaxOpenConns:    c.MaxOpenConns,
-		MaxIdleConns:    c.MaxIdleConns,
-		ConnMaxLifetime: c.ConnMaxLifetime,
-		ConnMaxIdleTime: c.ConnMaxIdleTime,
-		ConnectTimeout:  c.ConnectTimeout,
-		ConnectBackoff:  c.ConnectBackoff,
-	}
 }

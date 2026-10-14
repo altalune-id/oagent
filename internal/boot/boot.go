@@ -31,7 +31,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		return nil, err
 	}
 
-	pool, err := openPool(ctx, dbConfig(cfg.Postgres), log)
+	pool, err := openDB(ctx, cfg, log)
 	if err != nil {
 		_ = shutdown(ctx)
 		return nil, err

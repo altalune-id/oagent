@@ -5,23 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	goredis "github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/trace"
 )
-
-// Config is the connection: a redis:// or rediss:// URL, the pool and the timeouts.
-type Config struct {
-	URL                string
-	MaxConnections     int
-	MinIdleConnections int
-	MaxIdleTime        time.Duration
-	ConnectTimeout     time.Duration
-	ReadTimeout        time.Duration
-	WriteTimeout       time.Duration
-}
 
 // Open connects and pings once within ConnectTimeout. SECURITY: errors name the host only; never the password.
 func Open(ctx context.Context, c Config, tp trace.TracerProvider) (goredis.UniversalClient, error) {

@@ -14,9 +14,8 @@ import (
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/db"
-	natskernel "altalune.id/oagent/internal/kernel/nats"
-	rediskernel "altalune.id/oagent/internal/kernel/redis"
 	"altalune.id/oagent/internal/testutil/natstest"
+	natsconn "altalune.id/oagent/nats"
 )
 
 const (
@@ -40,7 +39,7 @@ func TestNATSConfig(t *testing.T) {
 	got := natsConfig(config.NATSConfig{
 		URL: "nats://h:4222", Token: "t", User: "u", Password: "p", Name: "n", ConnectTimeout: time.Second,
 	})
-	assert.Equal(t, natskernel.Config{
+	assert.Equal(t, natsconn.Config{
 		URL: "nats://h:4222", Token: "t", User: "u", Password: "p", Name: "n", ConnectTimeout: time.Second,
 	}, got)
 }
@@ -52,7 +51,7 @@ func stubNATS(t *testing.T) (calls *int, nc *nats.Conn) {
 	require.NoError(t, err)
 	t.Cleanup(nc.Close)
 	calls = new(int)
-	openNATSFn = func(context.Context, natskernel.Config, *slog.Logger) (*nats.Conn, error) {
+	openNATSFn = func(context.Context, natsconn.Config, *slog.Logger) (*nats.Conn, error) {
 		*calls++
 		return nc, nil
 	}
@@ -109,27 +108,11 @@ func TestBuildNATS_FeatureConnectsOnceAndClosesWithTheKernel(t *testing.T) {
 
 func TestBuildNATS_ConnectErrorFailsBoot(t *testing.T) {
 	restoreSeams(t)
-	openNATSFn = func(context.Context, natskernel.Config, *slog.Logger) (*nats.Conn, error) {
+	openNATSFn = func(context.Context, natsconn.Config, *slog.Logger) (*nats.Conn, error) {
 		return nil, errors.New("nats: cannot connect to 127.0.0.1:1 (nats.url): refused")
 	}
 	_, _, err := buildNATS(t.Context(), &kernel.Kernel{}, natsFeatureConfig(), testLogger())
 	assert.ErrorContains(t, err, "boot: nats: cannot connect")
-}
-
-func TestReadinessChecks(t *testing.T) {
-	dbh := &db.HealthMonitor{}
-	assert.Len(t, readinessChecks(dbh, nil, nil), 1, "no redis or nats, no extra check")
-
-	rh := rediskernel.NewHealth(nil, time.Second, testLogger())
-	nh := natskernel.NewHealth(nil, testLogger())
-	checks := readinessChecks(dbh, rh, nh)
-	require.Len(t, checks, 3)
-	assert.Same(t, rh, checks[1])
-	assert.Same(t, nh, checks[2])
-
-	checks = readinessChecks(dbh, nil, nh)
-	require.Len(t, checks, 2)
-	assert.Same(t, nh, checks[1])
 }
 
 // Review Focus 1: the default config never dials NATS and adds no NATS readiness worker.
@@ -138,7 +121,7 @@ func TestBoot_DefaultConfigNeverOpensNATS(t *testing.T) {
 	calls, _ := stubNATS(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 
@@ -154,7 +137,7 @@ func TestBoot_LaterFailureClosesNATS(t *testing.T) {
 	calls, nc := stubNATS(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 
@@ -170,7 +153,7 @@ func TestBoot_NATSConnectErrorFailsBoot(t *testing.T) {
 	restoreSeams(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	_, err := Boot(context.Background(), natsFeatureConfig(), testLogger())

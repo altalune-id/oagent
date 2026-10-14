@@ -11,18 +11,18 @@ import (
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/health"
 	"altalune.id/oagent/internal/kernel"
-	"altalune.id/oagent/internal/kernel/nats"
+	natsconn "altalune.id/oagent/nats"
 )
 
-type natsOpener func(context.Context, nats.Config, *slog.Logger) (*natsgo.Conn, error)
+type natsOpener func(context.Context, natsconn.Config, *slog.Logger) (*natsgo.Conn, error)
 
 //nolint:gochecknoglobals // test seam.
-var openNATSFn natsOpener = nats.Open
+var openNATSFn natsOpener = natsconn.Open
 
-var _ health.Check = (*nats.Health)(nil)
+var _ health.Check = (*natsconn.Health)(nil)
 
-func natsConfig(c config.NATSConfig) nats.Config {
-	return nats.Config{
+func natsConfig(c config.NATSConfig) natsconn.Config {
+	return natsconn.Config{
 		URL:            c.URL,
 		Token:          c.Token,
 		User:           c.User,
@@ -32,7 +32,7 @@ func natsConfig(c config.NATSConfig) nats.Config {
 	}
 }
 
-func buildNATS(ctx context.Context, k *kernel.Kernel, cfg config.Config, log *slog.Logger) (*natsgo.Conn, *nats.Health, error) {
+func buildNATS(ctx context.Context, k *kernel.Kernel, cfg config.Config, log *slog.Logger) (*natsgo.Conn, *natsconn.Health, error) {
 	features := cfg.NATSFeatures()
 	if len(features) == 0 {
 		if cfg.NATS.URL != "" && log != nil {
@@ -44,9 +44,9 @@ func buildNATS(ctx context.Context, k *kernel.Kernel, cfg config.Config, log *sl
 	if err != nil {
 		return nil, nil, fmt.Errorf("boot: %w", err)
 	}
-	k.AddCloser(nats.Closer(nc))
+	k.AddCloser(natsconn.Closer(nc))
 	if log != nil {
 		log.InfoContext(ctx, "boot: nats connected", slog.String("used_by", strings.Join(features, ", ")))
 	}
-	return nc, nats.NewHealth(nc, log), nil
+	return nc, natsconn.NewHealth(nc, log), nil
 }

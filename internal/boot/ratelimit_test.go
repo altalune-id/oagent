@@ -60,7 +60,7 @@ func TestBoot_RateLimitOnRedis(t *testing.T) {
 	calls, _ := stubRedis(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 
@@ -78,7 +78,7 @@ func TestBoot_RateLimitAuthEnabled(t *testing.T) {
 	restoreSeams(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 
@@ -97,7 +97,7 @@ func TestBoot_RateLimitDriverError(t *testing.T) {
 	restoreSeams(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	_, err := Boot(context.Background(), config.Config{

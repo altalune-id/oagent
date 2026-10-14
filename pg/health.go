@@ -1,4 +1,4 @@
-package db
+package pg
 
 import (
 	"context"
@@ -38,27 +38,28 @@ type HandleHealth struct {
 	Stats   sql.DBStats
 }
 
-// HealthMonitor probes every distinct handle in a Pool and publishes the latest snapshot.
+// HealthMonitor probes the writer and a distinct reader, and publishes the latest snapshot.
 type HealthMonitor struct {
-	pool Pool
-	cfg  HealthConfig
-	log  *slog.Logger
-	snap atomic.Pointer[Health]
+	writer *sql.DB
+	reader *sql.DB
+	cfg    HealthConfig
+	log    *slog.Logger
+	snap   atomic.Pointer[Health]
 
 	probeDur metric.Float64Histogram
 	up       metric.Int64Gauge
 	inUse    metric.Int64Gauge
 }
 
-// NewHealthMonitor builds the probe. meter may be nil, which disables metrics.
-func NewHealthMonitor(pool Pool, cfg HealthConfig, log *slog.Logger, meter metric.Meter) *HealthMonitor {
+// NewHealthMonitor builds the probe; reader may be nil or the writer, and meter may be nil, which disables metrics.
+func NewHealthMonitor(writer, reader *sql.DB, cfg HealthConfig, log *slog.Logger, meter metric.Meter) *HealthMonitor {
 	if cfg.Interval <= 0 {
 		cfg.Interval = defaultHealthInterval
 	}
 	if cfg.Timeout <= 0 {
 		cfg.Timeout = defaultHealthTimeout
 	}
-	m := &HealthMonitor{pool: pool, cfg: cfg, log: log}
+	m := &HealthMonitor{writer: writer, reader: reader, cfg: cfg, log: log}
 	if meter == nil {
 		return m
 	}
@@ -104,7 +105,7 @@ func (m *HealthMonitor) probeOnce(ctx context.Context) {
 	if err == nil || m.log == nil {
 		return
 	}
-	m.log.WarnContext(ctx, "db: health probe failed", slog.String("err", err.Error()))
+	m.log.WarnContext(ctx, "pg: health probe failed", slog.String("err", err.Error()))
 }
 
 type namedHandle struct {
@@ -113,9 +114,9 @@ type namedHandle struct {
 }
 
 func (m *HealthMonitor) handles() []namedHandle {
-	out := []namedHandle{{name: "writer", db: m.pool.W}}
-	if m.pool.R != nil && m.pool.R != m.pool.W {
-		out = append(out, namedHandle{name: "reader", db: m.pool.R})
+	out := []namedHandle{{name: "writer", db: m.writer}}
+	if m.reader != nil && m.reader != m.writer {
+		out = append(out, namedHandle{name: "reader", db: m.reader})
 	}
 	return out
 }
@@ -136,7 +137,7 @@ func (m *HealthMonitor) Probe(ctx context.Context) error {
 		hh := HandleHealth{Name: h.name, Up: err == nil, Latency: latency, Stats: h.db.Stats()}
 		if err != nil {
 			hh.Err = err.Error()
-			failures = append(failures, fmt.Errorf("db: probe %s: %w", h.name, err))
+			failures = append(failures, fmt.Errorf("pg: probe %s: %w", h.name, err))
 		}
 		results = append(results, hh)
 		m.record(ctx, hh)
@@ -144,7 +145,7 @@ func (m *HealthMonitor) Probe(ctx context.Context) error {
 
 	m.snap.Store(&Health{At: time.Now().UTC(), Handles: results, Ready: len(failures) == 0})
 	if len(failures) > 0 && m.log != nil {
-		m.log.WarnContext(ctx, "db: health probe degraded", slog.Int("failed_handles", len(failures)))
+		m.log.WarnContext(ctx, "pg: health probe degraded", slog.Int("failed_handles", len(failures)))
 	}
 	return errors.Join(failures...)
 }

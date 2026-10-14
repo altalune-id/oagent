@@ -13,7 +13,7 @@ added or removed, update the diagrams and the tables below in the same commit.
 
 ```mermaid
 flowchart TD
-    A[setupTelemetry] --> B[openPool]
+    A[setupTelemetry] --> B["openDB: db.driver postgres opens the writer and the optional reader"]
     B --> C{db.autoMigrate?}
     C -- yes --> D[migrate]
     C -- no --> E
@@ -199,6 +199,31 @@ versions were first published. With `compliance.termsURL` or `compliance.privacy
 is snapshotted and no history is kept (a known limit); the gate then uses
 `compliance.termsUpdatedAt`, which may not be in the future.
 
+## Postgres
+
+`db.driver` (`postgres`, the default and only driver) is the feature: the stores, the outbox, the
+mail queue and the sessions keep their tables there. `postgres.*` is the connection.
+
+- **Config:** `postgres.dsn` (secret, required), `postgres.role` (`SET ROLE` on every new
+  connection), `postgres.schema` (default `public`) and `postgres.tablePrefix` (both bootstrap: the
+  stores and the templated migrations use them), the pool (`postgres.maxOpenConns`,
+  `postgres.maxIdleConns`, `postgres.connMaxLifetime`, `postgres.connMaxIdleTime`), the connect
+  retry (`postgres.connectTimeout` 5s, `postgres.connectBackoff` 250ms), `postgres.reader.*` (a
+  replica; empty `postgres.reader.dsn` reads from the writer), `postgres.migrator.{dsn,role}` (the
+  credential migrations run on; empty uses `postgres.dsn`) and `postgres.health.{interval,timeout}`
+  (30s, 2s). `db.autoMigrate` (default true) migrates at start. Env: `OAGENT_POSTGRES_DSN`,
+  `OAGENT_POSTGRES_MIGRATOR_DSN`, `OAGENT_DB_DRIVER`, `OAGENT_DB_AUTO_MIGRATE`, …
+- **Connection:** the root package `pg` (`pg.Open`) opens a `*sql.DB` with the role, retries the
+  ping with backoff within `postgres.connectTimeout`, and applies the pool. No error or log carries
+  a password. `db.go` here maps `postgres.*` to one `pg.Config` for the writer and one for the
+  reader, and builds `db.Pool{W, R}`; the reader aliases the writer when it has no DSN.
+- **Migrations:** `migrate` opens `postgres.migrator.dsn` (or `postgres.dsn`) with
+  `postgres.migrator.role` and runs every migration under the advisory lock
+  `migrate:<postgres.tablePrefix>` (`pg.RunWithAdvisoryLock`), so concurrent instances migrate once.
+- **Shutdown and readiness:** the kernel closes the pool on shutdown. The `db-health` worker
+  (`pg.HealthMonitor`) pings the writer and a distinct reader every `postgres.health.interval`;
+  while one does not answer, `/readyz` answers 503.
+
 ## Redis
 
 oagent has one Redis connection, `redis.*`, and opens it **only when a feature selects it**. Each
@@ -213,12 +238,12 @@ feature uses is ignored with one INFO line.
   `OAGENT_REDIS_KEY_PREFIX`, … A feature on `redis` with no `redis.url`, or a URL that is not
   `redis://` or `rediss://`, is a config error. Single-node URLs only. Needs Redis 5 or newer
   (tested on 7): the rate-limit script reads `TIME` before it writes.
-- **Connection:** `internal/kernel/redis` (`redis.Open`) parses the URL, sets the pool and
+- **Connection:** the root package `redis` (`redis.Open`) parses the URL, sets the pool and
   timeouts, adds tracing (`redisotel`, without command text) and pings once within
   `redis.connectTimeout`. A Redis that can't be reached fails boot with
   `redis: cannot connect to <host> (redis.url): …`; no error carries the password. `redis.go` here
   only decides whether to open it (`RedisFeatures`), maps `redis.*` to `redis.Config`, registers the
-  closer and the health check. Drivers take the plain go-redis `redis.UniversalClient` and their key
+  closer and the health check; `readiness.go` adds that check to `/readyz`. Drivers take the plain go-redis `redis.UniversalClient` and their key
   prefix. Every process that boots the `App` (server, workers, operator commands) gets it here;
   remote CLI commands never touch Redis.
 - **Shutdown and readiness:** the kernel closes the connection on shutdown (and a failed boot
@@ -246,7 +271,7 @@ INFO line.
   client name in NATS monitoring, default `oagent`), `nats.connectTimeout` (10s). Env:
   `OAGENT_NATS_URL`, `OAGENT_NATS_USER`, `OAGENT_NATS_PASSWORD`, … The rules apply only while a
   feature uses NATS; then a missing `nats.url` or one that is not a NATS URL is a config error.
-- **Connection:** `internal/kernel/nats` (`nats.Open`) dials until `nats.connectTimeout` (backoff
+- **Connection:** the root package `nats` (`nats.Open`) dials until `nats.connectTimeout` (backoff
   250 ms to 2 s, 2 s per dial), reconnects forever after that and logs each disconnect and
   reconnect. A server that can't be reached fails boot with
   `nats: cannot connect to <host> (nats.url) …`; no error or log line carries the URL's
@@ -354,9 +379,10 @@ The supervisor runs these next to the HTTP server.
 | `outbox.go`, `schedulers.go`, `consumers.go`, `queue.go` | workers                                                                                                                                                                                                                               |
 | `mail.go`                                                | the mailer driver (`mailer/console`, `mailer/smtp` or `mailer/resend`, picked by `mail.driver`), the sealed mail queue (`Services.MailQueue`) and its send worker                                                                     |
 | `ratelimit.go`                                           | the rate limit store (`ratelimit/memory` or `ratelimit/redis` on the shared connection, picked by `rateLimit.driver`) and one `ratelimit.Limiter` per group (`Services.AuthLimiter`); a group that is off gets `ratelimit.Disabled()` |
-| `redis.go`                                               | the shared Redis connection (`internal/kernel/redis`, only when a feature selects it), its closer, its `redis-health` readiness worker and the `/readyz` checks                                                                       |
-| `nats.go`                                                | the shared NATS connection (`internal/kernel/nats`, only when a feature selects it), its draining closer and its `nats-health` readiness worker                                                                                       |
-| `db.go`, `sealer.go`, `telemetry.go`                     | pool, migrations, health, sealer, telemetry                                                                                                                                                                                           |
+| `redis.go`                                               | the shared Redis connection (root `redis`, only when a feature selects it), its closer and its `redis-health` readiness worker                                                                                                        |
+| `nats.go`                                                | the shared NATS connection (root `nats`, only when a feature selects it), its draining closer and its `nats-health` readiness worker                                                                                                  |
+| `readiness.go`                                           | the `/readyz` checks: the `db-health` monitor, plus `redis-health` and `nats-health` when those connections are open                                                                                                                  |
+| `db.go`, `sealer.go`, `telemetry.go`                     | the `db.Pool` from `pg.Open` (writer, optional reader), migrations, the `db-health` monitor, sealer, telemetry                                                                                                                        |
 | `options.go`, `app.go`, `remote.go`                      | boot options, the running `App` and its operator actions, the CLI graph                                                                                                                                                               |
 
 ## Add a domain

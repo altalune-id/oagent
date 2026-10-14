@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel/db"
 	natsqueue "altalune.id/oagent/internal/kernel/queue/nats"
 	"altalune.id/oagent/internal/testutil/natstest"
@@ -23,7 +24,7 @@ func TestBoot_QueueOnNATSAccount(t *testing.T) {
 	ns := natstest.StartAccounts(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	cfg := natsFeatureConfig()

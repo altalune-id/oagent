@@ -1,11 +1,13 @@
 package boot
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/nats-io/nats.go"
@@ -23,6 +25,7 @@ import (
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/testutil/fakes"
 	"altalune.id/oagent/migrator"
+	"altalune.id/oagent/pg"
 	"altalune.id/oagent/ratelimit"
 	"altalune.id/oagent/reqid"
 	"altalune.id/oagent/telemetry"
@@ -31,10 +34,10 @@ import (
 
 func restoreSeams(t *testing.T) {
 	t.Helper()
-	s, p, m, u, l := setupTelemetry, openPool, openMigrator, migrateUp, withLock
+	s, p, o, m, u, l := setupTelemetry, openPool, openPostgres, openMigrator, migrateUp, withLock
 	bq, or, on := buildQueueFn, openRedisFn, openNATSFn
 	t.Cleanup(func() {
-		setupTelemetry, openPool, openMigrator, migrateUp, withLock = s, p, m, u, l
+		setupTelemetry, openPool, openPostgres, openMigrator, migrateUp, withLock = s, p, o, m, u, l
 		buildQueueFn, openRedisFn, openNATSFn = bq, or, on
 	})
 }
@@ -72,7 +75,7 @@ func TestBoot(t *testing.T) {
 
 	called := false
 	setupTelemetry = stubTelemetry(&called, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	openMigrator = func(context.Context, string, migrator.Config) (*sql.DB, error) { return migDB, nil }
@@ -105,7 +108,7 @@ func TestBoot_SchedulerEnabled(t *testing.T) {
 	poolDB, _ := newDB(t)
 
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 
@@ -122,7 +125,7 @@ func TestBoot_WithSchedulerFalse(t *testing.T) {
 	restoreSeams(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 
@@ -138,7 +141,7 @@ func TestBoot_SchedulerOnlyDisabled(t *testing.T) {
 	restoreSeams(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 
@@ -151,7 +154,7 @@ func TestBoot_ConsumerOnlyDisabled(t *testing.T) {
 	restoreSeams(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 
@@ -164,7 +167,7 @@ func TestBoot_ConsumerEnabled(t *testing.T) {
 	restoreSeams(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	stubNATS(t)
@@ -183,7 +186,7 @@ func TestBoot_ConsumerError(t *testing.T) {
 	restoreSeams(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	stubNATS(t)
@@ -197,7 +200,7 @@ func TestBoot_ListenerError(t *testing.T) {
 	restoreSeams(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	stubNATS(t)
@@ -214,7 +217,7 @@ func TestBoot_NoAutoMigrate(t *testing.T) {
 
 	migratorCalled := false
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	openMigrator = func(context.Context, string, migrator.Config) (*sql.DB, error) {
@@ -240,7 +243,7 @@ func TestBoot_PoolError(t *testing.T) {
 	restoreSeams(t)
 	called := false
 	setupTelemetry = stubTelemetry(&called, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{}, errors.New("boom")
 	}
 
@@ -255,7 +258,7 @@ func TestBoot_MigratorError(t *testing.T) {
 
 	called := false
 	setupTelemetry = stubTelemetry(&called, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	openMigrator = func(context.Context, string, migrator.Config) (*sql.DB, error) { return nil, errors.New("boom") }
@@ -272,7 +275,7 @@ func TestBoot_MigrateError(t *testing.T) {
 
 	called := false
 	setupTelemetry = stubTelemetry(&called, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	openMigrator = func(context.Context, string, migrator.Config) (*sql.DB, error) { return migDB, nil }
@@ -290,7 +293,7 @@ func TestBoot_LockError(t *testing.T) {
 	migDB, _ := newDB(t)
 
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	openMigrator = func(context.Context, string, migrator.Config) (*sql.DB, error) { return migDB, nil }
@@ -369,7 +372,7 @@ func TestBoot_QueueError(t *testing.T) {
 	restoreSeams(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	_, nc := stubNATS(t)
@@ -406,22 +409,128 @@ func TestMigratorDSN(t *testing.T) {
 	assert.Equal(t, "d", migratorDSN(config.PostgresConfig{DSN: "d"}))
 }
 
-func TestDBConfig(t *testing.T) {
-	out := dbConfig(config.PostgresConfig{
-		DSN:          "d",
-		Schema:       "s",
-		TablePrefix:  "t",
-		Role:         "r",
-		MaxOpenConns: 5,
-		Migrator:     config.PostgresMigratorConfig{DSN: "md", Role: "mr"},
-		Reader:       config.PostgresReaderConfig{DSN: "rd", Role: "rr", MaxOpenConns: 3},
+func TestWriterAndReaderConfig(t *testing.T) {
+	c := config.PostgresConfig{
+		DSN:            "d",
+		Role:           "r",
+		MaxOpenConns:   5,
+		ConnectTimeout: time.Second,
+		ConnectBackoff: time.Millisecond,
+		Migrator:       config.PostgresMigratorConfig{DSN: "md", Role: "mr"},
+		Reader:         config.PostgresReaderConfig{DSN: "rd", Role: "rr", MaxOpenConns: 3},
+	}
+	w := writerConfig(c)
+	assert.Equal(t, pg.Config{DSN: "d", Role: "r", MaxOpenConns: 5, ConnectTimeout: time.Second, ConnectBackoff: time.Millisecond}, w)
+	r := readerConfig(c)
+	assert.Equal(t, pg.Config{DSN: "rd", Role: "rr", MaxOpenConns: 3, ConnectTimeout: time.Second, ConnectBackoff: time.Millisecond}, r)
+}
+
+func TestOpenPostgresPool_WithReader(t *testing.T) {
+	restoreSeams(t)
+	writer, writerMock, err := sqlmock.New()
+	require.NoError(t, err)
+	writerMock.ExpectClose()
+	reader, readerMock, err := sqlmock.New()
+	require.NoError(t, err)
+	readerMock.ExpectClose()
+	var dsns []string
+	openPostgres = func(_ context.Context, c pg.Config, _ *slog.Logger) (*sql.DB, error) {
+		dsns = append(dsns, c.DSN)
+		if c.DSN == "rd" {
+			return reader, nil
+		}
+		return writer, nil
+	}
+
+	p, err := openPostgresPool(context.Background(), config.PostgresConfig{DSN: "d", Reader: config.PostgresReaderConfig{DSN: "rd"}}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"d", "rd"}, dsns)
+	assert.Same(t, writer, p.W)
+	assert.Same(t, reader, p.R)
+	assert.NoError(t, p.Close())
+}
+
+func TestOpenPostgresPool_WithoutReaderAliasesTheWriter(t *testing.T) {
+	restoreSeams(t)
+	writer, _ := newDB(t)
+	openPostgres = func(context.Context, pg.Config, *slog.Logger) (*sql.DB, error) { return writer, nil }
+
+	p, err := openPostgresPool(context.Background(), config.PostgresConfig{DSN: "d"}, nil)
+	require.NoError(t, err)
+	assert.Same(t, p.W, p.R)
+	assert.NoError(t, p.Close())
+}
+
+func TestOpenPostgresPool_WriterError(t *testing.T) {
+	restoreSeams(t)
+	openPostgres = func(context.Context, pg.Config, *slog.Logger) (*sql.DB, error) { return nil, errors.New("down") }
+
+	_, err := openPostgresPool(context.Background(), config.PostgresConfig{DSN: "d"}, nil)
+	assert.Error(t, err)
+}
+
+func TestOpenPostgresPool_ReaderErrorClosesTheWriter(t *testing.T) {
+	restoreSeams(t)
+	writer, writerMock := newDB(t)
+	openPostgres = func(_ context.Context, c pg.Config, _ *slog.Logger) (*sql.DB, error) {
+		if c.DSN == "rd" {
+			return nil, errors.New("reader down")
+		}
+		return writer, nil
+	}
+
+	_, err := openPostgresPool(context.Background(), config.PostgresConfig{DSN: "d", Reader: config.PostgresReaderConfig{DSN: "rd"}}, nil)
+	require.Error(t, err)
+	assert.NoError(t, writerMock.ExpectationsWereMet(), "the writer is closed when the reader fails")
+}
+
+func TestOpenDB_UnknownDriver(t *testing.T) {
+	_, err := openDB(context.Background(), config.Config{DB: config.DBConfig{Driver: "sqlite"}}, nil)
+	assert.ErrorContains(t, err, "db.driver")
+}
+
+func TestOpenPostgresPool_NeverLeaksAPassword(t *testing.T) {
+	const writerPW, readerPW = "writer-pw-do-not-print", "reader-pw-do-not-print"
+	var logs bytes.Buffer
+	log := slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	for name, c := range map[string]config.PostgresConfig{
+		"writer": {DSN: "postgres://app:" + writerPW + "@127.0.0.1:1/db?sslmode=disable&connect_timeout=1"},
+		"reader": {
+			DSN:    "postgres://app:" + writerPW + "@127.0.0.1:1/db?sslmode=disable&connect_timeout=1",
+			Reader: config.PostgresReaderConfig{DSN: "postgres://ro:" + readerPW + "@127.0.0.1:1/db?sslmode=disable"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			restoreSeams(t)
+			c.ConnectTimeout, c.ConnectBackoff = 200*time.Millisecond, 50*time.Millisecond
+			if name == "reader" {
+				writer, _ := newDB(t)
+				openPostgres = func(ctx context.Context, pc pg.Config, l *slog.Logger) (*sql.DB, error) {
+					if pc.DSN == c.DSN {
+						return writer, nil
+					}
+					return pg.Open(ctx, pc, l)
+				}
+			}
+			_, err := openPostgresPool(context.Background(), c, log)
+			require.Error(t, err)
+			for _, pw := range []string{writerPW, readerPW} {
+				assert.NotContains(t, err.Error(), pw)
+				assert.NotContains(t, logs.String(), pw)
+			}
+		})
+	}
+}
+
+func TestMigrate_NeverLeaksTheMigratorPassword(t *testing.T) {
+	restoreSeams(t)
+	const pw = "migrator-pw-do-not-print"
+	err := migrate(context.Background(), config.PostgresConfig{
+		DSN:      "postgres://app:app-pw@127.0.0.1:1/db?sslmode=disable",
+		Migrator: config.PostgresMigratorConfig{DSN: "postgres://owner:" + pw + "@127.0.0.1:1/db?sslmode=disable&connect_timeout=1"},
 	})
-	assert.Equal(t, "d", out.DSN)
-	assert.Equal(t, "t", out.TablePrefix)
-	assert.Equal(t, 5, out.MaxOpenConns)
-	assert.Equal(t, "md", out.Migrator.DSN)
-	assert.Equal(t, "rd", out.Reader.DSN)
-	assert.Equal(t, 3, out.Reader.MaxOpenConns)
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), pw)
 }
 
 func TestTelemetryConfig(t *testing.T) {
@@ -473,7 +582,7 @@ func TestBoot_MailerError(t *testing.T) {
 	restoreSeams(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
-	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 

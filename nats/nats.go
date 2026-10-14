@@ -22,16 +22,6 @@ const (
 	drainTimeout          = 5 * time.Second
 )
 
-// Config is the connection: URL (one or several, comma-separated) and either User+Password or Token.
-type Config struct {
-	URL            string
-	Token          string
-	User           string
-	Password       string
-	Name           string
-	ConnectTimeout time.Duration
-}
-
 // Open dials until ConnectTimeout (10s when zero). SECURITY: errors and logs never carry the URL's credentials, the token or the password.
 func Open(ctx context.Context, c Config, log *slog.Logger) (*natsgo.Conn, error) {
 	hosts, err := hostsOf(c.URL)

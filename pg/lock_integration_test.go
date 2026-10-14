@@ -1,6 +1,6 @@
 //go:build integration
 
-package db_test
+package pg_test
 
 import (
 	"context"
@@ -14,13 +14,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/testutil/pgtest"
+	"altalune.id/oagent/pg"
 )
 
 func openReplica(t *testing.T, dsn string) *sql.DB {
 	t.Helper()
-	sqlDB, err := db.Open(t.Context(), db.DBConfig{DSN: dsn, ConnectTimeout: 10 * time.Second}, nil)
+	sqlDB, err := pg.Open(t.Context(), pg.Config{DSN: dsn, ConnectTimeout: 10 * time.Second}, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = sqlDB.Close() })
 	return sqlDB
@@ -32,9 +32,9 @@ func tryLock(t *testing.T, sqlDB *sql.DB, name string) bool {
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 	var ok bool
-	require.NoError(t, conn.QueryRowContext(t.Context(), `SELECT pg_try_advisory_lock($1)`, db.LockKey(name)).Scan(&ok))
+	require.NoError(t, conn.QueryRowContext(t.Context(), `SELECT pg_try_advisory_lock($1)`, pg.LockKey(name)).Scan(&ok))
 	if ok {
-		_, err = conn.ExecContext(t.Context(), `SELECT pg_advisory_unlock($1)`, db.LockKey(name))
+		_, err = conn.ExecContext(t.Context(), `SELECT pg_advisory_unlock($1)`, pg.LockKey(name))
 		require.NoError(t, err)
 	}
 	return ok
@@ -42,7 +42,7 @@ func tryLock(t *testing.T, sqlDB *sql.DB, name string) bool {
 
 func waitingOn(t *testing.T, sqlDB *sql.DB, name string) int {
 	t.Helper()
-	key := db.LockKey(name)
+	key := pg.LockKey(name)
 	var n int
 	require.NoError(t, sqlDB.QueryRowContext(t.Context(),
 		`SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted
@@ -60,7 +60,7 @@ func TestRunWithAdvisoryLock_SerialisesTwoReplicas(t *testing.T) {
 	release := make(chan struct{})
 	doneA := make(chan error, 1)
 	go func() {
-		doneA <- db.RunWithAdvisoryLock(t.Context(), replicaA, name, func(context.Context) error {
+		doneA <- pg.RunWithAdvisoryLock(t.Context(), replicaA, name, func(context.Context) error {
 			close(entered)
 			<-release
 			return nil
@@ -72,7 +72,7 @@ func TestRunWithAdvisoryLock_SerialisesTwoReplicas(t *testing.T) {
 	var bRan atomic.Bool
 	doneB := make(chan error, 1)
 	go func() {
-		doneB <- db.RunWithAdvisoryLock(t.Context(), replicaB, name, func(context.Context) error {
+		doneB <- pg.RunWithAdvisoryLock(t.Context(), replicaB, name, func(context.Context) error {
 			bRan.Store(true)
 			return nil
 		})
@@ -94,7 +94,7 @@ func TestRunWithAdvisoryLock_ReleasesAndPropagatesWhenFnFails(t *testing.T) {
 	name := "job-" + uuid.NewString()
 	boom := errors.New("boom")
 
-	err := db.RunWithAdvisoryLock(t.Context(), replica, name, func(context.Context) error { return boom })
+	err := pg.RunWithAdvisoryLock(t.Context(), replica, name, func(context.Context) error { return boom })
 	require.ErrorIs(t, err, boom)
 	assert.True(t, tryLock(t, observer, name))
 	assert.Zero(t, replica.Stats().InUse, "the lock connection must return to the pool")
@@ -105,8 +105,8 @@ func TestRunWithAdvisoryLock_DifferentNamesDoNotContend(t *testing.T) {
 	replicaA, replicaB := openReplica(t, dsn), openReplica(t, dsn)
 	suffix := uuid.NewString()
 
-	err := db.RunWithAdvisoryLock(t.Context(), replicaA, "one-"+suffix, func(ctx context.Context) error {
-		return db.RunWithAdvisoryLock(ctx, replicaB, "two-"+suffix, func(context.Context) error { return nil })
+	err := pg.RunWithAdvisoryLock(t.Context(), replicaA, "one-"+suffix, func(ctx context.Context) error {
+		return pg.RunWithAdvisoryLock(ctx, replicaB, "two-"+suffix, func(context.Context) error { return nil })
 	})
 	require.NoError(t, err)
 }
@@ -120,7 +120,7 @@ func TestRunWithAdvisoryLock_WaiterGivesUpWhenItsContextEnds(t *testing.T) {
 	release := make(chan struct{})
 	doneA := make(chan error, 1)
 	go func() {
-		doneA <- db.RunWithAdvisoryLock(t.Context(), replicaA, name, func(context.Context) error {
+		doneA <- pg.RunWithAdvisoryLock(t.Context(), replicaA, name, func(context.Context) error {
 			close(entered)
 			<-release
 			return nil
@@ -132,7 +132,7 @@ func TestRunWithAdvisoryLock_WaiterGivesUpWhenItsContextEnds(t *testing.T) {
 	doneB := make(chan error, 1)
 	var bRan atomic.Bool
 	go func() {
-		doneB <- db.RunWithAdvisoryLock(ctx, replicaB, name, func(context.Context) error {
+		doneB <- pg.RunWithAdvisoryLock(ctx, replicaB, name, func(context.Context) error {
 			bRan.Store(true)
 			return nil
 		})

@@ -1,6 +1,6 @@
 //go:build integration
 
-package db_test
+package pg_test
 
 import (
 	"context"
@@ -10,13 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/testutil/pgtest"
+	"altalune.id/oagent/pg"
 )
 
 func TestHealthMonitor_ProbesASingleHandleOnce(t *testing.T) {
 	sqlDB := openReplica(t, pgtest.New(t).DSN)
-	m := db.NewHealthMonitor(db.Pool{W: sqlDB, R: sqlDB}, db.HealthConfig{}, nil, nil)
+	m := pg.NewHealthMonitor(sqlDB, sqlDB, pg.HealthConfig{}, nil, nil)
 	require.Nil(t, m.Snapshot())
 	require.False(t, m.Ready())
 
@@ -37,9 +37,9 @@ func TestHealthMonitor_ProbesASingleHandleOnce(t *testing.T) {
 func TestHealthMonitor_ReportsADeadReader(t *testing.T) {
 	dsn := pgtest.New(t).DSN
 	writer := openReplica(t, dsn)
-	reader, err := db.Open(t.Context(), db.DBConfig{DSN: dsn}, nil)
+	reader, err := pg.Open(t.Context(), pg.Config{DSN: dsn}, nil)
 	require.NoError(t, err)
-	m := db.NewHealthMonitor(db.Pool{W: writer, R: reader}, db.HealthConfig{Timeout: 5 * time.Second}, nil, nil)
+	m := pg.NewHealthMonitor(writer, reader, pg.HealthConfig{Timeout: 5 * time.Second}, nil, nil)
 
 	require.NoError(t, m.Probe(t.Context()))
 	require.Len(t, m.Snapshot().Handles, 2)
@@ -48,7 +48,7 @@ func TestHealthMonitor_ReportsADeadReader(t *testing.T) {
 	require.NoError(t, reader.Close())
 	err = m.Probe(t.Context())
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "db: probe reader")
+	assert.Contains(t, err.Error(), "pg: probe reader")
 	assert.NotContains(t, err.Error(), "probe writer")
 
 	snap := m.Snapshot()
@@ -64,7 +64,7 @@ func TestHealthMonitor_ReportsADeadReader(t *testing.T) {
 
 func TestHealthMonitor_RunProbesImmediatelyAndStopsWithItsContext(t *testing.T) {
 	sqlDB := openReplica(t, pgtest.New(t).DSN)
-	m := db.NewHealthMonitor(db.Pool{W: sqlDB, R: sqlDB}, db.HealthConfig{Interval: time.Hour}, nil, nil)
+	m := pg.NewHealthMonitor(sqlDB, sqlDB, pg.HealthConfig{Interval: time.Hour}, nil, nil)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)

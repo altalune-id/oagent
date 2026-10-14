@@ -1,2 +1,2 @@
-// Package db opens the Postgres *sql.DB used by every module.
+// Package db is the database feature: the writer/reader pool and the unit of work.
 package db
