@@ -384,3 +384,23 @@ func TestGenerateWithNoRuntimePackageMatchesTheGolden(t *testing.T) {
 	}
 	checkGolden(t, "fixture.mcp.go.golden", p.Response().File[0].GetContent())
 }
+
+func TestGenerateValidatesTheRequestAfterDecodingAndBeforeTheHandler(t *testing.T) {
+	p := newPlugin(t, "oagenttest/v1/fixture.proto")
+	if err := Generate(p, Options{UIPrefix: fixturePrefix}); err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+	got := p.Response().File[0].GetContent()
+	if !strings.Contains(got, "validate func(proto.Message) error)") {
+		t.Fatalf("Register…Tools does not take a validate function:\n%s", got)
+	}
+	decode := strings.Index(got, ".Unmarshal(input, &req)")
+	validate := strings.Index(got, "if err := validate(&req); err != nil {")
+	call := strings.Index(got, "resp, err := h.")
+	if decode < 0 || validate < 0 || call < 0 || decode >= validate || validate >= call {
+		t.Errorf("want decode < validate < handler call, got %d, %d, %d:\n%s", decode, validate, call, got)
+	}
+	if n, tools := strings.Count(got, "validate(&req)"), strings.Count(got, "reg.Register("); n != tools {
+		t.Errorf("%d tools but %d validate calls", tools, n)
+	}
+}

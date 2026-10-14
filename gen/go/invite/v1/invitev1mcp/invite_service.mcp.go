@@ -13,6 +13,7 @@ import (
 	json "encoding/json"
 	fmt "fmt"
 	protojson "google.golang.org/protobuf/encoding/protojson"
+	proto "google.golang.org/protobuf/proto"
 )
 
 // MemberInviteToolName is the MCP tool name for InviteService.DraftInvite.
@@ -29,9 +30,9 @@ func InviteServiceToolNames() []string {
 	return []string{MemberInviteToolName, MemberInviteConfirmToolName, MemberInviteDiscardToolName}
 }
 
-// RegisterInviteServiceTools registers every MCP-annotated InviteService method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.
+// RegisterInviteServiceTools registers every MCP-annotated InviteService method on reg, against h, under the permissions permissionsFor resolves for each RPC procedure; validate checks each decoded request.
 // SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.
-func RegisterInviteServiceTools(reg *mcp.Registry, h invitev1connect.InviteServiceHandler, permissionsFor func(string) []string) {
+func RegisterInviteServiceTools(reg *mcp.Registry, h invitev1connect.InviteServiceHandler, permissionsFor func(string) []string, validate func(proto.Message) error) {
 	reg.Register(mcp.ToolSpec{
 		Name:        MemberInviteToolName,
 		Title:       "Invite a member",
@@ -48,6 +49,9 @@ func RegisterInviteServiceTools(reg *mcp.Registry, h invitev1connect.InviteServi
 			var req v1.DraftInviteRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(MemberInviteToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.DraftInvite(ctx, connect.NewRequest(&req))
 			if err != nil {
@@ -78,6 +82,9 @@ func RegisterInviteServiceTools(reg *mcp.Registry, h invitev1connect.InviteServi
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(MemberInviteConfirmToolName, err)
 			}
+			if err := validate(&req); err != nil {
+				return nil, err
+			}
 			resp, err := h.ConfirmDraftInvite(ctx, connect.NewRequest(&req))
 			if err != nil {
 				return nil, err
@@ -106,6 +113,9 @@ func RegisterInviteServiceTools(reg *mcp.Registry, h invitev1connect.InviteServi
 			var req v1.DiscardDraftInviteRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(MemberInviteDiscardToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.DiscardDraftInvite(ctx, connect.NewRequest(&req))
 			if err != nil {

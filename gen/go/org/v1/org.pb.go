@@ -8,6 +8,8 @@ package orgv1
 
 import (
 	_ "altalune.id/oagent/gen/go/mcp/v1"
+	_ "altalune.id/oagent/gen/go/oagent/v1"
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -471,7 +473,7 @@ var File_org_v1_org_proto protoreflect.FileDescriptor
 
 const file_org_v1_org_proto_rawDesc = "" +
 	"\n" +
-	"\x10org/v1/org.proto\x12\x06org.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\"\xc4\x01\n" +
+	"\x10org/v1/org.proto\x12\x06org.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\x1a\x15oagent/v1/rules.proto\"\xc4\x01\n" +
 	"\x03Org\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x03 \x01(\tR\x04slug\x12\x12\n" +
@@ -479,10 +481,10 @@ const file_org_v1_org_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtJ\x04\b\x02\x10\x03R\tpublic_id\":\n" +
+	"updated_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtJ\x04\b\x02\x10\x03R\tpublic_id\"H\n" +
 	"\x10CreateOrgRequest\x12\x12\n" +
-	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"2\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x12 \n" +
+	"\x04name\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x90\xe42\x01R\x04name\"2\n" +
 	"\x11CreateOrgResponse\x12\x1d\n" +
 	"\x03org\x18\x01 \x01(\v2\v.org.v1.OrgR\x03org\"\x1f\n" +
 	"\rGetOrgRequest\x12\x0e\n" +

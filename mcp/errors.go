@@ -27,11 +27,19 @@ var decodedField = regexp.MustCompile(`(?:unknown field "([^"]+)"|invalid value 
 
 // ErrorPayload is the JSON body of a failed tool call.
 type ErrorPayload struct {
-	Code      string            `json:"code"`
-	Message   string            `json:"message"`
-	Meta      map[string]string `json:"meta,omitempty"`
-	RequestID string            `json:"request_id,omitempty"`
-	TraceID   string            `json:"trace_id,omitempty"`
+	Code       string            `json:"code"`
+	Message    string            `json:"message"`
+	Meta       map[string]string `json:"meta,omitempty"`
+	Violations []Violation       `json:"violations,omitempty"`
+	RequestID  string            `json:"request_id,omitempty"`
+	TraceID    string            `json:"trace_id,omitempty"`
+}
+
+// Violation is one refused request field of a failed tool call; it never carries the field's value.
+type Violation struct {
+	Field  string `json:"field"`
+	Reason string `json:"reason"`
+	Param  string `json:"param,omitempty"`
 }
 
 // ScopeDeniedError reports a call missing Scope, one of the scopes the tool needs.

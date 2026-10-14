@@ -13,6 +13,7 @@ import (
 	json "encoding/json"
 	fmt "fmt"
 	protojson "google.golang.org/protobuf/encoding/protojson"
+	proto "google.golang.org/protobuf/proto"
 )
 
 // MemberListToolName is the MCP tool name for MemberService.ListMembers.
@@ -23,9 +24,9 @@ func MemberServiceToolNames() []string {
 	return []string{MemberListToolName}
 }
 
-// RegisterMemberServiceTools registers every MCP-annotated MemberService method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.
+// RegisterMemberServiceTools registers every MCP-annotated MemberService method on reg, against h, under the permissions permissionsFor resolves for each RPC procedure; validate checks each decoded request.
 // SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.
-func RegisterMemberServiceTools(reg *mcp.Registry, h memberv1connect.MemberServiceHandler, permissionsFor func(string) []string) {
+func RegisterMemberServiceTools(reg *mcp.Registry, h memberv1connect.MemberServiceHandler, permissionsFor func(string) []string, validate func(proto.Message) error) {
 	reg.Register(mcp.ToolSpec{
 		Name:        MemberListToolName,
 		Title:       "List members",
@@ -42,6 +43,9 @@ func RegisterMemberServiceTools(reg *mcp.Registry, h memberv1connect.MemberServi
 			var req v1.ListMembersRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(MemberListToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.ListMembers(ctx, connect.NewRequest(&req))
 			if err != nil {

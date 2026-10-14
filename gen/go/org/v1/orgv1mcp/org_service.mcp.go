@@ -13,6 +13,7 @@ import (
 	json "encoding/json"
 	fmt "fmt"
 	protojson "google.golang.org/protobuf/encoding/protojson"
+	proto "google.golang.org/protobuf/proto"
 )
 
 // OrgCreateToolName is the MCP tool name for OrgService.CreateOrg.
@@ -29,9 +30,9 @@ func OrgServiceToolNames() []string {
 	return []string{OrgCreateToolName, OrgGetToolName, OrgListToolName}
 }
 
-// RegisterOrgServiceTools registers every MCP-annotated OrgService method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.
+// RegisterOrgServiceTools registers every MCP-annotated OrgService method on reg, against h, under the permissions permissionsFor resolves for each RPC procedure; validate checks each decoded request.
 // SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.
-func RegisterOrgServiceTools(reg *mcp.Registry, h orgv1connect.OrgServiceHandler, permissionsFor func(string) []string) {
+func RegisterOrgServiceTools(reg *mcp.Registry, h orgv1connect.OrgServiceHandler, permissionsFor func(string) []string, validate func(proto.Message) error) {
 	reg.Register(mcp.ToolSpec{
 		Name:        OrgCreateToolName,
 		Description: "Create an organization, minting a slug when one is not supplied.",
@@ -47,6 +48,9 @@ func RegisterOrgServiceTools(reg *mcp.Registry, h orgv1connect.OrgServiceHandler
 			var req v1.CreateOrgRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(OrgCreateToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.CreateOrg(ctx, connect.NewRequest(&req))
 			if err != nil {
@@ -75,6 +79,9 @@ func RegisterOrgServiceTools(reg *mcp.Registry, h orgv1connect.OrgServiceHandler
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(OrgGetToolName, err)
 			}
+			if err := validate(&req); err != nil {
+				return nil, err
+			}
 			resp, err := h.GetOrg(ctx, connect.NewRequest(&req))
 			if err != nil {
 				return nil, err
@@ -101,6 +108,9 @@ func RegisterOrgServiceTools(reg *mcp.Registry, h orgv1connect.OrgServiceHandler
 			var req v1.ListOrgsRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(OrgListToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.ListOrgs(ctx, connect.NewRequest(&req))
 			if err != nil {

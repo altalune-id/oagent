@@ -263,7 +263,7 @@ func TestInviteService_ExpiredStatus(t *testing.T) {
 func TestMCPMemberInvite_DraftsOnly(t *testing.T) {
 	f := newCPFixture(t)
 	reg := rootmcp.NewRegistry()
-	invitev1mcp.RegisterInviteServiceTools(reg, invite.NewControlPlane(f.svc, f.ids), func(string) []string { return []string{"member:write"} })
+	invitev1mcp.RegisterInviteServiceTools(reg, invite.NewControlPlane(f.svc, f.ids), func(string) []string { return []string{"member:write"} }, func(proto.Message) error { return nil })
 	spec, ok := reg.Spec(invitev1mcp.MemberInviteToolName)
 	require.True(t, ok)
 	ctx := session.PrincipalInto(context.Background(), f.as(f.admin))

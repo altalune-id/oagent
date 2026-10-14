@@ -13,6 +13,7 @@ import (
 	json "encoding/json"
 	fmt "fmt"
 	protojson "google.golang.org/protobuf/encoding/protojson"
+	proto "google.golang.org/protobuf/proto"
 )
 
 // ProjectCreateToolName is the MCP tool name for ProjectService.CreateProject.
@@ -29,9 +30,9 @@ func ProjectServiceToolNames() []string {
 	return []string{ProjectCreateToolName, ProjectGetToolName, ProjectListToolName}
 }
 
-// RegisterProjectServiceTools registers every MCP-annotated ProjectService method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.
+// RegisterProjectServiceTools registers every MCP-annotated ProjectService method on reg, against h, under the permissions permissionsFor resolves for each RPC procedure; validate checks each decoded request.
 // SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.
-func RegisterProjectServiceTools(reg *mcp.Registry, h projectv1connect.ProjectServiceHandler, permissionsFor func(string) []string) {
+func RegisterProjectServiceTools(reg *mcp.Registry, h projectv1connect.ProjectServiceHandler, permissionsFor func(string) []string, validate func(proto.Message) error) {
 	reg.Register(mcp.ToolSpec{
 		Name:        ProjectCreateToolName,
 		Description: "Create a project within an organization, minting a slug when one is not supplied.",
@@ -47,6 +48,9 @@ func RegisterProjectServiceTools(reg *mcp.Registry, h projectv1connect.ProjectSe
 			var req v1.CreateProjectRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(ProjectCreateToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.CreateProject(ctx, connect.NewRequest(&req))
 			if err != nil {
@@ -75,6 +79,9 @@ func RegisterProjectServiceTools(reg *mcp.Registry, h projectv1connect.ProjectSe
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(ProjectGetToolName, err)
 			}
+			if err := validate(&req); err != nil {
+				return nil, err
+			}
 			resp, err := h.GetProject(ctx, connect.NewRequest(&req))
 			if err != nil {
 				return nil, err
@@ -101,6 +108,9 @@ func RegisterProjectServiceTools(reg *mcp.Registry, h projectv1connect.ProjectSe
 			var req v1.ListProjectsRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(ProjectListToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.ListProjects(ctx, connect.NewRequest(&req))
 			if err != nil {

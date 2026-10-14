@@ -36,11 +36,23 @@ func Translate(ctx context.Context, err error, unexpected apperror.UnexpectedFun
 
 	cerr := connect.NewError(connectCodeOf(ae.Code()), ae)
 	if det, derr := connect.NewErrorDetail(&apperrorv1.ErrorDetail{
-		Code:      string(ae.Code()),
-		Meta:      ae.Meta(),
-		RequestId: reqid.FromContext(ctx),
+		Code:       string(ae.Code()),
+		Meta:       ae.Meta(),
+		RequestId:  reqid.FromContext(ctx),
+		Violations: violationDetails(ae.Violations()),
 	}); derr == nil {
 		cerr.AddDetail(det)
 	}
 	return cerr
+}
+
+func violationDetails(vs []apperror.Violation) []*apperrorv1.Violation {
+	if len(vs) == 0 {
+		return nil
+	}
+	out := make([]*apperrorv1.Violation, 0, len(vs))
+	for _, v := range vs {
+		out = append(out, &apperrorv1.Violation{Field: v.Field, Reason: string(v.Reason), Param: v.Param})
+	}
+	return out
 }

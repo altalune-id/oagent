@@ -55,6 +55,7 @@ func buildAPIHandler(
 			Required:     requireCredentials,
 			Logger:       log,
 		},
+		Validator: svcs.Validator,
 	}
 	if cfg.OpenAPI.RequireBasicAuth {
 		opts.OpenAPIBasicAuth = &controlplane.BasicAuth{User: cfg.OpenAPI.BasicAuthUser, Password: cfg.OpenAPI.BasicAuthPassword}

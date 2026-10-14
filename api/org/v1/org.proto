@@ -2,8 +2,10 @@ syntax = "proto3";
 
 package org.v1;
 
+import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 import "mcp/v1/annotations.proto";
+import "oagent/v1/rules.proto";
 
 option go_package = "altalune.id/oagent/gen/go/org/v1;orgv1";
 
@@ -48,7 +50,10 @@ message Org {
 
 message CreateOrgRequest {
   string slug = 1;
-  string name = 2;
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.name) = true
+  ];
 }
 
 message CreateOrgResponse {

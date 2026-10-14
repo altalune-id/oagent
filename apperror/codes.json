@@ -1,7 +1,7 @@
 [
   { "code": "GEN001", "name": "TenantMissing", "kind": "unauthenticated", "params": [], "reasons": [] },
   { "code": "GEN002", "name": "Unauthenticated", "kind": "unauthenticated", "params": [], "reasons": [] },
-  { "code": "GEN004", "name": "Validation", "kind": "invalid", "params": ["field"], "reasons": ["required", "invalid"] },
+  { "code": "GEN004", "name": "Validation", "kind": "invalid", "params": ["field", "param"], "reasons": ["required", "invalid", "too_short", "too_long", "invalid_format", "not_allowed", "too_many"] },
   { "code": "GEN005", "name": "NotFound", "kind": "not_found", "params": [], "reasons": [] },
   { "code": "GEN006", "name": "AlreadyExists", "kind": "already_exists", "params": [], "reasons": [] },
   { "code": "GEN007", "name": "Forbidden", "kind": "forbidden", "params": ["permission"], "reasons": [] },

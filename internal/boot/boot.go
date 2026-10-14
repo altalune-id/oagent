@@ -9,6 +9,7 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/httpserver"
+	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/health"
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/queue"
@@ -93,6 +94,11 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		return nil, err
 	}
 	svcs.AuthLimiter = lims.auth
+	if svcs.Validator, err = controlplane.NewValidator(); err != nil {
+		_ = pool.Close()
+		_ = shutdown(ctx)
+		return nil, err
+	}
 	if err := buildAuthSecrets(cfg, svcs, log); err != nil {
 		_ = pool.Close()
 		_ = shutdown(ctx)

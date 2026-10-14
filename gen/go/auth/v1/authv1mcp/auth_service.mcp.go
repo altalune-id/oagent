@@ -13,6 +13,7 @@ import (
 	json "encoding/json"
 	fmt "fmt"
 	protojson "google.golang.org/protobuf/encoding/protojson"
+	proto "google.golang.org/protobuf/proto"
 )
 
 // AuthWhoamiToolName is the MCP tool name for AuthService.Whoami.
@@ -23,9 +24,9 @@ func AuthServiceToolNames() []string {
 	return []string{AuthWhoamiToolName}
 }
 
-// RegisterAuthServiceTools registers every MCP-annotated AuthService method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.
+// RegisterAuthServiceTools registers every MCP-annotated AuthService method on reg, against h, under the permissions permissionsFor resolves for each RPC procedure; validate checks each decoded request.
 // SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.
-func RegisterAuthServiceTools(reg *mcp.Registry, h authv1connect.AuthServiceHandler, permissionsFor func(string) []string) {
+func RegisterAuthServiceTools(reg *mcp.Registry, h authv1connect.AuthServiceHandler, permissionsFor func(string) []string, validate func(proto.Message) error) {
 	reg.Register(mcp.ToolSpec{
 		Name:        AuthWhoamiToolName,
 		Description: "Who this MCP client acts as: user or key, active org, permissions.",
@@ -41,6 +42,9 @@ func RegisterAuthServiceTools(reg *mcp.Registry, h authv1connect.AuthServiceHand
 			var req v1.WhoamiRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(AuthWhoamiToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.Whoami(ctx, connect.NewRequest(&req))
 			if err != nil {

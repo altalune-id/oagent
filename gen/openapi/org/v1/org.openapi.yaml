@@ -318,7 +318,12 @@ components:
         name:
           type: string
           title: name
+          description: |
+            oagent.name.blank = true
+            oagent.name.max_len.200 = true
       title: CreateOrgRequest
+      required:
+        - name
       additionalProperties: false
     org.v1.CreateOrgResponse:
       type: object

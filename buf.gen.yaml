@@ -14,11 +14,6 @@ plugins:
     out: gen/openapi
     opt:
       - format=yaml
-  - local: ["go", "tool", "protoc-gen-mcp"]
-    out: gen/go
-    opt:
-      - paths=source_relative
-      - ui_prefix=ui://oagent
   - remote: buf.build/bufbuild/es:v2.6.3
     out: ui/console/gen
     include_imports: true

@@ -40,6 +40,7 @@ config-examples: ## regenerate .env.reference and config.reference.yml from stru
 .PHONY: generate
 generate: templ ## regenerate protos (connect, openapi, mcp tools), scope names, error codes and templ components
 	env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) buf generate
+	env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) buf generate --template buf.gen.mcp.yaml
 	$(GO) tool gen-scope
 	$(GO) tool gen-apperror
 

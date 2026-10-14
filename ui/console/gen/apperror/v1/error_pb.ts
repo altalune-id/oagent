@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file apperror/v1/error.proto.
  */
 export const file_apperror_v1_error: GenFile = /*@__PURE__*/
-  fileDesc("ChdhcHBlcnJvci92MS9lcnJvci5wcm90bxILYXBwZXJyb3IudjEijgEKC0Vycm9yRGV0YWlsEgwKBGNvZGUYASABKAkSMAoEbWV0YRgCIAMoCzIiLmFwcGVycm9yLnYxLkVycm9yRGV0YWlsLk1ldGFFbnRyeRISCgpyZXF1ZXN0X2lkGAMgASgJGisKCU1ldGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBQpwBCg9jb20uYXBwZXJyb3IudjFCCkVycm9yUHJvdG9QAVowYWx0YWx1bmUuaWQvb2FnZW50L2dlbi9nby9hcHBlcnJvci92MTthcHBlcnJvcnYxogIDQVhYqgILQXBwZXJyb3IuVjHKAgtBcHBlcnJvclxWMeICF0FwcGVycm9yXFYxXEdQQk1ldGFkYXRh6gIMQXBwZXJyb3I6OlYxYgZwcm90bzM");
+  fileDesc("ChdhcHBlcnJvci92MS9lcnJvci5wcm90bxILYXBwZXJyb3IudjEiugEKC0Vycm9yRGV0YWlsEgwKBGNvZGUYASABKAkSMAoEbWV0YRgCIAMoCzIiLmFwcGVycm9yLnYxLkVycm9yRGV0YWlsLk1ldGFFbnRyeRISCgpyZXF1ZXN0X2lkGAMgASgJEioKCnZpb2xhdGlvbnMYBCADKAsyFi5hcHBlcnJvci52MS5WaW9sYXRpb24aKwoJTWV0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiOQoJVmlvbGF0aW9uEg0KBWZpZWxkGAEgASgJEg4KBnJlYXNvbhgCIAEoCRINCgVwYXJhbRgDIAEoCUKcAQoPY29tLmFwcGVycm9yLnYxQgpFcnJvclByb3RvUAFaMGFsdGFsdW5lLmlkL29hZ2VudC9nZW4vZ28vYXBwZXJyb3IvdjE7YXBwZXJyb3J2MaICA0FYWKoCC0FwcGVycm9yLlYxygILQXBwZXJyb3JcVjHiAhdBcHBlcnJvclxWMVxHUEJNZXRhZGF0YeoCDEFwcGVycm9yOjpWMWIGcHJvdG8z");
 
 /**
  * @generated from message apperror.v1.ErrorDetail
@@ -30,6 +30,11 @@ export type ErrorDetail = Message<"apperror.v1.ErrorDetail"> & {
    * @generated from field: string request_id = 3;
    */
   requestId: string;
+
+  /**
+   * @generated from field: repeated apperror.v1.Violation violations = 4;
+   */
+  violations: Violation[];
 };
 
 /**
@@ -38,4 +43,33 @@ export type ErrorDetail = Message<"apperror.v1.ErrorDetail"> & {
  */
 export const ErrorDetailSchema: GenMessage<ErrorDetail> = /*@__PURE__*/
   messageDesc(file_apperror_v1_error, 0);
+
+/**
+ * Violation is one refused request field. It never carries the field's value.
+ *
+ * @generated from message apperror.v1.Violation
+ */
+export type Violation = Message<"apperror.v1.Violation"> & {
+  /**
+   * @generated from field: string field = 1;
+   */
+  field: string;
+
+  /**
+   * @generated from field: string reason = 2;
+   */
+  reason: string;
+
+  /**
+   * @generated from field: string param = 3;
+   */
+  param: string;
+};
+
+/**
+ * Describes the message apperror.v1.Violation.
+ * Use `create(ViolationSchema)` to create a new message.
+ */
+export const ViolationSchema: GenMessage<Violation> = /*@__PURE__*/
+  messageDesc(file_apperror_v1_error, 1);
 

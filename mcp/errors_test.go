@@ -199,3 +199,20 @@ func TestNewInvalidArgumentsErrorCapsAnOversizeTokenOnARuneBoundary(t *testing.T
 		})
 	}
 }
+
+func TestErrorPayloadOmitsNoViolations(t *testing.T) {
+	raw, err := json.Marshal(mcp.ErrorPayload{Code: "X", Message: "m"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "violations") {
+		t.Errorf("violations present on a payload without any: %s", raw)
+	}
+	raw, err = json.Marshal(mcp.ErrorPayload{Code: "X", Violations: []mcp.Violation{{Field: "name", Reason: "too_long", Param: "200"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"violations":[{"field":"name","reason":"too_long","param":"200"}]`) {
+		t.Errorf("violations not encoded as field/reason/param: %s", raw)
+	}
+}

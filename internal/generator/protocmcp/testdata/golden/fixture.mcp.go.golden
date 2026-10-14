@@ -13,6 +13,7 @@ import (
 	json "encoding/json"
 	fmt "fmt"
 	protojson "google.golang.org/protobuf/encoding/protojson"
+	proto "google.golang.org/protobuf/proto"
 )
 
 // PingToolName is the MCP tool name for FixtureService.Ping.
@@ -32,9 +33,9 @@ func FixtureServiceToolNames() []string {
 	return []string{PingToolName, PokeTargetToolName, ApiKeyCreateToolName, PokeConfirmToolName}
 }
 
-// RegisterFixtureServiceTools registers every MCP-annotated FixtureService method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.
+// RegisterFixtureServiceTools registers every MCP-annotated FixtureService method on reg, against h, under the permissions permissionsFor resolves for each RPC procedure; validate checks each decoded request.
 // SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.
-func RegisterFixtureServiceTools(reg *mcp.Registry, h oagenttestv1connect.FixtureServiceHandler, permissionsFor func(string) []string) {
+func RegisterFixtureServiceTools(reg *mcp.Registry, h oagenttestv1connect.FixtureServiceHandler, permissionsFor func(string) []string, validate func(proto.Message) error) {
 	reg.Register(mcp.ToolSpec{
 		Name:        PingToolName,
 		Description: "Ping echoes the target back and reports the server clock.",
@@ -50,6 +51,9 @@ func RegisterFixtureServiceTools(reg *mcp.Registry, h oagenttestv1connect.Fixtur
 			var req v1.PingRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(PingToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.Ping(ctx, connect.NewRequest(&req))
 			if err != nil {
@@ -76,6 +80,9 @@ func RegisterFixtureServiceTools(reg *mcp.Registry, h oagenttestv1connect.Fixtur
 			var req v1.PokeRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(PokeTargetToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.Poke(ctx, connect.NewRequest(&req))
 			if err != nil {
@@ -104,6 +111,9 @@ func RegisterFixtureServiceTools(reg *mcp.Registry, h oagenttestv1connect.Fixtur
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(ApiKeyCreateToolName, err)
 			}
+			if err := validate(&req); err != nil {
+				return nil, err
+			}
 			resp, err := h.Rekey(ctx, connect.NewRequest(&req))
 			if err != nil {
 				return nil, err
@@ -131,6 +141,9 @@ func RegisterFixtureServiceTools(reg *mcp.Registry, h oagenttestv1connect.Fixtur
 			var req v1.PokeRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(PokeConfirmToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.Confirm(ctx, connect.NewRequest(&req))
 			if err != nil {

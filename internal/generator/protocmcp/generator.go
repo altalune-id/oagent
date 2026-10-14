@@ -23,6 +23,7 @@ const (
 	fmtPackage       = protogen.GoImportPath("fmt")
 	connectPackage   = protogen.GoImportPath("connectrpc.com/connect")
 	protojsonPackage = protogen.GoImportPath("google.golang.org/protobuf/encoding/protojson")
+	protoPackage     = protogen.GoImportPath("google.golang.org/protobuf/proto")
 )
 
 type tool struct {
@@ -224,10 +225,11 @@ func writeRegister(g *protogen.GeneratedFile, svc *protogen.Service, tools []too
 	errorf := g.QualifiedGoIdent(fmtPackage.Ident("Errorf"))
 
 	g.P("// Register", svc.GoName, "Tools registers every MCP-annotated ", svc.GoName,
-		" method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.")
+		" method on reg, against h, under the permissions permissionsFor resolves for each RPC procedure; validate checks each decoded request.")
 	g.P("// SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.")
 	g.P("func Register", svc.GoName, "Tools(reg *", g.QualifiedGoIdent(runtime.Ident("Registry")),
-		", h ", g.QualifiedGoIdent(connect.Ident(svc.GoName+"Handler")), ", permissionsFor func(string) []string) {")
+		", h ", g.QualifiedGoIdent(connect.Ident(svc.GoName+"Handler")), ", permissionsFor func(string) []string",
+		", validate func(", g.QualifiedGoIdent(protoPackage.Ident("Message")), ") error) {")
 	for _, t := range tools {
 		g.P("reg.Register(", g.QualifiedGoIdent(runtime.Ident("ToolSpec")), "{")
 		g.P("Name: ", t.constName, ",")
@@ -254,6 +256,9 @@ func writeRegister(g *protogen.GeneratedFile, svc *protogen.Service, tools []too
 		g.P("if err := (", g.QualifiedGoIdent(protojsonPackage.Ident("UnmarshalOptions")),
 			"{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {")
 		g.P("return nil, ", g.QualifiedGoIdent(runtime.Ident("NewInvalidArgumentsError")), "(", t.constName, ", err)")
+		g.P("}")
+		g.P("if err := validate(&req); err != nil {")
+		g.P("return nil, err")
 		g.P("}")
 		g.P("resp, err := h.", t.method.GoName, "(ctx, ",
 			g.QualifiedGoIdent(connectPackage.Ident("NewRequest")), "(&req))")

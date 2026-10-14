@@ -13,6 +13,7 @@ import (
 	json "encoding/json"
 	fmt "fmt"
 	protojson "google.golang.org/protobuf/encoding/protojson"
+	proto "google.golang.org/protobuf/proto"
 )
 
 // WebhookCreateToolName is the MCP tool name for WebhookService.CreateWebhook.
@@ -32,9 +33,9 @@ func WebhookServiceToolNames() []string {
 	return []string{WebhookCreateToolName, WebhookListToolName, WebhookDeliveriesToolName, WebhookRetryFailedToolName}
 }
 
-// RegisterWebhookServiceTools registers every MCP-annotated WebhookService method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.
+// RegisterWebhookServiceTools registers every MCP-annotated WebhookService method on reg, against h, under the permissions permissionsFor resolves for each RPC procedure; validate checks each decoded request.
 // SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.
-func RegisterWebhookServiceTools(reg *mcp.Registry, h webhookv1connect.WebhookServiceHandler, permissionsFor func(string) []string) {
+func RegisterWebhookServiceTools(reg *mcp.Registry, h webhookv1connect.WebhookServiceHandler, permissionsFor func(string) []string, validate func(proto.Message) error) {
 	reg.Register(mcp.ToolSpec{
 		Name:        WebhookCreateToolName,
 		Description: "Create a webhook endpoint for a project, returning its signing secret once.",
@@ -50,6 +51,9 @@ func RegisterWebhookServiceTools(reg *mcp.Registry, h webhookv1connect.WebhookSe
 			var req v1.CreateWebhookRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(WebhookCreateToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.CreateWebhook(ctx, connect.NewRequest(&req))
 			if err != nil {
@@ -78,6 +82,9 @@ func RegisterWebhookServiceTools(reg *mcp.Registry, h webhookv1connect.WebhookSe
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(WebhookListToolName, err)
 			}
+			if err := validate(&req); err != nil {
+				return nil, err
+			}
 			resp, err := h.ListWebhooks(ctx, connect.NewRequest(&req))
 			if err != nil {
 				return nil, err
@@ -105,6 +112,9 @@ func RegisterWebhookServiceTools(reg *mcp.Registry, h webhookv1connect.WebhookSe
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(WebhookDeliveriesToolName, err)
 			}
+			if err := validate(&req); err != nil {
+				return nil, err
+			}
 			resp, err := h.ListWebhookDeliveries(ctx, connect.NewRequest(&req))
 			if err != nil {
 				return nil, err
@@ -131,6 +141,9 @@ func RegisterWebhookServiceTools(reg *mcp.Registry, h webhookv1connect.WebhookSe
 			var req v1.RetryFailedWebhookDeliveriesRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(WebhookRetryFailedToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.RetryFailedWebhookDeliveries(ctx, connect.NewRequest(&req))
 			if err != nil {

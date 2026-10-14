@@ -34,6 +34,8 @@ type Options struct {
 	OpenAPIEnabled   bool
 	OpenAPIBasicAuth *BasicAuth
 	Authn            authn.InterceptorOptions
+	// Validator checks every request after authn; nil uses protovalidate's shared one.
+	Validator *Validator
 }
 
 // Services are the domain services the controlplane exposes.
@@ -81,6 +83,7 @@ type Server struct {
 	OpenAPIEnabled   bool
 	OpenAPIBasicAuth *BasicAuth
 	authn            authn.InterceptorOptions
+	validator        *Validator
 
 	unexpected apperror.UnexpectedFunc
 }
@@ -97,6 +100,7 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 		OpenAPIEnabled:   opts.OpenAPIEnabled,
 		OpenAPIBasicAuth: opts.OpenAPIBasicAuth,
 		authn:            opts.Authn,
+		validator:        opts.Validator,
 		unexpected:       unexpected,
 	}
 	if svcs.Projects != nil {
@@ -181,7 +185,7 @@ func (s *Server) handlerOptions() []connect.HandlerOption {
 	if otel, err := OTel(nil, nil); err == nil && otel != nil {
 		ics = append(ics, otel)
 	}
-	ics = append(ics, Wrap(s.unexpected), authn.Interceptor(s.authn), tenantFromPrincipal())
+	ics = append(ics, Wrap(s.unexpected), authn.Interceptor(s.authn), tenantFromPrincipal(), s.validator.interceptor())
 	return []connect.HandlerOption{
 		connect.WithRecover(s.recoverPanic),
 		connect.WithInterceptors(ics...),

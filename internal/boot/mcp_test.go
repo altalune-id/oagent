@@ -22,6 +22,7 @@ import (
 	webhookv1mcp "altalune.id/oagent/gen/go/webhook/v1/webhookv1mcp"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/auth"
+	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/capabilities"
 	"altalune.id/oagent/internal/kernel/session"
@@ -143,7 +144,7 @@ func TestMCPTools_UnmappedProcedureIsDenied(t *testing.T) {
 			return nil
 		}
 		return permission.For(procedure)
-	})
+	}, (*controlplane.Validator)(nil).Validate)
 	app := &App{MCP: rootmcp.NewServer(rootmcp.WithRegistry(reg), rootmcp.WithScopes(mcpinternal.ScopesFromContext))}
 
 	ctx, cancel := context.WithCancel(t.Context())

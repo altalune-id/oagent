@@ -26,6 +26,7 @@ type ErrorDetail struct {
 	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
 	Meta          map[string]string      `protobuf:"bytes,2,rep,name=meta,proto3" json:"meta,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	RequestId     string                 `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Violations    []*Violation           `protobuf:"bytes,4,rep,name=violations,proto3" json:"violations,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -81,19 +82,94 @@ func (x *ErrorDetail) GetRequestId() string {
 	return ""
 }
 
+func (x *ErrorDetail) GetViolations() []*Violation {
+	if x != nil {
+		return x.Violations
+	}
+	return nil
+}
+
+// Violation is one refused request field. It never carries the field's value.
+type Violation struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Field         string                 `protobuf:"bytes,1,opt,name=field,proto3" json:"field,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	Param         string                 `protobuf:"bytes,3,opt,name=param,proto3" json:"param,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Violation) Reset() {
+	*x = Violation{}
+	mi := &file_apperror_v1_error_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Violation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Violation) ProtoMessage() {}
+
+func (x *Violation) ProtoReflect() protoreflect.Message {
+	mi := &file_apperror_v1_error_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Violation.ProtoReflect.Descriptor instead.
+func (*Violation) Descriptor() ([]byte, []int) {
+	return file_apperror_v1_error_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Violation) GetField() string {
+	if x != nil {
+		return x.Field
+	}
+	return ""
+}
+
+func (x *Violation) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *Violation) GetParam() string {
+	if x != nil {
+		return x.Param
+	}
+	return ""
+}
+
 var File_apperror_v1_error_proto protoreflect.FileDescriptor
 
 const file_apperror_v1_error_proto_rawDesc = "" +
 	"\n" +
-	"\x17apperror/v1/error.proto\x12\vapperror.v1\"\xb1\x01\n" +
+	"\x17apperror/v1/error.proto\x12\vapperror.v1\"\xe9\x01\n" +
 	"\vErrorDetail\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x126\n" +
 	"\x04meta\x18\x02 \x03(\v2\".apperror.v1.ErrorDetail.MetaEntryR\x04meta\x12\x1d\n" +
 	"\n" +
-	"request_id\x18\x03 \x01(\tR\trequestId\x1a7\n" +
+	"request_id\x18\x03 \x01(\tR\trequestId\x126\n" +
+	"\n" +
+	"violations\x18\x04 \x03(\v2\x16.apperror.v1.ViolationR\n" +
+	"violations\x1a7\n" +
 	"\tMetaEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x9c\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"O\n" +
+	"\tViolation\x12\x14\n" +
+	"\x05field\x18\x01 \x01(\tR\x05field\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x14\n" +
+	"\x05param\x18\x03 \x01(\tR\x05paramB\x9c\x01\n" +
 	"\x0fcom.apperror.v1B\n" +
 	"ErrorProtoP\x01Z0altalune.id/oagent/gen/go/apperror/v1;apperrorv1\xa2\x02\x03AXX\xaa\x02\vApperror.V1\xca\x02\vApperror\\V1\xe2\x02\x17Apperror\\V1\\GPBMetadata\xea\x02\fApperror::V1b\x06proto3"
 
@@ -109,18 +185,20 @@ func file_apperror_v1_error_proto_rawDescGZIP() []byte {
 	return file_apperror_v1_error_proto_rawDescData
 }
 
-var file_apperror_v1_error_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_apperror_v1_error_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_apperror_v1_error_proto_goTypes = []any{
 	(*ErrorDetail)(nil), // 0: apperror.v1.ErrorDetail
-	nil,                 // 1: apperror.v1.ErrorDetail.MetaEntry
+	(*Violation)(nil),   // 1: apperror.v1.Violation
+	nil,                 // 2: apperror.v1.ErrorDetail.MetaEntry
 }
 var file_apperror_v1_error_proto_depIdxs = []int32{
-	1, // 0: apperror.v1.ErrorDetail.meta:type_name -> apperror.v1.ErrorDetail.MetaEntry
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 0: apperror.v1.ErrorDetail.meta:type_name -> apperror.v1.ErrorDetail.MetaEntry
+	1, // 1: apperror.v1.ErrorDetail.violations:type_name -> apperror.v1.Violation
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_apperror_v1_error_proto_init() }
@@ -134,7 +212,7 @@ func file_apperror_v1_error_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_apperror_v1_error_proto_rawDesc), len(file_apperror_v1_error_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

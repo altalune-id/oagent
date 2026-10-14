@@ -13,6 +13,7 @@ import (
 	json "encoding/json"
 	fmt "fmt"
 	protojson "google.golang.org/protobuf/encoding/protojson"
+	proto "google.golang.org/protobuf/proto"
 )
 
 // AgentCreateToolName is the MCP tool name for AgentService.CreateAgent.
@@ -35,9 +36,9 @@ func AgentServiceToolNames() []string {
 	return []string{AgentCreateToolName, AgentGetToolName, AgentListToolName, AgentUpdateToolName, AgentDeleteToolName}
 }
 
-// RegisterAgentServiceTools registers every MCP-annotated AgentService method on reg, against h and under the permissions permissionsFor resolves for each RPC procedure.
+// RegisterAgentServiceTools registers every MCP-annotated AgentService method on reg, against h, under the permissions permissionsFor resolves for each RPC procedure; validate checks each decoded request.
 // SECURITY: this file declares no permission of its own; permissionsFor is the single table every tool's permissions come from.
-func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceHandler, permissionsFor func(string) []string) {
+func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceHandler, permissionsFor func(string) []string, validate func(proto.Message) error) {
 	reg.Register(mcp.ToolSpec{
 		Name:        AgentCreateToolName,
 		Description: "Create an agent within a project, minting a slug when one is not supplied.",
@@ -53,6 +54,9 @@ func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceH
 			var req v1.CreateAgentRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(AgentCreateToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.CreateAgent(ctx, connect.NewRequest(&req))
 			if err != nil {
@@ -81,6 +85,9 @@ func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceH
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(AgentGetToolName, err)
 			}
+			if err := validate(&req); err != nil {
+				return nil, err
+			}
 			resp, err := h.GetAgent(ctx, connect.NewRequest(&req))
 			if err != nil {
 				return nil, err
@@ -107,6 +114,9 @@ func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceH
 			var req v1.ListAgentsRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(AgentListToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.ListAgents(ctx, connect.NewRequest(&req))
 			if err != nil {
@@ -135,6 +145,9 @@ func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceH
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(AgentUpdateToolName, err)
 			}
+			if err := validate(&req); err != nil {
+				return nil, err
+			}
 			resp, err := h.UpdateAgent(ctx, connect.NewRequest(&req))
 			if err != nil {
 				return nil, err
@@ -161,6 +174,9 @@ func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceH
 			var req v1.DeleteAgentRequest
 			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
 				return nil, mcp.NewInvalidArgumentsError(AgentDeleteToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
 			}
 			resp, err := h.DeleteAgent(ctx, connect.NewRequest(&req))
 			if err != nil {

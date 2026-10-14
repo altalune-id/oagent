@@ -11,6 +11,7 @@ import (
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/auth"
+	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/install"
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/capabilities"
@@ -64,6 +65,7 @@ type Services struct {
 	Caps            capabilities.Capabilities
 	AuthLimiter     ratelimit.Limiter
 	StateSecret     []byte
+	Validator       *controlplane.Validator
 }
 
 func buildServices(k kernel.Kernel, cfg config.Config) *Services {

@@ -8,4 +8,12 @@ message ErrorDetail {
   string code = 1;
   map<string, string> meta = 2;
   string request_id = 3;
+  repeated Violation violations = 4;
+}
+
+// Violation is one refused request field. It never carries the field's value.
+message Violation {
+  string field = 1;
+  string reason = 2;
+  string param = 3;
 }

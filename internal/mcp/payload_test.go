@@ -48,3 +48,15 @@ func TestAttachContext(t *testing.T) {
 	assert.Equal(t, "x", kept.RequestID)
 	assert.Equal(t, "y", kept.TraceID)
 }
+
+func TestErrorPayload_CarriesViolations(t *testing.T) {
+	p := ErrorPayload(context.Background(), apperror.Validation([]apperror.Violation{
+		{Field: "name", Reason: apperror.FieldTooLong, Param: "200"},
+		{Field: "slug", Reason: apperror.FieldInvalidFormat},
+	}))
+	assert.Equal(t, "GEN004", p.Code)
+	assert.Equal(t, []rootmcp.Violation{
+		{Field: "name", Reason: "too_long", Param: "200"},
+		{Field: "slug", Reason: "invalid_format"},
+	}, p.Violations)
+}

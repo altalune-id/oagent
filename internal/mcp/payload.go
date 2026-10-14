@@ -28,7 +28,9 @@ func ErrorPayload(ctx context.Context, err error) rootmcp.ErrorPayload {
 		return AttachContext(ctx, rootmcp.ErrorPayload{Code: "INVALID_ARGUMENT", Message: invalid.Error(), Meta: meta})
 	}
 	if ae, ok := apperror.AsAppError(err); ok {
-		return AttachContext(ctx, rootmcp.ErrorPayload{Code: string(ae.Code()), Message: ae.Message(), Meta: ae.Meta()})
+		return AttachContext(ctx, rootmcp.ErrorPayload{
+			Code: string(ae.Code()), Message: ae.Message(), Meta: ae.Meta(), Violations: violations(ae.Violations()),
+		})
 	}
 	return rootmcp.ErrorPayload{}
 }
@@ -44,4 +46,15 @@ func AttachContext(ctx context.Context, p rootmcp.ErrorPayload) rootmcp.ErrorPay
 		}
 	}
 	return p
+}
+
+func violations(vs []apperror.Violation) []rootmcp.Violation {
+	if len(vs) == 0 {
+		return nil
+	}
+	out := make([]rootmcp.Violation, 0, len(vs))
+	for _, v := range vs {
+		out = append(out, rootmcp.Violation{Field: v.Field, Reason: string(v.Reason), Param: v.Param})
+	}
+	return out
 }
