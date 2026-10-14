@@ -1,0 +1,57 @@
+syntax = "proto2";
+
+package oagent.v1;
+
+import "buf/validate/validate.proto";
+
+option go_package = "altalune.id/oagent/gen/go/oagent/v1;oagentv1";
+
+// Shared string rules. An empty value passes each one; pair it with `required` when the field must be set.
+// A rule id ending in a number carries that number as the violation's param.
+extend buf.validate.StringRules {
+  // public_id is a nanoid public id: 21 characters of the nanoid alphabet.
+  optional bool public_id = 104001 [(buf.validate.predefined).cel = {
+    id: "oagent.public_id"
+    expression: "!rule || this == '' || this.matches('^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$') ? '' : 'must be a public id'"
+  }];
+
+  // name is a display name: not blank, at most 200 characters once trimmed.
+  optional bool name = 104002 [
+    (buf.validate.predefined).cel = {
+      id: "oagent.name.blank"
+      expression: "!rule || this == '' || this.trim() != '' ? '' : 'must not be blank'"
+    },
+    (buf.validate.predefined).cel = {
+      id: "oagent.name.max_len.200"
+      expression: "!rule || this.trim().size() <= 200 ? '' : 'must be at most 200 characters'"
+    }
+  ];
+
+  // email is an email address: local@domain with no spaces, at most 254 characters once trimmed.
+  optional bool email = 104003 [
+    (buf.validate.predefined).cel = {
+      id: "oagent.email.max_len.254"
+      expression: "!rule || this.trim().size() <= 254 ? '' : 'must be at most 254 characters'"
+    },
+    (buf.validate.predefined).cel = {
+      id: "oagent.email.format"
+      expression: "!rule || this == '' || this.trim().matches('^[^@\\\\s]+@[^@\\\\s]+$') ? '' : 'must be an email address'"
+    }
+  ];
+
+  // slug is a URL slug, as org, project and agent slugs are: 3 to 64 lowercase letters, digits and inner dashes.
+  optional bool slug = 104004 [
+    (buf.validate.predefined).cel = {
+      id: "oagent.slug.min_len.3"
+      expression: "!rule || this == '' || this.size() >= 3 ? '' : 'must be at least 3 characters'"
+    },
+    (buf.validate.predefined).cel = {
+      id: "oagent.slug.max_len.64"
+      expression: "!rule || this.size() <= 64 ? '' : 'must be at most 64 characters'"
+    },
+    (buf.validate.predefined).cel = {
+      id: "oagent.slug.format"
+      expression: "!rule || this == '' || this.matches('^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$') ? '' : 'must be lowercase letters, digits and dashes, not starting or ending with a dash'"
+    }
+  ];
+}

@@ -40,7 +40,7 @@ func RegisterProjectServiceTools(reg *mcp.Registry, h projectv1connect.ProjectSe
 		Mutation:    true,
 		Destructive: false,
 		UI:          "ui://oagent/app",
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string"},"slug":{"type":"string"},"name":{"type":"string"}},"additionalProperties":false}`),
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"},"slug":{"type":"string","maxLength":64,"pattern":"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"},"name":{"type":"string","minLength":1,"maxLength":200}},"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {
 				input = json.RawMessage(`{}`)
@@ -70,7 +70,7 @@ func RegisterProjectServiceTools(reg *mcp.Registry, h projectv1connect.ProjectSe
 		Mutation:    false,
 		Destructive: false,
 		UI:          "ui://oagent/app",
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}`),
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"}},"required":["id"],"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {
 				input = json.RawMessage(`{}`)
@@ -100,7 +100,7 @@ func RegisterProjectServiceTools(reg *mcp.Registry, h projectv1connect.ProjectSe
 		Mutation:    false,
 		Destructive: false,
 		UI:          "ui://oagent/app",
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string"}},"required":["orgId"],"additionalProperties":false}`),
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"}},"required":["orgId"],"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {
 				input = json.RawMessage(`{}`)

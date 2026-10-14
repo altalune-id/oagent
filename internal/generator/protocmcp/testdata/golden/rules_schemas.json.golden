@@ -1,0 +1,75 @@
+{
+  "shape_check": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      },
+      "email": {
+        "type": "string",
+        "maxLength": 254
+      },
+      "code": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 8,
+        "pattern": "^[A-Z]+$"
+      },
+      "role": {
+        "type": "string",
+        "enum": [
+          "owner",
+          "member"
+        ]
+      },
+      "site": {
+        "type": "string",
+        "format": "uri"
+      },
+      "contact": {
+        "type": "string",
+        "format": "email"
+      },
+      "tags": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "maxLength": 10
+        },
+        "minItems": 1,
+        "maxItems": 3,
+        "uniqueItems": true
+      },
+      "note": {
+        "type": "string",
+        "maxLength": 50
+      },
+      "pin": {
+        "type": "string",
+        "minLength": 4,
+        "maxLength": 4
+      },
+      "plain": {
+        "type": "string"
+      },
+      "ids": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"
+        }
+      }
+    },
+    "required": [
+      "id"
+    ],
+    "additionalProperties": false
+  }
+}

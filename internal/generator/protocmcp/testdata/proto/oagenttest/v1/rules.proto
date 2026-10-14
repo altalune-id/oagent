@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package oagenttest.v1;
+
+import "buf/validate/validate.proto";
+import "mcp/v1/annotations.proto";
+import "oagent/v1/rules.proto";
+
+option go_package = "altalune.id/oagent/internal/generator/protocmcp/testdata/gen/oagenttest/v1;oagenttestv1";
+
+// RulesService exercises every request rule the schema builder maps.
+service RulesService {
+  rpc Shape(ShapeRequest) returns (ShapeResponse) {
+    option (mcp.v1.tool) = {
+      name: "shape_check"
+      description: "Check a shape."
+      required: ["id"]
+    };
+  }
+}
+
+message ShapeRequest {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.name) = true
+  ];
+  string email = 3 [(buf.validate.field).string.(oagent.v1.email) = true];
+  string code = 4 [(buf.validate.field).string = {
+    min_len: 2
+    max_len: 8
+    pattern: "^[A-Z]+$"
+  }];
+  string role = 5 [(buf.validate.field).string = {
+    in: ["owner", "member"]
+  }];
+  string site = 6 [(buf.validate.field).string.uri = true];
+  string contact = 7 [(buf.validate.field).string.email = true];
+  repeated string tags = 8 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 3,
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items.string.max_len = 10
+  ];
+  string note = 9 [(buf.validate.field).cel = {
+    id: "oagenttest.note.max_len.50"
+    expression: "this.trim().size() <= 50 ? '' : 'too long'"
+  }];
+  string pin = 10 [(buf.validate.field).string.len = 4];
+  string plain = 11;
+  repeated string ids = 12 [(buf.validate.field).repeated.items.string.(oagent.v1.public_id) = true];
+}
+
+message ShapeResponse {}

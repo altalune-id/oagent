@@ -46,7 +46,7 @@ func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceH
 		Mutation:    true,
 		Destructive: false,
 		UI:          "ui://oagent/app",
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string"},"projectId":{"type":"string"},"slug":{"type":"string"},"name":{"type":"string"},"description":{"type":"string"}},"additionalProperties":false}`),
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"},"projectId":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"},"slug":{"type":"string","maxLength":64,"pattern":"^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"},"name":{"type":"string","minLength":1,"maxLength":200},"description":{"type":"string","maxLength":2000}},"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {
 				input = json.RawMessage(`{}`)
@@ -76,7 +76,7 @@ func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceH
 		Mutation:    false,
 		Destructive: false,
 		UI:          "ui://oagent/app",
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}`),
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"}},"required":["id"],"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {
 				input = json.RawMessage(`{}`)
@@ -106,7 +106,7 @@ func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceH
 		Mutation:    false,
 		Destructive: false,
 		UI:          "ui://oagent/app",
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"projectId":{"type":"string"}},"required":["projectId"],"additionalProperties":false}`),
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"projectId":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"}},"required":["projectId"],"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {
 				input = json.RawMessage(`{}`)
@@ -136,7 +136,7 @@ func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceH
 		Mutation:    true,
 		Destructive: false,
 		UI:          "ui://oagent/app",
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string"},"name":{"type":"string"},"description":{"type":"string"}},"required":["id","name"],"additionalProperties":false}`),
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"},"name":{"type":"string","minLength":1,"maxLength":200},"description":{"type":"string","maxLength":2000}},"required":["id","name"],"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {
 				input = json.RawMessage(`{}`)
@@ -166,7 +166,7 @@ func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceH
 		Mutation:    true,
 		Destructive: true,
 		UI:          "ui://oagent/app",
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}`),
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"}},"required":["id"],"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {
 				input = json.RawMessage(`{}`)

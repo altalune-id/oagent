@@ -41,7 +41,7 @@ func RegisterInviteServiceTools(reg *mcp.Registry, h invitev1connect.InviteServi
 		Mutation:    true,
 		Destructive: false,
 		UI:          "ui://oagent/app",
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string"},"email":{"type":"string"}},"required":["orgId","email"],"additionalProperties":false}`),
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"},"email":{"type":"string","minLength":1,"maxLength":254}},"required":["orgId","email"],"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {
 				input = json.RawMessage(`{}`)
@@ -73,7 +73,7 @@ func RegisterInviteServiceTools(reg *mcp.Registry, h invitev1connect.InviteServi
 		Destructive: false,
 		UI:          "ui://oagent/app",
 		AppOnly:     true,
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string"},"inviteId":{"type":"string"}},"required":["orgId","inviteId"],"additionalProperties":false}`),
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"},"inviteId":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"}},"required":["orgId","inviteId"],"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {
 				input = json.RawMessage(`{}`)
@@ -105,7 +105,7 @@ func RegisterInviteServiceTools(reg *mcp.Registry, h invitev1connect.InviteServi
 		Destructive: true,
 		UI:          "ui://oagent/app",
 		AppOnly:     true,
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string"},"inviteId":{"type":"string"}},"required":["orgId","inviteId"],"additionalProperties":false}`),
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"},"inviteId":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"}},"required":["orgId","inviteId"],"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {
 				input = json.RawMessage(`{}`)

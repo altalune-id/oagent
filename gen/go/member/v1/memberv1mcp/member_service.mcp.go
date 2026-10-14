@@ -35,7 +35,7 @@ func RegisterMemberServiceTools(reg *mcp.Registry, h memberv1connect.MemberServi
 		Mutation:    false,
 		Destructive: false,
 		UI:          "ui://oagent/app",
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string"}},"required":["orgId"],"additionalProperties":false}`),
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"orgId":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"}},"required":["orgId"],"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {
 				input = json.RawMessage(`{}`)

@@ -29,6 +29,25 @@ func (o *jsonObject) set(key string, val any) *jsonObject {
 	return o
 }
 
+func (o *jsonObject) put(key string, val any) *jsonObject {
+	for i, k := range o.keys {
+		if k == key {
+			o.vals[i] = val
+			return o
+		}
+	}
+	return o.set(key, val)
+}
+
+func (o *jsonObject) get(key string) any {
+	for i, k := range o.keys {
+		if k == key {
+			return o.vals[i]
+		}
+	}
+	return nil
+}
+
 func (o *jsonObject) MarshalJSON() ([]byte, error) {
 	var b bytes.Buffer
 	b.WriteByte('{')
@@ -111,6 +130,7 @@ func fieldSchema(field *protogen.Field, stack []protoreflect.FullName) *jsonObje
 	default:
 		schema = valueSchema(field, stack)
 	}
+	applyFieldRules(schema, field, fieldRules(field))
 	if description := comment(field.Comments.Leading); description != "" {
 		schema.set("description", description)
 	}

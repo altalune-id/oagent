@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -147,6 +148,7 @@ func TestInputSchemas(t *testing.T) {
 	tests := []struct{ name, file, golden string }{
 		{"every scalar, nested and repeated shape", "oagenttest/v1/fixture.proto", "schemas.json.golden"},
 		{"every well-known type", "oagenttest/v1/wellknown.proto", "wellknown_schemas.json.golden"},
+		{"every request rule", "oagenttest/v1/rules.proto", "rules_schemas.json.golden"},
 	}
 
 	for _, tt := range tests {
@@ -402,5 +404,68 @@ func TestGenerateValidatesTheRequestAfterDecodingAndBeforeTheHandler(t *testing.
 	}
 	if n, tools := strings.Count(got, "validate(&req)"), strings.Count(got, "reg.Register("); n != tools {
 		t.Errorf("%d tools but %d validate calls", tools, n)
+	}
+}
+
+func TestFixtureRulesMatchTheRealOnes(t *testing.T) {
+	copied, err := os.ReadFile(filepath.Join("testdata", "proto", "oagent", "v1", "rules.proto"))
+	if err != nil {
+		t.Fatalf("reading the fixture copy: %v", err)
+	}
+	source, err := os.ReadFile(filepath.Join("..", "..", "..", "api", "oagent", "v1", "rules.proto"))
+	if err != nil {
+		t.Fatalf("reading api/oagent/v1/rules.proto: %v", err)
+	}
+	if !bytes.Equal(copied, source) {
+		t.Error("testdata/proto/oagent/v1/rules.proto has drifted from api/oagent/v1/rules.proto; copy it over, rebuild the descriptor set, then rerun with -update")
+	}
+}
+
+func TestInputSchemasCarryTheRules(t *testing.T) {
+	p := newPlugin(t, "oagenttest/v1/rules.proto")
+	var raw json.RawMessage
+	for _, file := range p.Files {
+		if !file.Generate {
+			continue
+		}
+		for _, svc := range file.Services {
+			tools, err := serviceTools(svc, generatedPackage(file), newClaimed(), Options{})
+			if err != nil {
+				t.Fatalf("serviceTools() error = %v", err)
+			}
+			raw = tools[0].schema
+		}
+	}
+	var schema struct {
+		Required   []string                  `json:"required"`
+		Properties map[string]map[string]any `json:"properties"`
+	}
+	if err := json.Unmarshal(raw, &schema); err != nil {
+		t.Fatalf("unmarshal %s: %v", raw, err)
+	}
+	publicID := `^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$`
+	want := map[string]map[string]any{
+		"id":      {"type": "string", "minLength": 1.0, "pattern": publicID},
+		"name":    {"type": "string", "minLength": 1.0, "maxLength": 200.0},
+		"email":   {"type": "string", "maxLength": 254.0},
+		"code":    {"type": "string", "minLength": 2.0, "maxLength": 8.0, "pattern": "^[A-Z]+$"},
+		"role":    {"type": "string", "enum": []any{"owner", "member"}},
+		"site":    {"type": "string", "format": "uri"},
+		"contact": {"type": "string", "format": "email"},
+		"tags": {"type": "array", "minItems": 1.0, "maxItems": 3.0, "uniqueItems": true,
+			"items": map[string]any{"type": "string", "maxLength": 10.0}},
+		"note":  {"type": "string", "maxLength": 50.0},
+		"pin":   {"type": "string", "minLength": 4.0, "maxLength": 4.0},
+		"plain": {"type": "string"},
+		"ids": {"type": "array",
+			"items": map[string]any{"type": "string", "pattern": publicID}},
+	}
+	for name, w := range want {
+		if got := schema.Properties[name]; !reflect.DeepEqual(got, w) {
+			t.Errorf("%s:\n got %v\nwant %v", name, got, w)
+		}
+	}
+	if !reflect.DeepEqual(schema.Required, []string{"id"}) {
+		t.Errorf("required = %v; the rules must not change it", schema.Required)
 	}
 }
