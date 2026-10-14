@@ -15,9 +15,9 @@ func TestWalkEnvKeys(t *testing.T) {
 		byYAML[k.YAML] = k
 	}
 
-	dsn, ok := byYAML["db.dsn"]
+	dsn, ok := byYAML["postgres.dsn"]
 	require.True(t, ok)
-	assert.Equal(t, "OAGENT_DB_DSN", dsn.Key)
+	assert.Equal(t, "OAGENT_POSTGRES_DSN", dsn.Key)
 	assert.Contains(t, dsn.Awareness, "required")
 	assert.Contains(t, dsn.Awareness, "secret")
 

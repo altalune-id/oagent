@@ -52,7 +52,7 @@ func TestNormalizeRedisKeyPrefix(t *testing.T) {
 
 func TestValidate_Redis(t *testing.T) {
 	useRedis := func(c *Config) {
-		c.RateLimit.Store = RateLimitStoreRedis
+		c.RateLimit.Driver = RateLimitDriverRedis
 		c.RateLimit.Auth.Enabled = true
 		c.Redis.URL = "redis://:secret-pw@cache.internal:6379/0"
 	}
@@ -80,7 +80,7 @@ func TestValidate_Redis(t *testing.T) {
 			mutate: func(c *Config) { useRedis(c); c.Redis.URL = "" },
 			check: func(t *testing.T, err error) {
 				missingSetting("redis.url")(t, err)
-				assert.ErrorContains(t, err, "rateLimit.store")
+				assert.ErrorContains(t, err, "rateLimit.driver")
 			},
 		},
 		"wrong scheme": {
@@ -161,10 +161,10 @@ func redisURLError(t *testing.T, err error) {
 
 func TestRedisFeatures(t *testing.T) {
 	c := validConfig(t)
-	c.RateLimit.Store = RateLimitStoreRedis
+	c.RateLimit.Driver = RateLimitDriverRedis
 	assert.Empty(t, c.RedisFeatures(), "a redis store with every group off needs no connection")
 	c.RateLimit.Auth.Enabled = true
-	assert.Equal(t, []string{"rateLimit.store"}, c.RedisFeatures())
-	c.RateLimit.Store = RateLimitStoreMemory
+	assert.Equal(t, []string{"rateLimit.driver"}, c.RedisFeatures())
+	c.RateLimit.Driver = RateLimitDriverMemory
 	assert.Empty(t, c.RedisFeatures())
 }

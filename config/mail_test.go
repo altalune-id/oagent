@@ -10,7 +10,7 @@ import (
 
 func TestLoad_MailDefaults(t *testing.T) {
 	setSecretEnv(t)
-	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_POSTGRES_DSN", "postgres://localhost/db")
 	t.Setenv("OAGENT_ENV", "development")
 	t.Setenv("OAGENT_MAIL_DRIVER", "")
 

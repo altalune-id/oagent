@@ -21,7 +21,7 @@ import (
 func migratedServices(t *testing.T, cfg config.Config) (*Services, config.Config) {
 	t.Helper()
 	sqlDB, schemaName := pgtest.Migrated(t)
-	cfg.DB.Schema = schemaName
+	cfg.Postgres.Schema = schemaName
 	k := kernel.Kernel{Pool: db.Pool{W: sqlDB, R: sqlDB}, Reporter: apperror.NewReporter(nil, false)}
 	svcs := buildServices(k, cfg)
 	require.NoError(t, buildAuthSecrets(cfg, svcs, testLogger()))

@@ -49,7 +49,7 @@ func mailAllowPlain(cfg config.Config) bool {
 }
 
 func buildMailQueue(pool db.Pool, cfg config.Config, sl sealer.Sealer) mailqueue.Store {
-	return mailqueue.NewStore(pool, cfg.DB.Schema, cfg.DB.TablePrefix, sl, mailAllowPlain(cfg))
+	return mailqueue.NewStore(pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix, sl, mailAllowPlain(cfg))
 }
 
 func buildMailWorker(svcs *Services, log *slog.Logger) *mailqueue.Worker {

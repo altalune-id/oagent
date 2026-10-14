@@ -9,6 +9,7 @@ type Config struct {
 	Env        Env              `yaml:"env"       mapstructure:"env"       awareness:"required,bootstrap" validate:"required,oneof=development production"` //nolint:lll // struct tags are single-line
 	HTTP       HTTPConfig       `yaml:"http"      mapstructure:"http"`
 	DB         DBConfig         `yaml:"db"        mapstructure:"db"`
+	Postgres   PostgresConfig   `yaml:"postgres"  mapstructure:"postgres"`
 	Telemetry  TelemetryConfig  `yaml:"telemetry" mapstructure:"telemetry"`
 	Scheduler  SchedulerConfig  `yaml:"scheduler" mapstructure:"scheduler"`
 	Queue      QueueConfig      `yaml:"queue"     mapstructure:"queue"`
@@ -109,46 +110,6 @@ const (
 // IsProduction reports whether the environment is production.
 func (e Env) IsProduction() bool { return e == EnvProduction }
 
-// DBConfig is the Postgres connection configuration.
-type DBConfig struct {
-	DSN             string         `yaml:"dsn"             mapstructure:"dsn"             awareness:"required,secret" validate:"required"`
-	Schema          string         `yaml:"schema"          mapstructure:"schema"          awareness:"bootstrap"`
-	TablePrefix     string         `yaml:"tablePrefix"     mapstructure:"tablePrefix"     awareness:"bootstrap"`
-	Role            string         `yaml:"role"            mapstructure:"role"`
-	AutoMigrate     bool           `yaml:"autoMigrate"     mapstructure:"autoMigrate"`
-	Reader          ReaderConfig   `yaml:"reader"          mapstructure:"reader"`
-	Migrator        MigratorConfig `yaml:"migrator"        mapstructure:"migrator"`
-	Health          HealthConfig   `yaml:"health"          mapstructure:"health"`
-	MaxOpenConns    int            `yaml:"maxOpenConns"    mapstructure:"maxOpenConns"    validate:"gte=0"`
-	MaxIdleConns    int            `yaml:"maxIdleConns"    mapstructure:"maxIdleConns"    validate:"gte=0"`
-	ConnMaxLifetime time.Duration  `yaml:"connMaxLifetime" mapstructure:"connMaxLifetime"`
-	ConnMaxIdleTime time.Duration  `yaml:"connMaxIdleTime" mapstructure:"connMaxIdleTime"`
-	ConnectTimeout  time.Duration  `yaml:"connectTimeout"  mapstructure:"connectTimeout"`
-	ConnectBackoff  time.Duration  `yaml:"connectBackoff"  mapstructure:"connectBackoff"`
-}
-
-// ReaderConfig points reads at a replica; an empty DSN falls back to the writer.
-type ReaderConfig struct {
-	DSN             string        `yaml:"dsn"             mapstructure:"dsn"             awareness:"secret"`
-	Role            string        `yaml:"role"            mapstructure:"role"`
-	MaxOpenConns    int           `yaml:"maxOpenConns"    mapstructure:"maxOpenConns"    validate:"gte=0"`
-	MaxIdleConns    int           `yaml:"maxIdleConns"    mapstructure:"maxIdleConns"    validate:"gte=0"`
-	ConnMaxLifetime time.Duration `yaml:"connMaxLifetime" mapstructure:"connMaxLifetime"`
-	ConnMaxIdleTime time.Duration `yaml:"connMaxIdleTime" mapstructure:"connMaxIdleTime"`
-}
-
-// MigratorConfig is a separate credential used only to run migrations.
-type MigratorConfig struct {
-	DSN  string `yaml:"dsn"  mapstructure:"dsn"  awareness:"secret"`
-	Role string `yaml:"role" mapstructure:"role"`
-}
-
-// HealthConfig tunes the db-health worker.
-type HealthConfig struct {
-	Interval time.Duration `yaml:"interval" mapstructure:"interval" validate:"gte=0"`
-	Timeout  time.Duration `yaml:"timeout"  mapstructure:"timeout"  validate:"gte=0"`
-}
-
 // TelemetryConfig groups OTel + Prometheus settings.
 type TelemetryConfig struct {
 	OTLP    OTLPConfig    `yaml:"otlp"    mapstructure:"otlp"`
@@ -190,6 +151,7 @@ func (c *Config) Validate() error {
 		return err
 	}
 	for _, check := range []func() error{
+		c.validatePostgres,
 		c.validateAuth,
 		c.validateCompliance,
 		c.validateMail,

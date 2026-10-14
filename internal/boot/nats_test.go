@@ -30,9 +30,9 @@ func natsTestConfig(url string) config.NATSConfig {
 
 func natsFeatureConfig() config.Config {
 	return config.Config{
-		DB:    config.DBConfig{DSN: "x"},
-		Queue: config.QueueConfig{Enabled: true, Driver: config.QueueDriverNATS},
-		NATS:  natsTestConfig("nats://oagent:" + natsTestPassword + "@127.0.0.1:1"),
+		Postgres: config.PostgresConfig{DSN: "x"},
+		Queue:    config.QueueConfig{Enabled: true, Driver: config.QueueDriverNATS},
+		NATS:     natsTestConfig("nats://oagent:" + natsTestPassword + "@127.0.0.1:1"),
 	}
 }
 
@@ -142,7 +142,7 @@ func TestBoot_DefaultConfigNeverOpensNATS(t *testing.T) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 
-	app, err := Boot(context.Background(), config.Config{DB: config.DBConfig{DSN: "x"}}, testLogger())
+	app, err := Boot(context.Background(), config.Config{Postgres: config.PostgresConfig{DSN: "x"}}, testLogger())
 	require.NoError(t, err)
 	assert.Zero(t, *calls)
 	assert.NotContains(t, workerNames(app), "nats-health")

@@ -54,49 +54,8 @@ compliance:
 db:
   # env: OAGENT_DB_AUTO_MIGRATE
   autoMigrate: true
-  # env: OAGENT_DB_CONN_MAX_IDLE_TIME
-  connMaxIdleTime: ""
-  # env: OAGENT_DB_CONN_MAX_LIFETIME
-  connMaxLifetime: ""
-  # env: OAGENT_DB_CONNECT_BACKOFF
-  connectBackoff: 250ms
-  # env: OAGENT_DB_CONNECT_TIMEOUT
-  connectTimeout: 5s
-  # [required, secret] env: OAGENT_DB_DSN
-  dsn: ""
-  health:
-    # env: OAGENT_DB_HEALTH_INTERVAL
-    interval: 30s
-    # env: OAGENT_DB_HEALTH_TIMEOUT
-    timeout: 2s
-  # env: OAGENT_DB_MAX_IDLE_CONNS
-  maxIdleConns: ""
-  # env: OAGENT_DB_MAX_OPEN_CONNS
-  maxOpenConns: ""
-  migrator:
-    # [secret] env: OAGENT_DB_MIGRATOR_DSN
-    dsn: ""
-    # env: OAGENT_DB_MIGRATOR_ROLE
-    role: ""
-  reader:
-    # env: OAGENT_DB_READER_CONN_MAX_IDLE_TIME
-    connMaxIdleTime: ""
-    # env: OAGENT_DB_READER_CONN_MAX_LIFETIME
-    connMaxLifetime: ""
-    # [secret] env: OAGENT_DB_READER_DSN
-    dsn: ""
-    # env: OAGENT_DB_READER_MAX_IDLE_CONNS
-    maxIdleConns: ""
-    # env: OAGENT_DB_READER_MAX_OPEN_CONNS
-    maxOpenConns: ""
-    # env: OAGENT_DB_READER_ROLE
-    role: ""
-  # env: OAGENT_DB_ROLE
-  role: ""
-  # [bootstrap] env: OAGENT_DB_SCHEMA
-  schema: public
-  # [bootstrap] env: OAGENT_DB_TABLE_PREFIX
-  tablePrefix: ""
+  # env: OAGENT_DB_DRIVER
+  driver: postgres
 
 # [required, bootstrap] env: OAGENT_ENV
 env: production
@@ -172,6 +131,51 @@ nats:
   # env: OAGENT_NATS_USER
   user: ""
 
+postgres:
+  # env: OAGENT_POSTGRES_CONN_MAX_IDLE_TIME
+  connMaxIdleTime: ""
+  # env: OAGENT_POSTGRES_CONN_MAX_LIFETIME
+  connMaxLifetime: ""
+  # env: OAGENT_POSTGRES_CONNECT_BACKOFF
+  connectBackoff: 250ms
+  # env: OAGENT_POSTGRES_CONNECT_TIMEOUT
+  connectTimeout: 5s
+  # [required, secret] env: OAGENT_POSTGRES_DSN
+  dsn: ""
+  health:
+    # env: OAGENT_POSTGRES_HEALTH_INTERVAL
+    interval: 30s
+    # env: OAGENT_POSTGRES_HEALTH_TIMEOUT
+    timeout: 2s
+  # env: OAGENT_POSTGRES_MAX_IDLE_CONNS
+  maxIdleConns: ""
+  # env: OAGENT_POSTGRES_MAX_OPEN_CONNS
+  maxOpenConns: ""
+  migrator:
+    # [secret] env: OAGENT_POSTGRES_MIGRATOR_DSN
+    dsn: ""
+    # env: OAGENT_POSTGRES_MIGRATOR_ROLE
+    role: ""
+  reader:
+    # env: OAGENT_POSTGRES_READER_CONN_MAX_IDLE_TIME
+    connMaxIdleTime: ""
+    # env: OAGENT_POSTGRES_READER_CONN_MAX_LIFETIME
+    connMaxLifetime: ""
+    # [secret] env: OAGENT_POSTGRES_READER_DSN
+    dsn: ""
+    # env: OAGENT_POSTGRES_READER_MAX_IDLE_CONNS
+    maxIdleConns: ""
+    # env: OAGENT_POSTGRES_READER_MAX_OPEN_CONNS
+    maxOpenConns: ""
+    # env: OAGENT_POSTGRES_READER_ROLE
+    role: ""
+  # env: OAGENT_POSTGRES_ROLE
+  role: ""
+  # [bootstrap] env: OAGENT_POSTGRES_SCHEMA
+  schema: public
+  # [bootstrap] env: OAGENT_POSTGRES_TABLE_PREFIX
+  tablePrefix: ""
+
 queue:
   # env: OAGENT_QUEUE_DRIVER
   driver: nats
@@ -182,10 +186,10 @@ rateLimit:
   auth:
     # env: OAGENT_RATE_LIMIT_AUTH_ENABLED
     enabled: false
+  # env: OAGENT_RATE_LIMIT_DRIVER
+  driver: memory
   # env: OAGENT_RATE_LIMIT_MAX_KEYS
   maxKeys: 100000
-  # env: OAGENT_RATE_LIMIT_STORE
-  store: memory
 
 redis:
   # env: OAGENT_REDIS_CONNECT_TIMEOUT

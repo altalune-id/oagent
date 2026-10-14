@@ -20,7 +20,7 @@ const (
 
 func setRequiredEnv(t *testing.T) {
 	t.Helper()
-	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_POSTGRES_DSN", "postgres://localhost/db")
 	setSecretEnv(t)
 }
 

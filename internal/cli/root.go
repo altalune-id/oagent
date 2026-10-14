@@ -378,9 +378,9 @@ func registerConfigFlags(fs *pflag.FlagSet) {
 	fs.String("env", "", "config override: env (development|production)")
 	fs.String("http-addr", "", "config override: http.addr")
 	fs.String("http-base-path", "", "config override: http.basePath")
-	fs.String("db-dsn", "", "config override: db.dsn")
-	fs.String("db-schema", "", "config override: db.schema")
-	fs.String("db-table-prefix", "", "config override: db.tablePrefix")
+	fs.String("postgres-dsn", "", "config override: postgres.dsn")
+	fs.String("postgres-schema", "", "config override: postgres.schema")
+	fs.String("postgres-table-prefix", "", "config override: postgres.tablePrefix")
 	fs.Bool("db-auto-migrate", false, "config override: db.autoMigrate")
 	fs.Bool("scheduler-enabled", false, "config override: scheduler.enabled")
 	fs.Bool("queue-enabled", false, "config override: queue.enabled")
@@ -393,9 +393,9 @@ func bindConfigFlags(loader *config.Loader, cmd *cobra.Command) error {
 		{"env", "env"},
 		{"http.addr", "http-addr"},
 		{"http.basePath", "http-base-path"},
-		{"db.dsn", "db-dsn"},
-		{"db.schema", "db-schema"},
-		{"db.tablePrefix", "db-table-prefix"},
+		{"postgres.dsn", "postgres-dsn"},
+		{"postgres.schema", "postgres-schema"},
+		{"postgres.tablePrefix", "postgres-table-prefix"},
 		{"db.autoMigrate", "db-auto-migrate"},
 		{"scheduler.enabled", "scheduler-enabled"},
 		{"queue.enabled", "queue-enabled"},

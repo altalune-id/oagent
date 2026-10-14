@@ -41,7 +41,7 @@ func TestBuildServices_AnOrgIsNotCreatedWithoutItsDefaultProject(t *testing.T) {
 	cfg := devLocalConfig()
 	cfg.Mode = config.ModeCloud
 	sqlDB, schemaName := pgtest.Migrated(t)
-	cfg.DB.Schema = schemaName
+	cfg.Postgres.Schema = schemaName
 	svcs := buildServices(kernel.Kernel{Pool: db.Pool{W: sqlDB, R: sqlDB}, Reporter: apperror.NewReporter(nil, false)}, cfg)
 	ctx := t.Context()
 	_, err := sqlDB.ExecContext(ctx, `ALTER TABLE `+schemaName+`.projects ADD CONSTRAINT refuse_default CHECK (slug <> 'default')`)

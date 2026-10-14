@@ -10,8 +10,8 @@ import (
 )
 
 func TestEnvVar(t *testing.T) {
-	assert.Equal(t, "OAGENT_DB_TABLE_PREFIX", EnvVar("db.tablePrefix"))
-	assert.Equal(t, "OAGENT_DB_MAX_IDLE_CONNS", EnvVar("db.maxIdleConns"))
+	assert.Equal(t, "OAGENT_POSTGRES_TABLE_PREFIX", EnvVar("postgres.tablePrefix"))
+	assert.Equal(t, "OAGENT_POSTGRES_MAX_IDLE_CONNS", EnvVar("postgres.maxIdleConns"))
 	assert.Equal(t, "OAGENT_HTTP_BASE_URL", EnvVar("http.baseURL"))
 }
 

@@ -79,7 +79,7 @@ func TestBoot(t *testing.T) {
 	migrateUp = func(context.Context, *sql.DB, migrator.Config) error { return nil }
 	withLock = passthroughLock
 
-	app, err := Boot(context.Background(), config.Config{DB: config.DBConfig{DSN: "x", Schema: "public", AutoMigrate: true}}, nil)
+	app, err := Boot(context.Background(), config.Config{DB: config.DBConfig{AutoMigrate: true}, Postgres: config.PostgresConfig{DSN: "x", Schema: "public"}}, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, app.Services.Orgs)
 	assert.Same(t, poolDB, app.Kernel.Pool.W)
@@ -110,7 +110,7 @@ func TestBoot_SchedulerEnabled(t *testing.T) {
 	}
 
 	app, err := Boot(context.Background(), config.Config{
-		DB:        config.DBConfig{DSN: "x"},
+		Postgres:  config.PostgresConfig{DSN: "x"},
 		Scheduler: config.SchedulerConfig{Enabled: true},
 	}, testLogger())
 	require.NoError(t, err)
@@ -127,7 +127,7 @@ func TestBoot_WithSchedulerFalse(t *testing.T) {
 	}
 
 	app, err := Boot(context.Background(),
-		config.Config{DB: config.DBConfig{DSN: "x"}, Scheduler: config.SchedulerConfig{Enabled: true}},
+		config.Config{Postgres: config.PostgresConfig{DSN: "x"}, Scheduler: config.SchedulerConfig{Enabled: true}},
 		testLogger(), WithScheduler(false))
 	require.NoError(t, err)
 	assert.Len(t, app.Supervisor.Workers(), 5) // http + db-health + outbox + mailqueue + apikey-usage
@@ -143,7 +143,7 @@ func TestBoot_SchedulerOnlyDisabled(t *testing.T) {
 	}
 
 	_, err := Boot(context.Background(),
-		config.Config{DB: config.DBConfig{DSN: "x"}}, testLogger(), WithSchedulerOnly(true))
+		config.Config{Postgres: config.PostgresConfig{DSN: "x"}}, testLogger(), WithSchedulerOnly(true))
 	assert.Error(t, err)
 }
 
@@ -156,7 +156,7 @@ func TestBoot_ConsumerOnlyDisabled(t *testing.T) {
 	}
 
 	_, err := Boot(context.Background(),
-		config.Config{DB: config.DBConfig{DSN: "x"}}, testLogger(), WithConsumerOnly(true))
+		config.Config{Postgres: config.PostgresConfig{DSN: "x"}}, testLogger(), WithConsumerOnly(true))
 	assert.Error(t, err)
 }
 
@@ -222,7 +222,7 @@ func TestBoot_NoAutoMigrate(t *testing.T) {
 		return nil, errors.New("should not be called")
 	}
 
-	app, err := Boot(context.Background(), config.Config{DB: config.DBConfig{DSN: "x", AutoMigrate: false}}, nil)
+	app, err := Boot(context.Background(), config.Config{DB: config.DBConfig{AutoMigrate: false}, Postgres: config.PostgresConfig{DSN: "x"}}, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, app.Services.Orgs)
 	assert.False(t, migratorCalled)
@@ -244,7 +244,7 @@ func TestBoot_PoolError(t *testing.T) {
 		return db.Pool{}, errors.New("boom")
 	}
 
-	_, err := Boot(context.Background(), config.Config{DB: config.DBConfig{DSN: "x"}}, nil)
+	_, err := Boot(context.Background(), config.Config{Postgres: config.PostgresConfig{DSN: "x"}}, nil)
 	assert.Error(t, err)
 	assert.True(t, called)
 }
@@ -260,7 +260,7 @@ func TestBoot_MigratorError(t *testing.T) {
 	}
 	openMigrator = func(context.Context, string, migrator.Config) (*sql.DB, error) { return nil, errors.New("boom") }
 
-	_, err := Boot(context.Background(), config.Config{DB: config.DBConfig{DSN: "x", AutoMigrate: true}}, nil)
+	_, err := Boot(context.Background(), config.Config{DB: config.DBConfig{AutoMigrate: true}, Postgres: config.PostgresConfig{DSN: "x"}}, nil)
 	assert.Error(t, err)
 	assert.True(t, called)
 }
@@ -279,7 +279,7 @@ func TestBoot_MigrateError(t *testing.T) {
 	migrateUp = func(context.Context, *sql.DB, migrator.Config) error { return errors.New("boom") }
 	withLock = passthroughLock
 
-	_, err := Boot(context.Background(), config.Config{DB: config.DBConfig{DSN: "x", AutoMigrate: true}}, nil)
+	_, err := Boot(context.Background(), config.Config{DB: config.DBConfig{AutoMigrate: true}, Postgres: config.PostgresConfig{DSN: "x"}}, nil)
 	assert.Error(t, err)
 	assert.True(t, called)
 }
@@ -296,7 +296,7 @@ func TestBoot_LockError(t *testing.T) {
 	openMigrator = func(context.Context, string, migrator.Config) (*sql.DB, error) { return migDB, nil }
 	withLock = func(context.Context, *sql.DB, string, func(context.Context) error) error { return errors.New("boom") }
 
-	_, err := Boot(context.Background(), config.Config{DB: config.DBConfig{DSN: "x", AutoMigrate: true}}, nil)
+	_, err := Boot(context.Background(), config.Config{DB: config.DBConfig{AutoMigrate: true}, Postgres: config.PostgresConfig{DSN: "x"}}, nil)
 	assert.Error(t, err)
 }
 
@@ -402,19 +402,19 @@ func TestMigrationLockName(t *testing.T) {
 }
 
 func TestMigratorDSN(t *testing.T) {
-	assert.Equal(t, "md", migratorDSN(config.DBConfig{DSN: "d", Migrator: config.MigratorConfig{DSN: "md"}}))
-	assert.Equal(t, "d", migratorDSN(config.DBConfig{DSN: "d"}))
+	assert.Equal(t, "md", migratorDSN(config.PostgresConfig{DSN: "d", Migrator: config.PostgresMigratorConfig{DSN: "md"}}))
+	assert.Equal(t, "d", migratorDSN(config.PostgresConfig{DSN: "d"}))
 }
 
 func TestDBConfig(t *testing.T) {
-	out := dbConfig(config.DBConfig{
+	out := dbConfig(config.PostgresConfig{
 		DSN:          "d",
 		Schema:       "s",
 		TablePrefix:  "t",
 		Role:         "r",
 		MaxOpenConns: 5,
-		Migrator:     config.MigratorConfig{DSN: "md", Role: "mr"},
-		Reader:       config.ReaderConfig{DSN: "rd", Role: "rr", MaxOpenConns: 3},
+		Migrator:     config.PostgresMigratorConfig{DSN: "md", Role: "mr"},
+		Reader:       config.PostgresReaderConfig{DSN: "rd", Role: "rr", MaxOpenConns: 3},
 	})
 	assert.Equal(t, "d", out.DSN)
 	assert.Equal(t, "t", out.TablePrefix)
@@ -478,8 +478,8 @@ func TestBoot_MailerError(t *testing.T) {
 	}
 
 	_, err := Boot(context.Background(), config.Config{
-		DB:   config.DBConfig{DSN: "x"},
-		Mail: config.MailConfig{Driver: config.MailDriverSMTP},
+		Postgres: config.PostgresConfig{DSN: "x"},
+		Mail:     config.MailConfig{Driver: config.MailDriverSMTP},
 	}, testLogger())
 	assert.ErrorContains(t, err, "mail")
 }

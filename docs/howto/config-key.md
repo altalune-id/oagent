@@ -7,7 +7,7 @@ Use this when an operator needs a new setting. The loader reads defaults, then a
 - [ ] **Is it a knob at all?** A cadence, a batch size or a limit that changes domain behaviour stays a constant in the owning package (`outbox.MaxAttempts`, `auth.LoginIPRule`). A key is for something an operator must pick per deployment.
 - [ ] **Name and block.** `camelCase` YAML segments under the block that owns it (`rateLimit.maxKeys`, `redis.connectTimeout`). A new block gets its own file (`config/redis.go`) when it brings types or rules.
 - [ ] **Default.** Pick a safe one so most deployments set nothing.
-- [ ] **Required or optional?** `.env.example` and `config.example.yml` stay minimal: only what selfhosted needs to start (`db.dsn`, `db.migrator.dsn`, `http.stateSecret`, `secrets.encryptionKey`). Prefer a safe default over a new required key.
+- [ ] **Required or optional?** `.env.example` and `config.example.yml` stay minimal: only what selfhosted needs to start (`postgres.dsn`, `postgres.migrator.dsn`, `http.stateSecret`, `secrets.encryptionKey`). Prefer a safe default over a new required key.
 - [ ] **Awareness.** `required`, `bootstrap` (locked at first boot), `secret` (never printed), or nothing.
 - [ ] **Rule.** One field alone: a `validate:"..."` tag. Depends on another field or the environment: a function.
 
@@ -30,7 +30,7 @@ Use this when an operator needs a new setting. The loader reads defaults, then a
 5. **Cross-field rule** as a method `func (c *Config) validate<Block>() error`, appended to the list in `Config.Validate` (`config/config.go`). It returns the shared error types, named by the YAML key, and never the value:
 
    ```go
-   if c.RateLimit.Store == RateLimitStoreMemory && c.RateLimit.MaxKeys < 1 {
+   if c.RateLimit.Driver == RateLimitDriverMemory && c.RateLimit.MaxKeys < 1 {
    	return &InvalidSettingError{Key: "rateLimit.maxKeys", Reason: "must be at least 1"}
    }
    ```
@@ -39,7 +39,7 @@ Use this when an operator needs a new setting. The loader reads defaults, then a
 
 6. **Tests** in `config/<block>_test.go`: `TestLoad_<Block>Defaults`, `TestLoad_<Block>FromEnv`, `TestValidate_<Block>`. Add one valid and one invalid row per rule to `TestValidate_EveryRule` (`config/validate_test.go`). A secret key gets a row in `TestValidate_NoSecretInMessages`.
 7. **Boot** maps the value onto the consumer's own options (`natsConfig` in `internal/boot/nats.go`, `redisConfig` in `internal/boot/redis.go`, `buildLimiters` in `internal/boot/ratelimit.go`). Root and kernel packages (`ratelimit`, `scheduler`, `worker`, `internal/kernel/nats`) carry no `mapstructure` tags and never import `config`.
-   A connection (`redis.*`, `nats.*`) is its own block, separate from the features that use it; each feature picks its driver in its own block (`rateLimit.store`, `queue.driver`) and `<Conn>Features()` decides whether boot opens the connection at all.
+   A connection (`redis.*`, `nats.*`) is its own block, separate from the features that use it; each feature picks its driver in its own block (`rateLimit.driver`, `queue.driver`) and `<Conn>Features()` decides whether boot opens the connection at all.
 8. **Reference files.** Run `make config-examples`; it rewrites `.env.reference` and `config.reference.yml` through `cmd/gen-config-example`. Never edit those two by hand. Edit `.env.example` and `config.example.yml` by hand, and only for a key that is truly required, with a one-line hint (`# generate: openssl rand -hex 32`).
 9. **Docs.** When the key changes wiring, a worker or a feature's behaviour, update `internal/boot/README.md` in the same commit (the Redis and Rate limits sections list their keys).
 

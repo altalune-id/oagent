@@ -25,21 +25,21 @@ func buildLimiters(cfg config.Config, rdb redis.UniversalClient, log *slog.Logge
 	if !r.AnyEnabled() {
 		return out, nil
 	}
-	var store ratelimit.Limiter
-	switch r.Store {
-	case "", config.RateLimitStoreMemory:
+	var limiter ratelimit.Limiter
+	switch r.Driver {
+	case "", config.RateLimitDriverMemory:
 		m := memory.New(r.MaxKeys, memory.WithLogger(log))
-		store, out.janitor = m, m
-	case config.RateLimitStoreRedis:
+		limiter, out.janitor = m, m
+	case config.RateLimitDriverRedis:
 		if rdb == nil {
-			return limiters{}, errors.New("boot: rateLimit.store is redis but no Redis connection was opened")
+			return limiters{}, errors.New("boot: rateLimit.driver is redis but no Redis connection was opened")
 		}
-		store = ratelimitredis.New(rdb, cfg.Redis.KeyPrefix+"rl:")
+		limiter = ratelimitredis.New(rdb, cfg.Redis.KeyPrefix+"rl:")
 	default:
-		return limiters{}, fmt.Errorf("boot: rateLimit.store %q is not supported", r.Store)
+		return limiters{}, fmt.Errorf("boot: rateLimit.driver %q is not supported", r.Driver)
 	}
 	if r.Auth.Enabled {
-		out.auth = store
+		out.auth = limiter
 	}
 	return out, nil
 }

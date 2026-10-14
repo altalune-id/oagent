@@ -11,7 +11,7 @@ func TestLoad_RateLimitDefaults(t *testing.T) {
 	c := validConfig(t)
 	assert.False(t, c.RateLimit.Auth.Enabled)
 	assert.False(t, c.RateLimit.AnyEnabled())
-	assert.Equal(t, RateLimitStoreMemory, c.RateLimit.Store)
+	assert.Equal(t, RateLimitDriverMemory, c.RateLimit.Driver)
 	assert.Equal(t, 100_000, c.RateLimit.MaxKeys)
 	assert.Zero(t, c.HTTP.TrustedProxyHops)
 }
@@ -20,7 +20,7 @@ func TestLoad_RateLimitFromEnv(t *testing.T) {
 	setRequiredEnv(t)
 	t.Setenv("OAGENT_RATE_LIMIT_AUTH_ENABLED", "true")
 	t.Setenv("OAGENT_RATE_LIMIT_MAX_KEYS", "500")
-	t.Setenv("OAGENT_RATE_LIMIT_STORE", "memory")
+	t.Setenv("OAGENT_RATE_LIMIT_DRIVER", "memory")
 	t.Setenv("OAGENT_HTTP_TRUSTED_PROXY_HOPS", "2")
 	c, err := Load(missingPath(t))
 	require.NoError(t, err)
@@ -41,7 +41,7 @@ func TestValidate_RateLimit(t *testing.T) {
 		},
 		"redis with a url ok": {
 			mutate: func(c *Config) {
-				c.RateLimit.Store = RateLimitStoreRedis
+				c.RateLimit.Driver = RateLimitDriverRedis
 				c.RateLimit.Auth.Enabled = true
 				c.Redis.URL = "redis://localhost:6379/0"
 			},
@@ -49,24 +49,24 @@ func TestValidate_RateLimit(t *testing.T) {
 		},
 		"redis without a url": {
 			mutate: func(c *Config) {
-				c.RateLimit.Store = RateLimitStoreRedis
+				c.RateLimit.Driver = RateLimitDriverRedis
 				c.RateLimit.Auth.Enabled = true
 			},
 			check: func(t *testing.T, err error) {
 				missingSetting("redis.url")(t, err)
-				assert.ErrorContains(t, err, "rateLimit.store")
+				assert.ErrorContains(t, err, "rateLimit.driver")
 			},
 		},
 		"redis ignores maxKeys": {
 			mutate: func(c *Config) {
-				c.RateLimit.Store = RateLimitStoreRedis
+				c.RateLimit.Driver = RateLimitDriverRedis
 				c.RateLimit.MaxKeys = 0
 			},
 			check: func(t *testing.T, err error) { assert.NoError(t, err) },
 		},
-		"unknown store": {
-			mutate: func(c *Config) { c.RateLimit.Store = "carrier-pigeon" },
-			check:  invalidSetting("rateLimit.store"),
+		"unknown driver": {
+			mutate: func(c *Config) { c.RateLimit.Driver = "carrier-pigeon" },
+			check:  invalidSetting("rateLimit.driver"),
 		},
 		"memory without keys": {
 			mutate: func(c *Config) { c.RateLimit.MaxKeys = 0 },

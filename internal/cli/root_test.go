@@ -32,7 +32,7 @@ func (f fakeApp) AddMember(context.Context, string, string, member.Role) (*membe
 
 func setServeEnv(t *testing.T) {
 	t.Helper()
-	t.Setenv("OAGENT_DB_DSN", "postgres://localhost/db")
+	t.Setenv("OAGENT_POSTGRES_DSN", "postgres://localhost/db")
 	t.Setenv("OAGENT_HTTP_STATE_SECRET", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 	t.Setenv("OAGENT_SECRETS_ENCRYPTION_KEY", "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210")
 	t.Setenv("OAGENT_MAIL_DRIVER", "smtp")
@@ -72,7 +72,7 @@ func TestServe_InvokesBoot(t *testing.T) {
 	buf, err := runRoot(t, bootFn, "serve")
 
 	require.NoError(t, err)
-	assert.Equal(t, "postgres://localhost/db", gotCfg.DB.DSN)
+	assert.Equal(t, "postgres://localhost/db", gotCfg.Postgres.DSN)
 	assert.Equal(t, 4, gotOpts)
 	assert.NotEmpty(t, gotReqID)
 	assert.Contains(t, buf.String(), "listening")
@@ -99,7 +99,7 @@ func TestServe_BootError(t *testing.T) {
 }
 
 func TestServe_ConfigError(t *testing.T) {
-	t.Setenv("OAGENT_DB_DSN", "")
+	t.Setenv("OAGENT_POSTGRES_DSN", "")
 	noop := func(context.Context, config.Config, *slog.Logger, ...boot.Option) (cli.App, error) {
 		return fakeApp{}, nil
 	}
@@ -155,19 +155,19 @@ func TestServe_ConfigFileMissing(t *testing.T) {
 func TestServe_FlagOverridesConfig(t *testing.T) {
 	setServeEnv(t)
 	t.Setenv("OAGENT_MODE", "cloud")
-	t.Setenv("OAGENT_DB_DSN", "postgres://env/db")
+	t.Setenv("OAGENT_POSTGRES_DSN", "postgres://env/db")
 	var gotCfg config.Config
 	bootFn := func(_ context.Context, cfg config.Config, _ *slog.Logger, _ ...boot.Option) (cli.App, error) {
 		gotCfg = cfg
 		return fakeApp{}, nil
 	}
 
-	_, err := runRoot(t, bootFn, "serve", "--mode", "selfhosted", "--http-base-path", "/app", "--db-dsn", "postgres://flag/db")
+	_, err := runRoot(t, bootFn, "serve", "--mode", "selfhosted", "--http-base-path", "/app", "--postgres-dsn", "postgres://flag/db")
 
 	require.NoError(t, err)
 	assert.Equal(t, config.ModeSelfhosted, gotCfg.Mode)
 	assert.Equal(t, "/app", gotCfg.HTTP.BasePath)
-	assert.Equal(t, "postgres://flag/db", gotCfg.DB.DSN)
+	assert.Equal(t, "postgres://flag/db", gotCfg.Postgres.DSN)
 }
 
 func TestServe_NATSURLFlagOverridesConfig(t *testing.T) {

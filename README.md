@@ -74,7 +74,7 @@ MIG_PW=gen SVC_PW=gen scripts/db/provision.sh
 
 - Run it without the variables to be asked for each value.
 - `gen` creates a password and writes it to `oagent-db-credentials.env` (mode 0600). Passwords are never printed.
-- The script prints the matching `db.dsn`, `db.migrator.dsn`, `db.migrator.role` and `db.schema` settings.
+- The script prints the matching `postgres.dsn`, `postgres.migrator.dsn`, `postgres.migrator.role` and `postgres.schema` settings.
 
 ## Run with Docker
 
@@ -83,8 +83,8 @@ You don't need Go or Node to run oagent. The image holds the same binary with th
 ```sh
 docker build -t oagent .
 docker run --rm -p 5150:5150 \
-  -e OAGENT_DB_DSN=postgres://... \
-  -e OAGENT_DB_MIGRATOR_DSN=postgres://... \
+  -e OAGENT_POSTGRES_DSN=postgres://... \
+  -e OAGENT_POSTGRES_MIGRATOR_DSN=postgres://... \
   -e OAGENT_HTTP_STATE_SECRET=$(openssl rand -hex 32) \
   -e OAGENT_SECRETS_ENCRYPTION_KEY=$(openssl rand -hex 32) \
   oagent

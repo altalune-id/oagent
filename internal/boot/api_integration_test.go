@@ -62,7 +62,7 @@ func newAPIFixture(t *testing.T) *apiFixture {
 	cfg.Auth.SessionTTL = 24 * time.Hour
 	cfg.Auth.Genesis = config.GenesisConfig{Email: "root@example.com", Password: "genesis-password"}
 	sqlDB, schemaName := pgtest.Migrated(t)
-	cfg.DB.Schema = schemaName
+	cfg.Postgres.Schema = schemaName
 	svcs := buildServices(kernel.Kernel{Pool: db.Pool{W: sqlDB, R: sqlDB}, Reporter: apperror.NewReporter(nil, false)}, cfg)
 	require.NoError(t, buildAuthSecrets(cfg, svcs, testLogger()))
 	svcs.Caps.EnvGenesis = true

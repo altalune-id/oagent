@@ -53,7 +53,7 @@ The `ratelimit` root package is generic: a `Rule` (GCRA: `Rate` calls per `Per`,
 
 ## Build: a new store
 
-A driver subpackage `ratelimit/<driver>` that implements `ratelimit.Limiter`, validates the rule, and returns an error (never an allowed call) when its backend fails. It runs the shared contract, `ratelimittest.Run(t, func(t *testing.T, clock *ratelimittest.Clock) ratelimit.Limiter {...})`. Add it to the `oneof` tag on `rateLimit.store` and the switch in `buildLimiters`. A store on Redis takes the plain `redis.UniversalClient` and a prefix ending in its namespace, and the feature that selects it is listed in `Config.RedisFeatures`, so Redis is opened only then.
+A driver subpackage `ratelimit/<driver>` that implements `ratelimit.Limiter`, validates the rule, and returns an error (never an allowed call) when its backend fails. It runs the shared contract, `ratelimittest.Run(t, func(t *testing.T, clock *ratelimittest.Clock) ratelimit.Limiter {...})`. Add it to the `oneof` tag on `rateLimit.driver` and the switch in `buildLimiters`. A store on Redis takes the plain `redis.UniversalClient` and a prefix ending in its namespace, and the feature that selects it is listed in `Config.RedisFeatures`, so Redis is opened only then.
 
 ## Review
 

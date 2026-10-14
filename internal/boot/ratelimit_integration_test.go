@@ -53,7 +53,7 @@ func postLogin(h http.Handler, email, password, ip string) *httptest.ResponseRec
 
 // Review Focus 2: with the default config, 100 failed logins for one email from one IP never give 429.
 func TestLoginRateLimit_OffByDefault(t *testing.T) {
-	h := loginServer(t, config.RateLimitConfig{Store: config.RateLimitStoreMemory, MaxKeys: 100_000})
+	h := loginServer(t, config.RateLimitConfig{Driver: config.RateLimitDriverMemory, MaxKeys: 100_000})
 	for i := range 100 {
 		rec := postLogin(h, "root@example.com", "wrong-password", "192.0.2.1")
 		require.Equal(t, http.StatusUnauthorized, rec.Code, "attempt %d", i+1)
@@ -64,7 +64,7 @@ func TestLoginRateLimit_OffByDefault(t *testing.T) {
 // Review Focus 3: with rateLimit.auth.enabled, login is limited per email across IPs; a correct login before the limit works.
 func TestLoginRateLimit_Enabled(t *testing.T) {
 	h := loginServer(t, config.RateLimitConfig{
-		Store: config.RateLimitStoreMemory, MaxKeys: 100_000, Auth: config.RateLimitGroupConfig{Enabled: true},
+		Driver: config.RateLimitDriverMemory, MaxKeys: 100_000, Auth: config.RateLimitGroupConfig{Enabled: true},
 	})
 	for i := range 4 {
 		require.Equal(t, http.StatusUnauthorized, postLogin(h, "root@example.com", "wrong-password", "192.0.2."+strconv.Itoa(i+1)).Code)
@@ -83,7 +83,7 @@ func TestLoginRateLimit_Enabled(t *testing.T) {
 }
 
 func redisRateLimit() config.RateLimitConfig {
-	return config.RateLimitConfig{Store: config.RateLimitStoreRedis, Auth: config.RateLimitGroupConfig{Enabled: true}}
+	return config.RateLimitConfig{Driver: config.RateLimitDriverRedis, Auth: config.RateLimitGroupConfig{Enabled: true}}
 }
 
 // Review Focus 2: two servers on one Redis count one email's failed logins together.

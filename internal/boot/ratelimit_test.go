@@ -24,8 +24,8 @@ func TestBuildLimiters_OffByDefault(t *testing.T) {
 }
 
 func TestBuildLimiters_AuthOnWithMemory(t *testing.T) {
-	for _, store := range []config.RateLimitStore{"", config.RateLimitStoreMemory} {
-		cfg := config.Config{RateLimit: config.RateLimitConfig{Store: store, MaxKeys: 7, Auth: config.RateLimitGroupConfig{Enabled: true}}}
+	for _, driver := range []config.RateLimitDriver{"", config.RateLimitDriverMemory} {
+		cfg := config.Config{RateLimit: config.RateLimitConfig{Driver: driver, MaxKeys: 7, Auth: config.RateLimitGroupConfig{Enabled: true}}}
 		l, err := buildLimiters(cfg, nil, testLogger())
 		require.NoError(t, err)
 		m, ok := l.auth.(*memory.Store)
@@ -34,10 +34,10 @@ func TestBuildLimiters_AuthOnWithMemory(t *testing.T) {
 	}
 }
 
-func TestBuildLimiters_UnknownStore(t *testing.T) {
-	cfg := config.Config{RateLimit: config.RateLimitConfig{Store: "pigeon", Auth: config.RateLimitGroupConfig{Enabled: true}}}
+func TestBuildLimiters_UnknownDriver(t *testing.T) {
+	cfg := config.Config{RateLimit: config.RateLimitConfig{Driver: "pigeon", Auth: config.RateLimitGroupConfig{Enabled: true}}}
 	_, err := buildLimiters(cfg, nil, testLogger())
-	assert.ErrorContains(t, err, "rateLimit.store")
+	assert.ErrorContains(t, err, "rateLimit.driver")
 }
 
 func TestBuildLimiters_AuthOnWithRedis(t *testing.T) {
@@ -83,8 +83,8 @@ func TestBoot_RateLimitAuthEnabled(t *testing.T) {
 	}
 
 	app, err := Boot(context.Background(), config.Config{
-		DB:        config.DBConfig{DSN: "x"},
-		RateLimit: config.RateLimitConfig{Store: config.RateLimitStoreMemory, MaxKeys: 10, Auth: config.RateLimitGroupConfig{Enabled: true}},
+		Postgres:  config.PostgresConfig{DSN: "x"},
+		RateLimit: config.RateLimitConfig{Driver: config.RateLimitDriverMemory, MaxKeys: 10, Auth: config.RateLimitGroupConfig{Enabled: true}},
 	}, testLogger())
 	require.NoError(t, err)
 	assert.Contains(t, workerNames(app), "ratelimit.janitor")
@@ -93,7 +93,7 @@ func TestBoot_RateLimitAuthEnabled(t *testing.T) {
 	require.NoError(t, app.Close(context.Background()))
 }
 
-func TestBoot_RateLimitStoreError(t *testing.T) {
+func TestBoot_RateLimitDriverError(t *testing.T) {
 	restoreSeams(t)
 	poolDB, _ := newDB(t)
 	setupTelemetry = stubTelemetry(nil, nil)
@@ -101,10 +101,10 @@ func TestBoot_RateLimitStoreError(t *testing.T) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	_, err := Boot(context.Background(), config.Config{
-		DB:        config.DBConfig{DSN: "x"},
-		RateLimit: config.RateLimitConfig{Store: "pigeon", Auth: config.RateLimitGroupConfig{Enabled: true}},
+		Postgres:  config.PostgresConfig{DSN: "x"},
+		RateLimit: config.RateLimitConfig{Driver: "pigeon", Auth: config.RateLimitGroupConfig{Enabled: true}},
 	}, testLogger())
-	assert.ErrorContains(t, err, "rateLimit.store")
+	assert.ErrorContains(t, err, "rateLimit.driver")
 }
 
 func TestAuthLimits(t *testing.T) {

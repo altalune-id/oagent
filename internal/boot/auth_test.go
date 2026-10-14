@@ -35,11 +35,11 @@ func authKernel(t *testing.T, log *slog.Logger) kernel.Kernel {
 
 func devLocalConfig() config.Config {
 	return config.Config{
-		Mode: config.ModeSelfhosted,
-		Env:  config.EnvDevelopment,
-		HTTP: config.HTTPConfig{Addr: ":5150"},
-		DB:   config.DBConfig{Schema: "public"},
-		Auth: config.AuthConfig{Mode: config.AuthModeLocal},
+		Mode:     config.ModeSelfhosted,
+		Env:      config.EnvDevelopment,
+		HTTP:     config.HTTPConfig{Addr: ":5150"},
+		Postgres: config.PostgresConfig{Schema: "public"},
+		Auth:     config.AuthConfig{Mode: config.AuthModeLocal},
 	}
 }
 

@@ -53,7 +53,7 @@ func secretsLog(log *slog.Logger, caps capabilities.Capabilities) *slog.Logger {
 // SECURITY: without a valid key sessions stay in memory, so nothing is ever sealed with a throwaway key.
 func buildSessionStore(k kernel.Kernel, cfg config.Config, sl sealer.Sealer, log *slog.Logger) session.Store {
 	if _, err := sealer.ParseKey(cfg.Secrets.EncryptionKey); err == nil {
-		return session.NewPostgresStore(k.Pool.W, cfg.DB.Schema, cfg.DB.TablePrefix, sl, k.Reporter.Unexpected)
+		return session.NewPostgresStore(k.Pool.W, cfg.Postgres.Schema, cfg.Postgres.TablePrefix, sl, k.Reporter.Unexpected)
 	}
 	log.Warn("boot: secrets.encryptionKey is missing or invalid; sessions are kept in memory and reset on restart")
 	return session.NewMemoryStore()

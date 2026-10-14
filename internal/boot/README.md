@@ -202,7 +202,7 @@ is snapshotted and no history is kept (a known limit); the gate then uses
 ## Redis
 
 oagent has one Redis connection, `redis.*`, and opens it **only when a feature selects it**. Each
-feature picks its store in its own block; today only `rateLimit.store: redis` does (with a rate
+feature picks its driver in its own block; today only `rateLimit.driver: redis` does (with a rate
 limit group on). With the default config oagent never connects to Redis; a `redis.url` that no
 feature uses is ignored with one INFO line.
 
@@ -284,7 +284,7 @@ an API gateway). Each group has its own switch and all groups share one store. T
 `auth` (`rateLimit.auth.enabled`). With every group off, no store and no janitor exist and every
 group gets `ratelimit.Disabled()`, which allows every call.
 
-- **Store:** `rateLimit.store` picks the driver: `memory` (default, per server) or `redis` (shared by
+- **Driver:** `rateLimit.driver` picks the store: `memory` (default, per server) or `redis` (shared by
   every server). The memory store runs GCRA over a map of at most
   `rateLimit.maxKeys` keys (default 100 000), and the `ratelimit.janitor` worker drops refilled
   keys every minute. When it is full, a new key first drops refilled keys (at most once a second),
@@ -299,7 +299,7 @@ group gets `ratelimit.Disabled()`, which allows every call.
   still agree. It uses the shared connection (see Redis above); a Redis error or timeout fails closed
   (503), and `/readyz` reports not ready while Redis does not answer.
 - **Per instance:** the memory store counts on one replica only. With several replicas, limit at the
-  edge or use `store: redis` to share the limits across servers.
+  edge or use `driver: redis` to share the limits across servers.
 - **Where (auth group):** `buildRoutes` hands one `auth.Limits` (the auth limiter and
   `http.trustedProxyHops`) to the login page and the invite pages. `POST /login` counts every attempt per
   client IP (60 per 15 minutes) and failed attempts per email hash (10 per 15 minutes, 5 at once; a
@@ -327,37 +327,37 @@ group gets `ratelimit.Disabled()`, which allows every call.
 
 The supervisor runs these next to the HTTP server.
 
-| Worker                    | What it does                                                                                       | When it runs                                                    |
-| ------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `http`                    | the HTTP server (all surfaces above)                                                               | always                                                          |
-| `db-health`               | pings the pool; `health` reads it for `/readyz`                                                    | always                                                          |
-| `redis-health`            | pings Redis every 5 s; `health` reads it for `/readyz`                                             | when a feature uses Redis                                       |
-| `nats-health`             | checks the NATS connection every 5 s; `health` reads it for `/readyz`                              | when a feature uses NATS                                        |
-| `outbox`                  | claims due outbox entries, delivers signed webhooks                                                | always                                                          |
-| `mailqueue.send`          | claims due queued mail, sends it through the mailer, erases the sealed payload once sent or failed | always                                                          |
-| `apikey-usage`            | batches `last_used_at` writes every 30 s                                                           | always                                                          |
-| `ratelimit.janitor`       | drops rate limit keys that have fully refilled, every minute                                       | when a rate limit group is on and `rateLimit.store` is `memory` |
-| `scheduler`               | cron jobs (expired-session sweep)                                                                  | `scheduler.enabled`, unless `--no-scheduler` or consumer-only   |
-| queue consumer / listener | queue handlers (none yet)                                                                          | when `queue.enabled`                                            |
+| Worker                    | What it does                                                                                       | When it runs                                                     |
+| ------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `http`                    | the HTTP server (all surfaces above)                                                               | always                                                           |
+| `db-health`               | pings the pool; `health` reads it for `/readyz`                                                    | always                                                           |
+| `redis-health`            | pings Redis every 5 s; `health` reads it for `/readyz`                                             | when a feature uses Redis                                        |
+| `nats-health`             | checks the NATS connection every 5 s; `health` reads it for `/readyz`                              | when a feature uses NATS                                         |
+| `outbox`                  | claims due outbox entries, delivers signed webhooks                                                | always                                                           |
+| `mailqueue.send`          | claims due queued mail, sends it through the mailer, erases the sealed payload once sent or failed | always                                                           |
+| `apikey-usage`            | batches `last_used_at` writes every 30 s                                                           | always                                                           |
+| `ratelimit.janitor`       | drops rate limit keys that have fully refilled, every minute                                       | when a rate limit group is on and `rateLimit.driver` is `memory` |
+| `scheduler`               | cron jobs (expired-session sweep)                                                                  | `scheduler.enabled`, unless `--no-scheduler` or consumer-only    |
+| queue consumer / listener | queue handlers (none yet)                                                                          | when `queue.enabled`                                             |
 
 ## Files
 
-| File                                                     | Builds                                                                                                                                                                                                                               |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `boot.go`                                                | `Boot`: the order above                                                                                                                                                                                                              |
-| `services.go`                                            | `Services` and every domain service, plus the port adapters                                                                                                                                                                          |
-| `publicids.go`                                           | `publicIDs`: public id ↔ id for the surface handlers                                                                                                                                                                                 |
-| `auth.go`                                                | secrets, session store, first boot, install state                                                                                                                                                                                    |
-| `http.go`                                                | API and MCP handlers and their authn chains, web routes, session middleware, CSRF, the HTTP handler                                                                                                                                  |
-| `mcp.go`                                                 | MCP server and its tools                                                                                                                                                                                                             |
-| `console.go`                                             | console SPA handler                                                                                                                                                                                                                  |
-| `outbox.go`, `schedulers.go`, `consumers.go`, `queue.go` | workers                                                                                                                                                                                                                              |
-| `mail.go`                                                | the mailer driver (`mailer/console`, `mailer/smtp` or `mailer/resend`, picked by `mail.driver`), the sealed mail queue (`Services.MailQueue`) and its send worker                                                                    |
-| `ratelimit.go`                                           | the rate limit store (`ratelimit/memory` or `ratelimit/redis` on the shared connection, picked by `rateLimit.store`) and one `ratelimit.Limiter` per group (`Services.AuthLimiter`); a group that is off gets `ratelimit.Disabled()` |
-| `redis.go`                                               | the shared Redis connection (`internal/kernel/redis`, only when a feature selects it), its closer, its `redis-health` readiness worker and the `/readyz` checks                                                                      |
-| `nats.go`                                                | the shared NATS connection (`internal/kernel/nats`, only when a feature selects it), its draining closer and its `nats-health` readiness worker                                                                                      |
-| `db.go`, `sealer.go`, `telemetry.go`                     | pool, migrations, health, sealer, telemetry                                                                                                                                                                                          |
-| `options.go`, `app.go`, `remote.go`                      | boot options, the running `App` and its operator actions, the CLI graph                                                                                                                                                              |
+| File                                                     | Builds                                                                                                                                                                                                                                |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `boot.go`                                                | `Boot`: the order above                                                                                                                                                                                                               |
+| `services.go`                                            | `Services` and every domain service, plus the port adapters                                                                                                                                                                           |
+| `publicids.go`                                           | `publicIDs`: public id ↔ id for the surface handlers                                                                                                                                                                                  |
+| `auth.go`                                                | secrets, session store, first boot, install state                                                                                                                                                                                     |
+| `http.go`                                                | API and MCP handlers and their authn chains, web routes, session middleware, CSRF, the HTTP handler                                                                                                                                   |
+| `mcp.go`                                                 | MCP server and its tools                                                                                                                                                                                                              |
+| `console.go`                                             | console SPA handler                                                                                                                                                                                                                   |
+| `outbox.go`, `schedulers.go`, `consumers.go`, `queue.go` | workers                                                                                                                                                                                                                               |
+| `mail.go`                                                | the mailer driver (`mailer/console`, `mailer/smtp` or `mailer/resend`, picked by `mail.driver`), the sealed mail queue (`Services.MailQueue`) and its send worker                                                                     |
+| `ratelimit.go`                                           | the rate limit store (`ratelimit/memory` or `ratelimit/redis` on the shared connection, picked by `rateLimit.driver`) and one `ratelimit.Limiter` per group (`Services.AuthLimiter`); a group that is off gets `ratelimit.Disabled()` |
+| `redis.go`                                               | the shared Redis connection (`internal/kernel/redis`, only when a feature selects it), its closer, its `redis-health` readiness worker and the `/readyz` checks                                                                       |
+| `nats.go`                                                | the shared NATS connection (`internal/kernel/nats`, only when a feature selects it), its draining closer and its `nats-health` readiness worker                                                                                       |
+| `db.go`, `sealer.go`, `telemetry.go`                     | pool, migrations, health, sealer, telemetry                                                                                                                                                                                           |
+| `options.go`, `app.go`, `remote.go`                      | boot options, the running `App` and its operator actions, the CLI graph                                                                                                                                                               |
 
 ## Add a domain
 

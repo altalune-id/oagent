@@ -69,10 +69,10 @@ type Services struct {
 }
 
 func buildServices(k kernel.Kernel, cfg config.Config) *Services {
-	orgStore := org.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
-	projectStore := project.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
-	agentStore := agent.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
-	apiKeyStore := apikey.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
+	orgStore := org.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)
+	projectStore := project.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)
+	agentStore := agent.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)
+	apiKeyStore := apikey.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)
 
 	uow := db.NewTransactor(k.Pool)
 	caps := capabilities.From(&cfg)
@@ -85,8 +85,8 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		})
 
 	sl := buildSealer(cfg.Secrets)
-	outboxStore := outbox.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
-	webhookStore := webhook.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix)
+	outboxStore := outbox.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)
+	webhookStore := webhook.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)
 	projectOwners := projectOrgs{projects: projects}
 	webhooks := webhook.NewService(
 		webhookStore, k.Log, k.Reporter.Unexpected, sl, outboxStore,
@@ -94,8 +94,8 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	)
 
 	agents := agent.NewService(agentStore, uow, k.Reporter.Unexpected).WithPublisher(webhooks).WithProjects(projectOwners)
-	users := user.NewService(user.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), k.Reporter.Unexpected)
-	members := member.NewService(member.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), uow, k.Reporter.Unexpected).
+	users := user.NewService(user.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix), k.Reporter.Unexpected)
+	members := member.NewService(member.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix), uow, k.Reporter.Unexpected).
 		WithOperatorSupport(caps.OperatorOrgSupport)
 
 	keyScheme := apikey.NewScheme("")
@@ -150,7 +150,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		AuthLimiter:  ratelimit.Disabled(),
 	}
 	svcs.Resets = auth.NewResets(auth.ResetDeps{
-		Store:      auth.NewResetStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix),
+		Store:      auth.NewResetStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix),
 		Transactor: uow,
 		Users:      users,
 		Passwords:  users,
@@ -162,7 +162,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	members.WithEffects(memberEffects(cfg, svcs)).WithDirectory(memberDirectory{users: users, orgs: orgs})
 	installer.WithTerms(svcs.Legal)
 	svcs.Invites = invite.NewService(invite.Deps{
-		Store:      invite.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix),
+		Store:      invite.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix),
 		Transactor: uow,
 		Members:    members,
 		Mail:       svcs.MailQueue,
@@ -179,7 +179,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 }
 
 func buildLegal(k kernel.Kernel, cfg config.Config, users *user.Service) *legal.Service {
-	l := legal.NewService(users).WithStore(legal.NewStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix), db.NewTransactor(k.Pool))
+	l := legal.NewService(users).WithStore(legal.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix), db.NewTransactor(k.Pool))
 	if cfg.Compliance.TermsURL != "" || cfg.Compliance.PrivacyURL != "" {
 		l.WithExternalTerms(cfg.Compliance.TermsUpdated())
 	}

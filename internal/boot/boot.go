@@ -31,14 +31,14 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		return nil, err
 	}
 
-	pool, err := openPool(ctx, dbConfig(cfg.DB), log)
+	pool, err := openPool(ctx, dbConfig(cfg.Postgres), log)
 	if err != nil {
 		_ = shutdown(ctx)
 		return nil, err
 	}
 
 	if cfg.DB.AutoMigrate {
-		if err := migrate(ctx, cfg.DB); err != nil {
+		if err := migrate(ctx, cfg.Postgres); err != nil {
 			_ = pool.Close()
 			_ = shutdown(ctx)
 			return nil, err

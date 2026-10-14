@@ -51,8 +51,8 @@ Use this when you add or change a table, column, constraint or index. Migrations
 
 ## How migrations run
 
-- `boot.migrate` (`internal/boot/db.go`) runs them at boot when `db.autoMigrate` is true (the default), on `db.migrator.dsn` (falls back to `db.dsn`), with `SET ROLE db.migrator.role` when set, under the advisory lock `migrate:<tablePrefix>` so concurrent instances migrate once.
-- `db.dsn` may point at a pooler; `db.migrator.dsn` must reach Postgres directly.
+- `boot.migrate` (`internal/boot/db.go`) runs them at boot when `db.autoMigrate` is true (the default), on `postgres.migrator.dsn` (falls back to `postgres.dsn`), with `SET ROLE postgres.migrator.role` when set, under the advisory lock `migrate:<tablePrefix>` so concurrent instances migrate once.
+- `postgres.dsn` may point at a pooler; `postgres.migrator.dsn` must reach Postgres directly.
 - `schema.New(cfg).WithUpgrade(name, fn)` runs another tool's migrations after ours; that tool owns its own table prefix.
 
 ## Review

@@ -25,7 +25,7 @@ func TestAddMember(t *testing.T) {
 	cfg.Secrets.EncryptionKey = testKeyHex
 	cfg.Auth.Genesis = config.GenesisConfig{Email: "root@example.com", Password: "genesis-password"}
 	sqlDB, schemaName := pgtest.Migrated(t)
-	cfg.DB.Schema = schemaName
+	cfg.Postgres.Schema = schemaName
 	svcs := buildServices(kernel.Kernel{Pool: db.Pool{W: sqlDB, R: sqlDB}, Reporter: apperror.NewReporter(nil, false)}, cfg)
 	require.NoError(t, buildAuthSecrets(cfg, svcs, testLogger()))
 	svcs.Caps.EnvGenesis = true

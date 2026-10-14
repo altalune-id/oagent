@@ -13,7 +13,7 @@ import (
 )
 
 func buildDBHealth(k kernel.Kernel, cfg config.Config, log *slog.Logger) *db.HealthMonitor {
-	return db.NewHealthMonitor(k.Pool, dbConfig(cfg.DB).Health, log, k.Meter)
+	return db.NewHealthMonitor(k.Pool, dbConfig(cfg.Postgres).Health, log, k.Meter)
 }
 
 type (
@@ -32,7 +32,7 @@ var (
 )
 
 // NOTE: runs under a session advisory lock so concurrent instances migrate once.
-func migrate(ctx context.Context, cfg config.DBConfig) error {
+func migrate(ctx context.Context, cfg config.PostgresConfig) error {
 	migCfg := migrator.Config{
 		Schema:      cfg.Schema,
 		TablePrefix: cfg.TablePrefix,
@@ -52,14 +52,14 @@ func migrate(ctx context.Context, cfg config.DBConfig) error {
 // MigrationLockName is the advisory-lock name that serialises migrate runs sharing one table prefix.
 func MigrationLockName(prefix string) string { return "migrate:" + prefix }
 
-func migratorDSN(c config.DBConfig) string {
+func migratorDSN(c config.PostgresConfig) string {
 	if c.Migrator.DSN != "" {
 		return c.Migrator.DSN
 	}
 	return c.DSN
 }
 
-func dbConfig(c config.DBConfig) db.DBConfig {
+func dbConfig(c config.PostgresConfig) db.DBConfig {
 	return db.DBConfig{
 		DSN:         c.DSN,
 		Schema:      c.Schema,

@@ -21,7 +21,7 @@ func devConsole(c *Config) {
 }
 
 func redisFeature(c *Config) {
-	c.RateLimit.Store = RateLimitStoreRedis
+	c.RateLimit.Driver = RateLimitDriverRedis
 	c.RateLimit.Auth.Enabled = true
 	c.Redis.URL = "redis://localhost:6379/0"
 }
@@ -50,14 +50,14 @@ func TestValidate_EveryRule(t *testing.T) {
 		{"http.stateSecret empty in development", func(c *Config) { c.Env = EnvDevelopment; c.HTTP.StateSecret = "" }, valid},
 		{"install.token 32", func(c *Config) { c.Install.Token = testStateSecret[:32] }, valid},
 		{"install.token short", func(c *Config) { c.Install.Token = testStateSecret[:31] }, invalidSetting("install.token")},
-		{"db.dsn empty", func(c *Config) { c.DB.DSN = "" }, missingSetting("db.dsn")},
-		{"db.maxOpenConns 0", func(c *Config) { c.DB.MaxOpenConns = 0 }, valid},
-		{"db.maxOpenConns negative", func(c *Config) { c.DB.MaxOpenConns = -1 }, invalidSetting("db.maxOpenConns")},
-		{"db.maxIdleConns negative", func(c *Config) { c.DB.MaxIdleConns = -1 }, invalidSetting("db.maxIdleConns")},
-		{"db.reader.maxOpenConns negative", func(c *Config) { c.DB.Reader.MaxOpenConns = -1 }, invalidSetting("db.reader.maxOpenConns")},
-		{"db.reader.maxIdleConns negative", func(c *Config) { c.DB.Reader.MaxIdleConns = -1 }, invalidSetting("db.reader.maxIdleConns")},
-		{"db.health.interval negative", func(c *Config) { c.DB.Health.Interval = -time.Second }, invalidSetting("db.health.interval")},
-		{"db.health.timeout negative", func(c *Config) { c.DB.Health.Timeout = -time.Second }, invalidSetting("db.health.timeout")},
+		{"postgres.dsn empty", func(c *Config) { c.Postgres.DSN = "" }, missingSetting("postgres.dsn")},
+		{"postgres.maxOpenConns 0", func(c *Config) { c.Postgres.MaxOpenConns = 0 }, valid},
+		{"postgres.maxOpenConns negative", func(c *Config) { c.Postgres.MaxOpenConns = -1 }, invalidSetting("postgres.maxOpenConns")},
+		{"postgres.maxIdleConns negative", func(c *Config) { c.Postgres.MaxIdleConns = -1 }, invalidSetting("postgres.maxIdleConns")},
+		{"postgres.reader.maxOpenConns negative", func(c *Config) { c.Postgres.Reader.MaxOpenConns = -1 }, invalidSetting("postgres.reader.maxOpenConns")},
+		{"postgres.reader.maxIdleConns negative", func(c *Config) { c.Postgres.Reader.MaxIdleConns = -1 }, invalidSetting("postgres.reader.maxIdleConns")},
+		{"postgres.health.interval negative", func(c *Config) { c.Postgres.Health.Interval = -time.Second }, invalidSetting("postgres.health.interval")},
+		{"postgres.health.timeout negative", func(c *Config) { c.Postgres.Health.Timeout = -time.Second }, invalidSetting("postgres.health.timeout")},
 		{"scheduler.shutdownGrace negative", func(c *Config) { c.Scheduler.ShutdownGrace = -time.Second }, invalidSetting("scheduler.shutdownGrace")},
 		{"nats.connectTimeout negative", func(c *Config) { c.NATS.ConnectTimeout = -time.Second }, invalidSetting("nats.connectTimeout")},
 		{"telemetry.otlp.protocol grpc", func(c *Config) { c.Telemetry.OTLP.Protocol = "grpc" }, valid},
@@ -119,9 +119,9 @@ func TestValidate_EveryRule(t *testing.T) {
 		{"mail.smtp.tls none in development", func(c *Config) { c.Env = EnvDevelopment; c.Mail.SMTP.TLS = MailTLSNone }, valid},
 		{"mail.smtp.tls unknown with console", func(c *Config) { devConsole(c); c.Mail.SMTP.TLS = "ssl" }, valid},
 		{"mail.resend.apiKey empty", func(c *Config) { c.Mail.Driver = MailDriverResend }, missingSetting("mail.resend.apiKey")},
-		{"rateLimit.store unknown", func(c *Config) { c.RateLimit.Store = "disk" }, invalidSetting("rateLimit.store")},
+		{"rateLimit.driver unknown", func(c *Config) { c.RateLimit.Driver = "disk" }, invalidSetting("rateLimit.driver")},
 		{"rateLimit.maxKeys 0 with memory", func(c *Config) { c.RateLimit.MaxKeys = 0 }, invalidSetting("rateLimit.maxKeys")},
-		{"rateLimit.maxKeys 0 with redis", func(c *Config) { c.RateLimit.Store = RateLimitStoreRedis; c.RateLimit.MaxKeys = 0 }, valid},
+		{"rateLimit.maxKeys 0 with redis", func(c *Config) { c.RateLimit.Driver = RateLimitDriverRedis; c.RateLimit.MaxKeys = 0 }, valid},
 		{"redis used", redisFeature, valid},
 		{"redis.url empty when used", func(c *Config) { redisFeature(c); c.Redis.URL = "" }, missingSetting("redis.url")},
 		{"redis.url wrong scheme when used", func(c *Config) { redisFeature(c); c.Redis.URL = "http://localhost" }, invalidSetting("redis.url")},
@@ -156,10 +156,10 @@ func TestValidate_DefaultsWithDevelopmentConsole(t *testing.T) {
 
 func TestValidate_TagErrorsNameTheYAMLKey(t *testing.T) {
 	c := validConfig(t)
-	c.DB.Health.Timeout = -time.Second
+	c.Postgres.Health.Timeout = -time.Second
 	err := c.Validate()
-	invalidSetting("db.health.timeout")(t, err)
-	assert.Equal(t, "config: db.health.timeout: must be 0 or more", err.Error())
+	invalidSetting("postgres.health.timeout")(t, err)
+	assert.Equal(t, "config: postgres.health.timeout: must be 0 or more", err.Error())
 }
 
 func TestValidate_TagReasons(t *testing.T) {
@@ -167,7 +167,7 @@ func TestValidate_TagReasons(t *testing.T) {
 		mutate func(c *Config)
 		want   string
 	}{
-		"required": {func(c *Config) { c.DB.DSN = "" }, "config: db.dsn required: must not be empty"},
+		"required": {func(c *Config) { c.HTTP.Addr = "" }, "config: http.addr required: must not be empty"},
 		"oneof":    {func(c *Config) { c.Mode = "bogus" }, "config: mode: must be one of selfhosted, cloud"},
 		"min duration": {
 			func(c *Config) { c.Auth.SessionTTL = time.Minute },
@@ -207,13 +207,13 @@ func TestValidate_TagReasons(t *testing.T) {
 func TestValidate_ReportsEveryTagError(t *testing.T) {
 	c := validConfig(t)
 	c.Mode = "bogus"
-	c.DB.DSN = ""
+	c.HTTP.Addr = ""
 	c.Mail.Driver = "fax"
 	c.HTTP.TrustedProxyHops = -1
 	err := c.Validate()
 	invalidSetting("mode")(t, err)
-	missingSetting("db.dsn")(t, err)
-	for _, key := range []string{"mode", "db.dsn", "mail.driver", "http.trustedProxyHops"} {
+	missingSetting("http.addr")(t, err)
+	for _, key := range []string{"mode", "http.addr", "mail.driver", "http.trustedProxyHops"} {
 		assert.Contains(t, err.Error(), key)
 	}
 }

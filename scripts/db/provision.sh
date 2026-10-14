@@ -8,7 +8,7 @@
 #   ADMIN_URL         admin connection URL without /<db>, e.g. postgres://postgres:pw@localhost:5432?sslmode=disable
 #   DB_NAME           application database (default oagent)
 #   PREFIX            role prefix (default oagent)
-#   SCHEMA            schema oagent uses, db.schema (default public)
+#   SCHEMA            schema oagent uses, postgres.schema (default public)
 #   ADMIN_DB          database used for CREATE DATABASE (default postgres; neondb on Neon)
 #   MIG_PW, SVC_PW    migrator and service passwords (16+ characters, no ' or \); "gen" generates one
 #   CREDENTIALS_FILE  where generated passwords are written, mode 0600 (default ./oagent-db-credentials.env)
@@ -103,7 +103,7 @@ fi
 if $interactive; then
   [[ -n "$DB_NAME" ]] || ask_line "DB_NAME" oagent DB_NAME
   [[ -n "$PREFIX" ]] || ask_line "PREFIX (role prefix)" oagent PREFIX
-  [[ -n "$SCHEMA" ]] || ask_line "SCHEMA (db.schema)" public SCHEMA
+  [[ -n "$SCHEMA" ]] || ask_line "SCHEMA (postgres.schema)" public SCHEMA
 fi
 DB_NAME="${DB_NAME:-oagent}"
 PREFIX="${PREFIX:-oagent}"
@@ -187,9 +187,9 @@ cat <<EOF
 ==> done
 
 Point oagent at it (passwords are the ones you set):
-  db.dsn:            postgres://${PREFIX}_service:<SVC_PW>@${host}/${DB_NAME}
-  db.migrator.dsn:   postgres://${PREFIX}_migrator:<MIG_PW>@${host}/${DB_NAME}
-  db.migrator.role:  ${PREFIX}_owner
-  db.schema:         ${SCHEMA}
+  postgres.dsn:            postgres://${PREFIX}_service:<SVC_PW>@${host}/${DB_NAME}
+  postgres.migrator.dsn:   postgres://${PREFIX}_migrator:<MIG_PW>@${host}/${DB_NAME}
+  postgres.migrator.role:  ${PREFIX}_owner
+  postgres.schema:         ${SCHEMA}
 Keep the URL's query string (sslmode and so on). oagent migrates on start (db.autoMigrate).
 EOF

@@ -32,8 +32,8 @@ func TestGenerate_SplitsBootstrapFromRuntime(t *testing.T) {
 	bootstrap, runtime, ok := strings.Cut(out, "RUNTIME — safe to change via env + restart\n# ═")
 	require.True(t, ok)
 
-	assert.Contains(t, bootstrap, "# [bootstrap] db.schema\nOAGENT_DB_SCHEMA=")
-	assert.NotContains(t, runtime, "OAGENT_DB_SCHEMA=")
+	assert.Contains(t, bootstrap, "# [bootstrap] postgres.schema\nOAGENT_POSTGRES_SCHEMA=")
+	assert.NotContains(t, runtime, "OAGENT_POSTGRES_SCHEMA=")
 	assert.Contains(t, runtime, "\n# ─── cli ───\n")
 	assert.Contains(t, runtime, "OAGENT_CLI_SESSION_FILE=~/.oagent/session.json\n")
 }
@@ -123,7 +123,7 @@ func TestNormalizeDefault(t *testing.T) {
 }
 
 func TestTopSegment(t *testing.T) {
-	assert.Equal(t, "db", topSegment("db.schema"))
+	assert.Equal(t, "postgres", topSegment("postgres.schema"))
 	assert.Equal(t, "env", topSegment("env"))
 }
 

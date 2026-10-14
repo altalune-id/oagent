@@ -3,7 +3,7 @@
 SET client_min_messages = warning;
 
 -- Run by provision.sh inside the application database, in one transaction.
--- @@PREFIX@@ is the role prefix and @@SCHEMA@@ the schema oagent uses (db.schema).
+-- @@PREFIX@@ is the role prefix and @@SCHEMA@@ the schema oagent uses (postgres.schema).
 
 DO $$
 DECLARE
@@ -43,7 +43,7 @@ CREATE ROLE @@PREFIX@@_service LOGIN PASSWORD :'service_password' NOSUPERUSER NO
 ALTER ROLE @@PREFIX@@_service LOGIN PASSWORD :'service_password';
 \endif
 
--- The migrator runs migrations as the owner (db.migrator.role: @@PREFIX@@_owner).
+-- The migrator runs migrations as the owner (postgres.migrator.role: @@PREFIX@@_owner).
 GRANT @@PREFIX@@_owner TO @@PREFIX@@_migrator;
 
 DO $$ BEGIN

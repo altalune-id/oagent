@@ -272,7 +272,7 @@ func envBootstrapPreamble() string {
 #
 # Fields in this section lock in behavior for the lifetime of the deployment:
 #   - Changing them after first boot has NO effect on already-persisted data
-#     (e.g. db.schema and db.tablePrefix require SQL-level intervention).
+#     (e.g. postgres.schema and postgres.tablePrefix require SQL-level intervention).
 #
 # Read every line here BEFORE first ` + "`oagent serve`" + `. Set them deliberately.
 #

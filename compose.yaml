@@ -85,8 +85,8 @@ services:
       OAGENT_ENV: development
       OAGENT_HTTP_ADDR: ":5150"
       OAGENT_HTTP_BASE_URL: "http://localhost:${OAGENT_PORT:-5150}"
-      OAGENT_DB_DSN: "postgres://postgres:postgres@postgres:5432/oagent?sslmode=disable"
-      OAGENT_DB_MIGRATOR_DSN: "postgres://postgres:postgres@postgres:5432/oagent?sslmode=disable"
+      OAGENT_POSTGRES_DSN: "postgres://postgres:postgres@postgres:5432/oagent?sslmode=disable"
+      OAGENT_POSTGRES_MIGRATOR_DSN: "postgres://postgres:postgres@postgres:5432/oagent?sslmode=disable"
       # dev-only values; generate real ones with: openssl rand -hex 32
       OAGENT_HTTP_STATE_SECRET: "6f1c0a3e2b9d4f7a8c5e1d0b3a6f9c2e4d7b0a1c3e5f7a9b2d4c6e8f0a1b3c5d"
       OAGENT_SECRETS_ENCRYPTION_KEY: "0d2f4b6a8c1e3f5a7b9d2c4e6f8a0b1c3d5e7f9a2b4c6d8e0f1a3b5c7d9e2f4a"
@@ -96,7 +96,7 @@ services:
       OAGENT_MAIL_SMTP_PORT: "1025"
       OAGENT_MAIL_SMTP_TLS: "none"
       OAGENT_REDIS_URL: "redis://redis:6379/0"
-      OAGENT_RATE_LIMIT_STORE: redis
+      OAGENT_RATE_LIMIT_DRIVER: redis
       OAGENT_RATE_LIMIT_AUTH_ENABLED: "true"
       OAGENT_QUEUE_ENABLED: "true"
       OAGENT_NATS_URL: "nats://nats:4222"

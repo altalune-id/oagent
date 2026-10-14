@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// RedisConfig is the one Redis connection; it is opened only when a feature selects store redis.
+// RedisConfig is the one Redis connection; it is opened only when a feature selects driver redis.
 type RedisConfig struct {
 	// URL is redis://[user:password@]host:port[/db] or rediss:// for TLS.
 	URL                string        `yaml:"url"                mapstructure:"url"                awareness:"secret"`
@@ -34,8 +34,8 @@ func NormalizeRedisKeyPrefix(p string) string {
 // RedisFeatures lists the settings that select Redis; empty means oagent never connects to it.
 func (c *Config) RedisFeatures() []string {
 	var out []string
-	if c.RateLimit.Store == RateLimitStoreRedis && c.RateLimit.AnyEnabled() {
-		out = append(out, "rateLimit.store")
+	if c.RateLimit.Driver == RateLimitDriverRedis && c.RateLimit.AnyEnabled() {
+		out = append(out, "rateLimit.driver")
 	}
 	return out
 }
