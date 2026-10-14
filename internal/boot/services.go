@@ -56,6 +56,7 @@ type Services struct {
 	Invites         *invite.Service
 	Sessions        session.Store
 	Auth            *auth.Service
+	Resets          *auth.Resets
 	Install         *install.Service
 	Legal           *legal.Service
 	InstallToken    install.Token
@@ -140,6 +141,16 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Caps:         caps,
 		AuthLimiter:  ratelimit.Disabled(),
 	}
+	svcs.Resets = auth.NewResets(auth.ResetDeps{
+		Store:      auth.NewResetStore(k.Pool, cfg.DB.Schema, cfg.DB.TablePrefix),
+		Transactor: uow,
+		Users:      users,
+		Passwords:  users,
+		Sessions:   sessions,
+		Mail:       svcs.MailQueue,
+		From:       cfg.Mail.From,
+		BaseURL:    publicBase(cfg.HTTP),
+	})
 	members.WithEffects(memberEffects(cfg, svcs)).WithDirectory(memberDirectory{users: users, orgs: orgs})
 	installer.WithTerms(svcs.Legal)
 	svcs.Invites = invite.NewService(invite.Deps{

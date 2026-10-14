@@ -10,11 +10,17 @@ type LoginData struct {
 	// EmailLocked shows Email read-only, with a link to sign in with another account.
 	EmailLocked  bool
 	AnotherLogin string
+	// ForgotURL links to the password reset form when password reset is on.
+	ForgotURL string
+	Notice    string
 }
 
 templ Login(d layout.LayoutData, v LoginData) {
 	@layout.Layout(d) {
 		@layout.Card(d.Title) {
+			if v.Notice != "" {
+				<div role="status" class="alert alert-success alert-soft">{ v.Notice }</div>
+			}
 			if v.Error != "" {
 				<div role="alert" class="alert alert-error alert-soft">{ v.Error }</div>
 			}
@@ -36,6 +42,9 @@ templ Login(d layout.LayoutData, v LoginData) {
 				</label>
 				<button class="btn btn-primary mt-2" type="submit">Sign in</button>
 			</form>
+			if v.ForgotURL != "" {
+				<p class="text-sm"><a class="link" href={ templ.SafeURL(v.ForgotURL) }>Forgot password?</a></p>
+			}
 			if v.EmailLocked {
 				<p class="text-sm"><a class="link" href={ templ.SafeURL(v.AnotherLogin) }>Use another account</a></p>
 			}

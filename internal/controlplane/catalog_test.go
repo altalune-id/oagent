@@ -122,6 +122,9 @@ func samples() []error {
 
 		&auth.InvalidCredentialsError{},
 		&auth.RateLimitedError{RetryAfter: 90 * time.Second},
+		&auth.ResetNotUsableError{Reason: auth.ResetExpired},
+		&auth.ResetNotUsableError{Reason: auth.ResetUsed},
+		&auth.ResetNotUsableError{Reason: auth.ResetNotFound},
 		password.Check("short", password.Hints{}),
 		password.Check(strings.Repeat("a", password.MaxLen+1), password.Hints{}),
 		password.Check("iloveyou1234", password.Hints{}),

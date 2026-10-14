@@ -86,3 +86,18 @@ func limiterFailed(w http.ResponseWriter, r *http.Request, kit layout.Kit, err e
 		_ = kit.Unexpected(r.Context(), "web: rate limit", err)
 	}
 }
+
+// ResetEmailRule limits reset emails per address: 3 an hour.
+func ResetEmailRule() ratelimit.Rule {
+	return ratelimit.Rule{Name: "reset-email", Rate: 3, Per: time.Hour, Burst: 3}
+}
+
+// ResetIPRule limits reset requests per client IP: 20 an hour.
+func ResetIPRule() ratelimit.Rule {
+	return ratelimit.Rule{Name: "reset-ip", Rate: 20, Per: time.Hour, Burst: 20}
+}
+
+// ResetLinkIPRule limits opening reset links and setting the new password per client IP: 20 an hour.
+func ResetLinkIPRule() ratelimit.Rule {
+	return ratelimit.Rule{Name: "reset-link-ip", Rate: 20, Per: time.Hour, Burst: 20}
+}

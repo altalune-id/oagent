@@ -167,7 +167,7 @@ func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected
 	legalOpts.RequireAcceptance = cfg.Compliance.RequireAcceptance
 	return []web.Registrar{
 		legal.NewWeb(legalOpts),
-		auth.NewWeb(kit, svcs.Auth, sessions, newPublicIDs(svcs)).WithLimits(limits),
+		auth.NewWeb(kit, svcs.Auth, sessions, newPublicIDs(svcs)).WithLimits(limits).WithResets(svcs.Resets),
 		install.NewWeb(install.WebOpts{
 			Kit:       kit,
 			Installer: svcs.Install,

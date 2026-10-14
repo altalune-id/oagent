@@ -22,6 +22,12 @@ import (
 
 const loginFailed = "Invalid email or password"
 
+const (
+	resetCookieName = "oagent_reset"
+	resetDone       = "Your password was changed. Sign in with the new one."
+	resetIncomplete = "This reset link is incomplete. Open the link from your email again."
+)
+
 // SignIn signs people in and out; *Service implements it.
 type SignIn interface {
 	LoginLocal(ctx context.Context, c Credentials) (session.Principal, error)
@@ -35,6 +41,8 @@ type Web struct {
 	sessions CookieSessions
 	ids      PublicIDs
 	limits   Limits
+	resets   *Resets
+	reset    session.SignedCookie
 }
 
 // NewWeb binds the login pages to the sign-in service, the browser sessions and the public id lookups.
@@ -48,11 +56,29 @@ func (h *Web) WithLimits(l Limits) *Web {
 	return h
 }
 
-// Register mounts GET/POST /login and POST /logout on mux.
+// WithResets adds the password reset pages; their cookie shares the session cookie's secret and Secure flag.
+func (h *Web) WithResets(r *Resets) *Web {
+	h.resets = r
+	h.reset = session.SignedCookie{
+		Name: resetCookieName, Path: h.kit.Path("/reset-password"), Secret: h.sessions.Secret, Secure: h.sessions.Cookie.Secure,
+		Now: func() time.Time { return r.now() },
+	}
+	return h
+}
+
+// Register mounts GET/POST /login, POST /logout and, with resets, the password reset pages on mux.
 func (h *Web) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+h.kit.Path("/login"), h.getLogin)
 	mux.HandleFunc("POST "+h.kit.Path("/login"), h.postLogin)
 	mux.HandleFunc("POST "+h.kit.Path("/logout"), h.postLogout)
+	if h.resets == nil {
+		return
+	}
+	mux.HandleFunc("GET "+h.kit.Path("/forgot-password"), h.getForgot)
+	mux.HandleFunc("POST "+h.kit.Path("/forgot-password"), h.postForgot)
+	mux.HandleFunc("GET "+h.kit.Path("/reset-password/{token}"), h.resetLimited(h.getResetLink))
+	mux.HandleFunc("GET "+h.kit.Path("/reset-password"), h.resetLimited(h.getReset))
+	mux.HandleFunc("POST "+h.kit.Path("/reset-password"), h.resetLimited(h.postReset))
 }
 
 type loginResponse struct {
@@ -112,7 +138,10 @@ func (h *Web) getLogin(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, to, http.StatusSeeOther) //nolint:gosec // G710: ResolveReturnTo sanitizes.
 		return
 	}
-	view := views.LoginData{ReturnTo: layout.SanitizeReturnTo(h.kit.BasePath, returnTo)}
+	view := views.LoginData{ReturnTo: layout.SanitizeReturnTo(h.kit.BasePath, returnTo), ForgotURL: h.forgotURL()}
+	if r.URL.Query().Get("reset") == "done" {
+		view.Notice = resetDone
+	}
 	if email, err := user.NormalizeEmail(r.URL.Query().Get("email")); err == nil {
 		view.Email, view.EmailLocked = email, true
 		view.AnotherLogin = h.kit.Path("/login")
@@ -138,7 +167,9 @@ func (h *Web) postLogin(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"code": string(apperror.CodeAuthInvalidCredentials), "message": loginFailed})
 		return
 	case IsInvalidCredentialsError(err):
-		view := views.LoginData{Email: email, ReturnTo: layout.SanitizeReturnTo(h.kit.BasePath, returnTo), Error: loginFailed}
+		view := views.LoginData{
+			Email: email, ReturnTo: layout.SanitizeReturnTo(h.kit.BasePath, returnTo), Error: loginFailed, ForgotURL: h.forgotURL(),
+		}
 		h.kit.Render(w, r, http.StatusUnauthorized, views.Login(h.kit.Layout("Sign in"), view))
 		return
 	case err != nil:
@@ -207,6 +238,118 @@ func (h *Web) postLogout(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = h.sessions.End(r.Context(), w, "")
 	http.Redirect(w, r, h.kit.Path("/login"), http.StatusSeeOther)
+}
+
+func (h *Web) forgotURL() string {
+	if h.resets == nil {
+		return ""
+	}
+	return h.kit.Path("/forgot-password")
+}
+
+func (h *Web) getForgot(w http.ResponseWriter, r *http.Request) {
+	h.kit.Render(w, r, http.StatusOK, views.Forgot(h.kit.Layout("Reset your password"), views.ForgotData{}))
+}
+
+// SECURITY: the same page for every email, known or not; only an existing person with a password gets mail.
+func (h *Web) postForgot(w http.ResponseWriter, r *http.Request) {
+	email := strings.TrimSpace(r.PostFormValue("email"))
+	if err := h.limits.LimitIP(r, ResetIPRule()); err != nil {
+		WriteLimited(w, r, h.kit, "Reset your password", err)
+		return
+	}
+	if err := h.limits.LimitEmail(r.Context(), email, ResetEmailRule()); err != nil {
+		WriteLimited(w, r, h.kit, "Reset your password", err)
+		return
+	}
+	if err := h.resets.Request(r.Context(), email); err != nil {
+		h.kit.Fail(w, r, "web: reset request", err)
+		return
+	}
+	h.kit.Render(w, r, http.StatusOK, views.Forgot(h.kit.Layout("Reset your password"), views.ForgotData{Sent: true}))
+}
+
+func (h *Web) resetLimited(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		if err := h.limits.LimitIP(r, ResetLinkIPRule()); err != nil {
+			WriteLimited(w, r, h.kit, "Reset your password", err)
+			return
+		}
+		next(w, r)
+	}
+}
+
+// SECURITY: the raw token must never reach the cookie, a log or a Referer.
+func (h *Web) getResetLink(w http.ResponseWriter, r *http.Request) {
+	reset, err := h.resets.Lookup(r.Context(), r.PathValue("token"))
+	if err != nil {
+		h.resetFailed(w, r, err)
+		return
+	}
+	h.reset.Set(w, reset.PublicID+"|"+strconv.FormatInt(reset.ExpiresAt.Unix(), 10), reset.ExpiresAt)
+	http.Redirect(w, r, h.kit.Path("/reset-password"), http.StatusSeeOther)
+}
+
+func (h *Web) getReset(w http.ResponseWriter, r *http.Request) {
+	reset, ok := h.resetFromCookie(w, r)
+	if !ok {
+		return
+	}
+	h.renderReset(w, r, http.StatusOK, reset, "")
+}
+
+func (h *Web) postReset(w http.ResponseWriter, r *http.Request) {
+	reset, ok := h.resetFromCookie(w, r)
+	if !ok {
+		return
+	}
+	err := h.resets.Complete(r.Context(), reset.PublicID, r.PostFormValue("password"))
+	if ae, invalid := apperror.AsAppError(err); invalid && apperror.KindOf(ae.Code()) == apperror.KindInvalid {
+		h.renderReset(w, r, http.StatusUnprocessableEntity, reset, ae.Message())
+		return
+	}
+	if err != nil {
+		h.resetFailed(w, r, err)
+		return
+	}
+	h.reset.Clear(w)
+	session.ClearCookie(w, h.sessions.Cookie)
+	http.Redirect(w, r, h.kit.Path("/login")+"?reset=done", http.StatusSeeOther)
+}
+
+func (h *Web) resetFromCookie(w http.ResponseWriter, r *http.Request) (*Reset, bool) {
+	value, ok := h.reset.Get(r)
+	publicID, _, cut := strings.Cut(value, "|")
+	if !ok || !cut {
+		h.kit.Render(w, r, http.StatusBadRequest, layout.Error(h.kit.Layout("Reset your password"), resetIncomplete))
+		return nil, false
+	}
+	reset, err := h.resets.ByPublicID(r.Context(), publicID)
+	if err != nil {
+		h.resetFailed(w, r, err)
+		return nil, false
+	}
+	return reset, true
+}
+
+func (h *Web) renderReset(w http.ResponseWriter, r *http.Request, status int, reset *Reset, msg string) {
+	email, name, err := h.resets.Person(r.Context(), reset)
+	if err != nil {
+		h.kit.Fail(w, r, "web: reset person", err)
+		return
+	}
+	h.kit.Render(w, r, status, views.Reset(h.kit.Layout("Choose a new password"), views.ResetData{Email: email, Name: name, Error: msg}))
+}
+
+func (h *Web) resetFailed(w http.ResponseWriter, r *http.Request, err error) {
+	e, ok := errors.AsType[*ResetNotUsableError](err)
+	if !ok {
+		h.kit.Fail(w, r, "web: reset", err)
+		return
+	}
+	h.reset.Clear(w)
+	h.kit.Render(w, r, http.StatusGone, views.Forgot(h.kit.Layout("Reset your password"), views.ForgotData{Error: e.Message()}))
 }
 
 func acceptsJSON(r *http.Request) bool {

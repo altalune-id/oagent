@@ -91,11 +91,14 @@ func TestLimits_ABrokenLimiterIsAnError(t *testing.T) {
 }
 
 func TestRules(t *testing.T) {
-	for _, r := range []ratelimit.Rule{LoginEmailRule(), LoginIPRule()} {
+	for _, r := range []ratelimit.Rule{LoginEmailRule(), LoginIPRule(), ResetEmailRule(), ResetIPRule(), ResetLinkIPRule()} {
 		require.NoError(t, r.Validate(), r.Name)
 	}
 	assert.Equal(t, ratelimit.Rule{Name: "login-email", Rate: 10, Per: 15 * time.Minute, Burst: 5}, LoginEmailRule())
 	assert.Equal(t, ratelimit.Rule{Name: "login-ip", Rate: 60, Per: 15 * time.Minute, Burst: 60}, LoginIPRule())
+	assert.Equal(t, ratelimit.Rule{Name: "reset-email", Rate: 3, Per: time.Hour, Burst: 3}, ResetEmailRule())
+	assert.Equal(t, ratelimit.Rule{Name: "reset-ip", Rate: 20, Per: time.Hour, Burst: 20}, ResetIPRule())
+	assert.Equal(t, ratelimit.Rule{Name: "reset-link-ip", Rate: 20, Per: time.Hour, Burst: 20}, ResetLinkIPRule())
 }
 
 func TestWriteLimited(t *testing.T) {

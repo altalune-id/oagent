@@ -55,3 +55,4 @@ INV001 InviteNotUsable
 INV002 InviteEmailMismatch
 INV003 InviteDraftExpired
 AUT003 AuthRateLimited
+AUT004 AuthResetNotUsable

@@ -61,7 +61,7 @@ flowchart TD
 - **Public ids:** every id on a surface (Connect, MCP, CLI, console calls, `/login`'s JSON, webhook bodies and headers) is the 21-character `public_id`; UUIDs never leave the server and slugs appear only in URL paths. Each `controlplane.go` turns an incoming public id into its id once, through the `publicIDs` adapter (`publicids.go`, passed as `controlplane.Services.Refs` and to the MCP tools), and maps every outgoing id back. An unknown, malformed, UUID-shaped or another org's id answers the same not-found. Members are named by the user's public id; API keys have none and are named by their hint within the org. `publicid_integration_test.go` fails if any RPC answers with a UUID.
 - **Reach:** after the permission check, each `controlplane.go` checks that the caller reaches the org, project or resource (`kernel/authz.Reach*`). Out of reach answers 404.
 - **MCP:** tools are generated from the same Connect services, so MCP and `/api` share one handler per RPC.
-- **Credentials required:** `requireCredentials` (`http.go`) makes `/api` and `/mcp` answer 401 and the console redirect to `/login?return_to=…` (local) or send a Basic challenge (basic mode) when no credential is sent. `/login`, `/logout`, `/install`, `/invite`, `/welcome`, `/terms`, `/privacy`, `/static`, `/healthz` and `/readyz` stay open. A request with no Principal reaches nothing (`kernel/authz`).
+- **Credentials required:** `requireCredentials` (`http.go`) makes `/api` and `/mcp` answer 401 and the console redirect to `/login?return_to=…` (local) or send a Basic challenge (basic mode) when no credential is sent. `/login`, `/logout`, `/forgot-password`, `/reset-password`, `/install`, `/invite`, `/welcome`, `/terms`, `/privacy`, `/static`, `/healthz` and `/readyz` stay open. A request with no Principal reaches nothing (`kernel/authz`).
 - **Permissions:** `internal/permission` is the one table of the permissions each RPC needs (all of them; a missing or empty entry is denied). The `/api` interceptor reads it, and every generated MCP tool takes its RPC's entry (`permission.For` in `mcp.go`).
 - **App-only tools:** a tool marked `app_only` carries `_meta.ui.visibility: ["app"]`, so a host that honours MCP Apps offers it to the MCP view, not the model; with `mcp.appsUI` off it is not registered at all. A drafted invite is sent only through one (`member_invite_confirm`) or the console; on a host that ignores the visibility the model can call it too.
 - **MCP scopes:** `tools/list` and `tools/call` both check every one of the tool's permissions against those the caller holds (`mcpinternal.ScopesFromContext`). No Principal holds none.
@@ -80,7 +80,7 @@ flowchart TD
 | `apikey` | project (ids), member (owner roles) | ✓ | — | — |
 | `webhook` | project + org (refs), project (org of project), outbox | ✓ (org events `invite.created`, `member.added`: only a caller who reaches the whole org and holds `member:read` subscribes or reads their payloads) | ✓ | — |
 | `user` | — | CLI `user set-password` (operator, boots the `App`) | — | — |
-| `auth` | user, member, org, project, sessions, passwords; the auth rate limiter on the web side | whoami; CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | `auth_whoami` | `/login`, `/logout` |
+| `auth` | user, member, org, project, sessions, passwords; password resets (its own store, user, sessions, mail queue); the auth rate limiter on the web side | whoami; CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | `auth_whoami` | `/login`, `/logout`, `/forgot-password`, `/reset-password/{token}`, `/reset-password` (local login only) |
 | `install` | user (create, accept terms), org, member, project; auth (sign-in) | — | — | `/install` (terms and privacy consent, `layout.Consent`) + `InstallGate` |
 | `legal` | user (accept terms), auth (rotate session); its own store (document snapshots, acceptance history) | — | — | `/terms`, `/privacy`, `/welcome` + `WelcomeGate` (asks again when the terms changed after the person accepted them) |
 | `health` | readiness checks (db-health monitor) | — | — | `/healthz`, `/readyz` (probes slot, root-anchored) |
@@ -136,7 +136,7 @@ flowchart TD
     legal --> user
     invite --> member & user & org & mailqueue & webhook & legal
     invite -. web .-> auth & sessions
-    auth --> user & member & org & project & sessions
+    auth --> user & member & org & project & sessions & mailqueue
 
     agent --> webhook
     agent --> project
@@ -151,7 +151,7 @@ flowchart TD
 
 **Unit of work:** a use case owns its transaction; stores never begin one. `buildServices` makes one
 `db.NewTransactor(k.Pool)` and hands it to every service that writes more than one row (`org`,
-`agent`, `org/member`, `org/invite`, `install`, `legal`). A store joins the transaction on `ctx`
+`agent`, `org/member`, `org/invite`, `install`, `legal`, the password resets in `auth`). A store joins the transaction on `ctx`
 (`db.Reader`, `db.Writer`, `db.InTx`) or runs alone; a nested `RunInTx` joins the outer one.
 `kernel/db`'s guard test fails if any other package begins a transaction.
 
@@ -170,6 +170,14 @@ them there). No one acts on or grants more permissions than they hold, so only o
 owners. The stdio System principal, basic auth and the CLI `App` keep full operator power.
 `WithDirectory(memberDirectory{…})` lets `member add --org-id` find the user by email and the org by
 its public id.
+`auth.Resets` (`Services.Resets`) is password reset by email, wired only with local login. A request
+answers the same for every email and queues a link only for a person with a password and no
+unused link younger than two minutes (a new link replaces older unused ones); the link
+(`/reset-password/{token}`, valid one hour, stored as a SHA-256) moves the reset's public id into a
+signed cookie (`session.SignedCookie`) and leaves the URL. Setting the password is one unit of
+work: the link is used by a conditional UPDATE, the password is set, every session of the person
+ends and a "your password was changed" email is queued. The `WelcomeGate` skips `/forgot-password`
+and `/reset-password`, so a token is never copied into `/welcome?return_to=…`.
 `install → auth` and `legal → auth` exist only on the web side, wired in
 `http.go`. `buildLegal` builds `Services.Legal`. With local login, `firstBoot` publishes the built-in
 documents: each `updated` value is a version, stored once with its text in `legal_documents`
@@ -203,6 +211,8 @@ group gets `ratelimit.Disabled()`, which allows every call.
   an hour per IP. A refused form answers 429 with `Retry-After` and a generic message (JSON
   `AUT003` for `/login` with `Accept: application/json`); a failing store answers 503 (fail
   closed). Known and unknown emails get the same answer, limiter on or off.
+  `POST /forgot-password` counts 20 an hour per IP and 3 an hour per email; opening a reset link,
+  its form and setting the password count 20 an hour per IP.
 - **Client IP:** `layout.ClientIP` keys on `RemoteAddr`, or, when `http.trustedProxyHops` (env
   `OAGENT_HTTP_TRUSTED_PROXY_HOPS`) is n >= 1, on the n-th `X-Forwarded-For` entry counted from the
   right. Each trusted proxy appends the address it saw, so entries further left are whatever the

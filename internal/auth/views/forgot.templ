@@ -1,0 +1,34 @@
+package views
+
+import "altalune.id/oagent/internal/web/layout"
+
+// ForgotData is the "forgot password" form's state.
+type ForgotData struct {
+	Email string
+	Sent  bool
+	Error string
+}
+
+templ Forgot(d layout.LayoutData, v ForgotData) {
+	@layout.Layout(d) {
+		@layout.Card(d.Title) {
+			if v.Error != "" {
+				<div role="alert" class="alert alert-error alert-soft">{ v.Error }</div>
+			}
+			if v.Sent {
+				<div role="status" class="alert alert-info alert-soft">If an account exists for that email, we sent a link to reset its password. The link works for one hour.</div>
+				<p class="text-sm"><a class="link" href={ d.Href("/login") }>Back to sign in</a></p>
+			} else {
+				<p class="text-sm">Enter the email you sign in with. If it has an account, we send a link to choose a new password.</p>
+				<form method="post" action={ d.Href("/forgot-password") } class="flex flex-col gap-3">
+					<label class="floating-label">
+						<span>Email</span>
+						<input class="input w-full" type="email" name="email" value={ v.Email } placeholder="Email" autocomplete="username" required autofocus/>
+					</label>
+					<button class="btn btn-primary mt-2" type="submit">Send the link</button>
+				</form>
+				<p class="text-sm"><a class="link" href={ d.Href("/login") }>Back to sign in</a></p>
+			}
+		}
+	}
+}

@@ -1,0 +1,26 @@
+package views
+
+import "altalune.id/oagent/internal/web/layout"
+
+// ResetHTML is the password reset email: the link and when it stops working.
+templ ResetHTML(link string, expires string) {
+	@layout.Mail(ResetSubject()) {
+		<p style="margin:0 0 12px;">Someone asked to reset the password of your oagent account.</p>
+		<p style="margin:0 0 20px;">
+			<a href={ templ.SafeURL(link) } style="display:inline-block;padding:10px 16px;background:#18181b;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">Choose a new password</a>
+		</p>
+		<p style="margin:0 0 12px;word-break:break-all;color:#71717a;">Or copy this link: { link }</p>
+		<p style="margin:0;color:#71717a;">The link works once, until { expires }. If you did not ask for this, you can ignore this email; your password stays the same.</p>
+	}
+}
+
+// ChangedHTML tells a person their password was changed and every session ended.
+templ ChangedHTML(signIn string) {
+	@layout.Mail(ChangedSubject()) {
+		<p style="margin:0 0 12px;">The password of your oagent account was changed, and you were signed out of your other sessions.</p>
+		<p style="margin:0 0 20px;">
+			<a href={ templ.SafeURL(signIn) } style="display:inline-block;padding:10px 16px;background:#18181b;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">Sign in</a>
+		</p>
+		<p style="margin:0;color:#71717a;">If you did not do this, reset your password now and tell your administrator.</p>
+	}
+}

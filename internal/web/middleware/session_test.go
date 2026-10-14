@@ -28,6 +28,7 @@ type sessionFixture struct {
 	store    *session.MemoryStore
 	reported []error
 	seen     session.Principal
+	seenSID  string
 	handler  http.Handler
 }
 
@@ -38,7 +39,10 @@ func newSessionFixture(t *testing.T, r refresher) *sessionFixture {
 		f.reported = append(f.reported, cause)
 		return apperror.New(apperror.CodeUnexpected, msg)
 	}
-	next := http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) { f.seen = session.PrincipalFrom(req.Context()) })
+	next := http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
+		f.seen = session.PrincipalFrom(req.Context())
+		f.seenSID, _ = session.SIDFrom(req.Context())
+	})
 	f.handler = Session(SessionConfig{Store: f.store, Secret: secret, Auth: r, Unexpected: unexpected})(next)
 	return f
 }
@@ -111,4 +115,17 @@ func TestSession_RefreshNotFoundIsNotReported(t *testing.T) {
 	f.serve(session.Sign(secret, "sid-1"))
 	assert.Empty(t, f.seen.Source)
 	assert.Empty(t, f.reported)
+}
+
+func TestSession_PutsTheSIDOnTheContext(t *testing.T) {
+	f := newSessionFixture(t, func(p session.Principal) (session.Principal, error) { return p, nil })
+	p := session.Principal{UserID: uuid.New(), Source: session.SourceLocal}
+	require.NoError(t, f.store.Save(context.Background(), "sid-1", p, time.Now().Add(time.Hour)))
+	f.serve(session.Sign(secret, "sid-1"))
+	assert.Equal(t, "sid-1", f.seenSID)
+
+	f.serve(session.Sign(secret, "sid-gone"))
+	assert.Empty(t, f.seenSID, "no sid for a session that is not stored")
+	f.serve("")
+	assert.Empty(t, f.seenSID)
 }

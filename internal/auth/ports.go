@@ -11,6 +11,7 @@ import (
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/user"
+	"altalune.id/oagent/mailer"
 )
 
 // UserReader finds a user by email: ByEmail takes a normalized address, FindByEmail one an operator typed.
@@ -80,4 +81,21 @@ type Deps struct {
 	Sessions  session.Store
 	Passwords PasswordSetter
 	Basic     BasicCredentials
+}
+
+// ResetUsers finds the person a reset is for.
+type ResetUsers interface {
+	ByEmail(ctx context.Context, email string) (*user.User, error)
+	ByID(ctx context.Context, id uuid.UUID) (*user.User, error)
+}
+
+// UserSessions ends a person's sessions; it joins the transaction on ctx.
+type UserSessions interface {
+	DeleteByUser(ctx context.Context, userID uuid.UUID) error
+	DeleteByUserExcept(ctx context.Context, userID uuid.UUID, keepSID string) error
+}
+
+// MailQueue queues an email; it joins the transaction on ctx.
+type MailQueue interface {
+	Enqueue(ctx context.Context, m mailer.Message) (uuid.UUID, error)
 }

@@ -68,8 +68,12 @@ func TestBuildRoutes_LoginOnlyWithLocalLogin(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, serveRoutes(cfg, nil, http.MethodGet, "/login").Code)
 	assert.Equal(t, http.StatusNotFound, serveRoutes(cfg, nil, http.MethodPost, "/logout").Code)
 
-	svcs := &Services{Caps: capabilities.Capabilities{LocalLogin: true}, Auth: &auth.Service{}}
+	assert.Equal(t, http.StatusNotFound, serveRoutes(cfg, nil, http.MethodGet, "/forgot-password").Code)
+
+	svcs := &Services{Caps: capabilities.Capabilities{LocalLogin: true}, Auth: &auth.Service{}, Resets: auth.NewResets(auth.ResetDeps{})}
 	assert.Equal(t, http.StatusOK, serveRoutes(cfg, svcs, http.MethodGet, "/login").Code)
+	assert.Contains(t, serveRoutes(cfg, svcs, http.MethodGet, "/login").Body.String(), "Forgot password?")
+	assert.Equal(t, http.StatusOK, serveRoutes(cfg, svcs, http.MethodGet, "/forgot-password").Code)
 }
 
 func TestAPIChain(t *testing.T) {

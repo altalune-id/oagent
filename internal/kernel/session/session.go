@@ -74,11 +74,26 @@ func PrincipalFrom(ctx context.Context) Principal {
 	return p
 }
 
+type sidKey struct{}
+
+// SIDInto returns ctx carrying the id of the session the request came with.
+func SIDInto(ctx context.Context, sid string) context.Context {
+	return context.WithValue(ctx, sidKey{}, sid)
+}
+
+// SIDFrom returns the request's session id, if it came with one.
+func SIDFrom(ctx context.Context) (string, bool) {
+	sid, _ := ctx.Value(sidKey{}).(string)
+	return sid, sid != ""
+}
+
 // Store keeps browser sessions by opaque id.
 type Store interface {
 	Save(ctx context.Context, sid string, p Principal, expiresAt time.Time) error
 	Load(ctx context.Context, sid string) (Principal, bool, error)
 	Delete(ctx context.Context, sid string) error
 	DeleteByUser(ctx context.Context, userID uuid.UUID) error
+	// DeleteByUserExcept removes every session of userID but keepSID.
+	DeleteByUserExcept(ctx context.Context, userID uuid.UUID, keepSID string) error
 	DeleteExpired(ctx context.Context) (int, error)
 }

@@ -99,6 +99,19 @@ func (s *PostgresStore) DeleteByUser(ctx context.Context, userID uuid.UUID) erro
 	return nil
 }
 
+// DeleteByUserExcept removes every session of userID but keepSID; it joins the transaction on ctx when there is one.
+func (s *PostgresStore) DeleteByUserExcept(ctx context.Context, userID uuid.UUID, keepSID string) error {
+	var conn qrm.DB = s.db
+	if tx, ok := db.CurrentTx(ctx); ok {
+		conn = tx
+	}
+	where := s.table.UserID.EQ(postgres.UUID(userID)).AND(s.table.SID.NOT_EQ(postgres.String(keepSID)))
+	if _, err := s.table.DELETE().WHERE(where).ExecContext(ctx, conn); err != nil {
+		return fmt.Errorf("session.postgres: DeleteByUserExcept: %w", err)
+	}
+	return nil
+}
+
 // DeleteExpired removes expired sessions in batches and reports how many went.
 func (s *PostgresStore) DeleteExpired(ctx context.Context) (int, error) {
 	t := s.table

@@ -53,14 +53,19 @@ func SubmitRule() ratelimit.Rule {
 }
 
 // Web serves the invite landing, join, accept and switch pages.
-type Web struct{ o WebOpts }
+type Web struct {
+	o      WebOpts
+	cookie session.SignedCookie
+}
 
 // NewWeb binds the invite pages to their options.
 func NewWeb(o WebOpts) *Web {
 	if o.Now == nil {
 		o.Now = time.Now
 	}
-	return &Web{o: o}
+	return &Web{o: o, cookie: session.SignedCookie{
+		Name: cookieName, Path: o.Kit.Path("/invite"), Secret: o.StateSecret, Secure: o.CookieSecure, Now: o.Now,
+	}}
 }
 
 // Register mounts the invite pages on mux.
@@ -91,7 +96,7 @@ func (h *Web) getLink(w http.ResponseWriter, r *http.Request) {
 		h.failed(w, r, nil, err)
 		return
 	}
-	h.setCookie(w, session.Sign(h.o.StateSecret, inv.PublicID+"|"+strconv.FormatInt(inv.ExpiresAt.Unix(), 10)), inv.ExpiresAt)
+	h.cookie.Set(w, inv.PublicID+"|"+strconv.FormatInt(inv.ExpiresAt.Unix(), 10), inv.ExpiresAt)
 	http.Redirect(w, r, h.o.Kit.Path("/invite"), http.StatusSeeOther)
 }
 
@@ -243,7 +248,7 @@ func (h *Web) fromCookie(w http.ResponseWriter, r *http.Request) (*Invite, bool)
 	}
 	// SECURITY: a cookie from a link issued before a resend is stale.
 	if err == nil && inv.ExpiresAt.Unix() != issued && inv.live() {
-		h.clearCookie(w)
+		h.cookie.Clear(w)
 		h.incomplete(w, r)
 		return nil, false
 	}
@@ -268,7 +273,7 @@ func (h *Web) failed(w http.ResponseWriter, r *http.Request, inv *Invite, err er
 		h.o.Kit.Fail(w, r, "web: invite", err)
 		return
 	}
-	h.clearCookie(w)
+	h.cookie.Clear(w)
 	v := views.GoneData{Message: goneMessage(reason)}
 	p := session.PrincipalFrom(r.Context())
 	v.SignIn = reason == ReasonUsed && !p.IsPerson()
@@ -308,7 +313,7 @@ func (h *Web) joinFailed(w http.ResponseWriter, r *http.Request, inv *Invite, v 
 }
 
 func (h *Web) done(w http.ResponseWriter, r *http.Request, inv *Invite) {
-	h.clearCookie(w)
+	h.cookie.Clear(w)
 	slug, err := h.o.OrgLinks.Slug(r.Context(), inv.OrgID)
 	if err != nil {
 		h.o.Kit.Fail(w, r, "web: invite org", err)
@@ -330,39 +335,16 @@ func (h *Web) loginURL(email string) string {
 	return h.o.Kit.Path("/login") + "?" + q.Encode()
 }
 
-func (h *Web) setCookie(w http.ResponseWriter, value string, expires time.Time) {
-	http.SetCookie(w, &http.Cookie{ //nolint:gosec // Secure follows http.cookieSecure.
-		Name:     cookieName,
-		Value:    value,
-		Path:     h.o.Kit.Path("/invite"),
-		MaxAge:   max(int(expires.Sub(h.o.Now()).Seconds()), 1),
-		Secure:   h.o.CookieSecure,
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	})
-}
-
-func (h *Web) clearCookie(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{ //nolint:gosec // Secure follows http.cookieSecure.
-		Name: cookieName, Path: h.o.Kit.Path("/invite"), MaxAge: -1,
-		Secure: h.o.CookieSecure, HttpOnly: true, SameSite: http.SameSiteLaxMode,
-	})
-}
-
 func (h *Web) readCookie(r *http.Request) (publicID string, issued int64, ok bool) {
-	c, err := r.Cookie(cookieName)
-	if err != nil {
-		return "", 0, false
-	}
-	value, err := session.Verify(h.o.StateSecret, c.Value)
-	if err != nil {
+	value, ok := h.cookie.Get(r)
+	if !ok {
 		return "", 0, false
 	}
 	publicID, exp, ok := strings.Cut(value, "|")
 	if !ok {
 		return "", 0, false
 	}
-	issued, err = strconv.ParseInt(exp, 10, 64)
+	issued, err := strconv.ParseInt(exp, 10, 64)
 	if err != nil {
 		return "", 0, false
 	}

@@ -24,6 +24,7 @@ erDiagram
     users |o--o{ orgs : "created_by"
     users |o--o{ api_keys : "created_by (owner of personal keys)"
     users ||--o{ sessions : owns
+    users ||--o{ password_resets : requests
     orgs ||--o{ invites : has
     users ||--o{ terms_acceptances : accepted
     legal_documents ||--o{ terms_acceptances : "terms, privacy"
@@ -198,6 +199,15 @@ erDiagram
         timestamptz created_at
         timestamptz settled_at
     }
+    password_resets {
+        uuid id PK
+        text public_id UK "held in the reset cookie"
+        uuid user_id FK
+        text token_hash UK "SHA-256 of the emailed token"
+        timestamptz expires_at "one hour"
+        timestamptz used_at "set once, by a conditional UPDATE"
+        timestamptz created_at
+    }
     sessions {
         text sid PK "opaque, no public_id"
         uuid user_id FK
@@ -240,6 +250,7 @@ Rules the diagram can't show. Names omit `{{.TablePrefix}}`.
 | `terms_acceptances` | `terms_acceptances_user_idx` | one person's acceptances, oldest first |
 | `mail_queue` | `mail_queue_settled_erased`, `mail_queue_pending_payload` (checks) | a pending row holds its payload; a sent or failed row holds none |
 | `mail_queue` | `mail_queue_due_idx` (`WHERE status = 'pending'`) | the worker's claim of due mail |
+| `password_resets` | `token_hash` unique, `password_resets_user_idx` (`WHERE used_at IS NULL`) | tokens are found by their hash; a new request deletes the person's unused tokens |
 | `sessions` | `sessions_expires_idx`, `sessions_user_idx` | sweep of expired rows; delete all sessions of a user |
 
 ## External migrations

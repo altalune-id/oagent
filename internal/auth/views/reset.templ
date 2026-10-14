@@ -1,0 +1,30 @@
+package views
+
+import "altalune.id/oagent/internal/web/layout"
+
+// ResetData is the "choose a new password" form's state; the password is never echoed back.
+type ResetData struct {
+	Email string
+	Name  string
+	Error string
+}
+
+templ Reset(d layout.LayoutData, v ResetData) {
+	@layout.Layout(d) {
+		@layout.Card(d.Title) {
+			if v.Error != "" {
+				<div role="alert" class="alert alert-error alert-soft">{ v.Error }</div>
+			}
+			<form method="post" action={ d.Href("/reset-password") } class="flex flex-col gap-3">
+				<label class="floating-label">
+					<span>Email</span>
+					<input class="input w-full" type="email" name="email" value={ v.Email } placeholder="Email" autocomplete="username" readonly/>
+				</label>
+				<input type="hidden" name="name_hint" value={ v.Name }/>
+				@layout.PasswordField(d, layout.PasswordFieldData{Name: "password", Label: "New password", EmailInput: "email", NameInput: "name_hint"})
+				<button class="btn btn-primary mt-2" type="submit">Set the new password</button>
+			</form>
+			<p class="text-xs text-base-content/60">You will be signed out everywhere and asked to sign in again.</p>
+		}
+	}
+}

@@ -52,3 +52,14 @@ func TestSystemPrincipal(t *testing.T) {
 	assert.True(t, p.Operator)
 	assert.False(t, p.IsPerson())
 }
+
+func TestSIDIntoAndFrom(t *testing.T) {
+	sid, ok := SIDFrom(context.Background())
+	assert.False(t, ok)
+	assert.Empty(t, sid)
+	sid, ok = SIDFrom(SIDInto(context.Background(), "sid-1"))
+	assert.True(t, ok)
+	assert.Equal(t, "sid-1", sid)
+	_, ok = SIDFrom(SIDInto(context.Background(), ""))
+	assert.False(t, ok, "an empty sid is no sid")
+}

@@ -38,3 +38,21 @@ func TestRateLimitedError(t *testing.T) {
 		assert.Equal(t, want, (&RateLimitedError{RetryAfter: d}).Message(), d)
 	}
 }
+
+func TestResetNotUsableError(t *testing.T) {
+	for reason, msg := range map[ResetReason]string{
+		ResetExpired:  "This reset link has expired. Ask for a new one.",
+		ResetUsed:     "This reset link was already used. Ask for a new one if you still need it.",
+		ResetNotFound: "This reset link is not valid. Check that you copied the whole link from your email.",
+	} {
+		err := &ResetNotUsableError{Reason: reason}
+		assert.True(t, IsResetNotUsableError(err))
+		assert.Equal(t, reason, ResetReasonOf(err))
+		ae := err.ToAppError()
+		assert.Equal(t, apperror.CodeAuthResetNotUsable, ae.Code())
+		assert.Equal(t, msg, ae.Message())
+		assert.Equal(t, map[string]string{"reason": string(reason)}, ae.Meta())
+	}
+	assert.False(t, IsResetNotUsableError(assert.AnError))
+	assert.Empty(t, ResetReasonOf(assert.AnError))
+}

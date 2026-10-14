@@ -58,6 +58,7 @@ const (
 	CodeAuthInvalidCredentials Code = "AUT001"
 	CodeAuthPasswordPolicy     Code = "AUT002"
 	CodeAuthRateLimited        Code = "AUT003"
+	CodeAuthResetNotUsable     Code = "AUT004"
 
 	CodeInstallAlreadyDone Code = "INS001"
 	CodeInstallRequired    Code = "INS002"
@@ -128,6 +129,7 @@ var kinds = map[Code]Kind{
 	CodeAuthInvalidCredentials: KindUnauthenticated,
 	CodeAuthPasswordPolicy:     KindInvalid,
 	CodeAuthRateLimited:        KindResourceExhausted,
+	CodeAuthResetNotUsable:     KindFailedPrecondition,
 
 	CodeInstallAlreadyDone: KindAlreadyExists,
 	CodeInstallRequired:    KindFailedPrecondition,

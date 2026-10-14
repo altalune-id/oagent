@@ -21,7 +21,7 @@ type SessionConfig struct {
 	Unexpected apperror.UnexpectedFunc
 }
 
-// Session puts the cookie's Principal, with authority rebuilt, into the request context; any failure leaves it anonymous.
+// Session puts the cookie's Principal (authority rebuilt) and session id on the request context; any failure leaves it anonymous.
 func Session(cfg SessionConfig) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +44,7 @@ func Session(cfg SessionConfig) func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			next.ServeHTTP(w, r.WithContext(session.PrincipalInto(ctx, p)))
+			next.ServeHTTP(w, r.WithContext(session.SIDInto(session.PrincipalInto(ctx, p), sid)))
 		})
 	}
 }

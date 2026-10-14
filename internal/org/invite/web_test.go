@@ -395,7 +395,7 @@ func TestWeb_DraftsNeverRender(t *testing.T) {
 	f := newWebFixture(t, false)
 	d, err := f.svc.Draft(f.ctx, f.owner, f.org, "dina@x.io")
 	require.NoError(t, err)
-	ck := &http.Cookie{Name: "oagent_invite", Value: session.Sign(webSecret, d.PublicID+"|"+strconv.FormatInt(d.ExpiresAt.Unix(), 10))}
+	ck := &http.Cookie{Name: "oagent_invite", Value: session.Sign(webSecret, "oagent_invite="+d.PublicID+"|"+strconv.FormatInt(d.ExpiresAt.Unix(), 10))}
 	rec := f.get("/invite", ck)
 	assert.Equal(t, http.StatusGone, rec.Code)
 	assert.Contains(t, rec.Body.String(), "This invite link is not valid.")

@@ -61,6 +61,18 @@ func (s *MemoryStore) DeleteByUser(_ context.Context, userID uuid.UUID) error {
 	return nil
 }
 
+// DeleteByUserExcept removes every session of userID but keepSID.
+func (s *MemoryStore) DeleteByUserExcept(_ context.Context, userID uuid.UUID, keepSID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for sid, r := range s.rows {
+		if r.p.UserID == userID && sid != keepSID {
+			delete(s.rows, sid)
+		}
+	}
+	return nil
+}
+
 // DeleteExpired removes expired sessions and reports how many went.
 func (s *MemoryStore) DeleteExpired(_ context.Context) (int, error) {
 	s.mu.Lock()

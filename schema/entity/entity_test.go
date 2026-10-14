@@ -81,6 +81,11 @@ func TestBindings(t *testing.T) {
 			[]string{"id", "public_id", "org_id", "slug", "name", "created_by", "created_at", "updated_at"},
 		},
 		{
+			"password_resets",
+			func(s, p string) binding { b := entity.NewPasswordResets(s, p); return binding{b, b.AllColumns} },
+			[]string{"id", "public_id", "user_id", "token_hash", "expires_at", "used_at", "created_at"},
+		},
+		{
 			"sessions",
 			func(s, p string) binding { b := entity.NewSessions(s, p); return binding{b, b.AllColumns} },
 			[]string{"sid", "user_id", "payload", "expires_at", "created_at"},
