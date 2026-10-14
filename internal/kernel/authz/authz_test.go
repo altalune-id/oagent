@@ -51,3 +51,17 @@ func TestForbiddenError(t *testing.T) {
 	assert.Equal(t, "You do not have permission to do this", ae.Message())
 	assert.False(t, authz.IsForbiddenError(assert.AnError))
 }
+
+func TestAllowed_PersonOnlyNeedsAPerson(t *testing.T) {
+	assert.True(t, authz.Allowed(session.Principal{Source: session.SourceLocal, UserID: uuid.New()}, authz.PersonOnly))
+	assert.True(t, authz.Allowed(session.Principal{Source: session.SourceOIDC, UserID: uuid.New()}, authz.PersonOnly))
+	for name, p := range map[string]session.Principal{
+		"key":            {Source: session.SourceAPIKey, UserID: uuid.New(), Operator: true, Scopes: []string{"*"}},
+		"basic operator": {Source: session.SourceBasic, Operator: true},
+		"system":         session.System(),
+		"nobody":         {},
+		"local, no user": {Source: session.SourceLocal},
+	} {
+		assert.False(t, authz.Allowed(p, authz.PersonOnly), name)
+	}
+}

@@ -45,6 +45,7 @@ func sameRefusalCases() []sameRefusalCase {
 	return []sameRefusalCase{
 		{name: "missing org name", tool: "org_create", args: map[string]any{}, procedure: "/org.v1.OrgService/CreateOrg", request: &orgv1.CreateOrgRequest{}},
 		{name: "201-character org name", tool: "org_create", args: map[string]any{"name": long}, procedure: "/org.v1.OrgService/CreateOrg", request: &orgv1.CreateOrgRequest{Name: long}},
+		{name: "malformed public id", tool: "org_get", args: map[string]any{"id": "x"}, procedure: "/org.v1.OrgService/GetOrg", request: &orgv1.GetOrgRequest{Id: "x"}},
 	}
 }
 

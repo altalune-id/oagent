@@ -52,7 +52,7 @@ func Table() map[string][]string {
 		memberv1connect.MemberServiceListMembersProcedure:   {scope.MemberRead},
 		memberv1connect.MemberServiceSetMemberRoleProcedure: {scope.MemberWrite},
 		memberv1connect.MemberServiceRemoveMemberProcedure:  {scope.MemberWrite},
-		memberv1connect.MemberServiceLeaveOrgProcedure:      {authz.AnyAuthenticated},
+		memberv1connect.MemberServiceLeaveOrgProcedure:      {authz.PersonOnly},
 
 		invitev1connect.InviteServiceListInvitesProcedure:        {scope.MemberRead},
 		invitev1connect.InviteServiceCreateInviteProcedure:       {scope.MemberWrite},
@@ -63,9 +63,9 @@ func Table() map[string][]string {
 		invitev1connect.InviteServiceDiscardDraftInviteProcedure: {scope.MemberWrite},
 
 		authv1connect.AuthServiceWhoamiProcedure:            {authz.AnyAuthenticated},
-		authv1connect.AuthServiceUpdateProfileProcedure:     {authz.AnyAuthenticated},
-		authv1connect.AuthServiceChangePasswordProcedure:    {authz.AnyAuthenticated},
-		authv1connect.AuthServiceSignOutEverywhereProcedure: {authz.AnyAuthenticated},
+		authv1connect.AuthServiceUpdateProfileProcedure:     {authz.PersonOnly},
+		authv1connect.AuthServiceChangePasswordProcedure:    {authz.PersonOnly},
+		authv1connect.AuthServiceSignOutEverywhereProcedure: {authz.PersonOnly},
 	}
 }
 

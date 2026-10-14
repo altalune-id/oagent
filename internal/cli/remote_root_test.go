@@ -25,7 +25,7 @@ import (
 
 // Exercises the real root tree for a remote command: config (no validation), client boot, org.ClientFn.
 func TestRoot_OrgGet_Remote(t *testing.T) {
-	store := &fakes.OrgStore{Org: &org.Org{ID: uuid.New(), PublicID: "pub", Slug: "acme", Name: "Acme"}}
+	store := &fakes.OrgStore{Org: &org.Org{ID: uuid.New(), PublicID: "pubpubpubpubpubpubpub", Slug: "acme", Name: "Acme"}}
 	srv := controlplane.New(controlplane.Services{Orgs: org.NewService(store, fakes.Transactor{}, nil)}, nil, cptest.OperatorOptions())
 	ts := httptest.NewServer(srv.Handler(""))
 	t.Cleanup(ts.Close)
@@ -42,7 +42,7 @@ func TestRoot_OrgGet_Remote(t *testing.T) {
 
 	require.NoError(t, root.ExecuteContext(t.Context()))
 	assert.Contains(t, buf.String(), `"slug": "acme"`)
-	assert.Contains(t, buf.String(), `"id": "pub"`)
+	assert.Contains(t, buf.String(), `"id": "pubpubpubpubpubpubpub"`)
 	assert.NotContains(t, buf.String(), store.Org.ID.String())
 }
 
@@ -81,7 +81,11 @@ func TestRoot_ProjectGet_Remote(t *testing.T) {
 
 	_, err = run(p.ID.String())
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not_found", "a UUID is not an id the API answers to")
+	assert.Contains(t, err.Error(), "invalid_argument", "a UUID is not a public id")
+
+	_, err = run("unknwnunknwnunknwnabc")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not_found", "a well-formed unknown id")
 }
 
 func TestRoot_AgentGet_Remote(t *testing.T) {

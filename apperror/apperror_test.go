@@ -54,3 +54,18 @@ func TestValidationWithNoViolations(t *testing.T) {
 	assert.Equal(t, CodeValidation, ae.Code())
 	assert.Empty(t, ae.Meta())
 }
+
+func TestValidationMessages(t *testing.T) {
+	for reason, want := range map[FieldReason]string{
+		FieldRequired:      "org id is required",
+		FieldTooShort:      "org id is too short",
+		FieldTooLong:       "org id is too long",
+		FieldInvalidFormat: "org id is not in the right format",
+		FieldNotAllowed:    "org id is not an allowed value",
+		FieldTooMany:       "org id has too many items",
+		FieldInvalid:       "org id is invalid",
+		"odd":              "org id is odd",
+	} {
+		assert.Equal(t, want, Validation([]Violation{{Field: "org_id", Reason: reason}}).Message())
+	}
+}

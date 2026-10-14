@@ -2,8 +2,10 @@ syntax = "proto3";
 
 package webhook.v1;
 
+import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 import "mcp/v1/annotations.proto";
+import "oagent/v1/rules.proto";
 
 option go_package = "altalune.id/oagent/gen/go/webhook/v1;webhookv1";
 
@@ -68,11 +70,26 @@ message Webhook {
 }
 
 message CreateWebhookRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string url = 3;
-  string description = 4;
-  repeated string event_types = 5;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string project_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string url = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {id: "webhook.url.max_len.2048", expression: "this.trim().size() <= 2048 ? '' : 'must be at most 2048 characters'"},
+    (buf.validate.field).cel = {id: "webhook.url.format", expression: "this.trim().matches('^[A-Za-z][A-Za-z0-9+.-]*://[^\\\\s/?#]') ? '' : 'must be an absolute URL'"}
+  ];
+  string description = 4 [
+    (buf.validate.field).cel = {id: "webhook.description.max_len.200", expression: "this.trim().size() <= 200 ? '' : 'must be at most 200 characters'"}
+  ];
+  repeated string event_types = 5 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string.pattern = "^[a-z]+([.][a-z_]+)+$"
+  ];
 }
 
 message CreateWebhookResponse {
@@ -81,9 +98,18 @@ message CreateWebhookResponse {
 }
 
 message GetWebhookRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string id = 3;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string project_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string id = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message GetWebhookResponse {
@@ -91,8 +117,14 @@ message GetWebhookResponse {
 }
 
 message ListWebhooksRequest {
-  string org_id = 1;
-  string project_id = 2;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string project_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message ListWebhooksResponse {
@@ -112,9 +144,18 @@ message WebhookDelivery {
 }
 
 message ListWebhookDeliveriesRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string id = 3;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string project_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string id = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
   int32 limit = 4;
 }
 
@@ -139,10 +180,22 @@ message WebhookResponseHeader {
 }
 
 message ListWebhookDeliveryAttemptsRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string id = 3;
-  string delivery_id = 4;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string project_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string id = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string delivery_id = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message ListWebhookDeliveryAttemptsResponse {
@@ -150,12 +203,30 @@ message ListWebhookDeliveryAttemptsResponse {
 }
 
 message UpdateWebhookRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string id = 3;
-  string url = 4;
-  string description = 5;
-  repeated string event_types = 6;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string project_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string id = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string url = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {id: "webhook.url.max_len.2048", expression: "this.trim().size() <= 2048 ? '' : 'must be at most 2048 characters'"},
+    (buf.validate.field).cel = {id: "webhook.url.format", expression: "this.trim().matches('^[A-Za-z][A-Za-z0-9+.-]*://[^\\\\s/?#]') ? '' : 'must be an absolute URL'"}
+  ];
+  string description = 5 [
+    (buf.validate.field).cel = {id: "webhook.description.max_len.200", expression: "this.trim().size() <= 200 ? '' : 'must be at most 200 characters'"}
+  ];
+  repeated string event_types = 6 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string.pattern = "^[a-z]+([.][a-z_]+)+$"
+  ];
   bool active = 7;
 }
 
@@ -164,17 +235,35 @@ message UpdateWebhookResponse {
 }
 
 message DeleteWebhookRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string id = 3;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string project_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string id = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message DeleteWebhookResponse {}
 
 message RotateWebhookSecretRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string id = 3;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string project_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string id = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message RotateWebhookSecretResponse {
@@ -182,26 +271,56 @@ message RotateWebhookSecretResponse {
 }
 
 message PingWebhookRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string id = 3;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string project_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string id = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message PingWebhookResponse {}
 
 message RetryWebhookDeliveryRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string id = 3;
-  string delivery_id = 4;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string project_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string id = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string delivery_id = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message RetryWebhookDeliveryResponse {}
 
 message RetryFailedWebhookDeliveriesRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string id = 3;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string project_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string id = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message RetryFailedWebhookDeliveriesResponse {

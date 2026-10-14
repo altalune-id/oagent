@@ -7,6 +7,8 @@
 package apikeyv1
 
 import (
+	_ "altalune.id/oagent/gen/go/oagent/v1"
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -508,7 +510,7 @@ var File_apikey_v1_apikey_proto protoreflect.FileDescriptor
 
 const file_apikey_v1_apikey_proto_rawDesc = "" +
 	"\n" +
-	"\x16apikey/v1/apikey.proto\x12\tapikey.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xff\x03\n" +
+	"\x16apikey/v1/apikey.proto\x12\tapikey.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15oagent/v1/rules.proto\"\xff\x03\n" +
 	"\x06APIKey\x12\x15\n" +
 	"\x06org_id\x18\x02 \x01(\tR\x05orgId\x12\x1d\n" +
 	"\n" +
@@ -530,30 +532,33 @@ const file_apikey_v1_apikey_proto_rawDesc = "" +
 	"\n" +
 	"revoked_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\trevokedAt\x12<\n" +
 	"\flast_used_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"lastUsedAtJ\x04\b\x01\x10\x02R\x02id\"\xad\x02\n" +
-	"\x13CreateAPIKeyRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
+	"lastUsedAtJ\x04\b\x01\x10\x02R\x02id\"\xe1\x04\n" +
+	"\x13CreateAPIKeyRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12(\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x12\n" +
-	"\x04kind\x18\x03 \x01(\tR\x04kind\x12\x12\n" +
-	"\x04name\x18\x04 \x01(\tR\x04name\x12\x16\n" +
-	"\x06scopes\x18\x05 \x03(\tR\x06scopes\x12\x1f\n" +
-	"\vproject_ids\x18\x06 \x03(\tR\n" +
+	"project_id\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x88\xe42\x01R\tprojectId\x124\n" +
+	"\x04kind\x18\x03 \x01(\tB \xbaH\x1d\xc8\x01\x01r\x18R\aprojectR\x03orgR\bpersonalR\x04kind\x12\xbf\x01\n" +
+	"\x04name\x18\x04 \x01(\tB\xaa\x01\xbaH\xa6\x01\xba\x01A\n" +
+	"\x11apikey.name.blank\x1a,this.trim() != '' ? '' : 'must not be blank'\xba\x01\\\n" +
+	"\x17apikey.name.max_len.100\x1aAthis.trim().size() <= 100 ? '' : 'must be at most 100 characters'\xc8\x01\x01R\x04name\x129\n" +
+	"\x06scopes\x18\x05 \x03(\tB!\xbaH\x1e\x92\x01\x1b\"\x19r\x172\x15^[a-z]+:(read|write)$R\x06scopes\x12/\n" +
+	"\vproject_ids\x18\x06 \x03(\tB\x0e\xbaH\v\x92\x01\b\"\x06r\x04\x88\xe42\x01R\n" +
 	"projectIds\x12!\n" +
-	"\fall_projects\x18\a \x01(\bR\vallProjects\x12!\n" +
-	"\fresource_ids\x18\b \x03(\tR\vresourceIds\x129\n" +
+	"\fall_projects\x18\a \x01(\bR\vallProjects\x121\n" +
+	"\fresource_ids\x18\b \x03(\tB\x0e\xbaH\v\x92\x01\b\"\x06r\x04\x88\xe42\x01R\vresourceIds\x12A\n" +
 	"\n" +
-	"expires_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"Y\n" +
+	"expires_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\texpiresAt\"Y\n" +
 	"\x14CreateAPIKeyResponse\x12#\n" +
 	"\x03key\x18\x01 \x01(\v2\x11.apikey.v1.APIKeyR\x03key\x12\x1c\n" +
-	"\tplaintext\x18\x02 \x01(\tR\tplaintext\"+\n" +
-	"\x12ListAPIKeysRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\"<\n" +
+	"\tplaintext\x18\x02 \x01(\tR\tplaintext\"9\n" +
+	"\x12ListAPIKeysRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\"<\n" +
 	"\x13ListAPIKeysResponse\x12%\n" +
-	"\x04keys\x18\x01 \x03(\v2\x11.apikey.v1.APIKeyR\x04keys\"J\n" +
-	"\x13RevokeAPIKeyRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x12\n" +
-	"\x04hint\x18\x03 \x01(\tR\x04hintJ\x04\b\x02\x10\x03R\x02id\"\x16\n" +
+	"\x04keys\x18\x01 \x03(\v2\x11.apikey.v1.APIKeyR\x04keys\"\xeb\x01\n" +
+	"\x13RevokeAPIKeyRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12\xa4\x01\n" +
+	"\x04hint\x18\x03 \x01(\tB\x8f\x01\xbaH\x8b\x01\xba\x01\x84\x01\n" +
+	"\x12apikey.hint.format\x1anthis.trim().matches('^\\u2026?([.][.][.])?[A-Za-z0-9_-]{4}$') ? '' : 'must be the last 4 characters of the key'\xc8\x01\x01R\x04hintJ\x04\b\x02\x10\x03R\x02id\"\x16\n" +
 	"\x14RevokeAPIKeyResponse2\xff\x01\n" +
 	"\rAPIKeyService\x12O\n" +
 	"\fCreateAPIKey\x12\x1e.apikey.v1.CreateAPIKeyRequest\x1a\x1f.apikey.v1.CreateAPIKeyResponse\x12L\n" +

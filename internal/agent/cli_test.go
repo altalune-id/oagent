@@ -78,6 +78,9 @@ func TestAgentGet_UnknownID(t *testing.T) {
 	a := cliAgent(t, refs, "acme")
 
 	_, err := runAgent(t, agentClient(t, &fakes.AgentStore{Agent: a}, refs), "get", a.ID.String())
+	assert.ErrorContains(t, err, "invalid_argument", "a UUID is not a public id")
+
+	_, err = runAgent(t, agentClient(t, &fakes.AgentStore{Agent: a}, refs), "get", "unknwnunknwnunknwnabc")
 	assert.ErrorContains(t, err, "not_found")
 }
 

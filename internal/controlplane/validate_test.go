@@ -2,8 +2,11 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -18,46 +21,46 @@ import (
 
 	"altalune.id/oagent/apperror"
 	apperrorv1 "altalune.id/oagent/gen/go/apperror/v1"
+	authv1 "altalune.id/oagent/gen/go/auth/v1"
+	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	"altalune.id/oagent/internal/kernel/session"
 )
 
+// NOTE: testdata/rule_reasons.json is the one reason table; the console tests its reasonOf against it too.
+type ruleReason struct {
+	Rule   string `json:"rule"`
+	Reason string `json:"reason"`
+	Param  string `json:"param"`
+}
+
+func ruleReasons(t *testing.T) []ruleReason {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("testdata", "rule_reasons.json"))
+	require.NoError(t, err)
+	var rows []ruleReason
+	require.NoError(t, json.Unmarshal(raw, &rows))
+	return rows
+}
+
 func TestReasonOf(t *testing.T) {
-	tests := []struct {
-		ruleID     string
-		wantReason apperror.FieldReason
-		wantParam  string
-	}{
-		{"required", apperror.FieldRequired, ""},
-		{"string.email_empty", apperror.FieldRequired, ""},
-		{"oagent.name.blank", apperror.FieldRequired, ""},
-		{"repeated.min_items", apperror.FieldRequired, ""},
-		{"string.min_len", apperror.FieldTooShort, ""},
-		{"string.max_len", apperror.FieldTooLong, ""},
-		{"string.max_bytes", apperror.FieldTooLong, ""},
-		{"oagent.name.max_len.200", apperror.FieldTooLong, "200"},
-		{"oagent.email.max_len.254", apperror.FieldTooLong, "254"},
-		{"string.pattern", apperror.FieldInvalidFormat, ""},
-		{"string.email", apperror.FieldInvalidFormat, ""},
-		{"string.uri", apperror.FieldInvalidFormat, ""},
-		{"string.len", apperror.FieldInvalidFormat, ""},
-		{"oagent.public_id", apperror.FieldInvalidFormat, ""},
-		{"oagent.email.format", apperror.FieldInvalidFormat, ""},
-		{"string.in", apperror.FieldNotAllowed, ""},
-		{"string.not_in", apperror.FieldNotAllowed, ""},
-		{"enum.defined_only", apperror.FieldNotAllowed, ""},
-		{"repeated.max_items", apperror.FieldTooMany, ""},
-		{"repeated.unique", apperror.FieldInvalid, ""},
-		{"something.new", apperror.FieldInvalid, ""},
-		{"", apperror.FieldInvalid, ""},
-	}
-	for _, tt := range tests {
-		t.Run(tt.ruleID, func(t *testing.T) {
-			reason, param := reasonOf(tt.ruleID)
-			assert.Equal(t, tt.wantReason, reason)
-			assert.Equal(t, tt.wantParam, param)
+	for _, row := range ruleReasons(t) {
+		t.Run(row.Rule, func(t *testing.T) {
+			reason, param := reasonOf(row.Rule)
+			assert.Equal(t, apperror.FieldReason(row.Reason), reason)
+			assert.Equal(t, row.Param, param)
 		})
+	}
+}
+
+func TestRuleReasonsCoverEveryCustomRule(t *testing.T) {
+	listed := map[string]bool{}
+	for _, row := range ruleReasons(t) {
+		listed[row.Rule] = true
+	}
+	for _, id := range customRuleIDs(t) {
+		assert.True(t, listed[id], "%s is used by a request but missing from testdata/rule_reasons.json", id)
 	}
 }
 
@@ -224,4 +227,13 @@ func TestValidate_NilValidatorStillRefuses(t *testing.T) {
 	var v *Validator
 	_, ok := apperror.AsAppError(v.Validate(&orgv1.CreateOrgRequest{}))
 	assert.True(t, ok)
+}
+
+func TestAPI_PersonOnlyRefusesAKeyBeforeValidating(t *testing.T) {
+	p := session.Principal{Source: session.SourceAPIKey, KeyID: uuid.New(), ActiveOrgID: uuid.New(), AllProjects: true, Scopes: []string{"agent:read"}}
+	url := authServer(t, p)
+	_, err := authv1connect.NewAuthServiceClient(http.DefaultClient, url).
+		ChangePassword(context.Background(), bearer(connect.NewRequest(&authv1.ChangePasswordRequest{}), "oagent_good"))
+	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+	assert.Empty(t, detailOf(t, err).GetViolations())
 }

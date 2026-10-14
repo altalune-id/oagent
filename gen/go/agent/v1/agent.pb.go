@@ -8,6 +8,8 @@ package agentv1
 
 import (
 	_ "altalune.id/oagent/gen/go/mcp/v1"
+	_ "altalune.id/oagent/gen/go/oagent/v1"
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -607,7 +609,7 @@ var File_agent_v1_agent_proto protoreflect.FileDescriptor
 
 const file_agent_v1_agent_proto_rawDesc = "" +
 	"\n" +
-	"\x14agent/v1/agent.proto\x12\bagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\"\x9e\x02\n" +
+	"\x14agent/v1/agent.proto\x12\bagent.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\x1a\x15oagent/v1/rules.proto\"\x9e\x02\n" +
 	"\x05Agent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06org_id\x18\x03 \x01(\tR\x05orgId\x12\x1d\n" +
@@ -619,33 +621,35 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtJ\x04\b\x02\x10\x03R\tpublic_id\"\x94\x01\n" +
-	"\x12CreateAgentRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
+	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtJ\x04\b\x02\x10\x03R\tpublic_id\"\xb7\x02\n" +
+	"\x12CreateAgentRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12+\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x12\n" +
-	"\x04slug\x18\x03 \x01(\tR\x04slug\x12\x12\n" +
-	"\x04name\x18\x04 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x05 \x01(\tR\vdescription\"<\n" +
+	"project_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\x12\x1d\n" +
+	"\x04slug\x18\x03 \x01(\tB\t\xbaH\x06r\x04\xa0\xe42\x01R\x04slug\x12 \n" +
+	"\x04name\x18\x04 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x90\xe42\x01R\x04name\x12\x8d\x01\n" +
+	"\vdescription\x18\x05 \x01(\tBk\xbaHh\xba\x01e\n" +
+	"\x1eagent.description.max_len.2000\x1aCthis.trim().size() <= 2000 ? '' : 'must be at most 2000 characters'R\vdescription\"<\n" +
 	"\x13CreateAgentResponse\x12%\n" +
-	"\x05agent\x18\x01 \x01(\v2\x0f.agent.v1.AgentR\x05agent\"!\n" +
-	"\x0fGetAgentRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"9\n" +
+	"\x05agent\x18\x01 \x01(\v2\x0f.agent.v1.AgentR\x05agent\"/\n" +
+	"\x0fGetAgentRequest\x12\x1c\n" +
+	"\x02id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\"9\n" +
 	"\x10GetAgentResponse\x12%\n" +
-	"\x05agent\x18\x01 \x01(\v2\x0f.agent.v1.AgentR\x05agent\"2\n" +
-	"\x11ListAgentsRequest\x12\x1d\n" +
+	"\x05agent\x18\x01 \x01(\v2\x0f.agent.v1.AgentR\x05agent\"@\n" +
+	"\x11ListAgentsRequest\x12+\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\tR\tprojectId\"=\n" +
+	"project_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\"=\n" +
 	"\x12ListAgentsResponse\x12'\n" +
-	"\x06agents\x18\x01 \x03(\v2\x0f.agent.v1.AgentR\x06agents\"Z\n" +
-	"\x12UpdateAgentRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\"<\n" +
+	"\x06agents\x18\x01 \x03(\v2\x0f.agent.v1.AgentR\x06agents\"\xe4\x01\n" +
+	"\x12UpdateAgentRequest\x12\x1c\n" +
+	"\x02id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\x12 \n" +
+	"\x04name\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x90\xe42\x01R\x04name\x12\x8d\x01\n" +
+	"\vdescription\x18\x03 \x01(\tBk\xbaHh\xba\x01e\n" +
+	"\x1eagent.description.max_len.2000\x1aCthis.trim().size() <= 2000 ? '' : 'must be at most 2000 characters'R\vdescription\"<\n" +
 	"\x13UpdateAgentResponse\x12%\n" +
-	"\x05agent\x18\x01 \x01(\v2\x0f.agent.v1.AgentR\x05agent\"$\n" +
-	"\x12DeleteAgentRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x15\n" +
+	"\x05agent\x18\x01 \x01(\v2\x0f.agent.v1.AgentR\x05agent\"2\n" +
+	"\x12DeleteAgentRequest\x12\x1c\n" +
+	"\x02id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\"\x15\n" +
 	"\x13DeleteAgentResponse2\xdd\x05\n" +
 	"\fAgentService\x12\xb1\x01\n" +
 	"\vCreateAgent\x12\x1c.agent.v1.CreateAgentRequest\x1a\x1d.agent.v1.CreateAgentResponse\"e\xca\xf3\x18a\n" +

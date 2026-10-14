@@ -54,18 +54,18 @@ func TestOrgCreate_JSON(t *testing.T) {
 }
 
 func TestOrgGet_JSON(t *testing.T) {
-	store := &fakes.OrgStore{Org: &org.Org{ID: uuid.New(), PublicID: "pub", Slug: "acme", Name: "Acme"}}
+	store := &fakes.OrgStore{Org: &org.Org{ID: uuid.New(), PublicID: "pubpubpubpubpubpubpub", Slug: "acme", Name: "Acme"}}
 
 	buf, err := runOrg(t, orgClient(t, store), "get", store.Org.PublicID, "--output", "json")
 
 	require.NoError(t, err)
 	assert.Contains(t, buf.String(), `"slug": "acme"`)
-	assert.Contains(t, buf.String(), `"id": "pub"`)
+	assert.Contains(t, buf.String(), `"id": "pubpubpubpubpubpubpub"`)
 	assert.NotContains(t, buf.String(), store.Org.ID.String())
 }
 
 func TestOrgGet_Text(t *testing.T) {
-	store := &fakes.OrgStore{Org: &org.Org{ID: uuid.New(), PublicID: "pub", Slug: "acme", Name: "Acme"}}
+	store := &fakes.OrgStore{Org: &org.Org{ID: uuid.New(), PublicID: "pubpubpubpubpubpubpub", Slug: "acme", Name: "Acme"}}
 
 	buf, err := runOrg(t, orgClient(t, store), "get", store.Org.PublicID, "--output", "text")
 
@@ -81,7 +81,7 @@ func TestOrgGet_InvalidID(t *testing.T) {
 
 func TestOrgList_JSON(t *testing.T) {
 	store := &fakes.OrgStore{Orgs: []*org.Org{
-		{ID: uuid.New(), PublicID: "pub", Slug: "acme", Name: "Acme"},
+		{ID: uuid.New(), PublicID: "pubpubpubpubpubpubpub", Slug: "acme", Name: "Acme"},
 	}}
 
 	buf, err := runOrg(t, orgClient(t, store), "list", "--output", "json")
@@ -92,7 +92,7 @@ func TestOrgList_JSON(t *testing.T) {
 
 func TestOrgList_Text(t *testing.T) {
 	store := &fakes.OrgStore{Orgs: []*org.Org{
-		{ID: uuid.New(), PublicID: "pub", Slug: "acme", Name: "Acme"},
+		{ID: uuid.New(), PublicID: "pubpubpubpubpubpubpub", Slug: "acme", Name: "Acme"},
 	}}
 
 	buf, err := runOrg(t, orgClient(t, store), "list", "--output", "text")

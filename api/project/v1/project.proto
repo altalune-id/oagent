@@ -2,8 +2,10 @@ syntax = "proto3";
 
 package project.v1;
 
+import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 import "mcp/v1/annotations.proto";
+import "oagent/v1/rules.proto";
 
 option go_package = "altalune.id/oagent/gen/go/project/v1;projectv1";
 
@@ -49,9 +51,17 @@ message Project {
 }
 
 message CreateProjectRequest {
-  string org_id = 1;
-  string slug = 2;
-  string name = 3;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string slug = 2 [
+    (buf.validate.field).string.(oagent.v1.slug) = true
+  ];
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.name) = true
+  ];
 }
 
 message CreateProjectResponse {
@@ -59,7 +69,10 @@ message CreateProjectResponse {
 }
 
 message GetProjectRequest {
-  string id = 1;
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message GetProjectResponse {
@@ -67,7 +80,10 @@ message GetProjectResponse {
 }
 
 message ListProjectsRequest {
-  string org_id = 1;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message ListProjectsResponse {
@@ -75,9 +91,18 @@ message ListProjectsResponse {
 }
 
 message UpdateProjectRequest {
-  string id = 1;
-  string name = 2;
-  string slug = 3;
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.name) = true
+  ];
+  string slug = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.slug) = true
+  ];
 }
 
 message UpdateProjectResponse {

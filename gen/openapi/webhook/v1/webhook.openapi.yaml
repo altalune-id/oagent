@@ -560,21 +560,36 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         projectId:
           type: string
           title: project_id
+          description: |
+            oagent.public_id = true
         url:
           type: string
           title: url
+          description: |
+            webhook.url.format
+            webhook.url.max_len.2048
         description:
           type: string
           title: description
+          description: |
+            webhook.description.max_len.200
         eventTypes:
           type: array
           items:
             type: string
+            pattern: ^[a-z]+([.][a-z_]+)+$
           title: event_types
+          minItems: 1
       title: CreateWebhookRequest
+      required:
+        - orgId
+        - projectId
+        - url
       additionalProperties: false
     webhook.v1.CreateWebhookResponse:
       type: object
@@ -593,13 +608,23 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         projectId:
           type: string
           title: project_id
+          description: |
+            oagent.public_id = true
         id:
           type: string
           title: id
+          description: |
+            oagent.public_id = true
       title: DeleteWebhookRequest
+      required:
+        - orgId
+        - projectId
+        - id
       additionalProperties: false
     webhook.v1.DeleteWebhookResponse:
       type: object
@@ -611,13 +636,23 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         projectId:
           type: string
           title: project_id
+          description: |
+            oagent.public_id = true
         id:
           type: string
           title: id
+          description: |
+            oagent.public_id = true
       title: GetWebhookRequest
+      required:
+        - orgId
+        - projectId
+        - id
       additionalProperties: false
     webhook.v1.GetWebhookResponse:
       type: object
@@ -633,17 +668,27 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         projectId:
           type: string
           title: project_id
+          description: |
+            oagent.public_id = true
         id:
           type: string
           title: id
+          description: |
+            oagent.public_id = true
         limit:
           type: integer
           title: limit
           format: int32
       title: ListWebhookDeliveriesRequest
+      required:
+        - orgId
+        - projectId
+        - id
       additionalProperties: false
     webhook.v1.ListWebhookDeliveriesResponse:
       type: object
@@ -661,16 +706,29 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         projectId:
           type: string
           title: project_id
+          description: |
+            oagent.public_id = true
         id:
           type: string
           title: id
+          description: |
+            oagent.public_id = true
         deliveryId:
           type: string
           title: delivery_id
+          description: |
+            oagent.public_id = true
       title: ListWebhookDeliveryAttemptsRequest
+      required:
+        - orgId
+        - projectId
+        - id
+        - deliveryId
       additionalProperties: false
     webhook.v1.ListWebhookDeliveryAttemptsResponse:
       type: object
@@ -688,10 +746,17 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         projectId:
           type: string
           title: project_id
+          description: |
+            oagent.public_id = true
       title: ListWebhooksRequest
+      required:
+        - orgId
+        - projectId
       additionalProperties: false
     webhook.v1.ListWebhooksResponse:
       type: object
@@ -709,13 +774,23 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         projectId:
           type: string
           title: project_id
+          description: |
+            oagent.public_id = true
         id:
           type: string
           title: id
+          description: |
+            oagent.public_id = true
       title: PingWebhookRequest
+      required:
+        - orgId
+        - projectId
+        - id
       additionalProperties: false
     webhook.v1.PingWebhookResponse:
       type: object
@@ -727,13 +802,23 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         projectId:
           type: string
           title: project_id
+          description: |
+            oagent.public_id = true
         id:
           type: string
           title: id
+          description: |
+            oagent.public_id = true
       title: RetryFailedWebhookDeliveriesRequest
+      required:
+        - orgId
+        - projectId
+        - id
       additionalProperties: false
     webhook.v1.RetryFailedWebhookDeliveriesResponse:
       type: object
@@ -750,16 +835,29 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         projectId:
           type: string
           title: project_id
+          description: |
+            oagent.public_id = true
         id:
           type: string
           title: id
+          description: |
+            oagent.public_id = true
         deliveryId:
           type: string
           title: delivery_id
+          description: |
+            oagent.public_id = true
       title: RetryWebhookDeliveryRequest
+      required:
+        - orgId
+        - projectId
+        - id
+        - deliveryId
       additionalProperties: false
     webhook.v1.RetryWebhookDeliveryResponse:
       type: object
@@ -771,13 +869,23 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         projectId:
           type: string
           title: project_id
+          description: |
+            oagent.public_id = true
         id:
           type: string
           title: id
+          description: |
+            oagent.public_id = true
       title: RotateWebhookSecretRequest
+      required:
+        - orgId
+        - projectId
+        - id
       additionalProperties: false
     webhook.v1.RotateWebhookSecretResponse:
       type: object
@@ -793,27 +901,45 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         projectId:
           type: string
           title: project_id
+          description: |
+            oagent.public_id = true
         id:
           type: string
           title: id
+          description: |
+            oagent.public_id = true
         url:
           type: string
           title: url
+          description: |
+            webhook.url.format
+            webhook.url.max_len.2048
         description:
           type: string
           title: description
+          description: |
+            webhook.description.max_len.200
         eventTypes:
           type: array
           items:
             type: string
+            pattern: ^[a-z]+([.][a-z_]+)+$
           title: event_types
+          minItems: 1
         active:
           type: boolean
           title: active
       title: UpdateWebhookRequest
+      required:
+        - orgId
+        - projectId
+        - id
+        - url
       additionalProperties: false
     webhook.v1.UpdateWebhookResponse:
       type: object

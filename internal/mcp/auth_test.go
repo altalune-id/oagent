@@ -171,6 +171,7 @@ func allToolScopes() []string {
 
 func TestScopesFromContext(t *testing.T) {
 	all := allToolScopes()
+	notPerson := slices.DeleteFunc(slices.Clone(all), func(s string) bool { return s == authz.PersonOnly })
 	tests := []struct {
 		name string
 		p    *session.Principal
@@ -178,8 +179,8 @@ func TestScopesFromContext(t *testing.T) {
 	}{
 		{name: "no principal holds no scope", want: nil},
 		{name: "owner", p: &session.Principal{Source: session.SourceLocal, UserID: uuid.New(), Scopes: []string{"*"}}, want: all},
-		{name: "system", p: new(session.System()), want: all},
-		{name: "basic", p: &session.Principal{Source: session.SourceBasic, Operator: true}, want: all},
+		{name: "system", p: new(session.System()), want: notPerson},
+		{name: "basic", p: &session.Principal{Source: session.SourceBasic, Operator: true}, want: notPerson},
 		{name: "org key with agent:read", p: &session.Principal{Source: session.SourceAPIKey, Scopes: []string{scope.AgentRead}},
 			want: []string{authz.AnyAuthenticated, scope.AgentRead}},
 		{name: "personal key keeps its intersected scopes", p: &session.Principal{Source: session.SourceAPIKey, OwnerID: uuid.New(), Scopes: []string{scope.AgentRead, scope.WebhookRead}},

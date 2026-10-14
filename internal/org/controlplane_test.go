@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"altalune.id/oagent/apperror"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	"altalune.id/oagent/internal/org"
@@ -88,4 +90,25 @@ func TestOrgService_ListOrgs_StoreError(t *testing.T) {
 
 	_, err := c.ListOrgs(context.Background(), connect.NewRequest(&orgv1.ListOrgsRequest{}))
 	assert.Error(t, err)
+}
+
+// Review Focus 4: with no request rules in front, the domain still refuses a bad name and slug.
+func TestOrgService_DomainRefusesWithoutTheRules(t *testing.T) {
+	h := org.NewControlPlane(org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, nil).WithCreation(true))
+	for name, tc := range map[string]struct {
+		req  *orgv1.CreateOrgRequest
+		want apperror.Code
+	}{
+		"201-character name": {&orgv1.CreateOrgRequest{Slug: "acme", Name: strings.Repeat("a", 201)}, apperror.CodeOrgInvalidName},
+		"blank name":         {&orgv1.CreateOrgRequest{Slug: "acme", Name: "   "}, apperror.CodeOrgInvalidName},
+		"bad slug":           {&orgv1.CreateOrgRequest{Slug: "Not A Slug", Name: "Acme"}, apperror.CodeOrgInvalidSlug},
+		"reserved slug":      {&orgv1.CreateOrgRequest{Slug: "new", Name: "Acme"}, apperror.CodeOrgInvalidSlug},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := h.CreateOrg(fakes.OperatorContext(t.Context()), connect.NewRequest(tc.req))
+			ae, ok := apperror.AsAppError(err)
+			require.True(t, ok, "%v", err)
+			assert.Equal(t, tc.want, ae.Code())
+		})
+	}
 }

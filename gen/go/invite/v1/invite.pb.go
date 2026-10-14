@@ -8,6 +8,8 @@ package invitev1
 
 import (
 	_ "altalune.id/oagent/gen/go/mcp/v1"
+	_ "altalune.id/oagent/gen/go/oagent/v1"
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -825,7 +827,7 @@ var File_invite_v1_invite_proto protoreflect.FileDescriptor
 
 const file_invite_v1_invite_proto_rawDesc = "" +
 	"\n" +
-	"\x16invite/v1/invite.proto\x12\tinvite.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\"\xf8\x01\n" +
+	"\x16invite/v1/invite.proto\x12\tinvite.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\x1a\x15oagent/v1/rules.proto\"\xf8\x01\n" +
 	"\x06Invite\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
@@ -835,44 +837,44 @@ const file_invite_v1_invite_proto_rawDesc = "" +
 	"\n" +
 	"expires_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x129\n" +
 	"\n" +
-	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"V\n" +
-	"\x13CreateInviteRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x14\n" +
-	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
-	"\x04role\x18\x03 \x01(\tR\x04role\"U\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x92\x01\n" +
+	"\x13CreateInviteRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12\"\n" +
+	"\x05email\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x98\xe42\x01R\x05email\x122\n" +
+	"\x04role\x18\x03 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x16R\x05ownerR\x05adminR\x06memberR\x04role\"U\n" +
 	"\x14CreateInviteResponse\x12)\n" +
 	"\x06invite\x18\x01 \x01(\v2\x11.invite.v1.InviteR\x06invite\x12\x12\n" +
-	"\x04link\x18\x02 \x01(\tR\x04link\"I\n" +
-	"\x13ResendInviteRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1b\n" +
-	"\tinvite_id\x18\x02 \x01(\tR\binviteId\"U\n" +
+	"\x04link\x18\x02 \x01(\tR\x04link\"e\n" +
+	"\x13ResendInviteRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12)\n" +
+	"\tinvite_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\binviteId\"U\n" +
 	"\x14ResendInviteResponse\x12)\n" +
 	"\x06invite\x18\x01 \x01(\v2\x11.invite.v1.InviteR\x06invite\x12\x12\n" +
-	"\x04link\x18\x02 \x01(\tR\x04link\"I\n" +
-	"\x13RevokeInviteRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1b\n" +
-	"\tinvite_id\x18\x02 \x01(\tR\binviteId\"\x16\n" +
-	"\x14RevokeInviteResponse\"+\n" +
-	"\x12ListInvitesRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\"m\n" +
+	"\x04link\x18\x02 \x01(\tR\x04link\"e\n" +
+	"\x13RevokeInviteRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12)\n" +
+	"\tinvite_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\binviteId\"\x16\n" +
+	"\x14RevokeInviteResponse\"9\n" +
+	"\x12ListInvitesRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\"m\n" +
 	"\x13ListInvitesResponse\x12+\n" +
 	"\ainvites\x18\x01 \x03(\v2\x11.invite.v1.InviteR\ainvites\x12)\n" +
-	"\x06drafts\x18\x02 \x03(\v2\x11.invite.v1.InviteR\x06drafts\"A\n" +
-	"\x12DraftInviteRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x14\n" +
-	"\x05email\x18\x02 \x01(\tR\x05email\"r\n" +
+	"\x06drafts\x18\x02 \x03(\v2\x11.invite.v1.InviteR\x06drafts\"]\n" +
+	"\x12DraftInviteRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12\"\n" +
+	"\x05email\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x98\xe42\x01R\x05email\"r\n" +
 	"\x13DraftInviteResponse\x12)\n" +
 	"\x06invite\x18\x01 \x01(\v2\x11.invite.v1.InviteR\x06invite\x12\x15\n" +
 	"\x06org_id\x18\x02 \x01(\tR\x05orgId\x12\x19\n" +
-	"\borg_name\x18\x03 \x01(\tR\aorgName\"O\n" +
-	"\x19ConfirmDraftInviteRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1b\n" +
-	"\tinvite_id\x18\x02 \x01(\tR\binviteId\"S\n" +
+	"\borg_name\x18\x03 \x01(\tR\aorgName\"k\n" +
+	"\x19ConfirmDraftInviteRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12)\n" +
+	"\tinvite_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\binviteId\"S\n" +
 	"\x1aConfirmDraftInviteResponse\x12)\n" +
-	"\x06invite\x18\x01 \x01(\v2\x11.invite.v1.InviteR\x06inviteJ\x04\b\x02\x10\x03R\x04link\"O\n" +
-	"\x19DiscardDraftInviteRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1b\n" +
-	"\tinvite_id\x18\x02 \x01(\tR\binviteId\"\x1c\n" +
+	"\x06invite\x18\x01 \x01(\v2\x11.invite.v1.InviteR\x06inviteJ\x04\b\x02\x10\x03R\x04link\"k\n" +
+	"\x19DiscardDraftInviteRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12)\n" +
+	"\tinvite_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\binviteId\"\x1c\n" +
 	"\x1aDiscardDraftInviteResponse2\xe6\b\n" +
 	"\rInviteService\x12O\n" +
 	"\fCreateInvite\x12\x1e.invite.v1.CreateInviteRequest\x1a\x1f.invite.v1.CreateInviteResponse\x12O\n" +

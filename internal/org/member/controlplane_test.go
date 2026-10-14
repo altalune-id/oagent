@@ -453,3 +453,14 @@ func TestRequesterFrom(t *testing.T) {
 		})
 	}
 }
+
+// Review Focus 4: with no request rules in front, the domain still refuses an unknown role.
+func TestMemberService_DomainRefusesAnUnknownRoleWithoutTheRules(t *testing.T) {
+	f := newCPFixture(t)
+	owner := f.add(member.RoleOwner, "owner@example.com")
+	target := f.add(member.RoleMember, "member@example.com")
+	c := f.client(personIn(owner, f.org))
+	_, err := c.SetMemberRole(context.Background(), connect.NewRequest(&memberv1.SetMemberRoleRequest{OrgId: f.orgPub(), UserId: f.user(target), Role: "root"}))
+	assert.Equal(t, apperror.CodeMemberInvalidRole, errCode(t, err))
+	assert.Equal(t, member.RoleMember, f.role(target))
+}

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -42,6 +43,9 @@ func fillProbe(msg *dynamicpb.Message) {
 		case fd.Kind() == protoreflect.StringKind && !fd.IsList():
 			if v, ok := probeStrings[fd.Name()]; ok {
 				msg.Set(fd, protoreflect.ValueOfString(v))
+			}
+			if fd.Name() == "slug" {
+				msg.Set(fd, protoreflect.ValueOfString("probe-"+strconv.FormatInt(time.Now().UnixNano(), 10)))
 			}
 		case fd.Kind() == protoreflect.BoolKind && (fd.Name() == "all_projects" || fd.Name() == "active"):
 			msg.Set(fd, protoreflect.ValueOfBool(true))

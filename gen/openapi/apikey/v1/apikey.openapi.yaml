@@ -167,25 +167,39 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         projectId:
           type: string
           title: project_id
+          description: |
+            oagent.public_id = true
         kind:
           type: string
           title: kind
+          enum:
+            - project
+            - org
+            - personal
           description: project, org or personal; personal needs a signed-in person and never exceeds their role.
         name:
           type: string
           title: name
+          description: |
+            apikey.name.blank
+            apikey.name.max_len.100
         scopes:
           type: array
           items:
             type: string
+            pattern: ^[a-z]+:(read|write)$
           title: scopes
         projectIds:
           type: array
           items:
             type: string
+            description: |
+              oagent.public_id = true
           title: project_ids
         allProjects:
           type: boolean
@@ -194,12 +208,19 @@ components:
           type: array
           items:
             type: string
+            description: |
+              oagent.public_id = true
           title: resource_ids
         expiresAt:
           title: expires_at
           description: 'Required: when the key stops working, in the future and at most one year away.'
           $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: CreateAPIKeyRequest
+      required:
+        - orgId
+        - kind
+        - name
+        - expiresAt
       additionalProperties: false
     apikey.v1.CreateAPIKeyResponse:
       type: object
@@ -219,7 +240,11 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
       title: ListAPIKeysRequest
+      required:
+        - orgId
       additionalProperties: false
     apikey.v1.ListAPIKeysResponse:
       type: object
@@ -237,11 +262,18 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         hint:
           type: string
           title: hint
-          description: The last 4 characters of the key's secret, as secret_hint shows them.
+          description: |
+            The last 4 characters of the key's secret, as secret_hint shows them.
+            apikey.hint.format
       title: RevokeAPIKeyRequest
+      required:
+        - orgId
+        - hint
       additionalProperties: false
     apikey.v1.RevokeAPIKeyResponse:
       type: object

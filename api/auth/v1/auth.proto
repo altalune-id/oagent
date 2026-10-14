@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package auth.v1;
 
+import "buf/validate/validate.proto";
 import "mcp/v1/annotations.proto";
 
 option go_package = "altalune.id/oagent/gen/go/auth/v1;authv1";
@@ -52,7 +53,9 @@ message WhoamiResponse {
 
 message UpdateProfileRequest {
   // At most 200 characters; surrounding spaces are trimmed.
-  string name = 1;
+  string name = 1 [
+    (buf.validate.field).cel = {id: "user.name.max_len.200", expression: "this.trim().size() <= 200 ? '' : 'must be at most 200 characters'"}
+  ];
 }
 
 message UpdateProfileResponse {
@@ -62,8 +65,14 @@ message UpdateProfileResponse {
 }
 
 message ChangePasswordRequest {
-  string current_password = 1;
-  string new_password = 2;
+  string current_password = 1 [
+    (buf.validate.field).required = true
+  ];
+  string new_password = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 12,
+    (buf.validate.field).string.max_len = 256
+  ];
 }
 
 message ChangePasswordResponse {}

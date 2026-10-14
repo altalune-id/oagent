@@ -157,7 +157,12 @@ components:
         newPassword:
           type: string
           title: new_password
+          maxLength: 256
+          minLength: 12
       title: ChangePasswordRequest
+      required:
+        - currentPassword
+        - newPassword
       additionalProperties: false
     auth.v1.ChangePasswordResponse:
       type: object
@@ -182,7 +187,9 @@ components:
         name:
           type: string
           title: name
-          description: At most 200 characters; surrounding spaces are trimmed.
+          description: |
+            At most 200 characters; surrounding spaces are trimmed.
+            user.name.max_len.200
       title: UpdateProfileRequest
       additionalProperties: false
     auth.v1.UpdateProfileResponse:

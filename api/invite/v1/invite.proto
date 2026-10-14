@@ -2,8 +2,10 @@ syntax = "proto3";
 
 package invite.v1;
 
+import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 import "mcp/v1/annotations.proto";
+import "oagent/v1/rules.proto";
 
 option go_package = "altalune.id/oagent/gen/go/invite/v1;invitev1";
 
@@ -65,10 +67,19 @@ message Invite {
 
 message CreateInviteRequest {
   // The organization's public id.
-  string org_id = 1;
-  string email = 2;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string email = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.email) = true
+  ];
   // owner, admin or member; you can only invite to a role whose permissions you hold.
-  string role = 3;
+  string role = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {in: ["owner", "admin", "member"]}
+  ];
 }
 
 message CreateInviteResponse {
@@ -78,8 +89,14 @@ message CreateInviteResponse {
 }
 
 message ResendInviteRequest {
-  string org_id = 1;
-  string invite_id = 2;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string invite_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message ResendInviteResponse {
@@ -89,14 +106,23 @@ message ResendInviteResponse {
 }
 
 message RevokeInviteRequest {
-  string org_id = 1;
-  string invite_id = 2;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string invite_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message RevokeInviteResponse {}
 
 message ListInvitesRequest {
-  string org_id = 1;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message ListInvitesResponse {
@@ -107,8 +133,14 @@ message ListInvitesResponse {
 }
 
 message DraftInviteRequest {
-  string org_id = 1;
-  string email = 2;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string email = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.email) = true
+  ];
 }
 
 message DraftInviteResponse {
@@ -119,8 +151,14 @@ message DraftInviteResponse {
 }
 
 message ConfirmDraftInviteRequest {
-  string org_id = 1;
-  string invite_id = 2;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string invite_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message ConfirmDraftInviteResponse {
@@ -130,8 +168,14 @@ message ConfirmDraftInviteResponse {
 }
 
 message DiscardDraftInviteRequest {
-  string org_id = 1;
-  string invite_id = 2;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string invite_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message DiscardDraftInviteResponse {}

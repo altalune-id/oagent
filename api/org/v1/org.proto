@@ -49,7 +49,9 @@ message Org {
 }
 
 message CreateOrgRequest {
-  string slug = 1;
+  string slug = 1 [
+    (buf.validate.field).string.(oagent.v1.slug) = true
+  ];
   string name = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.(oagent.v1.name) = true
@@ -61,7 +63,10 @@ message CreateOrgResponse {
 }
 
 message GetOrgRequest {
-  string id = 1;
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message GetOrgResponse {
@@ -75,9 +80,18 @@ message ListOrgsResponse {
 }
 
 message UpdateOrgRequest {
-  string id = 1;
-  string name = 2;
-  string slug = 3;
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.name) = true
+  ];
+  string slug = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.slug) = true
+  ];
 }
 
 message UpdateOrgResponse {

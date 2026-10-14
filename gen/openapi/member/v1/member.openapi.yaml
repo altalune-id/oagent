@@ -315,7 +315,11 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
       title: LeaveOrgRequest
+      required:
+        - orgId
       additionalProperties: false
     member.v1.LeaveOrgResponse:
       type: object
@@ -327,7 +331,11 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
       title: ListMembersRequest
+      required:
+        - orgId
       additionalProperties: false
     member.v1.ListMembersResponse:
       type: object
@@ -366,10 +374,17 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         userId:
           type: string
           title: user_id
+          description: |
+            oagent.public_id = true
       title: RemoveMemberRequest
+      required:
+        - orgId
+        - userId
       additionalProperties: false
     member.v1.RemoveMemberResponse:
       type: object
@@ -381,14 +396,26 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         userId:
           type: string
           title: user_id
+          description: |
+            oagent.public_id = true
         role:
           type: string
           title: role
+          enum:
+            - owner
+            - admin
+            - member
           description: owner, admin or member; only an owner grants or changes the owner role.
       title: SetMemberRoleRequest
+      required:
+        - orgId
+        - userId
+        - role
       additionalProperties: false
     member.v1.SetMemberRoleResponse:
       type: object

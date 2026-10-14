@@ -46,6 +46,14 @@ var file_oagent_v1_rules_proto_extTypes = []protoimpl.ExtensionInfo{
 		Tag:           "varint,104003,opt,name=email",
 		Filename:      "oagent/v1/rules.proto",
 	},
+	{
+		ExtendedType:  (*validate.StringRules)(nil),
+		ExtensionType: (*bool)(nil),
+		Field:         104004,
+		Name:          "oagent.v1.slug",
+		Tag:           "varint,104004,opt,name=slug",
+		Filename:      "oagent/v1/rules.proto",
+	},
 }
 
 // Extension fields to validate.StringRules.
@@ -62,6 +70,10 @@ var (
 	//
 	// optional bool email = 104003;
 	E_Email = &file_oagent_v1_rules_proto_extTypes[2]
+	// slug is a URL slug, as org, project and agent slugs are: 3 to 64 lowercase letters, digits and inner dashes.
+	//
+	// optional bool slug = 104004;
+	E_Slug = &file_oagent_v1_rules_proto_extTypes[3]
 )
 
 var File_oagent_v1_rules_proto protoreflect.FileDescriptor
@@ -81,7 +93,14 @@ const file_oagent_v1_rules_proto_rawDesc = "" +
 	"f\n" +
 	"\x18oagent.email.max_len.254\x1aJ!rule || this.trim().size() <= 254 ? '' : 'must be at most 254 characters'\n" +
 	"z\n" +
-	"\x13oagent.email.format\x1ac!rule || this == '' || this.trim().matches('^[^@\\\\s]+@[^@\\\\s]+$') ? '' : 'must be an email address'R\x05emailB\x8e\x01\n" +
+	"\x13oagent.email.format\x1ac!rule || this == '' || this.trim().matches('^[^@\\\\s]+@[^@\\\\s]+$') ? '' : 'must be an email address'R\x05email:\xb8\x03\n" +
+	"\x04slug\x12\x19.buf.validate.StringRules\x18Ĭ\x06 \x01(\bB\x86\x03\xc2H\x82\x03\n" +
+	"g\n" +
+	"\x15oagent.slug.min_len.3\x1aN!rule || this == '' || this.size() >= 3 ? '' : 'must be at least 3 characters'\n" +
+	"[\n" +
+	"\x16oagent.slug.max_len.64\x1aA!rule || this.size() <= 64 ? '' : 'must be at most 64 characters'\n" +
+	"\xb9\x01\n" +
+	"\x12oagent.slug.format\x1a\xa2\x01!rule || this == '' || this.matches('^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$') ? '' : 'must be lowercase letters, digits and dashes, not starting or ending with a dash'R\x04slugB\x8e\x01\n" +
 	"\rcom.oagent.v1B\n" +
 	"RulesProtoP\x01Z,altalune.id/oagent/gen/go/oagent/v1;oagentv1\xa2\x02\x03OXX\xaa\x02\tOagent.V1\xca\x02\tOagent\\V1\xe2\x02\x15Oagent\\V1\\GPBMetadata\xea\x02\n" +
 	"Oagent::V1"
@@ -93,10 +112,11 @@ var file_oagent_v1_rules_proto_depIdxs = []int32{
 	0, // 0: oagent.v1.public_id:extendee -> buf.validate.StringRules
 	0, // 1: oagent.v1.name:extendee -> buf.validate.StringRules
 	0, // 2: oagent.v1.email:extendee -> buf.validate.StringRules
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	0, // [0:3] is the sub-list for extension extendee
+	0, // 3: oagent.v1.slug:extendee -> buf.validate.StringRules
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	0, // [0:4] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
 }
 
@@ -112,7 +132,7 @@ func file_oagent_v1_rules_proto_init() {
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_oagent_v1_rules_proto_rawDesc), len(file_oagent_v1_rules_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   0,
-			NumExtensions: 3,
+			NumExtensions: 4,
 			NumServices:   0,
 		},
 		GoTypes:           file_oagent_v1_rules_proto_goTypes,

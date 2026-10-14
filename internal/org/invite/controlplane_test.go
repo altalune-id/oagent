@@ -211,9 +211,9 @@ func TestInviteService_UnknownIDsAreNotFound(t *testing.T) {
 	assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err), "an invite of another org: %v", err)
 
 	_, err = c.ListInvites(ctx, connect.NewRequest(&invitev1.ListInvitesRequest{}))
-	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err), "an empty org id is the request rules' to refuse; the handler only looks it up")
 	_, err = c.RevokeInvite(ctx, connect.NewRequest(&invitev1.RevokeInviteRequest{OrgId: orgPublicID}))
-	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err), "an empty invite id is the request rules' to refuse; the handler only looks it up")
 }
 
 func TestInviteService_OnlyPeopleWrite(t *testing.T) {

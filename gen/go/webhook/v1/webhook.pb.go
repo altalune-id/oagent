@@ -8,6 +8,8 @@ package webhookv1
 
 import (
 	_ "altalune.id/oagent/gen/go/mcp/v1"
+	_ "altalune.id/oagent/gen/go/oagent/v1"
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -1588,7 +1590,7 @@ var File_webhook_v1_webhook_proto protoreflect.FileDescriptor
 const file_webhook_v1_webhook_proto_rawDesc = "" +
 	"\n" +
 	"\x18webhook/v1/webhook.proto\x12\n" +
-	"webhook.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\"\xc3\x02\n" +
+	"webhook.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\x1a\x15oagent/v1/rules.proto\"\xc3\x02\n" +
 	"\aWebhook\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06org_id\x18\x02 \x01(\tR\x05orgId\x12\x1d\n" +
@@ -1603,29 +1605,32 @@ const file_webhook_v1_webhook_proto_rawDesc = "" +
 	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
 	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtJ\x04\b\n" +
-	"\x10\vR\tpublic_id\"\xa1\x01\n" +
-	"\x14CreateWebhookRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
+	"\x10\vR\tpublic_id\"\xb1\x04\n" +
+	"\x14CreateWebhookRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12+\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x10\n" +
-	"\x03url\x18\x03 \x01(\tR\x03url\x12 \n" +
-	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x1f\n" +
-	"\vevent_types\x18\x05 \x03(\tR\n" +
+	"project_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\x12\xf1\x01\n" +
+	"\x03url\x18\x03 \x01(\tB\xde\x01\xbaH\xda\x01\xba\x01_\n" +
+	"\x18webhook.url.max_len.2048\x1aCthis.trim().size() <= 2048 ? '' : 'must be at most 2048 characters'\xba\x01r\n" +
+	"\x12webhook.url.format\x1a\\this.trim().matches('^[A-Za-z][A-Za-z0-9+.-]*://[^\\\\s/?#]') ? '' : 'must be an absolute URL'\xc8\x01\x01R\x03url\x12\x8c\x01\n" +
+	"\vdescription\x18\x04 \x01(\tBj\xbaHg\xba\x01d\n" +
+	"\x1fwebhook.description.max_len.200\x1aAthis.trim().size() <= 200 ? '' : 'must be at most 200 characters'R\vdescription\x12D\n" +
+	"\vevent_types\x18\x05 \x03(\tB#\xbaH \x92\x01\x1d\b\x01\"\x19r\x172\x15^[a-z]+([.][a-z_]+)+$R\n" +
 	"eventTypes\"^\n" +
 	"\x15CreateWebhookResponse\x12-\n" +
 	"\awebhook\x18\x01 \x01(\v2\x13.webhook.v1.WebhookR\awebhook\x12\x16\n" +
-	"\x06secret\x18\x02 \x01(\tR\x06secret\"Y\n" +
-	"\x11GetWebhookRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
+	"\x06secret\x18\x02 \x01(\tR\x06secret\"\x83\x01\n" +
+	"\x11GetWebhookRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12+\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x0e\n" +
-	"\x02id\x18\x03 \x01(\tR\x02id\"C\n" +
+	"project_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\x12\x1c\n" +
+	"\x02id\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\"C\n" +
 	"\x12GetWebhookResponse\x12-\n" +
-	"\awebhook\x18\x01 \x01(\v2\x13.webhook.v1.WebhookR\awebhook\"K\n" +
-	"\x13ListWebhooksRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
+	"\awebhook\x18\x01 \x01(\v2\x13.webhook.v1.WebhookR\awebhook\"g\n" +
+	"\x13ListWebhooksRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12+\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\tR\tprojectId\"G\n" +
+	"project_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\"G\n" +
 	"\x14ListWebhooksResponse\x12/\n" +
 	"\bwebhooks\x18\x01 \x03(\v2\x13.webhook.v1.WebhookR\bwebhooks\"\xc5\x02\n" +
 	"\x0fWebhookDelivery\x12\x0e\n" +
@@ -1640,12 +1645,12 @@ const file_webhook_v1_webhook_proto_rawDesc = "" +
 	"\x0fnext_attempt_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\rnextAttemptAt\x129\n" +
 	"\n" +
 	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x18\n" +
-	"\apayload\x18\t \x01(\tR\apayload\"z\n" +
-	"\x1cListWebhookDeliveriesRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
+	"\apayload\x18\t \x01(\tR\apayload\"\xa4\x01\n" +
+	"\x1cListWebhookDeliveriesRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12+\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x0e\n" +
-	"\x02id\x18\x03 \x01(\tR\x02id\x12\x14\n" +
+	"project_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\x12\x1c\n" +
+	"\x02id\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\x12\x14\n" +
 	"\x05limit\x18\x04 \x01(\x05R\x05limit\"\\\n" +
 	"\x1dListWebhookDeliveriesResponse\x12;\n" +
 	"\n" +
@@ -1665,60 +1670,63 @@ const file_webhook_v1_webhook_proto_rawDesc = "" +
 	"\x10response_headers\x18\b \x03(\v2!.webhook.v1.WebhookResponseHeaderR\x0fresponseHeaders\"A\n" +
 	"\x15WebhookResponseHeader\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\x8b\x01\n" +
-	"\"ListWebhookDeliveryAttemptsRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\xc3\x01\n" +
+	"\"ListWebhookDeliveryAttemptsRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12+\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x0e\n" +
-	"\x02id\x18\x03 \x01(\tR\x02id\x12\x1f\n" +
-	"\vdelivery_id\x18\x04 \x01(\tR\n" +
+	"project_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\x12\x1c\n" +
+	"\x02id\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\x12-\n" +
+	"\vdelivery_id\x18\x04 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\n" +
 	"deliveryId\"]\n" +
 	"#ListWebhookDeliveryAttemptsResponse\x126\n" +
-	"\battempts\x18\x01 \x03(\v2\x1a.webhook.v1.WebhookAttemptR\battempts\"\xc9\x01\n" +
-	"\x14UpdateWebhookRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
+	"\battempts\x18\x01 \x03(\v2\x1a.webhook.v1.WebhookAttemptR\battempts\"\xe7\x04\n" +
+	"\x14UpdateWebhookRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12+\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x0e\n" +
-	"\x02id\x18\x03 \x01(\tR\x02id\x12\x10\n" +
-	"\x03url\x18\x04 \x01(\tR\x03url\x12 \n" +
-	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x1f\n" +
-	"\vevent_types\x18\x06 \x03(\tR\n" +
+	"project_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\x12\x1c\n" +
+	"\x02id\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\x12\xf1\x01\n" +
+	"\x03url\x18\x04 \x01(\tB\xde\x01\xbaH\xda\x01\xba\x01_\n" +
+	"\x18webhook.url.max_len.2048\x1aCthis.trim().size() <= 2048 ? '' : 'must be at most 2048 characters'\xba\x01r\n" +
+	"\x12webhook.url.format\x1a\\this.trim().matches('^[A-Za-z][A-Za-z0-9+.-]*://[^\\\\s/?#]') ? '' : 'must be an absolute URL'\xc8\x01\x01R\x03url\x12\x8c\x01\n" +
+	"\vdescription\x18\x05 \x01(\tBj\xbaHg\xba\x01d\n" +
+	"\x1fwebhook.description.max_len.200\x1aAthis.trim().size() <= 200 ? '' : 'must be at most 200 characters'R\vdescription\x12D\n" +
+	"\vevent_types\x18\x06 \x03(\tB#\xbaH \x92\x01\x1d\b\x01\"\x19r\x172\x15^[a-z]+([.][a-z_]+)+$R\n" +
 	"eventTypes\x12\x16\n" +
 	"\x06active\x18\a \x01(\bR\x06active\"F\n" +
 	"\x15UpdateWebhookResponse\x12-\n" +
-	"\awebhook\x18\x01 \x01(\v2\x13.webhook.v1.WebhookR\awebhook\"\\\n" +
-	"\x14DeleteWebhookRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
+	"\awebhook\x18\x01 \x01(\v2\x13.webhook.v1.WebhookR\awebhook\"\x86\x01\n" +
+	"\x14DeleteWebhookRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12+\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x0e\n" +
-	"\x02id\x18\x03 \x01(\tR\x02id\"\x17\n" +
-	"\x15DeleteWebhookResponse\"b\n" +
-	"\x1aRotateWebhookSecretRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
+	"project_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\x12\x1c\n" +
+	"\x02id\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\"\x17\n" +
+	"\x15DeleteWebhookResponse\"\x8c\x01\n" +
+	"\x1aRotateWebhookSecretRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12+\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x0e\n" +
-	"\x02id\x18\x03 \x01(\tR\x02id\"5\n" +
+	"project_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\x12\x1c\n" +
+	"\x02id\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\"5\n" +
 	"\x1bRotateWebhookSecretResponse\x12\x16\n" +
-	"\x06secret\x18\x01 \x01(\tR\x06secret\"Z\n" +
-	"\x12PingWebhookRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
+	"\x06secret\x18\x01 \x01(\tR\x06secret\"\x84\x01\n" +
+	"\x12PingWebhookRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12+\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x0e\n" +
-	"\x02id\x18\x03 \x01(\tR\x02id\"\x15\n" +
-	"\x13PingWebhookResponse\"\x84\x01\n" +
-	"\x1bRetryWebhookDeliveryRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
+	"project_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\x12\x1c\n" +
+	"\x02id\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\"\x15\n" +
+	"\x13PingWebhookResponse\"\xbc\x01\n" +
+	"\x1bRetryWebhookDeliveryRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12+\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x0e\n" +
-	"\x02id\x18\x03 \x01(\tR\x02id\x12\x1f\n" +
-	"\vdelivery_id\x18\x04 \x01(\tR\n" +
+	"project_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\x12\x1c\n" +
+	"\x02id\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\x12-\n" +
+	"\vdelivery_id\x18\x04 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\n" +
 	"deliveryId\"\x1e\n" +
-	"\x1cRetryWebhookDeliveryResponse\"k\n" +
-	"#RetryFailedWebhookDeliveriesRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x1d\n" +
+	"\x1cRetryWebhookDeliveryResponse\"\x95\x01\n" +
+	"#RetryFailedWebhookDeliveriesRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12+\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\tR\tprojectId\x12\x0e\n" +
-	"\x02id\x18\x03 \x01(\tR\x02id\"B\n" +
+	"project_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\x12\x1c\n" +
+	"\x02id\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\"B\n" +
 	"$RetryFailedWebhookDeliveriesResponse\x12\x1a\n" +
 	"\brequeued\x18\x01 \x01(\x05R\brequeued2\xeb\v\n" +
 	"\x0eWebhookService\x12\xbe\x01\n" +

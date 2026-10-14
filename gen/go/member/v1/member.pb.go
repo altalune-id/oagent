@@ -8,6 +8,8 @@ package memberv1
 
 import (
 	_ "altalune.id/oagent/gen/go/mcp/v1"
+	_ "altalune.id/oagent/gen/go/oagent/v1"
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -465,29 +467,29 @@ var File_member_v1_member_proto protoreflect.FileDescriptor
 
 const file_member_v1_member_proto_rawDesc = "" +
 	"\n" +
-	"\x16member/v1/member.proto\x12\tmember.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\"\x98\x01\n" +
+	"\x16member/v1/member.proto\x12\tmember.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\x1a\x15oagent/v1/rules.proto\"\x98\x01\n" +
 	"\x06Member\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
 	"\x04role\x18\x04 \x01(\tR\x04role\x127\n" +
-	"\tjoined_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\"+\n" +
-	"\x12ListMembersRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\"B\n" +
+	"\tjoined_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\"9\n" +
+	"\x12ListMembersRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\"B\n" +
 	"\x13ListMembersResponse\x12+\n" +
-	"\amembers\x18\x01 \x03(\v2\x11.member.v1.MemberR\amembers\"Z\n" +
-	"\x14SetMemberRoleRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x12\n" +
-	"\x04role\x18\x03 \x01(\tR\x04role\"B\n" +
+	"\amembers\x18\x01 \x03(\v2\x11.member.v1.MemberR\amembers\"\x96\x01\n" +
+	"\x14SetMemberRoleRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12%\n" +
+	"\auser_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x06userId\x122\n" +
+	"\x04role\x18\x03 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x16R\x05ownerR\x05adminR\x06memberR\x04role\"B\n" +
 	"\x15SetMemberRoleResponse\x12)\n" +
-	"\x06member\x18\x01 \x01(\v2\x11.member.v1.MemberR\x06member\"E\n" +
-	"\x13RemoveMemberRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\"\x16\n" +
-	"\x14RemoveMemberResponse\"(\n" +
-	"\x0fLeaveOrgRequest\x12\x15\n" +
-	"\x06org_id\x18\x01 \x01(\tR\x05orgId\"\x12\n" +
+	"\x06member\x18\x01 \x01(\v2\x11.member.v1.MemberR\x06member\"a\n" +
+	"\x13RemoveMemberRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12%\n" +
+	"\auser_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x06userId\"\x16\n" +
+	"\x14RemoveMemberResponse\"6\n" +
+	"\x0fLeaveOrgRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\"\x12\n" +
 	"\x10LeaveOrgResponse2\xad\x03\n" +
 	"\rMemberService\x12\xb1\x01\n" +
 	"\vListMembers\x12\x1d.member.v1.ListMembersRequest\x1a\x1e.member.v1.ListMembersResponse\"c\xca\xf3\x18_\n" +

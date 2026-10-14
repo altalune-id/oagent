@@ -137,9 +137,12 @@ func (s reachOrg) snapshot(t *testing.T, f *apiFixture) string {
 	return got
 }
 
+// NOTE: the request is filled so it passes the request rules and reaches the reach check.
 func (s reachOrg) request(t *testing.T, procedure string) (protoreflect.MethodDescriptor, *dynamicpb.Message, bool) {
 	t.Helper()
-	return s.pub.request(t, procedure)
+	method, msg, aimed := s.pub.request(t, procedure)
+	fillProbe(msg)
+	return method, msg, aimed
 }
 
 func (ids reachIDs) request(t *testing.T, procedure string) (protoreflect.MethodDescriptor, *dynamicpb.Message, bool) {
@@ -305,22 +308,32 @@ func TestReach_ProjectLimitedKeyCannotSubscribeToOrgEvents(t *testing.T) {
 	require.NoError(t, create(events.AgentCreated), "the key still subscribes to its project's events")
 }
 
-// Z9, Review Focus 2: a UUID or garbage in place of a public id is the same not-found, even for a caller who sees org B.
-func TestReach_UUIDsAndGarbageAreNotFound(t *testing.T) {
+// Z9, Review Focus 2: a UUID or garbage in place of a public id is refused by its shape, and a well-formed unknown id is the same not-found, even for a caller who sees org B.
+func TestReach_UUIDsAndGarbageAreRefused(t *testing.T) {
 	f := newAPIFixture(t)
 	s := seedReach(t, f)
 	cookie, _, _ := f.personCookieIn(t, s.orgB, "b-owner@example.com", member.RoleOwner)
 	garbage := reachIDs{"nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope"}
+	const unknownID = "unknwnunknwnunknwnabc"
+	unknown := reachIDs{unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, "zzzz"}
 	before := s.snapshot(t, f)
-	for name, ids := range map[string]reachIDs{"uuid": s.uuids, "garbage": garbage} {
+	for name, tc := range map[string]struct {
+		ids  reachIDs
+		want connect.Code
+	}{
+		"uuid":    {s.uuids, connect.CodeInvalidArgument},
+		"garbage": {garbage, connect.CodeInvalidArgument},
+		"unknown": {unknown, connect.CodeNotFound},
+	} {
 		for _, proc := range reachOrder() {
 			if _, skip := noTenantInput[proc]; skip {
 				continue
 			}
-			method, msg, aimed := ids.request(t, proc)
+			method, msg, aimed := tc.ids.request(t, proc)
 			require.True(t, aimed, proc)
+			fillProbe(msg)
 			err := f.callDynamic(t, proc, method, msg, "Cookie", cookie)
-			assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err), "%s with %s ids: %v", proc, name, err)
+			assert.Equal(t, tc.want, connect.CodeOf(err), "%s with %s ids: %v", proc, name, err)
 		}
 	}
 	assert.Equal(t, before, s.snapshot(t, f), "org B is unchanged")

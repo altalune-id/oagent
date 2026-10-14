@@ -179,7 +179,8 @@ func TestLockdown_StaleCookieNoLoop(t *testing.T) {
 
 func TestLockdown_StdioStillTrusted(t *testing.T) {
 	ctx := session.PrincipalInto(context.Background(), session.System())
-	assert.Equal(t, allMCPScopes(), mcpinternal.ScopesFromContext(ctx))
+	notPerson := slices.DeleteFunc(allMCPScopes(), func(s string) bool { return s == authz.PersonOnly })
+	assert.Equal(t, notPerson, mcpinternal.ScopesFromContext(ctx), "stdio holds everything but the person-only marker")
 	assert.True(t, authz.ReachWholeOrg(ctx, uuid.New()), "stdio reaches every org")
 	assert.Empty(t, mcpinternal.ScopesFromContext(context.Background()), "no Principal holds no scope")
 }

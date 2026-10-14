@@ -420,10 +420,17 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         inviteId:
           type: string
           title: invite_id
+          description: |
+            oagent.public_id = true
       title: ConfirmDraftInviteRequest
+      required:
+        - orgId
+        - inviteId
       additionalProperties: false
     invite.v1.ConfirmDraftInviteResponse:
       type: object
@@ -439,15 +446,28 @@ components:
         orgId:
           type: string
           title: org_id
-          description: The organization's public id.
+          description: |
+            The organization's public id.
+            oagent.public_id = true
         email:
           type: string
           title: email
+          description: |
+            oagent.email.format = true
+            oagent.email.max_len.254 = true
         role:
           type: string
           title: role
+          enum:
+            - owner
+            - admin
+            - member
           description: owner, admin or member; you can only invite to a role whose permissions you hold.
       title: CreateInviteRequest
+      required:
+        - orgId
+        - email
+        - role
       additionalProperties: false
     invite.v1.CreateInviteResponse:
       type: object
@@ -467,10 +487,17 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         inviteId:
           type: string
           title: invite_id
+          description: |
+            oagent.public_id = true
       title: DiscardDraftInviteRequest
+      required:
+        - orgId
+        - inviteId
       additionalProperties: false
     invite.v1.DiscardDraftInviteResponse:
       type: object
@@ -482,10 +509,18 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         email:
           type: string
           title: email
+          description: |
+            oagent.email.format = true
+            oagent.email.max_len.254 = true
       title: DraftInviteRequest
+      required:
+        - orgId
+        - email
       additionalProperties: false
     invite.v1.DraftInviteResponse:
       type: object
@@ -537,7 +572,11 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
       title: ListInvitesRequest
+      required:
+        - orgId
       additionalProperties: false
     invite.v1.ListInvitesResponse:
       type: object
@@ -562,10 +601,17 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         inviteId:
           type: string
           title: invite_id
+          description: |
+            oagent.public_id = true
       title: ResendInviteRequest
+      required:
+        - orgId
+        - inviteId
       additionalProperties: false
     invite.v1.ResendInviteResponse:
       type: object
@@ -585,10 +631,17 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         inviteId:
           type: string
           title: invite_id
+          description: |
+            oagent.public_id = true
       title: RevokeInviteRequest
+      required:
+        - orgId
+        - inviteId
       additionalProperties: false
     invite.v1.RevokeInviteResponse:
       type: object

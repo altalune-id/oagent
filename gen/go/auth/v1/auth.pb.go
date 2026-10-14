@@ -8,6 +8,7 @@ package authv1
 
 import (
 	_ "altalune.id/oagent/gen/go/mcp/v1"
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -466,7 +467,7 @@ var File_auth_v1_auth_proto protoreflect.FileDescriptor
 
 const file_auth_v1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x12auth/v1/auth.proto\x12\aauth.v1\x1a\x18mcp/v1/annotations.proto\"\x0f\n" +
+	"\x12auth/v1/auth.proto\x12\aauth.v1\x1a\x1bbuf/validate/validate.proto\x1a\x18mcp/v1/annotations.proto\"\x0f\n" +
 	"\rWhoamiRequest\"\x84\x03\n" +
 	"\x0eWhoamiResponse\x12\x16\n" +
 	"\x06source\x18\x01 \x01(\tR\x06source\x12\x17\n" +
@@ -482,15 +483,17 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\x11active_project_id\x18\n" +
 	" \x01(\tR\x0factiveProjectId\x12 \n" +
 	"\vpermissions\x18\v \x03(\tR\vpermissions\x12\x1a\n" +
-	"\boperator\x18\f \x01(\bR\boperatorJ\x04\b\x06\x10\aR\x06key_id\"*\n" +
-	"\x14UpdateProfileRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"D\n" +
+	"\boperator\x18\f \x01(\bR\boperatorJ\x04\b\x06\x10\aR\x06key_id\"\x8c\x01\n" +
+	"\x14UpdateProfileRequest\x12t\n" +
+	"\x04name\x18\x01 \x01(\tB`\xbaH]\xba\x01Z\n" +
+	"\x15user.name.max_len.200\x1aAthis.trim().size() <= 200 ? '' : 'must be at most 200 characters'R\x04name\"D\n" +
 	"\x15UpdateProfileResponse\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"e\n" +
-	"\x15ChangePasswordRequest\x12)\n" +
-	"\x10current_password\x18\x01 \x01(\tR\x0fcurrentPassword\x12!\n" +
-	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"\x18\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"|\n" +
+	"\x15ChangePasswordRequest\x121\n" +
+	"\x10current_password\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0fcurrentPassword\x120\n" +
+	"\fnew_password\x18\x02 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\f\x18\x80\x02R\vnewPassword\"\x18\n" +
 	"\x16ChangePasswordResponse\"\x1a\n" +
 	"\x18SignOutEverywhereRequest\":\n" +
 	"\x19SignOutEverywhereResponse\x12\x1d\n" +

@@ -2,8 +2,10 @@ syntax = "proto3";
 
 package agent.v1;
 
+import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 import "mcp/v1/annotations.proto";
+import "oagent/v1/rules.proto";
 
 option go_package = "altalune.id/oagent/gen/go/agent/v1;agentv1";
 
@@ -70,11 +72,24 @@ message Agent {
 }
 
 message CreateAgentRequest {
-  string org_id = 1;
-  string project_id = 2;
-  string slug = 3;
-  string name = 4;
-  string description = 5;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string project_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string slug = 3 [
+    (buf.validate.field).string.(oagent.v1.slug) = true
+  ];
+  string name = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.name) = true
+  ];
+  string description = 5 [
+    (buf.validate.field).cel = {id: "agent.description.max_len.2000", expression: "this.trim().size() <= 2000 ? '' : 'must be at most 2000 characters'"}
+  ];
 }
 
 message CreateAgentResponse {
@@ -82,7 +97,10 @@ message CreateAgentResponse {
 }
 
 message GetAgentRequest {
-  string id = 1;
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message GetAgentResponse {
@@ -90,7 +108,10 @@ message GetAgentResponse {
 }
 
 message ListAgentsRequest {
-  string project_id = 1;
+  string project_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message ListAgentsResponse {
@@ -98,9 +119,17 @@ message ListAgentsResponse {
 }
 
 message UpdateAgentRequest {
-  string id = 1;
-  string name = 2;
-  string description = 3;
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.name) = true
+  ];
+  string description = 3 [
+    (buf.validate.field).cel = {id: "agent.description.max_len.2000", expression: "this.trim().size() <= 2000 ? '' : 'must be at most 2000 characters'"}
+  ];
 }
 
 message UpdateAgentResponse {
@@ -108,7 +137,10 @@ message UpdateAgentResponse {
 }
 
 message DeleteAgentRequest {
-  string id = 1;
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message DeleteAgentResponse {}

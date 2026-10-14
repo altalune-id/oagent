@@ -11,6 +11,9 @@ import (
 // AnyAuthenticated marks a procedure every signed-in credential may call.
 const AnyAuthenticated = "@authenticated"
 
+// PersonOnly marks a procedure only a signed-in person may call: never a key, basic auth or the system.
+const PersonOnly = "@person"
+
 // Allowed reports whether p holds permission. SECURITY: an empty permission is an unmapped procedure and is denied.
 func Allowed(p session.Principal, permission string) bool {
 	if p.Source == "" || permission == "" {
@@ -18,6 +21,9 @@ func Allowed(p session.Principal, permission string) bool {
 	}
 	if permission == AnyAuthenticated {
 		return true
+	}
+	if permission == PersonOnly {
+		return p.IsPerson()
 	}
 	if p.Source == session.SourceAPIKey && !scope.Mintable(permission) {
 		return false

@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"altalune.id/oagent/apperror"
 	invitev1 "altalune.id/oagent/gen/go/invite/v1"
 	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
 	"altalune.id/oagent/internal/kernel/authz"
@@ -144,9 +143,6 @@ func (s *InviteService) DiscardDraftInvite(
 
 // SECURITY: an unknown org and one out of reach answer the same not-found.
 func (s *InviteService) org(ctx context.Context, publicID string) (uuid.UUID, error) {
-	if strings.TrimSpace(publicID) == "" {
-		return uuid.Nil, apperror.Invalid("organization_id", apperror.FieldRequired)
-	}
 	id, err := s.orgs.IDByPublicID(ctx, publicID)
 	if err != nil {
 		return uuid.Nil, err
@@ -174,9 +170,6 @@ func (s *InviteService) target(
 ) (orgID, inviteID uuid.UUID, r member.Requester, err error) {
 	if orgID, r, err = s.writer(ctx, orgPublicID); err != nil {
 		return uuid.Nil, uuid.Nil, member.Requester{}, err
-	}
-	if strings.TrimSpace(invitePublicID) == "" {
-		return uuid.Nil, uuid.Nil, member.Requester{}, apperror.Invalid("invite_id", apperror.FieldRequired)
 	}
 	inv, err := s.invites.ByPublicID(ctx, invitePublicID)
 	if err != nil {

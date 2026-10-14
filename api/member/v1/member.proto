@@ -2,8 +2,10 @@ syntax = "proto3";
 
 package member.v1;
 
+import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 import "mcp/v1/annotations.proto";
+import "oagent/v1/rules.proto";
 
 option go_package = "altalune.id/oagent/gen/go/member/v1;memberv1";
 
@@ -33,7 +35,10 @@ message Member {
 }
 
 message ListMembersRequest {
-  string org_id = 1;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message ListMembersResponse {
@@ -41,10 +46,19 @@ message ListMembersResponse {
 }
 
 message SetMemberRoleRequest {
-  string org_id = 1;
-  string user_id = 2;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string user_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
   // owner, admin or member; only an owner grants or changes the owner role.
-  string role = 3;
+  string role = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {in: ["owner", "admin", "member"]}
+  ];
 }
 
 message SetMemberRoleResponse {
@@ -52,14 +66,23 @@ message SetMemberRoleResponse {
 }
 
 message RemoveMemberRequest {
-  string org_id = 1;
-  string user_id = 2;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string user_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message RemoveMemberResponse {}
 
 message LeaveOrgRequest {
-  string org_id = 1;
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
 }
 
 message LeaveOrgResponse {}

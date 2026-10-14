@@ -315,13 +315,25 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         slug:
           type: string
           title: slug
+          description: |
+            oagent.slug.format = true
+            oagent.slug.max_len.64 = true
+            oagent.slug.min_len.3 = true
         name:
           type: string
           title: name
+          description: |
+            oagent.name.blank = true
+            oagent.name.max_len.200 = true
       title: CreateProjectRequest
+      required:
+        - orgId
+        - name
       additionalProperties: false
     project.v1.CreateProjectResponse:
       type: object
@@ -337,7 +349,11 @@ components:
         id:
           type: string
           title: id
+          description: |
+            oagent.public_id = true
       title: GetProjectRequest
+      required:
+        - id
       additionalProperties: false
     project.v1.GetProjectResponse:
       type: object
@@ -353,7 +369,11 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
       title: ListProjectsRequest
+      required:
+        - orgId
       additionalProperties: false
     project.v1.ListProjectsResponse:
       type: object
@@ -394,13 +414,26 @@ components:
         id:
           type: string
           title: id
+          description: |
+            oagent.public_id = true
         name:
           type: string
           title: name
+          description: |
+            oagent.name.blank = true
+            oagent.name.max_len.200 = true
         slug:
           type: string
           title: slug
+          description: |
+            oagent.slug.format = true
+            oagent.slug.max_len.64 = true
+            oagent.slug.min_len.3 = true
       title: UpdateProjectRequest
+      required:
+        - id
+        - name
+        - slug
       additionalProperties: false
     project.v1.UpdateProjectResponse:
       type: object

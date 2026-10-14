@@ -122,5 +122,20 @@ func Validation(violations []Violation) *AppError {
 }
 
 func fieldMessage(field string, reason FieldReason) string {
-	return strings.ReplaceAll(field, "_", " ") + " is " + strings.ReplaceAll(string(reason), "_", " ")
+	phrase, ok := reasonPhrases[reason]
+	if !ok {
+		phrase = "is " + string(reason)
+	}
+	return strings.ReplaceAll(field, "_", " ") + " " + phrase
+}
+
+//nolint:gochecknoglobals // a fixed lookup table.
+var reasonPhrases = map[FieldReason]string{
+	FieldRequired:      "is required",
+	FieldTooShort:      "is too short",
+	FieldTooLong:       "is too long",
+	FieldInvalidFormat: "is not in the right format",
+	FieldNotAllowed:    "is not an allowed value",
+	FieldTooMany:       "has too many items",
+	FieldInvalid:       "is invalid",
 }

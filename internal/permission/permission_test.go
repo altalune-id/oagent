@@ -50,8 +50,8 @@ func TestEveryRPCHasAPermission(t *testing.T) {
 		perms := table[proc]
 		assert.NotEmpty(t, perms, "%s has no permission", proc)
 		for _, perm := range perms {
-			if perm == authz.AnyAuthenticated {
-				assert.Len(t, perms, 1, "%s: %s is only ever the single entry", proc, authz.AnyAuthenticated)
+			if perm == authz.AnyAuthenticated || perm == authz.PersonOnly {
+				assert.Len(t, perms, 1, "%s: %s is only ever the single entry", proc, perm)
 				continue
 			}
 			assert.True(t, scope.Valid(perm), "%s maps to unknown permission %q", proc, perm)
@@ -77,13 +77,13 @@ func TestPermissionTable_Spec15(t *testing.T) {
 		"/apikey.v1.APIKeyService/CreateAPIKey":                   authz.AnyAuthenticated,
 		"/apikey.v1.APIKeyService/RevokeAPIKey":                   authz.AnyAuthenticated,
 		"/auth.v1.AuthService/Whoami":                             authz.AnyAuthenticated,
-		"/auth.v1.AuthService/UpdateProfile":                      authz.AnyAuthenticated,
-		"/auth.v1.AuthService/ChangePassword":                     authz.AnyAuthenticated,
-		"/auth.v1.AuthService/SignOutEverywhere":                  authz.AnyAuthenticated,
+		"/auth.v1.AuthService/UpdateProfile":                      authz.PersonOnly,
+		"/auth.v1.AuthService/ChangePassword":                     authz.PersonOnly,
+		"/auth.v1.AuthService/SignOutEverywhere":                  authz.PersonOnly,
 		"/member.v1.MemberService/ListMembers":                    "member:read",
 		"/member.v1.MemberService/SetMemberRole":                  "member:write",
 		"/member.v1.MemberService/RemoveMember":                   "member:write",
-		"/member.v1.MemberService/LeaveOrg":                       authz.AnyAuthenticated,
+		"/member.v1.MemberService/LeaveOrg":                       authz.PersonOnly,
 		"/invite.v1.InviteService/ListInvites":                    "member:read",
 		"/invite.v1.InviteService/CreateInvite":                   "member:write",
 		"/invite.v1.InviteService/ResendInvite":                   "member:write",

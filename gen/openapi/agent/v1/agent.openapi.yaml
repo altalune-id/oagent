@@ -214,19 +214,36 @@ components:
         orgId:
           type: string
           title: org_id
+          description: |
+            oagent.public_id = true
         projectId:
           type: string
           title: project_id
+          description: |
+            oagent.public_id = true
         slug:
           type: string
           title: slug
+          description: |
+            oagent.slug.format = true
+            oagent.slug.max_len.64 = true
+            oagent.slug.min_len.3 = true
         name:
           type: string
           title: name
+          description: |
+            oagent.name.blank = true
+            oagent.name.max_len.200 = true
         description:
           type: string
           title: description
+          description: |
+            agent.description.max_len.2000
       title: CreateAgentRequest
+      required:
+        - orgId
+        - projectId
+        - name
       additionalProperties: false
     agent.v1.CreateAgentResponse:
       type: object
@@ -242,7 +259,11 @@ components:
         id:
           type: string
           title: id
+          description: |
+            oagent.public_id = true
       title: DeleteAgentRequest
+      required:
+        - id
       additionalProperties: false
     agent.v1.DeleteAgentResponse:
       type: object
@@ -254,7 +275,11 @@ components:
         id:
           type: string
           title: id
+          description: |
+            oagent.public_id = true
       title: GetAgentRequest
+      required:
+        - id
       additionalProperties: false
     agent.v1.GetAgentResponse:
       type: object
@@ -270,7 +295,11 @@ components:
         projectId:
           type: string
           title: project_id
+          description: |
+            oagent.public_id = true
       title: ListAgentsRequest
+      required:
+        - projectId
       additionalProperties: false
     agent.v1.ListAgentsResponse:
       type: object
@@ -288,13 +317,23 @@ components:
         id:
           type: string
           title: id
+          description: |
+            oagent.public_id = true
         name:
           type: string
           title: name
+          description: |
+            oagent.name.blank = true
+            oagent.name.max_len.200 = true
         description:
           type: string
           title: description
+          description: |
+            agent.description.max_len.2000
       title: UpdateAgentRequest
+      required:
+        - id
+        - name
       additionalProperties: false
     agent.v1.UpdateAgentResponse:
       type: object
