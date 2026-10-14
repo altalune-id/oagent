@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"altalune.id/oagent/ratelimit"
+	"altalune.id/oagent/internal/kernel/ratelimit"
 )
 
 // Clock is a fake clock the contract moves forward; a store under test reads Now.

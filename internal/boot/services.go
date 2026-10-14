@@ -18,6 +18,7 @@ import (
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/mailqueue"
 	"altalune.id/oagent/internal/kernel/outbox"
+	"altalune.id/oagent/internal/kernel/ratelimit"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org"
@@ -27,7 +28,6 @@ import (
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/webhook"
 	"altalune.id/oagent/mailer"
-	"altalune.id/oagent/ratelimit"
 	"altalune.id/oagent/sealer"
 )
 

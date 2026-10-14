@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"altalune.id/oagent/ratelimit"
-	"altalune.id/oagent/ratelimit/ratelimittest"
-	ratelimitredis "altalune.id/oagent/ratelimit/redis"
+	"altalune.id/oagent/internal/kernel/ratelimit"
+	"altalune.id/oagent/internal/kernel/ratelimit/ratelimittest"
+	ratelimitredis "altalune.id/oagent/internal/kernel/ratelimit/redis"
 )
 
 func closedClient(t *testing.T) *goredis.Client {

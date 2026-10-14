@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/auth"
+	"altalune.id/oagent/internal/kernel/ratelimit"
+	"altalune.id/oagent/internal/kernel/ratelimit/memory"
 	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
-	"altalune.id/oagent/ratelimit"
-	"altalune.id/oagent/ratelimit/memory"
 )
 
 type downLimiter struct{}

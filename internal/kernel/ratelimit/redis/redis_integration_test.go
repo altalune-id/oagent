@@ -10,11 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"altalune.id/oagent/internal/kernel/ratelimit"
+	"altalune.id/oagent/internal/kernel/ratelimit/memory"
+	"altalune.id/oagent/internal/kernel/ratelimit/ratelimittest"
+	ratelimitredis "altalune.id/oagent/internal/kernel/ratelimit/redis"
 	"altalune.id/oagent/internal/testutil/redistest"
-	"altalune.id/oagent/ratelimit"
-	"altalune.id/oagent/ratelimit/memory"
-	"altalune.id/oagent/ratelimit/ratelimittest"
-	ratelimitredis "altalune.id/oagent/ratelimit/redis"
 )
 
 func TestStore_Contract(t *testing.T) {

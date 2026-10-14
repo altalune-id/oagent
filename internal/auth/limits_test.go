@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/ratelimit"
+	"altalune.id/oagent/internal/kernel/ratelimit/memory"
+	"altalune.id/oagent/internal/kernel/ratelimit/ratelimittest"
 	"altalune.id/oagent/internal/web/layout"
-	"altalune.id/oagent/ratelimit"
-	"altalune.id/oagent/ratelimit/memory"
-	"altalune.id/oagent/ratelimit/ratelimittest"
 )
 
 type brokenLimiter struct{ calls int }

@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"altalune.id/oagent/ratelimit"
-	"altalune.id/oagent/ratelimit/ratelimittest"
+	"altalune.id/oagent/internal/kernel/ratelimit"
+	"altalune.id/oagent/internal/kernel/ratelimit/ratelimittest"
 )
 
 func TestContract(t *testing.T) {

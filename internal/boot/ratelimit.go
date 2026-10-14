@@ -8,9 +8,9 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"altalune.id/oagent/config"
-	"altalune.id/oagent/ratelimit"
-	"altalune.id/oagent/ratelimit/memory"
-	ratelimitredis "altalune.id/oagent/ratelimit/redis"
+	"altalune.id/oagent/internal/kernel/ratelimit"
+	"altalune.id/oagent/internal/kernel/ratelimit/memory"
+	ratelimitredis "altalune.id/oagent/internal/kernel/ratelimit/redis"
 	"altalune.id/oagent/worker"
 )
 

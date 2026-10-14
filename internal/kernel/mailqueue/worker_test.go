@@ -19,7 +19,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"altalune.id/oagent/internal/kernel/outbox"
 	"altalune.id/oagent/mailer"
 	"altalune.id/oagent/mailer/resend"
 	"altalune.id/oagent/mailer/smtp"
@@ -159,7 +158,7 @@ func TestWorkerSendFailsKeepsPendingWithBackoff(t *testing.T) {
 
 	assert.Empty(t, store.succeeded)
 	require.Len(t, store.failed, 1)
-	minWait := outbox.BackoffBase(e.Attempt+1) * 9 / 10
+	minWait := backoffBase(e.Attempt+1) * 9 / 10
 	assert.False(t, store.failed[0].retryAt.Before(before.Add(minWait)), "retry waits at least the backoff")
 	assert.Contains(t, store.failed[0].cause, "connection refused")
 }
@@ -359,7 +358,7 @@ func TestWorkerCapsRetryAfter(t *testing.T) {
 
 	require.Len(t, store.failed, 1)
 	assert.False(t, store.failed[0].gaveUp)
-	assert.WithinDuration(t, before.Add(outbox.BackoffBase(MaxAttempts)), store.failed[0].retryAt, time.Minute)
+	assert.WithinDuration(t, before.Add(backoffBase(MaxAttempts)), store.failed[0].retryAt, time.Minute)
 }
 
 func TestWorkerPrunesSettledEntriesOncePerDay(t *testing.T) {

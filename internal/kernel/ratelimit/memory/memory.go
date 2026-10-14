@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"altalune.id/oagent/ratelimit"
+	"altalune.id/oagent/internal/kernel/ratelimit"
 )
 
 // DefaultMaxKeys bounds the map when New gets no positive maxKeys.

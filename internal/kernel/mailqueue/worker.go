@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"altalune.id/oagent/apperror"
-	"altalune.id/oagent/internal/kernel/outbox"
 	"altalune.id/oagent/mailer"
 	"altalune.id/oagent/worker"
 )
@@ -177,8 +176,8 @@ func (w *Worker) sendOne(ctx context.Context, e Entry) {
 }
 
 func retryWait(attempt int, err error) time.Duration {
-	wait := outbox.Backoff(attempt + 1)
-	if ra := min(retryAfter(err), outbox.BackoffBase(MaxAttempts)); ra > wait {
+	wait := backoff(attempt + 1)
+	if ra := min(retryAfter(err), backoffBase(MaxAttempts)); ra > wait {
 		wait = ra
 	}
 	return wait

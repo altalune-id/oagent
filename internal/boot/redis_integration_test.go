@@ -13,8 +13,8 @@ import (
 
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/ratelimit"
 	"altalune.id/oagent/internal/testutil/redistest"
-	"altalune.id/oagent/ratelimit"
 )
 
 func TestBoot_RedisFeatureOpensTheRealServer(t *testing.T) {

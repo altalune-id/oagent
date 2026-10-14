@@ -12,12 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/ratelimit"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/testutil/fakes"
 	"altalune.id/oagent/internal/web"
 	"altalune.id/oagent/internal/web/layout"
 	"altalune.id/oagent/internal/web/middleware"
-	"altalune.id/oagent/ratelimit"
 )
 
 func wrongLogin(email, ip string) *http.Request {
