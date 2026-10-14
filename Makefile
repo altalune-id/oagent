@@ -1,5 +1,5 @@
 GOTOOLCHAIN ?= auto
-GO := env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) go
+GO := env -u GOROOT -u GOVERSION GOTOOLCHAIN=$(GOTOOLCHAIN) go
 BUF ?= pnpm exec buf
 
 BIN     := bin/oagent
@@ -40,10 +40,25 @@ config-examples: ## regenerate .env.reference and config.reference.yml from stru
 
 .PHONY: generate
 generate: templ ## regenerate protos (connect, openapi, mcp tools), scope names, error codes and templ components
-	env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) $(BUF) generate
-	env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) $(BUF) generate --template buf.gen.mcp.yaml
+	env -u GOROOT -u GOVERSION GOTOOLCHAIN=$(GOTOOLCHAIN) $(BUF) generate
+	env -u GOROOT -u GOVERSION GOTOOLCHAIN=$(GOTOOLCHAIN) $(BUF) generate --template buf.gen.mcp.yaml
 	$(GO) tool gen-scope
 	$(GO) tool gen-apperror
+
+.PHONY: generate-check
+generate-check: generate ## fail when make generate changes a tracked file (run on a clean tree)
+	@if [ -n "$$(git status --porcelain -- . ':!pnpm-lock.yaml')" ]; then git status --short; echo "generated code is stale: run make generate and commit it"; exit 1; fi
+
+.PHONY: config-check
+config-check: ## fail when .env.reference or config.reference.yml drifted from the config structs
+	$(GO) tool gen-config-example --check
+	$(GO) tool gen-config-example --format=yaml --check
+
+GOVULNCHECK_VERSION ?= v1.9.0
+
+.PHONY: vulncheck
+vulncheck: ## scan dependencies and the standard library for known vulnerabilities
+	$(GO) run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
 .PHONY: templ
 templ: ## generate templ components
@@ -86,11 +101,11 @@ build-all: ui ## build embedded web assets, then the oagent binary
 GOLANGCI_VERSION ?= v2.14.0
 # the installed golangci-lint when it is GOLANGCI_VERSION, else that exact version through go run
 GOLANGCI := $(shell v=$$(golangci-lint version --short 2>/dev/null); \
-	if [ "v$$v" = "$(GOLANGCI_VERSION)" ]; then echo "env -u GOROOT GOTOOLCHAIN=$(GOTOOLCHAIN) golangci-lint"; \
+	if [ "v$$v" = "$(GOLANGCI_VERSION)" ]; then echo "env -u GOROOT -u GOVERSION GOTOOLCHAIN=$(GOTOOLCHAIN) golangci-lint"; \
 	else echo "$(GO) run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION)"; fi)
 
 .PHONY: fmt
-fmt: ## format all Go files (gofmt + goimports, settings from .golangci.yml)
+fmt: ## format all Go files (gofmt + gci import groups, settings from .golangci.yml)
 	$(GOLANGCI) fmt ./...
 
 .PHONY: vet
@@ -111,7 +126,7 @@ lint-js: ## run ESLint over ui/, docs and every JS/TS/Vue/JSON/Markdown/CSS file
 .PHONY: lint-config
 lint-config: ## run yamllint, hadolint, actionlint and shellcheck (binary, else Docker, else skipped)
 	scripts/lint/tool.sh yamllint --strict -c .yamllint.yaml .
-	@if [ -f Dockerfile ]; then scripts/lint/tool.sh hadolint Dockerfile; fi
+	@if ls Dockerfile* >/dev/null 2>&1; then scripts/lint/tool.sh hadolint Dockerfile*; fi
 	@if ls .github/workflows/*.y*ml >/dev/null 2>&1; then scripts/lint/tool.sh actionlint; fi
 	scripts/lint/tool.sh shellcheck $$(git ls-files -co --exclude-standard -- '*.sh' .husky/pre-commit .husky/pre-push ':!:.agents' ':!:.claude')
 

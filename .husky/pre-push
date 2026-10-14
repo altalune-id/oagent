@@ -42,8 +42,7 @@ echo "→ make comment-check"
 make comment-check
 
 echo "→ config examples match the config structs"
-env -u GOROOT GOTOOLCHAIN=auto go tool gen-config-example --check
-env -u GOROOT GOTOOLCHAIN=auto go tool gen-config-example --format=yaml --check
+make config-check
 
 echo "→ go test -race -shuffle=on ./..."
 env -u GOROOT GOTOOLCHAIN=auto go test -race -shuffle=on ./...
