@@ -47,7 +47,7 @@ It already covers orgs, projects, members, API keys and webhooks. The agent runt
 
    Every key can also be set from the environment: see `.env.example` and the full list in `config.reference.yml`.
 
-5. Build the embedded UI (console, MCP views, sign-in page assets), then run the server.
+5. Build the embedded UI (console, MCP views, sign-in page assets; the console and sign-in assets also get brotli and gzip copies), then run the server.
 
    ```sh
    make ui

@@ -4,6 +4,8 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
+
+	"altalune.id/oagent/internal/web/assets"
 )
 
 //go:embed all:static
@@ -18,10 +20,10 @@ func StaticFS() fs.FS {
 	return sub
 }
 
-func staticHandler(prefix string) http.Handler {
-	files := http.StripPrefix(prefix, http.FileServerFS(StaticFS()))
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "public, max-age=3600")
-		files.ServeHTTP(w, r)
-	})
+func staticHandler(prefix string, fsys fs.FS) http.Handler {
+	files, err := assets.Load(fsys)
+	if err != nil {
+		return http.NotFoundHandler()
+	}
+	return http.StripPrefix(prefix, files.Handler("public, max-age=3600"))
 }

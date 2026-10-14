@@ -111,7 +111,7 @@ A page in the web console (`ui/console`): the Nuxt 4 single-page app served at `
 7. **i18n.** Add every key to every file in `ui/console/i18n/locales/` (`en-US.json`, `id-ID.json`). Keys are flat and dotted (`things.title`). Use `error.<action>` for fallbacks, `field.<proto_field>` for field names in validation messages and `apperror.<CODE>` / `apperror.<CODE>_<reason>` for error codes. `app/lib/apperror/catalog.test.ts` fails when the locales differ in keys or params, or an error code has no message.
 8. **Stories.** `<Component>.stories.ts` next to a presentational component (`title: '<Area>/<Name>'`), one story per state: empty, filled, error, confirming.
 9. **Tests.** `<file>.test.ts` next to every store, composable and helper. Fake clients with `setClient`, refusals with `connectError` ([test/nuxt-globals.ts](../../ui/console/test/nuxt-globals.ts)). Coverage counts `.ts` files only and fails below 90% lines, functions and statements, 85% branches, so keep logic out of `.vue` files.
-10. **Embed.** `make ui-console` builds the SPA into `internal/web/console/public` (not committed). For development, `pnpm --filter @oagent/console dev` serves on port 8280 and proxies `/api` to `localhost:5150`.
+10. **Embed.** `make ui-console` builds the SPA into `internal/web/console/public` (not committed) and writes a `.br` and `.gz` next to every text file over 1 KiB (`ui/scripts/compress.mts`). The Go handler serves those to browsers that accept them, caches the hashed `_nuxt/` files for a year and revalidates `index.html` by `ETag` (see `internal/boot/README.md`, Embedded assets). For development, `pnpm --filter @oagent/console dev` serves on port 8280 and proxies `/api` to `localhost:5150`.
 
 ## Style
 

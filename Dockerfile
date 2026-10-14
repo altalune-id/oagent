@@ -11,6 +11,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY ui/console/package.json ui/console/
 COPY ui/mcp/package.json ui/mcp/
 COPY ui/web/package.json ui/web/
+COPY ui/scripts/package.json ui/scripts/
 COPY ui/vitest-config/package.json ui/vitest-config/
 RUN corepack enable \
     && pnpm --version

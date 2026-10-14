@@ -226,6 +226,8 @@ linters:
               desc: "domains import only internal/web/layout"
             - pkg: "altalune.id/oagent/internal/web/console"
               desc: "domains import only internal/web/layout"
+            - pkg: "altalune.id/oagent/internal/web/assets"
+              desc: "domains import only internal/web/layout"
             - pkg: "altalune.id/oagent/pg$"
               desc: "domains reach Postgres through internal/kernel/db, never the connection"
             - pkg: "altalune.id/oagent/nats$"

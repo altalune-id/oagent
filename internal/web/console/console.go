@@ -8,64 +8,92 @@ import (
 	"path"
 	"strconv"
 	"strings"
+
+	"altalune.id/oagent/internal/web/assets"
 )
 
 //go:embed all:public
 //nolint:gochecknoglobals // embedded asset dir.
 var files embed.FS
 
-// Handler serves the embedded SPA at consoleBase, rebasing Nuxt's baked asset URLs, baseURL, apiUrl and appVersion per request.
+const (
+	indexName     = "index.html"
+	manifestName  = "_nuxt/builds/latest.json"
+	hashedPrefix  = "_nuxt/"
+	cacheHashed   = "public, max-age=31536000, immutable"
+	cacheShort    = "public, max-age=3600"
+	cacheValidate = "no-cache"
+)
+
+// Handler serves the embedded SPA at consoleBase, with Nuxt's baked asset URLs, baseURL, apiUrl and appVersion rebased once.
 func Handler(consoleBase, apiBase, appVersion string) http.Handler {
 	sub, err := fs.Sub(files, "public")
 	if err != nil {
 		return http.NotFoundHandler()
 	}
-	return &spa{fs: sub, base: consoleBase, apiBase: apiBase, appVersion: appVersion}
+	return newSPA(sub, consoleBase, apiBase, appVersion)
+}
+
+func newSPA(fsys fs.FS, base, apiBase, appVersion string) http.Handler {
+	files, err := assets.Load(fsys)
+	if err != nil {
+		return http.NotFoundHandler()
+	}
+	s := &spa{files: files}
+	if b, err := fs.ReadFile(fsys, indexName); err == nil {
+		s.index = assets.New(indexName, []byte(rebase(string(b), base, apiBase, appVersion)))
+	}
+	return s
 }
 
 type spa struct {
-	fs         fs.FS
-	base       string
-	apiBase    string
-	appVersion string
+	files assets.Files
+	index *assets.Asset
 }
 
 func (s *spa) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	upath := path.Clean(strings.TrimPrefix(r.URL.Path, "/"))
-	if upath == "." {
-		s.serveIndex(w, r)
-		return
-	}
-	if f, err := s.fs.Open(upath); err == nil {
-		_ = f.Close()
-		http.ServeFileFS(w, r, s.fs, upath) //nolint:gosec // G703: s.fs is the embedded build; fs.FS rejects paths that leave it
-		return
-	}
-	s.serveIndex(w, r)
-}
-
-func (s *spa) serveIndex(w http.ResponseWriter, r *http.Request) {
-	b, err := fs.ReadFile(s.fs, "index.html")
-	if err != nil {
+	name := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")
+	switch {
+	case name == indexName:
+		loc := "./"
+		if r.URL.RawQuery != "" {
+			loc += "?" + r.URL.RawQuery
+		}
+		w.Header().Set("Location", loc)
+		w.WriteHeader(http.StatusMovedPermanently)
+	case s.files.Sibling(name):
 		http.NotFound(w, r)
-		return
+	case s.files[name] != nil:
+		s.files[name].Serve(w, r, cacheControl(name))
+	case s.index != nil:
+		s.index.Serve(w, r, cacheValidate)
+	default:
+		http.NotFound(w, r)
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
-	_, _ = w.Write([]byte(s.rebase(string(b))))
 }
 
-func (s *spa) rebase(html string) string {
-	if s.base == "" || s.base == "/" {
+func cacheControl(name string) string {
+	switch {
+	case name == manifestName:
+		return cacheValidate
+	case strings.HasPrefix(name, hashedPrefix):
+		return cacheHashed
+	default:
+		return cacheShort
+	}
+}
+
+func rebase(html, base, apiBase, appVersion string) string {
+	if base == "" || base == "/" {
 		return html
 	}
-	html = strings.ReplaceAll(html, `"/_nuxt/`, `"`+s.base+`_nuxt/`)
-	html = strings.ReplaceAll(html, `baseURL:"/"`, `baseURL:"`+s.base+`"`)
-	if s.apiBase != "" {
-		html = strings.ReplaceAll(html, `apiUrl:""`, `apiUrl:"`+s.apiBase+`"`)
+	html = strings.ReplaceAll(html, `"/_nuxt/`, `"`+base+`_nuxt/`)
+	html = strings.ReplaceAll(html, `baseURL:"/"`, `baseURL:"`+base+`"`)
+	if apiBase != "" {
+		html = strings.ReplaceAll(html, `apiUrl:""`, `apiUrl:"`+apiBase+`"`)
 	}
-	if s.appVersion != "" {
-		html = strings.ReplaceAll(html, `appVersion:""`, `appVersion:`+strconv.Quote(s.appVersion))
+	if appVersion != "" {
+		html = strings.ReplaceAll(html, `appVersion:""`, `appVersion:`+strconv.Quote(appVersion))
 	}
 	return html
 }

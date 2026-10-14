@@ -86,7 +86,7 @@ The pnpm workspace `ui/*` builds assets that the binary embeds. The builds are n
 | `ui/mcp`     | MCP Apps view                  | `make ui-mcp`     | `internal/mcp/ui/assets`      |
 | `ui/web`     | Tailwind CSS + password script | `make web`        | `internal/web/static`         |
 
-`make ui` builds all three. See [console-page.md](../howto/console-page.md) and [web-page.md](../howto/web-page.md).
+`make ui` builds all three. `ui/scripts/compress.mts` (package `@oagent/scripts`) then writes a `.br` and `.gz` next to each console and sign-in text file over 1 KiB. See [console-page.md](../howto/console-page.md) and [web-page.md](../howto/web-page.md).
 
 ## Data
 

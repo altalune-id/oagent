@@ -66,7 +66,7 @@ templ: ## generate templ components
 
 .PHONY: web-css
 web-css: ## compile internal/web/static/app.css
-	pnpm --filter @oagent/web exec tailwindcss -i app.css -o ../../internal/web/static/app.css --minify
+	pnpm --filter @oagent/web build
 
 .PHONY: web-js
 web-js: ## build internal/web/static/password.js
@@ -90,6 +90,7 @@ ui-console: ## build the console SPA and embed it
 	@mkdir -p internal/web/console/public
 	@find internal/web/console/public -mindepth 1 ! -name .gitkeep -exec rm -rf {} +
 	@cp -R ui/console/.output/public/. internal/web/console/public/
+	node ui/scripts/compress.mts internal/web/console/public
 
 .PHONY: ui
 ui: web ui-mcp ui-console ## build all embedded web assets
