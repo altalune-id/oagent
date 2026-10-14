@@ -95,7 +95,7 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
 - Never commit these working notes:
   - `docs/superpowers/`
   - `AUTH*.md`, `OAGENT-NOTES.md`, `*_BACKLOG.md`
-  - `.agents/`, `.claude/`, `.superpowers/`, `.mcp.json`
+  - `.claude/` (except `.claude/skills/`), `.superpowers/`, `.mcp.json`
 
   `docs/superpowers/` and `.superpowers/` are git-ignored; the rest stay untracked and are not added to `.gitignore`.
 
@@ -103,9 +103,12 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
 
 ## Agent skills
 
-Untracked skills in `.agents/skills/` (linked from `.claude/skills/`) carry the same conventions:
+Skills in `.agents/skills/` (each linked from `.claude/skills/`) are committed and carry the same conventions. The linters skip them:
 
 - `oagent-go-convention`: build a change the oagent way.
 - `oagent-go-review`: review a change; it runs the gates.
 - `go`, `go-concurrency`, `go-proverb`, `comment-discipline`: Go and comment style.
 - `vue`, `pinia`, `vite`, `vitest`, `nuxt`, `eslint-config`: the console and the UI toolchain.
+- `cobra-viper`, `go-release`, `go-spec-reviewer`: CLI and config, releases, spec review.
+
+A new skill goes in `.agents/skills/<name>/` with a `.claude/skills/<name>` link, in the same commit.
