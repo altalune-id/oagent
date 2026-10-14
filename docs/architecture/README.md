@@ -28,7 +28,7 @@ flowchart TB
   CP --> DOM["domains<br/>org, project, agent, apikey, webhook, user, auth, install, legal, health"]
   WEB -. Registrar .-> DOM
   DOM --> LAYOUT["internal/web/layout<br/>templ shell"]
-  DOM --> KERNEL["internal/kernel/*<br/>authn, authz, db, session, tenant, outbox, mailqueue, queue, events, capabilities"]
+  DOM --> KERNEL["internal/kernel/*<br/>authn, authz, db, session, tenant, outbox, mailqueue, queue, nats, redis, events, capabilities"]
   DOM --> ROOT["root packages<br/>apperror, config, pg, mailer, ratelimit, worker, scheduler, ..."]
   KERNEL --> ROOT
 ```
@@ -37,7 +37,7 @@ Import direction: `cmd` → `internal/cli` → `internal/boot` → `internal/con
 
 ## Boot
 
-`internal/boot` turns `config.Config` into a running `App`: it opens the database, builds every service once, wires the surfaces and starts the workers. The order, request flow, service wiring, rate limits, Redis and workers are in [internal/boot/README.md](../../internal/boot/README.md).
+`internal/boot` turns `config.Config` into a running `App`: it opens the database, builds every service once, wires the surfaces and starts the workers. The order, request flow, service wiring, rate limits, Redis, NATS, the queue and workers are in [internal/boot/README.md](../../internal/boot/README.md).
 
 ## Kernel
 
@@ -47,7 +47,8 @@ Import direction: `cmd` → `internal/cli` → `internal/boot` → `internal/con
 - `session`: the `Principal` and the browser session store.
 - `tenant`: the org, project and user on the request.
 - `db`: the pool and the unit of work (`RunInTx`).
-- `outbox`, `mailqueue`, `queue`: durable delivery (webhooks, mail, jobs).
+- `outbox`, `mailqueue`, `queue`: durable delivery (webhooks, mail, jobs). `queue` is driver-agnostic; its NATS JetStream driver is `queue/nats`.
+- `nats`, `redis`: open, close and health-check the one shared connection each; boot opens one only when a feature selects it, and drivers take the plain client. Only these, their drivers (`queue/nats`, `ratelimit/redis`), boot and the test helpers import the NATS or go-redis libraries (depguard `nats-boundary`, `redis-boundary`).
 - `events`: the webhook event catalog.
 - `capabilities`: the feature switches derived from the deployment mode.
 

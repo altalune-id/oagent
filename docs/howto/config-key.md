@@ -38,7 +38,8 @@ Use this when an operator needs a new setting. The loader reads defaults, then a
    Use `*MissingSettingError{Keys, Reason}` when a choice makes a key required (`redis.url` once a feature selects Redis). Tags run first and are joined with `errors.Join`; functions run only when every tag passes, so they may assume well-formed fields.
 
 6. **Tests** in `config/<block>_test.go`: `TestLoad_<Block>Defaults`, `TestLoad_<Block>FromEnv`, `TestValidate_<Block>`. Add one valid and one invalid row per rule to `TestValidate_EveryRule` (`config/validate_test.go`). A secret key gets a row in `TestValidate_NoSecretInMessages`.
-7. **Boot** maps the value onto the consumer's own options (`queueConfig` in `internal/boot/queue.go`, `buildLimiters` in `internal/boot/ratelimit.go`). Root packages (`ratelimit`, `scheduler`, `worker`) carry no `mapstructure` tags.
+7. **Boot** maps the value onto the consumer's own options (`natsConfig` in `internal/boot/nats.go`, `redisConfig` in `internal/boot/redis.go`, `buildLimiters` in `internal/boot/ratelimit.go`). Root and kernel packages (`ratelimit`, `scheduler`, `worker`, `internal/kernel/nats`) carry no `mapstructure` tags and never import `config`.
+   A connection (`redis.*`, `nats.*`) is its own block, separate from the features that use it; each feature picks its driver in its own block (`rateLimit.store`, `queue.driver`) and `<Conn>Features()` decides whether boot opens the connection at all.
 8. **Reference files.** Run `make config-examples`; it rewrites `.env.reference` and `config.reference.yml` through `cmd/gen-config-example`. Never edit those two by hand. Edit `.env.example` and `config.example.yml` by hand, and only for a key that is truly required, with a one-line hint (`# generate: openssl rand -hex 32`).
 9. **Docs.** When the key changes wiring, a worker or a feature's behaviour, update `internal/boot/README.md` in the same commit (the Redis and Rate limits sections list their keys).
 
@@ -59,6 +60,7 @@ Use this when an operator needs a new setting. The loader reads defaults, then a
 - [config/config.go](../../config/config.go): `Config`, `Config.Validate`, `HTTPConfig.TrustedProxyHops`
 - [config/ratelimit.go](../../config/ratelimit.go): `RateLimitConfig`, `validateRateLimit` (a small block)
 - [config/redis.go](../../config/redis.go): `RedisConfig`, `RedisFeatures`, `validateRedis` (conditional required)
+- [config/nats.go](../../config/nats.go): `NATSConfig`, `NATSFeatures`, `validateNATS`; [config/queue.go](../../config/queue.go): `QueueConfig`, `QueueDriver` (a feature that picks its driver)
 - [config/validate.go](../../config/validate.go): `newValidator`, `settingError`, `tagReason`
 - [config/errors.go](../../config/errors.go): `InvalidSettingError`, `MissingSettingError`
 - [config/loader.go](../../config/loader.go): `setDefaults`

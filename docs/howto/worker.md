@@ -8,7 +8,7 @@ Pick the shape first:
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
 | a loop on every replica (drain a table, batch writes, ping a dependency) | a `worker.Worker` (`outbox.Worker`, `mailqueue.Worker`, `apikey.UsageWorker`)               |
 | a periodic job on an interval, daily or cron schedule                    | a `scheduler.Job` from a domain's `SchedulerJobs()` (`session.Scheduler`)                   |
-| work done once, retried and dead-lettered, over NATS                     | a `queue.Handler` (none exist yet)                                                          |
+| work done once, retried and dead-lettered, on the queue                  | a `queue.Handler` (none exist yet)                                                          |
 | to tell a tenant something happened                                      | none of these: a [webhook event](webhook-event.md), delivered by the existing outbox worker |
 
 ## Plan
@@ -71,7 +71,7 @@ Pick the shape first:
 
 ## Build: a queue handler
 
-`queue.Handler{Job, Handle, OnDeadLetter}` in the owning package; decode with `queue.Decode[T]`, return `queue.Permanent(err)` for a bad payload, call one service method, keep it idempotent (`m.ID` dedupes). Return it from `queueHandlers` (`internal/boot/consumers.go`). `Client.Submit` refuses a job that was not declared, and nothing calls `Client.Declare` yet, so the first job also adds that call in boot. The consumer runs only with `queue.enabled`.
+`queue.Handler{Job, Handle, OnDeadLetter}` in the owning package; decode with `queue.Decode[T]`, return `queue.Permanent(err)` for a bad payload, call one service method, keep it idempotent (`m.ID` dedupes). Return it from `queueHandlers` (`internal/boot/consumers.go`). Code that submits takes `queue.Queue` (`Kernel.Queue`), never a driver: only `internal/kernel/queue/nats`, `internal/kernel/nats`, boot and `internal/testutil/natstest` import NATS (depguard `nats-boundary`). `Queue.Submit` refuses a job that was not declared, and nothing calls `Queue.Declare` yet, so the first job also adds that call in boot. The consumer runs only with `queue.enabled`; with it off, `queue.Disabled` accepts every Submit and does nothing.
 
 ## Review
 
@@ -91,6 +91,7 @@ Pick the shape first:
 - [ratelimit/memory/memory.go](../../ratelimit/memory/memory.go): `Store.Run` (a janitor on a store)
 - [internal/kernel/session/scheduler.go](../../internal/kernel/session/scheduler.go): `Scheduler.SchedulerJobs`
 - [scheduler/scheduler.go](../../scheduler/scheduler.go), [scheduler/provider.go](../../scheduler/provider.go): `Job`, `Provider`, `Locker`
-- [internal/kernel/queue/consumer.go](../../internal/kernel/queue/consumer.go): `Handler`, `Decode`, `Permanent`
+- [internal/kernel/queue/queue.go](../../internal/kernel/queue/queue.go): `Queue`; [internal/kernel/queue/handler.go](../../internal/kernel/queue/handler.go): `Handler`, `Decode`, `Permanent`
+- [internal/kernel/queue/nats/consumer.go](../../internal/kernel/queue/nats/consumer.go): the NATS driver's consumer (retries, dead letters)
 - [internal/boot/boot.go](../../internal/boot/boot.go): `Boot`; [internal/boot/schedulers.go](../../internal/boot/schedulers.go): `buildScheduler`; [internal/boot/consumers.go](../../internal/boot/consumers.go): `queueHandlers`
 - [internal/boot/README.md](../../internal/boot/README.md): Background workers

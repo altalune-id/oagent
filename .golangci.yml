@@ -140,6 +140,28 @@ linters:
             - altalune.id/oagent/nanoid
             - altalune.id/oagent/scope
             - altalune.id/oagent/slug
+        nats-boundary:
+          list-mode: lax
+          files:
+            - $all
+            - "!**/internal/kernel/nats/**"
+            - "!**/internal/kernel/queue/nats/**"
+            - "!**/internal/boot/**"
+            - "!**/internal/testutil/natstest/**"
+          deny:
+            - pkg: github.com/nats-io
+              desc: "only internal/kernel/nats, the queue/nats driver, boot and natstest import NATS"
+        redis-boundary:
+          list-mode: lax
+          files:
+            - $all
+            - "!**/internal/kernel/redis/**"
+            - "!**/ratelimit/redis/**"
+            - "!**/internal/boot/**"
+            - "!**/internal/testutil/redistest/**"
+          deny:
+            - pkg: github.com/redis/go-redis
+              desc: "only internal/kernel/redis, ratelimit/redis, boot and redistest import go-redis"
         application-purity:
           list-mode: lax
           files:

@@ -31,11 +31,13 @@ services:
       timeout: 3s
       retries: 10
 
-  # One account per app, like the shared Altalune NATS (docker/nats/nats-server.conf).
+  # One account per app, like the shared Altalune NATS (docker/nats/nats-server.conf); passwords at least 16 characters.
+  # TODO: run ghcr.io/altalune-id/nats once it has a version tag; it already has the OAGENT account.
   nats:
-    image: nats:2.14.8-alpine
+    image: nats:2.15.0-alpine3.22
     restart: unless-stopped
-    command: ["--config", "/etc/nats/nats-server.conf"]
+    entrypoint: ["/bin/sh", "/etc/nats/require-passwords.sh"]
+    command: ["nats-server", "--config", "/etc/nats/nats-server.conf"]
     environment:
       OAGENT_NATS_PASSWORD: "${OAGENT_NATS_PASSWORD:-oagent-dev-nats-password}"
       OTHER_NATS_PASSWORD: "${OTHER_NATS_PASSWORD:-other-dev-nats-password}"
@@ -43,6 +45,7 @@ services:
       - "${NATS_PORT:-4222}:4222"
     volumes:
       - ./docker/nats/nats-server.conf:/etc/nats/nats-server.conf:ro
+      - ./docker/nats/require-passwords.sh:/etc/nats/require-passwords.sh:ro
       - nats:/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz?js-enabled-only=true"]

@@ -95,19 +95,24 @@ docker run --rm -p 5150:5150 \
 
 ### Queue (NATS)
 
-The queue is off unless `queue.enabled` is true. oagent connects as one NATS account, the same layout as the shared
-Altalune NATS ([altalune-id/nats](https://github.com/altalune-id/nats)): every app has its own account, so apps never
-see each other's streams.
+The queue is off unless `queue.enabled` is true; `queue.driver` picks what carries it (`nats`, the only driver).
+`nats.*` is only the connection, and oagent opens it only when a feature uses it. oagent connects as user `oagent` in
+its own account, `OAGENT`, as on the shared Altalune NATS ([altalune-id/nats](https://github.com/altalune-id/nats)).
+Every app uses the same stream names, so the account is what keeps apps apart: never share one between apps.
 
 ```sh
 OAGENT_QUEUE_ENABLED=true
-OAGENT_QUEUE_URL=nats://nats:4222
-OAGENT_QUEUE_USER=oagent
-OAGENT_QUEUE_PASSWORD=...   # the server's OAGENT_NATS_PASSWORD
+OAGENT_NATS_URL=nats://<nats-service>.railway.internal:4222
+OAGENT_NATS_USER=oagent
+OAGENT_NATS_PASSWORD=...   # the server's OAGENT_NATS_PASSWORD, at least 16 characters
 ```
 
-`queue.token` is for a NATS server without accounts; set it or the user and password, not both. Locally,
-`docker compose up -d` runs NATS with the accounts in `docker/nats/nats-server.conf`.
+The credentials may also go in the URL (`nats://oagent:<password>@host:4222`). `nats.token` is for a NATS server
+without accounts; set it or the user and password, not both. Deploy the server on private networking only, with a
+volume at `/data` (see the shared server's README). Locally, `docker compose up -d` runs NATS with the accounts in
+`docker/nats/nats-server.conf` (`OAGENT` and `OTHER`, dev passwords of 16 characters or more). To run oagent on
+the host against it: `OAGENT_NATS_URL=nats://localhost:4222`, `OAGENT_NATS_USER=oagent` and
+`OAGENT_NATS_PASSWORD=oagent-dev-nats-password` (the compose default).
 
 ## Everyday commands
 
