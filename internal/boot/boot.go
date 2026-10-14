@@ -86,7 +86,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		_ = shutdown(ctx)
 		return nil, err
 	}
-	lims, err := buildLimiters(cfg, log)
+	lims, err := buildLimiters(cfg, rh.conn(), log)
 	if err != nil {
 		_ = pool.Close()
 		_ = shutdown(ctx)

@@ -21,7 +21,7 @@ flowchart TD
     E --> RD["buildRedis: opens Redis only when a feature selects it"]
     RD --> F[buildServices: every domain service, the mail queue]
     F --> M[buildMailer: mail.driver picks mailer/console, mailer/smtp or mailer/resend]
-    M --> R[buildLimiters: one limiter per rate limit group, Disabled unless switched on]
+    M --> R["buildLimiters: one limiter per rate limit group, Disabled unless switched on (memory or Redis store)"]
     R --> G[buildAuthSecrets: state secret, setup token]
     G --> H[firstBoot: basic system org / env genesis / log install URL]
     H --> I[installRequired: is the install gate shut?]
@@ -207,7 +207,8 @@ feature uses is ignored with one INFO line.
   `redis.minIdleConnections` (0), `redis.maxIdleTime` (5m), `redis.connectTimeout` (5s),
   `redis.readTimeout` (3s), `redis.writeTimeout` (3s). Env: `OAGENT_REDIS_URL`,
   `OAGENT_REDIS_KEY_PREFIX`, … A feature on `redis` with no `redis.url`, or a URL that is not
-  `redis://` or `rediss://`, is a config error. Single-node URLs only.
+  `redis://` or `rediss://`, is a config error. Single-node URLs only. Needs Redis 5 or newer
+  (tested on 7): the rate-limit script reads `TIME` before it writes.
 - **Connection:** `redis.go` (`openRedis`) parses the URL, sets the pool and timeouts, adds
   tracing (`redisotel`, without command text) and pings once within `redis.connectTimeout`. A Redis
   that can't be reached fails boot with `redis: cannot connect to <host> (redis.url): …`; no error
@@ -233,15 +234,22 @@ an API gateway). Each group has its own switch and all groups share one store. T
 `auth` (`rateLimit.auth.enabled`). With every group off, no store and no janitor exist and every
 group gets `ratelimit.Disabled()`, which allows every call.
 
-- **Store:** `rateLimit.store` picks the driver; only `memory` exists (`redis` is refused until its
-  driver lands as `ratelimit/redis`). The memory store runs GCRA over a map of at most
+- **Store:** `rateLimit.store` picks the driver: `memory` (default, per server) or `redis` (shared by
+  every server). The memory store runs GCRA over a map of at most
   `rateLimit.maxKeys` keys (default 100 000), and the `ratelimit.janitor` worker drops refilled
   keys every minute. When it is full, a new key first drops refilled keys (at most once a second),
   then is refused (429) if the store is still full, so a flood of unique IPs or emails can lock out
   new visitors until keys refill. Size `maxKeys` above the distinct IPs and emails you expect in 15
-  minutes; each key costs roughly 100 bytes, so the default is about 10 MB.
+  minutes; each key costs roughly 100 bytes, so the default is about 10 MB. `rateLimit.maxKeys`
+  applies to `memory` only.
+- **Redis store:** `ratelimit/redis` runs the same GCRA in one Lua script, so every server counts
+  against one limit and gives the same answers as `memory`. Each key is
+  `<redis.keyPrefix>rl:<rule>:<subject>` and holds the next allowed time in ms; it expires by itself
+  once fully refilled (no janitor). Time comes from Redis `TIME`, so servers with drifting clocks
+  still agree. It uses the shared connection (see Redis above); a Redis error or timeout fails closed
+  (503), and `/readyz` reports not ready while Redis does not answer.
 - **Per instance:** the memory store counts on one replica only. With several replicas, limit at the
-  edge or use the Redis store once it exists.
+  edge or use `store: redis` to share the limits across servers.
 - **Where (auth group):** `buildRoutes` hands one `auth.Limits` (the auth limiter and
   `http.trustedProxyHops`) to the login page and the invite pages. `POST /login` counts every attempt per
   client IP (60 per 15 minutes) and failed attempts per email hash (10 per 15 minutes, 5 at once; a
@@ -294,7 +302,7 @@ The supervisor runs these next to the HTTP server.
 | `console.go` | console SPA handler |
 | `outbox.go`, `schedulers.go`, `consumers.go`, `queue.go` | workers |
 | `mail.go` | the mailer driver (`mailer/console`, `mailer/smtp` or `mailer/resend`, picked by `mail.driver`), the sealed mail queue (`Services.MailQueue`) and its send worker |
-| `ratelimit.go` | the rate limit store (`ratelimit/memory`, picked by `rateLimit.store`) and one `ratelimit.Limiter` per group (`Services.AuthLimiter`); a group that is off gets `ratelimit.Disabled()` |
+| `ratelimit.go` | the rate limit store (`ratelimit/memory` or `ratelimit/redis` on the shared connection, picked by `rateLimit.store`) and one `ratelimit.Limiter` per group (`Services.AuthLimiter`); a group that is off gets `ratelimit.Disabled()` |
 | `redis.go` | the shared Redis connection (only when a feature selects it), its closer and its `redis-health` readiness worker |
 | `db.go`, `sealer.go`, `telemetry.go` | pool, migrations, health, sealer, telemetry |
 | `options.go`, `app.go`, `remote.go` | boot options, the running `App` and its operator actions, the CLI graph |

@@ -3,7 +3,7 @@ package config
 // RateLimitStore selects where rate limit counters live.
 type RateLimitStore string
 
-// The rate limit stores. Redis is reserved and refused until its driver exists.
+// The rate limit stores: memory counts per server, redis shares the counts across servers.
 const (
 	RateLimitStoreMemory RateLimitStore = "memory"
 	RateLimitStoreRedis  RateLimitStore = "redis"
@@ -36,8 +36,8 @@ func (c *Config) validateRateLimit() error {
 		}
 		return nil
 	case RateLimitStoreRedis:
-		return &InvalidSettingError{Key: "rateLimit.store", Reason: "redis is not supported yet; use memory"}
+		return nil
 	default:
-		return &InvalidSettingError{Key: "rateLimit.store", Reason: "must be memory"}
+		return &InvalidSettingError{Key: "rateLimit.store", Reason: "must be memory or redis"}
 	}
 }

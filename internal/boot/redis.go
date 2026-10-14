@@ -101,6 +101,13 @@ func newRedisHealth(client redis.UniversalClient, timeout time.Duration, log *sl
 	return h
 }
 
+func (h *redisHealth) conn() redis.UniversalClient {
+	if h == nil {
+		return nil
+	}
+	return h.client
+}
+
 // Name implements worker.Worker.
 func (h *redisHealth) Name() string { return "redis-health" }
 

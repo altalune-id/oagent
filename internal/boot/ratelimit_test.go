@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -12,10 +13,11 @@ import (
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/ratelimit"
 	"altalune.id/oagent/ratelimit/memory"
+	ratelimitredis "altalune.id/oagent/ratelimit/redis"
 )
 
 func TestBuildLimiters_OffByDefault(t *testing.T) {
-	l, err := buildLimiters(config.Config{}, testLogger())
+	l, err := buildLimiters(config.Config{}, nil, testLogger())
 	require.NoError(t, err)
 	assert.Equal(t, ratelimit.Disabled(), l.auth)
 	assert.Nil(t, l.janitor, "no store, no janitor")
@@ -24,7 +26,7 @@ func TestBuildLimiters_OffByDefault(t *testing.T) {
 func TestBuildLimiters_AuthOnWithMemory(t *testing.T) {
 	for _, store := range []config.RateLimitStore{"", config.RateLimitStoreMemory} {
 		cfg := config.Config{RateLimit: config.RateLimitConfig{Store: store, MaxKeys: 7, Auth: config.RateLimitGroupConfig{Enabled: true}}}
-		l, err := buildLimiters(cfg, testLogger())
+		l, err := buildLimiters(cfg, nil, testLogger())
 		require.NoError(t, err)
 		m, ok := l.auth.(*memory.Store)
 		require.True(t, ok, "got %T", l.auth)
@@ -33,9 +35,43 @@ func TestBuildLimiters_AuthOnWithMemory(t *testing.T) {
 }
 
 func TestBuildLimiters_UnknownStore(t *testing.T) {
-	cfg := config.Config{RateLimit: config.RateLimitConfig{Store: config.RateLimitStoreRedis, Auth: config.RateLimitGroupConfig{Enabled: true}}}
-	_, err := buildLimiters(cfg, testLogger())
+	cfg := config.Config{RateLimit: config.RateLimitConfig{Store: "pigeon", Auth: config.RateLimitGroupConfig{Enabled: true}}}
+	_, err := buildLimiters(cfg, nil, testLogger())
 	assert.ErrorContains(t, err, "rateLimit.store")
+}
+
+func TestBuildLimiters_AuthOnWithRedis(t *testing.T) {
+	cfg := redisFeatureConfig()
+	client := redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})
+	t.Cleanup(func() { _ = client.Close() })
+	l, err := buildLimiters(cfg, client, testLogger())
+	require.NoError(t, err)
+	assert.IsType(t, &ratelimitredis.Store{}, l.auth)
+	assert.Nil(t, l.janitor, "redis keys expire by themselves")
+}
+
+func TestBuildLimiters_RedisWithoutConnection(t *testing.T) {
+	_, err := buildLimiters(redisFeatureConfig(), nil, testLogger())
+	assert.ErrorContains(t, err, "redis")
+}
+
+func TestBoot_RateLimitOnRedis(t *testing.T) {
+	restoreSeams(t)
+	calls, _ := stubRedis(t)
+	poolDB, _ := newDB(t)
+	setupTelemetry = stubTelemetry(nil, nil)
+	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
+		return db.Pool{W: poolDB, R: poolDB}, nil
+	}
+
+	app, err := Boot(context.Background(), redisFeatureConfig(), testLogger())
+	require.NoError(t, err)
+	assert.Equal(t, 1, *calls, "one shared connection")
+	assert.IsType(t, &ratelimitredis.Store{}, app.Services.AuthLimiter)
+	assert.Contains(t, workerNames(app), "redis-health")
+	assert.NotContains(t, workerNames(app), "ratelimit.janitor")
+	assert.Len(t, app.Supervisor.Workers(), 6) // the default five + redis-health
+	require.NoError(t, app.Close(context.Background()))
 }
 
 func TestBoot_RateLimitAuthEnabled(t *testing.T) {
