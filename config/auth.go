@@ -44,7 +44,7 @@ type GenesisConfig struct {
 
 // InstallConfig configures the first-boot /install page.
 type InstallConfig struct {
-	Token string `yaml:"token" mapstructure:"token" awareness:"secret"`
+	Token string `yaml:"token" mapstructure:"token" awareness:"secret" validate:"omitempty,secret"`
 }
 
 func (c *Config) validateAuth() error {
@@ -81,12 +81,6 @@ func (c *Config) validateAuth() error {
 }
 
 func (c *Config) validateSecrets() error {
-	if err := checkSecretLen("http.stateSecret", c.HTTP.StateSecret); err != nil {
-		return err
-	}
-	if err := checkSecretLen("install.token", c.Install.Token); err != nil {
-		return err
-	}
 	if c.Env == EnvDevelopment || c.Auth.Mode != AuthModeLocal {
 		return nil
 	}
@@ -96,16 +90,12 @@ func (c *Config) validateSecrets() error {
 	if c.Secrets.EncryptionKey == "" {
 		return &MissingSettingError{Keys: "secrets.encryptionKey", Reason: "required in production; " + generateHint}
 	}
-	if _, err := sealer.ParseKey(c.Secrets.EncryptionKey); err != nil {
+	return checkEncryptionKey(c.Secrets.EncryptionKey)
+}
+
+func checkEncryptionKey(key string) error {
+	if _, err := sealer.ParseKey(key); err != nil {
 		return &InvalidSettingError{Key: "secrets.encryptionKey", Reason: "must be 32 bytes as hex or base64; " + generateHint}
 	}
 	return nil
-}
-
-func checkSecretLen(key, value string) error {
-	if value == "" || len(value) >= minSecretLen {
-		return nil
-	}
-	reason := fmt.Sprintf("must be at least %d characters; %s", minSecretLen, generateHint)
-	return &InvalidSettingError{Key: key, Reason: reason}
 }

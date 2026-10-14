@@ -1,11 +1,6 @@
 package config
 
-import (
-	"net/mail"
-	"time"
-
-	"altalune.id/oagent/sealer"
-)
+import "time"
 
 // MailDriver selects how email is sent.
 type MailDriver string
@@ -29,8 +24,8 @@ const (
 
 // MailConfig configures outgoing email.
 type MailConfig struct {
-	Driver MailDriver       `yaml:"driver" mapstructure:"driver"`
-	From   string           `yaml:"from"   mapstructure:"from"`
+	Driver MailDriver       `yaml:"driver" mapstructure:"driver" validate:"oneof=console smtp resend"`
+	From   string           `yaml:"from"   mapstructure:"from"   validate:"omitempty,mail_address"`
 	SMTP   MailSMTPConfig   `yaml:"smtp"   mapstructure:"smtp"`
 	Resend MailResendConfig `yaml:"resend" mapstructure:"resend"`
 }
@@ -52,18 +47,8 @@ type MailResendConfig struct {
 
 func (c *Config) validateMail() error {
 	m := c.Mail
-	switch m.Driver {
-	case MailDriverConsole, MailDriverSMTP, MailDriverResend:
-	default:
-		return &InvalidSettingError{Key: "mail.driver", Reason: "must be console, smtp or resend"}
-	}
 	if m.Driver == MailDriverConsole && c.Env.IsProduction() {
 		return &InvalidSettingError{Key: "mail.driver", Reason: "console is not allowed in production; use smtp or resend"}
-	}
-	if m.From != "" {
-		if _, err := mail.ParseAddress(m.From); err != nil {
-			return &InvalidSettingError{Key: "mail.from", Reason: "must be an email address, optionally with a name: Name <addr@example.com>"}
-		}
 	}
 	if m.Driver == MailDriverConsole {
 		return nil
@@ -78,8 +63,8 @@ func (c *Config) validateMail() error {
 	if c.Secrets.EncryptionKey == "" {
 		return &MissingSettingError{Keys: "secrets.encryptionKey", Reason: reason + "; queued emails are encrypted; " + generateHint}
 	}
-	if _, err := sealer.ParseKey(c.Secrets.EncryptionKey); err != nil {
-		return &InvalidSettingError{Key: "secrets.encryptionKey", Reason: "must be 32 bytes as hex or base64; " + generateHint}
+	if err := checkEncryptionKey(c.Secrets.EncryptionKey); err != nil {
+		return err
 	}
 	if m.Driver == MailDriverResend {
 		if m.Resend.APIKey == "" {

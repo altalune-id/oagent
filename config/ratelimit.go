@@ -11,7 +11,7 @@ const (
 
 // RateLimitConfig configures oagent's own rate limiter: one shared store, one switch per group, every group off by default.
 type RateLimitConfig struct {
-	Store   RateLimitStore       `yaml:"store"   mapstructure:"store"`
+	Store   RateLimitStore       `yaml:"store"   mapstructure:"store"   validate:"oneof=memory redis"`
 	MaxKeys int                  `yaml:"maxKeys" mapstructure:"maxKeys"`
 	Auth    RateLimitGroupConfig `yaml:"auth"    mapstructure:"auth"`
 }
@@ -25,19 +25,8 @@ type RateLimitGroupConfig struct {
 func (c RateLimitConfig) AnyEnabled() bool { return c.Auth.Enabled }
 
 func (c *Config) validateRateLimit() error {
-	if c.HTTP.TrustedProxyHops < 0 {
-		return &InvalidSettingError{Key: "http.trustedProxyHops", Reason: "must be 0 or more"}
+	if c.RateLimit.Store == RateLimitStoreMemory && c.RateLimit.MaxKeys < 1 {
+		return &InvalidSettingError{Key: "rateLimit.maxKeys", Reason: "must be at least 1"}
 	}
-	r := c.RateLimit
-	switch r.Store {
-	case RateLimitStoreMemory:
-		if r.MaxKeys <= 0 {
-			return &InvalidSettingError{Key: "rateLimit.maxKeys", Reason: "must be at least 1"}
-		}
-		return nil
-	case RateLimitStoreRedis:
-		return nil
-	default:
-		return &InvalidSettingError{Key: "rateLimit.store", Reason: "must be memory or redis"}
-	}
+	return nil
 }

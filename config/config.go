@@ -1,12 +1,7 @@
 // Package config loads runtime configuration from defaults, a YAML file and OAGENT_* env vars.
 package config
 
-import (
-	"fmt"
-	"time"
-
-	"github.com/go-playground/validator/v10"
-)
+import "time"
 
 // Config is the full runtime configuration.
 type Config struct {
@@ -70,9 +65,9 @@ type HTTPConfig struct {
 	BasePath     string `yaml:"basePath"     mapstructure:"basePath"`
 	BaseURL      string `yaml:"baseURL"      mapstructure:"baseURL"      validate:"omitempty,url"`
 	CookieSecure bool   `yaml:"cookieSecure" mapstructure:"cookieSecure"`
-	StateSecret  string `yaml:"stateSecret"  mapstructure:"stateSecret"  awareness:"secret"`
+	StateSecret  string `yaml:"stateSecret"  mapstructure:"stateSecret"  awareness:"secret" validate:"omitempty,secret"`
 	// TrustedProxyHops is how many proxies that append to X-Forwarded-For sit in front of oagent; 0 keys on RemoteAddr.
-	TrustedProxyHops int `yaml:"trustedProxyHops" mapstructure:"trustedProxyHops"`
+	TrustedProxyHops int `yaml:"trustedProxyHops" mapstructure:"trustedProxyHops" validate:"gte=0"`
 }
 
 // APIConfig configures the Connect-RPC controlplane.
@@ -196,26 +191,29 @@ type PrometheusConfig struct {
 	Path    string `yaml:"path"    mapstructure:"path"`
 }
 
-//nolint:gochecknoglobals // validator instance is stateless and safe for concurrent use.
-var v10 = validator.New()
-
-// Validate rejects invalid configuration.
+// Validate rejects invalid configuration: every tag failure at once, else the first cross-field failure.
 func (c *Config) Validate() error {
-	if err := v10.Struct(c); err != nil {
-		return fmt.Errorf("config: %w", err)
-	}
-	if err := c.validateAuth(); err != nil {
+	if err := c.validateTags(); err != nil {
 		return err
 	}
+	for _, check := range []func() error{
+		c.validateAuth,
+		c.validateCompliance,
+		c.validateMail,
+		c.validateRateLimit,
+		c.validateRedis,
+	} {
+		if err := check(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Config) validateCompliance() error {
 	// SECURITY: a future date would send every person back to /welcome on every request.
 	if c.Compliance.TermsUpdated().After(time.Now()) {
-		return fmt.Errorf("config: compliance.termsUpdatedAt %s is in the future", c.Compliance.TermsUpdatedAt)
+		return &InvalidSettingError{Key: "compliance.termsUpdatedAt", Reason: "must not be in the future"}
 	}
-	if err := c.validateMail(); err != nil {
-		return err
-	}
-	if err := c.validateRateLimit(); err != nil {
-		return err
-	}
-	return c.validateRedis()
+	return nil
 }
