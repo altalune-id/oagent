@@ -27,6 +27,7 @@ const (
 type seen struct {
 	called bool
 	p      session.Principal
+	sid    string
 	err    error
 }
 
@@ -71,6 +72,7 @@ func serve(t *testing.T, o InterceptorOptions, s *seen) *httptest.Server {
 			func(ctx context.Context, _ *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error) {
 				s.called = true
 				s.p = session.PrincipalFrom(ctx)
+				s.sid, _ = session.SIDFrom(ctx)
 				return connect.NewResponse(&emptypb.Empty{}), nil
 			},
 			connect.WithInterceptors(toConnect(), recordErr(s), Interceptor(o)),
@@ -208,4 +210,25 @@ func TestInterceptor_AllOf(t *testing.T) {
 			assert.Equal(t, tc.denied, forbidden.Permission)
 		})
 	}
+}
+
+func TestInterceptor_SessionIDInContext(t *testing.T) {
+	secret := []byte("0123456789abcdef0123456789abcdef")
+	s := &seen{}
+	srv := serve(t, InterceptorOptions{
+		Chain:        Chain{&fakeAuthn{p: session.Principal{Source: session.SourceLocal, Name: "ada"}}},
+		KeyPrefix:    testPrefix,
+		CookieSecret: secret,
+		Permissions:  PermissionTable{procRead: {authz.AnyAuthenticated}},
+	}, s)
+
+	client := connect.NewClient[emptypb.Empty, emptypb.Empty](srv.Client(), srv.URL+procRead)
+	req := connect.NewRequest(&emptypb.Empty{})
+	req.Header().Set("Cookie", session.CookieName+"="+session.Sign(secret, "sid-1"))
+	_, err := client.CallUnary(context.Background(), req)
+	require.NoError(t, err)
+	assert.Equal(t, "sid-1", s.sid)
+
+	require.NoError(t, call(t, srv, procRead, "Bearer oagent_x"))
+	assert.Empty(t, s.sid, "a key carries no session id")
 }

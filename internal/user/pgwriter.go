@@ -56,6 +56,22 @@ func (s *postgresStore) AcceptTerms(ctx context.Context, id uuid.UUID) (*User, e
 	return row.toUser(), nil
 }
 
+// SECURITY: name and updated_at only, so a rename never writes back a password hash it read earlier.
+func (s *postgresStore) SetName(ctx context.Context, id uuid.UUID, name string) (*User, error) {
+	stmt := s.users.UPDATE(s.users.Name, s.users.UpdatedAt).
+		SET(postgres.String(name), postgres.NOW()).
+		WHERE(s.users.ID.EQ(postgres.UUID(id))).
+		RETURNING(s.users.AllColumns)
+	var row userRow
+	if err := stmt.QueryContext(ctx, db.Writer(ctx, s.pool), &row); err != nil {
+		if db.IsNoRows(err) {
+			return nil, &NotFoundError{}
+		}
+		return nil, fmt.Errorf("user.postgres: SetName: %w", err)
+	}
+	return row.toUser(), nil
+}
+
 func nullText(v string) postgres.StringExpression {
 	if v == "" {
 		return entity.NullText()

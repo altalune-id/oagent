@@ -209,3 +209,34 @@ func TestResets_WeakPasswordKeepsTheLink(t *testing.T) {
 	_, err = d.resets.ByPublicID(t.Context(), r.PublicID)
 	assert.NoError(t, err)
 }
+
+func TestChangePassword_IsOneUnitOfWork(t *testing.T) {
+	d := newResetDB(t)
+	ctx := t.Context()
+	svc := auth.NewService(auth.Deps{
+		Users: d.users, Passwords: d.users, Sessions: d.sessions, Profiles: d.users,
+		Transactor: db.NewTransactor(d.pool), Mail: d.mail, From: "noreply@example.com", BaseURL: "https://oagent.example.com",
+	})
+	p := session.Principal{UserID: d.person.ID, Source: session.SourceLocal}
+	for _, sid := range []string{"this", "other"} {
+		require.NoError(t, d.sessions.Save(ctx, sid, p, time.Now().Add(time.Hour)))
+	}
+	before := d.password(t)
+
+	d.mail.failOn = "was changed"
+	err := svc.ChangePassword(ctx, d.person.ID, "this", "the old passphrase", "a brand new passphrase")
+	require.ErrorContains(t, err, "mail queue down")
+	assert.Equal(t, before, d.password(t), "the password is unchanged")
+	_, ok, err := d.sessions.Load(ctx, "other")
+	require.NoError(t, err)
+	assert.True(t, ok, "the other session survives")
+
+	d.mail.failOn = ""
+	require.NoError(t, svc.ChangePassword(ctx, d.person.ID, "this", "the old passphrase", "a brand new passphrase"))
+	assert.NoError(t, password.Verify(d.password(t), "a brand new passphrase"))
+	for sid, want := range map[string]bool{"this": true, "other": false} {
+		_, ok, err := d.sessions.Load(ctx, sid)
+		require.NoError(t, err)
+		assert.Equal(t, want, ok, sid)
+	}
+}

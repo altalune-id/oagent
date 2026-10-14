@@ -44,7 +44,7 @@ func allProcedures() []string {
 
 func TestEveryRPCHasAPermission(t *testing.T) {
 	procs := allProcedures()
-	require.Len(t, procs, 39, "Org 4, Project 4, Agent 5, APIKey 3, Webhook 11, Auth 1, Member 4, Invite 7")
+	require.Len(t, procs, 42, "Org 4, Project 4, Agent 5, APIKey 3, Webhook 11, Auth 4, Member 4, Invite 7")
 	table := Table()
 	for _, proc := range procs {
 		perms := table[proc]
@@ -77,6 +77,9 @@ func TestPermissionTable_Spec15(t *testing.T) {
 		"/apikey.v1.APIKeyService/CreateAPIKey":                   authz.AnyAuthenticated,
 		"/apikey.v1.APIKeyService/RevokeAPIKey":                   authz.AnyAuthenticated,
 		"/auth.v1.AuthService/Whoami":                             authz.AnyAuthenticated,
+		"/auth.v1.AuthService/UpdateProfile":                      authz.AnyAuthenticated,
+		"/auth.v1.AuthService/ChangePassword":                     authz.AnyAuthenticated,
+		"/auth.v1.AuthService/SignOutEverywhere":                  authz.AnyAuthenticated,
 		"/member.v1.MemberService/ListMembers":                    "member:read",
 		"/member.v1.MemberService/SetMemberRole":                  "member:write",
 		"/member.v1.MemberService/RemoveMember":                   "member:write",

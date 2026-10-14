@@ -46,6 +46,7 @@ type Services struct {
 	Users    *user.Service
 	Members  *member.Service
 	Invites  *invite.Service
+	Auth     *auth.Service
 	Refs     Refs
 }
 
@@ -117,7 +118,7 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 		s.InviteSvc = invite.NewControlPlane(svcs.Invites, svcs.Refs)
 	}
 	if svcs.Orgs != nil && svcs.Projects != nil && svcs.Users != nil {
-		s.AuthSvc = auth.NewControlPlane(svcs.Orgs, svcs.Projects, svcs.Users)
+		s.AuthSvc = auth.NewControlPlane(svcs.Orgs, svcs.Projects, svcs.Users).WithProfiles(svcs.Auth)
 	}
 	return s
 }

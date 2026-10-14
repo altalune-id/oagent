@@ -80,7 +80,7 @@ flowchart TD
 | `apikey` | project (ids), member (owner roles) | ✓ | — | — |
 | `webhook` | project + org (refs), project (org of project), outbox | ✓ (org events `invite.created`, `member.added`: only a caller who reaches the whole org and holds `member:read` subscribes or reads their payloads) | ✓ | — |
 | `user` | — | CLI `user set-password` (operator, boots the `App`) | — | — |
-| `auth` | user, member, org, project, sessions, passwords; password resets (its own store, user, sessions, mail queue); the auth rate limiter on the web side | whoami; CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | `auth_whoami` | `/login`, `/logout`, `/forgot-password`, `/reset-password/{token}`, `/reset-password` (local login only) |
+| `auth` | user, member, org, project, sessions, passwords; password resets (its own store, user, sessions, mail queue); the auth rate limiter on the web side | whoami; `UpdateProfile`, `ChangePassword`, `SignOutEverywhere` (people only; not MCP tools); CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | `auth_whoami` | `/login`, `/logout`, `/forgot-password`, `/reset-password/{token}`, `/reset-password` (local login only) |
 | `install` | user (create, accept terms), org, member, project; auth (sign-in) | — | — | `/install` (terms and privacy consent, `layout.Consent`) + `InstallGate` |
 | `legal` | user (accept terms), auth (rotate session); its own store (document snapshots, acceptance history) | — | — | `/terms`, `/privacy`, `/welcome` + `WelcomeGate` (asks again when the terms changed after the person accepted them) |
 | `health` | readiness checks (db-health monitor) | — | — | `/healthz`, `/readyz` (probes slot, root-anchored) |
@@ -170,6 +170,10 @@ them there). No one acts on or grants more permissions than they hold, so only o
 owners. The stdio System principal, basic auth and the CLI `App` keep full operator power.
 `WithDirectory(memberDirectory{…})` lets `member add --org-id` find the user by email and the org by
 its public id.
+`auth.Service` also changes a person's own account for the console profile page: `ChangePassword` checks
+the current password, sets the new one, ends every other session (the `/api` interceptor and the web
+session middleware put the request's session id on `ctx`, `session.SIDFrom`) and queues a "your
+password was changed" email, in one unit of work; `SignOutEverywhere` ends every session.
 `auth.Resets` (`Services.Resets`) is password reset by email, wired only with local login. A request
 answers the same for every email and queues a link only for a person with a password and no
 unused link younger than two minutes (a new link replaces older unused ones); the link

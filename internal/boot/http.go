@@ -68,6 +68,7 @@ func buildAPIHandler(
 		Users:    svcs.Users,
 		Members:  svcs.Members,
 		Invites:  svcs.Invites,
+		Auth:     svcs.Auth,
 		Refs:     newPublicIDs(svcs),
 	}, unexpected, opts).Handler(basePath)
 	if requireCredentials && svcs.Caps.BasicAuth {

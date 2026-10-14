@@ -3,6 +3,7 @@ package user_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -191,4 +192,57 @@ func TestService_ByPublicID(t *testing.T) {
 	_, err = newService(store).ByPublicID(context.Background(), u.PublicID)
 	_, isApp := apperror.AsAppError(err)
 	assert.True(t, isApp)
+}
+
+func TestService_SetName(t *testing.T) {
+	svc := newService(fakes.NewUserStore())
+	ctx := context.Background()
+	u, err := svc.Create(ctx, user.CreateRequest{Email: "alice@example.com", Name: "Alice", Password: "correct horse battery"})
+	require.NoError(t, err)
+
+	got, err := svc.SetName(ctx, u.ID, "  Ana Maria  ")
+	require.NoError(t, err)
+	assert.Equal(t, "Ana Maria", got.Name)
+	stored, err := svc.ByID(ctx, u.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "Ana Maria", stored.Name)
+	assert.NoError(t, password.Verify(stored.PasswordHash, "correct horse battery"), "the password is kept")
+
+	got, err = svc.SetName(ctx, u.ID, "")
+	require.NoError(t, err)
+	assert.Empty(t, got.Name, "an empty name is allowed")
+
+	_, err = svc.SetName(ctx, u.ID, strings.Repeat("a", 201))
+	assert.True(t, user.IsInvalidNameError(err))
+	_, err = svc.SetName(ctx, u.ID, strings.Repeat("a", 200))
+	assert.NoError(t, err)
+
+	_, err = svc.SetName(ctx, uuid.New(), "Bob")
+	assert.True(t, user.IsNotFoundError(err))
+}
+
+type staleReads struct {
+	*fakes.UserStore
+	stale *user.User
+}
+
+func (s staleReads) ByID(context.Context, uuid.UUID) (*user.User, error) {
+	c := *s.stale
+	return &c, nil
+}
+
+func TestService_SetNameNeverWritesAStalePassword(t *testing.T) {
+	store := fakes.NewUserStore()
+	ctx := context.Background()
+	u, err := newService(store).Create(ctx, user.CreateRequest{Email: "ana@example.com", Name: "Ana", Password: "the old passphrase"})
+	require.NoError(t, err)
+	before := *u
+	require.NoError(t, newService(store).SetPassword(ctx, u.ID, "a brand new passphrase"))
+
+	_, err = newService(staleReads{UserStore: store, stale: &before}).SetName(ctx, u.ID, "Ana Maria")
+	require.NoError(t, err)
+	got, err := store.ByID(ctx, u.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "Ana Maria", got.Name)
+	assert.NoError(t, password.Verify(got.PasswordHash, "a brand new passphrase"), "a rename that read the user before a reset keeps the new password")
 }

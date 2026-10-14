@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file auth/v1/auth.proto.
  */
 export const file_auth_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChJhdXRoL3YxL2F1dGgucHJvdG8SB2F1dGgudjEiDwoNV2hvYW1pUmVxdWVzdCKGAgoOV2hvYW1pUmVzcG9uc2USDgoGc291cmNlGAEgASgJEg8KB3VzZXJfaWQYAiABKAkSDQoFZW1haWwYAyABKAkSDAoEbmFtZRgEIAEoCRISCgphdmF0YXJfdXJsGAUgASgJEhAKCGtleV9oaW50GA0gASgJEhAKCG93bmVyX2lkGAcgASgJEhUKDWFjdGl2ZV9vcmdfaWQYCCABKAkSFwoPYWN0aXZlX29yZ19zbHVnGAkgASgJEhkKEWFjdGl2ZV9wcm9qZWN0X2lkGAogASgJEhMKC3Blcm1pc3Npb25zGAsgAygJEhAKCG9wZXJhdG9yGAwgASgISgQIBhAHUgZrZXlfaWQypQEKC0F1dGhTZXJ2aWNlEpUBCgZXaG9hbWkSFi5hdXRoLnYxLldob2FtaVJlcXVlc3QaFy5hdXRoLnYxLldob2FtaVJlc3BvbnNlIlrK8xhWCgthdXRoX3dob2FtaRJCV2hvIHRoaXMgTUNQIGNsaWVudCBhY3RzIGFzOiB1c2VyIG9yIGtleSwgYWN0aXZlIG9yZywgcGVybWlzc2lvbnMuKgNhcHBCfwoLY29tLmF1dGgudjFCCUF1dGhQcm90b1ABWihhbHRhbHVuZS5pZC9vYWdlbnQvZ2VuL2dvL2F1dGgvdjE7YXV0aHYxogIDQVhYqgIHQXV0aC5WMcoCB0F1dGhcVjHiAhNBdXRoXFYxXEdQQk1ldGFkYXRh6gIIQXV0aDo6VjFiBnByb3RvMw", [file_mcp_v1_annotations]);
+  fileDesc("ChJhdXRoL3YxL2F1dGgucHJvdG8SB2F1dGgudjEiDwoNV2hvYW1pUmVxdWVzdCKGAgoOV2hvYW1pUmVzcG9uc2USDgoGc291cmNlGAEgASgJEg8KB3VzZXJfaWQYAiABKAkSDQoFZW1haWwYAyABKAkSDAoEbmFtZRgEIAEoCRISCgphdmF0YXJfdXJsGAUgASgJEhAKCGtleV9oaW50GA0gASgJEhAKCG93bmVyX2lkGAcgASgJEhUKDWFjdGl2ZV9vcmdfaWQYCCABKAkSFwoPYWN0aXZlX29yZ19zbHVnGAkgASgJEhkKEWFjdGl2ZV9wcm9qZWN0X2lkGAogASgJEhMKC3Blcm1pc3Npb25zGAsgAygJEhAKCG9wZXJhdG9yGAwgASgISgQIBhAHUgZrZXlfaWQiJAoUVXBkYXRlUHJvZmlsZVJlcXVlc3QSDAoEbmFtZRgBIAEoCSI2ChVVcGRhdGVQcm9maWxlUmVzcG9uc2USDwoHdXNlcl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJIkcKFUNoYW5nZVBhc3N3b3JkUmVxdWVzdBIYChBjdXJyZW50X3Bhc3N3b3JkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSIYChZDaGFuZ2VQYXNzd29yZFJlc3BvbnNlIhoKGFNpZ25PdXRFdmVyeXdoZXJlUmVxdWVzdCIvChlTaWduT3V0RXZlcnl3aGVyZVJlc3BvbnNlEhIKCnNpZ25lZF9vdXQYASABKAgyqgMKC0F1dGhTZXJ2aWNlEpUBCgZXaG9hbWkSFi5hdXRoLnYxLldob2FtaVJlcXVlc3QaFy5hdXRoLnYxLldob2FtaVJlc3BvbnNlIlrK8xhWCgthdXRoX3dob2FtaRJCV2hvIHRoaXMgTUNQIGNsaWVudCBhY3RzIGFzOiB1c2VyIG9yIGtleSwgYWN0aXZlIG9yZywgcGVybWlzc2lvbnMuKgNhcHASUAoNVXBkYXRlUHJvZmlsZRIdLmF1dGgudjEuVXBkYXRlUHJvZmlsZVJlcXVlc3QaHi5hdXRoLnYxLlVwZGF0ZVByb2ZpbGVSZXNwb25zZSIAElMKDkNoYW5nZVBhc3N3b3JkEh4uYXV0aC52MS5DaGFuZ2VQYXNzd29yZFJlcXVlc3QaHy5hdXRoLnYxLkNoYW5nZVBhc3N3b3JkUmVzcG9uc2UiABJcChFTaWduT3V0RXZlcnl3aGVyZRIhLmF1dGgudjEuU2lnbk91dEV2ZXJ5d2hlcmVSZXF1ZXN0GiIuYXV0aC52MS5TaWduT3V0RXZlcnl3aGVyZVJlc3BvbnNlIgBCfwoLY29tLmF1dGgudjFCCUF1dGhQcm90b1ABWihhbHRhbHVuZS5pZC9vYWdlbnQvZ2VuL2dvL2F1dGgvdjE7YXV0aHYxogIDQVhYqgIHQXV0aC5WMcoCB0F1dGhcVjHiAhNBdXRoXFYxXEdQQk1ldGFkYXRh6gIIQXV0aDo6VjFiBnByb3RvMw", [file_mcp_v1_annotations]);
 
 /**
  * @generated from message auth.v1.WhoamiRequest
@@ -109,6 +109,116 @@ export const WhoamiResponseSchema: GenMessage<WhoamiResponse> = /*@__PURE__*/
   messageDesc(file_auth_v1_auth, 1);
 
 /**
+ * @generated from message auth.v1.UpdateProfileRequest
+ */
+export type UpdateProfileRequest = Message<"auth.v1.UpdateProfileRequest"> & {
+  /**
+   * At most 200 characters; surrounding spaces are trimmed.
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message auth.v1.UpdateProfileRequest.
+ * Use `create(UpdateProfileRequestSchema)` to create a new message.
+ */
+export const UpdateProfileRequestSchema: GenMessage<UpdateProfileRequest> = /*@__PURE__*/
+  messageDesc(file_auth_v1_auth, 2);
+
+/**
+ * @generated from message auth.v1.UpdateProfileResponse
+ */
+export type UpdateProfileResponse = Message<"auth.v1.UpdateProfileResponse"> & {
+  /**
+   * The person's public id.
+   *
+   * @generated from field: string user_id = 1;
+   */
+  userId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message auth.v1.UpdateProfileResponse.
+ * Use `create(UpdateProfileResponseSchema)` to create a new message.
+ */
+export const UpdateProfileResponseSchema: GenMessage<UpdateProfileResponse> = /*@__PURE__*/
+  messageDesc(file_auth_v1_auth, 3);
+
+/**
+ * @generated from message auth.v1.ChangePasswordRequest
+ */
+export type ChangePasswordRequest = Message<"auth.v1.ChangePasswordRequest"> & {
+  /**
+   * @generated from field: string current_password = 1;
+   */
+  currentPassword: string;
+
+  /**
+   * @generated from field: string new_password = 2;
+   */
+  newPassword: string;
+};
+
+/**
+ * Describes the message auth.v1.ChangePasswordRequest.
+ * Use `create(ChangePasswordRequestSchema)` to create a new message.
+ */
+export const ChangePasswordRequestSchema: GenMessage<ChangePasswordRequest> = /*@__PURE__*/
+  messageDesc(file_auth_v1_auth, 4);
+
+/**
+ * @generated from message auth.v1.ChangePasswordResponse
+ */
+export type ChangePasswordResponse = Message<"auth.v1.ChangePasswordResponse"> & {
+};
+
+/**
+ * Describes the message auth.v1.ChangePasswordResponse.
+ * Use `create(ChangePasswordResponseSchema)` to create a new message.
+ */
+export const ChangePasswordResponseSchema: GenMessage<ChangePasswordResponse> = /*@__PURE__*/
+  messageDesc(file_auth_v1_auth, 5);
+
+/**
+ * @generated from message auth.v1.SignOutEverywhereRequest
+ */
+export type SignOutEverywhereRequest = Message<"auth.v1.SignOutEverywhereRequest"> & {
+};
+
+/**
+ * Describes the message auth.v1.SignOutEverywhereRequest.
+ * Use `create(SignOutEverywhereRequestSchema)` to create a new message.
+ */
+export const SignOutEverywhereRequestSchema: GenMessage<SignOutEverywhereRequest> = /*@__PURE__*/
+  messageDesc(file_auth_v1_auth, 6);
+
+/**
+ * @generated from message auth.v1.SignOutEverywhereResponse
+ */
+export type SignOutEverywhereResponse = Message<"auth.v1.SignOutEverywhereResponse"> & {
+  /**
+   * Always true: this session ended too, so the client signs in again.
+   *
+   * @generated from field: bool signed_out = 1;
+   */
+  signedOut: boolean;
+};
+
+/**
+ * Describes the message auth.v1.SignOutEverywhereResponse.
+ * Use `create(SignOutEverywhereResponseSchema)` to create a new message.
+ */
+export const SignOutEverywhereResponseSchema: GenMessage<SignOutEverywhereResponse> = /*@__PURE__*/
+  messageDesc(file_auth_v1_auth, 7);
+
+/**
  * @generated from service auth.v1.AuthService
  */
 export const AuthService: GenService<{
@@ -121,6 +231,36 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof WhoamiRequestSchema;
     output: typeof WhoamiResponseSchema;
+  },
+  /**
+   * UpdateProfile sets the signed-in person's name; an empty name falls back to the email in the console.
+   *
+   * @generated from rpc auth.v1.AuthService.UpdateProfile
+   */
+  updateProfile: {
+    methodKind: "unary";
+    input: typeof UpdateProfileRequestSchema;
+    output: typeof UpdateProfileResponseSchema;
+  },
+  /**
+   * ChangePassword checks the current password, sets a new one and signs out every other session.
+   *
+   * @generated from rpc auth.v1.AuthService.ChangePassword
+   */
+  changePassword: {
+    methodKind: "unary";
+    input: typeof ChangePasswordRequestSchema;
+    output: typeof ChangePasswordResponseSchema;
+  },
+  /**
+   * SignOutEverywhere ends every session of the signed-in person, this one included.
+   *
+   * @generated from rpc auth.v1.AuthService.SignOutEverywhere
+   */
+  signOutEverywhere: {
+    methodKind: "unary";
+    input: typeof SignOutEverywhereRequestSchema;
+    output: typeof SignOutEverywhereResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_auth_v1_auth, 0);

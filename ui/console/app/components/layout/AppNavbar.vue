@@ -24,6 +24,7 @@ const userLabels = computed(() => ({
   operator: t('auth.operator'),
   apikey: t('auth.source_apikey'),
   basic: t('auth.source_basic'),
+  profile: t('profile.title'),
 }))
 onMounted(() => auth.load())
 </script>

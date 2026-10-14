@@ -103,6 +103,22 @@ func (s *Service) SetPassword(ctx context.Context, id uuid.UUID, plain string) e
 	return nil
 }
 
+// SetName replaces the user's display name, trimmed; an empty name is allowed.
+func (s *Service) SetName(ctx context.Context, id uuid.UUID, name string) (*User, error) {
+	u, err := s.ByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := u.rename(name); err != nil {
+		return nil, err
+	}
+	saved, err := s.store.SetName(ctx, u.ID, u.Name)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "user: set name", err)
+	}
+	return saved, nil
+}
+
 // AcceptTerms records that the user accepted the terms and returns the updated user.
 func (s *Service) AcceptTerms(ctx context.Context, id uuid.UUID) (*User, error) {
 	u, err := s.store.AcceptTerms(ctx, id)

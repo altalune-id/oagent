@@ -62,7 +62,11 @@ func Interceptor(o InterceptorOptions) connect.UnaryInterceptorFunc {
 					return nil, &authz.ForbiddenError{Permission: perm}
 				}
 			}
-			return next(session.PrincipalInto(ctx, p), req)
+			ctx = session.PrincipalInto(ctx, p)
+			if cred.Kind == KindSession {
+				ctx = session.SIDInto(ctx, cred.Token)
+			}
+			return next(ctx, req)
 		}
 	}
 }

@@ -103,6 +103,40 @@ func (s *Service) SetPassword(ctx context.Context, email, plain string) error {
 	return s.deps.Sessions.DeleteByUser(ctx, u.ID)
 }
 
+// UpdateProfile sets the person's name and returns them.
+func (s *Service) UpdateProfile(ctx context.Context, userID uuid.UUID, name string) (*user.User, error) {
+	return s.deps.Profiles.SetName(ctx, userID, name)
+}
+
+// ChangePassword checks current, sets next and ends every session but keepSID, in one unit of work; a wrong current is AUT001.
+func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, keepSID, current, next string) error {
+	u, err := s.deps.Profiles.ByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if !u.HasPassword() {
+		s.verifyDummy(current)
+		return &InvalidCredentialsError{}
+	}
+	if err := s.verify(u.PasswordHash, current); err != nil {
+		return &InvalidCredentialsError{}
+	}
+	return s.deps.Transactor.RunInTx(ctx, func(ctx context.Context) error {
+		if err := s.deps.Passwords.SetPassword(ctx, u.ID, next); err != nil {
+			return err
+		}
+		if err := s.deps.Sessions.DeleteByUserExcept(ctx, u.ID, keepSID); err != nil {
+			return err
+		}
+		return passwordChanged(ctx, s.deps.Mail, s.deps.From, s.deps.BaseURL, u)
+	})
+}
+
+// SignOutEverywhere ends every session of the person.
+func (s *Service) SignOutEverywhere(ctx context.Context, userID uuid.UUID) error {
+	return s.deps.Sessions.DeleteByUser(ctx, userID)
+}
+
 // Logout deletes the session sid.
 func (s *Service) Logout(ctx context.Context, sid string) error {
 	return s.deps.Sessions.Delete(ctx, sid)

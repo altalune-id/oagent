@@ -55,6 +55,22 @@ func (f *UserStore) AcceptTerms(_ context.Context, id uuid.UUID) (*user.User, er
 	return &u, nil
 }
 
+// SetName implements user.Store, changing only the name.
+func (f *UserStore) SetName(_ context.Context, id uuid.UUID, name string) (*user.User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	u, ok := f.users[id]
+	if !ok {
+		return nil, &user.NotFoundError{}
+	}
+	u.Name, u.UpdatedAt = name, time.Now().UTC()
+	f.users[id] = u
+	return &u, nil
+}
+
 // ByID implements user.Store.
 func (f *UserStore) ByID(_ context.Context, id uuid.UUID) (*user.User, error) {
 	f.mu.Lock()

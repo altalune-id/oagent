@@ -35,9 +35,12 @@ import (
 
 // SECURITY: noTenantInput lists the procedures that name no org, project or resource, so another org cannot be aimed at.
 var noTenantInput = map[string]string{
-	authv1connect.AuthServiceWhoamiProcedure:  "describes the caller itself",
-	orgv1connect.OrgServiceListOrgsProcedure:  "lists only the orgs the caller reaches; takes no id",
-	orgv1connect.OrgServiceCreateOrgProcedure: "makes a new org; names no existing one",
+	authv1connect.AuthServiceWhoamiProcedure:            "describes the caller itself",
+	authv1connect.AuthServiceUpdateProfileProcedure:     "changes the caller's own name; person only",
+	authv1connect.AuthServiceChangePasswordProcedure:    "changes the caller's own password; person only",
+	authv1connect.AuthServiceSignOutEverywhereProcedure: "ends the caller's own sessions; person only",
+	orgv1connect.OrgServiceListOrgsProcedure:            "lists only the orgs the caller reaches; takes no id",
+	orgv1connect.OrgServiceCreateOrgProcedure:           "makes a new org; names no existing one",
 }
 
 // SECURITY: limitedKeyAllowed lists the procedures a key limited to other projects of the org may still call.
@@ -191,7 +194,14 @@ func reachOrder() []string {
 	reads := func(proc string) bool {
 		return !slices.ContainsFunc(table[proc], func(p string) bool { return !strings.HasSuffix(p, ":read") })
 	}
+	endsCallerSession := func(proc string) bool { return proc == authv1connect.AuthServiceSignOutEverywhereProcedure }
 	slices.SortFunc(procs, func(a, b string) int {
+		if la, lb := endsCallerSession(a), endsCallerSession(b); la != lb {
+			if la {
+				return 1
+			}
+			return -1
+		}
 		if ra, rb := reads(a), reads(b); ra != rb {
 			if ra {
 				return -1

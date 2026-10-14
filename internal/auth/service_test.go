@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
+	"altalune.id/oagent/internal/testutil/fakes"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/password"
 )
@@ -101,6 +103,7 @@ type fixture struct {
 	passwords *fakePasswords
 	verifies  int
 	dummies   int
+	mail      *fakeMail
 }
 
 const testPassword = "correct horse battery"
@@ -115,9 +118,12 @@ func newFixture(t *testing.T, basic BasicCredentials) *fixture {
 		sessions: session.NewMemoryStore(),
 	}
 	f.passwords = &fakePasswords{users: f.users}
+	f.mail = &fakeMail{}
 	f.svc = NewService(Deps{
 		Users: f.users, Members: f.members, Orgs: f.orgs, Projects: f.projects,
 		Sessions: f.sessions, Passwords: f.passwords, Basic: basic,
+		Profiles: fakeProfiles{f.users}, Transactor: fakes.Transactor{}, Mail: f.mail,
+		From: "noreply@example.com", BaseURL: "https://oagent.example.com",
 	})
 	verify, dummy := f.svc.verify, f.svc.verifyDummy
 	f.svc.verify = func(hash, plain string) error { f.verifies++; return verify(hash, plain) }
@@ -454,4 +460,22 @@ func TestSetPassword_UnknownEmailIsNotFound(t *testing.T) {
 	assert.True(t, user.IsNotFoundError(err), "%v", err)
 	assert.False(t, IsInvalidCredentialsError(err))
 	assert.Empty(t, f.passwords.calls)
+}
+
+type fakeProfiles struct{ users *fakeUsers }
+
+func (f fakeProfiles) ByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
+	return resetUsers(f).ByID(ctx, id)
+}
+
+func (f fakeProfiles) SetName(ctx context.Context, id uuid.UUID, name string) (*user.User, error) {
+	u, err := f.ByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if len(name) > 200 {
+		return nil, &user.InvalidNameError{}
+	}
+	u.Name = strings.TrimSpace(name)
+	return u, nil
 }

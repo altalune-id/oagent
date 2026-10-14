@@ -62,7 +62,10 @@ func Table() map[string][]string {
 		invitev1connect.InviteServiceConfirmDraftInviteProcedure: {scope.MemberWrite},
 		invitev1connect.InviteServiceDiscardDraftInviteProcedure: {scope.MemberWrite},
 
-		authv1connect.AuthServiceWhoamiProcedure: {authz.AnyAuthenticated},
+		authv1connect.AuthServiceWhoamiProcedure:            {authz.AnyAuthenticated},
+		authv1connect.AuthServiceUpdateProfileProcedure:     {authz.AnyAuthenticated},
+		authv1connect.AuthServiceChangePasswordProcedure:    {authz.AnyAuthenticated},
+		authv1connect.AuthServiceSignOutEverywhereProcedure: {authz.AnyAuthenticated},
 	}
 }
 

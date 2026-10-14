@@ -2,6 +2,114 @@ openapi: 3.1.0
 info:
   title: auth.v1
 paths:
+  /auth.v1.AuthService/ChangePassword:
+    post:
+      tags:
+        - auth.v1.AuthService
+      summary: ChangePassword
+      description: ChangePassword checks the current password, sets a new one and signs out every other session.
+      operationId: auth.v1.AuthService.ChangePassword
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/auth.v1.ChangePasswordRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/auth.v1.ChangePasswordResponse'
+  /auth.v1.AuthService/SignOutEverywhere:
+    post:
+      tags:
+        - auth.v1.AuthService
+      summary: SignOutEverywhere
+      description: SignOutEverywhere ends every session of the signed-in person, this one included.
+      operationId: auth.v1.AuthService.SignOutEverywhere
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/auth.v1.SignOutEverywhereRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/auth.v1.SignOutEverywhereResponse'
+  /auth.v1.AuthService/UpdateProfile:
+    post:
+      tags:
+        - auth.v1.AuthService
+      summary: UpdateProfile
+      description: UpdateProfile sets the signed-in person's name; an empty name falls back to the email in the console.
+      operationId: auth.v1.AuthService.UpdateProfile
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/auth.v1.UpdateProfileRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/auth.v1.UpdateProfileResponse'
   /auth.v1.AuthService/Whoami:
     post:
       tags:
@@ -40,6 +148,55 @@ paths:
                 $ref: '#/components/schemas/auth.v1.WhoamiResponse'
 components:
   schemas:
+    auth.v1.ChangePasswordRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          title: current_password
+        newPassword:
+          type: string
+          title: new_password
+      title: ChangePasswordRequest
+      additionalProperties: false
+    auth.v1.ChangePasswordResponse:
+      type: object
+      title: ChangePasswordResponse
+      additionalProperties: false
+    auth.v1.SignOutEverywhereRequest:
+      type: object
+      title: SignOutEverywhereRequest
+      additionalProperties: false
+    auth.v1.SignOutEverywhereResponse:
+      type: object
+      properties:
+        signedOut:
+          type: boolean
+          title: signed_out
+          description: 'Always true: this session ended too, so the client signs in again.'
+      title: SignOutEverywhereResponse
+      additionalProperties: false
+    auth.v1.UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+          description: At most 200 characters; surrounding spaces are trimmed.
+      title: UpdateProfileRequest
+      additionalProperties: false
+    auth.v1.UpdateProfileResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          title: user_id
+          description: The person's public id.
+        name:
+          type: string
+          title: name
+      title: UpdateProfileResponse
+      additionalProperties: false
     auth.v1.WhoamiRequest:
       type: object
       title: WhoamiRequest

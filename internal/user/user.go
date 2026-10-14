@@ -40,9 +40,9 @@ func New(email, name string) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	n := strings.TrimSpace(name)
-	if len(n) > nameMaxLen {
-		return nil, &InvalidNameError{}
+	n, err := cleanName(name)
+	if err != nil {
+		return nil, err
 	}
 	publicID, err := nanoid.New(publicIDLen)
 	if err != nil {
@@ -50,6 +50,23 @@ func New(email, name string) (*User, error) {
 	}
 	now := time.Now().UTC()
 	return &User{ID: uuid.New(), PublicID: publicID, Email: e, Name: n, CreatedAt: now, UpdatedAt: now}, nil
+}
+
+func (u *User) rename(name string) error {
+	n, err := cleanName(name)
+	if err != nil {
+		return err
+	}
+	u.Name = n
+	return nil
+}
+
+func cleanName(name string) (string, error) {
+	n := strings.TrimSpace(name)
+	if len(n) > nameMaxLen {
+		return "", &InvalidNameError{}
+	}
+	return n, nil
 }
 
 // HasPassword reports whether u can sign in with a local password.

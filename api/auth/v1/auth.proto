@@ -15,6 +15,15 @@ service AuthService {
       ui: "app"
     };
   }
+
+  // UpdateProfile sets the signed-in person's name; an empty name falls back to the email in the console.
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse) {}
+
+  // ChangePassword checks the current password, sets a new one and signs out every other session.
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {}
+
+  // SignOutEverywhere ends every session of the signed-in person, this one included.
+  rpc SignOutEverywhere(SignOutEverywhereRequest) returns (SignOutEverywhereResponse) {}
 }
 
 message WhoamiRequest {}
@@ -39,4 +48,29 @@ message WhoamiResponse {
   // Effective permissions after roles, key scopes and grants are intersected.
   repeated string permissions = 11;
   bool operator = 12;
+}
+
+message UpdateProfileRequest {
+  // At most 200 characters; surrounding spaces are trimmed.
+  string name = 1;
+}
+
+message UpdateProfileResponse {
+  // The person's public id.
+  string user_id = 1;
+  string name = 2;
+}
+
+message ChangePasswordRequest {
+  string current_password = 1;
+  string new_password = 2;
+}
+
+message ChangePasswordResponse {}
+
+message SignOutEverywhereRequest {}
+
+message SignOutEverywhereResponse {
+  // Always true: this session ended too, so the client signs in again.
+  bool signed_out = 1;
 }

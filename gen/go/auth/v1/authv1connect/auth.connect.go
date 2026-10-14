@@ -35,12 +35,27 @@ const (
 const (
 	// AuthServiceWhoamiProcedure is the fully-qualified name of the AuthService's Whoami RPC.
 	AuthServiceWhoamiProcedure = "/auth.v1.AuthService/Whoami"
+	// AuthServiceUpdateProfileProcedure is the fully-qualified name of the AuthService's UpdateProfile
+	// RPC.
+	AuthServiceUpdateProfileProcedure = "/auth.v1.AuthService/UpdateProfile"
+	// AuthServiceChangePasswordProcedure is the fully-qualified name of the AuthService's
+	// ChangePassword RPC.
+	AuthServiceChangePasswordProcedure = "/auth.v1.AuthService/ChangePassword"
+	// AuthServiceSignOutEverywhereProcedure is the fully-qualified name of the AuthService's
+	// SignOutEverywhere RPC.
+	AuthServiceSignOutEverywhereProcedure = "/auth.v1.AuthService/SignOutEverywhere"
 )
 
 // AuthServiceClient is a client for the auth.v1.AuthService service.
 type AuthServiceClient interface {
 	// Whoami describes the credential the request was made with.
 	Whoami(context.Context, *connect.Request[v1.WhoamiRequest]) (*connect.Response[v1.WhoamiResponse], error)
+	// UpdateProfile sets the signed-in person's name; an empty name falls back to the email in the console.
+	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
+	// ChangePassword checks the current password, sets a new one and signs out every other session.
+	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
+	// SignOutEverywhere ends every session of the signed-in person, this one included.
+	SignOutEverywhere(context.Context, *connect.Request[v1.SignOutEverywhereRequest]) (*connect.Response[v1.SignOutEverywhereResponse], error)
 }
 
 // NewAuthServiceClient constructs a client for the auth.v1.AuthService service. By default, it uses
@@ -60,12 +75,33 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("Whoami")),
 			connect.WithClientOptions(opts...),
 		),
+		updateProfile: connect.NewClient[v1.UpdateProfileRequest, v1.UpdateProfileResponse](
+			httpClient,
+			baseURL+AuthServiceUpdateProfileProcedure,
+			connect.WithSchema(authServiceMethods.ByName("UpdateProfile")),
+			connect.WithClientOptions(opts...),
+		),
+		changePassword: connect.NewClient[v1.ChangePasswordRequest, v1.ChangePasswordResponse](
+			httpClient,
+			baseURL+AuthServiceChangePasswordProcedure,
+			connect.WithSchema(authServiceMethods.ByName("ChangePassword")),
+			connect.WithClientOptions(opts...),
+		),
+		signOutEverywhere: connect.NewClient[v1.SignOutEverywhereRequest, v1.SignOutEverywhereResponse](
+			httpClient,
+			baseURL+AuthServiceSignOutEverywhereProcedure,
+			connect.WithSchema(authServiceMethods.ByName("SignOutEverywhere")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	whoami *connect.Client[v1.WhoamiRequest, v1.WhoamiResponse]
+	whoami            *connect.Client[v1.WhoamiRequest, v1.WhoamiResponse]
+	updateProfile     *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
+	changePassword    *connect.Client[v1.ChangePasswordRequest, v1.ChangePasswordResponse]
+	signOutEverywhere *connect.Client[v1.SignOutEverywhereRequest, v1.SignOutEverywhereResponse]
 }
 
 // Whoami calls auth.v1.AuthService.Whoami.
@@ -73,10 +109,31 @@ func (c *authServiceClient) Whoami(ctx context.Context, req *connect.Request[v1.
 	return c.whoami.CallUnary(ctx, req)
 }
 
+// UpdateProfile calls auth.v1.AuthService.UpdateProfile.
+func (c *authServiceClient) UpdateProfile(ctx context.Context, req *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
+	return c.updateProfile.CallUnary(ctx, req)
+}
+
+// ChangePassword calls auth.v1.AuthService.ChangePassword.
+func (c *authServiceClient) ChangePassword(ctx context.Context, req *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error) {
+	return c.changePassword.CallUnary(ctx, req)
+}
+
+// SignOutEverywhere calls auth.v1.AuthService.SignOutEverywhere.
+func (c *authServiceClient) SignOutEverywhere(ctx context.Context, req *connect.Request[v1.SignOutEverywhereRequest]) (*connect.Response[v1.SignOutEverywhereResponse], error) {
+	return c.signOutEverywhere.CallUnary(ctx, req)
+}
+
 // AuthServiceHandler is an implementation of the auth.v1.AuthService service.
 type AuthServiceHandler interface {
 	// Whoami describes the credential the request was made with.
 	Whoami(context.Context, *connect.Request[v1.WhoamiRequest]) (*connect.Response[v1.WhoamiResponse], error)
+	// UpdateProfile sets the signed-in person's name; an empty name falls back to the email in the console.
+	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
+	// ChangePassword checks the current password, sets a new one and signs out every other session.
+	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
+	// SignOutEverywhere ends every session of the signed-in person, this one included.
+	SignOutEverywhere(context.Context, *connect.Request[v1.SignOutEverywhereRequest]) (*connect.Response[v1.SignOutEverywhereResponse], error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -92,10 +149,34 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("Whoami")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceUpdateProfileHandler := connect.NewUnaryHandler(
+		AuthServiceUpdateProfileProcedure,
+		svc.UpdateProfile,
+		connect.WithSchema(authServiceMethods.ByName("UpdateProfile")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceChangePasswordHandler := connect.NewUnaryHandler(
+		AuthServiceChangePasswordProcedure,
+		svc.ChangePassword,
+		connect.WithSchema(authServiceMethods.ByName("ChangePassword")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceSignOutEverywhereHandler := connect.NewUnaryHandler(
+		AuthServiceSignOutEverywhereProcedure,
+		svc.SignOutEverywhere,
+		connect.WithSchema(authServiceMethods.ByName("SignOutEverywhere")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/auth.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceWhoamiProcedure:
 			authServiceWhoamiHandler.ServeHTTP(w, r)
+		case AuthServiceUpdateProfileProcedure:
+			authServiceUpdateProfileHandler.ServeHTTP(w, r)
+		case AuthServiceChangePasswordProcedure:
+			authServiceChangePasswordHandler.ServeHTTP(w, r)
+		case AuthServiceSignOutEverywhereProcedure:
+			authServiceSignOutEverywhereHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -107,4 +188,16 @@ type UnimplementedAuthServiceHandler struct{}
 
 func (UnimplementedAuthServiceHandler) Whoami(context.Context, *connect.Request[v1.WhoamiRequest]) (*connect.Response[v1.WhoamiResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.v1.AuthService.Whoami is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.v1.AuthService.UpdateProfile is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.v1.AuthService.ChangePassword is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) SignOutEverywhere(context.Context, *connect.Request[v1.SignOutEverywhereRequest]) (*connect.Response[v1.SignOutEverywhereResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.v1.AuthService.SignOutEverywhere is not implemented"))
 }

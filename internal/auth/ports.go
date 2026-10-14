@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
+	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
@@ -72,15 +73,26 @@ type CLIProfiles interface {
 	Remove(cmd *cobra.Command) error
 }
 
-// Deps are the ports a Service reads from.
+// ProfileWriter loads a person and changes their name.
+type ProfileWriter interface {
+	ByID(ctx context.Context, id uuid.UUID) (*user.User, error)
+	SetName(ctx context.Context, id uuid.UUID, name string) (*user.User, error)
+}
+
+// Deps are the ports a Service reads from; the profile changes use Profiles, Transactor and Mail.
 type Deps struct {
-	Users     UserReader
-	Members   MemberReader
-	Orgs      SystemOrgReader
-	Projects  ProjectLister
-	Sessions  session.Store
-	Passwords PasswordSetter
-	Basic     BasicCredentials
+	Users      UserReader
+	Members    MemberReader
+	Orgs       SystemOrgReader
+	Projects   ProjectLister
+	Sessions   session.Store
+	Passwords  PasswordSetter
+	Basic      BasicCredentials
+	Profiles   ProfileWriter
+	Transactor db.Transactor
+	Mail       MailQueue
+	From       string
+	BaseURL    string
 }
 
 // ResetUsers finds the person a reset is for.

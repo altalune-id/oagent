@@ -177,6 +177,24 @@ func TestPostgresStore_AcceptTermsUsesTheDatabaseClock(t *testing.T) {
 	assert.True(t, user.IsNotFoundError(err))
 }
 
+func TestPostgresStore_SetNameTouchesOnlyTheName(t *testing.T) {
+	s, _ := newPGStore(t)
+	ctx := t.Context()
+	u := mustNew(t, "ada@example.com")
+	u.PasswordHash = "stored-hash"
+	require.NoError(t, s.Save(ctx, u))
+
+	got, err := s.SetName(ctx, u.ID, "Ada Lovelace")
+	require.NoError(t, err)
+	assert.Equal(t, "Ada Lovelace", got.Name)
+	assert.Equal(t, "stored-hash", got.PasswordHash)
+	assert.Equal(t, u.Email, got.Email)
+	assert.Equal(t, u.PublicID, got.PublicID)
+
+	_, err = s.SetName(ctx, uuid.New(), "x")
+	assert.True(t, user.IsNotFoundError(err))
+}
+
 func TestPostgresStore_ByPublicID(t *testing.T) {
 	s, _ := newPGStore(t)
 	u := mustNew(t, "pub@example.com")

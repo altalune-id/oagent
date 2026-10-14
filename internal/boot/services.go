@@ -104,14 +104,20 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	keyUsage := apikey.NewUsageWorker(apiKeyStore, keyUsageInterval, k.Log)
 	keyAuthn := apikey.NewAuthenticator(apiKeyStore, keyUsage, keyScheme, owners, k.Reporter.Unexpected)
 	sessions := buildSessionStore(k, cfg, sl, secretsLog(k.Log, caps))
+	mailQueue := buildMailQueue(k.Pool, cfg, sl)
 	authn := auth.NewService(auth.Deps{
-		Users:     users,
-		Members:   members,
-		Orgs:      orgs,
-		Projects:  projects,
-		Sessions:  sessions,
-		Passwords: users,
-		Basic:     basicCredentials(cfg, caps),
+		Users:      users,
+		Members:    members,
+		Orgs:       orgs,
+		Projects:   projects,
+		Sessions:   sessions,
+		Passwords:  users,
+		Basic:      basicCredentials(cfg, caps),
+		Profiles:   users,
+		Transactor: uow,
+		Mail:       mailQueue,
+		From:       cfg.Mail.From,
+		BaseURL:    publicBase(cfg.HTTP),
 	})
 	installer := install.NewService(uow, users, orgs, members, projects)
 
@@ -131,7 +137,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		WebhookStore: webhookStore,
 		Webhooks:     webhooks,
 		Sealer:       sl,
-		MailQueue:    buildMailQueue(k.Pool, cfg, sl),
+		MailQueue:    mailQueue,
 		Users:        users,
 		Members:      members,
 		Sessions:     sessions,

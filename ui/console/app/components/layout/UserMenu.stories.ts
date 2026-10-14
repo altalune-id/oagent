@@ -17,7 +17,7 @@ const render: Story['render'] = args => ({
 })
 
 export const Person: Story = {
-  args: { me: { source: 'local', name: 'Ada Lovelace', email: 'ada@example.com', operator: true } },
+  args: { me: { source: 'local', userId: 'V1StGXR8Z5jdHi6BmyT2a', name: 'Ada Lovelace', email: 'ada@example.com', operator: true } },
   render,
 }
 
@@ -33,5 +33,15 @@ export const Basic: Story = {
 
 export const SignedOut: Story = {
   args: { me: null },
+  render,
+}
+
+export const PersonWithPicture: Story = {
+  args: {
+    me: {
+      source: 'local', userId: 'FtGrdYskgDVDf8aoKsLdn', name: 'Budi Santoso', email: 'budi@example.com',
+      avatarUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1" fill="%23888"/></svg>',
+    },
+  },
   render,
 }
