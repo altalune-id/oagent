@@ -20,6 +20,7 @@ import (
 
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/kernel/capabilities"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/queue"
 	"altalune.id/oagent/internal/kernel/ratelimit"
@@ -591,4 +592,15 @@ func TestBoot_MailerError(t *testing.T) {
 		Mail:     config.MailConfig{Driver: config.MailDriverSMTP},
 	}, testLogger())
 	assert.ErrorContains(t, err, "mail")
+}
+
+func TestCapabilitiesConfig(t *testing.T) {
+	assert.Equal(t, capabilities.Config{Selfhosted: true, EnvGenesis: true}, capabilitiesConfig(config.Config{
+		Mode: config.ModeSelfhosted,
+		Auth: config.AuthConfig{Mode: config.AuthModeLocal, Genesis: config.GenesisConfig{Email: "root@example.com"}},
+	}))
+	assert.Equal(t, capabilities.Config{Selfhosted: true, BasicAuth: true}, capabilitiesConfig(config.Config{
+		Mode: config.ModeSelfhosted, Auth: config.AuthConfig{Mode: config.AuthModeBasic},
+	}))
+	assert.Equal(t, capabilities.Config{Cloud: true}, capabilitiesConfig(config.Config{Mode: config.ModeCloud}))
 }

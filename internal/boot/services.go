@@ -75,7 +75,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	apiKeyStore := apikey.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)
 
 	uow := db.NewTransactor(k.Pool)
-	caps := capabilities.From(&cfg)
+	caps := capabilities.From(capabilitiesConfig(cfg))
 	projects := project.NewService(projectStore, k.Reporter.Unexpected)
 	orgs := org.NewService(orgStore, uow, k.Reporter.Unexpected).
 		WithCreation(caps.OrgCreation).
@@ -327,4 +327,13 @@ func (p projectOrgs) OrgOf(ctx context.Context, projectID uuid.UUID) (uuid.UUID,
 		return uuid.Nil, err
 	}
 	return pr.OrgID, nil
+}
+
+func capabilitiesConfig(cfg config.Config) capabilities.Config {
+	return capabilities.Config{
+		Selfhosted: cfg.Mode == config.ModeSelfhosted,
+		Cloud:      cfg.Mode == config.ModeCloud,
+		BasicAuth:  cfg.Auth.Mode == config.AuthModeBasic,
+		EnvGenesis: cfg.Auth.Genesis.Email != "",
+	}
 }

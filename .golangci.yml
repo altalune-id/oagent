@@ -139,6 +139,28 @@ linters:
             - altalune.id/oagent/nanoid
             - altalune.id/oagent/scope
             - altalune.id/oagent/slug
+        pgx-boundary:
+          list-mode: lax
+          files:
+            - $all
+            - "!$test"
+            - "!**/pg/**"
+            - "!**/internal/kernel/db/**"
+            - "!**/migrator/**"
+            - "!**/internal/testutil/pgtest/**"
+          deny:
+            - pkg: github.com/jackc/pgx
+              desc: "only pg, internal/kernel/db, migrator and pgtest import the Postgres driver"
+        config-boundary:
+          list-mode: lax
+          files:
+            - "**/internal/kernel/**"
+            - "**/pg/**"
+            - "**/nats/**"
+            - "**/redis/**"
+          deny:
+            - pkg: "altalune.id/oagent/config$"
+              desc: "kernel features and connections take their own Config; boot maps config into it"
         nats-boundary:
           list-mode: lax
           files:
@@ -159,6 +181,23 @@ linters:
           deny:
             - pkg: github.com/redis/go-redis
               desc: "only the redis connection, the ratelimit/redis driver, boot and redistest import go-redis"
+        internal-driver-boundary:
+          list-mode: lax
+          files:
+            - "**/internal/**"
+            - "!$test"
+            - "!**/internal/kernel/db/**"
+            - "!**/internal/kernel/queue/nats/**"
+            - "!**/internal/kernel/ratelimit/redis/**"
+            - "!**/internal/boot/**"
+            - "!**/internal/testutil/{pgtest,natstest,redistest}/**"
+          deny:
+            - pkg: github.com/jackc/pgx
+              desc: "inside internal/, only kernel/db imports the Postgres driver"
+            - pkg: github.com/nats-io
+              desc: "inside internal/, only the queue/nats driver and boot import NATS"
+            - pkg: github.com/redis/go-redis
+              desc: "inside internal/, only the ratelimit/redis driver and boot import go-redis"
         application-purity:
           list-mode: lax
           files:
@@ -187,6 +226,12 @@ linters:
               desc: "domains import only internal/web/layout"
             - pkg: "altalune.id/oagent/internal/web/console"
               desc: "domains import only internal/web/layout"
+            - pkg: "altalune.id/oagent/pg$"
+              desc: "domains reach Postgres through internal/kernel/db, never the connection"
+            - pkg: "altalune.id/oagent/nats$"
+              desc: "domains reach NATS through internal/kernel/queue, never the connection"
+            - pkg: "altalune.id/oagent/redis$"
+              desc: "domains never use the Redis connection; a feature's driver does"
         kernel-boundary:
           list-mode: lax
           files:

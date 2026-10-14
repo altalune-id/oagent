@@ -2,7 +2,7 @@
 
 Use this when an action needs oagent's own limiter: a form that can be brute-forced or used to spam mail. oagent's limiter is **off by default**, because many deployments limit at the edge (a CDN, nginx, an API gateway). Each **group** of limits has its own switch, and every group shares one store. The only group today is `auth` (sign-in, password reset, invite pages); it is applied on pre-sign-in web forms only.
 
-The `ratelimit` root package is generic: a `Rule` (GCRA: `Rate` calls per `Per`, `Burst` at once), a key, and a `Limiter` with `Allow` and `Reset`. Stores: `ratelimit/memory` (per server, bounded, with a janitor worker) and `ratelimit/redis` (one Lua script over the shared Redis connection, so every server counts against one limit).
+The `internal/kernel/ratelimit` feature is generic: a `Rule` (GCRA: `Rate` calls per `Per`, `Burst` at once), a key, and a `Limiter` with `Allow` and `Reset`. Drivers, picked by `rateLimit.driver`: `ratelimit/memory` (per server, bounded, with a janitor worker) and `ratelimit/redis` (one Lua script over the shared Redis connection, so every server counts against one limit).
 
 ## Plan
 
@@ -67,10 +67,10 @@ A driver subpackage `ratelimit/<driver>` that implements `ratelimit.Limiter`, va
 
 ## Reference code
 
-- [ratelimit/ratelimit.go](../../ratelimit/ratelimit.go): `Limiter`, `Rule`, `Result`; [ratelimit/key.go](../../ratelimit/key.go): `Key`, `IPSubject`, `EmailSubject`; [ratelimit/disabled.go](../../ratelimit/disabled.go): `Disabled`
-- [ratelimit/memory/memory.go](../../ratelimit/memory/memory.go): `Store`, `Store.Run` (janitor)
-- [ratelimit/redis/redis.go](../../ratelimit/redis/redis.go), [ratelimit/redis/gcra.lua](../../ratelimit/redis/gcra.lua)
-- [ratelimit/ratelimittest/contract.go](../../ratelimit/ratelimittest/contract.go): `Run`, `Clock`
+- [internal/kernel/ratelimit/ratelimit.go](../../internal/kernel/ratelimit/ratelimit.go): `Limiter`, `Rule`, `Result`; [internal/kernel/ratelimit/key.go](../../internal/kernel/ratelimit/key.go): `Key`, `IPSubject`, `EmailSubject`; [internal/kernel/ratelimit/disabled.go](../../internal/kernel/ratelimit/disabled.go): `Disabled`
+- [internal/kernel/ratelimit/memory/memory.go](../../internal/kernel/ratelimit/memory/memory.go): `Store`, `Store.Run` (janitor)
+- [internal/kernel/ratelimit/redis/redis.go](../../internal/kernel/ratelimit/redis/redis.go), [internal/kernel/ratelimit/redis/gcra.lua](../../internal/kernel/ratelimit/redis/gcra.lua)
+- [internal/kernel/ratelimit/ratelimittest/contract.go](../../internal/kernel/ratelimit/ratelimittest/contract.go): `Run`, `Clock`
 - [internal/auth/limits.go](../../internal/auth/limits.go): `Limits`, `WriteLimited`, `LoginIPRule`, `LoginEmailRule`
 - [internal/auth/web.go](../../internal/auth/web.go): `limitLogin`; [internal/org/invite/web.go](../../internal/org/invite/web.go): `limited`, `LandingRule`, `SubmitRule`
 - [internal/web/layout/clientip.go](../../internal/web/layout/clientip.go): `ClientIP`

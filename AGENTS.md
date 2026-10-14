@@ -39,7 +39,10 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
 
 - Import direction: `cmd` → `internal/cli` → `internal/boot` → `internal/controlplane` → domains → `internal/kernel/*`.
 - Domains never import `internal/cli`, `internal/boot`, `internal/controlplane` or `internal/web` (only `internal/web/layout`).
-- Root packages (`apperror`, `config`, `pg`, `mailer`, `ratelimit`, `worker` and others) never import `internal/`.
+- Root packages (`apperror`, `config`, `mailer`, `worker` and others) never import `internal/`. The connections are root packages too, generic libraries with no oagent knowledge: `pg`, `nats`, `redis` open, health-check and close one backend each, return the real client (`*sql.DB`, `*nats.Conn`, the go-redis client) and never wrap its API.
+- Features that services use live in `internal/kernel/<feature>`. A feature that may have several backends picks one with a `driver` key and keeps each in a sub-package (`queue/nats`, `ratelimit/memory`, `ratelimit/redis`). A feature that must commit with domain data (`outbox`, `mailqueue`, `session`) keeps its Postgres store in-package.
+- Kernel features and connections never import `config`: one that needs settings takes its own `Config` (in its `config.go`), and boot maps the app config into it. Boot opens a connection only when a feature selects it.
+- Only `pg`, `internal/kernel/db`, `migrator` and `pgtest` import the Postgres driver; domains use `db.IsUniqueViolation`, `db.IsForeignKeyViolation` and `db.ViolatedConstraint`. Domains never import `pg`, `nats` or `redis` (depguard).
 - A domain package holds only the files it needs: `<domain>.go` (aggregate, no I/O), `errors.go`, `ports.go`, `store.go` + `postgres.go`/`pgreader.go`/`pgwriter.go`, `service.go`, then one file per surface: `controlplane.go`, `cli.go`, `web.go`. See [module](docs/howto/module.md).
 - Dev tools live in `internal/tool/`; their commands in `cmd/`.
 
@@ -66,6 +69,7 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
 **Config**
 
 - `.env.example` and `config.example.yml` hold only what is required to start. Optional keys go in the reference files (`make config-examples`).
+- A feature and its connection are separate top-level keys: the feature picks its backend with `driver` (`db.driver: postgres`, `queue.driver: nats`, `rateLimit.driver: memory|redis`); the connection holds everything backend-specific (`postgres.*`, `nats.*`, `redis.*`) and `<Backend>Features()` lists who uses it. See [config-key](docs/howto/config-key.md).
 
 **Style**
 

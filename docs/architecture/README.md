@@ -28,12 +28,14 @@ flowchart TB
   CP --> DOM["domains<br/>org, project, agent, apikey, webhook, user, auth, install, legal, health"]
   WEB -. Registrar .-> DOM
   DOM --> LAYOUT["internal/web/layout<br/>templ shell"]
-  DOM --> KERNEL["internal/kernel/*<br/>authn, authz, db, session, tenant, outbox, mailqueue, queue, nats, redis, events, capabilities"]
-  DOM --> ROOT["root packages<br/>apperror, config, pg, mailer, ratelimit, worker, scheduler, ..."]
+  DOM --> KERNEL["internal/kernel/*<br/>authn, authz, session, tenant, events, capabilities<br/>features: db, outbox, mailqueue, queue, ratelimit"]
+  DOM --> ROOT["root packages<br/>apperror, mailer, worker, scheduler, ..."]
   KERNEL --> ROOT
+  BOOT --> CONN["connections (root)<br/>pg, nats, redis"]
+  BOOT --> CFG["config"]
 ```
 
-Import direction: `cmd` → `internal/cli` → `internal/boot` → `internal/controlplane` → domains → `internal/kernel/*`. Domains never import `internal/cli`, `internal/boot`, `internal/controlplane` or `internal/web` (only `internal/web/layout`). Kernel packages import no domain (depguard `kernel-boundary` in `.golangci.yml`).
+Import direction: `cmd` → `internal/cli` → `internal/boot` → `internal/controlplane` → domains → `internal/kernel/*`. Domains never import `internal/cli`, `internal/boot`, `internal/controlplane` or `internal/web` (only `internal/web/layout`). Kernel packages import no domain (depguard `kernel-boundary` in `.golangci.yml`). Kernel packages and connections never import `config` (`config-boundary`): each takes its own `Config` from its `config.go`, and boot maps the app config into it.
 
 ## Boot
 
@@ -41,16 +43,28 @@ Import direction: `cmd` → `internal/cli` → `internal/boot` → `internal/con
 
 ## Kernel
 
-`internal/kernel` holds the shared building blocks that domains use and that import no domain:
+`internal/kernel` holds what services use. It imports no domain. Two kinds of package live there.
+
+The app core:
 
 - `authn`, `authz`: who the caller is, and what they may do.
-- `session`: the `Principal` and the browser session store.
+- `session`: the `Principal` and the browser session store (memory and Postgres stores in-package).
 - `tenant`: the org, project and user on the request.
-- `db`: the pool and the unit of work (`RunInTx`).
-- `outbox`, `mailqueue`, `queue`: durable delivery (webhooks, mail, jobs). `queue` is driver-agnostic; its NATS JetStream driver is `queue/nats`.
-- `nats`, `redis`: open, close and health-check the one shared connection each; boot opens one only when a feature selects it, and drivers take the plain client. Only these, their drivers (`queue/nats`, `ratelimit/redis`), boot and the test helpers import the NATS or go-redis libraries (depguard `nats-boundary`, `redis-boundary`).
 - `events`: the webhook event catalog.
 - `capabilities`: the feature switches derived from the deployment mode.
+
+The features, each picking its backend with a `driver` key:
+
+- `db` (`db.driver: postgres`): the writer/reader `Pool`, the unit of work (`RunInTx`, `InTx`, `LockInTx`) and the Postgres error checks (`IsUniqueViolation`, `IsForeignKeyViolation`, `ViolatedConstraint`), so domains never import the driver.
+- `outbox`, `mailqueue`: durable delivery (webhooks, mail). They commit in the same transaction as the domain change, so they keep their Postgres store in-package and have no driver switch.
+- `queue` (`queue.driver: nats`): jobs and broadcasts, driver-agnostic; its NATS JetStream driver is `queue/nats`.
+- `ratelimit` (`rateLimit.driver: memory|redis`): GCRA limits, with `ratelimit/memory` and `ratelimit/redis` drivers and the shared contract in `ratelimit/ratelimittest`.
+
+## Connections
+
+The root packages `pg`, `nats` and `redis` each open, health-check and close one backend, then return the real client (`*sql.DB`, `*nats.Conn`, the go-redis client) without wrapping its API. Their config is a top-level key (`postgres.*`, `nats.*`, `redis.*`) mapped by boot into the package's own `Config`. Boot opens a connection only when a feature selects it (`PostgresFeatures`, `NATSFeatures`, `RedisFeatures`), hands it to the feature, and closes it on shutdown; `/readyz` reads each one's health monitor.
+
+Only the connection, its drivers, boot and the test helpers import a backend library (depguard `pgx-boundary`, `nats-boundary`, `redis-boundary`). Domains never import `pg`, `nats` or `redis`.
 
 ## Domains
 
@@ -60,7 +74,7 @@ Other internal packages: `permission` (the permission each RPC needs), `apiclien
 
 ## Root packages
 
-Packages at the repo root never import `internal/`: `apperror` (error codes, `codes.json`), `config`, `pg`, `migrator`, `mailer` (+ console, smtp, resend), `ratelimit` (+ memory, redis), `worker`, `scheduler`, `httpclient`, `httpserver`, `mcp`, `password`, `sealer`, `nanoid`, `slug`, `scope`, `reqid`, `telemetry`, `version`.
+Packages at the repo root never import `internal/`: `apperror` (error codes, `codes.json`), `config`, the connections `pg`, `nats` and `redis`, `migrator`, `mailer` (+ console, smtp, resend), `worker`, `scheduler`, `httpclient`, `httpserver`, `mcp`, `password`, `sealer`, `nanoid`, `slug`, `scope`, `reqid`, `telemetry`, `version`.
 
 ## UI builds
 
@@ -76,7 +90,7 @@ The pnpm workspace `ui/*` builds assets that the binary embeds. The builds are n
 
 ## Data
 
-Postgres only. Migrations live in `schema/migrations` and run through `migrator` (at boot with `db.autoMigrate`). Tables, keys and constraints are in [schema/README.md](../../schema/README.md). See [migration.md](../howto/migration.md).
+Postgres only (`db.driver: postgres`, connection `postgres.*`). Migrations live in `schema/migrations` and run through `migrator` (at boot with `db.autoMigrate`, on `postgres.migrator.dsn` when set). Tables, keys and constraints are in [schema/README.md](../../schema/README.md). See [migration.md](../howto/migration.md).
 
 ## Code generation and dev tools
 

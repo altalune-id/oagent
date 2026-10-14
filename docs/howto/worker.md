@@ -13,7 +13,7 @@ Pick the shape first:
 
 ## Plan
 
-- [ ] **Where it lives.** Next to the data it owns: a domain (`internal/apikey/usage.go`), a kernel package (`internal/kernel/outbox/worker.go`), or a root package when it is app-agnostic (`ratelimit/memory`).
+- [ ] **Where it lives.** Next to the data it owns: a domain (`internal/apikey/usage.go`), a kernel package (`internal/kernel/outbox/worker.go`), or a kernel feature's driver (`internal/kernel/ratelimit/memory`).
 - [ ] **When it runs.** Always, or only when a feature is on (the janitor only with the memory rate limit store, `redis-health` only when Redis is used).
 - [ ] **Tenancy.** A loop over tenant rows takes a `Tenants` port and binds each org with `tenant.Into` (`outboxTenants` in `internal/boot/outbox.go`). System work binds nothing.
 - [ ] **Shutdown.** What must finish when the context is cancelled, and in how long. The HTTP server gets 10 s; keep a final drain within a few seconds.
@@ -71,7 +71,7 @@ Pick the shape first:
 
 ## Build: a queue handler
 
-`queue.Handler{Job, Handle, OnDeadLetter}` in the owning package; decode with `queue.Decode[T]`, return `queue.Permanent(err)` for a bad payload, call one service method, keep it idempotent (`m.ID` dedupes). Return it from `queueHandlers` (`internal/boot/consumers.go`). Code that submits takes `queue.Queue` (`Kernel.Queue`), never a driver: only `internal/kernel/queue/nats`, `internal/kernel/nats`, boot and `internal/testutil/natstest` import NATS (depguard `nats-boundary`). `Queue.Submit` refuses a job that was not declared, and nothing calls `Queue.Declare` yet, so the first job also adds that call in boot. The consumer runs only with `queue.enabled`; with it off, `queue.Disabled` accepts every Submit and does nothing.
+`queue.Handler{Job, Handle, OnDeadLetter}` in the owning package; decode with `queue.Decode[T]`, return `queue.Permanent(err)` for a bad payload, call one service method, keep it idempotent (`m.ID` dedupes). Return it from `queueHandlers` (`internal/boot/consumers.go`). Code that submits takes `queue.Queue` (`Kernel.Queue`), never a driver: only the `nats` connection, `internal/kernel/queue/nats`, boot and `internal/testutil/natstest` import NATS (depguard `nats-boundary`). `Queue.Submit` refuses a job that was not declared, and nothing calls `Queue.Declare` yet, so the first job also adds that call in boot. The consumer runs only with `queue.enabled`; with it off, `queue.Disabled` accepts every Submit and does nothing.
 
 ## Review
 
@@ -88,7 +88,7 @@ Pick the shape first:
 - [internal/kernel/outbox/worker.go](../../internal/kernel/outbox/worker.go): `Worker`, `WorkerOpts`, `Tenants`
 - [internal/kernel/mailqueue/worker.go](../../internal/kernel/mailqueue/worker.go): `Worker`
 - [internal/apikey/usage.go](../../internal/apikey/usage.go): `UsageWorker` (drain on shutdown)
-- [ratelimit/memory/memory.go](../../ratelimit/memory/memory.go): `Store.Run` (a janitor on a store)
+- [internal/kernel/ratelimit/memory/memory.go](../../internal/kernel/ratelimit/memory/memory.go): `Store.Run` (a janitor on a store)
 - [internal/kernel/session/scheduler.go](../../internal/kernel/session/scheduler.go): `Scheduler.SchedulerJobs`
 - [scheduler/scheduler.go](../../scheduler/scheduler.go), [scheduler/provider.go](../../scheduler/provider.go): `Job`, `Provider`, `Locker`
 - [internal/kernel/queue/queue.go](../../internal/kernel/queue/queue.go): `Queue`; [internal/kernel/queue/handler.go](../../internal/kernel/queue/handler.go): `Handler`, `Decode`, `Permanent`
