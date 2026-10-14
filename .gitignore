@@ -1,14 +1,32 @@
+# Go build and test output
 /bin/
-/config.yml
-*.out
 *.test
+*.out
 coverage.*
-.DS_Store
 
+# Local config and secrets (examples live in config.example.yml and .env.example)
+/config.yml
+.env
+
+# Node
 node_modules/
+
+# UI builds embedded into the binary (make ui); only the .gitkeep is tracked
 ui/*/dist/
-internal/mcp/ui/assets/app.html
 internal/web/console/public/*
 !internal/web/console/public/.gitkeep
+internal/mcp/ui/assets/app.html
 
-.env
+# SDD workspace (scratch, not shipped)
+/.superpowers/
+/docs/superpowers/
+
+# Playwright: MCP snapshots/screenshots and test-runner output
+.playwright-mcp/
+playwright-report/
+blob-report/
+test-results/
+playwright/.cache/
+
+# OS
+.DS_Store

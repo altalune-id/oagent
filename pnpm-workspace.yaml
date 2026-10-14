@@ -3,3 +3,16 @@ packages:
 
 minimumReleaseAge: 4320
 minimumReleaseAgeStrict: true
+
+# Versions shared by more than one ui/* package; reference them as "catalog:".
+catalog:
+  "@types/node": ^26.6.4
+  "@vitejs/plugin-vue": ^6.0.9
+  "@vitest/coverage-v8": 5.0.3
+  daisyui: ^5.7.47
+  tailwindcss: ^4.3.3
+  typescript: 6.0.3
+  vite: ^8.3.2
+  vitest: 5.0.3
+  vue: ^3.5.13
+  vue-tsc: ^3.3.12

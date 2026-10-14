@@ -25,10 +25,10 @@
     "@nuxtjs/i18n": "^10.6.0",
     "@pinia/nuxt": "^1.0.2",
     "@vueuse/nuxt": "^15.0.0",
-    "daisyui": "^5.7.47",
+    "daisyui": "catalog:",
     "nuxt": "^4.5.2",
     "pinia": "^4.0.3",
-    "vue": "^3.5.13",
+    "vue": "catalog:",
     "vue-router": "^5.3.1"
   },
   "devDependencies": {
@@ -42,13 +42,13 @@
     "@storybook/vue3": "^10.6.1",
     "@storybook/vue3-vite": "^10.6.1",
     "@tailwindcss/vite": "^4.3.3",
-    "@types/node": "^26.6.4",
-    "@vitejs/plugin-vue": "^6.0.9",
-    "@vitest/coverage-v8": "5.0.3",
+    "@types/node": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
     "storybook": "^10.6.1",
-    "tailwindcss": "^4.3.3",
-    "typescript": "^6.0.3",
-    "vitest": "5.0.3",
-    "vue-tsc": "^3.3.12"
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "vue-tsc": "catalog:"
   }
 }

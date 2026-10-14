@@ -1,0 +1,10 @@
+# <type>(<scope>): <subject>
+#
+# type: feat | fix | chore | refactor | docs | test | perf | build | ci | style | revert
+# scope: optional package or subsystem
+# subject: imperative mood, no trailing period, <= 72 chars
+# one line; the pull request carries the details
+#
+# Every commit must be signed (GPG or SSH); the pre-push hook refuses unsigned ones.
+#   git config commit.gpgsign true
+# Use this template with: git config commit.template .gitmessage.txt

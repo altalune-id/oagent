@@ -16,12 +16,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "peerDependencies": {
-    "vitest": "5.0.3"
+    "vitest": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^26.6.4",
-    "typescript": "^6.0.3",
-    "vite": "^6.0.7",
-    "vitest": "5.0.3"
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
   }
 }

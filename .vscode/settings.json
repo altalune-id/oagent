@@ -1,15 +1,61 @@
 {
   "editor.tabSize": 2,
+  "editor.formatOnSave": false,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "never"
+  },
+  "eslint.enable": true,
+  "eslint.useFlatConfig": true,
+  "eslint.workingDirectories": [{ "mode": "auto" }],
+  "eslint.format.enable": true,
+  "eslint.validate": [
+    "javascript",
+    "typescript",
+    "vue",
+    "html",
+    "json",
+    "jsonc",
+    "markdown",
+    "css"
+  ],
+  "prettier.enable": false,
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "go.mod": "go.sum, go.work, go.work.sum",
+    "buf.yaml": "buf.gen.yaml, buf.gen.*.yaml, buf.lock",
+    "package.json": "pnpm-lock.yaml, pnpm-workspace.yaml, .npmrc, .nvmrc, eslint.config.mjs",
+    "Dockerfile": ".dockerignore, .hadolint.yaml",
+    "compose.yaml": "compose.*.yaml",
+    "README.md": "AGENTS.md, CLAUDE.md, LICENSE",
+    "config.example.yml": "config.reference.yml, config.yml",
+    "*.templ": "${capture}_templ.go"
+  },
   "go.toolsEnvVars": {
     "GOROOT": "",
     "GOTOOLCHAIN": "auto"
   },
   "gopls": {
-    "buildFlags": ["-tags=integration"]
+    "buildFlags": ["-tags=integration"],
+    "formatting.local": "altalune.id/oagent"
   },
   "[go]": {
     "editor.tabSize": 4,
     "editor.insertSpaces": false,
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+  "[templ]": {
+    "editor.tabSize": 4,
+    "editor.insertSpaces": false,
     "editor.formatOnSave": true
+  },
+  "[proto]": {
+    "editor.formatOnSave": true
+  },
+  "[yaml]": {
+    "editor.formatOnSave": false
   }
 }

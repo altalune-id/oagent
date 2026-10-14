@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "golang.go",
+    "a-h.templ",
+    "bufbuild.vscode-buf",
+    "dbaeumer.vscode-eslint",
+    "Vue.volar",
+    "redhat.vscode-yaml",
+    "exiasr.hadolint",
+    "EditorConfig.EditorConfig"
+  ]
+}
