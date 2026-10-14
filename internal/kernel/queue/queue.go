@@ -12,22 +12,16 @@ import (
 )
 
 const (
-	connectionName        = "oagent"
-	defaultConnectTimeout = 10 * time.Second
-	connectBackoffBase    = 250 * time.Millisecond
-	connectBackoffMax     = 2 * time.Second
-	dialTimeout           = 2 * time.Second
-	drainTimeout          = 5 * time.Second
-	publishBudget         = 5 * time.Second
-	publishAttempt        = time.Second
-	publishRetryGap       = 200 * time.Millisecond
-	workMaxAge            = 7 * 24 * time.Hour
-	dlqMaxAge             = 30 * 24 * time.Hour
-	broadcastMaxAge       = time.Hour
-	streamMaxBytes        = 256 << 20
-	broadcastMaxBytes     = 64 << 20
-	duplicateWindow       = 2 * time.Minute
-	streamReplicas        = 1
+	publishBudget     = 5 * time.Second
+	publishAttempt    = time.Second
+	publishRetryGap   = 200 * time.Millisecond
+	workMaxAge        = 7 * 24 * time.Hour
+	dlqMaxAge         = 30 * 24 * time.Hour
+	broadcastMaxAge   = time.Hour
+	streamMaxBytes    = 256 << 20
+	broadcastMaxBytes = 64 << 20
+	duplicateWindow   = 2 * time.Minute
+	streamReplicas    = 1
 )
 
 func spanAttributes(ctx context.Context, p publication) []attribute.KeyValue {

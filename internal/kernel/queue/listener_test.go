@@ -16,7 +16,7 @@ import (
 	"altalune.id/oagent/internal/kernel/tenant"
 )
 
-func newBroadcastEnv(t *testing.T, o Options) consumerEnv {
+func newBroadcastEnv(t *testing.T, o testSetup) consumerEnv {
 	t.Helper()
 	rec := &recorder{}
 	o.Unexpected = rec.unexpected
@@ -256,7 +256,7 @@ func TestListener_EmptyListReturnsAtOnceWithoutNATS(t *testing.T) {
 	e := newBroadcastEnv(t, testOptions(startNATS(t)))
 	l, err := NewListener(e.client, nil, 1)
 	require.NoError(t, err)
-	require.NoError(t, e.client.Close())
+	e.client.nc.Close()
 
 	done := make(chan error, 1)
 	go func() { done <- l.Run(t.Context()) }()

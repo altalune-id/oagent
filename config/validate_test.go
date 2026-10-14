@@ -59,7 +59,7 @@ func TestValidate_EveryRule(t *testing.T) {
 		{"db.health.interval negative", func(c *Config) { c.DB.Health.Interval = -time.Second }, invalidSetting("db.health.interval")},
 		{"db.health.timeout negative", func(c *Config) { c.DB.Health.Timeout = -time.Second }, invalidSetting("db.health.timeout")},
 		{"scheduler.shutdownGrace negative", func(c *Config) { c.Scheduler.ShutdownGrace = -time.Second }, invalidSetting("scheduler.shutdownGrace")},
-		{"queue.connectTimeout negative", func(c *Config) { c.Queue.ConnectTimeout = -time.Second }, invalidSetting("queue.connectTimeout")},
+		{"nats.connectTimeout negative", func(c *Config) { c.NATS.ConnectTimeout = -time.Second }, invalidSetting("nats.connectTimeout")},
 		{"telemetry.otlp.protocol grpc", func(c *Config) { c.Telemetry.OTLP.Protocol = "grpc" }, valid},
 		{"telemetry.otlp.protocol unknown", func(c *Config) { c.Telemetry.OTLP.Protocol = "udp" }, invalidSetting("telemetry.otlp.protocol")},
 		{"telemetry.tracing.sampleRatio 1", func(c *Config) { c.Telemetry.Tracing.SampleRatio = 1 }, valid},

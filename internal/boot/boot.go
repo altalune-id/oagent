@@ -58,25 +58,38 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 	}
 	k.AddCloser(pool)
 
-	qclient, err := buildQueueFn(ctx, k, cfg, log)
+	nc, nh, err := buildNATS(ctx, &k, cfg, log)
+	if err != nil {
+		_ = pool.Close()
+		_ = shutdown(ctx)
+		return nil, err
+	}
+	if nc != nil {
+		defer func() {
+			if err != nil {
+				nc.Close()
+			}
+		}()
+	}
+
+	qclient, err := buildQueueFn(ctx, k, cfg, nc, log)
 	if err != nil {
 		_ = pool.Close()
 		_ = shutdown(ctx)
 		return nil, err
 	}
 	k.Queue = qclient
-	k.AddCloser(qclient)
 
-	rh, err := buildRedis(ctx, &k, cfg, tp, log)
+	rdb, rh, err := buildRedis(ctx, &k, cfg, tp, log)
 	if err != nil {
 		_ = pool.Close()
 		_ = shutdown(ctx)
 		return nil, err
 	}
-	if rh != nil {
+	if rdb != nil {
 		defer func() {
 			if err != nil {
-				_ = rh.client.Close()
+				_ = rdb.Close()
 			}
 		}()
 	}
@@ -87,7 +100,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		_ = shutdown(ctx)
 		return nil, err
 	}
-	lims, err := buildLimiters(cfg, rh.conn(), log)
+	lims, err := buildLimiters(cfg, rdb, log)
 	if err != nil {
 		_ = pool.Close()
 		_ = shutdown(ctx)
@@ -132,7 +145,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		buildHTTPHandler(httpSurfaces{
 			log:        log,
 			unexpected: k.Reporter.Unexpected,
-			probes:     health.NewWeb(health.NewService(readinessChecks(dbHealth, rh)...)),
+			probes:     health.NewWeb(health.NewService(readinessChecks(dbHealth, rh, nh)...)),
 			basePath:   cfg.HTTP.BasePath,
 			api:        apiHandler,
 			console:    consoleHandler,
@@ -152,6 +165,9 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 	sup.Register(dbHealth)
 	if rh != nil {
 		sup.Register(rh)
+	}
+	if nh != nil {
+		sup.Register(nh)
 	}
 	sup.Register(buildOutboxWorker(svcs, log))
 	sup.Register(buildMailWorker(svcs, log))

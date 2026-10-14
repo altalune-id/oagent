@@ -64,7 +64,7 @@ type consumerEnv struct {
 	rec    *recorder
 }
 
-func newConsumerEnv(t *testing.T, o Options) consumerEnv {
+func newConsumerEnv(t *testing.T, o testSetup) consumerEnv {
 	t.Helper()
 	rec := &recorder{}
 	o.Unexpected = rec.unexpected
@@ -125,7 +125,7 @@ func receive[T any](t *testing.T, ch <-chan T) T {
 	}
 }
 
-func testMeter(t *testing.T, o *Options) *sdkmetric.ManualReader {
+func testMeter(t *testing.T, o *testSetup) *sdkmetric.ManualReader {
 	t.Helper()
 	reader := sdkmetric.NewManualReader()
 	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))

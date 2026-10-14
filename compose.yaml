@@ -96,9 +96,9 @@ services:
       OAGENT_RATE_LIMIT_STORE: redis
       OAGENT_RATE_LIMIT_AUTH_ENABLED: "true"
       OAGENT_QUEUE_ENABLED: "true"
-      OAGENT_QUEUE_URL: "nats://nats:4222"
-      OAGENT_QUEUE_USER: oagent
-      OAGENT_QUEUE_PASSWORD: "${OAGENT_NATS_PASSWORD:-oagent-dev-nats-password}"
+      OAGENT_NATS_URL: "nats://nats:4222"
+      OAGENT_NATS_USER: oagent
+      OAGENT_NATS_PASSWORD: "${OAGENT_NATS_PASSWORD:-oagent-dev-nats-password}"
 
 volumes:
   postgres:

@@ -6,9 +6,9 @@ import (
 	"errors"
 	"log/slog"
 	"testing"
-	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
@@ -32,10 +32,10 @@ import (
 func restoreSeams(t *testing.T) {
 	t.Helper()
 	s, p, m, u, l := setupTelemetry, openPool, openMigrator, migrateUp, withLock
-	bq, nc, nl, ss, or := buildQueueFn, newConsumer, newListener, startSeq, openRedisFn
+	bq, nc, nl, ss, or, on := buildQueueFn, newConsumer, newListener, startSeq, openRedisFn, openNATSFn
 	t.Cleanup(func() {
 		setupTelemetry, openPool, openMigrator, migrateUp, withLock = s, p, m, u, l
-		buildQueueFn, newConsumer, newListener, startSeq, openRedisFn = bq, nc, nl, ss, or
+		buildQueueFn, newConsumer, newListener, startSeq, openRedisFn, openNATSFn = bq, nc, nl, ss, or, on
 	})
 }
 
@@ -167,7 +167,8 @@ func TestBoot_ConsumerEnabled(t *testing.T) {
 	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
-	buildQueueFn = func(context.Context, kernel.Kernel, config.Config, *slog.Logger) (*queue.Client, error) {
+	stubNATS(t)
+	buildQueueFn = func(context.Context, kernel.Kernel, config.Config, *nats.Conn, *slog.Logger) (*queue.Client, error) {
 		return queue.Disabled(testLogger()), nil
 	}
 	newConsumer = func(context.Context, *queue.Client, []queue.Handler) (*queue.Consumer, error) {
@@ -178,12 +179,10 @@ func TestBoot_ConsumerEnabled(t *testing.T) {
 	}
 	startSeq = func(context.Context, *queue.Client) (uint64, error) { return 1, nil }
 
-	app, err := Boot(context.Background(), config.Config{
-		DB:    config.DBConfig{DSN: "x"},
-		Queue: config.QueueConfig{Enabled: true},
-	}, testLogger())
+	app, err := Boot(context.Background(), natsFeatureConfig(), testLogger())
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 7) // http + db-health + outbox + mailqueue + apikey-usage + consumer + listener
+	assert.Len(t, app.Supervisor.Workers(), 8) // http + db-health + nats-health + outbox + mailqueue + apikey-usage + consumer + listener
+	assert.Contains(t, workerNames(app), "nats-health")
 	assert.False(t, app.Kernel.Queue.Enabled())
 	require.NoError(t, app.Close(context.Background()))
 }
@@ -195,7 +194,8 @@ func TestBoot_ConsumerError(t *testing.T) {
 	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
-	buildQueueFn = func(context.Context, kernel.Kernel, config.Config, *slog.Logger) (*queue.Client, error) {
+	stubNATS(t)
+	buildQueueFn = func(context.Context, kernel.Kernel, config.Config, *nats.Conn, *slog.Logger) (*queue.Client, error) {
 		return queue.Disabled(testLogger()), nil
 	}
 	newConsumer = func(context.Context, *queue.Client, []queue.Handler) (*queue.Consumer, error) {
@@ -213,7 +213,8 @@ func TestBoot_ListenerError(t *testing.T) {
 	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
-	buildQueueFn = func(context.Context, kernel.Kernel, config.Config, *slog.Logger) (*queue.Client, error) {
+	stubNATS(t)
+	buildQueueFn = func(context.Context, kernel.Kernel, config.Config, *nats.Conn, *slog.Logger) (*queue.Client, error) {
 		return queue.Disabled(testLogger()), nil
 	}
 	newConsumer = func(context.Context, *queue.Client, []queue.Handler) (*queue.Consumer, error) {
@@ -365,12 +366,14 @@ func TestBoot_QueueError(t *testing.T) {
 	openPool = func(context.Context, db.DBConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
+	_, nc := stubNATS(t)
+	buildQueueFn = func(context.Context, kernel.Kernel, config.Config, *nats.Conn, *slog.Logger) (*queue.Client, error) {
+		return nil, errors.New("boom")
+	}
 
-	_, err := Boot(context.Background(), config.Config{
-		DB:    config.DBConfig{DSN: "x"},
-		Queue: config.QueueConfig{Enabled: true, URL: "nats://127.0.0.1:1", ConnectTimeout: 50 * time.Millisecond},
-	}, testLogger())
-	assert.Error(t, err)
+	_, err := Boot(context.Background(), natsFeatureConfig(), testLogger())
+	assert.ErrorContains(t, err, "boom")
+	assert.True(t, nc.IsClosed(), "a queue failure closes the connection boot opened")
 }
 
 func TestApp_Run(t *testing.T) {

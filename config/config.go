@@ -22,6 +22,7 @@ type Config struct {
 	Mail       MailConfig       `yaml:"mail"       mapstructure:"mail"`
 	RateLimit  RateLimitConfig  `yaml:"rateLimit"  mapstructure:"rateLimit"`
 	Redis      RedisConfig      `yaml:"redis"      mapstructure:"redis"`
+	NATS       NATSConfig       `yaml:"nats"       mapstructure:"nats"`
 }
 
 // CLIConfig configures the oagent CLI; SessionFile may start with "~/", expanded when used.
@@ -87,16 +88,6 @@ type OpenAPIConfig struct {
 type SchedulerConfig struct {
 	Enabled       bool          `yaml:"enabled"       mapstructure:"enabled"`
 	ShutdownGrace time.Duration `yaml:"shutdownGrace" mapstructure:"shutdownGrace" validate:"gte=0"`
-}
-
-// QueueConfig configures the NATS JetStream connection.
-type QueueConfig struct {
-	Enabled        bool          `yaml:"enabled"        mapstructure:"enabled"`
-	URL            string        `yaml:"url"            mapstructure:"url"`
-	Token          string        `yaml:"token"          mapstructure:"token"          awareness:"secret"`
-	User           string        `yaml:"user"           mapstructure:"user"`
-	Password       string        `yaml:"password"       mapstructure:"password"       awareness:"secret"`
-	ConnectTimeout time.Duration `yaml:"connectTimeout" mapstructure:"connectTimeout" validate:"gte=0"`
 }
 
 // Mode selects the deployment posture: selfhosted (single tenant) or cloud (multi-tenant).
@@ -204,7 +195,7 @@ func (c *Config) Validate() error {
 		c.validateMail,
 		c.validateRateLimit,
 		c.validateRedis,
-		c.validateQueue,
+		c.validateNATS,
 	} {
 		if err := check(); err != nil {
 			return err

@@ -32,20 +32,34 @@ type testPayload struct {
 
 func discardUnexpected(context.Context, string, error, ...any) *apperror.AppError { return nil }
 
-func testOptions(url string) Options {
-	return Options{
-		URL:            url,
-		ConnectTimeout: 5 * time.Second,
-		Log:            slog.New(slog.DiscardHandler),
-		Unexpected:     discardUnexpected,
+type testSetup struct {
+	Options
+	url, user, password string
+}
+
+func testOptions(url string) testSetup {
+	return testSetup{
+		Options: Options{Log: slog.New(slog.DiscardHandler), Unexpected: discardUnexpected},
+		url:     url,
 	}
 }
 
-func connectTest(t *testing.T, o Options) *Client {
+func dialTest(t *testing.T, o testSetup) *nats.Conn {
 	t.Helper()
-	c, err := Connect(t.Context(), o)
+	var opts []nats.Option
+	if o.user != "" {
+		opts = append(opts, nats.UserInfo(o.user, o.password))
+	}
+	nc, err := nats.Connect(o.url, opts...)
 	require.NoError(t, err)
-	t.Cleanup(func() { _ = c.Close() })
+	t.Cleanup(nc.Close)
+	return nc
+}
+
+func connectTest(t *testing.T, o testSetup) *Client {
+	t.Helper()
+	c, err := Open(t.Context(), dialTest(t, o), o.Options)
+	require.NoError(t, err)
 	return c
 }
 
@@ -67,7 +81,7 @@ func lastMsg(t *testing.T, c *Client, stream, subject string) *jetstream.RawStre
 	return m
 }
 
-func TestConnect_CreatesStreams(t *testing.T) {
+func TestOpen_CreatesStreams(t *testing.T) {
 	c := connectTest(t, testOptions(startNATS(t)))
 
 	tests := []struct {
@@ -97,7 +111,7 @@ func TestConnect_CreatesStreams(t *testing.T) {
 	}
 }
 
-func TestConnect_Idempotent(t *testing.T) {
+func TestOpen_Idempotent(t *testing.T) {
 	url := startNATS(t)
 	connectTest(t, testOptions(url))
 	c := connectTest(t, testOptions(url))
@@ -106,43 +120,16 @@ func TestConnect_Idempotent(t *testing.T) {
 	assert.Equal(t, []string{"dlq.jobs.>"}, streamInfo(t, c, streamDLQ).Config.Subjects)
 }
 
-func TestConnect_RequiresUnexpected(t *testing.T) {
+func TestOpen_RequiresUnexpected(t *testing.T) {
 	o := testOptions(startNATS(t))
 	o.Unexpected = nil
-	_, err := Connect(t.Context(), o)
+	_, err := Open(t.Context(), dialTest(t, o), o.Options)
 	require.Error(t, err)
 }
 
-func TestConnect_DeadPortFailsAfterConnectTimeout(t *testing.T) {
-	ns := startNATSServer(t)
-	url := ns.ClientURL()
-	ns.Shutdown()
-
-	o := testOptions(url)
-	o.ConnectTimeout = time.Second
-	start := time.Now()
-	_, err := Connect(t.Context(), o)
-	elapsed := time.Since(start)
-
-	require.Error(t, err)
-	assert.GreaterOrEqual(t, elapsed, time.Second)
-	assert.Less(t, elapsed, 4*time.Second)
-}
-
-func TestConnect_CancelledContextStopsRetrying(t *testing.T) {
-	ns := startNATSServer(t)
-	url := ns.ClientURL()
-	ns.Shutdown()
-
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	o := testOptions(url)
-	o.ConnectTimeout = 10 * time.Second
-	start := time.Now()
-	_, err := Connect(ctx, o)
-
-	require.ErrorIs(t, err, context.Canceled)
-	assert.Less(t, time.Since(start), 2*time.Second)
+func TestOpen_RequiresAConnection(t *testing.T) {
+	_, err := Open(t.Context(), nil, testOptions("").Options)
+	require.ErrorContains(t, err, "no NATS connection")
 }
 
 func TestBroadcastStartSeq(t *testing.T) {
@@ -390,7 +377,6 @@ func TestDisabled(t *testing.T) {
 	seq, err := c.BroadcastStartSeq(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, uint64(0), seq)
-	require.NoError(t, c.Close())
 }
 
 func TestDisabled_NilLogger(t *testing.T) {
@@ -401,14 +387,6 @@ func TestDisabled_NilLogger(t *testing.T) {
 func TestDisabled_DeclareStillValidates(t *testing.T) {
 	c := Disabled(slog.New(slog.DiscardHandler))
 	assert.True(t, IsInvalidJobError(c.Declare([]Job{{Name: "bad", Version: 1}}, nil)))
-}
-
-func TestClose_Twice(t *testing.T) {
-	c, err := Connect(t.Context(), testOptions(startNATS(t)))
-	require.NoError(t, err)
-	assert.True(t, c.Enabled())
-	require.NoError(t, c.Close())
-	require.NoError(t, c.Close())
 }
 
 func TestErrors_Messages(t *testing.T) {

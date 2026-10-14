@@ -158,19 +158,25 @@ mcp:
 # [required, bootstrap] env: OAGENT_MODE
 mode: selfhosted
 
-queue:
-  # env: OAGENT_QUEUE_CONNECT_TIMEOUT
+nats:
+  # env: OAGENT_NATS_CONNECT_TIMEOUT
   connectTimeout: 10s
+  # env: OAGENT_NATS_NAME
+  name: oagent
+  # [secret] env: OAGENT_NATS_PASSWORD
+  password: ""
+  # [secret] env: OAGENT_NATS_TOKEN
+  token: ""
+  # [secret] env: OAGENT_NATS_URL
+  url: ""
+  # env: OAGENT_NATS_USER
+  user: ""
+
+queue:
+  # env: OAGENT_QUEUE_DRIVER
+  driver: nats
   # env: OAGENT_QUEUE_ENABLED
   enabled: false
-  # [secret] env: OAGENT_QUEUE_PASSWORD
-  password: ""
-  # [secret] env: OAGENT_QUEUE_TOKEN
-  token: ""
-  # env: OAGENT_QUEUE_URL
-  url: ""
-  # env: OAGENT_QUEUE_USER
-  user: ""
 
 rateLimit:
   auth:

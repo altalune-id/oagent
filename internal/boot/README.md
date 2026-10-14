@@ -17,8 +17,10 @@ flowchart TD
     B --> C{db.autoMigrate?}
     C -- yes --> D[migrate]
     C -- no --> E
-    D --> E[kernel: log, pool, tracer, meter, reporter, queue]
-    E --> RD["buildRedis: opens Redis only when a feature selects it"]
+    D --> E[kernel: log, pool, tracer, meter, reporter]
+    E --> NA["buildNATS: opens NATS only when a feature selects it"]
+    NA --> Q["buildQueue: queue.driver picks the driver, Disabled when queue.enabled is false"]
+    Q --> RD["buildRedis: opens Redis only when a feature selects it"]
     RD --> F[buildServices: every domain service, the mail queue]
     F --> M[buildMailer: mail.driver picks mailer/console, mailer/smtp or mailer/resend]
     M --> R["buildLimiters: one limiter per rate limit group, Disabled unless switched on (memory or Redis store)"]
@@ -54,6 +56,7 @@ flowchart TD
     MCPS["oagent mcp stdio"] --> SYS["session.System() Principal"] --> T4
     LB["/healthz, /readyz"] --> HW["health web.go (no gate, session or CSRF)"] --> HS["health service.go"] --> DBH["db-health monitor"]
     HS -. "when Redis is used" .-> RDH["redis-health monitor"]
+    HS -. "when NATS is used" .-> NAH["nats-health monitor"]
 
     DC["domain controlplane.go"] --> SVC["domain service.go"]
     DW["domain web.go"] --> SVC
@@ -87,7 +90,7 @@ flowchart TD
 | `auth`       | user, member, org, project, sessions, passwords; password resets (its own store, user, sessions, mail queue); the auth rate limiter on the web side                                                                                                                                                                                                 | whoami; `UpdateProfile`, `ChangePassword`, `SignOutEverywhere` (people only; not MCP tools); CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | `auth_whoami`                                                                              | `/login`, `/logout`, `/forgot-password`, `/reset-password/{token}`, `/reset-password` (local login only)            |
 | `install`    | user (create, accept terms), org, member, project; auth (sign-in)                                                                                                                                                                                                                                                                                   | —                                                                                                                                                            | —                                                                                          | `/install` (terms and privacy consent, `layout.Consent`) + `InstallGate`                                            |
 | `legal`      | user (accept terms), auth (rotate session); its own store (document snapshots, acceptance history)                                                                                                                                                                                                                                                  | —                                                                                                                                                            | —                                                                                          | `/terms`, `/privacy`, `/welcome` + `WelcomeGate` (asks again when the terms changed after the person accepted them) |
-| `health`     | readiness checks (db-health monitor; redis-health monitor when Redis is used)                                                                                                                                                                                                                                                                       | —                                                                                                                                                            | —                                                                                          | `/healthz`, `/readyz` (probes slot, root-anchored)                                                                  |
+| `health`     | readiness checks (db-health monitor; redis-health and nats-health monitors when Redis or NATS is used)                                                                                                                                                                                                                                              | —                                                                                                                                                            | —                                                                                          | `/healthz`, `/readyz` (probes slot, root-anchored)                                                                  |
 
 Every domain follows the same file layout: `<domain>.go`, `errors.go`,
 `ports.go`, `store.go` + `pg*.go`, `service.go`, then one file per surface
@@ -210,12 +213,14 @@ feature uses is ignored with one INFO line.
   `OAGENT_REDIS_KEY_PREFIX`, … A feature on `redis` with no `redis.url`, or a URL that is not
   `redis://` or `rediss://`, is a config error. Single-node URLs only. Needs Redis 5 or newer
   (tested on 7): the rate-limit script reads `TIME` before it writes.
-- **Connection:** `redis.go` (`openRedis`) parses the URL, sets the pool and timeouts, adds
-  tracing (`redisotel`, without command text) and pings once within `redis.connectTimeout`. A Redis
-  that can't be reached fails boot with `redis: cannot connect to <host> (redis.url): …`; no error
-  carries the password. Consumers take the plain go-redis `redis.UniversalClient` and their key
-  prefix; there is no wrapper package. Every process that boots the `App` (server, workers,
-  operator commands) gets it here; remote CLI commands never touch Redis.
+- **Connection:** `internal/kernel/redis` (`redis.Open`) parses the URL, sets the pool and
+  timeouts, adds tracing (`redisotel`, without command text) and pings once within
+  `redis.connectTimeout`. A Redis that can't be reached fails boot with
+  `redis: cannot connect to <host> (redis.url): …`; no error carries the password. `redis.go` here
+  only decides whether to open it (`RedisFeatures`), maps `redis.*` to `redis.Config`, registers the
+  closer and the health check. Drivers take the plain go-redis `redis.UniversalClient` and their key
+  prefix. Every process that boots the `App` (server, workers, operator commands) gets it here;
+  remote CLI commands never touch Redis.
 - **Shutdown and readiness:** the kernel closes the connection on shutdown (and a failed boot
   closes it). The `redis-health` worker pings every 5 s; while Redis does not answer, `/readyz`
   answers 503. It never stops the process.
@@ -227,6 +232,39 @@ feature uses is ignored with one INFO line.
   oagent never runs `FLUSHDB`, `KEYS` or `SCAN` over the instance.
 - **Cache (later):** a cache gets its own `cache.*` block with `cache.store: memory | redis`,
   reuses this connection and puts its keys under `<prefix>cache:`.
+
+## NATS
+
+oagent has one NATS connection, `nats.*`, and opens it **only when a feature selects it**. Today
+only the queue does (`queue.enabled: true` with `queue.driver: nats`, the default driver). With the
+default config oagent never connects to NATS; a `nats.url` that no feature uses is ignored with one
+INFO line.
+
+- **Config:** `nats.url` (secret; `nats://[user:password@]host:4222`, several comma-separated, or
+  `tls://`, `ws://`, `wss://`), `nats.user` and `nats.password` (secret, at least 16 characters) for
+  one account, or `nats.token` (secret) for a server without accounts, not both; `nats.name` (the
+  client name in NATS monitoring, default `oagent`), `nats.connectTimeout` (10s). Env:
+  `OAGENT_NATS_URL`, `OAGENT_NATS_USER`, `OAGENT_NATS_PASSWORD`, … The rules apply only while a
+  feature uses NATS; then a missing `nats.url` or one that is not a NATS URL is a config error.
+- **Connection:** `internal/kernel/nats` (`nats.Open`) dials until `nats.connectTimeout` (backoff
+  250 ms to 2 s, 2 s per dial), reconnects forever after that and logs each disconnect and
+  reconnect. A server that can't be reached fails boot with
+  `nats: cannot connect to <host> (nats.url) …`; no error or log line carries the URL's
+  credentials, the token or the password. `nats.go` here only decides whether to open it
+  (`NATSFeatures`), maps `nats.*` to `nats.Config`, registers the draining closer and the health
+  check. Drivers take the plain `*nats.Conn`.
+- **Shutdown and readiness:** the kernel drains and closes the connection on shutdown (a failed
+  boot closes it). The `nats-health` worker checks the connection every 5 s; while it is not
+  connected (reconnecting or closed), `/readyz` answers 503. It never stops the process.
+- **Shared server:** one NATS server can serve every app, with one account per app (the
+  `OAGENT` account, user `oagent`, as on `github.com/altalune-id/nats`). Accounts isolate apps,
+  since every app uses the same stream names; never share an account between apps.
+
+## Queue
+
+`queue.enabled` (default false) turns the job queue on and `queue.driver` picks what carries it:
+`nats` (JetStream on the shared NATS connection) is the only driver. Off, `Kernel.Queue` is
+`queue.Disabled`: Submit and Emit do nothing, and no consumer or listener runs.
 
 ## Rate limits
 
@@ -283,6 +321,7 @@ The supervisor runs these next to the HTTP server.
 | `http`                    | the HTTP server (all surfaces above)                                                               | always                                                          |
 | `db-health`               | pings the pool; `health` reads it for `/readyz`                                                    | always                                                          |
 | `redis-health`            | pings Redis every 5 s; `health` reads it for `/readyz`                                             | when a feature uses Redis                                       |
+| `nats-health`             | checks the NATS connection every 5 s; `health` reads it for `/readyz`                              | when a feature uses NATS                                        |
 | `outbox`                  | claims due outbox entries, delivers signed webhooks                                                | always                                                          |
 | `mailqueue.send`          | claims due queued mail, sends it through the mailer, erases the sealed payload once sent or failed | always                                                          |
 | `apikey-usage`            | batches `last_used_at` writes every 30 s                                                           | always                                                          |
@@ -304,7 +343,8 @@ The supervisor runs these next to the HTTP server.
 | `outbox.go`, `schedulers.go`, `consumers.go`, `queue.go` | workers                                                                                                                                                                                                                              |
 | `mail.go`                                                | the mailer driver (`mailer/console`, `mailer/smtp` or `mailer/resend`, picked by `mail.driver`), the sealed mail queue (`Services.MailQueue`) and its send worker                                                                    |
 | `ratelimit.go`                                           | the rate limit store (`ratelimit/memory` or `ratelimit/redis` on the shared connection, picked by `rateLimit.store`) and one `ratelimit.Limiter` per group (`Services.AuthLimiter`); a group that is off gets `ratelimit.Disabled()` |
-| `redis.go`                                               | the shared Redis connection (only when a feature selects it), its closer and its `redis-health` readiness worker                                                                                                                     |
+| `redis.go`                                               | the shared Redis connection (`internal/kernel/redis`, only when a feature selects it), its closer, its `redis-health` readiness worker and the `/readyz` checks                                                                      |
+| `nats.go`                                                | the shared NATS connection (`internal/kernel/nats`, only when a feature selects it), its draining closer and its `nats-health` readiness worker                                                                                      |
 | `db.go`, `sealer.go`, `telemetry.go`                     | pool, migrations, health, sealer, telemetry                                                                                                                                                                                          |
 | `options.go`, `app.go`, `remote.go`                      | boot options, the running `App` and its operator actions, the CLI graph                                                                                                                                                              |
 

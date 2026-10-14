@@ -8,34 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	nooptrace "go.opentelemetry.io/otel/trace/noop"
 
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/testutil/redistest"
 	"altalune.id/oagent/ratelimit"
 )
-
-func TestOpenRedis_RealServer(t *testing.T) {
-	h := redistest.New(t)
-	c, err := openRedis(t.Context(), redisTestConfig(h.URL), nooptrace.NewTracerProvider())
-	require.NoError(t, err)
-	require.NoError(t, c.Set(t.Context(), h.Prefix+"k", "v", time.Minute).Err())
-	assert.Equal(t, "v", c.Get(t.Context(), h.Prefix+"k").Val())
-	require.NoError(t, c.Del(t.Context(), h.Prefix+"k").Err())
-
-	rh := newRedisHealth(c, time.Second, testLogger())
-	rh.probe(t.Context())
-	assert.True(t, rh.Ready())
-
-	require.NoError(t, c.Close())
-	assert.NotPanics(t, func() { assert.ErrorIs(t, c.Close(), redis.ErrClosed) }, "a second Close is an error, not a panic")
-	rh.probe(t.Context())
-	assert.False(t, rh.Ready())
-}
 
 func TestBoot_RedisFeatureOpensTheRealServer(t *testing.T) {
 	restoreSeams(t)

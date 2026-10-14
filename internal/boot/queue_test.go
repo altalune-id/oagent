@@ -3,36 +3,42 @@ package boot
 import (
 	"context"
 	"testing"
-	"time"
 
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/testutil/natstest"
 )
 
-func TestQueueConfig(t *testing.T) {
-	o := queueConfig(config.QueueConfig{URL: "nats://x", Token: "t"})
-	assert.Equal(t, "nats://x", o.URL)
-	assert.Equal(t, "t", o.Token)
-
-	o = queueConfig(config.QueueConfig{URL: "nats://x", User: "oagent", Password: "p"})
-	assert.Equal(t, "oagent", o.User)
-	assert.Equal(t, "p", o.Password)
-}
-
 func TestBuildQueue_Disabled(t *testing.T) {
-	c, err := buildQueue(context.Background(), kernel.Kernel{}, config.Config{}, testLogger())
+	c, err := buildQueue(context.Background(), kernel.Kernel{}, config.Config{}, nil, testLogger())
 	require.NoError(t, err)
 	assert.False(t, c.Enabled())
 }
 
-func TestBuildQueue_ConnectError(t *testing.T) {
+func TestBuildQueue_NATSDriverRunsOnTheSharedConnection(t *testing.T) {
+	ns := natstest.Start(t)
+	nc, err := nats.Connect(ns.ClientURL())
+	require.NoError(t, err)
+	t.Cleanup(nc.Close)
 	k := kernel.Kernel{Reporter: apperror.NewReporter(nil, false)}
-	cfg := config.Config{Queue: config.QueueConfig{Enabled: true, URL: "nats://127.0.0.1:1", ConnectTimeout: 50 * time.Millisecond}}
 
-	_, err := buildQueue(context.Background(), k, cfg, testLogger())
-	assert.Error(t, err)
+	c, err := buildQueue(t.Context(), k, natsFeatureConfig(), nc, testLogger())
+	require.NoError(t, err)
+	assert.True(t, c.Enabled())
+	js, err := jetstream.New(nc)
+	require.NoError(t, err)
+	_, err = js.Stream(t.Context(), "WORK")
+	assert.NoError(t, err, "the driver created its streams on the connection boot opened")
+}
+
+func TestBuildQueue_UnknownDriver(t *testing.T) {
+	cfg := config.Config{Queue: config.QueueConfig{Enabled: true, Driver: "kafka"}}
+	_, err := buildQueue(t.Context(), kernel.Kernel{}, cfg, nil, testLogger())
+	assert.ErrorContains(t, err, `queue.driver "kafka"`)
 }

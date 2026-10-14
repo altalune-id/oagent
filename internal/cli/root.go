@@ -384,7 +384,7 @@ func registerConfigFlags(fs *pflag.FlagSet) {
 	fs.Bool("db-auto-migrate", false, "config override: db.autoMigrate")
 	fs.Bool("scheduler-enabled", false, "config override: scheduler.enabled")
 	fs.Bool("queue-enabled", false, "config override: queue.enabled")
-	fs.String("queue-url", "", "config override: queue.url")
+	fs.String("nats-url", "", "config override: nats.url")
 }
 
 func bindConfigFlags(loader *config.Loader, cmd *cobra.Command) error {
@@ -399,7 +399,7 @@ func bindConfigFlags(loader *config.Loader, cmd *cobra.Command) error {
 		{"db.autoMigrate", "db-auto-migrate"},
 		{"scheduler.enabled", "scheduler-enabled"},
 		{"queue.enabled", "queue-enabled"},
-		{"queue.url", "queue-url"},
+		{"nats.url", "nats-url"},
 	}
 	for _, p := range pairs {
 		flag := cmd.Flags().Lookup(p.flag)

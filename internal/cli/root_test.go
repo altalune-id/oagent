@@ -169,3 +169,19 @@ func TestServe_FlagOverridesConfig(t *testing.T) {
 	assert.Equal(t, "/app", gotCfg.HTTP.BasePath)
 	assert.Equal(t, "postgres://flag/db", gotCfg.DB.DSN)
 }
+
+func TestServe_NATSURLFlagOverridesConfig(t *testing.T) {
+	setServeEnv(t)
+	t.Setenv("OAGENT_NATS_URL", "nats://env:4222")
+	var gotCfg config.Config
+	bootFn := func(_ context.Context, cfg config.Config, _ *slog.Logger, _ ...boot.Option) (cli.App, error) {
+		gotCfg = cfg
+		return fakeApp{}, nil
+	}
+
+	_, err := runRoot(t, bootFn, "serve", "--queue-enabled", "--nats-url", "nats://flag:4222")
+
+	require.NoError(t, err)
+	assert.True(t, gotCfg.Queue.Enabled)
+	assert.Equal(t, "nats://flag:4222", gotCfg.NATS.URL)
+}

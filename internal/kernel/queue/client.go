@@ -26,7 +26,6 @@ import (
 type Client struct {
 	nc         *nats.Conn
 	js         jetstream.JetStream
-	closed     chan struct{}
 	log        *slog.Logger
 	tracer     trace.Tracer
 	unexpected apperror.UnexpectedFunc
@@ -56,57 +55,28 @@ type publication struct {
 	failed        metric.Int64Counter
 }
 
-// Connect dials NATS, ensures the streams, and returns a Client.
-func Connect(ctx context.Context, o Options) (*Client, error) {
+// Open ensures the streams on nc and returns a Client; the caller owns nc and closes it.
+func Open(ctx context.Context, nc *nats.Conn, o Options) (*Client, error) {
 	if o.Unexpected == nil {
 		return nil, errors.New("queue: Options.Unexpected is required")
+	}
+	if nc == nil {
+		return nil, errors.New("queue: no NATS connection")
 	}
 	c, err := newClient(o.Log, o.Tracer, o.Meter)
 	if err != nil {
 		return nil, err
 	}
 	c.unexpected = o.Unexpected
-	c.closed = make(chan struct{})
-	nc, err := dial(ctx, o, c.natsOptions(o))
-	if err != nil {
-		return nil, err
-	}
 	js, err := jetstream.New(nc)
 	if err != nil {
-		nc.Close()
 		return nil, fmt.Errorf("queue: jetstream: %w", err)
 	}
 	if err := ensureStreams(ctx, js); err != nil {
-		nc.Close()
 		return nil, err
 	}
 	c.nc, c.js = nc, js
 	return c, nil
-}
-
-func dial(ctx context.Context, o Options, opts []nats.Option) (*nats.Conn, error) {
-	timeout := o.ConnectTimeout
-	if timeout <= 0 {
-		timeout = defaultConnectTimeout
-	}
-	deadline := time.Now().Add(timeout)
-	backoff := connectBackoffBase
-	for {
-		nc, err := nats.Connect(o.URL, opts...)
-		if err == nil {
-			return nc, nil
-		}
-		remaining := time.Until(deadline)
-		if remaining <= 0 {
-			return nil, fmt.Errorf("queue: connect within %s: %w", timeout, err)
-		}
-		select {
-		case <-ctx.Done():
-			return nil, fmt.Errorf("queue: connect: %w", errors.Join(ctx.Err(), err))
-		case <-time.After(min(backoff, remaining)):
-		}
-		backoff = min(backoff*2, connectBackoffMax)
-	}
 }
 
 // Disabled returns a Client with no connection, whose Submit and Emit do nothing.
@@ -135,24 +105,6 @@ func newClient(log *slog.Logger, tracer trace.Tracer, meter metric.Meter) (*Clie
 	return c, nil
 }
 
-func (c *Client) natsOptions(o Options) []nats.Option {
-	opts := []nats.Option{
-		nats.Name(connectionName),
-		nats.MaxReconnects(-1),
-		nats.Timeout(dialTimeout),
-		nats.DrainTimeout(drainTimeout),
-		nats.DisconnectErrHandler(func(_ *nats.Conn, err error) {
-			c.log.Warn("queue: disconnected", "err", err)
-		}),
-		nats.ReconnectHandler(func(*nats.Conn) { c.log.Info("queue: reconnected") }),
-		nats.ClosedHandler(func(*nats.Conn) { close(c.closed) }),
-	}
-	if o.User != "" {
-		return append(opts, nats.UserInfo(o.User, o.Password))
-	}
-	return append(opts, nats.Token(o.Token))
-}
-
 // Enabled reports whether c holds a NATS connection.
 func (c *Client) Enabled() bool { return c.nc != nil }
 
@@ -170,22 +122,6 @@ func (c *Client) Declare(jobs []Job, broadcasts []Broadcast) error {
 		return err
 	}
 	c.declared.Store(&declaredSet{jobs: jobSet, broadcasts: broadcastSet})
-	return nil
-}
-
-// Close drains the connection and waits for it to close.
-func (c *Client) Close() error {
-	if !c.Enabled() || c.nc.IsClosed() {
-		return nil
-	}
-	if err := c.nc.Drain(); err != nil && !errors.Is(err, nats.ErrConnectionReconnecting) {
-		return fmt.Errorf("queue: drain: %w", err)
-	}
-	select {
-	case <-c.closed:
-	case <-time.After(drainTimeout + time.Second):
-		c.nc.Close()
-	}
 	return nil
 }
 
