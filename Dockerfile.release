@@ -1,0 +1,13 @@
+# syntax=docker/dockerfile:1.10
+
+# goreleaser builds the binaries (with the UI embedded) and passes them in per platform; see .goreleaser.yaml.
+FROM gcr.io/distroless/static:nonroot
+ARG TARGETPLATFORM
+
+COPY ${TARGETPLATFORM}/oagent /oagent
+
+USER 65532:65532
+EXPOSE 5150
+
+ENTRYPOINT ["/oagent"]
+CMD ["serve"]

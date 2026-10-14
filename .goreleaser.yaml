@@ -1,0 +1,104 @@
+version: 2
+
+project_name: oagent
+
+before:
+  hooks:
+    # the binary embeds the console, the MCP views and the sign-in page assets
+    - make ui
+
+report_sizes: true
+
+builds:
+  - id: oagent
+    main: ./cmd/oagent
+    binary: oagent
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X altalune.id/oagent/version.Version={{ .Version }}
+      - -X altalune.id/oagent/version.Commit={{ .ShortCommit }}
+      - -X altalune.id/oagent/version.BuildTime={{ .Date }}
+
+archives:
+  - id: default
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+      - config.example.yml
+      - .env.example
+
+checksum:
+  name_template: checksums.txt
+
+sboms:
+  - artifacts: archive
+
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+
+dockers_v2:
+  - id: oagent
+    dockerfile: Dockerfile.release
+    images:
+      - "ghcr.io/{{ .Env.GHCR_OWNER }}/oagent"
+    tags:
+      - "{{ .Version }}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.source: "https://github.com/{{ .Env.GITHUB_REPOSITORY }}"
+      org.opencontainers.image.created: "{{ .CommitDate }}"
+      org.opencontainers.image.licenses: MIT
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^style:"
+  groups:
+    - title: Features
+      regexp: "^feat"
+      order: 0
+    - title: Fixes
+      regexp: "^fix"
+      order: 1
+    - title: Others
+      order: 999
+
+# owner and repository come from the git remote
+release:
+  draft: false
+  prerelease: auto

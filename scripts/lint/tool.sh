@@ -24,8 +24,13 @@ if [ "${TOOL_DOCKER:-0}" != 1 ] && command -v "$tool" >/dev/null 2>&1; then
 fi
 
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-  exec docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
-    -v "$PWD:/work" -w /work --entrypoint "$tool" "$image" "$@"
+  # the repo is mounted at the same path, so absolute paths (lint-staged passes them) resolve in the container
+  set -- --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:$PWD" -w "$PWD" --entrypoint "$tool" "$image" "$@"
+  if [ "$tool" = goreleaser ]; then
+    # docker run -e NAME passes NAME through only when it is set
+    set -- -e GHCR_OWNER -e GITHUB_TOKEN -e GITHUB_REPOSITORY "$@"
+  fi
+  exec docker run "$@"
 fi
 
 if [ "${TOOL_STRICT:-0}" = 1 ]; then
