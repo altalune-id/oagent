@@ -1,4 +1,4 @@
-package queue
+package nats
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nats-io/nats.go"
+	natsgo "github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,6 +21,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/queue"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/worker"
 )
@@ -69,11 +70,11 @@ func newConsumerEnv(t *testing.T, o testSetup) consumerEnv {
 	rec := &recorder{}
 	o.Unexpected = rec.unexpected
 	c := connectTest(t, o)
-	require.NoError(t, c.Declare([]Job{testJob()}, nil))
+	require.NoError(t, c.Declare([]queue.Job{testJob()}, nil))
 	return consumerEnv{client: c, rec: rec}
 }
 
-func (e consumerEnv) consumer(t *testing.T, hs ...Handler) *Consumer {
+func (e consumerEnv) consumer(t *testing.T, hs ...queue.Handler) *Consumer {
 	t.Helper()
 	cons, err := NewConsumer(t.Context(), e.client, hs)
 	require.NoError(t, err)
@@ -168,22 +169,22 @@ func collectMetrics(t *testing.T, reader *sdkmetric.ManualReader) consumerMetric
 	return got
 }
 
-func testHandler(fn func(ctx context.Context, m Message) error) Handler {
-	return Handler{Job: testJob(), Handle: fn}
+func testHandler(fn func(ctx context.Context, m queue.Message) error) queue.Handler {
+	return queue.Handler{Job: testJob(), Handle: fn}
 }
 
 func TestNewConsumer_Rejects(t *testing.T) {
 	e := newConsumerEnv(t, testOptions(startNATS(t)))
-	noop := func(context.Context, Message) error { return nil }
+	noop := func(context.Context, queue.Message) error { return nil }
 
 	tests := []struct {
 		name  string
-		hs    []Handler
+		hs    []queue.Handler
 		check func(error) bool
 	}{
-		{"duplicate job", []Handler{testHandler(noop), testHandler(noop)}, IsHandlerWiringError},
-		{"invalid job", []Handler{{Job: Job{Name: "bad", Version: 1}, Handle: noop}}, IsInvalidJobError},
-		{"nil Handle", []Handler{{Job: testJob()}}, IsNilHandlerError},
+		{"duplicate job", []queue.Handler{testHandler(noop), testHandler(noop)}, queue.IsHandlerWiringError},
+		{"invalid job", []queue.Handler{{Job: queue.Job{Name: "bad", Version: 1}, Handle: noop}}, queue.IsInvalidJobError},
+		{"nil Handle", []queue.Handler{{Job: testJob()}}, queue.IsNilHandlerError},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -194,17 +195,11 @@ func TestNewConsumer_Rejects(t *testing.T) {
 	}
 }
 
-func TestNewConsumer_DisabledClient(t *testing.T) {
-	_, err := NewConsumer(t.Context(), Disabled(nil), []Handler{testHandler(func(context.Context, Message) error { return nil })})
-	require.Error(t, err)
-	assert.True(t, IsDisabledError(err), "got %T: %v", err, err)
-}
-
 func TestNewConsumer_CreatesDurable(t *testing.T) {
 	e := newConsumerEnv(t, testOptions(startNATS(t)))
-	cons := e.consumer(t, testHandler(func(context.Context, Message) error { return nil }))
+	cons := e.consumer(t, testHandler(func(context.Context, queue.Message) error { return nil }))
 	assert.Equal(t, "queue.consumer", cons.Name())
-	assert.Equal(t, WorkerName, cons.Name())
+	assert.Equal(t, queue.WorkerName, cons.Name())
 
 	jc, err := e.client.js.Consumer(t.Context(), streamWork, testDurable)
 	require.NoError(t, err)
@@ -224,9 +219,9 @@ func TestConsumer_Success(t *testing.T) {
 	require.NoError(t, e.client.Submit(tenant.Into(t.Context(), tc), testJob(), testPayload{Title: "hi"}))
 	sent := lastMsg(t, e.client, streamWork, "jobs.test.run.v1")
 
-	got := make(chan Message, 1)
+	got := make(chan queue.Message, 1)
 	gotTenant := make(chan tenant.Context, 1)
-	cons := e.consumer(t, testHandler(func(ctx context.Context, m Message) error {
+	cons := e.consumer(t, testHandler(func(ctx context.Context, m queue.Message) error {
 		scope, _ := tenant.From(ctx)
 		gotTenant <- scope
 		got <- m
@@ -241,7 +236,7 @@ func TestConsumer_Success(t *testing.T) {
 	assert.Equal(t, 1, m.Version)
 	assert.Equal(t, 1, m.NumDelivered)
 	assert.WithinDuration(t, time.Now(), m.CreatedAt, time.Minute)
-	p, err := Decode[testPayload](m)
+	p, err := queue.Decode[testPayload](m)
 	require.NoError(t, err)
 	assert.Equal(t, "hi", p.Title)
 	require.Eventually(t, func() bool { return streamMsgs(t, e.client, streamWork) == 0 }, waitFor, tick)
@@ -253,7 +248,7 @@ func TestConsumer_UnscopedHasNoTenant(t *testing.T) {
 	require.NoError(t, e.client.Submit(t.Context(), testJob(), testPayload{}))
 
 	scoped := make(chan bool, 1)
-	cons := e.consumer(t, testHandler(func(ctx context.Context, _ Message) error {
+	cons := e.consumer(t, testHandler(func(ctx context.Context, _ queue.Message) error {
 		_, err := tenant.From(ctx)
 		scoped <- err == nil
 		return nil
@@ -269,7 +264,7 @@ func TestConsumer_RetriesThenSucceeds(t *testing.T) {
 
 	var mu sync.Mutex
 	var seen []int
-	cons := e.consumer(t, testHandler(func(_ context.Context, m Message) error {
+	cons := e.consumer(t, testHandler(func(_ context.Context, m queue.Message) error {
 		mu.Lock()
 		defer mu.Unlock()
 		seen = append(seen, m.NumDelivered)
@@ -293,7 +288,7 @@ func TestConsumer_ExhaustedGoesToDLQ(t *testing.T) {
 	sent := lastMsg(t, e.client, streamWork, "jobs.test.run.v1")
 
 	var calls atomic.Int32
-	cons := e.consumer(t, testHandler(func(context.Context, Message) error {
+	cons := e.consumer(t, testHandler(func(context.Context, queue.Message) error {
 		calls.Add(1)
 		return errors.New("boom")
 	}))
@@ -318,9 +313,9 @@ func TestConsumer_PermanentGoesToDLQAtOnce(t *testing.T) {
 	require.NoError(t, e.client.Submit(t.Context(), testJob(), testPayload{}))
 
 	var calls atomic.Int32
-	cons := e.consumer(t, testHandler(func(context.Context, Message) error {
+	cons := e.consumer(t, testHandler(func(context.Context, queue.Message) error {
 		calls.Add(1)
-		return Permanent(errors.New("bad payload"))
+		return queue.Permanent(errors.New("bad payload"))
 	}))
 	runWorker(t, cons)
 
@@ -336,7 +331,7 @@ func TestConsumer_PanicIsRetried(t *testing.T) {
 	require.NoError(t, e.client.Submit(t.Context(), testJob(), testPayload{}))
 
 	var calls atomic.Int32
-	cons := e.consumer(t, testHandler(func(context.Context, Message) error {
+	cons := e.consumer(t, testHandler(func(context.Context, queue.Message) error {
 		if calls.Add(1) == 1 {
 			panic("kaboom")
 		}
@@ -354,11 +349,11 @@ func TestConsumer_SuppressReportCallsOnDeadLetter(t *testing.T) {
 	require.NoError(t, e.client.Submit(t.Context(), testJob(), testPayload{Title: "x"}))
 	sent := lastMsg(t, e.client, streamWork, "jobs.test.run.v1")
 
-	dead := make(chan DeadLetter, 1)
-	cons := e.consumer(t, Handler{
+	dead := make(chan queue.DeadLetter, 1)
+	cons := e.consumer(t, queue.Handler{
 		Job:            testJob(),
-		Handle:         func(context.Context, Message) error { return Permanent(errors.New("nope")) },
-		OnDeadLetter:   func(_ context.Context, d DeadLetter) error { dead <- d; return nil },
+		Handle:         func(context.Context, queue.Message) error { return queue.Permanent(errors.New("nope")) },
+		OnDeadLetter:   func(_ context.Context, d queue.DeadLetter) error { dead <- d; return nil },
 		SuppressReport: true,
 	})
 	runWorker(t, cons)
@@ -379,7 +374,7 @@ func TestConsumer_MalformedOrgHeaderIsPermanent(t *testing.T) {
 	o := testOptions(startNATS(t))
 	o.Tracer = tp.Tracer("test")
 	e := newConsumerEnv(t, o)
-	msg := nats.NewMsg("jobs.test.run.v1")
+	msg := natsgo.NewMsg("jobs.test.run.v1")
 	msg.Data = []byte(`{}`)
 	msg.Header.Set("Oagent-Job", "test.run")
 	msg.Header.Set("Oagent-Job-Version", "1")
@@ -389,7 +384,7 @@ func TestConsumer_MalformedOrgHeaderIsPermanent(t *testing.T) {
 	require.NoError(t, err)
 
 	var calls atomic.Int32
-	cons := e.consumer(t, testHandler(func(context.Context, Message) error {
+	cons := e.consumer(t, testHandler(func(context.Context, queue.Message) error {
 		calls.Add(1)
 		return nil
 	}))
@@ -417,7 +412,7 @@ func TestConsumer_DLQPublishFailureRetriesWithoutHandler(t *testing.T) {
 	require.NoError(t, e.client.Submit(t.Context(), testJob(), testPayload{}))
 
 	var calls atomic.Int32
-	cons := e.consumer(t, testHandler(func(context.Context, Message) error {
+	cons := e.consumer(t, testHandler(func(context.Context, queue.Message) error {
 		calls.Add(1)
 		return errors.New("boom")
 	}))
@@ -449,9 +444,9 @@ func TestConsumer_DLQPublishFailureReportsDespiteSuppress(t *testing.T) {
 	require.NoError(t, e.client.js.DeleteStream(t.Context(), streamDLQ))
 	require.NoError(t, e.client.Submit(t.Context(), testJob(), testPayload{}))
 
-	cons := e.consumer(t, Handler{
+	cons := e.consumer(t, queue.Handler{
 		Job:            testJob(),
-		Handle:         func(context.Context, Message) error { return Permanent(errors.New("nope")) },
+		Handle:         func(context.Context, queue.Message) error { return queue.Permanent(errors.New("nope")) },
 		SuppressReport: true,
 	})
 	cons.dlqRetry = time.Minute
@@ -467,9 +462,9 @@ func TestConsumer_PermanentRedeliveredAfterDLQFailureRunsHandlerAgain(t *testing
 	require.NoError(t, e.client.Submit(t.Context(), testJob(), testPayload{}))
 
 	var calls atomic.Int32
-	cons := e.consumer(t, testHandler(func(context.Context, Message) error {
+	cons := e.consumer(t, testHandler(func(context.Context, queue.Message) error {
 		n := calls.Add(1)
-		return Permanent(fmt.Errorf("permanent cause %d", n))
+		return queue.Permanent(fmt.Errorf("permanent cause %d", n))
 	}))
 	cons.dlqRetry = 2 * time.Second
 	runWorker(t, cons)
@@ -493,14 +488,14 @@ func TestConsumer_PastCapOnArrivalSkipsHandler(t *testing.T) {
 	require.NoError(t, e.client.Submit(t.Context(), testJob(), testPayload{}))
 
 	var calls atomic.Int32
-	cons := e.consumer(t, testHandler(func(context.Context, Message) error {
+	cons := e.consumer(t, testHandler(func(context.Context, queue.Message) error {
 		calls.Add(1)
 		return nil
 	}))
 
 	jc, err := e.client.js.Consumer(t.Context(), streamWork, testDurable)
 	require.NoError(t, err)
-	for range MaxAttempts {
+	for range queue.MaxAttempts {
 		batch, err := jc.Fetch(1, jetstream.FetchMaxWait(5*time.Second))
 		require.NoError(t, err)
 		n := 0
@@ -530,7 +525,7 @@ func TestConsumer_ConsumeSpanIsChildOfPublish(t *testing.T) {
 	e := newConsumerEnv(t, o)
 	require.NoError(t, e.client.Submit(t.Context(), testJob(), testPayload{}))
 
-	cons := e.consumer(t, testHandler(func(context.Context, Message) error { return nil }))
+	cons := e.consumer(t, testHandler(func(context.Context, queue.Message) error { return nil }))
 	runWorker(t, cons)
 
 	var publish, consume sdktrace.ReadOnlySpan
@@ -556,7 +551,7 @@ func TestConsumer_Metrics(t *testing.T) {
 	require.NoError(t, e.client.Submit(t.Context(), testJob(), testPayload{}))
 
 	var calls atomic.Int32
-	cons := e.consumer(t, testHandler(func(context.Context, Message) error {
+	cons := e.consumer(t, testHandler(func(context.Context, queue.Message) error {
 		if calls.Add(1) == 1 {
 			return errors.New("once")
 		}
@@ -582,7 +577,7 @@ func TestConsumer_HandlerContextOutlivesRunCancel(t *testing.T) {
 	started := make(chan struct{})
 	release := make(chan struct{})
 	result := make(chan seen, 1)
-	cons := e.consumer(t, testHandler(func(ctx context.Context, _ Message) error {
+	cons := e.consumer(t, testHandler(func(ctx context.Context, _ queue.Message) error {
 		close(started)
 		<-release
 		dl, ok := ctx.Deadline()
@@ -598,7 +593,7 @@ func TestConsumer_HandlerContextOutlivesRunCancel(t *testing.T) {
 	require.NoError(t, got.err)
 	require.True(t, got.ok)
 	assert.Greater(t, got.deadline, 20*time.Second)
-	assert.LessOrEqual(t, got.deadline, HandlerTimeout)
+	assert.LessOrEqual(t, got.deadline, queue.HandlerTimeout)
 	require.NoError(t, receive(t, done))
 }
 
@@ -608,7 +603,7 @@ func TestConsumer_RunReturnsClosedWhenDurableDeletedBetweenPulls(t *testing.T) {
 
 	started := make(chan struct{})
 	release := make(chan struct{})
-	cons := e.consumer(t, testHandler(func(context.Context, Message) error {
+	cons := e.consumer(t, testHandler(func(context.Context, queue.Message) error {
 		close(started)
 		<-release
 		return nil
@@ -622,12 +617,12 @@ func TestConsumer_RunReturnsClosedWhenDurableDeletedBetweenPulls(t *testing.T) {
 
 	err := receive(t, done)
 	require.Error(t, err)
-	assert.True(t, IsConsumerClosedError(err), "got %T: %v", err, err)
+	assert.True(t, queue.IsConsumerClosedError(err), "got %T: %v", err, err)
 }
 
 func TestConsumer_RunReturnsNilOnCancel(t *testing.T) {
 	e := newConsumerEnv(t, testOptions(startNATS(t)))
-	cons := e.consumer(t, testHandler(func(context.Context, Message) error { return nil }))
+	cons := e.consumer(t, testHandler(func(context.Context, queue.Message) error { return nil }))
 	cancel, done := runWorker(t, cons)
 
 	cancel()
@@ -641,7 +636,7 @@ func TestConsumer_RunReturnsNilOnCancel(t *testing.T) {
 
 func TestConsumer_RunReturnsClosedWhenDurableDeleted(t *testing.T) {
 	e := newConsumerEnv(t, testOptions(startNATS(t)))
-	cons := e.consumer(t, testHandler(func(context.Context, Message) error { return nil }))
+	cons := e.consumer(t, testHandler(func(context.Context, queue.Message) error { return nil }))
 	_, done := runWorker(t, cons)
 	jc, err := e.client.js.Consumer(t.Context(), streamWork, testDurable)
 	require.NoError(t, err)
@@ -654,7 +649,7 @@ func TestConsumer_RunReturnsClosedWhenDurableDeleted(t *testing.T) {
 	select {
 	case err := <-done:
 		require.Error(t, err)
-		assert.True(t, IsConsumerClosedError(err), "got %T: %v", err, err)
+		assert.True(t, queue.IsConsumerClosedError(err), "got %T: %v", err, err)
 		assert.Contains(t, err.Error(), "jobs.test.run.v1")
 	case <-time.After(waitFor):
 		t.Fatal("Run did not return after the durable was deleted")
@@ -662,19 +657,19 @@ func TestConsumer_RunReturnsClosedWhenDurableDeleted(t *testing.T) {
 }
 
 func TestDecode_Error(t *testing.T) {
-	_, err := Decode[testPayload](Message{Data: []byte("{")})
+	_, err := queue.Decode[testPayload](queue.Message{Data: []byte("{")})
 	require.Error(t, err)
 }
 
 func TestPermanent(t *testing.T) {
 	cause := errors.New("x")
-	err := Permanent(cause)
-	assert.True(t, IsPermanentError(err))
+	err := queue.Permanent(cause)
+	assert.True(t, queue.IsPermanentError(err))
 	assert.ErrorIs(t, err, cause)
-	assert.False(t, IsPermanentError(cause))
-	assert.NoError(t, Permanent(nil))
-	assert.True(t, IsConsumerClosedError(&ConsumerClosedError{Subject: "jobs.a.b.v1"}))
-	assert.False(t, IsConsumerClosedError(cause))
+	assert.False(t, queue.IsPermanentError(cause))
+	assert.NoError(t, queue.Permanent(nil))
+	assert.True(t, queue.IsConsumerClosedError(&queue.ConsumerClosedError{Subject: "jobs.a.b.v1"}))
+	assert.False(t, queue.IsConsumerClosedError(cause))
 }
 
 func TestNakDelay(t *testing.T) {

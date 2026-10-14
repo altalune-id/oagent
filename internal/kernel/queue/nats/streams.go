@@ -1,13 +1,13 @@
-package queue
+package nats
 
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/nats-io/nats.go/jetstream"
+
+	"altalune.id/oagent/internal/kernel/queue"
 )
 
 const (
@@ -17,39 +17,21 @@ const (
 )
 
 const (
-	jobSubjectPrefix       = "jobs."
-	dlqSubjectPrefix       = "dlq."
-	broadcastSubjectPrefix = "broadcast."
-	allSubjects            = ">"
-
-	namePattern = `^[a-z0-9_]+(\.[a-z0-9_]+)+$`
+	dlqSubjectPrefix = "dlq."
+	allSubjects      = ">"
 )
-
-func subjectFor(prefix, name string, version int) string {
-	return prefix + name + ".v" + strconv.Itoa(version)
-}
 
 func dlqSubject(subject string) string { return dlqSubjectPrefix + subject }
 
 func durableName(subject string) string {
-	return strings.ReplaceAll(strings.TrimPrefix(subject, jobSubjectPrefix), ".", "_")
-}
-
-func nameProblem(name string, version int) string {
-	if ok, err := regexp.MatchString(namePattern, name); err != nil || !ok {
-		return "name must match " + namePattern
-	}
-	if version < 1 {
-		return "version must be at least 1"
-	}
-	return ""
+	return strings.ReplaceAll(strings.TrimPrefix(subject, queue.JobSubjectPrefix), ".", "_")
 }
 
 func streamConfigs() []jetstream.StreamConfig {
 	return []jetstream.StreamConfig{
 		{
 			Name:       streamWork,
-			Subjects:   []string{jobSubjectPrefix + allSubjects},
+			Subjects:   []string{queue.JobSubjectPrefix + allSubjects},
 			Retention:  jetstream.WorkQueuePolicy,
 			Storage:    jetstream.FileStorage,
 			Replicas:   streamReplicas,
@@ -60,7 +42,7 @@ func streamConfigs() []jetstream.StreamConfig {
 		},
 		{
 			Name:       streamDLQ,
-			Subjects:   []string{dlqSubjectPrefix + jobSubjectPrefix + allSubjects},
+			Subjects:   []string{dlqSubjectPrefix + queue.JobSubjectPrefix + allSubjects},
 			Retention:  jetstream.LimitsPolicy,
 			Storage:    jetstream.FileStorage,
 			Replicas:   streamReplicas,
@@ -71,7 +53,7 @@ func streamConfigs() []jetstream.StreamConfig {
 		},
 		{
 			Name:       streamBroadcast,
-			Subjects:   []string{broadcastSubjectPrefix + allSubjects},
+			Subjects:   []string{queue.BroadcastSubjectPrefix + allSubjects},
 			Retention:  jetstream.LimitsPolicy,
 			Storage:    jetstream.FileStorage,
 			Replicas:   streamReplicas,
@@ -83,7 +65,7 @@ func streamConfigs() []jetstream.StreamConfig {
 	}
 }
 
-func consumerConfig(j Job) jetstream.ConsumerConfig {
+func consumerConfig(j queue.Job) jetstream.ConsumerConfig {
 	return jetstream.ConsumerConfig{
 		Durable:       durableName(j.Subject()),
 		FilterSubject: j.Subject(),

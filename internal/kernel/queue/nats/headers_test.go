@@ -1,11 +1,11 @@
-package queue
+package nats
 
 import (
 	"context"
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/nats-io/nats.go"
+	natsgo "github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -24,7 +24,7 @@ func TestTenantHeaders_RoundTrip(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := nats.Header{}
+			h := natsgo.Header{}
 			setTenant(h, tt.tc)
 
 			got, ok, err := tenantFrom(h)
@@ -36,7 +36,7 @@ func TestTenantHeaders_RoundTrip(t *testing.T) {
 }
 
 func TestSetTenant_SkipsZeroIDs(t *testing.T) {
-	h := nats.Header{}
+	h := natsgo.Header{}
 	setTenant(h, tenant.Context{OrgID: uuid.New()})
 
 	assert.NotEmpty(t, h.Get(headerOrgID))
@@ -45,7 +45,7 @@ func TestSetTenant_SkipsZeroIDs(t *testing.T) {
 }
 
 func TestTenantFrom_NoHeaderIsUnscoped(t *testing.T) {
-	_, ok, err := tenantFrom(nats.Header{})
+	_, ok, err := tenantFrom(natsgo.Header{})
 	require.NoError(t, err)
 	assert.False(t, ok)
 }
@@ -61,7 +61,7 @@ func TestTenantFrom_MalformedHeader(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := nats.Header{}
+			h := natsgo.Header{}
 			setTenant(h, tenant.Context{OrgID: uuid.New(), ProjectID: uuid.New(), UserID: uuid.New()})
 			h.Set(tt.header, "not-a-uuid")
 
@@ -74,7 +74,7 @@ func TestTenantFrom_MalformedHeader(t *testing.T) {
 func TestTenantFrom_ProjectOrUserWithoutOrg(t *testing.T) {
 	for _, key := range []string{headerProjectID, headerUserID} {
 		t.Run(key, func(t *testing.T) {
-			h := nats.Header{}
+			h := natsgo.Header{}
 			h.Set(key, uuid.NewString())
 
 			_, ok, err := tenantFrom(h)
@@ -90,7 +90,7 @@ func TestTraceHeaders_RoundTrip(t *testing.T) {
 	ctx, span := tp.Tracer("test").Start(t.Context(), "parent")
 	defer span.End()
 
-	h := nats.Header{}
+	h := natsgo.Header{}
 	injectTrace(ctx, h)
 	require.NotEmpty(t, h.Get("traceparent"))
 

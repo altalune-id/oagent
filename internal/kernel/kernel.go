@@ -26,7 +26,7 @@ type Kernel struct {
 	Meter    metric.Meter
 	Reporter *apperror.Reporter
 	// Queue is always non-nil: Disabled when queue.enabled is false.
-	Queue *queue.Client
+	Queue queue.Queue
 
 	closers []io.Closer
 }

@@ -262,9 +262,20 @@ INFO line.
 
 ## Queue
 
-`queue.enabled` (default false) turns the job queue on and `queue.driver` picks what carries it:
-`nats` (JetStream on the shared NATS connection) is the only driver. Off, `Kernel.Queue` is
-`queue.Disabled`: Submit and Emit do nothing, and no consumer or listener runs.
+`queue.enabled` (default false) turns the job queue on and `queue.driver` picks what carries it.
+`Kernel.Queue` is the driver-agnostic `queue.Queue` (`internal/kernel/queue`: jobs, broadcasts,
+handlers, listeners, `Declare`, `Submit`, `Emit`, `Consumer`, `Listener`); it imports no driver.
+`buildQueue` (`queue.go`) picks the driver:
+
+- **off:** `queue.Disabled`: Submit and Emit do nothing, and no consumer or listener runs.
+- **`nats`** (the only driver): `internal/kernel/queue/nats` on the shared NATS connection. It
+  creates the streams `WORK`, `DLQ` and `BROADCAST` (subjects `jobs.>`, `dlq.jobs.>`,
+  `broadcast.>`) and one durable consumer per job. The names are the same in every Altalune app;
+  the NATS account keeps apps apart.
+
+A new driver is one more `case` in `buildQueue` and one more package under `internal/kernel/queue/`.
+`Boot` builds the consumer (`k.Queue.Consumer`) unless the consumer is off, and the broadcast
+listener (`k.Queue.Listener`, which starts at the stream's next message) whenever the queue is on.
 
 ## Rate limits
 

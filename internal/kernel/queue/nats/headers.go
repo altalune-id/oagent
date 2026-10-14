@@ -1,11 +1,11 @@
-package queue
+package nats
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/nats-io/nats.go"
+	natsgo "github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"go.opentelemetry.io/otel/propagation"
 
@@ -28,13 +28,13 @@ const (
 	headerDlqStreamSeq     = "Oagent-Dlq-Stream-Seq"
 )
 
-type natsCarrier nats.Header
+type natsCarrier natsgo.Header
 
 var _ propagation.TextMapCarrier = natsCarrier(nil)
 
-func (c natsCarrier) Get(key string) string { return nats.Header(c).Get(key) }
+func (c natsCarrier) Get(key string) string { return natsgo.Header(c).Get(key) }
 
-func (c natsCarrier) Set(key, value string) { nats.Header(c).Set(key, value) }
+func (c natsCarrier) Set(key, value string) { natsgo.Header(c).Set(key, value) }
 
 func (c natsCarrier) Keys() []string {
 	keys := make([]string, 0, len(c))
@@ -44,21 +44,21 @@ func (c natsCarrier) Keys() []string {
 	return keys
 }
 
-func injectTrace(ctx context.Context, h nats.Header) {
+func injectTrace(ctx context.Context, h natsgo.Header) {
 	propagation.TraceContext{}.Inject(ctx, natsCarrier(h))
 }
 
-func extractTrace(ctx context.Context, h nats.Header) context.Context {
+func extractTrace(ctx context.Context, h natsgo.Header) context.Context {
 	return propagation.TraceContext{}.Extract(ctx, natsCarrier(h))
 }
 
-func setTenant(h nats.Header, tc tenant.Context) {
+func setTenant(h natsgo.Header, tc tenant.Context) {
 	setID(h, headerOrgID, tc.OrgID)
 	setID(h, headerProjectID, tc.ProjectID)
 	setID(h, headerUserID, tc.UserID)
 }
 
-func setID(h nats.Header, key string, id uuid.UUID) {
+func setID(h natsgo.Header, key string, id uuid.UUID) {
 	if id == uuid.Nil {
 		return
 	}
@@ -66,7 +66,7 @@ func setID(h nats.Header, key string, id uuid.UUID) {
 }
 
 // SECURITY: tenant headers are trusted, so anyone who can publish to the streams acts as any tenant; keep the NATS token private.
-func tenantFrom(h nats.Header) (tenant.Context, bool, error) {
+func tenantFrom(h natsgo.Header) (tenant.Context, bool, error) {
 	if h.Get(headerOrgID) == "" {
 		if h.Get(headerProjectID) != "" || h.Get(headerUserID) != "" {
 			return tenant.Context{}, false, fmt.Errorf("queue: header %s is missing beside a project or user id", headerOrgID)
@@ -86,7 +86,7 @@ func tenantFrom(h nats.Header) (tenant.Context, bool, error) {
 	return tc, true, nil
 }
 
-func parseID(h nats.Header, key string, dst *uuid.UUID) error {
+func parseID(h natsgo.Header, key string, dst *uuid.UUID) error {
 	v := h.Get(key)
 	if v == "" {
 		return nil

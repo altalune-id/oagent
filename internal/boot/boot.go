@@ -12,7 +12,6 @@ import (
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/health"
 	"altalune.id/oagent/internal/kernel"
-	"altalune.id/oagent/internal/kernel/queue"
 	"altalune.id/oagent/scheduler"
 	"altalune.id/oagent/worker"
 )
@@ -195,9 +194,9 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		return nil, fmt.Errorf("boot: scheduler-only requires the scheduler, but it is disabled by %s", schedulerOff(o, cfg))
 	}
 
-	var consumer *queue.Consumer
+	var consumer worker.Worker
 	if off := consumerOff(o, cfg); off == "" {
-		c, cErr := newConsumer(ctx, k.Queue, queueHandlers(svcs))
+		c, cErr := k.Queue.Consumer(ctx, queueHandlers(svcs))
 		if cErr != nil {
 			_ = pool.Close()
 			_ = shutdown(ctx)
@@ -214,13 +213,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		return nil, fmt.Errorf("boot: consumer-only requires the queue consumer, but it is disabled by %s", consumerOff(o, cfg))
 	}
 	if cfg.Queue.Enabled {
-		seq, sErr := startSeq(ctx, k.Queue)
-		if sErr != nil {
-			_ = pool.Close()
-			_ = shutdown(ctx)
-			return nil, fmt.Errorf("boot: queue listener: %w", sErr)
-		}
-		listener, lErr := newListener(k.Queue, queueListeners(svcs), seq)
+		listener, lErr := k.Queue.Listener(ctx, queueListeners(svcs))
 		if lErr != nil {
 			_ = pool.Close()
 			_ = shutdown(ctx)

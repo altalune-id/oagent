@@ -7,25 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestJob_Names(t *testing.T) {
-	j := Job{Name: "todo.log_completion", Version: 1}
-	subject := j.Subject()
-
-	tests := []struct {
-		name string
-		got  string
-		want string
-	}{
-		{"subject", subject, "jobs.todo.log_completion.v1"},
-		{"durable", durableName(subject), "todo_log_completion_v1"},
-		{"dlq subject", dlqSubject(subject), "dlq.jobs.todo.log_completion.v1"},
-		{"broadcast subject", Broadcast{Name: "system.onboarding_completed", Version: 2}.Subject(), "broadcast.system.onboarding_completed.v2"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, tt.got)
-		})
-	}
+func TestSubjects(t *testing.T) {
+	assert.Equal(t, "jobs.todo.log_completion.v1", Job{Name: "todo.log_completion", Version: 1}.Subject())
+	assert.Equal(t, "broadcast.system.onboarding_completed.v2", Broadcast{Name: "system.onboarding_completed", Version: 2}.Subject())
 }
 
 func TestJob_Validate(t *testing.T) {

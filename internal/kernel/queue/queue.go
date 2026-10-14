@@ -1,51 +1,76 @@
-// Package queue submits jobs and broadcasts over NATS JetStream.
+// Package queue declares jobs and broadcasts and the Queue a driver carries them on.
 package queue
 
 import (
 	"context"
-	"time"
 
-	"github.com/google/uuid"
-	"go.opentelemetry.io/otel/attribute"
-
-	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/worker"
 )
 
-const (
-	publishBudget     = 5 * time.Second
-	publishAttempt    = time.Second
-	publishRetryGap   = 200 * time.Millisecond
-	workMaxAge        = 7 * 24 * time.Hour
-	dlqMaxAge         = 30 * 24 * time.Hour
-	broadcastMaxAge   = time.Hour
-	streamMaxBytes    = 256 << 20
-	broadcastMaxBytes = 64 << 20
-	duplicateWindow   = 2 * time.Minute
-	streamReplicas    = 1
-)
-
-func spanAttributes(ctx context.Context, p publication) []attribute.KeyValue {
-	attrs := make([]attribute.KeyValue, 0, 6)
-	attrs = append(attrs,
-		attribute.String("messaging.system", "nats"),
-		attribute.String(p.kind, p.name),
-		attribute.String("subject", p.subject),
-		attribute.String("stream", p.stream),
-	)
-	tc, err := tenant.From(ctx)
-	if err != nil {
-		return attrs
-	}
-	return append(attrs, tenantAttributes(tc)...)
+// Queue submits jobs and broadcasts and builds the workers that run their handlers and listeners.
+type Queue interface {
+	// Declare records the jobs Submit accepts and the broadcasts Emit accepts, refusing an invalid or duplicated one.
+	Declare(jobs []Job, broadcasts []Broadcast) error
+	// Submit publishes data as one run of job j, waiting for the driver's ack.
+	Submit(ctx context.Context, j Job, data any) error
+	// Emit publishes data to every running instance, waiting for the driver's ack.
+	Emit(ctx context.Context, b Broadcast, data any) error
+	// Consumer builds the worker that runs every handler.
+	Consumer(ctx context.Context, hs []Handler) (worker.Worker, error)
+	// Listener builds the worker that delivers the broadcasts emitted from now on to their listeners.
+	Listener(ctx context.Context, ls []Listener) (worker.Worker, error)
 }
 
-func tenantAttributes(tc tenant.Context) []attribute.KeyValue {
-	attrs := make([]attribute.KeyValue, 0, 2)
-	attrs = append(attrs, attribute.String("org_id", tc.OrgID.String()))
-	if tc.ProjectID != uuid.Nil {
-		attrs = append(attrs, attribute.String("project_id", tc.ProjectID.String()))
+// Declared is the set of jobs and broadcasts a queue accepts; the zero value accepts none.
+type Declared struct {
+	jobs       map[Job]struct{}
+	broadcasts map[Broadcast]struct{}
+}
+
+// NewDeclared validates jobs and broadcasts and refuses a duplicated one.
+func NewDeclared(jobs []Job, broadcasts []Broadcast) (*Declared, error) {
+	jobSet, jobDup, err := collect(jobs)
+	if err != nil {
+		return nil, err
 	}
-	return attrs
+	broadcastSet, broadcastDup, err := collect(broadcasts)
+	if err != nil {
+		return nil, err
+	}
+	if err := wiringError(append(jobDup, broadcastDup...)); err != nil {
+		return nil, err
+	}
+	return &Declared{jobs: jobSet, broadcasts: broadcastSet}, nil
+}
+
+// HasJob reports whether j was declared.
+func (d *Declared) HasJob(j Job) bool {
+	_, ok := d.jobs[j]
+	return ok
+}
+
+// HasBroadcast reports whether b was declared.
+func (d *Declared) HasBroadcast(b Broadcast) bool {
+	_, ok := d.broadcasts[b]
+	return ok
+}
+
+// CheckHandlers refuses a handler without Handle, an invalid job or a job handled twice.
+func CheckHandlers(hs []Handler) error {
+	jobs := make([]Job, 0, len(hs))
+	for _, h := range hs {
+		jobs = append(jobs, h.Job)
+	}
+	return checkWiring(jobs, func(i int) bool { return hs[i].Handle != nil })
+}
+
+// CheckListeners refuses a listener without Handle, an invalid broadcast or a broadcast listened to twice.
+func CheckListeners(ls []Listener) error {
+	broadcasts := make([]Broadcast, 0, len(ls))
+	for _, l := range ls {
+		broadcasts = append(broadcasts, l.Broadcast)
+	}
+	return checkWiring(broadcasts, func(i int) bool { return ls[i].Handle != nil })
 }
 
 type declarable interface {

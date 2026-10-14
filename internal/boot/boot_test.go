@@ -32,10 +32,10 @@ import (
 func restoreSeams(t *testing.T) {
 	t.Helper()
 	s, p, m, u, l := setupTelemetry, openPool, openMigrator, migrateUp, withLock
-	bq, nc, nl, ss, or, on := buildQueueFn, newConsumer, newListener, startSeq, openRedisFn, openNATSFn
+	bq, or, on := buildQueueFn, openRedisFn, openNATSFn
 	t.Cleanup(func() {
 		setupTelemetry, openPool, openMigrator, migrateUp, withLock = s, p, m, u, l
-		buildQueueFn, newConsumer, newListener, startSeq, openRedisFn, openNATSFn = bq, nc, nl, ss, or, on
+		buildQueueFn, openRedisFn, openNATSFn = bq, or, on
 	})
 }
 
@@ -168,22 +168,14 @@ func TestBoot_ConsumerEnabled(t *testing.T) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	stubNATS(t)
-	buildQueueFn = func(context.Context, kernel.Kernel, config.Config, *nats.Conn, *slog.Logger) (*queue.Client, error) {
-		return queue.Disabled(testLogger()), nil
-	}
-	newConsumer = func(context.Context, *queue.Client, []queue.Handler) (*queue.Consumer, error) {
-		return &queue.Consumer{}, nil
-	}
-	newListener = func(*queue.Client, []queue.Listener, uint64) (*queue.Listen, error) {
-		return &queue.Listen{}, nil
-	}
-	startSeq = func(context.Context, *queue.Client) (uint64, error) { return 1, nil }
+	stubQueue(fakeQueue{})
 
 	app, err := Boot(context.Background(), natsFeatureConfig(), testLogger())
 	require.NoError(t, err)
 	assert.Len(t, app.Supervisor.Workers(), 8) // http + db-health + nats-health + outbox + mailqueue + apikey-usage + consumer + listener
 	assert.Contains(t, workerNames(app), "nats-health")
-	assert.False(t, app.Kernel.Queue.Enabled())
+	assert.Contains(t, workerNames(app), "fake-consumer")
+	assert.Contains(t, workerNames(app), "fake-listener")
 	require.NoError(t, app.Close(context.Background()))
 }
 
@@ -195,15 +187,10 @@ func TestBoot_ConsumerError(t *testing.T) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	stubNATS(t)
-	buildQueueFn = func(context.Context, kernel.Kernel, config.Config, *nats.Conn, *slog.Logger) (*queue.Client, error) {
-		return queue.Disabled(testLogger()), nil
-	}
-	newConsumer = func(context.Context, *queue.Client, []queue.Handler) (*queue.Consumer, error) {
-		return nil, errors.New("boom")
-	}
+	stubQueue(fakeQueue{consumerErr: errors.New("boom")})
 
-	_, err := Boot(context.Background(), config.Config{DB: config.DBConfig{DSN: "x"}, Queue: config.QueueConfig{Enabled: true}}, testLogger())
-	assert.Error(t, err)
+	_, err := Boot(context.Background(), natsFeatureConfig(), testLogger())
+	assert.ErrorContains(t, err, "boom")
 }
 
 func TestBoot_ListenerError(t *testing.T) {
@@ -214,16 +201,10 @@ func TestBoot_ListenerError(t *testing.T) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	stubNATS(t)
-	buildQueueFn = func(context.Context, kernel.Kernel, config.Config, *nats.Conn, *slog.Logger) (*queue.Client, error) {
-		return queue.Disabled(testLogger()), nil
-	}
-	newConsumer = func(context.Context, *queue.Client, []queue.Handler) (*queue.Consumer, error) {
-		return &queue.Consumer{}, nil
-	}
-	startSeq = func(context.Context, *queue.Client) (uint64, error) { return 0, errors.New("boom") }
+	stubQueue(fakeQueue{listenerErr: errors.New("boom")})
 
-	_, err := Boot(context.Background(), config.Config{DB: config.DBConfig{DSN: "x"}, Queue: config.QueueConfig{Enabled: true}}, testLogger())
-	assert.Error(t, err)
+	_, err := Boot(context.Background(), natsFeatureConfig(), testLogger())
+	assert.ErrorContains(t, err, "boom")
 }
 
 func TestBoot_NoAutoMigrate(t *testing.T) {
@@ -345,6 +326,31 @@ func TestIncidentCounter(t *testing.T) {
 	c.Inc(context.Background(), "unexpected") // no-op provider; must not panic
 }
 
+type fakeQueue struct {
+	queue.Queue
+	consumerErr, listenerErr error
+}
+
+func (f fakeQueue) Consumer(context.Context, []queue.Handler) (worker.Worker, error) {
+	if f.consumerErr != nil {
+		return nil, f.consumerErr
+	}
+	return fakeWorker{name: "fake-consumer", run: func(context.Context) error { return nil }}, nil
+}
+
+func (f fakeQueue) Listener(context.Context, []queue.Listener) (worker.Worker, error) {
+	if f.listenerErr != nil {
+		return nil, f.listenerErr
+	}
+	return fakeWorker{name: "fake-listener", run: func(context.Context) error { return nil }}, nil
+}
+
+func stubQueue(q queue.Queue) {
+	buildQueueFn = func(context.Context, kernel.Kernel, config.Config, *nats.Conn, *slog.Logger) (queue.Queue, error) {
+		return q, nil
+	}
+}
+
 type fakeWorker struct {
 	name string
 	run  func(context.Context) error
@@ -367,7 +373,7 @@ func TestBoot_QueueError(t *testing.T) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
 	_, nc := stubNATS(t)
-	buildQueueFn = func(context.Context, kernel.Kernel, config.Config, *nats.Conn, *slog.Logger) (*queue.Client, error) {
+	buildQueueFn = func(context.Context, kernel.Kernel, config.Config, *nats.Conn, *slog.Logger) (queue.Queue, error) {
 		return nil, errors.New("boom")
 	}
 

@@ -1,8 +1,7 @@
-package queue
+package nats
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,7 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nats-io/nats.go"
+	natsgo "github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -20,20 +19,13 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/queue"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/worker"
 )
 
-// WorkerName is the name the consumer worker registers under.
-const WorkerName = "queue.consumer"
-
-// Delivery limits for the consumer.
-const (
-	MaxAttempts       = 5
-	HandlerTimeout    = 25 * time.Second
-	DLQPublishTimeout = 4 * time.Second
-	AckWait           = 30 * time.Second
-)
+// AckWait is how long JetStream waits for an ack before it redelivers.
+const AckWait = 30 * time.Second
 
 const (
 	consumerMaxDeliver    = -1
@@ -56,52 +48,6 @@ const (
 	reportDLQFailed = "queue: dlq publish failed"
 )
 
-// Handler binds one job to the domain code that runs it.
-type Handler struct {
-	Job            Job
-	Handle         func(ctx context.Context, m Message) error
-	OnDeadLetter   func(ctx context.Context, d DeadLetter) error
-	SuppressReport bool
-}
-
-// Message is one delivery as a handler or listener sees it.
-type Message struct {
-	ID           uuid.UUID
-	Name         string
-	Version      int
-	Data         []byte
-	NumDelivered int
-	CreatedAt    time.Time
-}
-
-// DeadLetter is a message the consumer moved to the DLQ, with why.
-type DeadLetter struct {
-	Message
-	Reason string
-	Cause  string
-}
-
-// Provider is a domain that contributes queue handlers.
-type Provider interface{ ConsumerHandlers() []Handler }
-
-// Decode unmarshals m.Data into T.
-func Decode[T any](m Message) (T, error) {
-	var v T
-	if err := json.Unmarshal(m.Data, &v); err != nil {
-		var zero T
-		return zero, fmt.Errorf("queue: decode %s v%d: %w", m.Name, m.Version, err)
-	}
-	return v, nil
-}
-
-// Permanent marks err as not worth retrying.
-func Permanent(err error) error {
-	if err == nil {
-		return nil
-	}
-	return &PermanentError{Cause: err}
-}
-
 // Consumer runs every handler's consume loop as one worker.Worker.
 type Consumer struct {
 	client    *Client
@@ -112,23 +58,16 @@ type Consumer struct {
 }
 
 type binding struct {
-	h    Handler
+	h    queue.Handler
 	cons jetstream.Consumer
 }
 
 var _ worker.Worker = (*Consumer)(nil)
 
 // NewConsumer creates each handler's durable consumer.
-func NewConsumer(ctx context.Context, c *Client, hs []Handler) (*Consumer, error) {
-	jobs := make([]Job, 0, len(hs))
-	for _, h := range hs {
-		jobs = append(jobs, h.Job)
-	}
-	if err := checkWiring(jobs, func(i int) bool { return hs[i].Handle != nil }); err != nil {
+func NewConsumer(ctx context.Context, c *Client, hs []queue.Handler) (*Consumer, error) {
+	if err := queue.CheckHandlers(hs); err != nil {
 		return nil, err
-	}
-	if !c.Enabled() {
-		return nil, &DisabledError{}
 	}
 	bindings := make([]binding, 0, len(hs))
 	for _, h := range hs {
@@ -142,7 +81,7 @@ func NewConsumer(ctx context.Context, c *Client, hs []Handler) (*Consumer, error
 }
 
 // Name implements worker.Worker.
-func (c *Consumer) Name() string { return WorkerName }
+func (c *Consumer) Name() string { return queue.WorkerName }
 
 // Run consumes until ctx is cancelled; *ConsumerClosedError if a loop stops first.
 func (c *Consumer) Run(ctx context.Context) error {
@@ -181,7 +120,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 		if ctx.Err() != nil {
 			return nil
 		}
-		return &ConsumerClosedError{Subject: subject}
+		return &queue.ConsumerClosedError{Subject: subject}
 	}
 }
 
@@ -210,7 +149,7 @@ func (c *Consumer) consumeErrHandler(runCtx context.Context, b binding) jetstrea
 	subject := b.h.Job.Subject()
 	return func(cc jetstream.ConsumeContext, err error) {
 		c.client.log.Warn("queue: consume", slog.String("subject", subject), slog.String("err", err.Error()))
-		if !errors.Is(err, jetstream.ErrNoHeartbeat) && !errors.Is(err, nats.ErrNoResponders) {
+		if !errors.Is(err, jetstream.ErrNoHeartbeat) && !errors.Is(err, natsgo.ErrNoResponders) {
 			return
 		}
 		go c.probe(runCtx, cc, b.cons, subject)
@@ -228,7 +167,7 @@ func (c *Consumer) probe(runCtx context.Context, cc jetstream.ConsumeContext, co
 	cc.Stop()
 }
 
-func (c *Consumer) handle(runCtx context.Context, h Handler) jetstream.MessageHandler {
+func (c *Consumer) handle(runCtx context.Context, h queue.Handler) jetstream.MessageHandler {
 	subject := h.Job.Subject()
 	pub := c.client.jobPublication(h.Job)
 	return func(msg jetstream.Msg) {
@@ -239,8 +178,8 @@ func (c *Consumer) handle(runCtx context.Context, h Handler) jetstream.MessageHa
 			c.settle(msg.NakWithDelay(unreadableRetryDelay), "nak", subject)
 			return
 		}
-		n := MaxAttempts + 1
-		if meta.NumDelivered <= MaxAttempts+1 {
+		n := queue.MaxAttempts + 1
+		if meta.NumDelivered <= queue.MaxAttempts+1 {
 			n = int(meta.NumDelivered)
 		}
 		ctx := extractTrace(context.WithoutCancel(runCtx), msg.Headers())
@@ -265,11 +204,11 @@ func (c *Consumer) handle(runCtx context.Context, h Handler) jetstream.MessageHa
 			ctx = tenant.Into(ctx, tc)
 			span.SetAttributes(tenantAttributes(tc)...)
 		}
-		if n > MaxAttempts {
+		if n > queue.MaxAttempts {
 			c.deadLetter(ctx, h, msg, m, meta, reasonExhausted, errors.New(pastCapCause))
 			return
 		}
-		herr := c.client.safely(ctx, subject, HandlerTimeout, func(ctx context.Context) error { return h.Handle(ctx, m) })
+		herr := c.client.safely(ctx, subject, queue.HandlerTimeout, func(ctx context.Context) error { return h.Handle(ctx, m) })
 		if herr != nil {
 			span.RecordError(herr)
 			span.SetStatus(codes.Error, herr.Error())
@@ -278,9 +217,9 @@ func (c *Consumer) handle(runCtx context.Context, h Handler) jetstream.MessageHa
 		case herr == nil:
 			c.count(ctx, outcomeOK)
 			c.settle(msg.Ack(), "ack", subject)
-		case IsPermanentError(herr):
+		case queue.IsPermanentError(herr):
 			c.deadLetter(ctx, h, msg, m, meta, reasonPermanent, herr)
-		case n < MaxAttempts:
+		case n < queue.MaxAttempts:
 			c.client.log.WarnContext(ctx, "queue: handler failed, retrying",
 				slog.String("subject", subject), slog.Int("attempt", n), slog.String("err", herr.Error()))
 			c.count(ctx, outcomeRetry)
@@ -307,9 +246,9 @@ func (c *Client) safely(ctx context.Context, subject string, timeout time.Durati
 	return fn(ctx)
 }
 
-func decodeMessage(p publication, msg jetstream.Msg, n int) (Message, tenant.Context, bool, error) {
+func decodeMessage(p publication, msg jetstream.Msg, n int) (queue.Message, tenant.Context, bool, error) {
 	h := msg.Headers()
-	m := Message{Name: h.Get(p.nameHeader), Data: msg.Data(), NumDelivered: n}
+	m := queue.Message{Name: h.Get(p.nameHeader), Data: msg.Data(), NumDelivered: n}
 	var errs []error
 	id, err := uuid.Parse(h.Get(headerMsgID))
 	if err != nil {
@@ -338,9 +277,9 @@ func decodeMessage(p publication, msg jetstream.Msg, n int) (Message, tenant.Con
 
 func (c *Consumer) deadLetter(
 	ctx context.Context,
-	h Handler,
+	h queue.Handler,
 	msg jetstream.Msg,
-	m Message,
+	m queue.Message,
 	meta *jetstream.MsgMetadata,
 	reason string,
 	cause error,
@@ -351,11 +290,11 @@ func (c *Consumer) deadLetter(
 	span := trace.SpanFromContext(ctx)
 	span.SetStatus(codes.Error, reason+": "+causeText)
 
-	dlq := nats.NewMsg(dlqSubject(subject))
+	dlq := natsgo.NewMsg(dlqSubject(subject))
 	dlq.Data = msg.Data()
 	dlq.Header = maps.Clone(msg.Headers())
 	if dlq.Header == nil {
-		dlq.Header = nats.Header{}
+		dlq.Header = natsgo.Header{}
 	}
 	dlq.Header.Set(headerDlqReason, reason)
 	dlq.Header.Set(headerDlqError, causeText)
@@ -371,8 +310,9 @@ func (c *Consumer) deadLetter(
 	}
 	c.settle(msg.Term(), "term", subject)
 	if h.OnDeadLetter != nil {
-		d := DeadLetter{Message: m, Reason: reason, Cause: causeText}
-		if err := c.client.safely(ctx, subject, HandlerTimeout, func(ctx context.Context) error { return h.OnDeadLetter(ctx, d) }); err != nil {
+		d := queue.DeadLetter{Message: m, Reason: reason, Cause: causeText}
+		onDead := func(ctx context.Context) error { return h.OnDeadLetter(ctx, d) }
+		if err := c.client.safely(ctx, subject, queue.HandlerTimeout, onDead); err != nil {
 			c.client.log.ErrorContext(ctx, "queue: OnDeadLetter", slog.String("subject", subject), slog.String("err", err.Error()))
 		}
 	}
@@ -383,7 +323,7 @@ func (c *Consumer) deadLetter(
 	_ = c.client.unexpected(ctx, reportDead, cause, attrs...)
 }
 
-func (c *Consumer) dlqPublication(j Job) publication {
+func (c *Consumer) dlqPublication(j queue.Job) publication {
 	return publication{
 		span:    "queue.publish",
 		stream:  streamDLQ,
@@ -391,7 +331,7 @@ func (c *Consumer) dlqPublication(j Job) publication {
 		kind:    "job",
 		name:    j.Name,
 		version: j.Version,
-		budget:  DLQPublishTimeout,
+		budget:  queue.DLQPublishTimeout,
 		ok:      c.client.metrics.consumed,
 		okOpts:  []metric.AddOption{metric.WithAttributes(attribute.String("outcome", outcomeDead))},
 		failed:  c.client.metrics.dlqPublishFailed,

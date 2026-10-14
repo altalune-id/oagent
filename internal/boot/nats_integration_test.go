@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/kernel/db"
+	natsqueue "altalune.id/oagent/internal/kernel/queue/nats"
 	"altalune.id/oagent/internal/testutil/natstest"
 )
 
@@ -31,7 +32,7 @@ func TestBoot_QueueOnNATSAccount(t *testing.T) {
 
 	app, err := Boot(t.Context(), cfg, testLogger())
 	require.NoError(t, err)
-	assert.True(t, app.Kernel.Queue.Enabled())
+	assert.IsType(t, &natsqueue.Client{}, app.Kernel.Queue)
 	assert.Contains(t, workerNames(app), "nats-health")
 
 	other, err := nats.Connect(ns.ClientURL(), nats.UserInfo(natstest.UserB, natstest.PasswordB))

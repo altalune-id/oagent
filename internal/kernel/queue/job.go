@@ -6,8 +6,8 @@ type Job struct {
 	Version int
 }
 
-// Subject returns the NATS subject the job is published on.
-func (j Job) Subject() string { return subjectFor(jobSubjectPrefix, j.Name, j.Version) }
+// Subject returns the subject the job is published on.
+func (j Job) Subject() string { return subjectFor(JobSubjectPrefix, j.Name, j.Version) }
 
 // Validate reports an *InvalidJobError when the name or version breaks the naming rule.
 func (j Job) Validate() error {
@@ -23,8 +23,8 @@ type Broadcast struct {
 	Version int
 }
 
-// Subject returns the NATS subject the broadcast is published on.
-func (b Broadcast) Subject() string { return subjectFor(broadcastSubjectPrefix, b.Name, b.Version) }
+// Subject returns the subject the broadcast is published on.
+func (b Broadcast) Subject() string { return subjectFor(BroadcastSubjectPrefix, b.Name, b.Version) }
 
 // Validate reports an *InvalidBroadcastError when the name or version breaks the naming rule.
 func (b Broadcast) Validate() error {

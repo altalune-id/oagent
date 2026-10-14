@@ -1,4 +1,4 @@
-package queue
+package nats
 
 import (
 	"context"
@@ -9,19 +9,17 @@ import (
 	"slices"
 	"time"
 
-	"github.com/nats-io/nats.go"
+	natsgo "github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 
+	"altalune.id/oagent/internal/kernel/queue"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/worker"
 )
-
-// ListenerName is the name the broadcast listener worker registers under.
-const ListenerName = "queue.listener"
 
 const listenerTimeout = 5 * time.Second
 
@@ -30,19 +28,10 @@ const (
 	reportListenerFailed = "queue: broadcast listener failed"
 )
 
-// Listener binds one broadcast to the code that refreshes this instance's state.
-type Listener struct {
-	Broadcast Broadcast
-	Handle    func(ctx context.Context, m Message) error
-}
-
-// ListenerProvider is implemented by anything that owns per-instance state a broadcast refreshes.
-type ListenerProvider interface{ Listeners() []Listener }
-
 // Listen delivers every broadcast to its listener through one ordered consumer per instance.
 type Listen struct {
 	client    *Client
-	listeners map[string]Listener
+	listeners map[string]queue.Listener
 	subjects  []string
 	startSeq  uint64
 }
@@ -50,18 +39,11 @@ type Listen struct {
 var _ worker.Worker = (*Listen)(nil)
 
 // NewListener builds the worker that delivers broadcasts from startSeq on.
-func NewListener(c *Client, ls []Listener, startSeq uint64) (*Listen, error) {
-	broadcasts := make([]Broadcast, 0, len(ls))
-	for _, l := range ls {
-		broadcasts = append(broadcasts, l.Broadcast)
-	}
-	if err := checkWiring(broadcasts, func(i int) bool { return ls[i].Handle != nil }); err != nil {
+func NewListener(c *Client, ls []queue.Listener, startSeq uint64) (*Listen, error) {
+	if err := queue.CheckListeners(ls); err != nil {
 		return nil, err
 	}
-	if !c.Enabled() {
-		return nil, &DisabledError{}
-	}
-	listeners := make(map[string]Listener, len(ls))
+	listeners := make(map[string]queue.Listener, len(ls))
 	for _, l := range ls {
 		listeners[l.Broadcast.Subject()] = l
 	}
@@ -69,7 +51,7 @@ func NewListener(c *Client, ls []Listener, startSeq uint64) (*Listen, error) {
 }
 
 // Name implements worker.Worker.
-func (l *Listen) Name() string { return ListenerName }
+func (l *Listen) Name() string { return queue.ListenerName }
 
 // Run listens until ctx is cancelled; *ConsumerClosedError if the loop stops first.
 func (l *Listen) Run(ctx context.Context) error {
@@ -91,7 +73,7 @@ func (l *Listen) Run(ctx context.Context) error {
 	select {
 	case <-cc.Closed():
 		if !cancelled(ctx) {
-			return &ConsumerClosedError{Subject: listenerSubject}
+			return &queue.ConsumerClosedError{Subject: listenerSubject}
 		}
 		return nil
 	case <-ctx.Done():
@@ -109,8 +91,8 @@ func startFailed(ctx context.Context, op string, err error) error {
 	switch {
 	case cancelled(ctx):
 		return nil
-	case errors.Is(err, nats.ErrConnectionClosed):
-		return &ConsumerClosedError{Subject: listenerSubject}
+	case errors.Is(err, natsgo.ErrConnectionClosed):
+		return &queue.ConsumerClosedError{Subject: listenerSubject}
 	}
 	return fmt.Errorf("queue: listener: %s: %w", op, err)
 }

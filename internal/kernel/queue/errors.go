@@ -130,10 +130,10 @@ func IsConsumerClosedError(err error) bool {
 	return ok
 }
 
-// DisabledError reports a call that needs a connected queue on a disabled Client.
+// DisabledError reports a consumer or listener asked of the Disabled queue.
 type DisabledError struct{}
 
-func (e *DisabledError) Error() string { return "queue: disabled, no NATS connection" }
+func (e *DisabledError) Error() string { return "queue: disabled" }
 
 // IsDisabledError reports whether err's tree contains a *DisabledError.
 func IsDisabledError(err error) bool {

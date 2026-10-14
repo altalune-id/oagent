@@ -1,4 +1,4 @@
-package queue
+package nats
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nats-io/nats.go"
+	natsgo "github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"go.opentelemetry.io/otel/metric"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
@@ -19,25 +19,22 @@ import (
 	tracenoop "go.opentelemetry.io/otel/trace/noop"
 
 	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/queue"
 	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/worker"
 )
 
-// Client publishes jobs and broadcasts; a disabled Client accepts every call and publishes nothing.
+// Client is the queue on NATS JetStream.
 type Client struct {
-	nc         *nats.Conn
+	nc         *natsgo.Conn
 	js         jetstream.JetStream
 	log        *slog.Logger
 	tracer     trace.Tracer
 	unexpected apperror.UnexpectedFunc
 	metrics    metrics
-	declared   atomic.Pointer[declaredSet]
+	declared   atomic.Pointer[queue.Declared]
 	budget     time.Duration
 	onAttempt  func()
-}
-
-type declaredSet struct {
-	jobs       map[Job]struct{}
-	broadcasts map[Broadcast]struct{}
 }
 
 type publication struct {
@@ -56,7 +53,7 @@ type publication struct {
 }
 
 // Open ensures the streams on nc and returns a Client; the caller owns nc and closes it.
-func Open(ctx context.Context, nc *nats.Conn, o Options) (*Client, error) {
+func Open(ctx context.Context, nc *natsgo.Conn, o Options) (*Client, error) {
 	if o.Unexpected == nil {
 		return nil, errors.New("queue: Options.Unexpected is required")
 	}
@@ -79,13 +76,6 @@ func Open(ctx context.Context, nc *nats.Conn, o Options) (*Client, error) {
 	return c, nil
 }
 
-// Disabled returns a Client with no connection, whose Submit and Emit do nothing.
-func Disabled(log *slog.Logger) *Client {
-	c, _ := newClient(log, nil, nil)
-	c.log.Info("queue: disabled — Submit is a no-op")
-	return c
-}
-
 func newClient(log *slog.Logger, tracer trace.Tracer, meter metric.Meter) (*Client, error) {
 	if log == nil {
 		log = slog.New(slog.DiscardHandler)
@@ -101,57 +91,60 @@ func newClient(log *slog.Logger, tracer trace.Tracer, meter metric.Meter) (*Clie
 		return nil, err
 	}
 	c := &Client{log: log, tracer: tracer, metrics: m, budget: publishBudget}
-	c.declared.Store(&declaredSet{})
+	c.declared.Store(&queue.Declared{})
 	return c, nil
 }
 
-// Enabled reports whether c holds a NATS connection.
-func (c *Client) Enabled() bool { return c.nc != nil }
-
-// Declare records the jobs Submit accepts and the broadcasts Emit accepts, refusing an invalid or duplicated one.
-func (c *Client) Declare(jobs []Job, broadcasts []Broadcast) error {
-	jobSet, jobDup, err := collect(jobs)
+// Declare implements queue.Queue.
+func (c *Client) Declare(jobs []queue.Job, broadcasts []queue.Broadcast) error {
+	d, err := queue.NewDeclared(jobs, broadcasts)
 	if err != nil {
 		return err
 	}
-	broadcastSet, broadcastDup, err := collect(broadcasts)
-	if err != nil {
-		return err
-	}
-	if err := wiringError(append(jobDup, broadcastDup...)); err != nil {
-		return err
-	}
-	c.declared.Store(&declaredSet{jobs: jobSet, broadcasts: broadcastSet})
+	c.declared.Store(d)
 	return nil
 }
 
-// Submit publishes data as one run of job j, waiting for the stream's ack.
-func (c *Client) Submit(ctx context.Context, j Job, data any) error {
-	if !c.Enabled() {
-		return nil
-	}
-	if _, ok := c.declared.Load().jobs[j]; !ok {
-		return &UndeclaredJobError{Job: j}
+// Submit implements queue.Queue: it waits for the WORK stream's ack.
+func (c *Client) Submit(ctx context.Context, j queue.Job, data any) error {
+	if !c.declared.Load().HasJob(j) {
+		return &queue.UndeclaredJobError{Job: j}
 	}
 	return c.send(ctx, c.jobPublication(j), data)
 }
 
-// Emit publishes data to every running instance, waiting for the stream's ack.
-func (c *Client) Emit(ctx context.Context, b Broadcast, data any) error {
-	if !c.Enabled() {
-		return nil
-	}
-	if _, ok := c.declared.Load().broadcasts[b]; !ok {
-		return &UndeclaredBroadcastError{Broadcast: b}
+// Emit implements queue.Queue: it waits for the BROADCAST stream's ack.
+func (c *Client) Emit(ctx context.Context, b queue.Broadcast, data any) error {
+	if !c.declared.Load().HasBroadcast(b) {
+		return &queue.UndeclaredBroadcastError{Broadcast: b}
 	}
 	return c.send(ctx, c.broadcastPublication(b), data)
 }
 
+// Consumer implements queue.Queue with one durable consumer per handler.
+func (c *Client) Consumer(ctx context.Context, hs []queue.Handler) (worker.Worker, error) {
+	cons, err := NewConsumer(ctx, c, hs)
+	if err != nil {
+		return nil, err
+	}
+	return cons, nil
+}
+
+// Listener implements queue.Queue: it delivers broadcasts from the BROADCAST stream's next sequence on.
+func (c *Client) Listener(ctx context.Context, ls []queue.Listener) (worker.Worker, error) {
+	seq, err := c.BroadcastStartSeq(ctx)
+	if err != nil {
+		return nil, err
+	}
+	l, err := NewListener(c, ls, seq)
+	if err != nil {
+		return nil, err
+	}
+	return l, nil
+}
+
 // BroadcastStartSeq returns the BROADCAST stream's next sequence.
 func (c *Client) BroadcastStartSeq(ctx context.Context) (uint64, error) {
-	if !c.Enabled() {
-		return 0, nil
-	}
 	s, err := c.js.Stream(ctx, streamBroadcast)
 	if err != nil {
 		return 0, fmt.Errorf("queue: stream %s: %w", streamBroadcast, err)
@@ -163,7 +156,7 @@ func (c *Client) BroadcastStartSeq(ctx context.Context) (uint64, error) {
 	return info.State.LastSeq + 1, nil
 }
 
-func (c *Client) jobPublication(j Job) publication {
+func (c *Client) jobPublication(j queue.Job) publication {
 	return publication{
 		span:          "queue.publish",
 		stream:        streamWork,
@@ -179,7 +172,7 @@ func (c *Client) jobPublication(j Job) publication {
 	}
 }
 
-func (c *Client) broadcastPublication(b Broadcast) publication {
+func (c *Client) broadcastPublication(b queue.Broadcast) publication {
 	return publication{
 		span:          "queue.emit",
 		stream:        streamBroadcast,
@@ -198,7 +191,7 @@ func (c *Client) broadcastPublication(b Broadcast) publication {
 func (c *Client) send(ctx context.Context, p publication, data any) error {
 	id, err := uuid.NewV7()
 	if err != nil {
-		return &PublishError{Subject: p.subject, Cause: err}
+		return &queue.PublishError{Subject: p.subject, Cause: err}
 	}
 	return c.publish(ctx, p, data, id)
 }
@@ -207,9 +200,9 @@ func (c *Client) publish(ctx context.Context, p publication, data any, id uuid.U
 	body, err := json.Marshal(data)
 	if err != nil {
 		p.failed.Add(ctx, 1)
-		return &PublishError{Subject: p.subject, Cause: err}
+		return &queue.PublishError{Subject: p.subject, Cause: err}
 	}
-	msg := nats.NewMsg(p.subject)
+	msg := natsgo.NewMsg(p.subject)
 	msg.Data = body
 	msg.Header.Set(p.nameHeader, p.name)
 	msg.Header.Set(p.versionHeader, strconv.Itoa(p.version))
@@ -220,7 +213,7 @@ func (c *Client) publish(ctx context.Context, p publication, data any, id uuid.U
 	return c.deliver(ctx, p, msg, id.String())
 }
 
-func (c *Client) deliver(ctx context.Context, p publication, msg *nats.Msg, id string) error {
+func (c *Client) deliver(ctx context.Context, p publication, msg *natsgo.Msg, id string) error {
 	ctx, span := c.tracer.Start(ctx, p.span, trace.WithSpanKind(trace.SpanKindProducer), trace.WithAttributes(spanAttributes(ctx, p)...))
 	defer span.End()
 	injectTrace(ctx, msg.Header)
@@ -230,13 +223,13 @@ func (c *Client) deliver(ctx context.Context, p publication, msg *nats.Msg, id s
 	if err := c.publishWithRetry(pubCtx, msg, id); err != nil {
 		span.RecordError(err)
 		p.failed.Add(ctx, 1)
-		return &PublishError{Subject: p.subject, Cause: err}
+		return &queue.PublishError{Subject: p.subject, Cause: err}
 	}
 	p.ok.Add(ctx, 1, p.okOpts...)
 	return nil
 }
 
-func (c *Client) publishWithRetry(ctx context.Context, msg *nats.Msg, id string) error {
+func (c *Client) publishWithRetry(ctx context.Context, msg *natsgo.Msg, id string) error {
 	for {
 		err := c.publishOnce(ctx, msg, id)
 		if err == nil || !retryable(err) {
@@ -250,7 +243,7 @@ func (c *Client) publishWithRetry(ctx context.Context, msg *nats.Msg, id string)
 	}
 }
 
-func (c *Client) publishOnce(ctx context.Context, msg *nats.Msg, id string) error {
+func (c *Client) publishOnce(ctx context.Context, msg *natsgo.Msg, id string) error {
 	if c.onAttempt != nil {
 		c.onAttempt()
 	}
@@ -263,11 +256,11 @@ func (c *Client) publishOnce(ctx context.Context, msg *nats.Msg, id string) erro
 func retryable(err error) bool {
 	for _, target := range []error{
 		context.DeadlineExceeded,
-		nats.ErrTimeout,
+		natsgo.ErrTimeout,
 		jetstream.ErrNoStreamResponse,
-		nats.ErrNoResponders,
-		nats.ErrConnectionClosed,
-		nats.ErrDisconnected,
+		natsgo.ErrNoResponders,
+		natsgo.ErrConnectionClosed,
+		natsgo.ErrDisconnected,
 	} {
 		if errors.Is(err, target) {
 			return true

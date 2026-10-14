@@ -12,13 +12,16 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/kernel/queue"
+	natsqueue "altalune.id/oagent/internal/kernel/queue/nats"
 	"altalune.id/oagent/internal/testutil/natstest"
 )
 
 func TestBuildQueue_Disabled(t *testing.T) {
-	c, err := buildQueue(context.Background(), kernel.Kernel{}, config.Config{}, nil, testLogger())
+	q, err := buildQueue(context.Background(), kernel.Kernel{}, config.Config{}, nil, testLogger())
 	require.NoError(t, err)
-	assert.False(t, c.Enabled())
+	_, err = q.Consumer(t.Context(), nil)
+	assert.True(t, queue.IsDisabledError(err))
 }
 
 func TestBuildQueue_NATSDriverRunsOnTheSharedConnection(t *testing.T) {
@@ -28,9 +31,9 @@ func TestBuildQueue_NATSDriverRunsOnTheSharedConnection(t *testing.T) {
 	t.Cleanup(nc.Close)
 	k := kernel.Kernel{Reporter: apperror.NewReporter(nil, false)}
 
-	c, err := buildQueue(t.Context(), k, natsFeatureConfig(), nc, testLogger())
+	q, err := buildQueue(t.Context(), k, natsFeatureConfig(), nc, testLogger())
 	require.NoError(t, err)
-	assert.True(t, c.Enabled())
+	assert.IsType(t, &natsqueue.Client{}, q)
 	js, err := jetstream.New(nc)
 	require.NoError(t, err)
 	_, err = js.Stream(t.Context(), "WORK")
@@ -41,4 +44,11 @@ func TestBuildQueue_UnknownDriver(t *testing.T) {
 	cfg := config.Config{Queue: config.QueueConfig{Enabled: true, Driver: "kafka"}}
 	_, err := buildQueue(t.Context(), kernel.Kernel{}, cfg, nil, testLogger())
 	assert.ErrorContains(t, err, `queue.driver "kafka"`)
+}
+
+func TestBuildQueue_NATSDriverErrorIsANilQueue(t *testing.T) {
+	k := kernel.Kernel{Reporter: apperror.NewReporter(nil, false)}
+	q, err := buildQueue(t.Context(), k, natsFeatureConfig(), nil, testLogger())
+	require.Error(t, err)
+	assert.True(t, q == nil, "no typed nil inside the interface")
 }

@@ -1,4 +1,4 @@
-package queue
+package nats
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
+	"altalune.id/oagent/internal/kernel/queue"
 	"altalune.id/oagent/internal/kernel/tenant"
 )
 
@@ -21,7 +22,7 @@ func newBroadcastEnv(t *testing.T, o testSetup) consumerEnv {
 	rec := &recorder{}
 	o.Unexpected = rec.unexpected
 	c := connectTest(t, o)
-	require.NoError(t, c.Declare(nil, []Broadcast{testBroadcast()}))
+	require.NoError(t, c.Declare(nil, []queue.Broadcast{testBroadcast()}))
 	return consumerEnv{client: c, rec: rec}
 }
 
@@ -32,11 +33,11 @@ func startSeq(t *testing.T, c *Client) uint64 {
 	return seq
 }
 
-func testListener(fn func(ctx context.Context, m Message) error) Listener {
-	return Listener{Broadcast: testBroadcast(), Handle: fn}
+func testListener(fn func(ctx context.Context, m queue.Message) error) queue.Listener {
+	return queue.Listener{Broadcast: testBroadcast(), Handle: fn}
 }
 
-func listen(t *testing.T, c *Client, seq uint64, ls ...Listener) <-chan error {
+func listen(t *testing.T, c *Client, seq uint64, ls ...queue.Listener) <-chan error {
 	t.Helper()
 	l, err := NewListener(c, ls, seq)
 	require.NoError(t, err)
@@ -44,9 +45,9 @@ func listen(t *testing.T, c *Client, seq uint64, ls ...Listener) <-chan error {
 	return done
 }
 
-func titles(ch chan<- string) Listener {
-	return testListener(func(_ context.Context, m Message) error {
-		p, err := Decode[testPayload](m)
+func titles(ch chan<- string) queue.Listener {
+	return testListener(func(_ context.Context, m queue.Message) error {
+		p, err := queue.Decode[testPayload](m)
 		if err != nil {
 			return err
 		}
@@ -64,8 +65,8 @@ func TestListener_EveryInstanceHearsTheBroadcastIncludingTheEmitter(t *testing.T
 	var flagA, flagB atomic.Bool
 	flagA.Store(true)
 	flagB.Store(true)
-	lower := func(f *atomic.Bool) Listener {
-		return testListener(func(context.Context, Message) error {
+	lower := func(f *atomic.Bool) queue.Listener {
+		return testListener(func(context.Context, queue.Message) error {
 			f.Store(false)
 			return nil
 		})
@@ -115,11 +116,11 @@ func TestListener_FailureIsReportedAndListeningContinues(t *testing.T) {
 			e := newBroadcastEnv(t, o)
 			got := make(chan string, 4)
 			var calls atomic.Int32
-			listen(t, e.client, startSeq(t, e.client), testListener(func(_ context.Context, m Message) error {
+			listen(t, e.client, startSeq(t, e.client), testListener(func(_ context.Context, m queue.Message) error {
 				if calls.Add(1) == 1 {
 					return tt.fail()
 				}
-				p, err := Decode[testPayload](m)
+				p, err := queue.Decode[testPayload](m)
 				if err != nil {
 					return err
 				}
@@ -139,7 +140,7 @@ func TestListener_FailureIsReportedAndListeningContinues(t *testing.T) {
 func TestListener_HandlerTimeout(t *testing.T) {
 	e := newBroadcastEnv(t, testOptions(startNATS(t)))
 	deadline := make(chan time.Duration, 1)
-	listen(t, e.client, startSeq(t, e.client), testListener(func(ctx context.Context, _ Message) error {
+	listen(t, e.client, startSeq(t, e.client), testListener(func(ctx context.Context, _ queue.Message) error {
 		dl, ok := ctx.Deadline()
 		if !ok {
 			return errors.New("no deadline")
@@ -166,9 +167,9 @@ func TestListener_CarriesTenantAndTrace(t *testing.T) {
 	require.NoError(t, e.client.Emit(tenant.Into(t.Context(), tc), testBroadcast(), testPayload{}))
 	sent := lastMsg(t, e.client, streamBroadcast, "broadcast.test.ping.v1")
 
-	got := make(chan Message, 1)
+	got := make(chan queue.Message, 1)
 	gotTenant := make(chan tenant.Context, 1)
-	listen(t, e.client, seq, testListener(func(ctx context.Context, m Message) error {
+	listen(t, e.client, seq, testListener(func(ctx context.Context, m queue.Message) error {
 		scope, _ := tenant.From(ctx)
 		gotTenant <- scope
 		got <- m
@@ -201,7 +202,7 @@ func TestListener_CarriesTenantAndTrace(t *testing.T) {
 func TestListener_UnscopedHasNoTenant(t *testing.T) {
 	e := newBroadcastEnv(t, testOptions(startNATS(t)))
 	scoped := make(chan bool, 1)
-	listen(t, e.client, startSeq(t, e.client), testListener(func(ctx context.Context, _ Message) error {
+	listen(t, e.client, startSeq(t, e.client), testListener(func(ctx context.Context, _ queue.Message) error {
 		_, err := tenant.From(ctx)
 		scoped <- err == nil
 		return nil
@@ -212,16 +213,16 @@ func TestListener_UnscopedHasNoTenant(t *testing.T) {
 
 func TestNewListener_Rejects(t *testing.T) {
 	e := newBroadcastEnv(t, testOptions(startNATS(t)))
-	noop := func(context.Context, Message) error { return nil }
+	noop := func(context.Context, queue.Message) error { return nil }
 
 	tests := []struct {
 		name  string
-		ls    []Listener
+		ls    []queue.Listener
 		check func(error) bool
 	}{
-		{"duplicate broadcast", []Listener{testListener(noop), testListener(noop)}, IsHandlerWiringError},
-		{"invalid broadcast", []Listener{{Broadcast: Broadcast{Name: "bad", Version: 1}, Handle: noop}}, IsInvalidBroadcastError},
-		{"nil Handle", []Listener{{Broadcast: testBroadcast()}}, IsNilHandlerError},
+		{"duplicate broadcast", []queue.Listener{testListener(noop), testListener(noop)}, queue.IsHandlerWiringError},
+		{"invalid broadcast", []queue.Listener{{Broadcast: queue.Broadcast{Name: "bad", Version: 1}, Handle: noop}}, queue.IsInvalidBroadcastError},
+		{"nil Handle", []queue.Listener{{Broadcast: testBroadcast()}}, queue.IsNilHandlerError},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -232,24 +233,12 @@ func TestNewListener_Rejects(t *testing.T) {
 	}
 }
 
-func TestNewListener_NilHandleNamesTheBroadcastSubject(t *testing.T) {
-	_, err := NewListener(Disabled(nil), []Listener{{Broadcast: testBroadcast()}}, 1)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "broadcast.test.ping.v1")
-}
-
-func TestNewListener_DisabledClient(t *testing.T) {
-	_, err := NewListener(Disabled(nil), []Listener{testListener(func(context.Context, Message) error { return nil })}, 1)
-	require.Error(t, err)
-	assert.True(t, IsDisabledError(err), "got %T: %v", err, err)
-}
-
 func TestListener_Name(t *testing.T) {
 	e := newBroadcastEnv(t, testOptions(startNATS(t)))
 	l, err := NewListener(e.client, nil, 1)
 	require.NoError(t, err)
 	assert.Equal(t, "queue.listener", l.Name())
-	assert.Equal(t, ListenerName, l.Name())
+	assert.Equal(t, queue.ListenerName, l.Name())
 }
 
 func TestListener_EmptyListReturnsAtOnceWithoutNATS(t *testing.T) {
@@ -270,7 +259,7 @@ func TestListener_EmptyListReturnsAtOnceWithoutNATS(t *testing.T) {
 
 func TestListener_RunReturnsNilOnCancel(t *testing.T) {
 	e := newBroadcastEnv(t, testOptions(startNATS(t)))
-	l, err := NewListener(e.client, []Listener{testListener(func(context.Context, Message) error { return nil })}, 1)
+	l, err := NewListener(e.client, []queue.Listener{testListener(func(context.Context, queue.Message) error { return nil })}, 1)
 	require.NoError(t, err)
 	cancel, done := runWorker(t, l)
 	require.Eventually(t, func() bool { return len(consumerNames(t, e.client)) == 1 }, waitFor, tick)
@@ -286,7 +275,7 @@ func TestListener_RunReturnsNilOnCancel(t *testing.T) {
 
 func TestListener_RunFailsWhenTheOrderedConsumerCannotBeCreated(t *testing.T) {
 	e := newBroadcastEnv(t, testOptions(startNATS(t)))
-	l, err := NewListener(e.client, []Listener{testListener(func(context.Context, Message) error { return nil })}, 1)
+	l, err := NewListener(e.client, []queue.Listener{testListener(func(context.Context, queue.Message) error { return nil })}, 1)
 	require.NoError(t, err)
 	require.NoError(t, e.client.js.DeleteStream(t.Context(), streamBroadcast))
 
@@ -297,7 +286,7 @@ func TestListener_RunFailsWhenTheOrderedConsumerCannotBeCreated(t *testing.T) {
 
 func TestListener_RunReturnsClosedWhenTheConnectionCloses(t *testing.T) {
 	e := newBroadcastEnv(t, testOptions(startNATS(t)))
-	l, err := NewListener(e.client, []Listener{testListener(func(context.Context, Message) error { return nil })}, 1)
+	l, err := NewListener(e.client, []queue.Listener{testListener(func(context.Context, queue.Message) error { return nil })}, 1)
 	require.NoError(t, err)
 	_, done := runWorker(t, l)
 	require.Eventually(t, func() bool { return len(consumerNames(t, e.client)) == 1 }, waitFor, tick)
@@ -305,7 +294,7 @@ func TestListener_RunReturnsClosedWhenTheConnectionCloses(t *testing.T) {
 	e.client.nc.Close()
 	err = receive(t, done)
 	require.Error(t, err)
-	assert.True(t, IsConsumerClosedError(err), "got %T: %v", err, err)
+	assert.True(t, queue.IsConsumerClosedError(err), "got %T: %v", err, err)
 	assert.Contains(t, err.Error(), "broadcast")
 }
 
@@ -325,7 +314,7 @@ func TestListener_ConsumerDeletedServerSideIsRecreated(t *testing.T) {
 	case title := <-got:
 		assert.Equal(t, "after", title)
 	case err := <-done:
-		assert.True(t, IsConsumerClosedError(err), "got %T: %v", err, err)
+		assert.True(t, queue.IsConsumerClosedError(err), "got %T: %v", err, err)
 	case <-time.After(waitFor):
 		t.Fatal("silent: the broadcast after the delete was never handled and Run did not return")
 	}
