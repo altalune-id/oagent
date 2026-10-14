@@ -219,3 +219,121 @@ func TestRedact_TokenInTheURL(t *testing.T) {
 	err := redact(errors.New("server said "+testToken), c)
 	assertNoSecrets(t, err.Error())
 }
+
+func TestOpen_AsyncErrorsGoToTheLogRedacted(t *testing.T) {
+	opts := &server.Options{}
+	require.NoError(t, opts.ProcessConfigString(`
+listen: "127.0.0.1:-1"
+authorization {
+  users: [{ user: oagent, password: "`+testPassword+`", permissions: { publish: { deny: "deny.>" } } }]
+}
+`))
+	opts.NoLog, opts.NoSigs = true, true
+	ns, err := server.NewServer(opts)
+	require.NoError(t, err)
+	go ns.Start()
+	require.True(t, ns.ReadyForConnections(5*time.Second))
+	t.Cleanup(ns.Shutdown)
+
+	logs := &lockedBuffer{}
+	c := testConfig("nats://" + ns.Addr().String())
+	c.User, c.Password = "oagent", testPassword
+	nc, err := Open(t.Context(), c, slog.New(slog.NewTextHandler(logs, nil)))
+	require.NoError(t, err)
+	t.Cleanup(nc.Close)
+
+	require.NoError(t, nc.Publish("deny."+testPassword, []byte("x")))
+	slow, err := nc.SubscribeSync("slow")
+	require.NoError(t, err)
+	require.NoError(t, slow.SetPendingLimits(1, -1))
+	for range 3 {
+		require.NoError(t, nc.Publish("slow", []byte("x")))
+	}
+	require.NoError(t, nc.Flush())
+
+	require.Eventually(t, func() bool {
+		return strings.Count(logs.String(), `level=WARN msg="nats: async error"`) >= 2
+	}, 5*time.Second, 10*time.Millisecond)
+	assert.Contains(t, logs.String(), "subject=slow")
+	assert.Contains(t, logs.String(), "[redacted]")
+	assertNoSecrets(t, logs.String())
+}
+
+func TestOpen_ReconnectFailureIsLoggedWithoutCredentials(t *testing.T) {
+	ns := natstest.StartAccounts(t)
+	url := "nats://" + natstest.UserA + ":" + natstest.PasswordA + "@" + ns.Addr().String()
+	logs := &lockedBuffer{}
+	nc, err := Open(t.Context(), testConfig(url), slog.New(slog.NewTextHandler(logs, nil)))
+	require.NoError(t, err)
+	t.Cleanup(nc.Close)
+
+	ns.Shutdown()
+	require.Eventually(t, func() bool {
+		return strings.Contains(logs.String(), `level=WARN msg="nats: reconnect failed"`)
+	}, 10*time.Second, 20*time.Millisecond)
+	assert.NotContains(t, logs.String(), natstest.PasswordA)
+}
+
+func TestEvents_ReconnectFailuresWarnOncePerOutage(t *testing.T) {
+	logs := &lockedBuffer{}
+	c := Config{URL: "nats://oagent:" + testPassword + "@a.internal:4222", Password: testPassword}
+	e := &events{c: c, log: slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))}
+	failed := errors.New("dial " + testPassword + ": connection refused")
+
+	e.reconnectFailed(nil, failed)
+	e.reconnectFailed(nil, failed)
+	e.reconnectFailed(nil, failed)
+	e.reconnected(nil)
+	e.reconnectFailed(nil, failed)
+	e.reconnectFailed(nil, failed)
+
+	var levels []string
+	for line := range strings.Lines(logs.String()) {
+		level, _, _ := strings.Cut(strings.SplitN(line, "level=", 2)[1], " ")
+		msg := strings.SplitN(line, "msg=", 2)[1]
+		levels = append(levels, level+" "+strings.SplitN(msg, `"`, 3)[1])
+	}
+	assert.Equal(t, []string{
+		"WARN nats: reconnect failed",
+		"DEBUG nats: reconnect failed",
+		"DEBUG nats: reconnect failed",
+		"INFO nats: reconnected",
+		"WARN nats: reconnect failed",
+		"DEBUG nats: reconnect failed",
+	}, levels)
+	assertNoSecrets(t, logs.String())
+}
+
+func TestEvents_ConcurrentCallbacks(t *testing.T) {
+	e := &events{log: discard()}
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Go(func() {
+			e.reconnectFailed(nil, errors.New("refused"))
+			e.reconnected(nil)
+		})
+	}
+	wg.Wait()
+}
+
+func TestCloser_ConcurrentCloseRunsOnce(t *testing.T) {
+	ns := natstest.Start(t)
+	nc, err := natsgo.Connect(ns.ClientURL())
+	require.NoError(t, err)
+	_, err = nc.Subscribe("busy", func(*natsgo.Msg) {})
+	require.NoError(t, err)
+	c := Closer(nc)
+
+	start := time.Now()
+	errs := make([]error, 2)
+	var wg sync.WaitGroup
+	for i := range errs {
+		wg.Go(func() { errs[i] = c.Close() })
+	}
+	wg.Wait()
+
+	require.NoError(t, errs[0])
+	require.NoError(t, errs[1])
+	assert.True(t, nc.IsClosed())
+	assert.Less(t, time.Since(start), drainTimeout)
+}

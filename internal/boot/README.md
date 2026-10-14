@@ -273,14 +273,17 @@ INFO line.
   `OAGENT_NATS_URL`, `OAGENT_NATS_USER`, `OAGENT_NATS_PASSWORD`, … The rules apply only while a
   feature uses NATS; then a missing `nats.url` or one that is not a NATS URL is a config error.
 - **Connection:** the root package `nats` (`nats.Open`) dials until `nats.connectTimeout` (backoff
-  250 ms to 2 s, 2 s per dial), reconnects forever after that and logs each disconnect and
-  reconnect. A server that can't be reached fails boot with
+  250 ms to 2 s, 2 s per dial) and reconnects forever after that. Everything it reports goes to
+  the app log, never stderr: each disconnect (WARN) and reconnect (INFO), asynchronous errors such
+  as a slow consumer or a permissions violation (WARN, with the subject when there is one), and
+  failed reconnect attempts (the first of an outage at WARN, the rest at DEBUG until it
+  reconnects). A server that can't be reached fails boot with
   `nats: cannot connect to <host> (nats.url) …`; no error or log line carries the URL's
   credentials, the token or the password. `nats.go` here only decides whether to open it
   (`NATSFeatures`), maps `nats.*` to `nats.Config`, registers the draining closer and the health
   check. Drivers take the plain `*nats.Conn`.
 - **Shutdown and readiness:** the kernel drains and closes the connection on shutdown (a failed
-  boot closes it). The `nats-health` worker checks the connection every 5 s; while it is not
+  boot closes it); the closer drains once, and a second `Close` returns the first result. The `nats-health` worker checks the connection every 5 s; while it is not
   connected (reconnecting or closed), `/readyz` answers 503. It never stops the process.
 - **Shared server:** one NATS server can serve every app, with one account per app (the
   `OAGENT` account, user `oagent`, as on `github.com/altalune-id/nats`). Accounts isolate apps,

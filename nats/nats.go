@@ -9,6 +9,8 @@ import (
 	"log/slog"
 	"net/url"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	natsgo "github.com/nats-io/nats.go"
@@ -58,15 +60,16 @@ func Open(ctx context.Context, c Config, log *slog.Logger) (*natsgo.Conn, error)
 }
 
 func options(c Config, log *slog.Logger) []natsgo.Option {
+	e := &events{c: c, log: log}
 	opts := []natsgo.Option{
 		natsgo.Name(c.Name),
 		natsgo.MaxReconnects(-1),
 		natsgo.Timeout(dialTimeout),
 		natsgo.DrainTimeout(drainTimeout),
-		natsgo.DisconnectErrHandler(func(_ *natsgo.Conn, err error) {
-			log.Warn("nats: disconnected", "err", redact(err, c))
-		}),
-		natsgo.ReconnectHandler(func(*natsgo.Conn) { log.Info("nats: reconnected") }),
+		natsgo.ErrorHandler(e.asyncError),
+		natsgo.DisconnectErrHandler(e.disconnected),
+		natsgo.ReconnectErrHandler(e.reconnectFailed),
+		natsgo.ReconnectHandler(e.reconnected),
 	}
 	switch {
 	case c.User != "":
@@ -75,6 +78,37 @@ func options(c Config, log *slog.Logger) []natsgo.Option {
 		return append(opts, natsgo.Token(c.Token))
 	}
 	return opts
+}
+
+type events struct {
+	c       Config
+	log     *slog.Logger
+	failing atomic.Bool
+}
+
+func (e *events) asyncError(_ *natsgo.Conn, sub *natsgo.Subscription, err error) {
+	attrs := []any{"err", redact(err, e.c)}
+	if sub != nil {
+		attrs = append(attrs, "subject", sub.Subject)
+	}
+	e.log.Warn("nats: async error", attrs...)
+}
+
+func (e *events) disconnected(_ *natsgo.Conn, err error) {
+	e.log.Warn("nats: disconnected", "err", redact(err, e.c))
+}
+
+func (e *events) reconnectFailed(_ *natsgo.Conn, err error) {
+	level := slog.LevelDebug
+	if e.failing.CompareAndSwap(false, true) {
+		level = slog.LevelWarn
+	}
+	e.log.Log(context.Background(), level, "nats: reconnect failed", "err", redact(err, e.c))
+}
+
+func (e *events) reconnected(*natsgo.Conn) {
+	e.failing.Store(false)
+	e.log.Info("nats: reconnected")
 }
 
 // SECURITY: the URL may hold a password, so no error repeats it or the parser's message.
@@ -117,12 +151,21 @@ func redact(err error, c Config) error {
 	return errors.New(msg)
 }
 
-// Closer drains nc on Close and waits for it to close; a closed nc is fine.
-func Closer(nc *natsgo.Conn) io.Closer { return closer{nc: nc} }
+// Closer drains nc on the first Close and waits for it to close; every Close returns that first result.
+func Closer(nc *natsgo.Conn) io.Closer { return &closer{nc: nc} }
 
-type closer struct{ nc *natsgo.Conn }
+type closer struct {
+	nc   *natsgo.Conn
+	once sync.Once
+	err  error
+}
 
-func (c closer) Close() error {
+func (c *closer) Close() error {
+	c.once.Do(func() { c.err = c.drain() })
+	return c.err
+}
+
+func (c *closer) drain() error {
 	if c.nc.IsClosed() {
 		return nil
 	}
