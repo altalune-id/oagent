@@ -28,7 +28,7 @@ COPY password password
 COPY internal internal
 RUN make ui
 
-FROM --platform=$BUILDPLATFORM golang:1.26.9-alpine AS build
+FROM --platform=$BUILDPLATFORM golang:1.27.2-alpine AS build
 WORKDIR /src
 RUN apk add --no-cache make
 
