@@ -96,13 +96,6 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
 - Conventional Commits, one line (`feat(scope): …`), template in `.gitmessage.txt`.
 - Every commit is signed (GPG or SSH). The pre-push hook refuses unsigned commits.
 - No AI attribution anywhere: no `Co-Authored-By` trailers, no "Generated with" lines, in commits, PRs, code or docs.
-- Never commit these working notes:
-  - `docs/superpowers/`
-  - `AUTH*.md`, `OAGENT-NOTES.md`, `*_BACKLOG.md`
-  - `.claude/` (except `.claude/skills/`), `.superpowers/`, `.mcp.json`
-
-  `docs/superpowers/` and `.superpowers/` are git-ignored; the rest stay untracked and are not added to `.gitignore`.
-
 - Playwright output stays in `.playwright-mcp/` (git-ignored); delete it after use.
 
 ## Agent skills
@@ -113,6 +106,7 @@ Skills in `.agents/skills/` (each linked from `.claude/skills/`) are committed a
 - `oagent-go-review`: review a change; it runs the gates.
 - `go`, `go-concurrency`, `go-proverb`, `comment-discipline`: Go and comment style.
 - `vue`, `pinia`, `vite`, `vitest`, `nuxt`, `eslint-config`: the console and the UI toolchain.
+- `daisyui`: daisyUI 5 classes, colors and themes for the console and the sign-in pages.
 - `cobra-viper`, `go-release`, `go-spec-reviewer`: CLI and config, releases, spec review.
 
 A new skill goes in `.agents/skills/<name>/` with a `.claude/skills/<name>` link, in the same commit.
