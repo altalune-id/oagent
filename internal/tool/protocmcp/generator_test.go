@@ -283,11 +283,11 @@ func TestFixtureDescriptorSetIsFresh(t *testing.T) {
 func bufCommand(t *testing.T) []string {
 	t.Helper()
 
-	if path, err := exec.LookPath("buf"); err == nil {
-		return []string{path}
-	}
 	if path, err := exec.LookPath("pnpm"); err == nil {
 		return []string{path, "exec", "buf"}
+	}
+	if path, err := exec.LookPath("buf"); err == nil {
+		return []string{path}
 	}
 	t.Skip("neither buf nor pnpm is on PATH — cannot verify that testdata/fixture.binpb is fresh")
 	return nil

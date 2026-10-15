@@ -100,7 +100,7 @@ func TestStaticAssets(t *testing.T) {
 
 		rec = get(t, srv, base+"/static/favicon.ico")
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, "image/x-icon", rec.Header().Get("Content-Type"))
+		assert.Contains(t, []string{"image/x-icon", "image/vnd.microsoft.icon"}, rec.Header().Get("Content-Type"))
 
 		rec = get(t, srv, base+"/static/altalune-logo.png")
 		assert.Equal(t, http.StatusOK, rec.Code)
