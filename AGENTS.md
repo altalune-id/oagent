@@ -2,7 +2,7 @@
 
 Rules for anyone changing oagent, people and coding agents alike. `CLAUDE.md` is a link to this file.
 
-oagent is one Go binary (module `altalune.id/oagent`) that serves an API (Connect RPC), an MCP server, a CLI and a web console. The UI lives in the pnpm workspace `ui/*` and is embedded into the binary.
+oagent is one Go binary (module `altalune.id/oagent`) that serves an API (Connect RPC), an MCP server, a CLI and a web console. The UI lives in the pnpm workspace under `ui/` (the packages are listed in `pnpm-workspace.yaml`) and is embedded into the binary.
 
 Setup: see [README.md](README.md). Architecture: [docs/architecture](docs/architecture/README.md).
 
