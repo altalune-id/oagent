@@ -498,6 +498,96 @@ func (*ChangePasswordResponse) Descriptor() ([]byte, []int) {
 	return file_auth_v1_auth_proto_rawDescGZIP(), []int{7}
 }
 
+type SetActiveOrgRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Public id of an organization the person belongs to; any other answers not found.
+	OrgId         string `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetActiveOrgRequest) Reset() {
+	*x = SetActiveOrgRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetActiveOrgRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetActiveOrgRequest) ProtoMessage() {}
+
+func (x *SetActiveOrgRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetActiveOrgRequest.ProtoReflect.Descriptor instead.
+func (*SetActiveOrgRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *SetActiveOrgRequest) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+type SetActiveOrgResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The session after the switch, as Whoami describes it.
+	Me            *WhoamiResponse `protobuf:"bytes,1,opt,name=me,proto3" json:"me,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetActiveOrgResponse) Reset() {
+	*x = SetActiveOrgResponse{}
+	mi := &file_auth_v1_auth_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetActiveOrgResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetActiveOrgResponse) ProtoMessage() {}
+
+func (x *SetActiveOrgResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetActiveOrgResponse.ProtoReflect.Descriptor instead.
+func (*SetActiveOrgResponse) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *SetActiveOrgResponse) GetMe() *WhoamiResponse {
+	if x != nil {
+		return x.Me
+	}
+	return nil
+}
+
 type SignOutEverywhereRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -506,7 +596,7 @@ type SignOutEverywhereRequest struct {
 
 func (x *SignOutEverywhereRequest) Reset() {
 	*x = SignOutEverywhereRequest{}
-	mi := &file_auth_v1_auth_proto_msgTypes[8]
+	mi := &file_auth_v1_auth_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -518,7 +608,7 @@ func (x *SignOutEverywhereRequest) String() string {
 func (*SignOutEverywhereRequest) ProtoMessage() {}
 
 func (x *SignOutEverywhereRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_v1_auth_proto_msgTypes[8]
+	mi := &file_auth_v1_auth_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -531,7 +621,7 @@ func (x *SignOutEverywhereRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SignOutEverywhereRequest.ProtoReflect.Descriptor instead.
 func (*SignOutEverywhereRequest) Descriptor() ([]byte, []int) {
-	return file_auth_v1_auth_proto_rawDescGZIP(), []int{8}
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{10}
 }
 
 type SignOutEverywhereResponse struct {
@@ -544,7 +634,7 @@ type SignOutEverywhereResponse struct {
 
 func (x *SignOutEverywhereResponse) Reset() {
 	*x = SignOutEverywhereResponse{}
-	mi := &file_auth_v1_auth_proto_msgTypes[9]
+	mi := &file_auth_v1_auth_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -556,7 +646,7 @@ func (x *SignOutEverywhereResponse) String() string {
 func (*SignOutEverywhereResponse) ProtoMessage() {}
 
 func (x *SignOutEverywhereResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_v1_auth_proto_msgTypes[9]
+	mi := &file_auth_v1_auth_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -569,7 +659,7 @@ func (x *SignOutEverywhereResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SignOutEverywhereResponse.ProtoReflect.Descriptor instead.
 func (*SignOutEverywhereResponse) Descriptor() ([]byte, []int) {
-	return file_auth_v1_auth_proto_rawDescGZIP(), []int{9}
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SignOutEverywhereResponse) GetSignedOut() bool {
@@ -617,17 +707,22 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\x10current_password\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0fcurrentPassword\x120\n" +
 	"\fnew_password\x18\x02 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\f\x18\x80\x02R\vnewPassword\"\x18\n" +
-	"\x16ChangePasswordResponse\"\x1a\n" +
+	"\x16ChangePasswordResponse\":\n" +
+	"\x13SetActiveOrgRequest\x12#\n" +
+	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\"?\n" +
+	"\x14SetActiveOrgResponse\x12'\n" +
+	"\x02me\x18\x01 \x01(\v2\x17.auth.v1.WhoamiResponseR\x02me\"\x1a\n" +
 	"\x18SignOutEverywhereRequest\":\n" +
 	"\x19SignOutEverywhereResponse\x12\x1d\n" +
 	"\n" +
-	"signed_out\x18\x01 \x01(\bR\tsignedOut2\xf9\x03\n" +
+	"signed_out\x18\x01 \x01(\bR\tsignedOut2\xc8\x04\n" +
 	"\vAuthService\x12\x95\x01\n" +
 	"\x06Whoami\x12\x16.auth.v1.WhoamiRequest\x1a\x17.auth.v1.WhoamiResponse\"Z\xca\xf3\x18V\n" +
 	"\vauth_whoami\x12BWho this MCP client acts as: user or key, active org, permissions.*\x03app\x12P\n" +
 	"\rUpdateProfile\x12\x1d.auth.v1.UpdateProfileRequest\x1a\x1e.auth.v1.UpdateProfileResponse\"\x00\x12S\n" +
 	"\x0eChangePassword\x12\x1e.auth.v1.ChangePasswordRequest\x1a\x1f.auth.v1.ChangePasswordResponse\"\x00\x12\\\n" +
 	"\x11SignOutEverywhere\x12!.auth.v1.SignOutEverywhereRequest\x1a\".auth.v1.SignOutEverywhereResponse\"\x00\x12M\n" +
+	"\fSetActiveOrg\x12\x1c.auth.v1.SetActiveOrgRequest\x1a\x1d.auth.v1.SetActiveOrgResponse\"\x00\x12M\n" +
 	"\fCreateOwnOrg\x12\x1c.auth.v1.CreateOwnOrgRequest\x1a\x1d.auth.v1.CreateOwnOrgResponse\"\x00B\x7f\n" +
 	"\vcom.auth.v1B\tAuthProtoP\x01Z(altalune.id/oagent/gen/go/auth/v1;authv1\xa2\x02\x03AXX\xaa\x02\aAuth.V1\xca\x02\aAuth\\V1\xe2\x02\x13Auth\\V1\\GPBMetadata\xea\x02\bAuth::V1b\x06proto3"
 
@@ -643,7 +738,7 @@ func file_auth_v1_auth_proto_rawDescGZIP() []byte {
 	return file_auth_v1_auth_proto_rawDescData
 }
 
-var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_auth_v1_auth_proto_goTypes = []any{
 	(*CreateOwnOrgRequest)(nil),       // 0: auth.v1.CreateOwnOrgRequest
 	(*CreateOwnOrgResponse)(nil),      // 1: auth.v1.CreateOwnOrgResponse
@@ -653,27 +748,32 @@ var file_auth_v1_auth_proto_goTypes = []any{
 	(*UpdateProfileResponse)(nil),     // 5: auth.v1.UpdateProfileResponse
 	(*ChangePasswordRequest)(nil),     // 6: auth.v1.ChangePasswordRequest
 	(*ChangePasswordResponse)(nil),    // 7: auth.v1.ChangePasswordResponse
-	(*SignOutEverywhereRequest)(nil),  // 8: auth.v1.SignOutEverywhereRequest
-	(*SignOutEverywhereResponse)(nil), // 9: auth.v1.SignOutEverywhereResponse
-	(*v1.Org)(nil),                    // 10: org.v1.Org
+	(*SetActiveOrgRequest)(nil),       // 8: auth.v1.SetActiveOrgRequest
+	(*SetActiveOrgResponse)(nil),      // 9: auth.v1.SetActiveOrgResponse
+	(*SignOutEverywhereRequest)(nil),  // 10: auth.v1.SignOutEverywhereRequest
+	(*SignOutEverywhereResponse)(nil), // 11: auth.v1.SignOutEverywhereResponse
+	(*v1.Org)(nil),                    // 12: org.v1.Org
 }
 var file_auth_v1_auth_proto_depIdxs = []int32{
-	10, // 0: auth.v1.CreateOwnOrgResponse.org:type_name -> org.v1.Org
-	2,  // 1: auth.v1.AuthService.Whoami:input_type -> auth.v1.WhoamiRequest
-	4,  // 2: auth.v1.AuthService.UpdateProfile:input_type -> auth.v1.UpdateProfileRequest
-	6,  // 3: auth.v1.AuthService.ChangePassword:input_type -> auth.v1.ChangePasswordRequest
-	8,  // 4: auth.v1.AuthService.SignOutEverywhere:input_type -> auth.v1.SignOutEverywhereRequest
-	0,  // 5: auth.v1.AuthService.CreateOwnOrg:input_type -> auth.v1.CreateOwnOrgRequest
-	3,  // 6: auth.v1.AuthService.Whoami:output_type -> auth.v1.WhoamiResponse
-	5,  // 7: auth.v1.AuthService.UpdateProfile:output_type -> auth.v1.UpdateProfileResponse
-	7,  // 8: auth.v1.AuthService.ChangePassword:output_type -> auth.v1.ChangePasswordResponse
-	9,  // 9: auth.v1.AuthService.SignOutEverywhere:output_type -> auth.v1.SignOutEverywhereResponse
-	1,  // 10: auth.v1.AuthService.CreateOwnOrg:output_type -> auth.v1.CreateOwnOrgResponse
-	6,  // [6:11] is the sub-list for method output_type
-	1,  // [1:6] is the sub-list for method input_type
-	1,  // [1:1] is the sub-list for extension type_name
-	1,  // [1:1] is the sub-list for extension extendee
-	0,  // [0:1] is the sub-list for field type_name
+	12, // 0: auth.v1.CreateOwnOrgResponse.org:type_name -> org.v1.Org
+	3,  // 1: auth.v1.SetActiveOrgResponse.me:type_name -> auth.v1.WhoamiResponse
+	2,  // 2: auth.v1.AuthService.Whoami:input_type -> auth.v1.WhoamiRequest
+	4,  // 3: auth.v1.AuthService.UpdateProfile:input_type -> auth.v1.UpdateProfileRequest
+	6,  // 4: auth.v1.AuthService.ChangePassword:input_type -> auth.v1.ChangePasswordRequest
+	10, // 5: auth.v1.AuthService.SignOutEverywhere:input_type -> auth.v1.SignOutEverywhereRequest
+	8,  // 6: auth.v1.AuthService.SetActiveOrg:input_type -> auth.v1.SetActiveOrgRequest
+	0,  // 7: auth.v1.AuthService.CreateOwnOrg:input_type -> auth.v1.CreateOwnOrgRequest
+	3,  // 8: auth.v1.AuthService.Whoami:output_type -> auth.v1.WhoamiResponse
+	5,  // 9: auth.v1.AuthService.UpdateProfile:output_type -> auth.v1.UpdateProfileResponse
+	7,  // 10: auth.v1.AuthService.ChangePassword:output_type -> auth.v1.ChangePasswordResponse
+	11, // 11: auth.v1.AuthService.SignOutEverywhere:output_type -> auth.v1.SignOutEverywhereResponse
+	9,  // 12: auth.v1.AuthService.SetActiveOrg:output_type -> auth.v1.SetActiveOrgResponse
+	1,  // 13: auth.v1.AuthService.CreateOwnOrg:output_type -> auth.v1.CreateOwnOrgResponse
+	8,  // [8:14] is the sub-list for method output_type
+	2,  // [2:8] is the sub-list for method input_type
+	2,  // [2:2] is the sub-list for extension type_name
+	2,  // [2:2] is the sub-list for extension extendee
+	0,  // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_auth_v1_auth_proto_init() }
@@ -687,7 +787,7 @@ func file_auth_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_auth_v1_auth_proto_rawDesc), len(file_auth_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -1,3 +1,4 @@
+import { Code, ConnectError } from '@connectrpc/connect';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -20,7 +21,6 @@ describe('useLanding', () => {
     listProjects = vi.fn().mockResolvedValue({ projects: [web, api] });
     setClient('$orgClient', {});
     setClient('$projectClient', { listProjects });
-    setClient('$authClient', { whoami: vi.fn().mockResolvedValue({ source: 'local', userId: 'u1' }) });
   });
 
   function withOrgs(...list: typeof acme[]) {
@@ -34,7 +34,7 @@ describe('useLanding', () => {
   });
 
   it('goes to onboarding when there are no orgs and the caller may create one', async () => {
-    setClient('$authClient', { whoami: vi.fn().mockResolvedValue({ source: 'oidc', userId: 'u1', orgCreation: true }) });
+    setClient('$authClient', { whoami: vi.fn().mockResolvedValue({ source: 'local', userId: 'u1', orgCreation: true }) });
     expect(await useLanding().resolve()).toBe('/onboarding');
   });
 
@@ -55,5 +55,42 @@ describe('useLanding', () => {
     listProjects.mockResolvedValue({ projects: [] });
     expect(await useLanding().resolve('beta')).toBe('/o/beta');
     expect(await useLanding().resolve('nope')).toBe('/o/acme');
+  });
+
+  it('lands on the active org when nothing is pinned', async () => {
+    withOrgs(acme, beta);
+    listProjects.mockResolvedValue({ projects: [] });
+    setClient('$authClient', { whoami: vi.fn().mockResolvedValue({ source: 'local', userId: 'u1', activeOrgSlug: 'beta' }), setActiveOrg: vi.fn() });
+    expect(await useLanding().resolve()).toBe('/o/beta');
+    expect(listProjects).toHaveBeenCalledWith({ orgId: beta.id });
+  });
+
+  it('switches the session to the org before it loads that org\'s projects', async () => {
+    withOrgs(acme, beta);
+    const calls: string[] = [];
+    listProjects.mockImplementation(async () => {
+      calls.push('listProjects');
+      return { projects: [] };
+    });
+    setClient('$authClient', {
+      whoami: vi.fn().mockResolvedValue({ source: 'local', userId: 'u1', activeOrgSlug: 'acme' }),
+      setActiveOrg: vi.fn(async () => {
+        calls.push('setActiveOrg');
+        return { me: { source: 'local', userId: 'u1', activeOrgSlug: 'beta' } };
+      }),
+    });
+    expect(await useLanding().resolve('beta')).toBe('/o/beta');
+    expect(calls).toEqual(['setActiveOrg', 'listProjects']);
+  });
+
+  it('goes to the org page without loading projects when the switch finds the org gone', async () => {
+    setClient('$orgClient', { listOrgs: vi.fn().mockResolvedValue({ orgs: [acme] }) });
+    withOrgs(acme, beta);
+    setClient('$authClient', {
+      whoami: vi.fn().mockResolvedValue({ source: 'local', userId: 'u1', activeOrgSlug: 'acme' }),
+      setActiveOrg: vi.fn().mockRejectedValue(new ConnectError('gone', Code.NotFound)),
+    });
+    expect(await useLanding().resolve('beta')).toBe('/o/beta');
+    expect(listProjects).not.toHaveBeenCalled();
   });
 });

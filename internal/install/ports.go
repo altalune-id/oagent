@@ -11,6 +11,7 @@ import (
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/user"
@@ -42,6 +43,12 @@ type Owners interface {
 type DefaultProjects interface {
 	BySlug(ctx context.Context, orgID uuid.UUID, slug string) (*project.Project, error)
 	Create(ctx context.Context, req project.CreateRequest) (*project.Project, error)
+}
+
+// OwnerInvites invites the first owner by email when passwords are off; the first verified sign-in claims it.
+type OwnerInvites interface {
+	InviteOwner(ctx context.Context, orgID uuid.UUID, email string) (*invite.Invite, error)
+	PendingOwner(ctx context.Context, orgID uuid.UUID) (bool, error)
 }
 
 // SignIn signs the new owner in after install.

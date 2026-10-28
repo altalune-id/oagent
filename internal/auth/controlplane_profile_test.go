@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -25,6 +26,10 @@ type recordedProfiles struct {
 	next      string
 	signedOut uuid.UUID
 	owner     uuid.UUID
+}
+
+func (r *recordedProfiles) SetActiveOrg(context.Context, string, session.Principal, uuid.UUID) (session.Principal, error) {
+	return session.Principal{}, errors.New("recordedProfiles does not switch orgs")
 }
 
 func (r *recordedProfiles) CreateOwnOrg(_ context.Context, userID uuid.UUID, name, slug string) (*org.Org, error) {

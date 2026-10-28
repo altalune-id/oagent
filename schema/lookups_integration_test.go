@@ -90,7 +90,7 @@ func TestLookups_ResolveTheMatchingRowOnly(t *testing.T) {
 	agent := uuid.New()
 	exec(`INSERT INTO `+s+`agents (id, public_id, org_id, project_id, slug, name, created_at, updated_at) VALUES ($1, 'a1', $2, $3, 'bot', 'Bot', $4, $4)`, agent, other, project, now)
 	invite := uuid.New()
-	exec(`INSERT INTO `+s+`invites (id, public_id, org_id, email, role, token_hash, expires_at, created_at, updated_at) VALUES ($1, 'i1', $2, 'a@example.com', 'member', 'tok', $3, $3, $3)`, invite, other, now.Add(time.Hour))
+	exec(`INSERT INTO `+s+`invites (id, public_id, org_id, email, role, token_hash, expires_at, created_at, updated_at, email_only) VALUES ($1, 'i1', $2, 'a@example.com', 'member', 'tok', $3, $3, $3, false)`, invite, other, now.Add(time.Hour))
 	exec(`INSERT INTO `+s+`api_keys (id, org_id, kind, all_projects, name, secret_hash, secret_hint, created_at) VALUES ($1, $2, 'org', true, 'k', '\x01'::bytea, 'abcd', $3)`, uuid.New(), other, now)
 
 	ids := func(q string, args ...any) []uuid.UUID {

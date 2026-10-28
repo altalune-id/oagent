@@ -9,30 +9,42 @@ type InstallData struct {
 	OrgName string
 	Error   string
 	Consent layout.ConsentData
+	Passwords bool
+	OIDCLabel string
 }
 
 templ Install(d layout.LayoutData, v InstallData) {
 	@layout.Layout(d) {
 		@layout.Card(d.Title) {
-			<p class="text-sm text-base-content/70">Create the first owner account. You can invite others later.</p>
+			if v.Passwords {
+				<p class="text-sm text-base-content/70">Create the first owner account. You can invite others later.</p>
+			} else {
+				<p class="text-sm text-base-content/70">Enter the first owner's email. They sign in with { v.OIDCLabel }, using that email.</p>
+			}
 			if v.Error != "" {
 				<div role="alert" class="alert alert-error alert-soft">{ v.Error }</div>
 			}
 			<form method="post" action={ d.Href("/install") } class="flex flex-col gap-3">
-				<label class="floating-label">
-					<span>Your name</span>
-					<input class="input w-full" type="text" name="name" value={ v.Name } placeholder="Your name" autocomplete="name"/>
-				</label>
+				if v.Passwords {
+					<label class="floating-label">
+						<span>Your name</span>
+						<input class="input w-full" type="text" name="name" value={ v.Name } placeholder="Your name" autocomplete="name"/>
+					</label>
+				}
 				<label class="floating-label">
 					<span>Email</span>
 					<input class="input w-full" type="email" name="email" value={ v.Email } placeholder="Email" autocomplete="email" required/>
 				</label>
-				@layout.PasswordField(d, layout.PasswordFieldData{Name: "password", Label: "Password", EmailInput: "email", NameInput: "name"})
+				if v.Passwords {
+					@layout.PasswordField(d, layout.PasswordFieldData{Name: "password", Label: "Password", EmailInput: "email", NameInput: "name"})
+				}
 				<label class="floating-label">
 					<span>Organization name</span>
 					<input class="input w-full" type="text" name="org_name" value={ v.OrgName } placeholder="Organization name"/>
 				</label>
-				@layout.Consent(d, v.Consent)
+				if v.Passwords {
+					@layout.Consent(d, v.Consent)
+				}
 				<button class="btn btn-primary mt-2" type="submit">Install</button>
 			</form>
 		}

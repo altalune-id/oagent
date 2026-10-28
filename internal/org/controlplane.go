@@ -52,13 +52,14 @@ func (s *OrgService) GetOrg(
 	return connect.NewResponse(&orgv1.GetOrgResponse{Org: OrgProto(o)}), nil
 }
 
-// ListOrgs lists the organizations the caller reaches, ordered by creation time.
+// ListOrgs lists the organizations a person belongs to, or that any other caller reaches, ordered by creation time.
 func (s *OrgService) ListOrgs(
 	ctx context.Context,
 	_ *connect.Request[orgv1.ListOrgsRequest],
 ) (*connect.Response[orgv1.ListOrgsResponse], error) {
+	p := session.PrincipalFrom(ctx)
 	list := s.orgs.List
-	if session.PrincipalFrom(ctx).Operator {
+	if p.Operator {
 		list = s.orgs.ListAll
 	}
 	orgs, err := list(ctx)
@@ -66,20 +67,29 @@ func (s *OrgService) ListOrgs(
 		return nil, err
 	}
 	var roles map[uuid.UUID]string
-	if p := session.PrincipalFrom(ctx); p.IsPerson() {
+	if p.IsPerson() {
 		if roles, err = s.orgs.MemberRoles(ctx, p.UserID); err != nil {
 			return nil, err
 		}
 	}
 	out := make([]*orgv1.Org, 0, len(orgs))
 	for _, o := range orgs {
-		if authz.ReachOrg(ctx, o.ID) {
+		if listed(ctx, p, roles, o.ID) {
 			pb := OrgProto(o)
 			pb.Role = roles[o.ID]
 			out = append(out, pb)
 		}
 	}
 	return connect.NewResponse(&orgv1.ListOrgsResponse{Orgs: out}), nil
+}
+
+// SECURITY: a person lists only the orgs they belong to; anyone else lists only the orgs they reach.
+func listed(ctx context.Context, p session.Principal, roles map[uuid.UUID]string, orgID uuid.UUID) bool {
+	if p.IsPerson() && !p.Operator {
+		_, member := roles[orgID]
+		return member
+	}
+	return authz.ReachOrg(ctx, orgID)
 }
 
 // UpdateOrg changes an organization's display name and slug.

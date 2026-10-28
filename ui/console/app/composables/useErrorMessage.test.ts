@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { connectError, setKnownKeys } from '../../test/nuxt-globals';
 import { useErrorMessage } from './useErrorMessage';
@@ -24,5 +24,16 @@ describe('useErrorMessage', () => {
 
   it('translates the fallback key for a plain error', () => {
     expect(useErrorMessage()(new Error('boom'), 'error.load_orgs')).toEqual({ message: 'error.load_orgs' });
+  });
+});
+
+describe('useErrorMessage outside a component setup', () => {
+  it('never calls useI18n, at creation or when it maps an error', () => {
+    vi.stubGlobal('useI18n', () => {
+      throw new SyntaxError('26');
+    });
+    setKnownKeys('apperror.ORG003');
+    const errorMessage = useErrorMessage();
+    expect(errorMessage(connectError('ORG003', { slug: 'a' }, ''), 'error.load_orgs')).toEqual({ message: 'apperror.ORG003|{"slug":"a"}' });
   });
 });

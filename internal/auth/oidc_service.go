@@ -6,6 +6,7 @@ import (
 
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/user"
 )
 
@@ -109,12 +110,19 @@ func (s *Service) InviteMismatch(ctx context.Context, invite, email string) (boo
 	return !strings.EqualFold(seat.Email, email), nil
 }
 
-// NOTE: only the invite the sign-in started from counts, and only when it is for this very email.
+// NOTE: the invite the sign-in started from, else the system org's email-only owner seat; only when it is for this very email.
 func (s *Service) seat(ctx context.Context, in OIDCLogin) (*Seat, error) {
-	if in.Invite == "" {
-		return nil, nil
+	var seat *Seat
+	var err error
+	if in.Invite != "" {
+		seat, err = s.deps.Invites.Seat(ctx, in.Invite)
+	} else {
+		var sys *org.Org
+		if sys, err = s.deps.Orgs.System(ctx); err != nil {
+			return nil, err
+		}
+		seat, err = s.deps.Invites.OwnerSeat(ctx, sys.ID, in.Email)
 	}
-	seat, err := s.deps.Invites.Seat(ctx, in.Invite)
 	if err != nil || seat == nil || !strings.EqualFold(seat.Email, in.Email) {
 		return nil, err
 	}
@@ -140,7 +148,7 @@ func (s *Service) join(ctx context.Context, in OIDCLogin, seat *Seat) (*user.Use
 	return u, err
 }
 
-// NOTE: an existing account that started from an invite joins that org too; a used, expired or someone else's invite is skipped.
+// NOTE: an existing account joins the invite it started from, else the email-only owner seat for its email; any other is skipped.
 func (s *Service) claim(ctx context.Context, in OIDCLogin, u *user.User) error {
 	seat, err := s.seat(ctx, in)
 	if err != nil || seat == nil {

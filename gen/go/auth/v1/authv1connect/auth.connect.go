@@ -44,6 +44,9 @@ const (
 	// AuthServiceSignOutEverywhereProcedure is the fully-qualified name of the AuthService's
 	// SignOutEverywhere RPC.
 	AuthServiceSignOutEverywhereProcedure = "/auth.v1.AuthService/SignOutEverywhere"
+	// AuthServiceSetActiveOrgProcedure is the fully-qualified name of the AuthService's SetActiveOrg
+	// RPC.
+	AuthServiceSetActiveOrgProcedure = "/auth.v1.AuthService/SetActiveOrg"
 	// AuthServiceCreateOwnOrgProcedure is the fully-qualified name of the AuthService's CreateOwnOrg
 	// RPC.
 	AuthServiceCreateOwnOrgProcedure = "/auth.v1.AuthService/CreateOwnOrg"
@@ -59,6 +62,8 @@ type AuthServiceClient interface {
 	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
 	// SignOutEverywhere ends every session of the signed-in person, this one included.
 	SignOutEverywhere(context.Context, *connect.Request[v1.SignOutEverywhereRequest]) (*connect.Response[v1.SignOutEverywhereResponse], error)
+	// SetActiveOrg makes an organization the signed-in person belongs to the active one of this session.
+	SetActiveOrg(context.Context, *connect.Request[v1.SetActiveOrgRequest]) (*connect.Response[v1.SetActiveOrgResponse], error)
 	// CreateOwnOrg creates an organization the signed-in person owns, with its default project; cloud signup's one org per person.
 	CreateOwnOrg(context.Context, *connect.Request[v1.CreateOwnOrgRequest]) (*connect.Response[v1.CreateOwnOrgResponse], error)
 }
@@ -98,6 +103,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("SignOutEverywhere")),
 			connect.WithClientOptions(opts...),
 		),
+		setActiveOrg: connect.NewClient[v1.SetActiveOrgRequest, v1.SetActiveOrgResponse](
+			httpClient,
+			baseURL+AuthServiceSetActiveOrgProcedure,
+			connect.WithSchema(authServiceMethods.ByName("SetActiveOrg")),
+			connect.WithClientOptions(opts...),
+		),
 		createOwnOrg: connect.NewClient[v1.CreateOwnOrgRequest, v1.CreateOwnOrgResponse](
 			httpClient,
 			baseURL+AuthServiceCreateOwnOrgProcedure,
@@ -113,6 +124,7 @@ type authServiceClient struct {
 	updateProfile     *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
 	changePassword    *connect.Client[v1.ChangePasswordRequest, v1.ChangePasswordResponse]
 	signOutEverywhere *connect.Client[v1.SignOutEverywhereRequest, v1.SignOutEverywhereResponse]
+	setActiveOrg      *connect.Client[v1.SetActiveOrgRequest, v1.SetActiveOrgResponse]
 	createOwnOrg      *connect.Client[v1.CreateOwnOrgRequest, v1.CreateOwnOrgResponse]
 }
 
@@ -136,6 +148,11 @@ func (c *authServiceClient) SignOutEverywhere(ctx context.Context, req *connect.
 	return c.signOutEverywhere.CallUnary(ctx, req)
 }
 
+// SetActiveOrg calls auth.v1.AuthService.SetActiveOrg.
+func (c *authServiceClient) SetActiveOrg(ctx context.Context, req *connect.Request[v1.SetActiveOrgRequest]) (*connect.Response[v1.SetActiveOrgResponse], error) {
+	return c.setActiveOrg.CallUnary(ctx, req)
+}
+
 // CreateOwnOrg calls auth.v1.AuthService.CreateOwnOrg.
 func (c *authServiceClient) CreateOwnOrg(ctx context.Context, req *connect.Request[v1.CreateOwnOrgRequest]) (*connect.Response[v1.CreateOwnOrgResponse], error) {
 	return c.createOwnOrg.CallUnary(ctx, req)
@@ -151,6 +168,8 @@ type AuthServiceHandler interface {
 	ChangePassword(context.Context, *connect.Request[v1.ChangePasswordRequest]) (*connect.Response[v1.ChangePasswordResponse], error)
 	// SignOutEverywhere ends every session of the signed-in person, this one included.
 	SignOutEverywhere(context.Context, *connect.Request[v1.SignOutEverywhereRequest]) (*connect.Response[v1.SignOutEverywhereResponse], error)
+	// SetActiveOrg makes an organization the signed-in person belongs to the active one of this session.
+	SetActiveOrg(context.Context, *connect.Request[v1.SetActiveOrgRequest]) (*connect.Response[v1.SetActiveOrgResponse], error)
 	// CreateOwnOrg creates an organization the signed-in person owns, with its default project; cloud signup's one org per person.
 	CreateOwnOrg(context.Context, *connect.Request[v1.CreateOwnOrgRequest]) (*connect.Response[v1.CreateOwnOrgResponse], error)
 }
@@ -186,6 +205,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("SignOutEverywhere")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceSetActiveOrgHandler := connect.NewUnaryHandler(
+		AuthServiceSetActiveOrgProcedure,
+		svc.SetActiveOrg,
+		connect.WithSchema(authServiceMethods.ByName("SetActiveOrg")),
+		connect.WithHandlerOptions(opts...),
+	)
 	authServiceCreateOwnOrgHandler := connect.NewUnaryHandler(
 		AuthServiceCreateOwnOrgProcedure,
 		svc.CreateOwnOrg,
@@ -202,6 +227,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceChangePasswordHandler.ServeHTTP(w, r)
 		case AuthServiceSignOutEverywhereProcedure:
 			authServiceSignOutEverywhereHandler.ServeHTTP(w, r)
+		case AuthServiceSetActiveOrgProcedure:
+			authServiceSetActiveOrgHandler.ServeHTTP(w, r)
 		case AuthServiceCreateOwnOrgProcedure:
 			authServiceCreateOwnOrgHandler.ServeHTTP(w, r)
 		default:
@@ -227,6 +254,10 @@ func (UnimplementedAuthServiceHandler) ChangePassword(context.Context, *connect.
 
 func (UnimplementedAuthServiceHandler) SignOutEverywhere(context.Context, *connect.Request[v1.SignOutEverywhereRequest]) (*connect.Response[v1.SignOutEverywhereResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.v1.AuthService.SignOutEverywhere is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) SetActiveOrg(context.Context, *connect.Request[v1.SetActiveOrgRequest]) (*connect.Response[v1.SetActiveOrgResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.v1.AuthService.SetActiveOrg is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) CreateOwnOrg(context.Context, *connect.Request[v1.CreateOwnOrgRequest]) (*connect.Response[v1.CreateOwnOrgResponse], error) {

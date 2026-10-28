@@ -181,6 +181,7 @@ func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected
 			Secret:    svcs.StateSecret,
 			Secure:    cfg.HTTP.CookieSecure,
 			Consent:   consentData(cfg),
+			OIDCLabel: cfg.OIDC.ButtonLabel,
 		}),
 		invite.NewWeb(invite.WebOpts{
 			Kit:          kit,

@@ -40,7 +40,7 @@ var noTenantInput = map[string]string{
 	authv1connect.AuthServiceChangePasswordProcedure:    "changes the caller's own password; person only",
 	authv1connect.AuthServiceSignOutEverywhereProcedure: "ends the caller's own sessions; person only",
 	authv1connect.AuthServiceCreateOwnOrgProcedure:      "makes the caller's own new org; names no existing one; person only",
-	orgv1connect.OrgServiceListOrgsProcedure:            "lists only the orgs the caller reaches; takes no id",
+	orgv1connect.OrgServiceListOrgsProcedure:            "lists only the orgs a person belongs to, or any other caller reaches; takes no id",
 	orgv1connect.OrgServiceCreateOrgProcedure:           "makes a new org; names no existing one",
 }
 

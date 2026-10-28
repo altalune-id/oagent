@@ -2,6 +2,7 @@ package invite
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"time"
 
@@ -94,6 +95,77 @@ func (s *Service) Create(ctx context.Context, r member.Requester, orgID uuid.UUI
 		return nil, s.errOrReport(ctx, "invite: create", err)
 	}
 	return out, nil
+}
+
+// InviteOwner invites email to own orgID with no inviter and no email sent; the first verified sign-in with that email claims it.
+func (s *Service) InviteOwner(ctx context.Context, orgID uuid.UUID, email string) (*Invite, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
+	email, err := user.NormalizeEmail(email)
+	if err != nil {
+		return nil, err
+	}
+	var out *Invite
+	err = s.uow.RunInTx(ctx, func(ctx context.Context) error {
+		if err := s.store.LockEmail(ctx, orgID, email); err != nil {
+			return err
+		}
+		inv, err := s.store.Live(ctx, orgID, email)
+		if IsNotFoundError(err) {
+			inv, err = newInvite(orgID, email, member.RoleOwner, uuid.Nil, s.now())
+		}
+		if err != nil {
+			return err
+		}
+		inv.Role, inv.InvitedBy, inv.EmailOnly = member.RoleOwner, uuid.Nil, true
+		if _, err := inv.issue(s.now()); err != nil {
+			return err
+		}
+		if err := s.save(ctx, inv); err != nil {
+			return err
+		}
+		out = inv
+		return s.emit(ctx, orgID, events.InviteCreated, events.InviteCreatedV1{
+			ID: inv.PublicID, Email: inv.Email, Role: string(inv.Role), ExpiresAt: inv.ExpiresAt,
+		})
+	})
+	if err != nil {
+		return nil, s.errOrReport(ctx, "invite: owner", err)
+	}
+	return out, nil
+}
+
+// Live returns orgID's usable invite for email, or a *NotUsableError when there is none.
+func (s *Service) Live(ctx context.Context, orgID uuid.UUID, email string) (*Invite, error) {
+	email, err := user.NormalizeEmail(email)
+	if err != nil {
+		return nil, &NotUsableError{Reason: ReasonNotFound}
+	}
+	ctx = tenant.WithOrg(ctx, orgID)
+	var inv *Invite
+	err = s.uow.RunInTx(ctx, func(ctx context.Context) error {
+		inv, err = s.store.Live(ctx, orgID, email)
+		return err
+	})
+	if IsNotFoundError(err) {
+		return nil, &NotUsableError{Reason: ReasonNotFound}
+	}
+	if err != nil {
+		return nil, s.errOrReport(ctx, "invite: live", err)
+	}
+	if err := inv.Usable(s.now()); err != nil {
+		return nil, err
+	}
+	return inv, nil
+}
+
+// PendingOwner reports whether orgID has a live owner invite that has not expired.
+func (s *Service) PendingOwner(ctx context.Context, orgID uuid.UUID) (bool, error) {
+	live, err := s.store.ListLive(tenant.WithOrg(ctx, orgID), orgID)
+	if err != nil {
+		return false, s.errOrReport(ctx, "invite: pending owner", err)
+	}
+	now := s.now()
+	return slices.ContainsFunc(live, func(i *Invite) bool { return i.Role == member.RoleOwner && !i.Draft && !i.expired(now) }), nil
 }
 
 // Resend gives a pending or expired invite a new link and expiry, and emails it again.
@@ -366,7 +438,7 @@ func (s *Service) claim(ctx context.Context, a member.Actor, orgID uuid.UUID, em
 	if err := Authorize(a, inv.Role); err != nil {
 		return nil, err
 	}
-	inv.InvitedBy = a.UserID
+	inv.InvitedBy, inv.EmailOnly = a.UserID, false
 	return inv, nil
 }
 

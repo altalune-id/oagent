@@ -7,6 +7,8 @@ import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 import { useUIStore } from '~/stores/ui';
 
+definePageMeta({ middleware: ['active-org'] });
+
 const route = useRoute();
 const { t } = useI18n();
 const orgs = useOrgsStore();

@@ -28,6 +28,9 @@ service AuthService {
   // SignOutEverywhere ends every session of the signed-in person, this one included.
   rpc SignOutEverywhere(SignOutEverywhereRequest) returns (SignOutEverywhereResponse) {}
 
+  // SetActiveOrg makes an organization the signed-in person belongs to the active one of this session.
+  rpc SetActiveOrg(SetActiveOrgRequest) returns (SetActiveOrgResponse) {}
+
   // CreateOwnOrg creates an organization the signed-in person owns, with its default project; cloud signup's one org per person.
   rpc CreateOwnOrg(CreateOwnOrgRequest) returns (CreateOwnOrgResponse) {}
 }
@@ -97,6 +100,19 @@ message ChangePasswordRequest {
 }
 
 message ChangePasswordResponse {}
+
+message SetActiveOrgRequest {
+  // Public id of an organization the person belongs to; any other answers not found.
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+}
+
+message SetActiveOrgResponse {
+  // The session after the switch, as Whoami describes it.
+  WhoamiResponse me = 1;
+}
 
 message SignOutEverywhereRequest {}
 

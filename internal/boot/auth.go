@@ -104,6 +104,10 @@ func installGenesis(ctx context.Context, g config.GenesisConfig, svc *install.Se
 	case err != nil:
 		return fmt.Errorf("boot: install from auth.genesis: %w", err)
 	}
+	if !svc.Passwords() {
+		log.Info("boot: installed the system org and invited the first owner from auth.genesis; they sign in through the OIDC provider")
+		return nil
+	}
 	log.Info("boot: installed the first owner from auth.genesis")
 	return nil
 }

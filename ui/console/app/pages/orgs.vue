@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { useOrgCreation } from '~/components/org/create/useOrgCreation';
 import OrgsEmptyState from '~/components/org/OrgsEmptyState.vue';
+import AppButton from '~/components/ui/AppButton.vue';
 import ErrorText from '~/components/ui/ErrorText.vue';
 import { siblingURL } from '~/lib/auth/urls';
 import { useAuthStore } from '~/stores/auth';
 import { useOrgsStore } from '~/stores/orgs';
+import { useUIStore } from '~/stores/ui';
 
 const { t } = useI18n();
 const orgs = useOrgsStore();
 const auth = useAuthStore();
+const ui = useUIStore();
 const { apiUrl } = useRuntimeConfig().public;
 
 await Promise.all([orgs.ensureLoaded(), auth.load()]);
@@ -42,6 +45,10 @@ useHead({ title: () => `${t('org.all')} · oagent` });
       <p v-if="allowed && ownsOne" class="max-w-56 text-right text-xs text-base-content/60" data-testid="org-create-owned">
         {{ t('org.create_owned') }}
       </p>
+      <AppButton v-else-if="canCreate && !isEmpty" size="sm" @click="ui.openOrgCreate()">
+        <Icon name="lucide:plus" size="16" />
+        {{ t('org.new') }}
+      </AppButton>
     </div>
 
     <ErrorText v-if="orgs.error" :error="orgs.error" class="mt-6" />

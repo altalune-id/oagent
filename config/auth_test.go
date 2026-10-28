@@ -273,20 +273,52 @@ func TestPasswordsOn(t *testing.T) {
 
 func TestValidate_GenesisFollowsPasswords(t *testing.T) {
 	for name, tc := range map[string]struct {
-		genesis GenesisConfig
-		key     string
+		mutate func(c *Config)
+		check  func(t *testing.T, err error)
 	}{
-		"email alone":        {GenesisConfig{Email: "root@example.com"}, "auth.genesis.email"},
-		"email and password": {GenesisConfig{Email: "root@example.com", Password: "correct horse battery"}, "auth.genesis.email"},
-		"password alone":     {GenesisConfig{Password: "correct horse battery"}, "auth.genesis.email"},
+		"passwords off: email alone installs": {
+			mutate: func(c *Config) {
+				c.Auth.Password.Enabled, c.Auth.Genesis = new(false), GenesisConfig{Email: "root@example.com"}
+			},
+			check: func(t *testing.T, err error) { assert.NoError(t, err) },
+		},
+		"passwords off: a password is refused": {
+			mutate: func(c *Config) {
+				c.Auth.Password.Enabled, c.Auth.Genesis = new(false), GenesisConfig{Email: "root@example.com", Password: "correct horse battery"}
+			},
+			check: func(t *testing.T, err error) {
+				var invalid *InvalidSettingError
+				require.ErrorAs(t, err, &invalid)
+				assert.Equal(t, "auth.genesis.password", invalid.Key)
+			},
+		},
+		"passwords off: a password alone is refused": {
+			mutate: func(c *Config) {
+				c.Auth.Password.Enabled, c.Auth.Genesis = new(false), GenesisConfig{Password: "correct horse battery"}
+			},
+			check: func(t *testing.T, err error) {
+				var invalid *InvalidSettingError
+				require.ErrorAs(t, err, &invalid)
+				assert.Equal(t, "auth.genesis.password", invalid.Key)
+			},
+		},
+		"passwords on: email alone is missing the password": {
+			mutate: func(c *Config) { c.Auth.Genesis = GenesisConfig{Email: "root@example.com"} },
+			check: func(t *testing.T, err error) {
+				var missing *MissingSettingError
+				assert.ErrorAs(t, err, &missing)
+			},
+		},
+		"cloud: genesis stays refused": {
+			mutate: func(c *Config) { c.Mode, c.Auth.Genesis = ModeCloud, GenesisConfig{Email: "root@example.com"} },
+			check:  func(t *testing.T, err error) { assert.True(t, IsGenesisInCloudError(err), "%v", err) },
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			c := validConfig(t)
 			oidcOn(c)
-			c.Auth.Password.Enabled, c.Auth.Genesis = new(false), tc.genesis
-			var invalid *InvalidSettingError
-			require.ErrorAs(t, c.validateAuth(), &invalid)
-			assert.Equal(t, tc.key, invalid.Key)
+			tc.mutate(c)
+			tc.check(t, c.validateAuth())
 		})
 	}
 }

@@ -71,6 +71,7 @@ func newInstallFixtureTerms(t *testing.T, base string, requireTerms bool) *insta
 			Secret:    testSecret,
 			Secure:    true,
 			Consent:   layout.ConsentData{Required: requireTerms},
+			OIDCLabel: "Continue with Acme",
 		})},
 	})
 	return f
@@ -206,6 +207,32 @@ func TestInstall_Success(t *testing.T) {
 	}
 }
 
+// With passwords off, install takes only the owner's email and org name; the owner then signs in through the OIDC provider.
+func TestInstall_EmailOnly(t *testing.T) {
+	f := newInstallFixtureTerms(t, "", true)
+	f.installer.noPasswords = true
+	setup := f.setupCookie(t, "")
+
+	page := httptest.NewRequest(http.MethodGet, "/install", nil)
+	page.AddCookie(setup)
+	rec := f.do(t, page)
+	require.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Contains(t, body, "Continue with Acme")
+	assert.NotContains(t, body, `name="password"`)
+	assert.NotContains(t, body, `name="name"`)
+	assert.NotContains(t, body, `name="accept_terms"`, "the owner accepts the terms on first sign-in")
+	assert.Contains(t, body, `name="email"`)
+
+	rec = f.do(t, installPost("", goodForm(), setup))
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "/login", rec.Header().Get("Location"))
+	require.Len(t, f.installer.calls, 1)
+	assert.Equal(t, Request{Email: "ada@example.com", OrgName: "Acme"}, f.installer.calls[0], "name and password are ignored")
+	assert.Nil(t, cookieNamed(rec, session.CookieName), "no session: there is no account yet")
+	assert.False(t, f.required.Load())
+}
+
 func TestInstall_AlreadyInstalledGoesToLogin(t *testing.T) {
 	f := newInstallFixture(t, "")
 	setup := f.setupCookie(t, "")
@@ -295,10 +322,13 @@ func TestInstall_RoutesAbsentWithoutInstaller(t *testing.T) {
 var testSecret = []byte("0123456789abcdef0123456789abcdef")
 
 type fakeInstaller struct {
-	mu    sync.Mutex
-	calls []Request
-	err   error
+	mu          sync.Mutex
+	calls       []Request
+	err         error
+	noPasswords bool
 }
+
+func (f *fakeInstaller) Passwords() bool { return !f.noPasswords }
 
 func (f *fakeInstaller) Install(_ context.Context, r Request) (*user.User, error) {
 	f.mu.Lock()

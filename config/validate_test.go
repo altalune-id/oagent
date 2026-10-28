@@ -153,6 +153,14 @@ func TestValidate_EveryRule(t *testing.T) {
 		{"oidc off ignores its keys", func(c *Config) { c.OIDC.ClientID, c.OIDC.Scopes = "", nil }, valid},
 		{"auth.password.enabled off with oidc", func(c *Config) { oidcOn(c); c.Auth.Password.Enabled = new(false) }, valid},
 		{"auth.password.enabled off without oidc", func(c *Config) { c.Auth.Password.Enabled = new(false) }, invalidSetting("auth.password.enabled")},
+		{"auth.genesis.email alone with passwords off", func(c *Config) {
+			oidcOn(c)
+			c.Auth.Password.Enabled, c.Auth.Genesis = new(false), GenesisConfig{Email: "root@example.com"}
+		}, valid},
+		{"auth.genesis.password with passwords off", func(c *Config) {
+			oidcOn(c)
+			c.Auth.Password.Enabled, c.Auth.Genesis = new(false), GenesisConfig{Email: "root@example.com", Password: "long-enough-phrase"}
+		}, invalidSetting("auth.genesis.password")},
 		{"auth.password.enabled on in cloud", func(c *Config) { oidcOn(c); c.Mode = ModeCloud; c.Auth.Password.Enabled = new(true) }, invalidSetting("auth.password.enabled")},
 	}
 	for _, r := range rules {

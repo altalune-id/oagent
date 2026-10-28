@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/altalune-id/othra/oidcrp/oidcrptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -166,4 +167,48 @@ func TestLogin_EndToEnd(t *testing.T) {
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, "|", rec.Body.String(), "the old cookie no longer signs in")
+}
+
+// With passwords off, /install takes only the owner's email; the owner then signs in through the provider.
+func TestInstall_EmailOnlyEndToEnd(t *testing.T) {
+	idp := oidcrptest.New(t)
+	cfg := oidcConfig(idp)
+	cfg.Auth.Password.Enabled = new(false)
+	svcs, cfg := migratedServices(t, cfg)
+	svcs.OIDC = newOIDCProvider(cfg, idp.Client())
+	required, err := installRequired(t.Context(), svcs)
+	require.NoError(t, err)
+	svcs.InstallRequired = required
+	h := buildHTTPHandler(httpSurfaces{routes: buildRoutes(cfg, svcs, nil, nil), session: buildSessionMiddleware(svcs, nil), installRequired: required})
+
+	unlock := serve(h, httptest.NewRequest(http.MethodGet, "/install?token="+url.QueryEscape(svcs.InstallToken.Value()), nil))
+	require.Equal(t, http.StatusSeeOther, unlock.Code)
+	setup := cookieNamed(unlock, "oagent_setup")
+	require.NotNil(t, setup)
+	page := serve(h, httptest.NewRequest(http.MethodGet, "/install", nil), setup)
+	require.Equal(t, http.StatusOK, page.Code)
+	assert.Contains(t, page.Body.String(), "They sign in with Continue with SSO")
+	assert.NotContains(t, page.Body.String(), `name="password"`)
+
+	form := url.Values{"email": {"Ada@Example.com"}, "org_name": {"Acme"}, "password": {"ignored-password"}}
+	rec := serve(h, formPost("/install", form), setup)
+	require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
+	assert.Equal(t, "/login", rec.Header().Get("Location"))
+	assert.False(t, required.Load())
+	ctx := t.Context()
+	_, err = svcs.Users.ByEmail(ctx, "ada@example.com")
+	require.Error(t, err, "no account until the owner signs in")
+	sys, err := svcs.Orgs.System(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, "Acme", sys.Name)
+
+	a := &oidcApp{idp: idp, svcs: svcs, h: h}
+	owner := a.signIn(t, oidcrptest.User{Subject: "sub-ada", Email: "ada@example.com", EmailVerified: true, Name: "Ada"})
+	require.Equal(t, http.StatusSeeOther, owner.Code, owner.Body.String())
+	u, err := svcs.Users.ByEmail(ctx, "ada@example.com")
+	require.NoError(t, err)
+	m, err := svcs.Members.Find(ctx, sys.ID, u.ID)
+	require.NoError(t, err)
+	assert.Equal(t, member.RoleOwner, m.Role)
+	assert.Equal(t, http.StatusSeeOther, serve(h, httptest.NewRequest(http.MethodGet, "/install", nil)).Code, "/install is closed")
 }

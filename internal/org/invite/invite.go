@@ -42,13 +42,15 @@ const (
 
 // Invite asks one email to join one org with a role.
 type Invite struct {
-	ID          uuid.UUID
-	OrgID       uuid.UUID
-	PublicID    string
-	Email       string
-	Role        member.Role
-	TokenHash   string
-	Draft       bool
+	ID        uuid.UUID
+	OrgID     uuid.UUID
+	PublicID  string
+	Email     string
+	Role      member.Role
+	TokenHash string
+	Draft     bool
+	// EmailOnly marks install's owner seat: a verified sign-in with Email claims it without the link.
+	EmailOnly   bool
 	InvitedBy   uuid.UUID
 	InviterName string
 	ExpiresAt   time.Time
@@ -132,6 +134,7 @@ type inviteRow struct {
 	Role       string         `alias:"invites.role"`
 	TokenHash  sql.NullString `alias:"invites.token_hash"`
 	Draft      bool           `alias:"invites.draft"`
+	EmailOnly  bool           `alias:"invites.email_only"`
 	InvitedBy  uuid.NullUUID  `alias:"invites.invited_by"`
 	ExpiresAt  time.Time      `alias:"invites.expires_at"`
 	AcceptedAt *time.Time     `alias:"invites.accepted_at"`
@@ -144,7 +147,7 @@ type inviteRow struct {
 func (r *inviteRow) toInvite() *Invite {
 	return &Invite{
 		ID: r.ID, OrgID: r.OrgID, PublicID: r.PublicID, Email: r.Email, Role: member.Role(r.Role),
-		TokenHash: r.TokenHash.String, Draft: r.Draft, InvitedBy: r.InvitedBy.UUID, ExpiresAt: r.ExpiresAt,
+		TokenHash: r.TokenHash.String, Draft: r.Draft, EmailOnly: r.EmailOnly, InvitedBy: r.InvitedBy.UUID, ExpiresAt: r.ExpiresAt,
 		AcceptedAt: r.AcceptedAt, AcceptedBy: r.AcceptedBy.UUID, RevokedAt: r.RevokedAt,
 		CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
 	}

@@ -43,3 +43,30 @@ describe('useAuthStore', () => {
     expect(whoami).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('useAuthStore.setActiveOrg', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  it('switches the active org and keeps the returned whoami', async () => {
+    const setActiveOrg = vi.fn().mockResolvedValue({ me: { source: 'local', activeOrgSlug: 'beta' } });
+    setClient('$authClient', { whoami: vi.fn().mockResolvedValue({ source: 'local', activeOrgSlug: 'acme' }), setActiveOrg });
+    const auth = useAuthStore();
+    await auth.load();
+    await auth.setActiveOrg('betaOrgPublicId000001');
+    expect(setActiveOrg).toHaveBeenCalledWith({ orgId: 'betaOrgPublicId000001' });
+    expect(auth.me).toEqual({ source: 'local', activeOrgSlug: 'beta' });
+  });
+
+  it('keeps the old whoami when the switch fails', async () => {
+    setClient('$authClient', {
+      whoami: vi.fn().mockResolvedValue({ source: 'local', activeOrgSlug: 'acme' }),
+      setActiveOrg: vi.fn().mockRejectedValue(new Error('not found')),
+    });
+    const auth = useAuthStore();
+    await auth.load();
+    await expect(auth.setActiveOrg('x')).rejects.toThrow('not found');
+    expect(auth.me).toEqual({ source: 'local', activeOrgSlug: 'acme' });
+  });
+});

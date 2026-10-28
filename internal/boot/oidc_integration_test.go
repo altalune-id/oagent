@@ -27,13 +27,23 @@ type oidcApp struct {
 func newOIDCApp(t *testing.T, passwords bool) *oidcApp {
 	t.Helper()
 	idp := oidcrptest.New(t)
+	cfg := oidcConfig(idp)
+	cfg.Auth.Genesis = config.GenesisConfig{Email: "root@example.com", Password: "genesis-password"}
+	return startOIDCApp(t, idp, cfg, passwords)
+}
+
+func oidcConfig(idp *oidcrptest.IDP) config.Config {
 	cfg := devLocalConfig()
 	cfg.HTTP.StateSecret = strings.Repeat("s", 40)
 	cfg.HTTP.BaseURL = "https://oagent.example.com"
 	cfg.Secrets.EncryptionKey = testKeyHex
 	cfg.Auth.SessionTTL = 24 * time.Hour
-	cfg.Auth.Genesis = config.GenesisConfig{Email: "root@example.com", Password: "genesis-password"}
 	cfg.OIDC = config.OIDCConfig{Issuer: idp.Issuer(), ClientID: "oagent", Scopes: []string{"openid", "profile", "email"}, ButtonLabel: "Continue with SSO"}
+	return cfg
+}
+
+func startOIDCApp(t *testing.T, idp *oidcrptest.IDP, cfg config.Config, passwords bool) *oidcApp {
+	t.Helper()
 	svcs, cfg := migratedServices(t, cfg)
 	svcs.Caps.EnvGenesis = true
 	require.NoError(t, firstBoot(t.Context(), cfg, svcs, testLogger(), false))
@@ -163,4 +173,61 @@ func TestOIDCSignIn_FromAnInvite(t *testing.T) {
 
 	again := a.signInFrom(t, oidcrptest.User{Subject: "sub-bob", Email: "bob@example.com", EmailVerified: true}, c.Invite.PublicID)
 	assert.Equal(t, http.StatusSeeOther, again.Code, "a used invite is skipped; the linked account signs in")
+}
+
+// SECURITY: a verified email alone claims only the email-only owner seat install leaves, once; any other invite needs its link.
+func TestOIDCSignIn_OnlyTheEmailOnlyOwnerSeat(t *testing.T) {
+	idp := oidcrptest.New(t)
+	cfg := oidcConfig(idp)
+	cfg.Auth.Password.Enabled = new(false)
+	cfg.Auth.Genesis = config.GenesisConfig{Email: "Owner@Example.com"}
+	a := startOIDCApp(t, idp, cfg, false)
+	ctx := t.Context()
+	required, err := a.svcs.Install.Required(ctx, false)
+	require.NoError(t, err)
+	assert.False(t, required, "the pending owner seat closes /install")
+	sys, err := a.svcs.Orgs.System(ctx)
+	require.NoError(t, err)
+	seats := oidcInvites{invites: a.svcs.Invites}
+	refused := func(email string) {
+		t.Helper()
+		seat, err := seats.OwnerSeat(ctx, sys.ID, email)
+		require.NoError(t, err)
+		assert.Nil(t, seat, email)
+		rec := a.signIn(t, oidcrptest.User{Subject: "sub-" + email, Email: email, EmailVerified: true})
+		assert.Equal(t, http.StatusForbidden, rec.Code, email)
+		assert.Contains(t, rec.Body.String(), "You need an invite", email)
+	}
+
+	_, err = a.svcs.Invites.Create(ctx, member.Requester{Operator: true}, sys.ID, "mem@example.com", member.RoleMember)
+	require.NoError(t, err)
+	refused("mem@example.com")
+	_, err = a.svcs.Invites.Create(ctx, member.Requester{Operator: true}, sys.ID, "op@example.com", member.RoleOwner)
+	require.NoError(t, err)
+	refused("op@example.com")
+	refused("eve@example.com")
+
+	rec := a.signIn(t, oidcrptest.User{Subject: "sub-owner", Email: "owner@example.com", EmailVerified: true, Name: "Owner"})
+	require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
+	assert.Equal(t, "/console/", rec.Header().Get("Location"))
+	owner, err := a.svcs.Users.ByEmail(ctx, "owner@example.com")
+	require.NoError(t, err)
+	assert.False(t, owner.HasPassword())
+	m, err := a.svcs.Members.Find(ctx, sys.ID, owner.ID)
+	require.NoError(t, err)
+	assert.Equal(t, member.RoleOwner, m.Role)
+	seat, err := seats.OwnerSeat(ctx, sys.ID, "owner@example.com")
+	require.NoError(t, err)
+	assert.Nil(t, seat, "the seat is used up")
+
+	_, err = a.svcs.Invites.Create(ctx, member.Requester{UserID: owner.ID}, sys.ID, "co@example.com", member.RoleOwner)
+	require.NoError(t, err)
+	refused("co@example.com")
+
+	twin := a.signIn(t, oidcrptest.User{Subject: "sub-twin", Email: "owner@example.com", EmailVerified: true})
+	assert.Equal(t, http.StatusBadRequest, twin.Code, "the claimed account stays linked to the first sub")
+	require.NoError(t, firstBoot(ctx, cfg, a.svcs, testLogger(), false), "a second boot changes nothing")
+	owners, err := a.svcs.Members.CountOwners(ctx, sys.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 1, owners)
 }
