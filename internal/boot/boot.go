@@ -136,7 +136,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		return nil, err
 	}
 	consoleHandler := buildConsoleHandler(cfg.HTTP.BasePath)
-	mcpServer := buildMCPServer(cfg.MCP, svcs, log)
+	mcpServer := buildMCPServer(cfg.MCP, svcs, log, mcpPublicHost(cfg.HTTP)...)
 
 	sup := worker.New(log)
 	sup.Register(httpserver.New(

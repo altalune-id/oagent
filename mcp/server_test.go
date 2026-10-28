@@ -591,3 +591,9 @@ func connect(t *testing.T, srv *mcp.Server, scopes ...string) *sdkmcp.ClientSess
 	t.Cleanup(func() { _ = session.Close() })
 	return session
 }
+
+func TestNewServer_DefaultImplementationName(t *testing.T) {
+	if got := connect(t, mcp.NewServer()).InitializeResult().ServerInfo.Name; got != "oagent" {
+		t.Fatalf("server name %q, want oagent", got)
+	}
+}

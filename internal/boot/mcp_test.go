@@ -3,8 +3,10 @@ package boot
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -204,4 +206,25 @@ func TestMCPTools_InviteConfirmIsForTheAppOnly(t *testing.T) {
 	assert.Contains(t, without, invitev1mcp.MemberInviteToolName)
 	assert.NotContains(t, without, invitev1mcp.MemberInviteConfirmToolName, "no app, no confirm tool")
 	assert.NotContains(t, without, invitev1mcp.MemberInviteDiscardToolName)
+}
+
+// /mcp behind a same-host proxy accepts http.baseURL's host on a loopback connection, and only that one.
+func TestMCPPublicHost(t *testing.T) {
+	assert.Equal(t, []string{"id.example.com"}, mcpPublicHost(config.HTTPConfig{BaseURL: "https://id.example.com"}))
+	assert.Equal(t, []string{"id.example.com"}, mcpPublicHost(config.HTTPConfig{BaseURL: "https://id.example.com:8443"}))
+	assert.Nil(t, mcpPublicHost(config.HTTPConfig{}))
+
+	srv := buildMCPServer(config.MCPConfig{Enabled: true}, &Services{Orgs: org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, nil)}, nil,
+		mcpPublicHost(config.HTTPConfig{BaseURL: "https://id.example.com"})...)
+	for host, want := range map[string]int{"id.example.com": http.StatusOK, "evil.example": http.StatusForbidden} {
+		req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(
+			`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}`))
+		req.Host = host
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json, text/event-stream")
+		req = req.WithContext(context.WithValue(req.Context(), http.LocalAddrContextKey, net.Addr(&net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})))
+		rec := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rec, req)
+		assert.Equal(t, want, rec.Code, host)
+	}
 }
