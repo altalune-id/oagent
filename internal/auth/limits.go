@@ -70,7 +70,6 @@ func emailKey(email string, rule ratelimit.Rule) string {
 
 // WriteLimited answers a refused form: 429 for a *RateLimitedError, else 503. SECURITY: fails closed and never shows the error.
 func WriteLimited(w http.ResponseWriter, r *http.Request, kit layout.Kit, title string, err error) {
-	w.Header().Set("Cache-Control", "no-store")
 	if rl, ok := errors.AsType[*RateLimitedError](err); ok {
 		w.Header().Set("Retry-After", strconv.Itoa(rl.RetryAfterSeconds()))
 		kit.Render(w, r, http.StatusTooManyRequests, layout.Error(kit.Layout(title), rl.Message()))

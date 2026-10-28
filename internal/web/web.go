@@ -75,7 +75,7 @@ func NewServer(opts ServerOpts) http.Handler {
 		for _, r := range opts.Routes {
 			r.Register(routes)
 		}
-		outer.Handle("/", cop.Handler(withSession(routes)))
+		outer.Handle("/", middleware.NoStore(cop.Handler(withSession(routes))))
 	} else {
 		outer.Handle("/", http.NotFoundHandler())
 	}

@@ -102,6 +102,7 @@ A server-rendered templ page that a person opens **before** they are signed in: 
    - Routes are open to signed-out callers; the handler decides who may act.
    - Cross-origin `POST`s are refused by `http.CrossOriginProtection` (set in `web.NewServer`), so forms carry no CSRF token.
    - A page that a person must reach before accepting the terms joins `skipped` in `WelcomeGate` ([internal/legal/web.go](../../internal/legal/web.go)).
+   - Every route gets `Cache-Control: no-store` from `web.NewServer` (`middleware.NoStore`); a handler does not set it.
    - A page that renders a token from a URL sets `Referrer-Policy: no-referrer` (see `resetLimited`).
 
 7. **CSS and JS.** Use Tailwind and daisyUI classes. `ui/web/app.css` scans `internal/**/*.templ`, so run `make web-css` after you add classes. The only script is the password bundle (`ui/web/src/password`, `make web-js`). `make web` (the `@oagent/web` scripts `build` and `build:js`) builds both into `internal/web/static/` and writes a `.br` and `.gz` next to each (`ui/scripts/compress.mts`); `/static` serves them by `Accept-Encoding` with an `ETag` and a one-hour cache. These built files are not committed: Go tests that read them skip locally when they are missing and fail when `CI` is set.

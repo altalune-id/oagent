@@ -28,3 +28,16 @@ func TestSecurityHeaders_HandlerCanOverride(t *testing.T) {
 
 	assert.Equal(t, "no-referrer", rec.Header().Get("Referrer-Policy"))
 }
+
+func TestNoStore(t *testing.T) {
+	for name, status := range map[string]int{"ok": http.StatusOK, "redirect": http.StatusSeeOther, "gone": http.StatusGone} {
+		t.Run(name, func(t *testing.T) {
+			next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(status) })
+			rec := httptest.NewRecorder()
+			NoStore(next).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/invite/x", nil))
+
+			assert.Equal(t, status, rec.Code)
+			assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+		})
+	}
+}

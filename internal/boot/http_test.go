@@ -160,6 +160,30 @@ func TestConsentData(t *testing.T) {
 	assert.Equal(t, layout.ConsentData{PrivacyURL: "https://legal.example.com/privacy", Required: true}, consentData(cfg))
 }
 
+// SECURITY: a cached pre-sign-in page replays its one-time verdict; a token page's Referer leaks its token.
+func TestBuildRoutes_PreSignInPagesNoStore(t *testing.T) {
+	svcs := &Services{Caps: capabilities.Capabilities{LocalLogin: true}, Auth: &auth.Service{}, Resets: auth.NewResets(auth.ResetDeps{})}
+	cfg := config.Config{}
+	for _, tc := range []struct {
+		method, path, referrer string
+	}{
+		{http.MethodGet, "/login", "strict-origin-when-cross-origin"},
+		{http.MethodPost, "/login", "strict-origin-when-cross-origin"},
+		{http.MethodGet, "/install", "strict-origin-when-cross-origin"},
+		{http.MethodGet, "/invite", "no-referrer"},
+		{http.MethodGet, "/invite/abc", "no-referrer"},
+		{http.MethodGet, "/forgot-password", "strict-origin-when-cross-origin"},
+		{http.MethodGet, "/reset-password/abc", "no-referrer"},
+		{http.MethodGet, "/terms", "strict-origin-when-cross-origin"},
+		{http.MethodGet, "/privacy", "strict-origin-when-cross-origin"},
+		{http.MethodGet, "/nope", "strict-origin-when-cross-origin"},
+	} {
+		rec := serveRoutes(cfg, svcs, tc.method, tc.path)
+		assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"), tc.method+" "+tc.path)
+		assert.Equal(t, tc.referrer, rec.Header().Get("Referrer-Policy"), tc.method+" "+tc.path)
+	}
+}
+
 func TestBuildRoutes_InviteOnlyWithLocalLogin(t *testing.T) {
 	cfg := config.Config{}
 	assert.Equal(t, http.StatusNotFound, serveRoutes(cfg, nil, http.MethodGet, "/invite").Code)

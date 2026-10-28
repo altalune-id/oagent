@@ -209,7 +209,6 @@ func (h *Web) limitLogin(r *http.Request, email string) error {
 
 func (h *Web) loginLimited(w http.ResponseWriter, r *http.Request, err error, wantsJSON bool, view views.LoginData) {
 	rl, limited := errors.AsType[*RateLimitedError](err)
-	w.Header().Set("Cache-Control", "no-store")
 	switch {
 	case limited && wantsJSON:
 		w.Header().Set("Retry-After", strconv.Itoa(rl.RetryAfterSeconds()))

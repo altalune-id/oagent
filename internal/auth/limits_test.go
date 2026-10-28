@@ -112,7 +112,6 @@ func TestWriteLimited(t *testing.T) {
 	WriteLimited(rec, httptest.NewRequest(http.MethodGet, "/x", nil), kit, "Invite", &RateLimitedError{RetryAfter: 61 * time.Second})
 	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
 	assert.Equal(t, "61", rec.Header().Get("Retry-After"))
-	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
 	assert.Contains(t, rec.Body.String(), "Too many attempts. Try again in 2 minutes.")
 	assert.Empty(t, reported)
 
