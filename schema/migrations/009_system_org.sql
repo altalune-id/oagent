@@ -8,10 +8,6 @@ CREATE UNIQUE INDEX {{.TablePrefix}}orgs_one_system
   ON {{.Schema}}.{{.TablePrefix}}orgs (is_system)
   WHERE is_system;
 
-UPDATE {{.Schema}}.{{.TablePrefix}}orgs o SET created_by = NULL
-  WHERE created_by IS NOT NULL
-    AND NOT EXISTS (SELECT 1 FROM {{.Schema}}.{{.TablePrefix}}users u WHERE u.id = o.created_by);
-
 ALTER TABLE {{.Schema}}.{{.TablePrefix}}orgs
   ADD CONSTRAINT {{.TablePrefix}}orgs_created_by_fkey
   FOREIGN KEY (created_by) REFERENCES {{.Schema}}.{{.TablePrefix}}users (id) ON DELETE SET NULL;
