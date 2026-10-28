@@ -33,7 +33,7 @@ Read the repo's rules first; they are the source of truth:
 
 - `AGENTS.md`
 - the `docs/howto/` recipe for each kind of change in the diff, especially its **Review** checklist
-- the plan or spec that drove the change, if any (`docs/superpowers/`); a change that does not do what the plan says is a finding
+- the plan or spec that drove the change, if the user gave one; a change that does not do what the plan says is a finding
 
 Then the skills, by what the diff touches:
 

@@ -34,7 +34,6 @@ oagent-db-credentials.env
 .playwright-mcp/
 docs/
 AUTH*.md
-OAGENT-NOTES.md
 *_BACKLOG.md
 .mcp.json
 
