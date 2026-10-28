@@ -226,7 +226,7 @@ func TestService_Lookup(t *testing.T) {
 	assert.Equal(t, invite.ReasonNotFound, invite.ReasonOf(err))
 
 	used := f.create("used@x.io", member.RoleMember)
-	_, err = f.svc.Accept(f.ctx, used.Invite.ID, f.newcomer("used@x.io"))
+	_, err = f.svc.Accept(f.ctx, used.Invite.OrgID, used.Invite.ID, f.newcomer("used@x.io"))
 	require.NoError(t, err)
 	_, err = f.svc.Lookup(f.ctx, rawToken(t, used.Link))
 	assert.Equal(t, invite.ReasonUsed, invite.ReasonOf(err))
@@ -250,28 +250,28 @@ func TestService_Accept(t *testing.T) {
 	c := f.create("bob@x.io", member.RoleAdmin)
 	bob := f.newcomer("bob@x.io")
 
-	got, err := f.svc.Accept(f.ctx, c.Invite.ID, bob)
+	got, err := f.svc.Accept(f.ctx, c.Invite.OrgID, c.Invite.ID, bob)
 	require.NoError(t, err)
 	assert.Equal(t, invite.Joined, got)
 	m, err := f.members.Find(f.ctx, f.org, bob)
 	require.NoError(t, err)
 	assert.Equal(t, member.RoleAdmin, m.Role)
 
-	_, err = f.svc.Accept(f.ctx, c.Invite.ID, bob)
+	_, err = f.svc.Accept(f.ctx, c.Invite.OrgID, c.Invite.ID, bob)
 	assert.Equal(t, invite.ReasonUsed, invite.ReasonOf(err), "a second accept: %v", err)
 
 	other := f.create("carol@x.io", member.RoleMember)
-	_, err = f.svc.Accept(f.ctx, other.Invite.ID, bob)
+	_, err = f.svc.Accept(f.ctx, other.Invite.OrgID, other.Invite.ID, bob)
 	assert.True(t, invite.IsEmailMismatchError(err), "got %v", err)
 
-	_, err = f.svc.Accept(f.ctx, uuid.New(), bob)
+	_, err = f.svc.Accept(f.ctx, f.org, uuid.New(), bob)
 	assert.Equal(t, invite.ReasonNotFound, invite.ReasonOf(err))
 }
 
 func TestService_AcceptByAnOwnerKeepsTheRole(t *testing.T) {
 	f := newFixture(t)
 	c := f.create("olga@example.com", member.RoleMember)
-	got, err := f.svc.Accept(f.ctx, c.Invite.ID, f.owner.UserID)
+	got, err := f.svc.Accept(f.ctx, c.Invite.OrgID, c.Invite.ID, f.owner.UserID)
 	require.NoError(t, err)
 	assert.Equal(t, invite.AlreadyMember, got)
 	m, err := f.members.Find(f.ctx, f.org, f.owner.UserID)
@@ -286,7 +286,7 @@ func TestService_AcceptAfterExpiry(t *testing.T) {
 	f := newFixture(t)
 	c := f.create("bob@x.io", member.RoleMember)
 	f.clock = f.clock.Add(invite.TTL + time.Second)
-	_, err := f.svc.Accept(f.ctx, c.Invite.ID, f.newcomer("bob@x.io"))
+	_, err := f.svc.Accept(f.ctx, c.Invite.OrgID, c.Invite.ID, f.newcomer("bob@x.io"))
 	assert.Equal(t, invite.ReasonExpired, invite.ReasonOf(err))
 }
 
@@ -302,7 +302,7 @@ func TestService_Drafts(t *testing.T) {
 	assert.Zero(t, f.mail.count(), "a draft sends no email")
 	assert.Equal(t, invite.StatusDraft, d.Status(f.clock))
 
-	_, err = f.svc.Accept(f.ctx, d.ID, f.newcomer("dina@x.io"))
+	_, err = f.svc.Accept(f.ctx, d.OrgID, d.ID, f.newcomer("dina@x.io"))
 	assert.Equal(t, invite.ReasonNotFound, invite.ReasonOf(err), "a draft can't be accepted")
 
 	pending, err := f.svc.ListPending(f.ctx, f.org)
@@ -399,7 +399,7 @@ func TestService_FailuresAreReported(t *testing.T) {
 	assert.True(t, isUnexpected(err), "draft: %v", err)
 	_, err = f.svc.ConfirmDraft(f.ctx, f.owner, f.org, d.ID)
 	assert.True(t, isUnexpected(err), "confirm: %v", err)
-	_, err = f.svc.Accept(f.ctx, c.Invite.ID, f.owner.UserID)
+	_, err = f.svc.Accept(f.ctx, c.Invite.OrgID, c.Invite.ID, f.owner.UserID)
 	assert.True(t, isUnexpected(err), "accept: %v", err)
 	_, err = f.svc.ListPending(f.ctx, f.org)
 	assert.True(t, isUnexpected(err), "list: %v", err)
@@ -417,7 +417,7 @@ func TestService_MailFailureRollsBack(t *testing.T) {
 func TestService_AcceptUnknownPerson(t *testing.T) {
 	f := newFixture(t)
 	c := f.create("bob@x.io", member.RoleMember)
-	_, err := f.svc.Accept(f.ctx, c.Invite.ID, uuid.New())
+	_, err := f.svc.Accept(f.ctx, c.Invite.OrgID, c.Invite.ID, uuid.New())
 	assert.True(t, user.IsNotFoundError(err), "got %v", err)
 }
 
@@ -425,12 +425,12 @@ func TestService_Join(t *testing.T) {
 	f := newFixture(t)
 	c := f.create("bob@x.io", member.RoleAdmin)
 
-	_, err := f.svc.Join(f.ctx, c.Invite.ID, "Bob", "short", true)
+	_, err := f.svc.Join(f.ctx, c.Invite.OrgID, c.Invite.ID, "Bob", "short", true)
 	assert.True(t, password.IsPolicyError(err), "a weak password: %v", err)
 	_, err = f.users.ByEmail(f.ctx, "bob@x.io")
 	assert.True(t, user.IsNotFoundError(err), "nothing is created")
 
-	id, err := f.svc.Join(f.ctx, c.Invite.ID, " Bob ", "a sturdy passphrase", true)
+	id, err := f.svc.Join(f.ctx, c.Invite.OrgID, c.Invite.ID, " Bob ", "a sturdy passphrase", true)
 	require.NoError(t, err)
 	u, err := f.users.ByID(f.ctx, id)
 	require.NoError(t, err)
@@ -441,14 +441,14 @@ func TestService_Join(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, member.RoleAdmin, m.Role)
 
-	_, err = f.svc.Join(f.ctx, c.Invite.ID, "Bob", "a sturdy passphrase", true)
+	_, err = f.svc.Join(f.ctx, c.Invite.OrgID, c.Invite.ID, "Bob", "a sturdy passphrase", true)
 	assert.Equal(t, invite.ReasonUsed, invite.ReasonOf(err), "a used invite: %v", err)
 }
 
 func TestService_JoinWithoutTerms(t *testing.T) {
 	f := newFixture(t)
 	c := f.create("bob@x.io", member.RoleMember)
-	id, err := f.svc.Join(f.ctx, c.Invite.ID, "Bob", "a sturdy passphrase", false)
+	id, err := f.svc.Join(f.ctx, c.Invite.OrgID, c.Invite.ID, "Bob", "a sturdy passphrase", false)
 	require.NoError(t, err)
 	u, err := f.users.ByID(f.ctx, id)
 	require.NoError(t, err)
@@ -460,7 +460,7 @@ func TestService_JoinNeverMakesASecondUser(t *testing.T) {
 	c := f.create("bob@x.io", member.RoleMember)
 	_, err := f.users.Create(f.ctx, user.CreateRequest{Email: "bob@x.io", Password: "a sturdy passphrase"})
 	require.NoError(t, err)
-	_, err = f.svc.Join(f.ctx, c.Invite.ID, "Bob", "another sturdy passphrase", true)
+	_, err = f.svc.Join(f.ctx, c.Invite.OrgID, c.Invite.ID, "Bob", "another sturdy passphrase", true)
 	assert.True(t, user.IsAlreadyExistsError(err), "got %v", err)
 	stored, err := f.store.ByID(f.ctx, c.Invite.ID)
 	require.NoError(t, err)
@@ -469,15 +469,15 @@ func TestService_JoinNeverMakesASecondUser(t *testing.T) {
 
 func TestService_JoinUnusable(t *testing.T) {
 	f := newFixture(t)
-	_, err := f.svc.Join(f.ctx, uuid.New(), "Bob", "a sturdy passphrase", true)
+	_, err := f.svc.Join(f.ctx, f.org, uuid.New(), "Bob", "a sturdy passphrase", true)
 	assert.Equal(t, invite.ReasonNotFound, invite.ReasonOf(err))
 	d, err := f.svc.Draft(f.ctx, f.owner, f.org, "dina@x.io")
 	require.NoError(t, err)
-	_, err = f.svc.Join(f.ctx, d.ID, "Dina", "a sturdy passphrase", true)
+	_, err = f.svc.Join(f.ctx, d.OrgID, d.ID, "Dina", "a sturdy passphrase", true)
 	assert.Equal(t, invite.ReasonNotFound, invite.ReasonOf(err), "a draft can't be joined")
 	c := f.create("late@x.io", member.RoleMember)
 	f.clock = f.clock.Add(invite.TTL)
-	_, err = f.svc.Join(f.ctx, c.Invite.ID, "Late", "a sturdy passphrase", true)
+	_, err = f.svc.Join(f.ctx, c.Invite.OrgID, c.Invite.ID, "Late", "a sturdy passphrase", true)
 	assert.Equal(t, invite.ReasonExpired, invite.ReasonOf(err))
 }
 
@@ -537,7 +537,7 @@ func TestService_EventsOnSend(t *testing.T) {
 func TestService_EventsOnJoin(t *testing.T) {
 	f := newFixture(t)
 	c := f.create("bob@x.io", member.RoleMember)
-	id, err := f.svc.Join(f.ctx, c.Invite.ID, "Bob", "a sturdy passphrase", true)
+	id, err := f.svc.Join(f.ctx, c.Invite.OrgID, c.Invite.ID, "Bob", "a sturdy passphrase", true)
 	require.NoError(t, err)
 	u, err := f.users.ByID(f.ctx, id)
 	require.NoError(t, err)
@@ -547,7 +547,7 @@ func TestService_EventsOnJoin(t *testing.T) {
 	assert.Equal(t, events.MemberAddedV1{UserID: u.PublicID, Email: "bob@x.io", Name: "Bob", Role: "member", InviteID: c.Invite.PublicID}, got[1].data)
 
 	owned := f.create("olga@example.com", member.RoleMember)
-	_, err = f.svc.Accept(f.ctx, owned.Invite.ID, f.owner.UserID)
+	_, err = f.svc.Accept(f.ctx, owned.Invite.OrgID, owned.Invite.ID, f.owner.UserID)
 	require.NoError(t, err)
 	assert.Len(t, f.events.all(), 3, "an existing member was not added: no member.added")
 }

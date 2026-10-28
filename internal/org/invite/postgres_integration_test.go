@@ -5,6 +5,7 @@ package invite_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -16,6 +17,7 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/invite"
@@ -58,8 +60,7 @@ func (p userPeople) Contact(ctx context.Context, id uuid.UUID) (string, string, 
 
 func newPGFixture(t *testing.T) *pgFixture {
 	t.Helper()
-	sqlDB, schema := pgtest.Migrated(t)
-	pool := db.Pool{W: sqlDB, R: sqlDB}
+	pool, _, schema := pgtest.MigratedRLS(t)
 	unexpected := apperror.NewReporter(nil, false).Unexpected
 	f := &pgFixture{
 		t: t, ctx: t.Context(), pool: pool, store: invite.NewStore(pool, schema, ""),
@@ -69,7 +70,7 @@ func newPGFixture(t *testing.T) *pgFixture {
 	f.members = member.NewService(memberStore, db.NewTransactor(pool), unexpected)
 	o, err := org.NewOrg("acme-"+uuid.NewString()[:8], "Acme", uuid.Nil)
 	require.NoError(t, err)
-	require.NoError(t, org.NewStore(pool, schema, "").Save(f.ctx, o))
+	require.NoError(t, org.NewStore(pool, schema, "").Save(tenant.Into(f.ctx, tenant.Context{OrgID: o.ID}), o))
 	f.org = o
 	f.owner = f.user("owner-" + uuid.NewString()[:8] + "@example.com")
 	_, err = f.members.Add(f.ctx, o.ID, f.owner.ID, member.RoleOwner)
@@ -79,6 +80,10 @@ func newPGFixture(t *testing.T) *pgFixture {
 		People: userPeople{users: f.users}, Users: user.NewService(f.users, unexpected), Terms: legal.NewService(user.NewService(f.users, unexpected)), BaseURL: baseURL, Unexpected: unexpected,
 	}).WithClock(f.now)
 	return f
+}
+
+func (f *pgFixture) scoped() context.Context {
+	return tenant.Into(f.ctx, tenant.Context{OrgID: f.org.ID})
 }
 
 func (f *pgFixture) now() time.Time {
@@ -134,8 +139,14 @@ func TestPostgresInvite_DoubleAccept(t *testing.T) {
 
 		outcomes := make([]invite.Outcome, 2)
 		errs := race(
-			func() (err error) { outcomes[0], err = f.svc.Accept(f.ctx, c.Invite.ID, bob.ID); return },
-			func() (err error) { outcomes[1], err = f.svc.Accept(f.ctx, c.Invite.ID, bob.ID); return },
+			func() (err error) {
+				outcomes[0], err = f.svc.Accept(f.ctx, c.Invite.OrgID, c.Invite.ID, bob.ID)
+				return
+			},
+			func() (err error) {
+				outcomes[1], err = f.svc.Accept(f.ctx, c.Invite.OrgID, c.Invite.ID, bob.ID)
+				return
+			},
 		)
 		joined, used := 0, 0
 		for i, err := range errs {
@@ -159,13 +170,13 @@ func TestPostgresInvite_DoubleAccept(t *testing.T) {
 func TestPostgresInvite_OwnerAcceptsAMemberInvite(t *testing.T) {
 	f := newPGFixture(t)
 	c := f.invite(f.owner.Email, member.RoleMember)
-	got, err := f.svc.Accept(f.ctx, c.Invite.ID, f.owner.ID)
+	got, err := f.svc.Accept(f.ctx, c.Invite.OrgID, c.Invite.ID, f.owner.ID)
 	require.NoError(t, err)
 	assert.Equal(t, invite.AlreadyMember, got)
 	m, err := f.members.Find(f.ctx, f.org.ID, f.owner.ID)
 	require.NoError(t, err)
 	assert.Equal(t, member.RoleOwner, m.Role)
-	stored, err := f.store.ByID(f.ctx, c.Invite.ID)
+	stored, err := f.store.ByID(f.scoped(), c.Invite.ID)
 	require.NoError(t, err)
 	require.NotNil(t, stored.AcceptedAt)
 	assert.Equal(t, f.owner.ID, stored.AcceptedBy)
@@ -177,10 +188,10 @@ func TestPostgresInvite_AcceptVersusRevoke(t *testing.T) {
 		bob := f.user("bob-" + uuid.NewString()[:8] + "@example.com")
 		c := f.invite(bob.Email, member.RoleMember)
 		errs := race(
-			func() error { _, err := f.svc.Accept(f.ctx, c.Invite.ID, bob.ID); return err },
+			func() error { _, err := f.svc.Accept(f.ctx, c.Invite.OrgID, c.Invite.ID, bob.ID); return err },
 			func() error { return f.svc.Revoke(f.ctx, member.Requester{UserID: f.owner.ID}, f.org.ID, c.Invite.ID) },
 		)
-		stored, err := f.store.ByID(f.ctx, c.Invite.ID)
+		stored, err := f.store.ByID(f.scoped(), c.Invite.ID)
 		require.NoError(t, err)
 		_, memberErr := f.members.Find(f.ctx, f.org.ID, bob.ID)
 		if errs[0] == nil {
@@ -206,7 +217,7 @@ func TestPostgresInvite_ReinviteAfterExpiry(t *testing.T) {
 	assert.Equal(t, first.Invite.ID, second.Invite.ID, "updated in place")
 
 	late := f.user("late@example.com")
-	got, err := f.svc.Accept(f.ctx, second.Invite.ID, late.ID)
+	got, err := f.svc.Accept(f.ctx, second.Invite.OrgID, second.Invite.ID, late.ID)
 	require.NoError(t, err)
 	assert.Equal(t, invite.Joined, got)
 
@@ -265,7 +276,7 @@ func TestPostgresInvite_DraftsAndListing(t *testing.T) {
 	got, err := f.svc.Lookup(f.ctx, c.Link[len(baseURL)+len("invite/"):])
 	require.NoError(t, err)
 	assert.Equal(t, d.ID, got.ID)
-	byPublic, err := f.svc.ByPublicID(f.ctx, d.PublicID)
+	byPublic, err := f.svc.ByPublicID(f.scoped(), d.PublicID)
 	require.NoError(t, err)
 	assert.Equal(t, d.ID, byPublic.ID)
 
@@ -309,7 +320,7 @@ func TestPostgresInvite_StoreErrors(t *testing.T) {
 func TestPostgresInvite_JoinIsOneTransaction(t *testing.T) {
 	f := newPGFixture(t)
 	c := f.invite("new@example.com", member.RoleAdmin)
-	id, err := f.svc.Join(f.ctx, c.Invite.ID, "New", "a sturdy passphrase", true)
+	id, err := f.svc.Join(f.ctx, c.Invite.OrgID, c.Invite.ID, "New", "a sturdy passphrase", true)
 	require.NoError(t, err)
 	u, err := f.users.ByID(f.ctx, id)
 	require.NoError(t, err)
@@ -320,7 +331,7 @@ func TestPostgresInvite_JoinIsOneTransaction(t *testing.T) {
 
 	late := f.invite("late@example.com", member.RoleMember)
 	f.advance(invite.TTL)
-	_, err = f.svc.Join(f.ctx, late.Invite.ID, "Late", "a sturdy passphrase", true)
+	_, err = f.svc.Join(f.ctx, late.Invite.OrgID, late.Invite.ID, "Late", "a sturdy passphrase", true)
 	assert.Equal(t, invite.ReasonExpired, invite.ReasonOf(err))
 	_, err = f.users.ByEmail(f.ctx, "late@example.com")
 	assert.True(t, user.IsNotFoundError(err), "a refused join writes nothing")
@@ -330,8 +341,14 @@ func TestPostgresInvite_ConcurrentJoinsMakeOneUser(t *testing.T) {
 	f := newPGFixture(t)
 	c := f.invite("twin@example.com", member.RoleMember)
 	errs := race(
-		func() error { _, err := f.svc.Join(f.ctx, c.Invite.ID, "A", "a sturdy passphrase", true); return err },
-		func() error { _, err := f.svc.Join(f.ctx, c.Invite.ID, "B", "a sturdy passphrase", true); return err },
+		func() error {
+			_, err := f.svc.Join(f.ctx, c.Invite.OrgID, c.Invite.ID, "A", "a sturdy passphrase", true)
+			return err
+		},
+		func() error {
+			_, err := f.svc.Join(f.ctx, c.Invite.OrgID, c.Invite.ID, "B", "a sturdy passphrase", true)
+			return err
+		},
 	)
 	ok := 0
 	for _, err := range errs {
@@ -357,23 +374,63 @@ func TestPostgresInvite_ReinviteVersusAccept(t *testing.T) {
 		invite.SetAfterLive(f.svc, func() { time.Sleep(150 * time.Millisecond) })
 		var again *invite.Created
 		errs := race(
-			func() error { _, err := f.svc.Accept(f.ctx, first.Invite.ID, bob.ID); return err },
+			func() error { _, err := f.svc.Accept(f.ctx, first.Invite.OrgID, first.Invite.ID, bob.ID); return err },
 			func() (err error) {
 				again, err = f.svc.Create(f.ctx, member.Requester{UserID: f.owner.ID}, f.org.ID, bob.Email, member.RoleAdmin)
 				return err
 			},
 		)
 		require.NoError(t, errors.Join(errs...))
-		accepted, err := f.store.ByID(f.ctx, first.Invite.ID)
+		accepted, err := f.store.ByID(f.scoped(), first.Invite.ID)
 		require.NoError(t, err)
 		require.NotNil(t, accepted.AcceptedAt)
 		m, err := f.members.Find(f.ctx, f.org.ID, bob.ID)
 		require.NoError(t, err)
 		assert.Equal(t, m.Role, accepted.Role, "an accepted invite is never rewritten after the accept")
 		if again.Invite.ID != first.Invite.ID {
-			fresh, err := f.store.ByID(f.ctx, again.Invite.ID)
+			fresh, err := f.store.ByID(f.scoped(), again.Invite.ID)
 			require.NoError(t, err)
 			assert.Nil(t, fresh.AcceptedAt, "the new invite is live")
 		}
 	}
+}
+
+// SECURITY: the token lookup never returns the hash, so saving what it returns must fail loudly instead of clearing the token.
+func TestPostgresInvite_SavingATokenLoadedInviteFails(t *testing.T) {
+	f := newPGFixture(t)
+	c := f.invite("tok-"+uuid.NewString()[:8]+"@example.com", member.RoleMember)
+	raw := c.Link[strings.LastIndex(c.Link, "/")+1:]
+
+	inv, err := f.svc.Lookup(f.ctx, raw)
+	require.NoError(t, err)
+	assert.Equal(t, c.Invite.ID, inv.ID)
+	assert.Empty(t, inv.TokenHash, "the definer returns no hash")
+
+	scoped := tenant.Into(f.ctx, tenant.Context{OrgID: inv.OrgID})
+	err = db.NewTransactor(f.pool).RunInTx(scoped, func(ctx context.Context) error { return f.store.Update(ctx, inv) })
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invites_token_or_draft")
+
+	again, err := f.svc.Lookup(f.ctx, raw)
+	require.NoError(t, err, "the stored token survives")
+	assert.Equal(t, c.Invite.ID, again.ID)
+}
+
+// SECURITY: the scoped read finds an invite only in its own org; the landing definer finds it before any scope exists.
+func TestPostgresInvite_ByPublicIDIsScopedAndResolveIsNot(t *testing.T) {
+	f := newPGFixture(t)
+	c := f.invite("scoped-"+uuid.NewString()[:8]+"@example.com", member.RoleMember)
+
+	_, err := f.store.ByPublicID(f.ctx, c.Invite.PublicID)
+	assert.True(t, invite.IsNotFoundError(err), "no scope sees nothing: %v", err)
+	_, err = f.store.ByPublicID(tenant.Into(f.ctx, tenant.Context{OrgID: uuid.New()}), c.Invite.PublicID)
+	assert.True(t, invite.IsNotFoundError(err), "another org's scope sees nothing: %v", err)
+	got, err := f.store.ByPublicID(f.scoped(), c.Invite.PublicID)
+	require.NoError(t, err)
+	assert.NotEmpty(t, got.TokenHash)
+
+	resolved, err := f.store.ResolveByPublicID(f.ctx, c.Invite.PublicID)
+	require.NoError(t, err)
+	assert.Equal(t, c.Invite.ID, resolved.ID)
+	assert.Empty(t, resolved.TokenHash, "the definer returns no hash")
 }

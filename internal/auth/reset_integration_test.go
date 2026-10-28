@@ -58,8 +58,7 @@ func (f *failingMail) Enqueue(ctx context.Context, m mailer.Message) (uuid.UUID,
 
 func newResetDB(t *testing.T) *resetDB {
 	t.Helper()
-	sqlDB, schemaName := pgtest.Migrated(t)
-	pool := db.Pool{W: sqlDB, R: sqlDB}
+	pool, sqlDB, schemaName := pgtest.MigratedRLS(t)
 	unexpected := apperror.NewReporter(nil, false).Unexpected
 	sl, err := sealer.New(bytes.Repeat([]byte{7}, 32))
 	require.NoError(t, err)
@@ -134,7 +133,7 @@ func TestResetStore_AgainstPostgres(t *testing.T) {
 	assert.NoError(t, err, "a used link is kept")
 }
 
-// Review Focus 4: two submits of one link: one sets the password, the other gets AUT004 used.
+// two submits of one link: one sets the password, the other gets AUT004 used.
 func TestResets_RequestAgainWithinTwoMinutesKeepsTheFirstLink(t *testing.T) {
 	d := newResetDB(t)
 	first := d.link(t)
@@ -173,7 +172,7 @@ func TestResets_DoubleSubmitUsesTheLinkOnce(t *testing.T) {
 	}
 }
 
-// Review Focus 4: a failure after the link is marked used changes nothing.
+// a failure after the link is marked used changes nothing.
 func TestResets_CompleteIsOneUnitOfWork(t *testing.T) {
 	d := newResetDB(t)
 	ctx := t.Context()

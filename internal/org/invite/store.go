@@ -18,6 +18,8 @@ type Store interface {
 	ByID(ctx context.Context, id uuid.UUID) (*Invite, error)
 	ByTokenHash(ctx context.Context, hash string) (*Invite, error)
 	ByPublicID(ctx context.Context, publicID string) (*Invite, error)
+	// ResolveByPublicID finds publicID's invite in any org for the pre-sign-in landing page; the result never carries its token hash.
+	ResolveByPublicID(ctx context.Context, publicID string) (*Invite, error)
 	Insert(ctx context.Context, i *Invite) error
 	// Update writes i's role, token, draft flag, inviter and expiry.
 	Update(ctx context.Context, i *Invite) error

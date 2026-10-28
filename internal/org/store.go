@@ -19,6 +19,7 @@ type Reader interface {
 	ByPublicID(ctx context.Context, publicID string) (*Org, error)
 	List(ctx context.Context) ([]*Org, error)
 	System(ctx context.Context) (*Org, error)
+	IDs(ctx context.Context) ([]uuid.UUID, error)
 }
 
 // Writer writes Org aggregates.

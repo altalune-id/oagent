@@ -25,6 +25,13 @@ CREATE INDEX {{.TablePrefix}}outbox_entries_due_idx
 CREATE INDEX {{.TablePrefix}}outbox_entries_org_target_created_idx
   ON {{.Schema}}.{{.TablePrefix}}outbox_entries (org_id, target, created_at DESC);
 
+ALTER TABLE {{.Schema}}.{{.TablePrefix}}outbox_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE {{.Schema}}.{{.TablePrefix}}outbox_entries FORCE ROW LEVEL SECURITY;
+CREATE POLICY {{.TablePrefix}}outbox_entries_tenant ON {{.Schema}}.{{.TablePrefix}}outbox_entries
+  FOR ALL
+  USING (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id())
+  WITH CHECK (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id());
+
 -- +goose StatementEnd
 
 -- +goose Down

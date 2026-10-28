@@ -18,6 +18,7 @@ type postgresStore struct {
 	grants     *entity.APIKeyProjects
 	grantsExpr postgres.Expression
 	hintIndex  string
+	bySecret   string
 }
 
 // NewStore builds the Postgres store over pool.
@@ -30,6 +31,13 @@ func NewStore(pool db.Pool, schema, tablePrefix string) *postgresStore {
 		keys:      entity.NewAPIKeys(schema, tablePrefix),
 		grants:    entity.NewAPIKeyProjects(schema, tablePrefix),
 		hintIndex: tablePrefix + "api_keys_live_hint_key",
+		// NOTE: RawStatement because go-jet has no builder for a set-returning function in FROM position.
+		bySecret: `SELECT k.id AS "api_keys.id", k.org_id AS "api_keys.org_id", k.project_id AS "api_keys.project_id", ` +
+			`k.kind AS "api_keys.kind", k.all_projects AS "api_keys.all_projects", k.project_ids AS "api_keys.project_ids", ` +
+			`k.name AS "api_keys.name", k.secret_hint AS "api_keys.secret_hint", k.scopes AS "api_keys.scopes", ` +
+			`k.resource_ids AS "api_keys.resource_ids", k.created_by AS "api_keys.created_by", k.created_at AS "api_keys.created_at", ` +
+			`k.expires_at AS "api_keys.expires_at", k.revoked_at AS "api_keys.revoked_at", k.last_used_at AS "api_keys.last_used_at" ` +
+			"FROM " + schema + "." + tablePrefix + "resolve_api_key_by_secret_hash(#hash) k",
 		// NOTE: Raw because go-jet has no builder for a correlated array_agg subquery in a projection.
 		grantsExpr: postgres.Raw("COALESCE((SELECT array_agg(g.project_id ORDER BY g.created_at, g.project_id) FROM " +
 			schema + "." + tablePrefix + "api_key_projects g WHERE g.org_id = api_keys.org_id AND g.key_id = api_keys.id), '{}')::text"),

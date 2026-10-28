@@ -50,8 +50,7 @@ func (f *AgentStore) ByID(_ context.Context, id uuid.UUID) (*agent.Agent, error)
 	return f.Agent, nil
 }
 
-// ByPublicID implements agent.Store; it finds Agent or one of Agents by public id.
-func (f *AgentStore) ByPublicID(_ context.Context, publicID string) (*agent.Agent, error) {
+func (f *AgentStore) byPublicID(publicID string) (*agent.Agent, error) {
 	if f.Err != nil {
 		return nil, f.Err
 	}
@@ -69,4 +68,13 @@ func (f *AgentStore) List(context.Context, uuid.UUID) ([]*agent.Agent, error) {
 		return nil, f.Err
 	}
 	return f.Agents, nil
+}
+
+// Resolve implements agent.Store; it names the agent with publicID.
+func (f *AgentStore) Resolve(_ context.Context, publicID string) (agent.Ref, error) {
+	p, err := f.byPublicID(publicID)
+	if err != nil {
+		return agent.Ref{}, err
+	}
+	return agent.Ref{ID: p.ID, OrgID: p.OrgID, ProjectID: p.ProjectID}, nil
 }

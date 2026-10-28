@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
@@ -20,10 +21,10 @@ func TestTermsHistory_RecordsEveryAcceptance(t *testing.T) {
 	ctx := t.Context()
 	o, err := org.NewOrg("terms-org", "Terms Org", uuid.Nil)
 	require.NoError(t, err)
-	require.NoError(t, f.svcs.OrgStore.Save(ctx, o))
+	require.NoError(t, f.svcs.OrgStore.Save(tenant.WithOrg(ctx, o.ID), o))
 	c, err := f.svcs.Invites.Create(ctx, member.Requester{Operator: true}, o.ID, "joiner@example.com", member.RoleMember)
 	require.NoError(t, err)
-	id, err := f.svcs.Invites.Join(ctx, c.Invite.ID, "Joiner", "a sturdy passphrase", true)
+	id, err := f.svcs.Invites.Join(ctx, c.Invite.OrgID, c.Invite.ID, "Joiner", "a sturdy passphrase", true)
 	require.NoError(t, err)
 	_, err = f.svcs.Legal.Accept(ctx, id, legal.SourceWelcome)
 	require.NoError(t, err)

@@ -30,8 +30,7 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
-	sqlDB, schemaName := pgtest.Migrated(t)
-	pool := db.Pool{W: sqlDB, R: sqlDB}
+	pool, sqlDB, schemaName := pgtest.MigratedRLS(t)
 	return &fixture{db: sqlDB, store: outbox.NewStore(pool, schemaName, ""), pool: pool}
 }
 

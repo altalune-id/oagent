@@ -139,7 +139,7 @@ func TestOnlyKernelDBTouchesThePoolHandles(t *testing.T) {
 }
 
 func TestOnlyKernelDBSetsSessionState(t *testing.T) {
-	bad := walkGo(t, []string{filepath.Join("internal", "kernel", "db"), "migrator", "pg"}, sessionStateViolations)
+	bad := walkGo(t, []string{filepath.Join("internal", "kernel", "db"), "migrator"}, sessionStateViolations)
 	require.Empty(t, bad, "the tenant scope is set only by kernel/db with set_config(…, true); never SET or RESET a session")
 }
 

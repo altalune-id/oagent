@@ -76,6 +76,18 @@ func TestValidate_Postgres(t *testing.T) {
 			mutate: func(c *Config) { c.DB.Driver = "" },
 			check:  invalidSetting("db.driver"),
 		},
+		"rls bypass in development ok": {
+			mutate: func(c *Config) { c.Env, c.DB.RLS.AllowBypass = EnvDevelopment, true },
+			check:  valid,
+		},
+		"rls bypass refused in production": {
+			mutate: func(c *Config) { c.Env, c.DB.RLS.AllowBypass = EnvProduction, true },
+			check:  func(t *testing.T, err error) { assert.True(t, IsRLSBypassError(err), "got %v", err) },
+		},
+		"rls bypass refused in cloud": {
+			mutate: func(c *Config) { c.Env, c.Mode, c.DB.RLS.AllowBypass = EnvDevelopment, ModeCloud, true },
+			check:  func(t *testing.T, err error) { assert.True(t, IsRLSBypassError(err), "got %v", err) },
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			c := validConfig(t)
@@ -117,4 +129,16 @@ func TestWalkEnvKeys_PostgresAwareness(t *testing.T) {
 	for _, gone := range []string{"db.dsn", "db.schema", "db.tablePrefix", "db.migrator.dsn", "rateLimit.store"} {
 		assert.NotContains(t, byYAML, gone)
 	}
+}
+
+func TestLoad_RLSAllowBypassFromEnv(t *testing.T) {
+	c := validConfig(t)
+	assert.False(t, c.DB.RLS.AllowBypass, "the guard is strict by default")
+
+	setRequiredEnv(t)
+	t.Setenv("OAGENT_ENV", "development")
+	t.Setenv("OAGENT_DB_RLS_ALLOW_BYPASS", "true")
+	c, err := Load(missingPath(t))
+	require.NoError(t, err)
+	assert.True(t, c.DB.RLS.AllowBypass)
 }

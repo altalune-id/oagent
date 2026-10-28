@@ -32,9 +32,6 @@ func retry(ctx context.Context, budget, backoff time.Duration, attempt func(cont
 		if err == nil {
 			return nil
 		}
-		if isPermanentError(err) {
-			return err
-		}
 		lastErr = err
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return ctxErr

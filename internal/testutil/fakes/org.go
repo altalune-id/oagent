@@ -29,9 +29,14 @@ func (f *OrgStore) Save(_ context.Context, o *org.Org) error {
 }
 
 // ByID implements org.Store.
-func (f *OrgStore) ByID(context.Context, uuid.UUID) (*org.Org, error) {
+func (f *OrgStore) ByID(_ context.Context, id uuid.UUID) (*org.Org, error) {
 	if f.Err != nil {
 		return nil, f.Err
+	}
+	for _, o := range f.Orgs {
+		if o.ID == id {
+			return o, nil
+		}
 	}
 	return f.Org, nil
 }
@@ -72,4 +77,16 @@ func (f *OrgStore) List(context.Context) ([]*org.Org, error) {
 		return nil, f.Err
 	}
 	return f.Orgs, nil
+}
+
+// IDs implements org.Store; it returns the ids of Orgs.
+func (f *OrgStore) IDs(context.Context) ([]uuid.UUID, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	out := make([]uuid.UUID, 0, len(f.Orgs))
+	for _, o := range f.Orgs {
+		out = append(out, o.ID)
+	}
+	return out, nil
 }

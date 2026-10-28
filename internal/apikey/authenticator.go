@@ -12,6 +12,8 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/internal/kernel/usage"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/scope"
 )
@@ -19,7 +21,7 @@ import (
 // Authenticator verifies an API key and builds its Principal.
 type Authenticator struct {
 	store      Reader
-	usage      *UsageWorker
+	usage      *usage.Worker
 	scheme     Scheme
 	owners     OwnerRoles
 	unexpected apperror.UnexpectedFunc
@@ -28,17 +30,17 @@ type Authenticator struct {
 
 var _ authn.Authenticator = (*Authenticator)(nil)
 
-// NewAuthenticator binds an Authenticator to its store, usage recorder, scheme and owner roles; usage and unexpected may be nil.
+// NewAuthenticator binds an Authenticator to its store, usage recorder, scheme and owner roles; recorder and unexpected may be nil.
 func NewAuthenticator(
 	store Reader,
-	usage *UsageWorker,
+	recorder *usage.Worker,
 	scheme Scheme,
 	owners OwnerRoles,
 	unexpected apperror.UnexpectedFunc,
 ) *Authenticator {
 	return &Authenticator{
 		store:      store,
-		usage:      usage,
+		usage:      recorder,
 		scheme:     scheme,
 		owners:     owners,
 		unexpected: unexpected,
@@ -69,7 +71,7 @@ func (a *Authenticator) Authenticate(ctx context.Context, c authn.Credential) (s
 		}
 	}
 	if a.usage != nil {
-		a.usage.Record(k.ID, now)
+		a.usage.Record(tenant.Context{OrgID: k.OrgID}, k.ID, now)
 	}
 	return p, nil
 }

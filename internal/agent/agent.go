@@ -156,3 +156,10 @@ func agentToProto(a *Agent, orgPublicID, projectPublicID string) *agentv1.Agent 
 		UpdatedAt:   timestamppb.New(a.UpdatedAt),
 	}
 }
+
+// Ref names an agent and the tenant it belongs to, before any row is read.
+type Ref struct {
+	ID        uuid.UUID
+	OrgID     uuid.UUID
+	ProjectID uuid.UUID
+}

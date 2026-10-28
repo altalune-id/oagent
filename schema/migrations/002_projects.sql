@@ -15,6 +15,13 @@ CREATE TABLE {{.Schema}}.{{.TablePrefix}}projects (
 
 CREATE INDEX {{.TablePrefix}}projects_org_id_idx ON {{.Schema}}.{{.TablePrefix}}projects (org_id);
 
+ALTER TABLE {{.Schema}}.{{.TablePrefix}}projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE {{.Schema}}.{{.TablePrefix}}projects FORCE ROW LEVEL SECURITY;
+CREATE POLICY {{.TablePrefix}}projects_tenant ON {{.Schema}}.{{.TablePrefix}}projects
+  FOR ALL
+  USING (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id())
+  WITH CHECK (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id());
+
 -- +goose StatementEnd
 
 -- +goose Down

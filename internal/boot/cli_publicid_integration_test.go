@@ -85,3 +85,35 @@ func TestCLI_JSONHoldsNoUUID(t *testing.T) {
 		assert.Empty(t, uuidShaped.FindAllString(buf.String(), -1), "%v printed a UUID: %s", args, buf.String())
 	}
 }
+
+// SECURITY: an operator's active org is not org B, so these reads resolve B's public ids through the lookup functions, then scope to B.
+func TestCLI_OperatorReachesProjectsAndAgentsInAnotherOrg(t *testing.T) {
+	f := newAPIFixture(t)
+	s := seedReach(t, f)
+	cookie := f.ownerCookie(t)
+	who, err := f.whoami(t, "Cookie", cookie)
+	require.NoError(t, err)
+	require.True(t, who.GetOperator())
+	require.NotEqual(t, s.pub.org, who.GetActiveOrgId())
+	c := apiclient.New(strings.TrimSuffix(f.url, "/api"), apiclient.Credential{Session: strings.TrimPrefix(cookie, session.CookieName+"=")})
+	for _, tc := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"org", "get", s.pub.org}, s.pub.org},
+		{[]string{"org", "list"}, s.pub.org},
+		{[]string{"project", "get", s.pub.project}, s.pub.project},
+		{[]string{"project", "list", "--org-id", s.pub.org}, s.pub.otherProject},
+		{[]string{"agent", "get", s.pub.agent}, s.pub.agent},
+		{[]string{"agent", "list", "--project-id", s.pub.project}, s.pub.agent},
+		{[]string{"agent", "update", s.pub.agent, "--name", "Renamed"}, "Renamed"},
+	} {
+		buf := new(bytes.Buffer)
+		root := cliRoot(c)
+		root.SetOut(buf)
+		root.SetErr(buf)
+		root.SetArgs(append(tc.args, "--output", "json"))
+		require.NoError(t, root.ExecuteContext(t.Context()), "%v: %s", tc.args, buf.String())
+		assert.Contains(t, buf.String(), tc.want, "%v", tc.args)
+	}
+}

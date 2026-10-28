@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/tenant"
 )
 
 // Save upserts a key and syncs its project grant in one transaction.
@@ -75,17 +76,21 @@ func (s *postgresStore) syncGrants(ctx context.Context, tx *sql.Tx, k *APIKey) e
 	return nil
 }
 
-// TouchLastUsed moves each key's last_used_at forward to its time; it never moves it backwards.
+// TouchLastUsed moves each of the scoped org's keys' last_used_at forward to its time; it never moves it backwards.
 func (s *postgresStore) TouchLastUsed(ctx context.Context, used map[uuid.UUID]time.Time) error {
 	if len(used) == 0 {
 		return nil
+	}
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return err
 	}
 	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error {
 		for id, at := range used {
 			ts := postgres.TimestampzT(at.UTC())
 			stmt := s.keys.UPDATE(s.keys.LastUsedAt).
 				SET(postgres.GREATEST(postgres.COALESCE(s.keys.LastUsedAt, ts), ts)).
-				WHERE(s.keys.ID.EQ(postgres.UUID(id)))
+				WHERE(s.keys.ID.EQ(postgres.UUID(id)).AND(s.keys.OrgID.EQ(postgres.UUID(tc.OrgID))))
 			if _, err := stmt.ExecContext(ctx, tx); err != nil {
 				return fmt.Errorf("apikey.postgres: TouchLastUsed: %w", err)
 			}

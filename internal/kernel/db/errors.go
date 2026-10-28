@@ -3,6 +3,8 @@ package db
 import (
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -39,4 +41,20 @@ func ViolatedConstraint(err error) (string, bool) {
 func hasCode(err error, code string) bool {
 	pgErr, ok := errors.AsType[*pgconn.PgError](err)
 	return ok && pgErr.Code == code
+}
+
+// RLSError lists every reason a pool may not serve requests.
+type RLSError struct {
+	Pool    string
+	Reasons []string
+}
+
+func (e *RLSError) Error() string {
+	return fmt.Sprintf("db: the %s pool would not enforce row-level security: %s", e.Pool, strings.Join(e.Reasons, "; "))
+}
+
+// IsRLSError reports whether err's tree holds an *RLSError.
+func IsRLSError(err error) bool {
+	_, ok := errors.AsType[*RLSError](err)
+	return ok
 }

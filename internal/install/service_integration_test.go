@@ -43,9 +43,9 @@ func newInstallFixture(t *testing.T) *installFixture {
 
 func newInstallFixtureWithConns(t *testing.T, maxOpen int) *installFixture {
 	t.Helper()
-	sqlDB, schemaName := pgtest.Migrated(t)
+	pool, sqlDB, schemaName := pgtest.MigratedRLS(t)
 	sqlDB.SetMaxOpenConns(maxOpen)
-	pool := db.Pool{W: sqlDB, R: sqlDB}
+
 	unexpected := apperror.NewReporter(nil, false).Unexpected
 	f := &installFixture{
 		pool:     pool,
@@ -60,9 +60,9 @@ func newInstallFixtureWithConns(t *testing.T, maxOpen int) *installFixture {
 
 func (f *installFixture) orgCount(t *testing.T) int {
 	t.Helper()
-	all, err := f.orgs.List(t.Context())
+	ids, err := f.orgs.IDs(t.Context())
 	require.NoError(t, err)
-	return len(all)
+	return len(ids)
 }
 
 func TestInstall_Fresh(t *testing.T) {

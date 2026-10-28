@@ -168,7 +168,7 @@ func TestWeb_LinkSetsTheCookieAndLeavesTheURL(t *testing.T) {
 func TestWeb_DeadLinks(t *testing.T) {
 	f := newWebFixture(t, false)
 	used := f.create("used@x.io", member.RoleMember)
-	_, err := f.svc.Accept(f.ctx, used.Invite.ID, f.newcomer("used@x.io"))
+	_, err := f.svc.Accept(f.ctx, used.Invite.OrgID, used.Invite.ID, f.newcomer("used@x.io"))
 	require.NoError(t, err)
 	revoked := f.create("revoked@x.io", member.RoleMember)
 	require.NoError(t, f.svc.Revoke(f.ctx, f.owner, f.org, revoked.Invite.ID))

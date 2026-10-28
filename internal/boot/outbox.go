@@ -24,15 +24,15 @@ func buildOutboxWorker(svcs *Services, log *slog.Logger) *outbox.Worker {
 type outboxTenants struct{ orgs *org.Service }
 
 func (t outboxTenants) Each(ctx context.Context, fn func(context.Context, string) error) error {
-	list, err := t.orgs.List(ctx)
+	ids, err := t.orgs.IDs(ctx)
 	if err != nil {
 		return err
 	}
-	for _, o := range list {
+	for _, id := range ids {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		if err := fn(tenant.Into(ctx, tenant.Context{OrgID: o.ID}), o.ID.String()); err != nil {
+		if err := fn(tenant.Into(ctx, tenant.Context{OrgID: id}), id.String()); err != nil {
 			return err
 		}
 	}

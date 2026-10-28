@@ -27,22 +27,6 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*Project, error
 	return row.toProject(), nil
 }
 
-// ByPublicID loads a project by its public id.
-func (s *postgresStore) ByPublicID(ctx context.Context, publicID string) (*Project, error) {
-	stmt := postgres.SELECT(s.projects.AllColumns).
-		FROM(s.projects).
-		WHERE(s.projects.PublicID.EQ(postgres.String(publicID))).
-		LIMIT(1)
-	var row projectRow
-	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
-		if db.IsNoRows(err) {
-			return nil, &NotFoundError{ID: publicID}
-		}
-		return nil, fmt.Errorf("project.postgres: ByPublicID: %w", err)
-	}
-	return row.toProject(), nil
-}
-
 // BySlug loads a project by slug within an organization.
 func (s *postgresStore) BySlug(ctx context.Context, orgID uuid.UUID, slug string) (*Project, error) {
 	stmt := postgres.SELECT(s.projects.AllColumns).
@@ -74,4 +58,20 @@ func (s *postgresStore) List(ctx context.Context, orgID uuid.UUID) ([]*Project, 
 		out = append(out, rows[i].toProject())
 	}
 	return out, nil
+}
+
+// Resolve names publicID's project and its org through a definer, so a caller with no active org can check reach and then scope.
+func (s *postgresStore) Resolve(ctx context.Context, publicID string) (Ref, error) {
+	var row struct {
+		ID    uuid.UUID `alias:"projects.id"`
+		OrgID uuid.UUID `alias:"projects.org_id"`
+	}
+	stmt := postgres.RawStatement(s.resolve, postgres.RawArgs{"#publicID": publicID})
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
+		if db.IsNoRows(err) {
+			return Ref{}, &NotFoundError{}
+		}
+		return Ref{}, fmt.Errorf("project.postgres: Resolve: %w", err)
+	}
+	return Ref{ID: row.ID, OrgID: row.OrgID}, nil
 }

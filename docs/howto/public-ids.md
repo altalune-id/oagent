@@ -24,7 +24,7 @@ Use this whenever an identifier crosses a surface: a new RPC field, MCP tool arg
    }
    ```
 
-3. **Lookup.** `ByPublicID(ctx, publicID)` on the store and the service; an unknown id is the domain's `*NotFoundError` ([store-method.md](store-method.md)).
+3. **Lookup.** `Resolve(ctx, publicID)` on the store and the service returns the row's ids (`Ref`) through a `SECURITY DEFINER` function, so it works before the org is known; an unknown id is the domain's `*NotFoundError` ([store-method.md](store-method.md)).
 4. **Proto rule.** Every id field gets the shared shape rule, so a UUID or garbage is refused with `InvalidArgument` before the handler runs. Mark a removed field `reserved "public_id";`. See [rpc.md](rpc.md).
 
    ```proto
@@ -37,19 +37,24 @@ Use this whenever an identifier crosses a surface: a new RPC field, MCP tool arg
 5. **Resolve once, at the edge.** In `<domain>/controlplane.go`, through the `Refs` port in `ports.go`. Boot fills it with `publicIDs` (`internal/boot/publicids.go`), which serves `controlplane.Refs`. `ok == false` means unknown. Answer "not found" for unknown and out-of-reach alike:
 
    ```go
-   // SECURITY: an unknown agent and an agent outside the caller's reach answer the same not-found.
-   func (s *AgentService) reachable(ctx context.Context, publicID string) (*Agent, error) {
-       a, err := s.agents.ByPublicID(ctx, publicID)
+   // SECURITY: an unknown agent and an agent outside the caller's reach answer the same not-found; a reached agent scopes the call to its org.
+   func (s *AgentService) reachable(ctx context.Context, publicID string) (context.Context, *Agent, error) {
+       r, err := s.agents.Resolve(ctx, publicID)
        if IsNotFoundError(err) {
-           return nil, &NotFoundError{}
+           return ctx, nil, &NotFoundError{}
        }
        if err != nil {
-           return nil, err
+           return ctx, nil, err
        }
-       if !authz.ReachResource(ctx, a.OrgID, a.ProjectID, a.ID) {
-           return nil, &NotFoundError{}
+       if !authz.ReachResource(ctx, r.OrgID, r.ProjectID, r.ID) {
+           return ctx, nil, &NotFoundError{}
        }
-       return a, nil
+       ctx = tenant.WithOrg(ctx, r.OrgID)
+       a, err := s.agents.Get(ctx, r.ID)
+       if IsNotFoundError(err) {
+           return ctx, nil, &NotFoundError{}
+       }
+       return ctx, a, err
    }
    ```
 
@@ -74,16 +79,16 @@ Use this whenever an identifier crosses a surface: a new RPC field, MCP tool arg
 
 The tests that guard the rule:
 
-| Test                                                    | Guards                                                                     |
-| ------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `TestPublicIDs_NoRPCAnswersWithAUUID` (`internal/boot`) | every RPC response and error, called by a caller who can see the data      |
-| `TestReach_UUIDsAndGarbageAreRefused` (`internal/boot`) | UUID and garbage ids → `InvalidArgument`; unknown ids → `NotFound`         |
-| `TestReach_AnotherOrgIsRefused` (`internal/boot`)       | another org's public ids are refused and change nothing                    |
-| `TestCLI_JSONHoldsNoUUID` (`internal/boot`)             | CLI JSON output                                                            |
-| `TestMCP_ToolResultsHoldNoUUID` (`internal/boot`)       | every MCP tool result                                                      |
-| `TestDeliveryCarriesPublicIDsOnly` (`internal/webhook`) | webhook body and headers                                                   |
-| `TestAgentReach_IDOnlyRPCs` (`internal/agent`)          | a foreign agent, by public id or UUID, is not found (per-domain unit test) |
-| `TestPostgres_ByPublicID` (`internal/agent`)            | the store finds by public id, and a UUID is not a public id                |
+| Test                                                                      | Guards                                                                      |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `TestPublicIDs_NoRPCAnswersWithAUUID` (`internal/boot`)                   | every RPC response and error, called by a caller who can see the data       |
+| `TestReach_UUIDsAndGarbageAreRefused` (`internal/boot`)                   | UUID and garbage ids → `InvalidArgument`; unknown ids → `NotFound`          |
+| `TestReach_AnotherOrgIsRefused` (`internal/boot`)                         | another org's public ids are refused and change nothing                     |
+| `TestCLI_JSONHoldsNoUUID` (`internal/boot`)                               | CLI JSON output                                                             |
+| `TestMCP_ToolResultsHoldNoUUID` (`internal/boot`)                         | every MCP tool result                                                       |
+| `TestDeliveryCarriesPublicIDsOnly` (`internal/webhook`)                   | webhook body and headers                                                    |
+| `TestAgentReach_IDOnlyRPCs` (`internal/agent`)                            | a foreign agent, by public id or UUID, is not found (per-domain unit test)  |
+| `TestPostgres_AgentResolveNamesTheTenantWithoutAScope` (`internal/agent`) | the store resolves a public id with no scope, and a UUID is not a public id |
 
 ## Reference code
 

@@ -14,14 +14,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/testutil/pgtest"
 )
 
 func newOrgStore(t *testing.T) (org.Store, db.Pool) {
 	t.Helper()
-	sqlDB, schemaName := pgtest.Migrated(t)
-	pool := db.Pool{W: sqlDB, R: sqlDB}
+	pool, _, schemaName := pgtest.MigratedRLS(t)
 	return org.NewStore(pool, schemaName, ""), pool
 }
 
@@ -64,9 +64,9 @@ func TestOrgStore_RoundTrip(t *testing.T) {
 			o.CreatedAt = time.Date(2024, 2, 29, 23, 59, 58, 123456000, time.FixedZone("WIB", 7*3600))
 
 			before := time.Now()
-			require.NoError(t, store.Save(ctx, o))
+			require.NoError(t, store.Save(tenant.Into(ctx, tenant.Context{OrgID: o.ID}), o))
 
-			byID, err := store.ByID(ctx, o.ID)
+			byID, err := store.ByID(tenant.Into(ctx, tenant.Context{OrgID: o.ID}), o.ID)
 			require.NoError(t, err)
 			bySlug, err := store.BySlug(ctx, "acme")
 			require.NoError(t, err)
@@ -92,8 +92,8 @@ func TestOrgStore_SaveUpdatesMutableColumnsOnly(t *testing.T) {
 	ctx := t.Context()
 	creator := seedUser(t, pool)
 	o := newOrg(t, "acme", creator)
-	require.NoError(t, store.Save(ctx, o))
-	first, err := store.ByID(ctx, o.ID)
+	require.NoError(t, store.Save(tenant.Into(ctx, tenant.Context{OrgID: o.ID}), o))
+	first, err := store.ByID(tenant.Into(ctx, tenant.Context{OrgID: o.ID}), o.ID)
 	require.NoError(t, err)
 
 	changed := *o
@@ -101,9 +101,9 @@ func TestOrgStore_SaveUpdatesMutableColumnsOnly(t *testing.T) {
 	changed.Name = "Acme Renamed"
 	changed.CreatedBy = uuid.NullUUID{UUID: uuid.New(), Valid: true}
 	changed.CreatedAt = o.CreatedAt.Add(-48 * time.Hour)
-	require.NoError(t, store.Save(ctx, &changed))
+	require.NoError(t, store.Save(tenant.Into(ctx, tenant.Context{OrgID: changed.ID}), &changed))
 
-	got, err := store.ByID(ctx, o.ID)
+	got, err := store.ByID(tenant.Into(ctx, tenant.Context{OrgID: o.ID}), o.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "acme-renamed", got.Slug)
 	assert.Equal(t, "Acme Renamed", got.Name)
@@ -114,7 +114,7 @@ func TestOrgStore_SaveUpdatesMutableColumnsOnly(t *testing.T) {
 	_, err = store.BySlug(ctx, "acme")
 	assert.True(t, org.IsNotFoundError(err), "old slug must be released, got %v", err)
 
-	all, err := store.List(ctx)
+	all, err := store.IDs(ctx)
 	require.NoError(t, err)
 	assert.Len(t, all, 1, "upsert by id must not insert a second row")
 }
@@ -132,15 +132,15 @@ func TestOrgStore_UniqueConstraints(t *testing.T) {
 			store, _ := newOrgStore(t)
 			ctx := t.Context()
 			existing := newOrg(t, "acme", uuid.Nil)
-			require.NoError(t, store.Save(ctx, existing))
+			require.NoError(t, store.Save(tenant.Into(ctx, tenant.Context{OrgID: existing.ID}), existing))
 
 			other := newOrg(t, "globex", uuid.Nil)
 			tc.mutate(existing, other)
-			err := store.Save(ctx, other)
+			err := store.Save(tenant.Into(ctx, tenant.Context{OrgID: other.ID}), other)
 			require.Error(t, err)
 			assert.True(t, org.IsAlreadyExistsError(err), "want AlreadyExistsError, got %T: %v", err, err)
 
-			_, err = store.ByID(ctx, other.ID)
+			_, err = store.ByID(tenant.Into(ctx, tenant.Context{OrgID: other.ID}), other.ID)
 			assert.True(t, org.IsNotFoundError(err), "a rejected insert must leave no row")
 		})
 	}
@@ -149,14 +149,14 @@ func TestOrgStore_UniqueConstraints(t *testing.T) {
 		store, _ := newOrgStore(t)
 		ctx := t.Context()
 		a, b := newOrg(t, "acme", uuid.Nil), newOrg(t, "globex", uuid.Nil)
-		require.NoError(t, store.Save(ctx, a))
-		require.NoError(t, store.Save(ctx, b))
+		require.NoError(t, store.Save(tenant.Into(ctx, tenant.Context{OrgID: a.ID}), a))
+		require.NoError(t, store.Save(tenant.Into(ctx, tenant.Context{OrgID: b.ID}), b))
 
 		b.Slug = "acme"
-		err := store.Save(ctx, b)
+		err := store.Save(tenant.Into(ctx, tenant.Context{OrgID: b.ID}), b)
 		assert.True(t, org.IsAlreadyExistsError(err), "want AlreadyExistsError, got %T: %v", err, err)
 
-		got, err := store.ByID(ctx, b.ID)
+		got, err := store.ByID(tenant.Into(ctx, tenant.Context{OrgID: b.ID}), b.ID)
 		require.NoError(t, err)
 		assert.Equal(t, "globex", got.Slug, "the failed update must not change the row")
 	})
@@ -165,7 +165,8 @@ func TestOrgStore_UniqueConstraints(t *testing.T) {
 func TestOrgStore_NotFound(t *testing.T) {
 	store, _ := newOrgStore(t)
 	ctx := t.Context()
-	require.NoError(t, store.Save(ctx, newOrg(t, "acme", uuid.Nil)))
+	acme := newOrg(t, "acme", uuid.Nil)
+	require.NoError(t, store.Save(tenant.Into(ctx, tenant.Context{OrgID: acme.ID}), acme))
 
 	id := uuid.New()
 	_, err := store.ByID(ctx, id)
@@ -191,23 +192,25 @@ func TestOrgStore_ListOrdersByCreatedAtAscending(t *testing.T) {
 	store, _ := newOrgStore(t)
 	ctx := t.Context()
 
-	empty, err := store.List(ctx)
+	empty, err := store.IDs(ctx)
 	require.NoError(t, err)
 	assert.Empty(t, empty)
+	slugOf := map[uuid.UUID]string{}
 
 	base := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	offsets := map[string]time.Duration{"charlie": 3 * time.Hour, "alpha": time.Hour, "bravo": 2 * time.Hour}
 	for _, slug := range []string{"charlie", "alpha", "bravo"} {
 		o := newOrg(t, slug, uuid.Nil)
 		o.CreatedAt = base.Add(offsets[slug])
-		require.NoError(t, store.Save(ctx, o))
+		require.NoError(t, store.Save(tenant.Into(ctx, tenant.Context{OrgID: o.ID}), o))
+		slugOf[o.ID] = slug
 	}
 
-	got, err := store.List(ctx)
+	got, err := store.IDs(ctx)
 	require.NoError(t, err)
 	slugs := make([]string, 0, len(got))
-	for _, o := range got {
-		slugs = append(slugs, o.Slug)
+	for _, id := range got {
+		slugs = append(slugs, slugOf[id])
 	}
 	assert.Equal(t, []string{"alpha", "bravo", "charlie"}, slugs)
 }
@@ -218,38 +221,39 @@ func TestOrgStore_HonorsUnitOfWork(t *testing.T) {
 	t.Run("rollback leaves nothing", func(t *testing.T) {
 		store, pool := newOrgStore(t)
 		o := newOrg(t, "acme", uuid.Nil)
-		err := db.RunInTx(t.Context(), pool, func(ctx context.Context) error {
+		err := db.RunInTx(tenant.Into(t.Context(), tenant.Context{OrgID: o.ID}), pool, func(ctx context.Context) error {
 			require.NoError(t, store.Save(ctx, o))
 			got, err := store.ByID(ctx, o.ID)
 			require.NoError(t, err, "reads inside the unit of work see its own writes")
 			assert.Equal(t, o.ID, got.ID)
 
-			_, err = store.ByID(t.Context(), o.ID)
+			_, err = store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: o.ID}), o.ID)
 			assert.True(t, org.IsNotFoundError(err), "uncommitted row must be invisible outside the tx")
 			return errAbort
 		})
 		require.ErrorIs(t, err, errAbort)
 
-		_, err = store.ByID(t.Context(), o.ID)
+		_, err = store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: o.ID}), o.ID)
 		assert.True(t, org.IsNotFoundError(err), "rolled-back row must not persist, got %v", err)
 	})
 
 	t.Run("commit persists", func(t *testing.T) {
 		store, pool := newOrgStore(t)
 		o := newOrg(t, "acme", uuid.Nil)
-		require.NoError(t, db.RunInTx(t.Context(), pool, func(ctx context.Context) error {
+		require.NoError(t, db.RunInTx(tenant.Into(t.Context(), tenant.Context{OrgID: o.ID}), pool, func(ctx context.Context) error {
 			return store.Save(ctx, o)
 		}))
-		got, err := store.ByID(t.Context(), o.ID)
+		got, err := store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: o.ID}), o.ID)
 		require.NoError(t, err)
 		assert.Equal(t, "acme", got.Slug)
 	})
 
 	t.Run("unique violation inside tx is still typed", func(t *testing.T) {
 		store, pool := newOrgStore(t)
-		require.NoError(t, store.Save(t.Context(), newOrg(t, "acme", uuid.Nil)))
-		err := db.RunInTx(t.Context(), pool, func(ctx context.Context) error {
-			return store.Save(ctx, newOrg(t, "acme", uuid.Nil))
+		first, second := newOrg(t, "acme", uuid.Nil), newOrg(t, "acme", uuid.Nil)
+		require.NoError(t, store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: first.ID}), first))
+		err := db.RunInTx(tenant.Into(t.Context(), tenant.Context{OrgID: second.ID}), pool, func(ctx context.Context) error {
+			return store.Save(ctx, second)
 		})
 		assert.True(t, org.IsAlreadyExistsError(err), "want AlreadyExistsError, got %T: %v", err, err)
 	})
@@ -267,7 +271,7 @@ func TestOrgStore_ConcurrentSameSlugExactlyOneWins(t *testing.T) {
 		o := newOrg(t, "contested", uuid.Nil)
 		wg.Go(func() {
 			<-start
-			errs[i] = store.Save(ctx, o)
+			errs[i] = store.Save(tenant.Into(ctx, tenant.Context{OrgID: o.ID}), o)
 		})
 	}
 	close(start)
@@ -287,7 +291,7 @@ func TestOrgStore_ConcurrentSameSlugExactlyOneWins(t *testing.T) {
 	assert.Equal(t, 1, ok)
 	assert.Equal(t, workers-1, dup)
 
-	all, err := store.List(ctx)
+	all, err := store.IDs(ctx)
 	require.NoError(t, err)
 	assert.Len(t, all, 1)
 }

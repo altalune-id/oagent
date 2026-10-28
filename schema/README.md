@@ -5,6 +5,17 @@ Postgres migrations for oagent, run by the app-agnostic `migrator` package
 `Config.Schema` defaults to `public`; a non-empty `Config.Role` runs `SET ROLE`
 on the migration connection.
 
+Roles (`scripts/db/provision.sh`): migrations run as `oagent_migrator` with
+`SET ROLE oagent_owner`, so `oagent_owner` (NOLOGIN, BYPASSRLS) owns the schema,
+every table, sequence and function, and `goose_db_version`. The app logs in as
+`oagent_service` (NOBYPASSRLS, no memberships, owns nothing), which gets
+`SELECT, INSERT, UPDATE, DELETE` on tables, `USAGE` on sequences and `EXECUTE`
+on functions through the owner's default privileges, read-only access to
+`goose_db_version`, and no `CREATE` or `TEMP`. Functions are never executable by
+`PUBLIC`. `scripts/db/verify.template.sql` checks all of this. Integration tests
+get the same split from `pgtest.MigratedRLS` (`oagent_test_owner`,
+`oagent_test_service`).
+
 ```mermaid
 erDiagram
     orgs ||--o{ projects : has
@@ -252,6 +263,47 @@ Rules the diagram can't show. Names omit `{{.TablePrefix}}`.
 | `mail_queue`                                                                      | `mail_queue_due_idx` (`WHERE status = 'pending'`)                                               | the worker's claim of due mail                                                                                                             |
 | `password_resets`                                                                 | `token_hash` unique, `password_resets_user_idx` (`WHERE used_at IS NULL`)                       | tokens are found by their hash; a new request deletes the person's unused tokens                                                           |
 | `sessions`                                                                        | `sessions_expires_idx`, `sessions_user_idx`                                                     | sweep of expired rows; delete all sessions of a user                                                                                       |
+
+## Row level security
+
+Every org-owned table has `ENABLE` and `FORCE ROW LEVEL SECURITY` and a policy created in the table's own
+migration. Policies read the scope only through the helpers `current_org_id()` and
+`current_user_id()` in `001_init.sql` (`NULLIF(current_setting('app.current_…', true), '')::uuid`, so a missing
+scope means no rows, never a cast error).
+`tenant_policy_guard_test.go` fails on an inline `current_setting`, an org-owned table without its policy, or a
+user branch outside a read policy, and `rls_isolation_integration_test.go` proves each table as the service role.
+
+| Table                                                                                                                        | Policy                                                                                                                                                      |
+| ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `projects`, `agents`, `api_keys`, `api_key_projects`, `outbox_entries`, `webhook_endpoints`, `webhook_deliveries`, `invites` | `<table>_tenant`, `FOR ALL`: `org_id = current_org_id()`                                                                                                    |
+| `memberships`                                                                                                                | `memberships_read` (`FOR SELECT`): `org_id = current_org_id() OR user_id = current_user_id()`; `_insert`, `_update`, `_delete`: `org_id = current_org_id()` |
+| `orgs`                                                                                                                       | `orgs_read` (`FOR SELECT`): `id = current_org_id()` or an org the user is a member of; `_insert`, `_update`, `_delete`: `id = current_org_id()`             |
+
+A user-only scope reads its own memberships and orgs but writes nothing. The `orgs` policies read `memberships`, so
+`001_init.sql` only enables and forces row level security on `orgs`, and `008_memberships.sql` creates its policies.
+
+Global tables, with no org and no row level security: `users`, `sessions`, `password_resets`, `terms_acceptances`,
+`legal_documents`, `mail_queue` and `goose_db_version`.
+
+## Lookup functions
+
+`018_tenant_lookups.sql` holds the `SECURITY DEFINER` functions for reads that must run before a tenant scope
+exists, or across every org. Each one runs as the owner with `search_path = <schema>, pg_catalog, pg_temp`,
+matches one key, returns public columns only (never a hash), and is closed to `PUBLIC`; the service role gets
+`EXECUTE` through the owner's default privileges. `lookups_integration_test.go` checks all of this and that no
+other definer exists.
+
+| Function                                | Returns                                        | Used by                                                     |
+| --------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------- |
+| `list_org_ids()`                        | every org id and creation time                 | the outbox worker and an operator's `ListOrgs`, then scoped |
+| `resolve_system_org()`                  | the system org                                 | install and sign-in                                         |
+| `resolve_org_by_slug(text)`             | one org                                        | slug routes and the system slug check                       |
+| `resolve_org_by_public_id(text)`        | one org                                        | public id resolution on every surface                       |
+| `resolve_invite_by_token_hash(text)`    | one invite, without `token_hash`               | the invite link and join                                    |
+| `resolve_invite_by_public_id(text)`     | one invite, without `token_hash`               | the invite landing page                                     |
+| `resolve_api_key_by_secret_hash(bytea)` | one API key and its projects, without the hash | API key authentication                                      |
+| `resolve_project_by_public_id(text)`    | a project's id and org                         | public id resolution; operators, who have no active org     |
+| `resolve_agent_by_public_id(text)`      | an agent's id, org and project                 | public id resolution; operators, who have no active org     |
 
 ## External migrations
 

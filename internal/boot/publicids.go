@@ -58,11 +58,11 @@ func (p publicIDs) OrgPublicID(ctx context.Context, id uuid.UUID) (string, error
 }
 
 func (p publicIDs) ProjectID(ctx context.Context, publicID string) (id, orgID uuid.UUID, ok bool, err error) {
-	pr, err := p.projects.ByPublicID(ctx, publicID)
+	r, err := p.projects.Resolve(ctx, publicID)
 	if err != nil {
 		return uuid.Nil, uuid.Nil, false, notFoundIsAbsent(err)
 	}
-	return pr.ID, pr.OrgID, true, nil
+	return r.ID, r.OrgID, true, nil
 }
 
 func (p publicIDs) ProjectPublicID(ctx context.Context, id uuid.UUID) (string, error) {
@@ -91,7 +91,7 @@ func (p publicIDs) UserPublicID(ctx context.Context, id uuid.UUID) (string, erro
 
 // ResourceID resolves an agent's or a webhook endpoint's public id within orgID.
 func (p publicIDs) ResourceID(ctx context.Context, orgID uuid.UUID, publicID string) (uuid.UUID, bool, error) {
-	a, err := p.agents.ByPublicID(ctx, publicID)
+	a, err := p.agents.Resolve(ctx, publicID)
 	switch {
 	case err == nil && a.OrgID == orgID:
 		return a.ID, true, nil
@@ -106,7 +106,7 @@ func (p publicIDs) ResourceID(ctx context.Context, orgID uuid.UUID, publicID str
 }
 
 func (p publicIDs) ResourcePublicID(ctx context.Context, orgID, id uuid.UUID) (publicID string, ok bool, err error) {
-	a, err := p.agents.Get(ctx, id)
+	a, err := p.agents.Get(tenant.WithOrg(ctx, orgID), id)
 	switch {
 	case err == nil && a.OrgID == orgID:
 		return a.PublicID, true, nil

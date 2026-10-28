@@ -258,11 +258,10 @@ func TestFixtureAnnotationsMatchTheRealOne(t *testing.T) {
 }
 
 func TestFixtureDescriptorSetIsFresh(t *testing.T) {
-	buf := bufCommand(t)
+	buf := bufBinary(t)
 
 	out := filepath.Join(t.TempDir(), "fixture.binpb")
-	args := append(append([]string{}, buf[1:]...), "build", filepath.Join("testdata", "proto"), "-o", out)
-	cmd := exec.CommandContext(t.Context(), buf[0], args...)
+	cmd := exec.CommandContext(t.Context(), buf, "build", filepath.Join("testdata", "proto"), "-o", out)
 	if combined, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("rebuilding the fixture descriptor set: %v\n%s", err, combined)
 	}
@@ -276,21 +275,25 @@ func TestFixtureDescriptorSetIsFresh(t *testing.T) {
 		t.Fatalf("reading the committed descriptor set: %v", err)
 	}
 	if !bytes.Equal(rebuilt, committed) {
-		t.Error("testdata/fixture.binpb is stale: it no longer matches testdata/proto. Rebuild it with `pnpm exec buf build internal/tool/protocmcp/testdata/proto -o internal/tool/protocmcp/testdata/fixture.binpb`, then rerun this package's tests with -update.")
+		t.Error("testdata/fixture.binpb is stale: it no longer matches testdata/proto. Rebuild it with `node_modules/.bin/buf build internal/tool/protocmcp/testdata/proto -o internal/tool/protocmcp/testdata/fixture.binpb`, then rerun this package's tests with -update.")
 	}
 }
 
-func bufCommand(t *testing.T) []string {
+// NOTE: the buf pinned in pnpm-lock.yaml; missing, the test skips locally and fails when CI is set.
+func bufBinary(t *testing.T) string {
 	t.Helper()
 
-	if path, err := exec.LookPath("pnpm"); err == nil {
-		return []string{path, "exec", "buf"}
+	path, err := filepath.Abs(filepath.Join("..", "..", "..", "node_modules", ".bin", "buf"))
+	if err != nil {
+		t.Fatalf("resolving node_modules/.bin/buf: %v", err)
 	}
-	if path, err := exec.LookPath("buf"); err == nil {
-		return []string{path}
+	if _, err := os.Stat(path); err != nil {
+		if os.Getenv("CI") == "" {
+			t.Skipf("node_modules/.bin/buf is not installed; run pnpm install: %v", err)
+		}
+		t.Fatalf("node_modules/.bin/buf: %v", err)
 	}
-	t.Skip("neither buf nor pnpm is on PATH — cannot verify that testdata/fixture.binpb is fresh")
-	return nil
+	return path
 }
 
 func newPlugin(t *testing.T, generate ...string) *protogen.Plugin {

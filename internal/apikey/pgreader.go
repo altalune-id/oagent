@@ -66,12 +66,10 @@ func (s *postgresStore) List(ctx context.Context, orgID uuid.UUID) ([]*APIKey, e
 	return out, nil
 }
 
-// BySecretHash loads the key whose secret hashes to hash. SECURITY: reads the writer, so a revoked key is never stale.
+// BySecretHash loads the key whose secret hashes to hash through a definer, before any tenant scope exists.
 func (s *postgresStore) BySecretHash(ctx context.Context, hash [32]byte) (*APIKey, error) {
-	stmt := postgres.SELECT(s.selectColumns()).
-		FROM(s.keys).
-		WHERE(s.keys.SecretHash.EQ(postgres.Bytea(hash[:]))).
-		LIMIT(1)
+	// SECURITY: reads the writer, so a revoked key is never stale; the definer never returns the hash, so SecretHash stays zero.
+	stmt := postgres.RawStatement(s.bySecret, postgres.RawArgs{"#hash": hash[:]})
 	var row apiKeyRow
 	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {

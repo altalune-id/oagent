@@ -9,6 +9,7 @@ import (
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	"altalune.id/oagent/internal/kernel/authz"
+	"altalune.id/oagent/internal/kernel/session"
 )
 
 // OrgService implements org.v1.OrgService.
@@ -52,7 +53,11 @@ func (s *OrgService) ListOrgs(
 	ctx context.Context,
 	_ *connect.Request[orgv1.ListOrgsRequest],
 ) (*connect.Response[orgv1.ListOrgsResponse], error) {
-	orgs, err := s.orgs.List(ctx)
+	list := s.orgs.List
+	if session.PrincipalFrom(ctx).Operator {
+		list = s.orgs.ListAll
+	}
+	orgs, err := list(ctx)
 	if err != nil {
 		return nil, err
 	}

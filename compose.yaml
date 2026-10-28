@@ -4,16 +4,23 @@ name: oagent
 # `docker compose --profile app up -d --build`. Host ports can be moved with the *_PORT variables.
 services:
   postgres:
+    # First start runs scripts/db/provision.sh: oagent_owner, oagent_migrator and oagent_service,
+    # with dev-only passwords.
+    # postgres/postgres is the superuser for psql; the app never uses it. Alone: `docker compose up -d postgres`.
     image: postgres:18.6-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: oagent
+      OAGENT_DB_MIGRATOR_PASSWORD: "${OAGENT_DB_MIGRATOR_PASSWORD:-oagent-dev-migrator-password}"
+      OAGENT_DB_SERVICE_PASSWORD: "${OAGENT_DB_SERVICE_PASSWORD:-oagent-dev-service-password}"
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres:/var/lib/postgresql
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./scripts/db:/oagent/scripts/db:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d oagent"]
       interval: 5s
@@ -85,8 +92,11 @@ services:
       OAGENT_ENV: development
       OAGENT_HTTP_ADDR: ":5150"
       OAGENT_HTTP_BASE_URL: "http://localhost:${OAGENT_PORT:-5150}"
-      OAGENT_POSTGRES_DSN: "postgres://postgres:postgres@postgres:5432/oagent?sslmode=disable"
-      OAGENT_POSTGRES_MIGRATOR_DSN: "postgres://postgres:postgres@postgres:5432/oagent?sslmode=disable"
+      OAGENT_POSTGRES_DSN: "postgres://oagent_service:${OAGENT_DB_SERVICE_PASSWORD:-oagent-dev-service-password}\
+        @postgres:5432/oagent?sslmode=disable"
+      OAGENT_POSTGRES_MIGRATOR_DSN: "postgres://oagent_migrator:\
+        ${OAGENT_DB_MIGRATOR_PASSWORD:-oagent-dev-migrator-password}@postgres:5432/oagent?sslmode=disable"
+      OAGENT_POSTGRES_MIGRATOR_ROLE: oagent_owner
       # dev-only values; generate real ones with: openssl rand -hex 32
       OAGENT_HTTP_STATE_SECRET: "6f1c0a3e2b9d4f7a8c5e1d0b3a6f9c2e4d7b0a1c3e5f7a9b2d4c6e8f0a1b3c5d"
       OAGENT_SECRETS_ENCRYPTION_KEY: "0d2f4b6a8c1e3f5a7b9d2c4e6f8a0b1c3d5e7f9a2b4c6d8e0f1a3b5c7d9e2f4a"

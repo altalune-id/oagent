@@ -8,9 +8,18 @@ import (
 type postgresStore struct {
 	pool     db.Pool
 	projects *entity.Projects
+	resolve  string
 }
 
 // NewStore builds the Postgres store over pool.
 func NewStore(pool db.Pool, schema, tablePrefix string) *postgresStore {
-	return &postgresStore{pool: pool, projects: entity.NewProjects(schema, tablePrefix)}
+	if schema == "" {
+		schema = "public"
+	}
+	return &postgresStore{
+		pool: pool, projects: entity.NewProjects(schema, tablePrefix),
+		// NOTE: RawStatement because go-jet has no builder for a set-returning function in FROM position.
+		resolve: `SELECT x.id AS "projects.id", x.org_id AS "projects.org_id" FROM ` +
+			schema + "." + tablePrefix + "resolve_project_by_public_id(#publicID) x",
+	}
 }

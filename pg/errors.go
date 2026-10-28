@@ -21,20 +21,18 @@ func IsInvalidIdentifierError(err error) bool {
 	return ok
 }
 
-type permanentError struct{ err error }
-
-func (e *permanentError) Error() string { return e.err.Error() }
-
-func (e *permanentError) Unwrap() error { return e.err }
-
-func permanent(err error) error {
-	if err == nil {
-		return nil
-	}
-	return &permanentError{err: err}
+// LoginRoleError reports a connection that logged in as a role other than the configured one.
+type LoginRoleError struct {
+	Want string
+	Got  string
 }
 
-func isPermanentError(err error) bool {
-	_, ok := errors.AsType[*permanentError](err)
+func (e *LoginRoleError) Error() string {
+	return fmt.Sprintf("pg: logged in as %q, but the role is %q: log in as that role; a SET ROLE does not survive a pooler", e.Got, e.Want)
+}
+
+// IsLoginRoleError reports whether err wraps a *LoginRoleError.
+func IsLoginRoleError(err error) bool {
+	_, ok := errors.AsType[*LoginRoleError](err)
 	return ok
 }

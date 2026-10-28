@@ -35,8 +35,8 @@ import (
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/kernel"
-	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
@@ -61,9 +61,9 @@ func newAPIFixture(t *testing.T) *apiFixture {
 	cfg.Secrets.EncryptionKey = testKeyHex
 	cfg.Auth.SessionTTL = 24 * time.Hour
 	cfg.Auth.Genesis = config.GenesisConfig{Email: "root@example.com", Password: "genesis-password"}
-	sqlDB, schemaName := pgtest.Migrated(t)
+	svc, sqlDB, schemaName := pgtest.MigratedRLS(t)
 	cfg.Postgres.Schema = schemaName
-	svcs := buildServices(kernel.Kernel{Pool: db.Pool{W: sqlDB, R: sqlDB}, Reporter: apperror.NewReporter(nil, false)}, cfg)
+	svcs := buildServices(kernel.Kernel{Pool: svc, Reporter: apperror.NewReporter(nil, false)}, cfg)
 	require.NoError(t, buildAuthSecrets(cfg, svcs, testLogger()))
 	svcs.Caps.EnvGenesis = true
 	require.NoError(t, firstBoot(t.Context(), cfg, svcs, testLogger(), false))
@@ -213,7 +213,7 @@ func TestAPI_CreateRefusesAnotherOrgsProject(t *testing.T) {
 	require.NoError(t, err)
 	other, err := org.NewOrg("other-org", "Other", uuid.Nil)
 	require.NoError(t, err)
-	require.NoError(t, f.svcs.OrgStore.Save(t.Context(), other))
+	require.NoError(t, f.svcs.OrgStore.Save(tenant.WithOrg(t.Context(), other.ID), other))
 	foreign, err := f.svcs.Projects.Create(t.Context(), project.CreateRequest{OrgID: other.ID, Slug: "theirs", Name: "Theirs"})
 	require.NoError(t, err)
 
@@ -415,7 +415,7 @@ func TestAPI_SystemOrgAdminFollowsMemberRules(t *testing.T) {
 
 	other, err := org.NewOrg("other-org", "Other", uuid.Nil)
 	require.NoError(t, err)
-	require.NoError(t, f.svcs.OrgStore.Save(ctx, other))
+	require.NoError(t, f.svcs.OrgStore.Save(tenant.WithOrg(ctx, other.ID), other))
 	_, err = f.svcs.Members.Add(ctx, other.ID, dave, member.RoleMember)
 	require.NoError(t, err)
 	_, err = c.SetMemberRole(ctx, withCookie(connect.NewRequest(&memberv1.SetMemberRoleRequest{
@@ -446,7 +446,7 @@ func TestAPI_KeyListSurvivesADeletedResource(t *testing.T) {
 		ResourceIds: []string{ag.PublicID}, ExpiresAt: timestamppb.New(time.Now().Add(time.Hour)),
 	}), cookie))
 	require.NoError(t, err)
-	require.NoError(t, f.svcs.Agents.Delete(ctx, ag.ID))
+	require.NoError(t, f.svcs.Agents.Delete(tenant.WithOrg(ctx, ag.OrgID), ag.ID))
 
 	resp, err := keys.ListAPIKeys(ctx, withCookie(connect.NewRequest(&apikeyv1.ListAPIKeysRequest{OrgId: f.orgID}), cookie))
 	require.NoError(t, err, "a deleted resource must not break the org's key list")

@@ -155,13 +155,42 @@ func (s *Service) System(ctx context.Context) (*Org, error) {
 	return o, nil
 }
 
-// List returns every org.
+// List returns the orgs the tenant scope on ctx can read.
 func (s *Service) List(ctx context.Context) ([]*Org, error) {
 	orgs, err := s.store.List(ctx)
 	if err != nil {
 		return nil, s.errOrReport(ctx, "org: list", err)
 	}
 	return orgs, nil
+}
+
+// ListAll returns every org, oldest first, for an operator: it enumerates the ids, then reads each org in its own scope.
+func (s *Service) ListAll(ctx context.Context) ([]*Org, error) {
+	ids, err := s.IDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*Org, 0, len(ids))
+	for _, id := range ids {
+		o, err := s.Get(ctx, id)
+		if IsNotFoundError(err) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, o)
+	}
+	return out, nil
+}
+
+// IDs returns every org id, oldest first, for work that then runs each org scoped.
+func (s *Service) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	ids, err := s.store.IDs(ctx)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "org: ids", err)
+	}
+	return ids, nil
 }
 
 // Update changes an org's display name and slug.

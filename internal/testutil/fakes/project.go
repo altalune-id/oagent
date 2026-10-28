@@ -36,8 +36,7 @@ func (f *ProjectStore) ByID(context.Context, uuid.UUID) (*project.Project, error
 	return f.Project, nil
 }
 
-// ByPublicID implements project.Store; it finds Project or one of Projects by public id.
-func (f *ProjectStore) ByPublicID(_ context.Context, publicID string) (*project.Project, error) {
+func (f *ProjectStore) byPublicID(publicID string) (*project.Project, error) {
 	if f.Err != nil {
 		return nil, f.Err
 	}
@@ -63,4 +62,13 @@ func (f *ProjectStore) List(context.Context, uuid.UUID) ([]*project.Project, err
 		return nil, f.Err
 	}
 	return f.Projects, nil
+}
+
+// Resolve implements project.Store; it names the project with publicID.
+func (f *ProjectStore) Resolve(_ context.Context, publicID string) (project.Ref, error) {
+	p, err := f.byPublicID(publicID)
+	if err != nil {
+		return project.Ref{}, err
+	}
+	return project.Ref{ID: p.ID, OrgID: p.OrgID}, nil
 }

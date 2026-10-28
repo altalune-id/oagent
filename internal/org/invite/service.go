@@ -217,8 +217,18 @@ func (s *Service) ByPublicID(ctx context.Context, publicID string) (*Invite, err
 	return inv, nil
 }
 
-// Accept uses up inviteID for userID and adds them to the org; an existing member keeps their role.
-func (s *Service) Accept(ctx context.Context, inviteID, userID uuid.UUID) (Outcome, error) {
+// Landing returns the invite with publicID for the pre-sign-in landing page, in any org; never save what it returns.
+func (s *Service) Landing(ctx context.Context, publicID string) (*Invite, error) {
+	inv, err := s.store.ResolveByPublicID(ctx, publicID)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "invite: landing", err)
+	}
+	return inv, nil
+}
+
+// Accept uses up orgID's invite inviteID for userID and adds them to the org; an existing member keeps their role.
+func (s *Service) Accept(ctx context.Context, orgID, inviteID, userID uuid.UUID) (Outcome, error) {
+	ctx = tenant.Into(ctx, tenant.Context{OrgID: orgID, UserID: userID})
 	var out Outcome
 	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		var err error
@@ -231,8 +241,9 @@ func (s *Service) Accept(ctx context.Context, inviteID, userID uuid.UUID) (Outco
 	return out, nil
 }
 
-// Join creates the account the invite inviteID names, records the terms when acceptTerms, and accepts the invite, in one transaction.
-func (s *Service) Join(ctx context.Context, inviteID uuid.UUID, name, password string, acceptTerms bool) (uuid.UUID, error) {
+// Join creates the account orgID's invite inviteID names, records the terms when acceptTerms, and accepts the invite, in one transaction.
+func (s *Service) Join(ctx context.Context, orgID, inviteID uuid.UUID, name, password string, acceptTerms bool) (uuid.UUID, error) {
+	ctx = tenant.Into(ctx, tenant.Context{OrgID: orgID})
 	var userID uuid.UUID
 	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		inv, err := s.store.ByID(ctx, inviteID)

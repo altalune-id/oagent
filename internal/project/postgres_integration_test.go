@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/testutil/pgtest"
@@ -30,8 +31,7 @@ type projectFixture struct {
 
 func newProjectFixture(t *testing.T) *projectFixture {
 	t.Helper()
-	sqlDB, schemaName := pgtest.Migrated(t)
-	pool := db.Pool{W: sqlDB, R: sqlDB}
+	pool, sqlDB, schemaName := pgtest.MigratedRLS(t)
 	return &projectFixture{
 		sqlDB:    sqlDB,
 		pool:     pool,
@@ -44,7 +44,7 @@ func (f *projectFixture) seedOrg(t *testing.T, slug string) uuid.UUID {
 	t.Helper()
 	o, err := org.NewOrg(slug, "Org "+slug, uuid.Nil)
 	require.NoError(t, err)
-	require.NoError(t, f.orgs.Save(t.Context(), o))
+	require.NoError(t, f.orgs.Save(tenant.Into(t.Context(), tenant.Context{OrgID: o.ID}), o))
 	return o.ID
 }
 
@@ -82,11 +82,11 @@ func TestProjectStore_RoundTrip(t *testing.T) {
 			p.CreatedAt = time.Date(2024, 2, 29, 23, 59, 58, 123456000, time.FixedZone("WIB", 7*3600))
 
 			before := time.Now()
-			require.NoError(t, f.projects.Save(ctx, p))
+			require.NoError(t, f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: p.OrgID}), p))
 
-			byID, err := f.projects.ByID(ctx, p.ID)
+			byID, err := f.projects.ByID(tenant.Into(ctx, tenant.Context{OrgID: p.OrgID}), p.ID)
 			require.NoError(t, err)
-			bySlug, err := f.projects.BySlug(ctx, orgID, "web")
+			bySlug, err := f.projects.BySlug(tenant.Into(ctx, tenant.Context{OrgID: orgID}), orgID, "web")
 			require.NoError(t, err)
 			assert.Equal(t, byID, bySlug)
 
@@ -109,8 +109,8 @@ func TestProjectStore_SaveUpdatesMutableColumnsOnly(t *testing.T) {
 	orgA, orgB := f.seedOrg(t, "acme"), f.seedOrg(t, "globex")
 	creator := uuid.New()
 	p := newProject(t, orgA, "web", creator)
-	require.NoError(t, f.projects.Save(ctx, p))
-	first, err := f.projects.ByID(ctx, p.ID)
+	require.NoError(t, f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: p.OrgID}), p))
+	first, err := f.projects.ByID(tenant.Into(ctx, tenant.Context{OrgID: p.OrgID}), p.ID)
 	require.NoError(t, err)
 
 	changed := *p
@@ -120,9 +120,12 @@ func TestProjectStore_SaveUpdatesMutableColumnsOnly(t *testing.T) {
 	changed.PublicID = "different-public-id"
 	changed.CreatedBy = uuid.NullUUID{UUID: uuid.New(), Valid: true}
 	changed.CreatedAt = p.CreatedAt.Add(-48 * time.Hour)
-	require.NoError(t, f.projects.Save(ctx, &changed))
+	scopeA := tenant.Into(ctx, tenant.Context{OrgID: orgA})
+	assert.Equal(t, "42501", pgCode(f.projects.Save(scopeA, &changed)), "row level security refuses moving a project to another org")
+	changed.OrgID = orgA
+	require.NoError(t, f.projects.Save(scopeA, &changed))
 
-	got, err := f.projects.ByID(ctx, p.ID)
+	got, err := f.projects.ByID(tenant.Into(ctx, tenant.Context{OrgID: p.OrgID}), p.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "web-renamed", got.Slug)
 	assert.Equal(t, "Web Renamed", got.Name)
@@ -132,10 +135,10 @@ func TestProjectStore_SaveUpdatesMutableColumnsOnly(t *testing.T) {
 	assert.True(t, first.CreatedAt.Equal(got.CreatedAt), "created_at is immutable")
 	assert.False(t, got.UpdatedAt.Before(first.UpdatedAt), "updated_at must not go backwards")
 
-	inB, err := f.projects.List(ctx, orgB)
+	inB, err := f.projects.List(tenant.Into(ctx, tenant.Context{OrgID: orgB}), orgB)
 	require.NoError(t, err)
 	assert.Empty(t, inB)
-	inA, err := f.projects.List(ctx, orgA)
+	inA, err := f.projects.List(tenant.Into(ctx, tenant.Context{OrgID: orgA}), orgA)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"web-renamed"}, slugsOf(inA), "upsert by id must not insert a second row")
 }
@@ -145,14 +148,14 @@ func TestProjectStore_UniqueConstraints(t *testing.T) {
 		f := newProjectFixture(t)
 		ctx := t.Context()
 		orgID := f.seedOrg(t, "acme")
-		require.NoError(t, f.projects.Save(ctx, newProject(t, orgID, "web", uuid.Nil)))
+		require.NoError(t, f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: orgID}), newProject(t, orgID, "web", uuid.Nil)))
 
 		dup := newProject(t, orgID, "web", uuid.Nil)
-		err := f.projects.Save(ctx, dup)
+		err := f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: dup.OrgID}), dup)
 		ae, ok := errors.AsType[*project.AlreadyExistsError](err)
 		require.True(t, ok, "want AlreadyExistsError, got %T: %v", err, err)
 		assert.Equal(t, "web", ae.Slug)
-		_, err = f.projects.ByID(ctx, dup.ID)
+		_, err = f.projects.ByID(tenant.Into(ctx, tenant.Context{OrgID: dup.OrgID}), dup.ID)
 		assert.True(t, project.IsNotFoundError(err), "a rejected insert must leave no row")
 	})
 
@@ -160,8 +163,8 @@ func TestProjectStore_UniqueConstraints(t *testing.T) {
 		f := newProjectFixture(t)
 		ctx := t.Context()
 		orgA, orgB := f.seedOrg(t, "acme"), f.seedOrg(t, "globex")
-		require.NoError(t, f.projects.Save(ctx, newProject(t, orgA, project.DefaultSlug, uuid.Nil)))
-		require.NoError(t, f.projects.Save(ctx, newProject(t, orgB, project.DefaultSlug, uuid.Nil)))
+		require.NoError(t, f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: orgA}), newProject(t, orgA, project.DefaultSlug, uuid.Nil)))
+		require.NoError(t, f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: orgB}), newProject(t, orgB, project.DefaultSlug, uuid.Nil)))
 	})
 
 	t.Run("public_id unique across orgs", func(t *testing.T) {
@@ -169,11 +172,11 @@ func TestProjectStore_UniqueConstraints(t *testing.T) {
 		ctx := t.Context()
 		orgA, orgB := f.seedOrg(t, "acme"), f.seedOrg(t, "globex")
 		a := newProject(t, orgA, "web", uuid.Nil)
-		require.NoError(t, f.projects.Save(ctx, a))
+		require.NoError(t, f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: a.OrgID}), a))
 
 		b := newProject(t, orgB, "api", uuid.Nil)
 		b.PublicID = a.PublicID
-		err := f.projects.Save(ctx, b)
+		err := f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: b.OrgID}), b)
 		assert.True(t, project.IsAlreadyExistsError(err), "want AlreadyExistsError, got %T: %v", err, err)
 	})
 
@@ -182,13 +185,13 @@ func TestProjectStore_UniqueConstraints(t *testing.T) {
 		ctx := t.Context()
 		orgID := f.seedOrg(t, "acme")
 		web, api := newProject(t, orgID, "web", uuid.Nil), newProject(t, orgID, "api", uuid.Nil)
-		require.NoError(t, f.projects.Save(ctx, web))
-		require.NoError(t, f.projects.Save(ctx, api))
+		require.NoError(t, f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: web.OrgID}), web))
+		require.NoError(t, f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: api.OrgID}), api))
 
 		api.Slug = "web"
-		err := f.projects.Save(ctx, api)
+		err := f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: api.OrgID}), api)
 		assert.True(t, project.IsAlreadyExistsError(err), "want AlreadyExistsError, got %T: %v", err, err)
-		got, err := f.projects.ByID(ctx, api.ID)
+		got, err := f.projects.ByID(tenant.Into(ctx, tenant.Context{OrgID: api.OrgID}), api.ID)
 		require.NoError(t, err)
 		assert.Equal(t, "api", got.Slug, "the failed update must not change the row")
 	})
@@ -198,7 +201,7 @@ func TestProjectStore_UnknownOrgIsForeignKeyViolation(t *testing.T) {
 	f := newProjectFixture(t)
 	p := newProject(t, uuid.New(), "web", uuid.Nil)
 
-	err := f.projects.Save(t.Context(), p)
+	err := f.projects.Save(tenant.Into(t.Context(), tenant.Context{OrgID: p.OrgID}), p)
 	require.Error(t, err)
 	assert.False(t, project.IsAlreadyExistsError(err), "a missing parent org must not look like a slug collision")
 	assert.False(t, project.IsExpectedError(err))
@@ -214,17 +217,17 @@ func TestProjectStore_DeletingOrgCascades(t *testing.T) {
 	a1, a2 := newProject(t, orgA, "web", uuid.Nil), newProject(t, orgA, "api", uuid.Nil)
 	b1 := newProject(t, orgB, "web", uuid.Nil)
 	for _, p := range []*project.Project{a1, a2, b1} {
-		require.NoError(t, f.projects.Save(ctx, p))
+		require.NoError(t, f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: p.OrgID}), p))
 	}
 
 	_, err := f.sqlDB.ExecContext(ctx, `DELETE FROM orgs WHERE id = $1`, orgA)
 	require.NoError(t, err)
 
 	for _, id := range []uuid.UUID{a1.ID, a2.ID} {
-		_, err := f.projects.ByID(ctx, id)
+		_, err := f.projects.ByID(tenant.Into(ctx, tenant.Context{OrgID: orgA}), id)
 		assert.True(t, project.IsNotFoundError(err), "project %s must be cascaded away, got %v", id, err)
 	}
-	got, err := f.projects.ByID(ctx, b1.ID)
+	got, err := f.projects.ByID(tenant.Into(ctx, tenant.Context{OrgID: b1.OrgID}), b1.ID)
 	require.NoError(t, err, "another org's projects must survive")
 	assert.Equal(t, orgB, got.OrgID)
 }
@@ -233,28 +236,28 @@ func TestProjectStore_TenantScoping(t *testing.T) {
 	f := newProjectFixture(t)
 	ctx := t.Context()
 	orgA, orgB := f.seedOrg(t, "acme"), f.seedOrg(t, "globex")
-	require.NoError(t, f.projects.Save(ctx, newProject(t, orgA, "only-in-a", uuid.Nil)))
-	require.NoError(t, f.projects.Save(ctx, newProject(t, orgA, "shared", uuid.Nil)))
+	require.NoError(t, f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: orgA}), newProject(t, orgA, "only-in-a", uuid.Nil)))
+	require.NoError(t, f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: orgA}), newProject(t, orgA, "shared", uuid.Nil)))
 	bShared := newProject(t, orgB, "shared", uuid.Nil)
-	require.NoError(t, f.projects.Save(ctx, bShared))
+	require.NoError(t, f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: bShared.OrgID}), bShared))
 
-	_, err := f.projects.BySlug(ctx, orgB, "only-in-a")
+	_, err := f.projects.BySlug(tenant.Into(ctx, tenant.Context{OrgID: orgB}), orgB, "only-in-a")
 	nf, ok := errors.AsType[*project.NotFoundError](err)
 	require.True(t, ok, "want NotFoundError, got %T: %v", err, err)
 	assert.Equal(t, "only-in-a", nf.Slug)
 
-	got, err := f.projects.BySlug(ctx, orgB, "shared")
+	got, err := f.projects.BySlug(tenant.Into(ctx, tenant.Context{OrgID: orgB}), orgB, "shared")
 	require.NoError(t, err)
 	assert.Equal(t, bShared.ID, got.ID, "BySlug must resolve inside the given org")
 
-	inA, err := f.projects.List(ctx, orgA)
+	inA, err := f.projects.List(tenant.Into(ctx, tenant.Context{OrgID: orgA}), orgA)
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"only-in-a", "shared"}, slugsOf(inA))
 	for _, p := range inA {
 		assert.Equal(t, orgA, p.OrgID)
 	}
 
-	none, err := f.projects.List(ctx, uuid.New())
+	none, err := f.projects.List(tenant.Into(ctx, tenant.Context{OrgID: uuid.New()}), uuid.New())
 	require.NoError(t, err)
 	assert.Empty(t, none)
 
@@ -275,10 +278,10 @@ func TestProjectStore_ListOrdersByCreatedAtAscending(t *testing.T) {
 	for _, slug := range []string{"charlie", "alpha", "bravo"} {
 		p := newProject(t, orgID, slug, uuid.Nil)
 		p.CreatedAt = base.Add(offsets[slug])
-		require.NoError(t, f.projects.Save(ctx, p))
+		require.NoError(t, f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: p.OrgID}), p))
 	}
 
-	got, err := f.projects.List(ctx, orgID)
+	got, err := f.projects.List(tenant.Into(ctx, tenant.Context{OrgID: orgID}), orgID)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"alpha", "bravo", "charlie"}, slugsOf(got))
 }
@@ -292,22 +295,22 @@ func TestProjectStore_HonorsUnitOfWork(t *testing.T) {
 		require.NoError(t, err)
 		p := newProject(t, o.ID, project.DefaultSlug, uuid.Nil)
 
-		err = db.RunInTx(t.Context(), f.pool, func(ctx context.Context) error {
+		err = db.RunInTx(tenant.Into(t.Context(), tenant.Context{OrgID: o.ID}), f.pool, func(ctx context.Context) error {
 			require.NoError(t, f.orgs.Save(ctx, o))
 			require.NoError(t, f.projects.Save(ctx, p), "project insert sees the uncommitted org through the same tx")
 			got, err := f.projects.BySlug(ctx, o.ID, project.DefaultSlug)
 			require.NoError(t, err)
 			assert.Equal(t, p.ID, got.ID)
 
-			_, err = f.projects.ByID(t.Context(), p.ID)
+			_, err = f.projects.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: p.OrgID}), p.ID)
 			assert.True(t, project.IsNotFoundError(err), "uncommitted row must be invisible outside the tx")
 			return errAbort
 		})
 		require.ErrorIs(t, err, errAbort)
 
-		_, err = f.projects.ByID(t.Context(), p.ID)
+		_, err = f.projects.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: p.OrgID}), p.ID)
 		assert.True(t, project.IsNotFoundError(err), "rolled-back project must not persist, got %v", err)
-		_, err = f.orgs.ByID(t.Context(), o.ID)
+		_, err = f.orgs.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: o.ID}), o.ID)
 		assert.True(t, org.IsNotFoundError(err), "rolled-back org must not persist, got %v", err)
 	})
 
@@ -315,10 +318,10 @@ func TestProjectStore_HonorsUnitOfWork(t *testing.T) {
 		f := newProjectFixture(t)
 		orgID := f.seedOrg(t, "acme")
 		p := newProject(t, orgID, "web", uuid.Nil)
-		require.NoError(t, db.RunInTx(t.Context(), f.pool, func(ctx context.Context) error {
+		require.NoError(t, db.RunInTx(tenant.Into(t.Context(), tenant.Context{OrgID: orgID}), f.pool, func(ctx context.Context) error {
 			return f.projects.Save(ctx, p)
 		}))
-		got, err := f.projects.ByID(t.Context(), p.ID)
+		got, err := f.projects.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: p.OrgID}), p.ID)
 		require.NoError(t, err)
 		assert.Equal(t, "web", got.Slug)
 	})
@@ -337,7 +340,7 @@ func TestProjectStore_ConcurrentSameSlugExactlyOneWins(t *testing.T) {
 		p := newProject(t, orgID, "contested", uuid.Nil)
 		wg.Go(func() {
 			<-start
-			errs[i] = f.projects.Save(ctx, p)
+			errs[i] = f.projects.Save(tenant.Into(ctx, tenant.Context{OrgID: p.OrgID}), p)
 		})
 	}
 	close(start)
@@ -357,21 +360,28 @@ func TestProjectStore_ConcurrentSameSlugExactlyOneWins(t *testing.T) {
 	assert.Equal(t, 1, ok)
 	assert.Equal(t, workers-1, dup)
 
-	all, err := f.projects.List(ctx, orgID)
+	all, err := f.projects.List(tenant.Into(ctx, tenant.Context{OrgID: orgID}), orgID)
 	require.NoError(t, err)
 	assert.Len(t, all, 1)
 }
 
-func TestProjectStore_ByPublicID(t *testing.T) {
+func pgCode(err error) string {
+	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
+		return pgErr.Code
+	}
+	return ""
+}
+
+func TestProjectStore_ResolveNamesTheOrgWithoutAScope(t *testing.T) {
 	f := newProjectFixture(t)
 	p := newProject(t, f.seedOrg(t, "acme"), "web", uuid.Nil)
-	require.NoError(t, f.projects.Save(t.Context(), p))
+	require.NoError(t, f.projects.Save(tenant.Into(t.Context(), tenant.Context{OrgID: p.OrgID}), p))
 
-	got, err := f.projects.ByPublicID(t.Context(), p.PublicID)
+	got, err := f.projects.Resolve(t.Context(), p.PublicID)
 	require.NoError(t, err)
-	assert.Equal(t, p.ID, got.ID)
+	assert.Equal(t, project.Ref{ID: p.ID, OrgID: p.OrgID}, got)
 	for _, bad := range []string{"", "nope", p.ID.String()} {
-		_, err = f.projects.ByPublicID(t.Context(), bad)
+		_, err = f.projects.Resolve(t.Context(), bad)
 		assert.True(t, project.IsNotFoundError(err), "%q is not a public id", bad)
 	}
 }

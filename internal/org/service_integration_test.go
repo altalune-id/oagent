@@ -12,6 +12,7 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/org"
 )
 
@@ -29,9 +30,9 @@ func TestService_CreateWithAFailedHookLeavesNoOrg(t *testing.T) {
 			_, err := svc.Create(t.Context(), org.CreateRequest{Slug: slug, Name: "Acme"})
 			require.Error(t, err)
 			assert.True(t, hookInTx, "the hook runs in the org's unit of work")
-			orgs, lerr := store.List(t.Context())
+			ids, lerr := store.IDs(t.Context())
 			require.NoError(t, lerr)
-			assert.Empty(t, orgs, "an org never exists without what its hook adds")
+			assert.Empty(t, ids, "an org never exists without what its hook adds")
 		})
 	}
 }
@@ -48,6 +49,6 @@ func TestService_CreateRunsTheHookInTheSameUnitOfWork(t *testing.T) {
 	o, err := svc.Create(t.Context(), org.CreateRequest{Name: "Acme"})
 	require.NoError(t, err)
 	assert.True(t, hookInTx)
-	_, err = store.ByID(t.Context(), o.ID)
+	_, err = store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: o.ID}), o.ID)
 	require.NoError(t, err)
 }

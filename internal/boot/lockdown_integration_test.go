@@ -230,3 +230,16 @@ func TestLockdown_BasicMode(t *testing.T) {
 	rec = l.do(http.MethodPost, "/api/org.v1.OrgService/ListOrgs", h, `{}`)
 	assert.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 }
+
+// SECURITY: the sign-in answer resolves the principal's org and project public ids under row-level security.
+func TestLogin_JSONAnswersWithThePrincipalsPublicIDs(t *testing.T) {
+	l := localLockdown(t)
+	form := url.Values{"email": {"root@example.com"}, "password": {"genesis-password"}}
+	rec := l.do(http.MethodPost, "/login", http.Header{
+		"Content-Type": {"application/x-www-form-urlencoded"}, "Accept": {"application/json"},
+	}, form.Encode())
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	sys, err := l.svcs.Orgs.System(t.Context())
+	require.NoError(t, err)
+	assert.Contains(t, rec.Body.String(), sys.PublicID)
+}
