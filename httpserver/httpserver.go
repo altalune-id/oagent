@@ -12,8 +12,11 @@ import (
 	"altalune.id/oagent/worker"
 )
 
-//nolint:gochecknoglobals // test seam.
-var listen = net.Listen
+//nolint:gochecknoglobals // test seams.
+var (
+	listen          = net.Listen
+	shutdownTimeout = 10 * time.Second
+)
 
 // New returns a worker.Worker serving h on cfg.Addr with sane timeouts and graceful shutdown.
 func New(cfg Config, h http.Handler, log *slog.Logger) worker.Worker {
@@ -40,9 +43,6 @@ func (w *httpServer) Name() string { return w.name }
 
 // Run serves until ctx is cancelled, then drains in-flight requests.
 func (w *httpServer) Run(ctx context.Context) error {
-	runCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	// Serve HTTP/1.1 and unencrypted HTTP/2 (h2c) so the controlplane speaks Connect and gRPC on one port.
 	protocols := new(http.Protocols)
 	protocols.SetHTTP1(true)
@@ -56,7 +56,7 @@ func (w *httpServer) Run(ctx context.Context) error {
 		ReadHeaderTimeout: 5 * time.Second,
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       120 * time.Second,
-		BaseContext:       func(net.Listener) context.Context { return runCtx },
+		BaseContext:       func(net.Listener) context.Context { return context.WithoutCancel(ctx) },
 	}
 
 	ln, err := listen("tcp", w.addr)
@@ -76,11 +76,12 @@ func (w *httpServer) Run(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer shutdownCancel()
 		if shutdownErr := srv.Shutdown(shutdownCtx); shutdownErr != nil {
 			w.log.Error("http worker shutdown", slog.String("worker", w.name), slog.Any("err", shutdownErr))
-			return shutdownErr
+			// NOTE: past the drain deadline the open connections close, which cancels every request still running.
+			return errors.Join(shutdownErr, srv.Close())
 		}
 		<-errCh
 		return nil
