@@ -50,7 +50,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.created=${{ steps.meta.outputs.time }}
-            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.licenses=Apache-2.0
           build-args: |
             VERSION=edge-${{ steps.meta.outputs.sha }}
             COMMIT=${{ steps.meta.outputs.sha }}

@@ -133,4 +133,4 @@ the host against it: `OAGENT_NATS_URL=nats://localhost:4222`, `OAGENT_NATS_USER=
 
 ## License
 
-[MIT](LICENSE)
+[Apache License 2.0](LICENSE). See [NOTICE](NOTICE).

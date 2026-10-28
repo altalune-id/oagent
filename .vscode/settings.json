@@ -27,7 +27,7 @@
     "package.json": "pnpm-lock.yaml, pnpm-workspace.yaml, .npmrc, .nvmrc, eslint.config.mjs",
     "Dockerfile": ".dockerignore, .hadolint.yaml",
     "compose.yaml": "compose.*.yaml",
-    "README.md": "AGENTS.md, CLAUDE.md, LICENSE",
+    "README.md": "AGENTS.md, CLAUDE.md, LICENSE, NOTICE",
     "config.example.yml": "config.reference.yml, config.yml",
     "*.templ": "${capture}_templ.go"
   },
