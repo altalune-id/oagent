@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file auth/v1/auth.proto.
  */
 export const file_auth_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChJhdXRoL3YxL2F1dGgucHJvdG8SB2F1dGgudjEiSgoTQ3JlYXRlT3duT3JnUmVxdWVzdBIaCgRuYW1lGAEgASgJQgy6SAnIAQFyBJDkMgESFwoEc2x1ZxgCIAEoCUIJukgGcgSg5DIBIjAKFENyZWF0ZU93bk9yZ1Jlc3BvbnNlEhgKA29yZxgBIAEoCzILLm9yZy52MS5PcmciDwoNV2hvYW1pUmVxdWVzdCKvAgoOV2hvYW1pUmVzcG9uc2USDgoGc291cmNlGAEgASgJEg8KB3VzZXJfaWQYAiABKAkSDQoFZW1haWwYAyABKAkSDAoEbmFtZRgEIAEoCRISCgphdmF0YXJfdXJsGAUgASgJEhAKCGtleV9oaW50GA0gASgJEhAKCG93bmVyX2lkGAcgASgJEhUKDWFjdGl2ZV9vcmdfaWQYCCABKAkSFwoPYWN0aXZlX29yZ19zbHVnGAkgASgJEhkKEWFjdGl2ZV9wcm9qZWN0X2lkGAogASgJEhMKC3Blcm1pc3Npb25zGAsgAygJEhAKCG9wZXJhdG9yGAwgASgIEhQKDG9yZ19jcmVhdGlvbhgOIAEoCBIRCglwYXNzd29yZHMYDyABKAhKBAgGEAdSBmtleV9pZCKGAQoUVXBkYXRlUHJvZmlsZVJlcXVlc3QSbgoEbmFtZRgBIAEoCUJgukhdugFaChV1c2VyLm5hbWUubWF4X2xlbi4yMDAaQXRoaXMudHJpbSgpLnNpemUoKSA8PSAyMDAgPyAnJyA6ICdtdXN0IGJlIGF0IG1vc3QgMjAwIGNoYXJhY3RlcnMnIjYKFVVwZGF0ZVByb2ZpbGVSZXNwb25zZRIPCgd1c2VyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkiXgoVQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0EiAKEGN1cnJlbnRfcGFzc3dvcmQYASABKAlCBrpIA8gBARIjCgxuZXdfcGFzc3dvcmQYAiABKAlCDbpICsgBAXIFEAwYgAIiGAoWQ2hhbmdlUGFzc3dvcmRSZXNwb25zZSIaChhTaWduT3V0RXZlcnl3aGVyZVJlcXVlc3QiLwoZU2lnbk91dEV2ZXJ5d2hlcmVSZXNwb25zZRISCgpzaWduZWRfb3V0GAEgASgIMvkDCgtBdXRoU2VydmljZRKVAQoGV2hvYW1pEhYuYXV0aC52MS5XaG9hbWlSZXF1ZXN0GhcuYXV0aC52MS5XaG9hbWlSZXNwb25zZSJayvMYVgoLYXV0aF93aG9hbWkSQldobyB0aGlzIE1DUCBjbGllbnQgYWN0cyBhczogdXNlciBvciBrZXksIGFjdGl2ZSBvcmcsIHBlcm1pc3Npb25zLioDYXBwElAKDVVwZGF0ZVByb2ZpbGUSHS5hdXRoLnYxLlVwZGF0ZVByb2ZpbGVSZXF1ZXN0Gh4uYXV0aC52MS5VcGRhdGVQcm9maWxlUmVzcG9uc2UiABJTCg5DaGFuZ2VQYXNzd29yZBIeLmF1dGgudjEuQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0Gh8uYXV0aC52MS5DaGFuZ2VQYXNzd29yZFJlc3BvbnNlIgASXAoRU2lnbk91dEV2ZXJ5d2hlcmUSIS5hdXRoLnYxLlNpZ25PdXRFdmVyeXdoZXJlUmVxdWVzdBoiLmF1dGgudjEuU2lnbk91dEV2ZXJ5d2hlcmVSZXNwb25zZSIAEk0KDENyZWF0ZU93bk9yZxIcLmF1dGgudjEuQ3JlYXRlT3duT3JnUmVxdWVzdBodLmF1dGgudjEuQ3JlYXRlT3duT3JnUmVzcG9uc2UiAEJ/Cgtjb20uYXV0aC52MUIJQXV0aFByb3RvUAFaKGFsdGFsdW5lLmlkL29hZ2VudC9nZW4vZ28vYXV0aC92MTthdXRodjGiAgNBWFiqAgdBdXRoLlYxygIHQXV0aFxWMeICE0F1dGhcVjFcR1BCTWV0YWRhdGHqAghBdXRoOjpWMWIGcHJvdG8z", [file_buf_validate_validate, file_mcp_v1_annotations, file_oagent_v1_rules, file_org_v1_org]);
+  fileDesc("ChJhdXRoL3YxL2F1dGgucHJvdG8SB2F1dGgudjEiSgoTQ3JlYXRlT3duT3JnUmVxdWVzdBIaCgRuYW1lGAEgASgJQgy6SAnIAQFyBJDkMgESFwoEc2x1ZxgCIAEoCUIJukgGcgSg5DIBIjAKFENyZWF0ZU93bk9yZ1Jlc3BvbnNlEhgKA29yZxgBIAEoCzILLm9yZy52MS5PcmciDwoNV2hvYW1pUmVxdWVzdCKvAgoOV2hvYW1pUmVzcG9uc2USDgoGc291cmNlGAEgASgJEg8KB3VzZXJfaWQYAiABKAkSDQoFZW1haWwYAyABKAkSDAoEbmFtZRgEIAEoCRISCgphdmF0YXJfdXJsGAUgASgJEhAKCGtleV9oaW50GA0gASgJEhAKCG93bmVyX2lkGAcgASgJEhUKDWFjdGl2ZV9vcmdfaWQYCCABKAkSFwoPYWN0aXZlX29yZ19zbHVnGAkgASgJEhkKEWFjdGl2ZV9wcm9qZWN0X2lkGAogASgJEhMKC3Blcm1pc3Npb25zGAsgAygJEhAKCG9wZXJhdG9yGAwgASgIEhQKDG9yZ19jcmVhdGlvbhgOIAEoCBIRCglwYXNzd29yZHMYDyABKAhKBAgGEAdSBmtleV9pZCKGAQoUVXBkYXRlUHJvZmlsZVJlcXVlc3QSbgoEbmFtZRgBIAEoCUJgukhdugFaChV1c2VyLm5hbWUubWF4X2xlbi4yMDAaQXRoaXMudHJpbSgpLnNpemUoKSA8PSAyMDAgPyAnJyA6ICdtdXN0IGJlIGF0IG1vc3QgMjAwIGNoYXJhY3RlcnMnIjYKFVVwZGF0ZVByb2ZpbGVSZXNwb25zZRIPCgd1c2VyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkiXgoVQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0EiAKEGN1cnJlbnRfcGFzc3dvcmQYASABKAlCBrpIA8gBARIjCgxuZXdfcGFzc3dvcmQYAiABKAlCDbpICsgBAXIFEAwYgAIiGAoWQ2hhbmdlUGFzc3dvcmRSZXNwb25zZSIzChNTZXRBY3RpdmVPcmdSZXF1ZXN0EhwKBm9yZ19pZBgBIAEoCUIMukgJyAEBcgSI5DIBIjsKFFNldEFjdGl2ZU9yZ1Jlc3BvbnNlEiMKAm1lGAEgASgLMhcuYXV0aC52MS5XaG9hbWlSZXNwb25zZSIaChhTaWduT3V0RXZlcnl3aGVyZVJlcXVlc3QiLwoZU2lnbk91dEV2ZXJ5d2hlcmVSZXNwb25zZRISCgpzaWduZWRfb3V0GAEgASgIMsgECgtBdXRoU2VydmljZRKVAQoGV2hvYW1pEhYuYXV0aC52MS5XaG9hbWlSZXF1ZXN0GhcuYXV0aC52MS5XaG9hbWlSZXNwb25zZSJayvMYVgoLYXV0aF93aG9hbWkSQldobyB0aGlzIE1DUCBjbGllbnQgYWN0cyBhczogdXNlciBvciBrZXksIGFjdGl2ZSBvcmcsIHBlcm1pc3Npb25zLioDYXBwElAKDVVwZGF0ZVByb2ZpbGUSHS5hdXRoLnYxLlVwZGF0ZVByb2ZpbGVSZXF1ZXN0Gh4uYXV0aC52MS5VcGRhdGVQcm9maWxlUmVzcG9uc2UiABJTCg5DaGFuZ2VQYXNzd29yZBIeLmF1dGgudjEuQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0Gh8uYXV0aC52MS5DaGFuZ2VQYXNzd29yZFJlc3BvbnNlIgASXAoRU2lnbk91dEV2ZXJ5d2hlcmUSIS5hdXRoLnYxLlNpZ25PdXRFdmVyeXdoZXJlUmVxdWVzdBoiLmF1dGgudjEuU2lnbk91dEV2ZXJ5d2hlcmVSZXNwb25zZSIAEk0KDFNldEFjdGl2ZU9yZxIcLmF1dGgudjEuU2V0QWN0aXZlT3JnUmVxdWVzdBodLmF1dGgudjEuU2V0QWN0aXZlT3JnUmVzcG9uc2UiABJNCgxDcmVhdGVPd25PcmcSHC5hdXRoLnYxLkNyZWF0ZU93bk9yZ1JlcXVlc3QaHS5hdXRoLnYxLkNyZWF0ZU93bk9yZ1Jlc3BvbnNlIgBCfwoLY29tLmF1dGgudjFCCUF1dGhQcm90b1ABWihhbHRhbHVuZS5pZC9vYWdlbnQvZ2VuL2dvL2F1dGgvdjE7YXV0aHYxogIDQVhYqgIHQXV0aC5WMcoCB0F1dGhcVjHiAhNBdXRoXFYxXEdQQk1ldGFkYXRh6gIIQXV0aDo6VjFiBnByb3RvMw", [file_buf_validate_validate, file_mcp_v1_annotations, file_oagent_v1_rules, file_org_v1_org]);
 
 /**
  * @generated from message auth.v1.CreateOwnOrgRequest
@@ -244,6 +244,44 @@ export const ChangePasswordResponseSchema: GenMessage<ChangePasswordResponse> = 
   messageDesc(file_auth_v1_auth, 7);
 
 /**
+ * @generated from message auth.v1.SetActiveOrgRequest
+ */
+export type SetActiveOrgRequest = Message<"auth.v1.SetActiveOrgRequest"> & {
+  /**
+   * Public id of an organization the person belongs to; any other answers not found.
+   *
+   * @generated from field: string org_id = 1;
+   */
+  orgId: string;
+};
+
+/**
+ * Describes the message auth.v1.SetActiveOrgRequest.
+ * Use `create(SetActiveOrgRequestSchema)` to create a new message.
+ */
+export const SetActiveOrgRequestSchema: GenMessage<SetActiveOrgRequest> = /*@__PURE__*/
+  messageDesc(file_auth_v1_auth, 8);
+
+/**
+ * @generated from message auth.v1.SetActiveOrgResponse
+ */
+export type SetActiveOrgResponse = Message<"auth.v1.SetActiveOrgResponse"> & {
+  /**
+   * The session after the switch, as Whoami describes it.
+   *
+   * @generated from field: auth.v1.WhoamiResponse me = 1;
+   */
+  me?: WhoamiResponse;
+};
+
+/**
+ * Describes the message auth.v1.SetActiveOrgResponse.
+ * Use `create(SetActiveOrgResponseSchema)` to create a new message.
+ */
+export const SetActiveOrgResponseSchema: GenMessage<SetActiveOrgResponse> = /*@__PURE__*/
+  messageDesc(file_auth_v1_auth, 9);
+
+/**
  * @generated from message auth.v1.SignOutEverywhereRequest
  */
 export type SignOutEverywhereRequest = Message<"auth.v1.SignOutEverywhereRequest"> & {
@@ -254,7 +292,7 @@ export type SignOutEverywhereRequest = Message<"auth.v1.SignOutEverywhereRequest
  * Use `create(SignOutEverywhereRequestSchema)` to create a new message.
  */
 export const SignOutEverywhereRequestSchema: GenMessage<SignOutEverywhereRequest> = /*@__PURE__*/
-  messageDesc(file_auth_v1_auth, 8);
+  messageDesc(file_auth_v1_auth, 10);
 
 /**
  * @generated from message auth.v1.SignOutEverywhereResponse
@@ -273,7 +311,7 @@ export type SignOutEverywhereResponse = Message<"auth.v1.SignOutEverywhereRespon
  * Use `create(SignOutEverywhereResponseSchema)` to create a new message.
  */
 export const SignOutEverywhereResponseSchema: GenMessage<SignOutEverywhereResponse> = /*@__PURE__*/
-  messageDesc(file_auth_v1_auth, 9);
+  messageDesc(file_auth_v1_auth, 11);
 
 /**
  * @generated from service auth.v1.AuthService
@@ -318,6 +356,16 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof SignOutEverywhereRequestSchema;
     output: typeof SignOutEverywhereResponseSchema;
+  },
+  /**
+   * SetActiveOrg makes an organization the signed-in person belongs to the active one of this session.
+   *
+   * @generated from rpc auth.v1.AuthService.SetActiveOrg
+   */
+  setActiveOrg: {
+    methodKind: "unary";
+    input: typeof SetActiveOrgRequestSchema;
+    output: typeof SetActiveOrgResponseSchema;
   },
   /**
    * CreateOwnOrg creates an organization the signed-in person owns, with its default project; cloud signup's one org per person.

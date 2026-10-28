@@ -65,7 +65,7 @@ Object.assign(globalThis, {
   defineStore,
   navigateTo,
   useRuntimeConfig,
-  useNuxtApp: () => ({ ...clients }),
+  useNuxtApp: () => ({ ...clients, $i18n: { t, te: (key: string) => known.has(key) } }),
   useI18n: () => ({ t, te: (key: string) => known.has(key) }),
   useState: <T>(key: string, init: () => T): Ref<T> => {
     if (!states.has(key)) {

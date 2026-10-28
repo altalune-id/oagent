@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
@@ -35,6 +36,31 @@ func NewService(deps Deps) *Service {
 		verifyDummy: password.VerifyDummy,
 		now:         func() time.Time { return time.Now().UTC() },
 	}
+}
+
+// SetActiveOrg makes orgID the active org of the person's session sid and returns the refreshed Principal.
+func (s *Service) SetActiveOrg(ctx context.Context, sid string, p session.Principal, orgID uuid.UUID) (session.Principal, error) {
+	// SECURITY: an org the person does not belong to answers the same *org.NotFoundError as an unknown one.
+	if !p.IsPerson() || orgID == uuid.Nil {
+		return session.Principal{}, &org.NotFoundError{}
+	}
+	next := withoutAuthority(p)
+	next.ActiveOrgID = orgID
+	refreshed, err := s.refreshPerson(ctx, next)
+	if err != nil {
+		return session.Principal{}, err
+	}
+	if refreshed.ActiveOrgID != orgID {
+		return session.Principal{}, &org.NotFoundError{}
+	}
+	err = s.deps.Sessions.Update(ctx, sid, refreshed)
+	switch {
+	case session.IsNotFoundError(err):
+		return session.Principal{}, &authn.UnauthorizedError{}
+	case err != nil:
+		return session.Principal{}, err
+	}
+	return refreshed, nil
 }
 
 // LoginLocal checks an email and password and returns the signed-in Principal. Every failure is an *InvalidCredentialsError.

@@ -18,10 +18,9 @@ describe('useOrgCreation', () => {
     return useOrgCreation();
   }
 
-  it('offers creation where the deployment allows it, only to a person in no org', () => {
+  it('offers creation where the deployment allows it and the person owns no org', () => {
     expect(given(true).canCreate.value).toBe(true);
-    expect(given(true, 'admin').canCreate.value).toBe(false);
-    expect(given(true, 'member').canCreate.value).toBe(false);
+    expect(given(true, 'admin').canCreate.value).toBe(true);
   });
 
   it('withholds it from someone who already owns an org, as the server would answer ORG006', () => {

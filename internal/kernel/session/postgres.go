@@ -55,6 +55,30 @@ func (s *PostgresStore) Save(ctx context.Context, sid string, p Principal, expir
 	return nil
 }
 
+// Update replaces the sealed Principal of p's live session sid and keeps its expiry.
+func (s *PostgresStore) Update(ctx context.Context, sid string, p Principal) error {
+	blob, err := sealPrincipal(s.sealer, sid, p.withoutAuthority())
+	if err != nil {
+		return err
+	}
+	t := s.table
+	stmt := t.UPDATE(t.Payload).
+		SET(postgres.Bytea(blob)).
+		WHERE(t.SID.EQ(postgres.String(sid)).AND(t.UserID.EQ(postgres.UUID(p.UserID))).AND(t.ExpiresAt.GT(postgres.NOW())))
+	res, err := stmt.ExecContext(ctx, s.db)
+	if err != nil {
+		return fmt.Errorf("session.postgres: Update: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("session.postgres: Update: rows affected: %w", err)
+	}
+	if n == 0 {
+		return &NotFoundError{}
+	}
+	return nil
+}
+
 // Load returns the live session for sid; an expired, missing or unopenable row reads as signed out.
 func (s *PostgresStore) Load(ctx context.Context, sid string) (Principal, bool, error) {
 	t := s.table

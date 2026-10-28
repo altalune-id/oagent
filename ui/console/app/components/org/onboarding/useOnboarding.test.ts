@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useOrgsStore } from '~/stores/orgs';
 import { connectError, fakeStorage, navigateTo, setClient, setKnownKeys } from '../../../../test/nuxt-globals';
+import { useOrgCreation } from '../create/useOrgCreation';
 import { useOnboarding } from './useOnboarding';
 
 const org = { id: 'V3StGXR8Z5jdHj6BmyT2a', slug: 'acme', name: 'Acme' };
@@ -12,13 +13,15 @@ describe('useOnboarding', () => {
   let listProjects: ReturnType<typeof vi.fn>;
   let createOwnOrg: ReturnType<typeof vi.fn>;
   let createOrg: ReturnType<typeof vi.fn>;
+  let setActiveOrg: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.stubGlobal('localStorage', fakeStorage());
     createOwnOrg = vi.fn().mockResolvedValue({ org });
     createOrg = vi.fn();
-    setClient('$authClient', { whoami: vi.fn().mockResolvedValue({ source: 'local', orgCreation: true }), createOwnOrg });
+    setActiveOrg = vi.fn().mockResolvedValue({});
+    setClient('$authClient', { whoami: vi.fn().mockResolvedValue({ source: 'local', userId: 'u1', orgCreation: true }), setActiveOrg, createOwnOrg });
     setClient('$orgClient', { createOrg, listOrgs: vi.fn().mockResolvedValue({ orgs: [org] }) });
     listProjects = vi.fn().mockResolvedValue({ projects: [project] });
     setClient('$projectClient', { listProjects });
@@ -35,8 +38,20 @@ describe('useOnboarding', () => {
     expect(createOwnOrg).toHaveBeenCalledWith({ name: 'Acme', slug: '' });
     expect(createOrg).not.toHaveBeenCalled();
     expect(useOrgsStore().bySlug('acme')?.id).toBe(org.id);
+    expect(setActiveOrg).toHaveBeenCalledWith({ orgId: org.id });
     expect(listProjects).toHaveBeenCalledWith({ orgId: org.id });
     expect(navigateTo).toHaveBeenCalledWith('/o/acme/projects/default');
+  });
+
+  it('stops offering New organization once onboarding created the caller\'s own org', async () => {
+    const orgs = useOrgsStore();
+    orgs.loaded = true;
+    const creation = useOrgCreation();
+    const form = useOnboarding();
+    form.name.value = 'Acme';
+    await form.submit();
+    expect(orgs.bySlug('acme')?.role).toBe('owner');
+    expect(creation.ownsOne.value).toBe(true);
   });
 
   it('takes someone who already owns an org there', async () => {

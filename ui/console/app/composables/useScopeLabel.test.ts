@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { useScopeLabel } from './useScopeLabel';
 
@@ -9,5 +9,14 @@ describe('useScopeLabel', () => {
 
   it('shows the raw name of an unknown scope', () => {
     expect(useScopeLabel()('mystery:do')).toBe('mystery:do');
+  });
+});
+
+describe('useScopeLabel outside a component setup', () => {
+  it('never calls useI18n', () => {
+    vi.stubGlobal('useI18n', () => {
+      throw new SyntaxError('26');
+    });
+    expect(useScopeLabel()('agent:read')).toBe('scope.agent_read');
   });
 });

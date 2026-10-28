@@ -74,6 +74,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/auth.v1.CreateOwnOrgResponse'
+  /auth.v1.AuthService/SetActiveOrg:
+    post:
+      tags:
+        - auth.v1.AuthService
+      summary: SetActiveOrg
+      description: SetActiveOrg makes an organization the signed-in person belongs to the active one of this session.
+      operationId: auth.v1.AuthService.SetActiveOrg
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/auth.v1.SetActiveOrgRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/auth.v1.SetActiveOrgResponse'
   /auth.v1.AuthService/SignOutEverywhere:
     post:
       tags:
@@ -231,6 +267,28 @@ components:
           title: org
           $ref: '#/components/schemas/org.v1.Org'
       title: CreateOwnOrgResponse
+      additionalProperties: false
+    auth.v1.SetActiveOrgRequest:
+      type: object
+      properties:
+        orgId:
+          type: string
+          title: org_id
+          description: |
+            Public id of an organization the person belongs to; any other answers not found.
+            oagent.public_id = true
+      title: SetActiveOrgRequest
+      required:
+        - orgId
+      additionalProperties: false
+    auth.v1.SetActiveOrgResponse:
+      type: object
+      properties:
+        me:
+          title: me
+          description: The session after the switch, as Whoami describes it.
+          $ref: '#/components/schemas/auth.v1.WhoamiResponse'
+      title: SetActiveOrgResponse
       additionalProperties: false
     auth.v1.SignOutEverywhereRequest:
       type: object

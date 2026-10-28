@@ -41,6 +41,18 @@ func (s *MemoryStore) Load(_ context.Context, sid string) (Principal, bool, erro
 	return r.p, true, nil
 }
 
+// Update replaces the Principal of p's live session sid and keeps its expiry.
+func (s *MemoryStore) Update(_ context.Context, sid string, p Principal) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	r, ok := s.rows[sid]
+	if !ok || r.p.UserID != p.UserID || !time.Now().Before(r.exp) {
+		return &NotFoundError{}
+	}
+	s.rows[sid] = memRow{p: p.withoutAuthority(), exp: r.exp}
+	return nil
+}
+
 // Delete removes the session for sid.
 func (s *MemoryStore) Delete(_ context.Context, sid string) error {
 	s.mu.Lock()

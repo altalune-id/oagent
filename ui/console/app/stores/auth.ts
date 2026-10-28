@@ -26,5 +26,12 @@ export const useAuthStore = defineStore('auth', () => {
     return inflight;
   }
 
-  return { me, loaded, load };
+  async function setActiveOrg(orgId: string) {
+    const res = await client.setActiveOrg({ orgId });
+    if (res.me) {
+      me.value = res.me;
+    }
+  }
+
+  return { me, loaded, load, setActiveOrg };
 });

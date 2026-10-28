@@ -371,12 +371,19 @@ func (f *apiFixture) personCookieIn(t *testing.T, orgID uuid.UUID, email string,
 	require.NoError(t, err)
 	_, err = f.svcs.Members.Add(ctx, orgID, u.ID, role)
 	require.NoError(t, err)
+	cookie, p := f.signInCookie(t, email)
+	return cookie, p, u.ID
+}
+
+func (f *apiFixture) signInCookie(t *testing.T, email string) (string, session.Principal) {
+	t.Helper()
+	ctx := t.Context()
 	p, err := f.svcs.Auth.LoginLocal(ctx, authCredentials(email, "quiet-forest-lamp-9"))
 	require.NoError(t, err)
 	sid, err := session.NewID()
 	require.NoError(t, err)
 	require.NoError(t, f.svcs.Sessions.Save(ctx, sid, p, time.Now().Add(time.Hour)))
-	return session.CookieName + "=" + session.Sign(f.svcs.StateSecret, sid), p, u.ID
+	return session.CookieName + "=" + session.Sign(f.svcs.StateSecret, sid), p
 }
 
 func connectCode(t *testing.T, err error) string {

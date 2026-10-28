@@ -101,6 +101,8 @@ func SIDFrom(ctx context.Context) (string, bool) {
 type Store interface {
 	Save(ctx context.Context, sid string, p Principal, expiresAt time.Time) error
 	Load(ctx context.Context, sid string) (Principal, bool, error)
+	// Update replaces the Principal of p's live session sid and keeps its expiry; otherwise it is a *NotFoundError.
+	Update(ctx context.Context, sid string, p Principal) error
 	Delete(ctx context.Context, sid string) error
 	DeleteByUser(ctx context.Context, userID uuid.UUID) error
 	// DeleteByUserExcept removes every session of userID but keepSID.
