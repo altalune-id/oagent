@@ -50,7 +50,7 @@ func cliRoot(c *apiclient.Client) *cobra.Command {
 	return root
 }
 
-// Z13, Review Focus 1: every command group's JSON output holds public ids only.
+// Every command group's JSON output holds public ids only.
 func TestCLI_JSONHoldsNoUUID(t *testing.T) {
 	f := newAPIFixture(t)
 	s := seedReach(t, f)

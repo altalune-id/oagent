@@ -58,7 +58,7 @@ func stubRedis(t *testing.T) (calls *int, client *redis.Client) {
 	return calls, client
 }
 
-// Review Focus 1: with nothing selecting Redis, boot never opens it, even when redis.url is set.
+// With nothing selecting Redis, boot never opens it, even when redis.url is set.
 func TestBuildRedis_UnusedNeverConnects(t *testing.T) {
 	restoreSeams(t)
 	calls, _ := stubRedis(t)

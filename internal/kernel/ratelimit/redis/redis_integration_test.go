@@ -42,7 +42,7 @@ func TestStore_RedisClock(t *testing.T) {
 	assert.LessOrEqual(t, res.RetryAfter, 90*time.Second)
 }
 
-// Review Focus 2: two servers on one Redis and prefix share one budget; two memory stores do not.
+// Two servers on one Redis and prefix share one budget; two memory stores do not.
 func TestStore_SharedAcrossServers(t *testing.T) {
 	h := redistest.New(t)
 	rule := ratelimittest.Rule()
@@ -73,7 +73,7 @@ func allowed(t *testing.T, rule ratelimit.Rule, key string, a, b ratelimit.Limit
 	return n
 }
 
-// Review Focus 5: every key sits under the prefix and rl:, carries a TTL, and another prefix never sees it.
+// Every key sits under the prefix and rl:, carries a TTL, and another prefix never sees it.
 func TestStore_KeyHygiene(t *testing.T) {
 	h := redistest.New(t)
 	other := redistest.New(t)

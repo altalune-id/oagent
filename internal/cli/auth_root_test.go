@@ -238,7 +238,7 @@ func TestAuthProfiles_StayApart(t *testing.T) {
 	assert.Equal(t, session.CookieName+"="+pb.Session, cookie)
 }
 
-// SECURITY: Review Focus 1 — a profile's session never reaches another server.
+// SECURITY: a profile's session never reaches another server.
 func TestProfileSession_NotSentToAnotherServer(t *testing.T) {
 	for name, redirect := range map[string]func(t *testing.T, url string) []string{
 		"--url": func(_ *testing.T, url string) []string { return []string{"--url", url} },

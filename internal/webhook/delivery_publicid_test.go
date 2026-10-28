@@ -20,7 +20,7 @@ import (
 
 var uuidShaped = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
 
-// Z12, Review Focus 1: a delivered request names the event and the delivery by public ids, with no UUID in its headers or body.
+// A delivered request names the event and the delivery by public ids, with no UUID in its headers or body.
 func TestDeliveryCarriesPublicIDsOnly(t *testing.T) {
 	org, project := uuid.New(), uuid.New()
 	sl := testSealer(t)
@@ -68,7 +68,7 @@ func must[T any](v T, err error) T {
 	return v
 }
 
-// Review Focus 1: a failed delivery's error becomes the delivery's last_error, which the API shows.
+// A failed delivery's error becomes the delivery's last_error, which the API shows.
 func TestInactiveEndpointErrorHoldsNoUUID(t *testing.T) {
 	org, project := uuid.New(), uuid.New()
 	sl := testSealer(t)

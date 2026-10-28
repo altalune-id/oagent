@@ -61,7 +61,7 @@ func received(got <-chan queue.Message, within time.Duration) bool {
 	}
 }
 
-// Review Focus 2: like the shared server, an account sees only its own jobs and broadcasts; the same account shares them.
+// Like the shared server, an account sees only its own jobs and broadcasts; the same account shares them.
 func TestQueue_AccountsIsolateJobsAndBroadcasts(t *testing.T) {
 	url := natstest.StartAccounts(t).ClientURL()
 	producer := accountQueue(t, url, natstest.UserA, natstest.PasswordA)

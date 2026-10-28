@@ -207,7 +207,7 @@ func TestAPIKeyService_Revoke_UnknownOrg(t *testing.T) {
 	assert.Nil(t, store.Saved)
 }
 
-// Review Focus 5: listing an org's keys is org-wide, so a key limited to some projects is refused.
+// Listing an org's keys is org-wide, so a key limited to some projects is refused.
 func TestAPIKeyService_List_ProjectLimitedKeyRefused(t *testing.T) {
 	orgID := uuid.New()
 	k, _, err := apikey.NewScheme("").MintOrg(orgID, "x", nil, apikey.ProjectGrant{All: true}, future(), time.Now().UTC())

@@ -20,7 +20,7 @@ func closedClient(t *testing.T) *goredis.Client {
 	return c
 }
 
-// Review Focus 3: a Redis that fails is an error, never an allowed call, so auth fails closed.
+// A Redis that fails is an error, never an allowed call, so auth fails closed.
 func TestStore_ClosedClientIsAnError(t *testing.T) {
 	s := ratelimitredis.New(closedClient(t), "oagent:rl:")
 	res, err := s.Allow(t.Context(), "k", ratelimittest.Rule())

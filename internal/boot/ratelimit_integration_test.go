@@ -51,7 +51,7 @@ func postLogin(h http.Handler, email, password, ip string) *httptest.ResponseRec
 	return rec
 }
 
-// Review Focus 2: with the default config, 100 failed logins for one email from one IP never give 429.
+// With the default config, 100 failed logins for one email from one IP never give 429.
 func TestLoginRateLimit_OffByDefault(t *testing.T) {
 	h := loginServer(t, config.RateLimitConfig{Driver: config.RateLimitDriverMemory, MaxKeys: 100_000})
 	for i := range 100 {
@@ -61,7 +61,7 @@ func TestLoginRateLimit_OffByDefault(t *testing.T) {
 	assert.Equal(t, http.StatusSeeOther, postLogin(h, "root@example.com", "genesis-password", "192.0.2.1").Code)
 }
 
-// Review Focus 3: with rateLimit.auth.enabled, login is limited per email across IPs; a correct login before the limit works.
+// With rateLimit.auth.enabled, login is limited per email across IPs; a correct login before the limit works.
 func TestLoginRateLimit_Enabled(t *testing.T) {
 	h := loginServer(t, config.RateLimitConfig{
 		Driver: config.RateLimitDriverMemory, MaxKeys: 100_000, Auth: config.RateLimitGroupConfig{Enabled: true},
@@ -86,7 +86,7 @@ func redisRateLimit() config.RateLimitConfig {
 	return config.RateLimitConfig{Driver: config.RateLimitDriverRedis, Auth: config.RateLimitGroupConfig{Enabled: true}}
 }
 
-// Review Focus 2: two servers on one Redis count one email's failed logins together.
+// Two servers on one Redis count one email's failed logins together.
 func TestLoginRateLimit_RedisSharedAcrossServers(t *testing.T) {
 	h := redistest.New(t)
 	a := loginServerOn(t, redisRateLimit(), h.Client(t), h.Prefix)
@@ -100,7 +100,7 @@ func TestLoginRateLimit_RedisSharedAcrossServers(t *testing.T) {
 	assert.NotEmpty(t, rec.Header().Get("Retry-After"))
 }
 
-// Review Focus 3: when Redis stops answering mid-run, sign-in answers 503 instead of letting the attempt through.
+// When Redis stops answering mid-run, sign-in answers 503 instead of letting the attempt through.
 func TestLoginRateLimit_RedisDownFailsClosed(t *testing.T) {
 	h := redistest.New(t)
 	opts, err := redis.ParseURL(h.URL)

@@ -79,7 +79,7 @@ func TestMCP_BadKeyIs401(t *testing.T) {
 	assert.Contains(t, string(body), `"code":"GEN002"`)
 }
 
-// Review Focus 1: no MCP tool answers with a UUID, for a key that sees org B.
+// No MCP tool answers with a UUID, for a key that sees org B.
 func TestMCP_ToolResultsHoldNoUUID(t *testing.T) {
 	f := newAPIFixture(t)
 	s := seedReach(t, f)

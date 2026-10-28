@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Review Focus 3: a Redis that stops answering makes the server not ready, and it never crashes the worker.
+// A Redis that stops answering makes the server not ready, and it never crashes the worker.
 func TestHealth_ProbeFailureMarksNotReady(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		client := goredis.NewClient(&goredis.Options{Addr: "127.0.0.1:1"})

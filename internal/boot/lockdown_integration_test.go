@@ -100,7 +100,7 @@ func localLockdown(t *testing.T) *lockdown {
 	return newLockdown(t, cfg, idp)
 }
 
-// Review Focus 2: no credential is refused on every surface; sign-in pages, legal, static and probes stay open.
+// No credential is refused on every surface; sign-in pages, legal, static and probes stay open.
 func TestLockdown_NoCredential(t *testing.T) {
 	l := localLockdown(t)
 
@@ -168,7 +168,7 @@ func TestLockdown_CredentialsWork(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, rec.Code, "/mcp never accepts the session cookie")
 }
 
-// Review Focus 3: a cookie whose session is gone gets the login form, never a redirect loop.
+// A cookie whose session is gone gets the login form, never a redirect loop.
 func TestLockdown_StaleCookieNoLoop(t *testing.T) {
 	l := localLockdown(t)
 	stale := session.CookieName + "=" + session.Sign(l.svcs.StateSecret, "deleted-session")

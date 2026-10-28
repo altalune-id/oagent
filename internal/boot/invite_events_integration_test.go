@@ -19,7 +19,7 @@ import (
 
 var uuidShape = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
 
-// Task 7: an invite and its accept reach the org's webhook subscribers in every project, through the outbox.
+// An invite and its accept reach the org's webhook subscribers in every project, through the outbox.
 func TestInviteEvents_ReachEveryProjectsSubscribers(t *testing.T) {
 	f := newAPIFixture(t)
 	ctx := t.Context()
