@@ -126,3 +126,22 @@ func (s *postgresStore) LinkIDP(ctx context.Context, id uuid.UUID, issuer, subje
 	}
 	return true, nil
 }
+
+// Lock takes the user's row FOR NO KEY UPDATE in the unit of work on ctx. NOTE: a foreign key's KEY SHARE doesn't wait on it.
+func (s *postgresStore) Lock(ctx context.Context, id uuid.UUID) error {
+	if _, ok := db.CurrentTx(ctx); !ok {
+		return errLockOutsideTx
+	}
+	stmt := postgres.SELECT(s.users.ID).FROM(s.users).WHERE(s.users.ID.EQ(postgres.UUID(id))).FOR(postgres.NO_KEY_UPDATE())
+	var row struct {
+		ID uuid.UUID `alias:"users.id"`
+	}
+	err := db.Write(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) })
+	switch {
+	case db.IsNoRows(err):
+		return &NotFoundError{}
+	case err != nil:
+		return fmt.Errorf("user.postgres: Lock: %w", err)
+	}
+	return nil
+}

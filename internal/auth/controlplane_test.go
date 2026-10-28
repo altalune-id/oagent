@@ -30,6 +30,12 @@ func (m orgByID) Get(_ context.Context, id uuid.UUID) (*org.Org, error) {
 	return nil, &org.NotFoundError{}
 }
 
+func (orgByID) CreationAllowed() bool { return false }
+
+type creatingOrgs struct{ orgByID }
+
+func (creatingOrgs) CreationAllowed() bool { return true }
+
 type projectByID map[uuid.UUID]*project.Project
 
 func (m projectByID) Get(_ context.Context, id uuid.UUID) (*project.Project, error) {
@@ -193,6 +199,8 @@ func (brokenOrgs) Get(context.Context, uuid.UUID) (*org.Org, error) {
 	return nil, errors.New("db down")
 }
 
+func (brokenOrgs) CreationAllowed() bool { return false }
+
 type brokenProjects struct{}
 
 func (brokenProjects) Get(context.Context, uuid.UUID) (*project.Project, error) {
@@ -248,4 +256,21 @@ func TestWhoami_ReportsWhetherAPasswordCanChange(t *testing.T) {
 	got, err := whoami(t, authClient(t, NewControlPlane(orgByID{}, projectByID{}, users).WithPasswords(true), key))
 	require.NoError(t, err)
 	assert.False(t, got.GetPasswords(), "a key has no password to change")
+}
+
+func TestWhoami_ReportsWhetherOrgsMayBeCreated(t *testing.T) {
+	p := session.Principal{Source: session.SourceOIDC, UserID: uuid.New(), Email: "ada@example.com"}
+
+	got, err := whoami(t, whoamiClient(t, orgByID{}, projectByID{}, userByID{}, p))
+	require.NoError(t, err)
+	assert.False(t, got.GetOrgCreation(), "selfhosted creates no orgs from the console")
+
+	got, err = whoami(t, whoamiClient(t, creatingOrgs{orgByID{}}, projectByID{}, userByID{}, p))
+	require.NoError(t, err)
+	assert.True(t, got.GetOrgCreation())
+
+	key := session.Principal{Source: session.SourceAPIKey, KeyHint: "abcd"}
+	got, err = whoami(t, whoamiClient(t, creatingOrgs{orgByID{}}, projectByID{}, userByID{}, key))
+	require.NoError(t, err)
+	assert.False(t, got.GetOrgCreation(), "only a person creates an org")
 }

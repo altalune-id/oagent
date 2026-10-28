@@ -1,12 +1,21 @@
+import type { Org as OrgMessage } from '~~/gen/org/v1/org_pb';
 import type { ShownError } from '~/lib/apperror/message';
+import type { Org } from '~/stores/orgs';
 
 import { create } from '@bufbuild/protobuf';
-import { CreateOrgRequestSchema } from '~~/gen/org/v1/org_pb';
+import { CreateOwnOrgRequestSchema } from '~~/gen/auth/v1/auth_pb';
 import { useValidation } from '~/composables/useValidation';
 import { useOrgsStore } from '~/stores/orgs';
 import { useUIStore } from '~/stores/ui';
 
-export function useOrgCreate() {
+export type OrgCreateCall = (req: { name: string, slug: string }) => Promise<{ org?: OrgMessage }>;
+
+export interface OrgCreateOptions {
+  create?: OrgCreateCall;
+  landing?: (org: Org) => Promise<string>;
+}
+
+export function useOrgCreate(options: OrgCreateOptions = {}) {
   const name = ref('');
   const slug = ref('');
   const busy = ref(false);
@@ -14,11 +23,11 @@ export function useOrgCreate() {
 
   const orgs = useOrgsStore();
   const ui = useUIStore();
-  const validation = useValidation(CreateOrgRequestSchema, {
+  const validation = useValidation(CreateOwnOrgRequestSchema, {
     fields: ['name', 'slug'],
     codes: { ORG002: 'slug', ORG003: 'slug', ORG004: 'name' },
   });
-  const { $orgClient: client } = useNuxtApp();
+  const { $authClient: client } = useNuxtApp();
 
   const open = computed(() => ui.orgCreateOpen);
 
@@ -36,21 +45,22 @@ export function useOrgCreate() {
       return;
     }
     const req = { name: name.value.trim(), slug: slug.value.trim() };
-    if (!validation.check(create(CreateOrgRequestSchema, req))) {
+    if (!validation.check(create(CreateOwnOrgRequestSchema, req))) {
       error.value = validation.formError.value;
       return;
     }
     busy.value = true;
     error.value = null;
     try {
-      const res = await client.createOrg(req);
+      const res = await (options.create ?? (r => client.createOwnOrg(r)))(req);
       const org = res.org;
       if (org) {
-        orgs.add({ id: org.id, slug: org.slug, name: org.name });
+        const added = { id: org.id, slug: org.slug, name: org.name, role: 'owner' };
+        orgs.add(added);
         ui.closeOrgCreate();
         name.value = '';
         slug.value = '';
-        await navigateTo(`/o/${org.slug}`);
+        await navigateTo(options.landing ? await options.landing(added) : `/o/${org.slug}`);
       }
     } catch (e) {
       error.value = validation.fromServer(e, 'error.create_org');

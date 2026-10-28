@@ -87,6 +87,9 @@ func (f *UserStore) SetPasswordHash(_ context.Context, id uuid.UUID, hash string
 	return nil
 }
 
+// Lock implements user.Store; the fake has no rows to lock.
+func (f *UserStore) Lock(context.Context, uuid.UUID) error { return f.Err }
+
 // ByIDP implements user.Store.
 func (f *UserStore) ByIDP(_ context.Context, issuer, subject string) (*user.User, error) {
 	f.mu.Lock()

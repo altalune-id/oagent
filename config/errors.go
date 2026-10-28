@@ -60,11 +60,11 @@ func IsGenesisInCloudError(err error) bool {
 	return ok
 }
 
-// CloudRequiresOIDCError reports cloud mode without an OIDC provider, which lands in auth phase P3.
+// CloudRequiresOIDCError reports cloud mode without an OIDC provider, the only way people sign in there.
 type CloudRequiresOIDCError struct{}
 
 func (*CloudRequiresOIDCError) Error() string {
-	return "config: mode cloud requires OIDC sign-in, which is not available yet (auth phase P3); use mode selfhosted"
+	return "config: mode cloud requires oidc.issuer: people sign in through the OIDC provider only"
 }
 
 // IsCloudRequiresOIDCError reports whether err's tree contains a *CloudRequiresOIDCError.

@@ -92,6 +92,8 @@ func IsInvalidNameError(err error) bool {
 	return ok
 }
 
+var errLockOutsideTx = errors.New("user.postgres: a row lock needs a transaction")
+
 // IsExpectedError reports whether err is a domain outcome callers handle, not an incident to report.
 func IsExpectedError(err error) bool {
 	return IsNotFoundError(err) || IsAlreadyExistsError(err) || IsInvalidEmailError(err) || IsInvalidNameError(err)

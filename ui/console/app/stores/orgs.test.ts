@@ -12,15 +12,15 @@ describe('useOrgsStore', () => {
   });
 
   it('loads the orgs', async () => {
-    const listOrgs = vi.fn().mockResolvedValue({ orgs: [{ ...acme, extra: 'ignored' }] });
+    const listOrgs = vi.fn().mockResolvedValue({ orgs: [{ ...acme, role: 'owner', extra: 'ignored' }] });
     setClient('$orgClient', { listOrgs });
     const orgs = useOrgsStore();
     await orgs.load();
-    expect(orgs.items).toEqual([acme]);
+    expect(orgs.items).toEqual([{ ...acme, role: 'owner' }]);
     expect(orgs.loaded).toBe(true);
     expect(orgs.loading).toBe(false);
     expect(orgs.error).toBeNull();
-    expect(orgs.bySlug('acme')).toEqual(acme);
+    expect(orgs.bySlug('acme')).toEqual({ ...acme, role: 'owner' });
     expect(orgs.bySlug('nope')).toBeUndefined();
   });
 
@@ -62,7 +62,7 @@ describe('useOrgsStore', () => {
     await Promise.all([first, second]);
     await orgs.ensureLoaded();
     expect(listOrgs).toHaveBeenCalledTimes(1);
-    expect(orgs.items).toEqual([acme]);
+    expect(orgs.items).toEqual([{ ...acme, role: '' }]);
   });
 
   it('retries ensureLoaded after a failure', async () => {

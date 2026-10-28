@@ -251,3 +251,16 @@ func TestPostgresStore_SetPasswordHash(t *testing.T) {
 	assert.Equal(t, "sub-1", got.IDPSubject)
 	assert.True(t, user.IsNotFoundError(s.SetPasswordHash(ctx, uuid.New(), "x")))
 }
+
+// A row lock joins a unit of work; outside one it is refused, and an unknown user is not found.
+func TestPostgresStore_Lock(t *testing.T) {
+	s, pool := newPGStore(t)
+	ctx := t.Context()
+	ada := mustNew(t, "ada@example.com")
+	require.NoError(t, s.Save(ctx, ada))
+
+	assert.Error(t, s.Lock(ctx, ada.ID), "a row lock needs a transaction")
+	require.NoError(t, db.RunInTx(ctx, pool, func(ctx context.Context) error { return s.Lock(ctx, ada.ID) }))
+	err := db.RunInTx(ctx, pool, func(ctx context.Context) error { return s.Lock(ctx, uuid.New()) })
+	assert.True(t, user.IsNotFoundError(err))
+}

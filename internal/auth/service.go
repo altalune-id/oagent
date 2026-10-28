@@ -103,6 +103,11 @@ func (s *Service) SetPassword(ctx context.Context, email, plain string) error {
 	return s.deps.Sessions.DeleteByUser(ctx, u.ID)
 }
 
+// CreateOwnOrg creates an org userID owns, with its default project; one who already owns an org is refused (ORG006).
+func (s *Service) CreateOwnOrg(ctx context.Context, userID uuid.UUID, name, slug string) (*org.Org, error) {
+	return s.deps.OrgCreator.Create(ctx, org.CreateRequest{Slug: slug, Name: name, CreatedBy: userID})
+}
+
 // UpdateProfile sets the person's name and returns them.
 func (s *Service) UpdateProfile(ctx context.Context, userID uuid.UUID, name string) (*user.User, error) {
 	return s.deps.Profiles.SetName(ctx, userID, name)
@@ -170,7 +175,8 @@ func (s *Service) refreshPerson(ctx context.Context, p session.Principal) (sessi
 		return session.Principal{}, err
 	}
 	if len(ms) == 0 {
-		p.ActiveOrgID, p.ActiveProjectID = uuid.Nil, uuid.Nil
+		// SECURITY: org:read only lets a person in no org list their own (zero) orgs; with no active org it reaches nothing.
+		p.ActiveOrgID, p.ActiveProjectID, p.Scopes = uuid.Nil, uuid.Nil, []string{scope.OrgRead}
 		return p, nil
 	}
 	active := ms[0]

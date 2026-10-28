@@ -139,6 +139,7 @@ func TestValidate_EveryRule(t *testing.T) {
 		{"redis.writeTimeout 0", func(c *Config) { redisFeature(c); c.Redis.WriteTimeout = 0 }, invalidSetting("redis.writeTimeout")},
 		{"cloud requires oidc", func(c *Config) { c.Mode = ModeCloud }, func(t *testing.T, err error) { assert.True(t, IsCloudRequiresOIDCError(err), "got %v", err) }},
 		{"oidc on", oidcOn, valid},
+		{"cloud with oidc", func(c *Config) { oidcOn(c); c.Mode = ModeCloud }, valid},
 		{"oidc.issuer not a url", func(c *Config) { oidcOn(c); c.OIDC.Issuer = "not a url" }, invalidSetting("oidc.issuer")},
 		{"oidc.issuer http in production", func(c *Config) { oidcOn(c); c.OIDC.Issuer = "http://idp.example.com" }, invalidSetting("oidc.issuer")},
 		{"oidc.issuer http in development", func(c *Config) { oidcOn(c); devConsole(c); c.OIDC.Issuer = "http://localhost:8080" }, valid},

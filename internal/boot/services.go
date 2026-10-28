@@ -2,6 +2,7 @@ package boot
 
 import (
 	"context"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -80,9 +81,16 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	uow := db.NewTransactor(k.Pool)
 	caps := capabilities.From(capabilitiesConfig(cfg))
 	projects := project.NewService(projectStore, k.Reporter.Unexpected)
+	users := user.NewService(user.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix), k.Reporter.Unexpected)
+	members := member.NewService(member.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix), uow, k.Reporter.Unexpected).
+		WithOperatorSupport(caps.OperatorOrgSupport)
 	orgs := org.NewService(orgStore, uow, k.Reporter.Unexpected).
 		WithCreation(caps.OrgCreation).
+		WithMemberRoles(orgMemberRoles{members: members}).
 		WithAfterCreate(func(ctx context.Context, o *org.Org) error {
+			if err := ownNewOrg(ctx, users, members, o); err != nil {
+				return err
+			}
 			_, err := projects.Create(ctx, project.CreateRequest{OrgID: o.ID, Slug: project.DefaultSlug, Name: project.DefaultName})
 			return err
 		})
@@ -97,9 +105,6 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	)
 
 	agents := agent.NewService(agentStore, uow, k.Reporter.Unexpected).WithPublisher(webhooks).WithProjects(projectOwners)
-	users := user.NewService(user.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix), k.Reporter.Unexpected)
-	members := member.NewService(member.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix), uow, k.Reporter.Unexpected).
-		WithOperatorSupport(caps.OperatorOrgSupport)
 
 	keyScheme := apikey.NewScheme("")
 	owners := ownerRoles{members: members}
@@ -140,6 +145,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		BaseURL:    publicBase(cfg.HTTP),
 		Identities: users,
 		Invites:    oidcInvites{invites: invites},
+		OrgCreator: orgs,
 		Issuer:     cfg.OIDC.NormalizedIssuer(),
 		OpenSignup: cfg.OpenSignup(),
 	})
@@ -375,4 +381,47 @@ func noSeat(err error) error {
 		return nil
 	}
 	return err
+}
+
+type rowLocker interface {
+	Lock(ctx context.Context, id uuid.UUID) error
+}
+
+type orgOwners interface {
+	ListByUser(ctx context.Context, userID uuid.UUID) ([]*member.Membership, error)
+	Add(ctx context.Context, orgID, userID uuid.UUID, role member.Role) (*member.Membership, error)
+}
+
+// SECURITY: one owned org per person: the creator's row is locked, so two concurrent creations can't both pass the check.
+func ownNewOrg(ctx context.Context, users rowLocker, members orgOwners, o *org.Org) error {
+	if !o.CreatedBy.Valid {
+		return nil
+	}
+	owner := o.CreatedBy.UUID
+	if err := users.Lock(ctx, owner); err != nil {
+		return err
+	}
+	ms, err := members.ListByUser(ctx, owner)
+	if err != nil {
+		return err
+	}
+	if slices.ContainsFunc(ms, func(m *member.Membership) bool { return m.Role == member.RoleOwner }) {
+		return &org.AlreadyOwnedError{}
+	}
+	_, err = members.Add(ctx, o.ID, owner, member.RoleOwner)
+	return err
+}
+
+type orgMemberRoles struct{ members *member.Service }
+
+func (r orgMemberRoles) Roles(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]string, error) {
+	ms, err := r.members.ListByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	roles := make(map[uuid.UUID]string, len(ms))
+	for _, m := range ms {
+		roles[m.OrgID] = string(m.Role)
+	}
+	return roles, nil
 }

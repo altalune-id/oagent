@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { EntityItem } from '~/components/ui/types';
 import { useLanding } from '~/components/layout/useLanding';
+import { useOrgCreation } from '~/components/org/create/useOrgCreation';
 import EntitySelect from '~/components/ui/EntitySelect.vue';
 import { useOrgsStore } from '~/stores/orgs';
 import { usePinnedStore } from '~/stores/pinned';
@@ -10,6 +11,7 @@ const orgs = useOrgsStore();
 const pinned = usePinnedStore();
 const ui = useUIStore();
 const { resolve } = useLanding();
+const { canCreate } = useOrgCreation();
 const route = useRoute();
 const { t } = useI18n();
 
@@ -70,7 +72,7 @@ function onCreate() {
           {{ t('org.all') }}
         </button>
       </li>
-      <li>
+      <li v-if="canCreate">
         <button type="button" @click="onCreate">
           <Icon name="lucide:plus" size="16" />
           {{ t('org.new') }}

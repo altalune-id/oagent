@@ -29,11 +29,15 @@ func (s *OrgService) CreateOrg(
 	ctx context.Context,
 	req *connect.Request[orgv1.CreateOrgRequest],
 ) (*connect.Response[orgv1.CreateOrgResponse], error) {
-	o, err := s.orgs.Create(ctx, CreateRequest{Slug: req.Msg.GetSlug(), Name: req.Msg.GetName()})
+	in := CreateRequest{Slug: req.Msg.GetSlug(), Name: req.Msg.GetName()}
+	if p := session.PrincipalFrom(ctx); p.IsPerson() && !p.Operator {
+		in.CreatedBy = p.UserID
+	}
+	o, err := s.orgs.Create(ctx, in)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&orgv1.CreateOrgResponse{Org: orgToProto(o)}), nil
+	return connect.NewResponse(&orgv1.CreateOrgResponse{Org: OrgProto(o)}), nil
 }
 
 // GetOrg loads an organization by id.
@@ -45,7 +49,7 @@ func (s *OrgService) GetOrg(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&orgv1.GetOrgResponse{Org: orgToProto(o)}), nil
+	return connect.NewResponse(&orgv1.GetOrgResponse{Org: OrgProto(o)}), nil
 }
 
 // ListOrgs lists the organizations the caller reaches, ordered by creation time.
@@ -61,10 +65,18 @@ func (s *OrgService) ListOrgs(
 	if err != nil {
 		return nil, err
 	}
+	var roles map[uuid.UUID]string
+	if p := session.PrincipalFrom(ctx); p.IsPerson() {
+		if roles, err = s.orgs.MemberRoles(ctx, p.UserID); err != nil {
+			return nil, err
+		}
+	}
 	out := make([]*orgv1.Org, 0, len(orgs))
 	for _, o := range orgs {
 		if authz.ReachOrg(ctx, o.ID) {
-			out = append(out, orgToProto(o))
+			pb := OrgProto(o)
+			pb.Role = roles[o.ID]
+			out = append(out, pb)
 		}
 	}
 	return connect.NewResponse(&orgv1.ListOrgsResponse{Orgs: out}), nil
@@ -83,7 +95,7 @@ func (s *OrgService) UpdateOrg(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&orgv1.UpdateOrgResponse{Org: orgToProto(o)}), nil
+	return connect.NewResponse(&orgv1.UpdateOrgResponse{Org: OrgProto(o)}), nil
 }
 
 // SECURITY: an unknown public id and an org out of reach answer the same not-found.

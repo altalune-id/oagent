@@ -2,6 +2,7 @@ package org_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"altalune.id/oagent/apperror"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
+	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/testutil/fakes"
 )
@@ -111,4 +113,41 @@ func TestOrgService_DomainRefusesWithoutTheRules(t *testing.T) {
 			assert.Equal(t, tc.want, ae.Code())
 		})
 	}
+}
+
+type rolesOf map[uuid.UUID]string
+
+func (r rolesOf) Roles(context.Context, uuid.UUID) (map[uuid.UUID]string, error) { return r, nil }
+
+type brokenRoles struct{}
+
+func (brokenRoles) Roles(context.Context, uuid.UUID) (map[uuid.UUID]string, error) {
+	return nil, errors.New("db down")
+}
+
+// A person sees their role in each org they list, read once; a key sees none.
+func TestOrgService_ListOrgs_Role(t *testing.T) {
+	acme := &org.Org{ID: uuid.New(), PublicID: "pub1", Slug: "acme", Name: "Acme"}
+	store := &fakes.OrgStore{Orgs: []*org.Org{acme}}
+	h := org.NewControlPlane(org.NewService(store, fakes.Transactor{}, nil).WithMemberRoles(rolesOf{acme.ID: "owner"}))
+
+	person := session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceOIDC, UserID: uuid.New(), ActiveOrgID: acme.ID})
+	resp, err := h.ListOrgs(person, connect.NewRequest(&orgv1.ListOrgsRequest{}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.GetOrgs(), 1)
+	assert.Equal(t, "owner", resp.Msg.GetOrgs()[0].GetRole())
+
+	key := session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceAPIKey, ActiveOrgID: acme.ID})
+	resp, err = h.ListOrgs(key, connect.NewRequest(&orgv1.ListOrgsRequest{}))
+	require.NoError(t, err)
+	assert.Empty(t, resp.Msg.GetOrgs()[0].GetRole())
+
+	broken := org.NewControlPlane(org.NewService(store, fakes.Transactor{}, apperror.NewReporter(nil, false).Unexpected).WithMemberRoles(brokenRoles{}))
+	_, err = broken.ListOrgs(person, connect.NewRequest(&orgv1.ListOrgsRequest{}))
+	assert.Error(t, err)
+
+	assert.True(t, org.NewService(store, fakes.Transactor{}, nil).WithCreation(true).CreationAllowed())
+	roles, err := org.NewService(store, fakes.Transactor{}, nil).MemberRoles(context.Background(), uuid.New())
+	require.NoError(t, err)
+	assert.Empty(t, roles, "no member roles wired")
 }

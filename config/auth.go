@@ -89,13 +89,7 @@ func (c *Config) validateAuth() error {
 	if err := c.validateGenesis(); err != nil {
 		return err
 	}
-	if err := c.validateSecrets(); err != nil {
-		return err
-	}
-	if c.Mode == ModeCloud {
-		return &CloudRequiresOIDCError{}
-	}
-	return nil
+	return c.validateSecrets()
 }
 
 func (c *Config) validateGenesis() error {

@@ -39,7 +39,7 @@ func TestFrom(t *testing.T) {
 		},
 		"cloud": {
 			cfg:  capabilities.Config{Cloud: true},
-			want: capabilities.Capabilities{OrgCreation: true, PersonalKeys: true, OperatorOrgSupport: true},
+			want: capabilities.Capabilities{LocalLogin: true, OrgCreation: true, PersonalKeys: true, OperatorOrgSupport: true},
 		},
 		"neither mode": {
 			cfg:  capabilities.Config{},

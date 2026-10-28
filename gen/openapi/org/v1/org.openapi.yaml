@@ -389,6 +389,10 @@ components:
         updatedAt:
           title: updated_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
+        role:
+          type: string
+          title: role
+          description: role is the caller's role in this org; set only for a person who belongs to it.
       title: Org
       additionalProperties: false
     org.v1.UpdateOrgRequest:

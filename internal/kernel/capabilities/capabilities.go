@@ -3,6 +3,7 @@ package capabilities
 
 // Capabilities is the read-only switch snapshot derived from a Config.
 type Capabilities struct {
+	// LocalLogin is oagent's own sign-in and sessions: a password where allowed, and the OIDC provider.
 	LocalLogin   bool
 	BasicAuth    bool
 	OrgCreation  bool
@@ -16,7 +17,7 @@ type Capabilities struct {
 
 // From derives Capabilities from the deployment posture.
 func From(c Config) Capabilities {
-	local := c.Selfhosted && !c.BasicAuth
+	local := (c.Selfhosted || c.Cloud) && !c.BasicAuth
 	return Capabilities{
 		LocalLogin:         local,
 		BasicAuth:          c.Selfhosted && c.BasicAuth,

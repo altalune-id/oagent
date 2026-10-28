@@ -261,6 +261,7 @@ func TestService_Identities(t *testing.T) {
 	linked, err := svc.LinkIDP(ctx, u.ID, "https://idp.example.com", "sub-2")
 	require.NoError(t, err)
 	assert.False(t, linked)
+	require.NoError(t, svc.Lock(ctx, u.ID))
 	_, err = svc.CreateLinked(ctx, "not an email", "", "https://idp.example.com", "sub-3")
 	assert.Error(t, err)
 
@@ -269,6 +270,7 @@ func TestService_Identities(t *testing.T) {
 	assert.Error(t, err)
 	_, err = svc.LinkIDP(ctx, u.ID, "https://idp.example.com", "sub-1")
 	assert.Error(t, err)
+	assert.Error(t, svc.Lock(ctx, u.ID))
 	_, err = svc.CreateLinked(ctx, "bea@shop.test", "Bea", "https://idp.example.com", "sub-4")
 	assert.Error(t, err)
 }

@@ -81,6 +81,14 @@ func (s *Service) LinkIDP(ctx context.Context, id uuid.UUID, issuer, subject str
 	return linked, nil
 }
 
+// Lock locks the user's row in the unit of work on ctx, so a check-then-write about them runs once at a time.
+func (s *Service) Lock(ctx context.Context, id uuid.UUID) error {
+	if err := s.store.Lock(ctx, id); err != nil {
+		return s.errOrReport(ctx, "user: lock", err)
+	}
+	return nil
+}
+
 // CreateLinked persists a new user with no password who signs in only through the identity issuer and subject.
 func (s *Service) CreateLinked(ctx context.Context, email, name, issuer, subject string) (*User, error) {
 	u, err := New(email, name)

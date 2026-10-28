@@ -32,4 +32,6 @@ type Writer interface {
 	SetPasswordHash(ctx context.Context, id uuid.UUID, hash string) error
 	// LinkIDP links the user to issuer and subject only while it has no link, and reports whether it did.
 	LinkIDP(ctx context.Context, id uuid.UUID, issuer, subject string) (bool, error)
+	// Lock locks the user's row until the unit of work on ctx ends.
+	Lock(ctx context.Context, id uuid.UUID) error
 }

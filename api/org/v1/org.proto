@@ -46,6 +46,8 @@ message Org {
   string name = 4;
   google.protobuf.Timestamp created_at = 5;
   google.protobuf.Timestamp updated_at = 6;
+  // role is the caller's role in this org; set only for a person who belongs to it.
+  string role = 7;
 }
 
 message CreateOrgRequest {

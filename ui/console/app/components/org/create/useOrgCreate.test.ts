@@ -9,12 +9,12 @@ import { useOrgCreate } from './useOrgCreate';
 const org = { id: 'V3StGXR8Z5jdHj6BmyT2a', slug: 'acme', name: 'Acme' };
 
 describe('useOrgCreate', () => {
-  let createOrg: ReturnType<typeof vi.fn>;
+  let createOwnOrg: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     setActivePinia(createPinia());
-    createOrg = vi.fn().mockResolvedValue({ org });
-    setClient('$orgClient', { createOrg });
+    createOwnOrg = vi.fn().mockResolvedValue({ org });
+    setClient('$authClient', { createOwnOrg });
   });
 
   it('opens through the UI store', () => {
@@ -30,15 +30,34 @@ describe('useOrgCreate', () => {
     form.name.value = ' Acme ';
     form.slug.value = ' acme ';
     await form.submit();
-    expect(createOrg).toHaveBeenCalledWith({ name: 'Acme', slug: 'acme' });
-    expect(useOrgsStore().items).toEqual([org]);
+    expect(createOwnOrg).toHaveBeenCalledWith({ name: 'Acme', slug: 'acme' });
+    expect(useOrgsStore().items).toEqual([{ ...org, role: 'owner' }]);
     expect(form.open.value).toBe(false);
     expect([form.name.value, form.slug.value]).toEqual(['', '']);
     expect(navigateTo).toHaveBeenCalledWith('/o/acme');
   });
 
+  it('marks the new org as owned, so New organization is no longer offered', async () => {
+    const form = useOrgCreate();
+    form.name.value = 'Acme';
+    await form.submit();
+    expect(useOrgsStore().items.some(o => o.role === 'owner')).toBe(true);
+  });
+
+  it('creates through the given call and goes where the landing option says', async () => {
+    const create = vi.fn().mockResolvedValue({ org });
+    const landing = vi.fn().mockResolvedValue('/o/acme/projects/web');
+    const form = useOrgCreate({ create, landing });
+    form.name.value = 'Acme';
+    await form.submit();
+    expect(create).toHaveBeenCalledWith({ name: 'Acme', slug: '' });
+    expect(createOwnOrg).not.toHaveBeenCalled();
+    expect(landing).toHaveBeenCalledWith({ ...org, role: 'owner' });
+    expect(navigateTo).toHaveBeenCalledWith('/o/acme/projects/web');
+  });
+
   it('stays open when the response has no org', async () => {
-    createOrg.mockResolvedValue({});
+    createOwnOrg.mockResolvedValue({});
     const form = useOrgCreate();
     form.show();
     form.name.value = 'Acme';
@@ -49,11 +68,11 @@ describe('useOrgCreate', () => {
 
   it('does not submit a blank name or while busy', async () => {
     const pending = deferred<{ org: typeof org }>();
-    createOrg.mockReturnValue(pending.promise);
+    createOwnOrg.mockReturnValue(pending.promise);
     const form = useOrgCreate();
     form.show();
     await form.submit();
-    expect(createOrg).not.toHaveBeenCalled();
+    expect(createOwnOrg).not.toHaveBeenCalled();
     form.name.value = 'Acme';
     const first = form.submit();
     await form.submit();
@@ -61,12 +80,12 @@ describe('useOrgCreate', () => {
     expect(form.open.value).toBe(true);
     pending.resolve({ org });
     await first;
-    expect(createOrg).toHaveBeenCalledTimes(1);
+    expect(createOwnOrg).toHaveBeenCalledTimes(1);
   });
 
   it('shows a Connect error with its reference, then the fallback for a plain error', async () => {
     setKnownKeys('apperror.ORG005');
-    createOrg.mockRejectedValueOnce(connectError('ORG005')).mockRejectedValueOnce(new Error('boom'));
+    createOwnOrg.mockRejectedValueOnce(connectError('ORG005')).mockRejectedValueOnce(new Error('boom'));
     const form = useOrgCreate();
     form.show();
     form.name.value = 'Acme';
@@ -84,14 +103,14 @@ describe('useOrgCreate', () => {
     form.show();
     form.name.value = 'a'.repeat(201);
     await form.submit();
-    expect(createOrg).not.toHaveBeenCalled();
+    expect(createOwnOrg).not.toHaveBeenCalled();
     expect(form.fieldErrors.value).toEqual({ name: 'validation.too_long|{"max":"200"}' });
     expect(form.error.value).toBeNull();
   });
 
   it('shows a taken slug under the slug input', async () => {
     setKnownKeys('apperror.ORG002');
-    createOrg.mockRejectedValueOnce(connectError('ORG002', { slug: 'acme' }));
+    createOwnOrg.mockRejectedValueOnce(connectError('ORG002', { slug: 'acme' }));
     const form = useOrgCreate();
     form.show();
     form.name.value = 'Acme';
