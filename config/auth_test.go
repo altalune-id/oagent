@@ -53,6 +53,7 @@ func TestLoad_AuthDefaults(t *testing.T) {
 	c := validConfig(t)
 	assert.Equal(t, AuthModeLocal, c.Auth.Mode)
 	assert.Equal(t, 24*time.Hour, c.Auth.SessionTTL)
+	assert.True(t, c.Auth.RememberLastUser)
 	assert.Empty(t, c.Install.Token)
 	assert.True(t, c.HTTP.CookieSecure)
 	assert.Equal(t, testStateSecret, c.HTTP.StateSecret)
@@ -358,4 +359,12 @@ func TestLoad_BlankPasswordEnabledKeepsTheDefault(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, c.Auth.Password.Enabled)
 	assert.True(t, c.PasswordsOn())
+}
+
+func TestLoad_RememberLastUserFromEnv(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("OAGENT_AUTH_REMEMBER_LAST_USER", "false")
+	c, err := Load(missingPath(t))
+	require.NoError(t, err)
+	assert.False(t, c.Auth.RememberLastUser)
 }

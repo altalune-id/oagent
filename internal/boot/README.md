@@ -209,7 +209,11 @@ so the next request runs in the new org. `ListOrgs` lists every org a person bel
 `active-org` middleware switches before an org's pages load. Every
 link is stored under the normalized `oidc.issuer` (no trailing `/`), so changing the issuer locks out every
 linked person (`AUT007`). The provider must list `S256` in its discovery document and send `email` and `email_verified` in
-the ID token, and email linking trusts the one configured provider. Sign-out ends the local session, then
+the ID token, and email linking trusts the one configured provider. With `auth.rememberLastUser` (default on) the
+callback keeps the verified email in an `oagent_last_user` cookie (90 days, unsigned, a hint only); `/login` then
+offers "Continue as …" with that `login_hint`, "Use another account" sends `prompt=select_account` and clears it,
+a start with no hint sends `prompt=select_account` so the provider never signs in silently to whichever session is
+live, and sign-out keeps it. Off, the cookie is never set or read and an old one is cleared. Sign-out ends the local session, then
 sends a person who signed in through the provider to its `end_session_endpoint` when it has one (with the
 ID token as `id_token_hint` while the provider still publishes its key), back to `/login`.
 Password sign-in follows `Caps.Passwords` (`auth.password.enabled`, on by default in selfhosted, off and

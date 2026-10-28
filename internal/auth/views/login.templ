@@ -20,6 +20,9 @@ type LoginData struct {
 	ButtonLabel string
 	// NewHere tells a newcomer the button also creates their account, in cloud.
 	NewHere bool
+	// LastUser is the email last signed in on this browser; the button then reads "Continue as …" and SwitchURL picks another.
+	LastUser  string
+	SwitchURL string
 }
 
 templ Login(d layout.LayoutData, v LoginData) {
@@ -32,7 +35,14 @@ templ Login(d layout.LayoutData, v LoginData) {
 				<div role="alert" class="alert alert-error alert-soft">{ v.Error }</div>
 			}
 			if v.OIDCURL != "" {
-				<a class="btn btn-primary btn-block" href={ templ.SafeURL(v.OIDCURL) }>{ v.ButtonLabel }</a>
+				if v.LastUser != "" {
+					<a class="btn btn-primary btn-block" href={ templ.SafeURL(v.OIDCURL) }>
+						Continue as <span class="truncate">{ v.LastUser }</span>
+					</a>
+					<p class="text-sm"><a class="link" href={ templ.SafeURL(v.SwitchURL) }>Use another account</a></p>
+				} else {
+					<a class="btn btn-primary btn-block" href={ templ.SafeURL(v.OIDCURL) }>{ v.ButtonLabel }</a>
+				}
 				if v.NewHere {
 					<p class="text-sm text-base-content/70">New here? Signing in creates your account.</p>
 				}

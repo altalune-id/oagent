@@ -67,7 +67,7 @@ func newOIDCWebFixture(t *testing.T, passwordOff bool) *oidcWebFixture {
 	sessions := testSessions(f.store)
 	sessions.Cookie.Path = "/"
 	f.web = NewWeb(layout.Kit{Unexpected: f.report}, f.auth, sessions, f.ids).WithOIDC(OIDCSignIn{
-		Provider: f.rp, ButtonLabel: "Continue with Acme ID", SignedOut: "http://oagent.test/login",
+		Provider: f.rp, ButtonLabel: "Continue with Acme ID", SignedOut: "http://oagent.test/login", RememberLastUser: true,
 	})
 	if passwordOff {
 		f.web.WithoutPasswords()
@@ -128,7 +128,7 @@ func TestOIDCSignIn_Start(t *testing.T) {
 	assert.Equal(t, "select_account", f.rp.started.Prompt)
 	assert.Equal(t, "ada@example.com", f.rp.started.LoginHint)
 
-	_ = f.do(httptest.NewRequest(http.MethodGet, "/login/oidc?prompt=none", nil))
+	_ = f.do(httptest.NewRequest(http.MethodGet, "/login/oidc?prompt=none&login_hint=ada@example.com", nil))
 	assert.Empty(t, f.rp.started.Prompt, "only select_account and login pass through")
 
 	f.rp.startErr = errors.New("discovery down")
@@ -329,4 +329,138 @@ func TestOIDCSignIn_InviteForAnotherEmail(t *testing.T) {
 	c, state = f.start(t, "return_to=/console/x&invite=inv-ada")
 	rec = f.callback("code=c1&state="+state, c)
 	assert.Equal(t, "/console/x", rec.Header().Get("Location"))
+}
+
+func lastUserOf(rec *httptest.ResponseRecorder) *http.Cookie {
+	return cookieNamed(rec, lastUserCookieName)
+}
+
+// After a sign-in the verified email is remembered: HttpOnly, Lax, Secure on https, 90 days; a hint only, never signed.
+func TestOIDCSignIn_RemembersTheLastUser(t *testing.T) {
+	f := newOIDCWebFixture(t, false)
+	f.web.sessions.Cookie.Secure = false
+	f.rp.token.Email = "Ada@Example.com"
+	c, state := f.start(t, "")
+	rec := f.callback("code=c1&state="+state, c)
+	require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
+	last := lastUserOf(rec)
+	require.NotNil(t, last)
+	assert.Equal(t, "ada@example.com", last.Value)
+	assert.True(t, last.HttpOnly)
+	assert.Equal(t, http.SameSiteLaxMode, last.SameSite)
+	assert.Equal(t, int(lastUserTTL.Seconds()), last.MaxAge)
+	assert.Equal(t, "/", last.Path)
+	assert.False(t, last.Secure, "plain http with http.cookieSecure off")
+
+	c, state = f.start(t, "")
+	req := httptest.NewRequest(http.MethodGet, "https://oagent.test/oauth/callback?code=c1&state="+state, nil)
+	req.AddCookie(c)
+	last = lastUserOf(f.do(req))
+	require.NotNil(t, last)
+	assert.True(t, last.Secure, "https")
+
+	f.web.sessions.Cookie.Secure = true
+	c, state = f.start(t, "")
+	last = lastUserOf(f.callback("code=c1&state="+state, c))
+	require.NotNil(t, last)
+	assert.True(t, last.Secure, "http.cookieSecure")
+}
+
+// SECURITY: OIDC Core §3.1.2.1: no account in mind means the picker, never a silent sign-in to whatever session is live.
+func TestOIDCSignIn_PromptAndHint(t *testing.T) {
+	f := newOIDCWebFixture(t, false)
+	start := func(query string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, "/login/oidc?"+query, nil)
+		for _, c := range cookies {
+			req.AddCookie(c)
+		}
+		rec := f.do(req)
+		require.Equal(t, http.StatusFound, rec.Code, rec.Body.String())
+		return rec
+	}
+
+	start("")
+	assert.Equal(t, "select_account", f.rp.started.Prompt, "no hint at all")
+	assert.Empty(t, f.rp.started.LoginHint)
+
+	start("login_hint=ada@example.com")
+	assert.Equal(t, "ada@example.com", f.rp.started.LoginHint)
+	assert.Empty(t, f.rp.started.Prompt, "a hint and no prompt")
+
+	remembered := &http.Cookie{Name: lastUserCookieName, Value: "ada@example.com"}
+	start("", remembered)
+	assert.Equal(t, "ada@example.com", f.rp.started.LoginHint, "the remembered email is the hint")
+	assert.Empty(t, f.rp.started.Prompt)
+
+	start("", &http.Cookie{Name: lastUserCookieName, Value: "not an email"})
+	assert.Empty(t, f.rp.started.LoginHint, "a malformed cookie is ignored")
+	assert.Equal(t, "select_account", f.rp.started.Prompt)
+
+	rec := start("prompt=select_account", remembered)
+	assert.Equal(t, "select_account", f.rp.started.Prompt)
+	assert.Empty(t, f.rp.started.LoginHint, "use another account drops the remembered hint")
+	cleared := lastUserOf(rec)
+	require.NotNil(t, cleared)
+	assert.Negative(t, cleared.MaxAge, "and forgets it")
+
+	rec = start("invite=inv-dan&login_hint=dan@example.com&prompt=select_account", remembered)
+	assert.Equal(t, "select_account", f.rp.started.Prompt)
+	assert.Equal(t, "dan@example.com", f.rp.started.LoginHint, "an invite keeps its own hint")
+	assert.Nil(t, lastUserOf(rec), "and leaves the remembered account alone")
+}
+
+func TestOIDCSignIn_LoginPageContinueAs(t *testing.T) {
+	f := newOIDCWebFixture(t, false)
+	req := httptest.NewRequest(http.MethodGet, "/login?return_to=/console/x", nil)
+	req.AddCookie(&http.Cookie{Name: lastUserCookieName, Value: "ada@example.com"})
+	body := f.do(req).Body.String()
+	assert.Contains(t, body, "Continue as")
+	assert.Contains(t, body, "ada@example.com")
+	assert.Contains(t, body, `/login/oidc?login_hint=ada%40example.com&amp;return_to=%2Fconsole%2Fx`)
+	assert.Contains(t, body, `/login/oidc?prompt=select_account&amp;return_to=%2Fconsole%2Fx`)
+	assert.Contains(t, body, "Use another account")
+	assert.Contains(t, body, `name="password"`, "the password form stays")
+
+	body = f.do(httptest.NewRequest(http.MethodGet, "/login", nil)).Body.String()
+	assert.Contains(t, body, "Continue with Acme ID")
+	assert.NotContains(t, body, "Continue as")
+}
+
+// Logout ends the session, not the memory of the account.
+func TestOIDCSignIn_LogoutKeepsTheLastUser(t *testing.T) {
+	f := newOIDCWebFixture(t, false)
+	f.auth.principal.Source, f.auth.principal.IDToken = session.SourceOIDC, "the.id.token"
+	rec := f.logout(f.signedInByOIDC(t))
+	require.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Nil(t, lastUserOf(rec))
+}
+
+// With auth.rememberLastUser off the cookie is never set or read, and an old one is cleared.
+func TestOIDCSignIn_RememberLastUserOff(t *testing.T) {
+	f := newOIDCWebFixture(t, false)
+	f.web.oidc.RememberLastUser = false
+	remembered := &http.Cookie{Name: lastUserCookieName, Value: "ada@example.com"}
+
+	c, state := f.start(t, "")
+	rec := f.callback("code=c1&state="+state, c, remembered)
+	require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
+	cleared := lastUserOf(rec)
+	require.NotNil(t, cleared, "the callback clears an old one")
+	assert.Negative(t, cleared.MaxAge)
+	assert.Nil(t, lastUserOf(f.callback("code=c1&state="+state, c)), "and sets none")
+
+	req := httptest.NewRequest(http.MethodGet, "/login/oidc", nil)
+	req.AddCookie(remembered)
+	rec = f.do(req)
+	assert.Equal(t, "select_account", f.rp.started.Prompt)
+	assert.Empty(t, f.rp.started.LoginHint, "never read")
+	require.NotNil(t, lastUserOf(rec))
+	assert.Negative(t, lastUserOf(rec).MaxAge)
+
+	req = httptest.NewRequest(http.MethodGet, "/login", nil)
+	req.AddCookie(remembered)
+	rec = f.do(req)
+	assert.NotContains(t, rec.Body.String(), "Continue as")
+	require.NotNil(t, lastUserOf(rec))
+	assert.Negative(t, lastUserOf(rec).MaxAge)
 }

@@ -139,6 +139,10 @@ At the provider, register a web client with:
 With passwords off, `/install` asks only for the first owner's email (headless: `auth.genesis.email` alone);
 that person becomes the owner by signing in through the provider with that email.
 
+`/login` remembers the last person who signed in on the browser and offers "Continue as <email>", plus "Use
+another account", which opens the provider's account picker. Set `auth.rememberLastUser: false`
+(`OAGENT_AUTH_REMEMBER_LAST_USER=false`) to turn this off, for example on shared computers.
+
 The provider must send `email` and `email_verified` in the ID token. oagent links a person by the provider's
 `sub`; a first sign-in links the existing account with the same verified email, once. oagent trusts that
 email, so configure only a provider you trust to verify it. Every link stores `oidc.issuer` (without a trailing

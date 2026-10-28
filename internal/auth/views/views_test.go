@@ -55,6 +55,22 @@ func TestLogin_OIDCLeads(t *testing.T) {
 	}
 }
 
+func TestLogin_ContinueAs(t *testing.T) {
+	v := LoginData{
+		OIDCURL: "/login/oidc?login_hint=ada%40example.com", ButtonLabel: "Continue with Acme ID",
+		LastUser: "ada@example.com", SwitchURL: "/login/oidc?prompt=select_account",
+	}
+	out := render(t, Login(layout.LayoutData{Title: "Sign in"}, v))
+	assert.Contains(t, out, `<a class="btn btn-primary btn-block" href="/login/oidc?login_hint=ada%40example.com">`)
+	assert.Contains(t, out, `Continue as <span class="truncate">ada@example.com</span>`)
+	assert.Contains(t, out, `<a class="link" href="/login/oidc?prompt=select_account">Use another account</a>`)
+	assert.NotContains(t, out, "Continue with Acme ID", "the remembered account leads")
+	assert.Contains(t, out, `name="password"`, "the password form stays")
+
+	v.LastUser = "<b>x</b>@example.com"
+	assert.Contains(t, render(t, Login(layout.LayoutData{Title: "Sign in"}, v)), "&lt;b&gt;x&lt;/b&gt;@example.com", "the email is escaped")
+}
+
 func TestSignInError(t *testing.T) {
 	d := layout.LayoutData{Title: "Sign in"}
 	for name, tc := range map[string]struct {

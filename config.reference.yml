@@ -37,6 +37,8 @@ auth:
   # password:
   #   # env: OAGENT_AUTH_PASSWORD_ENABLED
   #   enabled:
+  # env: OAGENT_AUTH_REMEMBER_LAST_USER
+  rememberLastUser: true
   # env: OAGENT_AUTH_SESSION_TTL
   sessionTTL: 24h
 
