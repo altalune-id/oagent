@@ -371,8 +371,9 @@ func TestWithLogger(t *testing.T) {
 
 func TestBoot_QueueError(t *testing.T) {
 	restoreSeams(t)
-	poolDB, _ := newDB(t)
-	setupTelemetry = stubTelemetry(nil, nil)
+	poolDB, mock := newDB(t)
+	shut := false
+	setupTelemetry = stubTelemetry(&shut, nil)
 	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
 		return db.Pool{W: poolDB, R: poolDB}, nil
 	}
@@ -384,6 +385,28 @@ func TestBoot_QueueError(t *testing.T) {
 	_, err := Boot(context.Background(), natsFeatureConfig(), testLogger())
 	assert.ErrorContains(t, err, "boom")
 	assert.True(t, nc.IsClosed(), "a queue failure closes the connection boot opened")
+	assert.NoError(t, mock.ExpectationsWereMet(), "a queue failure closes the pool")
+	assert.True(t, shut, "a queue failure shuts telemetry down")
+}
+
+func TestBoot_LateFailureClosesWhatBootOpened(t *testing.T) {
+	restoreSeams(t)
+	poolDB, mock := newDB(t)
+	shut := false
+	setupTelemetry = stubTelemetry(&shut, nil)
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
+		return db.Pool{W: poolDB, R: poolDB}, nil
+	}
+	_, nc := stubNATS(t)
+	stubQueue(fakeQueue{})
+	cfg := natsFeatureConfig()
+	cfg.Mail.Driver = "fax"
+
+	_, err := Boot(context.Background(), cfg, testLogger())
+	require.Error(t, err)
+	assert.True(t, nc.IsClosed())
+	assert.NoError(t, mock.ExpectationsWereMet(), "the pool is closed")
+	assert.True(t, shut, "telemetry is shut down")
 }
 
 func TestApp_Run(t *testing.T) {

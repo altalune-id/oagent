@@ -211,10 +211,15 @@ linters:
         domain-boundary:
           list-mode: lax
           files:
-            - "**/internal/{agent,apikey,auth,install,legal,org,project,user,webhook}/**"
+            - "**/internal/**"
+            - "!**/internal/{cli,boot,controlplane,web,kernel,tool,testutil}/**"
             - "!**/*_test.go"
+          allow:
+            - altalune.id/oagent/internal/web/layout
           deny:
-            - pkg: "altalune.id/oagent/internal/cli"
+            - pkg: "altalune.id/oagent/internal/cli$"
+              desc: "domains never import the CLI shell"
+            - pkg: "altalune.id/oagent/internal/cli/"
               desc: "domains never import the CLI shell"
             - pkg: "altalune.id/oagent/internal/boot"
               desc: "domains never import boot"
@@ -222,11 +227,7 @@ linters:
               desc: "domains never import controlplane"
             - pkg: "altalune.id/oagent/internal/web$"
               desc: "domains import only internal/web/layout"
-            - pkg: "altalune.id/oagent/internal/web/middleware"
-              desc: "domains import only internal/web/layout"
-            - pkg: "altalune.id/oagent/internal/web/console"
-              desc: "domains import only internal/web/layout"
-            - pkg: "altalune.id/oagent/internal/web/assets"
+            - pkg: "altalune.id/oagent/internal/web/"
               desc: "domains import only internal/web/layout"
             - pkg: "altalune.id/oagent/pg$"
               desc: "domains reach Postgres through internal/kernel/db, never the connection"
@@ -238,35 +239,12 @@ linters:
           list-mode: lax
           files:
             - "**/internal/kernel/**"
+          allow:
+            - altalune.id/oagent/internal/kernel/
+            - altalune.id/oagent/internal/testutil/
           deny:
-            - pkg: "altalune.id/oagent/internal/agent"
-              desc: "kernel must not import domain packages"
-            - pkg: "altalune.id/oagent/internal/apikey"
-              desc: "kernel must not import domain packages"
-            - pkg: "altalune.id/oagent/internal/auth"
-              desc: "kernel must not import domain packages"
-            - pkg: "altalune.id/oagent/internal/install"
-              desc: "kernel must not import domain packages"
-            - pkg: "altalune.id/oagent/internal/legal"
-              desc: "kernel must not import domain packages"
-            - pkg: "altalune.id/oagent/internal/org"
-              desc: "kernel must not import domain packages"
-            - pkg: "altalune.id/oagent/internal/project"
-              desc: "kernel must not import domain packages"
-            - pkg: "altalune.id/oagent/internal/user"
-              desc: "kernel must not import domain packages"
-            - pkg: "altalune.id/oagent/internal/webhook"
-              desc: "kernel must not import domain packages"
-            - pkg: "altalune.id/oagent/internal/controlplane"
-              desc: "kernel must not import surfaces"
-            - pkg: "altalune.id/oagent/internal/web"
-              desc: "kernel must not import surfaces"
-            - pkg: "altalune.id/oagent/internal/mcp"
-              desc: "kernel must not import surfaces"
-            - pkg: "altalune.id/oagent/internal/cli"
-              desc: "kernel must not import surfaces"
-            - pkg: "altalune.id/oagent/internal/boot"
-              desc: "kernel must not import boot"
+            - pkg: "altalune.id/oagent/internal/"
+              desc: "kernel imports only kernel packages, never a domain, a surface or boot"
         root-boundary:
           list-mode: lax
           files:
