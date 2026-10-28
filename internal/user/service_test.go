@@ -246,3 +246,47 @@ func TestService_SetNameNeverWritesAStalePassword(t *testing.T) {
 	assert.Equal(t, "Ana Maria", got.Name)
 	assert.NoError(t, password.Verify(got.PasswordHash, "a brand new passphrase"), "a rename that read the user before a reset keeps the new password")
 }
+
+func TestService_Identities(t *testing.T) {
+	store := fakes.NewUserStore()
+	svc := newService(store)
+	ctx := context.Background()
+	u, err := svc.CreateLinked(ctx, "Ana@Shop.test", "Ana", "https://idp.example.com", "sub-1")
+	require.NoError(t, err)
+	assert.Equal(t, "ana@shop.test", u.Email)
+	assert.Empty(t, u.PasswordHash, "an identity-only user has no password")
+	got, err := svc.ByIDP(ctx, "https://idp.example.com", "sub-1")
+	require.NoError(t, err)
+	assert.Equal(t, u.ID, got.ID)
+	linked, err := svc.LinkIDP(ctx, u.ID, "https://idp.example.com", "sub-2")
+	require.NoError(t, err)
+	assert.False(t, linked)
+	_, err = svc.CreateLinked(ctx, "not an email", "", "https://idp.example.com", "sub-3")
+	assert.Error(t, err)
+
+	store.Err = errors.New("db down")
+	_, err = svc.ByIDP(ctx, "https://idp.example.com", "sub-1")
+	assert.Error(t, err)
+	_, err = svc.LinkIDP(ctx, u.ID, "https://idp.example.com", "sub-1")
+	assert.Error(t, err)
+	_, err = svc.CreateLinked(ctx, "bea@shop.test", "Bea", "https://idp.example.com", "sub-4")
+	assert.Error(t, err)
+}
+
+// SECURITY: a password set from a read taken before an OIDC link keeps the link; it writes only the hash.
+func TestService_SetPasswordNeverWritesAStaleIdentity(t *testing.T) {
+	store := fakes.NewUserStore()
+	ctx := context.Background()
+	u, err := newService(store).Create(ctx, user.CreateRequest{Email: "ana@example.com", Name: "Ana", Password: "the old passphrase"})
+	require.NoError(t, err)
+	before := *u
+	linked, err := newService(store).LinkIDP(ctx, u.ID, "https://idp.example.com", "sub-1")
+	require.NoError(t, err)
+	require.True(t, linked)
+
+	require.NoError(t, newService(staleReads{UserStore: store, stale: &before}).SetPassword(ctx, u.ID, "a brand new passphrase"))
+	got, err := store.ByID(ctx, u.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "sub-1", got.IDPSubject, "the link made after the read survives")
+	assert.NoError(t, password.Verify(got.PasswordHash, "a brand new passphrase"))
+}

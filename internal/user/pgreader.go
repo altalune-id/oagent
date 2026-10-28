@@ -30,6 +30,12 @@ func (s *postgresStore) ByPublicID(ctx context.Context, publicID string) (*User,
 	return s.one(ctx, db.Read, "ByPublicID", s.users.PublicID.EQ(postgres.String(publicID)))
 }
 
+// ByIDP loads the user linked to issuer and subject from the primary.
+func (s *postgresStore) ByIDP(ctx context.Context, issuer, subject string) (*User, error) {
+	where := s.users.IDPIssuer.EQ(postgres.String(issuer)).AND(s.users.IDPSubject.EQ(postgres.String(subject)))
+	return s.one(ctx, db.ReadPrimary, "ByIDP", where)
+}
+
 func (s *postgresStore) one(
 	ctx context.Context, run func(context.Context, db.Pool, func(qrm.DB) error) error, op string, where postgres.BoolExpression,
 ) (*User, error) {

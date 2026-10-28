@@ -224,6 +224,8 @@ func TestWelcomeGate_SkipsInviteAndResetLinks(t *testing.T) {
 		"/app/reset-password":       http.StatusTeapot,
 		"/app/reset-password/raw-1": http.StatusTeapot,
 		"/app/reset-passwords":      http.StatusSeeOther,
+		"/app/oauth/callback":       http.StatusTeapot,
+		"/app/login/oidc":           http.StatusTeapot,
 		"/app/console/o/acme":       http.StatusSeeOther,
 	} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)

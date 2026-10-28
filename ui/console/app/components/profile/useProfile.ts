@@ -6,6 +6,7 @@ import { ChangePasswordRequestSchema, UpdateProfileRequestSchema } from '~~/gen/
 import { useErrorMessage } from '~/composables/useErrorMessage';
 import { useValidation } from '~/composables/useValidation';
 import { errorCode } from '~/lib/apperror/message';
+import { isPerson as personOf } from '~/lib/auth/person';
 import { siblingURL } from '~/lib/auth/urls';
 import { useAuthStore } from '~/stores/auth';
 
@@ -29,7 +30,7 @@ export function useProfile() {
   const confirmingSignOut = ref(false);
   const signOutError = ref<ShownError | null>(null);
 
-  const isPerson = computed(() => auth.me?.source === 'local' && !!auth.me.userId);
+  const isPerson = computed(() => personOf(auth.me));
   const canChangePassword = computed(() => isPerson.value && auth.me?.passwords === true);
   const person = computed<AvatarPerson | null>(() => {
     const me = auth.me;

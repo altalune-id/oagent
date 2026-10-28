@@ -93,6 +93,18 @@ type Deps struct {
 	Mail       MailQueue
 	From       string
 	BaseURL    string
+	Identities Identities
+	// Issuer is the normalized oidc.issuer every account link is stored under.
+	Issuer string
+	// OpenSignup lets a verified OIDC sign-in with no account create one (cloud); otherwise it needs an account already.
+	OpenSignup bool
+}
+
+// Identities finds, links and creates the accounts an OIDC sign-in names; user.Service is it.
+type Identities interface {
+	ByIDP(ctx context.Context, issuer, subject string) (*user.User, error)
+	LinkIDP(ctx context.Context, id uuid.UUID, issuer, subject string) (bool, error)
+	CreateLinked(ctx context.Context, email, name, issuer, subject string) (*user.User, error)
 }
 
 // ResetUsers finds the person a reset is for.

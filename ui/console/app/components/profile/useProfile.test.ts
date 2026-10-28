@@ -39,6 +39,13 @@ describe('useProfile', () => {
     expect((await loaded()).canChangePassword.value).toBe(false);
   });
 
+  it('is for a person signed in through the OIDC provider too', async () => {
+    client.whoami!.mockResolvedValue({ userId: 'V3StGXR8Z5jdHj6BmyT2a', source: 'oidc', name: 'Ana', email: 'ana@example.com' });
+    const p = await loaded();
+    expect(p.isPerson.value).toBe(true);
+    expect(p.canChangePassword.value).toBe(false);
+  });
+
   it('is not for keys or the basic login', async () => {
     client.whoami!.mockResolvedValue({ source: 'apikey', keyHint: 'abcd' });
     const p = await loaded();

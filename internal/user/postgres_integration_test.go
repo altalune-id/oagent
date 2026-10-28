@@ -208,3 +208,46 @@ func TestPostgresStore_ByPublicID(t *testing.T) {
 		assert.True(t, user.IsNotFoundError(err), "%q is not a public id", bad)
 	}
 }
+
+// SECURITY: an identity links an unlinked user once; neither a linked user nor an identity another user holds moves.
+func TestPostgresStore_LinkIDP(t *testing.T) {
+	s, _ := newPGStore(t)
+	ctx := t.Context()
+	ada, bob := mustNew(t, "ada@example.com"), mustNew(t, "bob@example.com")
+	require.NoError(t, s.Save(ctx, ada))
+	require.NoError(t, s.Save(ctx, bob))
+
+	linked, err := s.LinkIDP(ctx, ada.ID, "https://idp.example.com", "sub-1")
+	require.NoError(t, err)
+	assert.True(t, linked)
+	got, err := s.ByIDP(ctx, "https://idp.example.com", "sub-1")
+	require.NoError(t, err)
+	assert.Equal(t, ada.ID, got.ID)
+
+	linked, err = s.LinkIDP(ctx, ada.ID, "https://idp.example.com", "sub-2")
+	require.NoError(t, err)
+	assert.False(t, linked, "a link is never re-pointed")
+	linked, err = s.LinkIDP(ctx, bob.ID, "https://idp.example.com", "sub-1")
+	require.NoError(t, err)
+	assert.False(t, linked, "another user's identity")
+	_, err = s.ByIDP(ctx, "https://idp.example.com", "sub-2")
+	assert.True(t, user.IsNotFoundError(err))
+}
+
+// SetPasswordHash writes the hash alone; an unknown user is not found.
+func TestPostgresStore_SetPasswordHash(t *testing.T) {
+	s, _ := newPGStore(t)
+	ctx := t.Context()
+	ada := mustNew(t, "ada@example.com")
+	require.NoError(t, s.Save(ctx, ada))
+	linked, err := s.LinkIDP(ctx, ada.ID, "https://idp.example.com", "sub-1")
+	require.NoError(t, err)
+	require.True(t, linked)
+
+	require.NoError(t, s.SetPasswordHash(ctx, ada.ID, "new-hash"))
+	got, err := s.ByID(ctx, ada.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "new-hash", got.PasswordHash)
+	assert.Equal(t, "sub-1", got.IDPSubject)
+	assert.True(t, user.IsNotFoundError(s.SetPasswordHash(ctx, uuid.New(), "x")))
+}

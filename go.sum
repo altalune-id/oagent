@@ -26,6 +26,8 @@ github.com/a-h/parse v0.0.0-20250122154542-74294addb73e h1:HjVbSQHy+dnlS6C3XajZ6
 github.com/a-h/parse v0.0.0-20250122154542-74294addb73e/go.mod h1:3mnrkvGpurZ4ZrTDbYU84xhwXW2TjTKShSwjRi2ihfQ=
 github.com/a-h/templ v0.3.1070 h1:3iCOXHXqFXa99OQzgkUOLJbNzv/QjFGLwKZkBAg+ADA=
 github.com/a-h/templ v0.3.1070/go.mod h1:iIqB3g2RHBe/WlnPwa+Bvhh1TKXHWLRnBD9NWHOLm78=
+github.com/altalune-id/othra/oidcrp v0.0.0-20261028060556-3d14da4d4b50 h1:WdDvdt/Rw56tjZWnGw9gVcGpXm+q8egFI5NJ43fzCLU=
+github.com/altalune-id/othra/oidcrp v0.0.0-20261028060556-3d14da4d4b50/go.mod h1:TGrZLY1IJxCSeFlRYpAFJ08+S4LspBWC1/cgo7sDXUA=
 github.com/andybalholm/brotli v1.2.6 h1:ftYnfj6usCp+UGV5kSJ3+chpMQgU+gJf/AxsUQ52REI=
 github.com/andybalholm/brotli v1.2.6/go.mod h1:rzTDkvFWvIrjDXZHkuS16NPggd91W3kUSvPlQ1pLaKY=
 github.com/antithesishq/antithesis-sdk-go v0.8.0-default-no-op h1:1BOWQJweNyvZMlpAHXGLiZQn9S+QXGcz3xh94lC0w6E=
@@ -86,6 +88,8 @@ github.com/gabriel-vasile/mimetype v1.4.15 h1:05iP/CYtZ/w455R/KZM6rZ5ieAdh99UPtd
 github.com/gabriel-vasile/mimetype v1.4.15/go.mod h1:azpTcoLcDZRNgFou5j+APrqQx9HqVPWa6ijYQIIVswQ=
 github.com/go-jet/jet/v2 v2.16.1 h1:gbU2gGVv/Nn0eiUsnSxO8ABIQLjx4oUzMb1uO/3sUtg=
 github.com/go-jet/jet/v2 v2.16.1/go.mod h1:MILY2HK89zo7ODycULCCWLnwNklbMJkw4L5notrLpIA=
+github.com/go-jose/go-jose/v4 v4.1.6 h1:sNRkftxFJxwsILiQukqp5z83QBSmntVwmgRY7AqBDO4=
+github.com/go-jose/go-jose/v4 v4.1.6/go.mod h1:x4oUasVrzR7071A4TnHLGSPpNOm2a21K9Kf04k1rs08=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
 github.com/go-logr/logr v1.4.4 h1:tG4xh9yMsRCAiodLVTxyrkzSZ9+o0L1Kg/+cPVcbP/8=
 github.com/go-logr/logr v1.4.4/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=

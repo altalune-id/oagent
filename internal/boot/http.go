@@ -171,7 +171,7 @@ func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected
 	legalOpts.RequireAcceptance = cfg.Compliance.RequireAcceptance
 	return []web.Registrar{
 		legal.NewWeb(legalOpts),
-		consoleWeb(svcs, kit, sessions, limits),
+		consoleWeb(cfg, svcs, kit, sessions, limits),
 		install.NewWeb(install.WebOpts{
 			Kit:       kit,
 			Installer: svcs.Install,
@@ -273,8 +273,13 @@ func buildHTTPHandler(s httpSurfaces) http.Handler {
 	})
 }
 
-func consoleWeb(svcs *Services, kit layout.Kit, sessions auth.CookieSessions, limits auth.Limits) *auth.Web {
+func consoleWeb(cfg config.Config, svcs *Services, kit layout.Kit, sessions auth.CookieSessions, limits auth.Limits) *auth.Web {
 	w := auth.NewWeb(kit, svcs.Auth, sessions, newPublicIDs(svcs)).WithLimits(limits)
+	if svcs.OIDC != nil {
+		w.WithOIDC(auth.OIDCSignIn{
+			Provider: svcs.OIDC, ButtonLabel: cfg.OIDC.ButtonLabel, SignedOut: publicBase(cfg.HTTP) + "/login", OpenSignup: cfg.OpenSignup(),
+		})
+	}
 	if !svcs.Caps.Passwords {
 		return w.WithoutPasswords()
 	}

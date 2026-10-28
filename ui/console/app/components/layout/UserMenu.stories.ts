@@ -21,6 +21,11 @@ export const Person: Story = {
   render,
 };
 
+export const PersonFromOIDC: Story = {
+  args: { me: { source: 'oidc', userId: 'V3StGXR8Z5jdHj6BmyT2a', name: 'Ada Lovelace', email: 'ada@example.com' } },
+  render,
+};
+
 export const APIKey: Story = {
   args: { me: { source: 'apikey', keyHint: 'uAuE' } },
   render,

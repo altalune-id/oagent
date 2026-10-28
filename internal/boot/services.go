@@ -36,29 +36,31 @@ const keyUsageInterval = 30 * time.Second
 
 // Services is every store and service the composition root wires.
 type Services struct {
-	OrgStore        org.Store
-	Orgs            *org.Service
-	ProjectStore    project.Store
-	Projects        *project.Service
-	AgentStore      agent.Store
-	Agents          *agent.Service
-	APIKeyStore     apikey.Store
-	APIKeys         *apikey.Service
-	KeyScheme       apikey.Scheme
-	KeyAuthn        *apikey.Authenticator
-	KeyUsage        *usage.Worker
-	Outbox          outbox.Store
-	WebhookStore    webhook.Store
-	Webhooks        *webhook.Service
-	Sealer          sealer.Sealer
-	Mailer          mailer.Mailer
-	MailQueue       mailqueue.Store
-	Users           *user.Service
-	Members         *member.Service
-	Invites         *invite.Service
-	Sessions        session.Store
-	Auth            *auth.Service
-	Resets          *auth.Resets
+	OrgStore     org.Store
+	Orgs         *org.Service
+	ProjectStore project.Store
+	Projects     *project.Service
+	AgentStore   agent.Store
+	Agents       *agent.Service
+	APIKeyStore  apikey.Store
+	APIKeys      *apikey.Service
+	KeyScheme    apikey.Scheme
+	KeyAuthn     *apikey.Authenticator
+	KeyUsage     *usage.Worker
+	Outbox       outbox.Store
+	WebhookStore webhook.Store
+	Webhooks     *webhook.Service
+	Sealer       sealer.Sealer
+	Mailer       mailer.Mailer
+	MailQueue    mailqueue.Store
+	Users        *user.Service
+	Members      *member.Service
+	Invites      *invite.Service
+	Sessions     session.Store
+	Auth         *auth.Service
+	Resets       *auth.Resets
+	// OIDC is the relying party at oidc.issuer, or nil without one.
+	OIDC            auth.OIDCProvider
 	Install         *install.Service
 	Legal           *legal.Service
 	InstallToken    install.Token
@@ -121,6 +123,9 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Mail:       mailQueue,
 		From:       cfg.Mail.From,
 		BaseURL:    publicBase(cfg.HTTP),
+		Identities: users,
+		Issuer:     cfg.OIDC.NormalizedIssuer(),
+		OpenSignup: cfg.OpenSignup(),
 	})
 	installer := install.NewService(uow, users, orgs, members, projects)
 
@@ -149,6 +154,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Legal:        buildLegal(k, cfg, users),
 		Caps:         caps,
 		AuthLimiter:  ratelimit.Disabled(),
+		OIDC:         buildOIDCProvider(cfg),
 	}
 	svcs.Resets = auth.NewResets(auth.ResetDeps{
 		Store:      auth.NewResetStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix),

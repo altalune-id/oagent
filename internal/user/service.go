@@ -63,6 +63,37 @@ func (s *Service) ByPublicID(ctx context.Context, publicID string) (*User, error
 	return u, nil
 }
 
+// ByIDP returns the user linked to the identity issuer and subject name.
+func (s *Service) ByIDP(ctx context.Context, issuer, subject string) (*User, error) {
+	u, err := s.store.ByIDP(ctx, issuer, subject)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "user: by identity", err)
+	}
+	return u, nil
+}
+
+// LinkIDP links the user id to issuer and subject, once: false when it already has an identity or another user holds that one.
+func (s *Service) LinkIDP(ctx context.Context, id uuid.UUID, issuer, subject string) (bool, error) {
+	linked, err := s.store.LinkIDP(ctx, id, issuer, subject)
+	if err != nil {
+		return false, s.errOrReport(ctx, "user: link identity", err)
+	}
+	return linked, nil
+}
+
+// CreateLinked persists a new user with no password who signs in only through the identity issuer and subject.
+func (s *Service) CreateLinked(ctx context.Context, email, name, issuer, subject string) (*User, error) {
+	u, err := New(email, name)
+	if err != nil {
+		return nil, err
+	}
+	u.IDPIssuer, u.IDPSubject = issuer, subject
+	if err := s.store.Save(ctx, u); err != nil {
+		return nil, s.errOrReport(ctx, "user: create linked", err)
+	}
+	return u, nil
+}
+
 // ByEmail returns the user with email, compared after normalization.
 func (s *Service) ByEmail(ctx context.Context, email string) (*User, error) {
 	u, err := s.store.ByEmail(ctx, email)
@@ -94,10 +125,11 @@ func (s *Service) SetPassword(ctx context.Context, id uuid.UUID, plain string) e
 	if err := password.Check(plain, password.Hints{Email: u.Email, Name: u.Name}); err != nil {
 		return err
 	}
-	if u.PasswordHash, err = password.Hash(plain); err != nil {
+	hash, err := password.Hash(plain)
+	if err != nil {
 		return s.unexpected(ctx, "user: hash password", err)
 	}
-	if err := s.store.Save(ctx, u); err != nil {
+	if err := s.store.SetPasswordHash(ctx, u.ID, hash); err != nil {
 		return s.errOrReport(ctx, "user: set password", err)
 	}
 	return nil

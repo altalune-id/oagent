@@ -71,6 +71,58 @@ func (f *UserStore) SetName(_ context.Context, id uuid.UUID, name string) (*user
 	return &u, nil
 }
 
+// SetPasswordHash implements user.Store, changing only the password hash.
+func (f *UserStore) SetPasswordHash(_ context.Context, id uuid.UUID, hash string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Err != nil {
+		return f.Err
+	}
+	u, ok := f.users[id]
+	if !ok {
+		return &user.NotFoundError{}
+	}
+	u.PasswordHash, u.UpdatedAt = hash, time.Now().UTC()
+	f.users[id] = u
+	return nil
+}
+
+// ByIDP implements user.Store.
+func (f *UserStore) ByIDP(_ context.Context, issuer, subject string) (*user.User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	for _, u := range f.users {
+		if u.IDPIssuer == issuer && u.IDPSubject == subject {
+			return &u, nil
+		}
+	}
+	return nil, &user.NotFoundError{}
+}
+
+// LinkIDP implements user.Store: once per user, and never an identity another user holds.
+func (f *UserStore) LinkIDP(_ context.Context, id uuid.UUID, issuer, subject string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Err != nil {
+		return false, f.Err
+	}
+	u, ok := f.users[id]
+	if !ok || u.IDPIssuer != "" {
+		return false, nil
+	}
+	for _, other := range f.users {
+		if other.IDPIssuer == issuer && other.IDPSubject == subject {
+			return false, nil
+		}
+	}
+	u.IDPIssuer, u.IDPSubject = issuer, subject
+	f.users[id] = u
+	return true, nil
+}
+
 // ByID implements user.Store.
 func (f *UserStore) ByID(_ context.Context, id uuid.UUID) (*user.User, error) {
 	f.mu.Lock()

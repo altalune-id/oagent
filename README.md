@@ -115,6 +115,32 @@ volume at `/data` (see the shared server's README). Locally, `docker compose up 
 the host against it: `OAGENT_NATS_URL=nats://localhost:4222`, `OAGENT_NATS_USER=oagent` and
 `OAGENT_NATS_PASSWORD=oagent-dev-nats-password` (the compose default).
 
+### Sign in through an OIDC provider
+
+Set `oidc.issuer` to let people sign in through one OpenID Connect provider. Cloud mode requires it, and with
+`auth.password.enabled: false` it is the only way in.
+
+```sh
+OAGENT_HTTP_BASE_URL=https://oagent.example.com
+OAGENT_OIDC_ISSUER=https://idp.example.com          # exactly as the provider names itself, trailing "/" included
+OAGENT_OIDC_CLIENT_ID=...
+OAGENT_OIDC_CLIENT_SECRET=...
+OAGENT_OIDC_BUTTON_LABEL="Continue with Acme ID"   # default "Continue with SSO"
+```
+
+At the provider, register a web client with:
+
+- redirect URI `<http.baseURL>/oauth/callback` (`https://oagent.example.com/oauth/callback`);
+- post-logout redirect URI `<http.baseURL>/login`;
+- the authorization code flow with PKCE `S256` (the discovery document must list `S256`);
+- client authentication `client_secret_basic`, or none for a public client without `oidc.clientSecret`;
+- the `openid` and `email` scopes (`oidc.scopes` must include both; `profile` adds the name).
+
+The provider must send `email` and `email_verified` in the ID token. oagent links a person by the provider's
+`sub`; a first sign-in links the existing account with the same verified email, once. oagent trusts that
+email, so configure only a provider you trust to verify it. Every link stores `oidc.issuer` (without a trailing
+`/`): changing the issuer locks out every linked person, whose next sign-in is refused with `AUT007`.
+
 ## Everyday commands
 
 | Command                      | What it does                                                         |

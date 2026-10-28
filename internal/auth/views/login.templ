@@ -15,6 +15,11 @@ type LoginData struct {
 	Notice    string
 	// PasswordOff hides the password form, as with auth.password.enabled off and in cloud.
 	PasswordOff bool
+	// OIDCURL starts sign-in at the OIDC provider, the main button labelled ButtonLabel; empty hides it.
+	OIDCURL     string
+	ButtonLabel string
+	// NewHere tells a newcomer the button also creates their account, in cloud.
+	NewHere bool
 }
 
 templ Login(d layout.LayoutData, v LoginData) {
@@ -25,6 +30,15 @@ templ Login(d layout.LayoutData, v LoginData) {
 			}
 			if v.Error != "" {
 				<div role="alert" class="alert alert-error alert-soft">{ v.Error }</div>
+			}
+			if v.OIDCURL != "" {
+				<a class="btn btn-primary btn-block" href={ templ.SafeURL(v.OIDCURL) }>{ v.ButtonLabel }</a>
+				if v.NewHere {
+					<p class="text-sm text-base-content/70">New here? Signing in creates your account.</p>
+				}
+				if !v.PasswordOff {
+					@layout.Divider("or sign in with a password")
+				}
 			}
 			if !v.PasswordOff {
 				@passwordForm(d, v)
@@ -46,14 +60,14 @@ templ passwordForm(d layout.LayoutData, v LoginData) {
 			if v.EmailLocked {
 				<input class="input w-full" type="email" name="email" value={ v.Email } placeholder="Email" autocomplete="username" required readonly/>
 			} else {
-				<input class="input w-full" type="email" name="email" value={ v.Email } placeholder="Email" autocomplete="username" required autofocus/>
+				<input class="input w-full" type="email" name="email" value={ v.Email } placeholder="Email" autocomplete="username" required autofocus?={ v.OIDCURL == "" }/>
 			}
 		</label>
 		<label class="floating-label">
 			<span>Password</span>
-			<input class="input w-full" type="password" name="password" placeholder="Password" autocomplete="current-password" required autofocus?={ v.EmailLocked }/>
+			<input class="input w-full" type="password" name="password" placeholder="Password" autocomplete="current-password" required autofocus?={ v.EmailLocked && v.OIDCURL == "" }/>
 		</label>
-		<button class="btn btn-primary mt-2" type="submit">Sign in</button>
+		<button class={ "btn mt-2", templ.KV("btn-outline", v.OIDCURL != ""), templ.KV("btn-primary", v.OIDCURL == "") } type="submit">Sign in</button>
 	</form>
 	if v.ForgotURL != "" {
 		<p class="text-sm"><a class="link" href={ templ.SafeURL(v.ForgotURL) }>Forgot password?</a></p>
