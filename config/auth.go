@@ -29,6 +29,8 @@ type AuthConfig struct {
 	Genesis    GenesisConfig  `yaml:"genesis"    mapstructure:"genesis"`
 	Password   PasswordConfig `yaml:"password"   mapstructure:"password"`
 	SessionTTL time.Duration  `yaml:"sessionTTL" mapstructure:"sessionTTL" validate:"gte=1h,lte=720h"`
+	// RememberLastUser keeps the last signed-in email in a cookie, to offer "Continue as …" on /login.
+	RememberLastUser bool `yaml:"rememberLastUser" mapstructure:"rememberLastUser"`
 }
 
 // PasswordConfig turns console password sign-in on or off; the OIDC provider, when configured, is always on.

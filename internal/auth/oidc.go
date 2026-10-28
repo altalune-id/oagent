@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"cmp"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -19,8 +20,10 @@ import (
 )
 
 const (
-	signInCookieName = "oagent_signin"
-	signInTTL        = 10 * time.Minute
+	signInCookieName   = "oagent_signin"
+	signInTTL          = 10 * time.Minute
+	lastUserCookieName = "oagent_last_user"
+	lastUserTTL        = 90 * 24 * time.Hour
 )
 
 // OIDCProvider is the relying party at the configured OIDC provider; boot wires it over oidcrp.
@@ -30,12 +33,13 @@ type OIDCProvider interface {
 	EndSessionURL(ctx context.Context, idTokenHint, postLogoutRedirectURI, state string) (string, error)
 }
 
-// OIDCSignIn is sign-in through the OIDC provider: the relying party, the button text, where sign-out lands, and open signup.
+// OIDCSignIn is sign-in through the OIDC provider: its relying party, button, sign-out landing, signup and last user.
 type OIDCSignIn struct {
-	Provider    OIDCProvider
-	ButtonLabel string
-	SignedOut   string
-	OpenSignup  bool
+	Provider         OIDCProvider
+	ButtonLabel      string
+	SignedOut        string
+	OpenSignup       bool
+	RememberLastUser bool
 }
 
 type signInState struct {
@@ -88,6 +92,16 @@ func (h *Web) startOIDC(w http.ResponseWriter, r *http.Request) {
 	hint := ""
 	if email, err := user.NormalizeEmail(q.Get("login_hint")); err == nil {
 		hint = email
+	}
+	switch {
+	case prompt == "select_account" && hint == "":
+		h.clearLastUser(w, r)
+	case hint == "":
+		hint = h.lastUser(w, r)
+	}
+	// SECURITY: OIDC Core §3.1.2.1: with no account in mind, the picker shows instead of a silent sign-in to whichever session is live.
+	if hint == "" && prompt == "" {
+		prompt = "select_account"
 	}
 	req, err := oidcrp.NewAuthRequest(prompt, hint)
 	if err != nil {
@@ -154,7 +168,59 @@ func (h *Web) callback(w http.ResponseWriter, r *http.Request) {
 		h.kit.Fail(w, r, "web: start session", err)
 		return
 	}
+	h.setLastUser(w, r, tok.Email)
 	http.Redirect(w, r, to, http.StatusSeeOther) //nolint:gosec // G710: ResolveReturnTo sanitizes.
+}
+
+// NOTE: only a hint for the provider, which still authenticates the person, so the cookie is not signed; a malformed one is ignored.
+func (h *Web) lastUser(w http.ResponseWriter, r *http.Request) string {
+	if h.oidc == nil {
+		return ""
+	}
+	if !h.oidc.RememberLastUser {
+		h.clearLastUser(w, r)
+		return ""
+	}
+	c, err := r.Cookie(lastUserCookieName)
+	if err != nil {
+		return ""
+	}
+	email, err := user.NormalizeEmail(c.Value)
+	if err != nil {
+		return ""
+	}
+	return email
+}
+
+func (h *Web) setLastUser(w http.ResponseWriter, r *http.Request, email string) {
+	if !h.oidc.RememberLastUser {
+		h.clearLastUser(w, r)
+		return
+	}
+	if email, err := user.NormalizeEmail(email); err == nil {
+		http.SetCookie(w, h.lastUserCookie(r, email, int(lastUserTTL.Seconds())))
+	}
+}
+
+func (h *Web) clearLastUser(w http.ResponseWriter, r *http.Request) {
+	if _, err := r.Cookie(lastUserCookieName); err == nil {
+		http.SetCookie(w, h.lastUserCookie(r, "", -1))
+	}
+}
+
+func (h *Web) lastUserCookie(r *http.Request, value string, maxAge int) *http.Cookie {
+	return &http.Cookie{ //nolint:gosec // G124: HttpOnly and Lax are set; Secure follows http.cookieSecure or the request's TLS.
+		Name: lastUserCookieName, Value: value, Path: cmp.Or(h.sessions.Cookie.Path, "/"), MaxAge: maxAge,
+		HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: h.sessions.Cookie.Secure || r.TLS != nil,
+	}
+}
+
+func (h *Web) switchAccountURL(returnTo string) string {
+	q := url.Values{"prompt": {"select_account"}}
+	if returnTo != "" {
+		q.Set("return_to", returnTo)
+	}
+	return h.kit.Path("/login/oidc") + "?" + q.Encode()
 }
 
 // NOTE: a sign-in from an invite for another email lands on the invite, whose Mismatch state offers to switch account.
@@ -224,11 +290,7 @@ func (h *Web) signInFailed(w http.ResponseWriter, r *http.Request, err error, em
 		status = http.StatusForbidden
 	}
 	if IsNoConsoleAccountError(err) || IsIdentityConflictError(err) {
-		q := url.Values{"prompt": {"select_account"}}
-		if returnTo != "" {
-			q.Set("return_to", returnTo)
-		}
-		v.AnotherURL = h.kit.Path("/login/oidc") + "?" + q.Encode()
+		v.AnotherURL = h.switchAccountURL(returnTo)
 	}
 	h.kit.Render(w, r, status, views.SignInError(h.kit.Layout("Sign in"), v))
 }

@@ -129,6 +129,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("mcp.enabled", false)
 	v.SetDefault("auth.mode", string(AuthModeLocal))
 	v.SetDefault("auth.sessionTTL", "24h")
+	v.SetDefault("auth.rememberLastUser", true)
 	v.SetDefault("oidc.scopes", []string{"openid", "profile", "email"})
 	v.SetDefault("oidc.buttonLabel", "Continue with SSO")
 	v.SetDefault("cli.sessionFile", "~/.oagent/session.json")
