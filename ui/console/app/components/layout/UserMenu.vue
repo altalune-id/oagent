@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { isPerson as personOf } from '~/lib/auth/person';
 import Avatar from '../ui/Avatar.vue';
 
 export interface UserMenuIdentity {
@@ -31,7 +32,7 @@ const { me, logoutUrl, profileUrl = '/profile', labels = {
 } } = defineProps<{ me: UserMenuIdentity | null, logoutUrl: string, profileUrl?: string, labels?: UserMenuLabels }>();
 
 const display = computed(() => me?.name || me?.email || (me?.source === 'apikey' ? labels.apikey : ''));
-const isPerson = computed(() => me?.source === 'local' && !!me.userId);
+const isPerson = computed(() => personOf(me));
 const sourceBadge = computed(() => {
   switch (me?.source) {
     case 'apikey': return labels.apikey;
@@ -65,7 +66,7 @@ const sourceBadge = computed(() => {
         <Icon name="lucide:user-round" size="16" />
         {{ labels.profile }}
       </NuxtLink>
-      <form v-if="me.source === 'local'" method="post" :action="logoutUrl" :class="isPerson ? 'mt-1' : 'mt-3'">
+      <form v-if="isPerson" method="post" :action="logoutUrl" class="mt-1">
         <button type="submit" class="btn btn-sm btn-block justify-start gap-2">
           <Icon name="lucide:log-out" size="16" />
           {{ labels.signOut }}

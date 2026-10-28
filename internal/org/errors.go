@@ -124,10 +124,26 @@ func IsCreationDisabledError(err error) bool {
 	return ok
 }
 
+// AlreadyOwnedError reports a person who already owns an org trying to own another.
+type AlreadyOwnedError struct{}
+
+func (*AlreadyOwnedError) Error() string { return "org: the person already owns an org" }
+
+// ToAppError maps AlreadyOwnedError to ORG006.
+func (e *AlreadyOwnedError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeOrgAlreadyOwned, "You already own an organization").WithCause(e)
+}
+
+// IsAlreadyOwnedError reports whether err's tree contains an *AlreadyOwnedError.
+func IsAlreadyOwnedError(err error) bool {
+	_, ok := errors.AsType[*AlreadyOwnedError](err)
+	return ok
+}
+
 // IsExpectedError reports whether err is a typed domain error a service returns as-is.
 func IsExpectedError(err error) bool {
 	return IsNotFoundError(err) || IsAlreadyExistsError(err) || IsInvalidSlugError(err) || IsInvalidNameError(err) ||
-		IsCreationDisabledError(err)
+		IsCreationDisabledError(err) || IsAlreadyOwnedError(err)
 }
 
 // ToAppError maps NotFoundError to the canonical NotFound envelope.

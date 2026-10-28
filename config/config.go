@@ -24,6 +24,7 @@ type Config struct {
 	RateLimit  RateLimitConfig  `yaml:"rateLimit"  mapstructure:"rateLimit"`
 	Redis      RedisConfig      `yaml:"redis"      mapstructure:"redis"`
 	NATS       NATSConfig       `yaml:"nats"       mapstructure:"nats"`
+	OIDC       OIDCConfig       `yaml:"oidc"       mapstructure:"oidc"`
 }
 
 // CLIConfig configures the oagent CLI; SessionFile may start with "~/", expanded when used.
@@ -148,6 +149,7 @@ func (c *Config) Validate() error {
 	}
 	for _, check := range []func() error{
 		c.validatePostgres,
+		c.validateOIDC,
 		c.validateAuth,
 		c.validateCompliance,
 		c.validateMail,

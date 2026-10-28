@@ -281,3 +281,10 @@ func TestTemplatesReturnChildErrors(t *testing.T) {
 		assert.ErrorIs(t, c.Render(ctx, &buf), errWriteLimit)
 	}
 }
+
+func TestDivider(t *testing.T) {
+	out := renderString(t, Divider("or sign in with a password"))
+	assert.Contains(t, out, `class="divider`)
+	assert.Contains(t, out, "or sign in with a password")
+	assert.NotContains(t, renderString(t, Divider("<b>x</b>")), "<b>", "the label is escaped")
+}

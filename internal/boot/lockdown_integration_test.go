@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/altalune-id/othra/oidcrp/oidcrptest"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,7 +34,7 @@ type lockdown struct {
 	cfg  config.Config
 }
 
-func newLockdown(t *testing.T, cfg config.Config) *lockdown {
+func newLockdown(t *testing.T, cfg config.Config, idp ...*oidcrptest.IDP) *lockdown {
 	t.Helper()
 	cfg.HTTP.StateSecret = strings.Repeat("s", 40)
 	cfg.Secrets.EncryptionKey = testKeyHex
@@ -44,6 +45,9 @@ func newLockdown(t *testing.T, cfg config.Config) *lockdown {
 	required, err := installRequired(t.Context(), svcs)
 	require.NoError(t, err)
 	svcs.InstallRequired = required
+	for _, p := range idp {
+		svcs.OIDC = newOIDCProvider(cfg, p.Client())
+	}
 
 	console := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("console")) })
 	h := buildHTTPHandler(httpSurfaces{
@@ -91,7 +95,9 @@ func localLockdown(t *testing.T) *lockdown {
 	t.Helper()
 	cfg := devLocalConfig()
 	cfg.Auth.Genesis = config.GenesisConfig{Email: "root@example.com", Password: "genesis-password"}
-	return newLockdown(t, cfg)
+	idp := oidcrptest.New(t)
+	cfg.OIDC = config.OIDCConfig{Issuer: idp.Issuer(), ClientID: "oagent", Scopes: []string{"openid", "email"}, ButtonLabel: "Continue with SSO"}
+	return newLockdown(t, cfg, idp)
 }
 
 // Review Focus 2: no credential is refused on every surface; sign-in pages, legal, static and probes stay open.
@@ -122,6 +128,12 @@ func TestLockdown_NoCredential(t *testing.T) {
 	rec = l.do(http.MethodGet, "/install", nil, "")
 	assert.Equal(t, http.StatusSeeOther, rec.Code, "/install")
 	assert.Equal(t, "/login", rec.Header().Get("Location"))
+
+	rec = l.do(http.MethodGet, "/login/oidc", nil, "")
+	assert.Equal(t, http.StatusFound, rec.Code, "/login/oidc starts the sign-in")
+	assert.True(t, strings.HasPrefix(rec.Header().Get("Location"), l.cfg.OIDC.Issuer+"/authorize?"), rec.Header().Get("Location"))
+	rec = l.do(http.MethodGet, "/oauth/callback?code=c&state=s", nil, "")
+	assert.Equal(t, http.StatusBadRequest, rec.Code, "/oauth/callback answers, without a credential, with the expired sign-in page")
 }
 
 func TestLockdown_CredentialsWork(t *testing.T) {

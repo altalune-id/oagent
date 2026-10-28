@@ -13,6 +13,7 @@ import (
 	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/user"
 )
 
@@ -23,6 +24,15 @@ type recordedProfiles struct {
 	current   string
 	next      string
 	signedOut uuid.UUID
+	owner     uuid.UUID
+}
+
+func (r *recordedProfiles) CreateOwnOrg(_ context.Context, userID uuid.UUID, name, slug string) (*org.Org, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+	r.owner = userID
+	return org.NewOrg(slug, name, userID)
 }
 
 func (r *recordedProfiles) UpdateProfile(_ context.Context, userID uuid.UUID, name string) (*user.User, error) {
@@ -122,4 +132,25 @@ func TestWhoami_ShowsTheStoredName(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	assert.Equal(t, "Ada Lovelace", got.GetName(), "a renamed person sees the new name without signing in again")
+}
+
+func TestCreateOwnOrg(t *testing.T) {
+	ada := uuid.New()
+	rec := &recordedProfiles{}
+	s := NewControlPlane(orgByID{}, projectByID{}, userByID{}).WithProfiles(rec)
+	resp, err := s.CreateOwnOrg(profileCtx(session.Principal{UserID: ada, Source: session.SourceOIDC}, "sid-1"),
+		connect.NewRequest(&authv1.CreateOwnOrgRequest{Name: "Ana Org", Slug: "ana-org"}))
+	require.NoError(t, err)
+	assert.Equal(t, "ana-org", resp.Msg.GetOrg().GetSlug())
+	assert.NotEmpty(t, resp.Msg.GetOrg().GetId())
+	assert.Equal(t, ada, rec.owner)
+
+	_, err = s.CreateOwnOrg(profileCtx(session.Principal{UserID: uuid.New(), Source: session.SourceAPIKey}, ""),
+		connect.NewRequest(&authv1.CreateOwnOrgRequest{Name: "Key Org"}))
+	assert.True(t, authz.IsForbiddenError(err), "a key never owns an org")
+
+	rec.err = &org.AlreadyOwnedError{}
+	_, err = s.CreateOwnOrg(profileCtx(session.Principal{UserID: ada, Source: session.SourceOIDC}, "sid-1"),
+		connect.NewRequest(&authv1.CreateOwnOrgRequest{Name: "Second"}))
+	assert.True(t, org.IsAlreadyOwnedError(err))
 }

@@ -20,6 +20,7 @@ describe('useLanding', () => {
     listProjects = vi.fn().mockResolvedValue({ projects: [web, api] });
     setClient('$orgClient', {});
     setClient('$projectClient', { listProjects });
+    setClient('$authClient', { whoami: vi.fn().mockResolvedValue({ source: 'local', userId: 'u1' }) });
   });
 
   function withOrgs(...list: typeof acme[]) {
@@ -30,6 +31,11 @@ describe('useLanding', () => {
   it('goes to the org list when there are no orgs', async () => {
     expect(await useLanding().resolve()).toBe('/orgs');
     expect(listProjects).not.toHaveBeenCalled();
+  });
+
+  it('goes to onboarding when there are no orgs and the caller may create one', async () => {
+    setClient('$authClient', { whoami: vi.fn().mockResolvedValue({ source: 'oidc', userId: 'u1', orgCreation: true }) });
+    expect(await useLanding().resolve()).toBe('/onboarding');
   });
 
   it('lands on the first project of the first org', async () => {

@@ -21,6 +21,7 @@ const {
   confirmingSignOut,
   signOutError,
   isPerson,
+  canChangePassword,
   person,
 } = profile;
 
@@ -66,6 +67,7 @@ useHead({ title: () => `${t('profile.title')} · oagent` });
     <template v-else>
       <ProfileName v-model:name="name" :busy="busy" :notice="nameNotice ? t(nameNotice) : ''" :error="nameError" :field-error="nameFieldErrors.name" :labels="nameLabels" @save="profile.saveName" />
       <ProfilePassword
+        v-if="canChangePassword"
         v-model:current="currentPassword"
         v-model:next="newPassword"
         :email="person?.email"

@@ -4,6 +4,8 @@ package auth.v1;
 
 import "buf/validate/validate.proto";
 import "mcp/v1/annotations.proto";
+import "oagent/v1/rules.proto";
+import "org/v1/org.proto";
 
 option go_package = "altalune.id/oagent/gen/go/auth/v1;authv1";
 
@@ -25,6 +27,21 @@ service AuthService {
 
   // SignOutEverywhere ends every session of the signed-in person, this one included.
   rpc SignOutEverywhere(SignOutEverywhereRequest) returns (SignOutEverywhereResponse) {}
+
+  // CreateOwnOrg creates an organization the signed-in person owns, with its default project; cloud signup's one org per person.
+  rpc CreateOwnOrg(CreateOwnOrgRequest) returns (CreateOwnOrgResponse) {}
+}
+
+message CreateOwnOrgRequest {
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.name) = true
+  ];
+  string slug = 2 [(buf.validate.field).string.(oagent.v1.slug) = true];
+}
+
+message CreateOwnOrgResponse {
+  org.v1.Org org = 1;
 }
 
 message WhoamiRequest {}
@@ -49,6 +66,10 @@ message WhoamiResponse {
   // Effective permissions after roles, key scopes and grants are intersected.
   repeated string permissions = 11;
   bool operator = 12;
+  // Whether this deployment lets the caller create organizations (cloud only).
+  bool org_creation = 14;
+  // Whether this person can change a password: password sign-in is on here and they have one.
+  bool passwords = 15;
 }
 
 message UpdateProfileRequest {

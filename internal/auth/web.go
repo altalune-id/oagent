@@ -31,18 +31,24 @@ const (
 // SignIn signs people in and out; *Service implements it.
 type SignIn interface {
 	LoginLocal(ctx context.Context, c Credentials) (session.Principal, error)
+	LoginOIDC(ctx context.Context, in OIDCLogin) (session.Principal, error)
+	InviteMismatch(ctx context.Context, invite, email string) (bool, error)
 	Logout(ctx context.Context, sid string) error
 }
 
 // Web serves the login and logout pages.
 type Web struct {
-	kit      layout.Kit
-	signIn   SignIn
-	sessions CookieSessions
-	ids      PublicIDs
-	limits   Limits
-	resets   *Resets
-	reset    session.SignedCookie
+	kit         layout.Kit
+	signIn      SignIn
+	sessions    CookieSessions
+	ids         PublicIDs
+	limits      Limits
+	resets      *Resets
+	reset       session.SignedCookie
+	noPasswords bool
+
+	oidc         *OIDCSignIn
+	signInCookie session.SignedCookie
 }
 
 // NewWeb binds the login pages to the sign-in service, the browser sessions and the public id lookups.
@@ -66,11 +72,23 @@ func (h *Web) WithResets(r *Resets) *Web {
 	return h
 }
 
-// Register mounts GET/POST /login, POST /logout and, with resets, the password reset pages on mux.
+// WithoutPasswords turns password sign-in off, as auth.password.enabled off does.
+func (h *Web) WithoutPasswords() *Web {
+	h.noPasswords = true
+	return h
+}
+
+// Register mounts GET/POST /login, POST /logout, the OIDC sign-in with a provider, and the password reset pages with resets on mux.
 func (h *Web) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+h.kit.Path("/login"), h.getLogin)
-	mux.HandleFunc("POST "+h.kit.Path("/login"), h.postLogin)
+	if !h.noPasswords {
+		mux.HandleFunc("POST "+h.kit.Path("/login"), h.postLogin)
+	}
 	mux.HandleFunc("POST "+h.kit.Path("/logout"), h.postLogout)
+	if h.oidc != nil {
+		mux.HandleFunc("GET "+h.kit.Path("/login/oidc"), h.startOIDC)
+		mux.HandleFunc("GET "+h.kit.Path("/oauth/callback"), h.callback)
+	}
 	if h.resets == nil {
 		return
 	}
@@ -140,16 +158,23 @@ func (h *Web) getLogin(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, to, http.StatusSeeOther) //nolint:gosec // G710: ResolveReturnTo sanitizes.
 		return
 	}
-	view := views.LoginData{ReturnTo: layout.SanitizeReturnTo(h.kit.BasePath, returnTo), ForgotURL: h.forgotURL()}
+	view := views.LoginData{
+		ReturnTo: layout.SanitizeReturnTo(h.kit.BasePath, returnTo), ForgotURL: h.forgotURL(), PasswordOff: h.noPasswords,
+	}
 	if r.URL.Query().Get("reset") == "done" {
 		view.Notice = resetDone
 	}
+	hint := ""
 	if email, err := user.NormalizeEmail(r.URL.Query().Get("email")); err == nil {
-		view.Email, view.EmailLocked = email, true
+		view.Email, view.EmailLocked, hint = email, true, email
 		view.AnotherLogin = h.kit.Path("/login")
 		if view.ReturnTo != "" {
 			view.AnotherLogin += "?return_to=" + url.QueryEscape(view.ReturnTo)
 		}
+	}
+	view.OIDCURL = h.oidcURL(view.ReturnTo, hint)
+	if h.oidc != nil {
+		view.ButtonLabel, view.NewHere = h.oidc.ButtonLabel, h.oidc.OpenSignup
 	}
 	h.kit.Render(w, r, http.StatusOK, views.Login(h.kit.Layout("Sign in"), view))
 }
@@ -232,12 +257,16 @@ func (h *Web) loginLimited(w http.ResponseWriter, r *http.Request, err error, wa
 }
 
 func (h *Web) postLogout(w http.ResponseWriter, r *http.Request) {
+	p := session.PrincipalFrom(r.Context())
 	if sid, ok := h.sessions.Read(r); ok {
 		if err := h.signIn.Logout(r.Context(), sid); err != nil && h.kit.Unexpected != nil {
 			_ = h.kit.Unexpected(r.Context(), "web: logout", err)
 		}
 	}
 	_ = h.sessions.End(r.Context(), w, "")
+	if h.endProviderSession(w, r, p) {
+		return
+	}
 	http.Redirect(w, r, h.kit.Path("/login"), http.StatusSeeOther)
 }
 

@@ -124,6 +124,7 @@ A server-rendered templ page that a person opens **before** they are signed in: 
 ## Reference code
 
 - [internal/auth/web.go](../../internal/auth/web.go): `Web`, `Register`, `getLogin`, `postLogin`, `postForgot`, `resetLimited`
+- [internal/auth/oidc.go](../../internal/auth/oidc.go): `WithOIDC`, `startOIDC`, `callback` (sign-in through the OIDC provider)
 - [internal/auth/views/login.templ](../../internal/auth/views/login.templ): `Login`, `LoginData`
 - [internal/auth/views/forgot.templ](../../internal/auth/views/forgot.templ): `Forgot`, `ForgotData`
 - [internal/auth/limits.go](../../internal/auth/limits.go): `Limits`, `LoginIPRule`, `WriteLimited`

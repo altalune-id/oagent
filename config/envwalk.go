@@ -18,6 +18,8 @@ type EnvKey struct {
 	Kind      string
 	Awareness []string
 	Default   any
+	// Optional is set on a pointer key, where unset has its own meaning; examples leave it commented out.
+	Optional bool
 }
 
 // WalkEnvKeys enumerates every env key derived from the Config struct, prefixed with the given env prefix.
@@ -115,6 +117,7 @@ func walkForEnvKeys(out *[]EnvKey, envPrefix, yamlPrefix string, t reflect.Type,
 			YAML:      yamlKey,
 			Kind:      kindName(ft),
 			Awareness: awareness,
+			Optional:  f.Type.Kind() == reflect.Pointer,
 		})
 	}
 }

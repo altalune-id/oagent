@@ -51,6 +51,12 @@ func (f fakeSignIn) LoginLocal(_ context.Context, c auth.Credentials) (session.P
 	return f.p, nil
 }
 
+func (fakeSignIn) InviteMismatch(context.Context, string, string) (bool, error) { return false, nil }
+
+func (fakeSignIn) LoginOIDC(context.Context, auth.OIDCLogin) (session.Principal, error) {
+	return session.Principal{}, &auth.SignInExpiredError{}
+}
+
 func (f fakeSignIn) Logout(ctx context.Context, sid string) error { return f.store.Delete(ctx, sid) }
 
 type storeAuthn struct{ store session.Store }

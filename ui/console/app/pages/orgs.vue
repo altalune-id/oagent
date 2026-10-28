@@ -1,14 +1,29 @@
 <script setup lang="ts">
-import AppButton from '~/components/ui/AppButton.vue';
+import { useOrgCreation } from '~/components/org/create/useOrgCreation';
+import OrgsEmptyState from '~/components/org/OrgsEmptyState.vue';
 import ErrorText from '~/components/ui/ErrorText.vue';
+import { siblingURL } from '~/lib/auth/urls';
+import { useAuthStore } from '~/stores/auth';
 import { useOrgsStore } from '~/stores/orgs';
-import { useUIStore } from '~/stores/ui';
 
 const { t } = useI18n();
 const orgs = useOrgsStore();
-const ui = useUIStore();
+const auth = useAuthStore();
+const { apiUrl } = useRuntimeConfig().public;
 
-await orgs.ensureLoaded();
+await Promise.all([orgs.ensureLoaded(), auth.load()]);
+
+const { allowed, ownsOne, canCreate } = useOrgCreation();
+const isEmpty = computed(() => !orgs.error && orgs.items.length === 0);
+
+if (isEmpty.value && canCreate.value) {
+  await navigateTo('/onboarding', { replace: true });
+}
+const emptyLabels = computed(() => ({
+  title: t('org.none_title'),
+  body: t('org.none_body'),
+  signOut: t('auth.sign_out'),
+}));
 
 useHead({ title: () => `${t('org.all')} · oagent` });
 </script>
@@ -20,20 +35,21 @@ useHead({ title: () => `${t('org.all')} · oagent` });
         <h1 class="text-2xl font-bold">
           {{ t('org.title') }}
         </h1>
-        <p class="mt-1 text-sm text-base-content/60">
+        <p v-if="!isEmpty" class="mt-1 text-sm text-base-content/60">
           {{ t('org.subtitle') }}
         </p>
       </div>
-      <AppButton size="sm" @click="ui.openOrgCreate()">
-        <Icon name="lucide:plus" size="16" />
-        {{ t('org.new') }}
-      </AppButton>
+      <p v-if="allowed && ownsOne" class="max-w-56 text-right text-xs text-base-content/60" data-testid="org-create-owned">
+        {{ t('org.create_owned') }}
+      </p>
     </div>
 
     <ErrorText v-if="orgs.error" :error="orgs.error" class="mt-6" />
-    <p v-else-if="orgs.items.length === 0" class="mt-6 text-sm text-base-content/60">
-      {{ t('org.empty') }}
-    </p>
+    <OrgsEmptyState
+      v-else-if="isEmpty"
+      :logout-url="siblingURL(apiUrl, '/logout')"
+      :labels="emptyLabels"
+    />
     <div v-else class="mt-6 grid gap-3 sm:grid-cols-2">
       <NuxtLink
         v-for="org in orgs.items"

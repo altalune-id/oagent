@@ -30,7 +30,7 @@ describe('usePersonalKeys', () => {
       createAPIKey: vi.fn().mockResolvedValue({ key: create(APIKeySchema, { secretHint: 'cccc', kind: 'personal', name: 'Laptop' }), plaintext: 'oak_new' }),
       revokeAPIKey: vi.fn().mockResolvedValue({}),
     };
-    whoami = vi.fn().mockResolvedValue({ source: 'local', permissions: ['agent:*', 'member:write'] });
+    whoami = vi.fn().mockResolvedValue({ source: 'local', userId: 'F5pLm2XwQ8kRt3VnZ7bYc', permissions: ['agent:*', 'member:write'] });
     listProjects = vi.fn().mockResolvedValue({ projects: [{ id: 'x6MH9WPWjktMwCBKHy4pF', orgId: 'V3StGXR8Z5jdHj6BmyT2a', slug: 'web', name: 'Web' }, { id: 'KdrF3t3FHtppBPmMgj4sy', orgId: 'YeDxg2kMYznPJJG3wVmjj', slug: 'x', name: 'X' }] });
     setClient('$apiKeyClient', client);
     setClient('$authClient', { whoami });
@@ -57,7 +57,14 @@ describe('usePersonalKeys', () => {
     expect(keys.orgProjects.value).toEqual([{ id: 'x6MH9WPWjktMwCBKHy4pF', name: 'Web' }]);
   });
 
-  it('is not signed in for a non-local source', async () => {
+  it('is signed in through the OIDC provider too', async () => {
+    whoami.mockResolvedValue({ source: 'oidc', userId: 'F5pLm2XwQ8kRt3VnZ7bYc', permissions: [] });
+    const keys = usePersonalKeys('V3StGXR8Z5jdHj6BmyT2a');
+    await keys.load();
+    expect(keys.signedIn.value).toBe(true);
+  });
+
+  it('is not signed in for a non-person source', async () => {
     whoami.mockResolvedValue({ source: 'apikey', permissions: [] });
     const keys = usePersonalKeys('V3StGXR8Z5jdHj6BmyT2a');
     await keys.load();

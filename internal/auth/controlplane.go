@@ -21,14 +21,16 @@ type Profiles interface {
 	UpdateProfile(ctx context.Context, userID uuid.UUID, name string) (*user.User, error)
 	ChangePassword(ctx context.Context, userID uuid.UUID, keepSID, current, next string) error
 	SignOutEverywhere(ctx context.Context, userID uuid.UUID) error
+	CreateOwnOrg(ctx context.Context, userID uuid.UUID, name, slug string) (*org.Org, error)
 }
 
 // AuthService implements auth.v1.AuthService; every id it returns is a public id.
 type AuthService struct {
-	orgs     OrgGetter
-	projects ProjectGetter
-	users    UserGetter
-	profiles Profiles
+	orgs      OrgGetter
+	projects  ProjectGetter
+	users     UserGetter
+	profiles  Profiles
+	passwords bool
 }
 
 var _ authv1connect.AuthServiceHandler = (*AuthService)(nil)
@@ -41,6 +43,12 @@ func NewControlPlane(orgs OrgGetter, projects ProjectGetter, users UserGetter) *
 // WithProfiles serves the profile RPCs over p.
 func (s *AuthService) WithProfiles(p Profiles) *AuthService {
 	s.profiles = p
+	return s
+}
+
+// WithPasswords reports on whoami whether password sign-in is on, so a person with a password may change it.
+func (s *AuthService) WithPasswords(on bool) *AuthService {
+	s.passwords = on
 	return s
 }
 
@@ -74,6 +82,21 @@ func (s *AuthService) ChangePassword(
 		return nil, err
 	}
 	return connect.NewResponse(&authv1.ChangePasswordResponse{}), nil
+}
+
+// CreateOwnOrg creates an org the signed-in person owns, with its default project, where this deployment lets people do so.
+func (s *AuthService) CreateOwnOrg(
+	ctx context.Context, req *connect.Request[authv1.CreateOwnOrgRequest],
+) (*connect.Response[authv1.CreateOwnOrgResponse], error) {
+	p, err := person(ctx)
+	if err != nil {
+		return nil, err
+	}
+	o, err := s.profiles.CreateOwnOrg(ctx, p.UserID, req.Msg.GetName(), req.Msg.GetSlug())
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&authv1.CreateOwnOrgResponse{Org: org.OrgProto(o)}), nil
 }
 
 // SignOutEverywhere ends every session of the signed-in person, this one too.
@@ -120,12 +143,14 @@ func (s *AuthService) Whoami(
 		KeyHint:     p.KeyHint,
 		Permissions: p.Scopes,
 		Operator:    p.Operator,
+		OrgCreation: p.IsPerson() && s.orgs.CreationAllowed(),
 	}
 	if p.UserID != uuid.Nil {
 		u, err := s.users.ByID(ctx, p.UserID)
 		switch {
 		case err == nil:
 			out.UserId, out.Name = u.PublicID, u.Name
+			out.Passwords = s.passwords && u.HasPassword()
 		case !user.IsNotFoundError(err):
 			return nil, err
 		}

@@ -18,6 +18,7 @@ import (
 	"altalune.id/oagent/internal/testutil/fakes"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/password"
+	"altalune.id/oagent/scope"
 )
 
 type fakeUsers struct {
@@ -350,7 +351,7 @@ func TestRefresh_NoMemberships(t *testing.T) {
 	assert.Equal(t, u.ID, p.UserID)
 	assert.Equal(t, uuid.Nil, p.ActiveOrgID)
 	assert.Equal(t, uuid.Nil, p.ActiveProjectID)
-	assert.Empty(t, p.Scopes)
+	assert.Equal(t, []string{scope.OrgRead}, p.Scopes, "a person in no org may list their own (zero) orgs, nothing more")
 	assert.False(t, p.Operator)
 }
 

@@ -83,6 +83,7 @@ func (l *Loader) Load(path string, opts ...Option) (*Config, error) {
 
 	var cfg Config
 	decode := viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+		blankPointerIsUnset,
 		mapstructure.StringToTimeDurationHookFunc(),
 		mapstructure.StringToSliceHookFunc(","),
 	))
@@ -90,6 +91,7 @@ func (l *Loader) Load(path string, opts ...Option) (*Config, error) {
 		return nil, fmt.Errorf("config: unmarshal: %w", err)
 	}
 	cfg.Redis.KeyPrefix = NormalizeRedisKeyPrefix(cfg.Redis.KeyPrefix)
+	cfg.OIDC.Scopes = NormalizeScopes(cfg.OIDC.Scopes)
 
 	if o.skipValidation {
 		return &cfg, nil
@@ -103,6 +105,14 @@ func (l *Loader) Load(path string, opts ...Option) (*Config, error) {
 // Load resolves defaults <- file <- OAGENT_* env <- bound flags. An empty path searches standard locations.
 func Load(path string, opts ...Option) (*Config, error) {
 	return NewLoader().Load(path, opts...)
+}
+
+// NOTE: an optional key (a pointer field) left blank in a file or the env stays unset, so its documented default applies.
+func blankPointerIsUnset(from, to reflect.Type, data any) (any, error) {
+	if s, ok := data.(string); ok && to.Kind() == reflect.Pointer && from.Kind() == reflect.String && strings.TrimSpace(s) == "" {
+		return reflect.Zero(to).Interface(), nil
+	}
+	return data, nil
 }
 
 func setDefaults(v *viper.Viper) {
@@ -119,6 +129,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("mcp.enabled", false)
 	v.SetDefault("auth.mode", string(AuthModeLocal))
 	v.SetDefault("auth.sessionTTL", "24h")
+	v.SetDefault("oidc.scopes", []string{"openid", "profile", "email"})
+	v.SetDefault("oidc.buttonLabel", "Continue with SSO")
 	v.SetDefault("cli.sessionFile", "~/.oagent/session.json")
 	v.SetDefault("mail.driver", string(MailDriverConsole))
 	v.SetDefault("mail.smtp.port", 587)

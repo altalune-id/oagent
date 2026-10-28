@@ -1,0 +1,71 @@
+package views
+
+import "altalune.id/oagent/internal/web/layout"
+
+// SignInErrorData is a refused OIDC sign-in: Code is AUT005, AUT006 or AUT007, and Reason is AUT005's.
+type SignInErrorData struct {
+	Code   string
+	Reason string
+	Email  string
+	// AnotherURL starts a new sign-in with the account picker; BackURL is the sign-in page.
+	AnotherURL string
+	BackURL    string
+	// PasswordOff drops the password from the copy when there is no password sign-in.
+	PasswordOff bool
+}
+
+type signInErrorCopy struct {
+	title, lead, rest string
+	another           bool
+}
+
+func (v SignInErrorData) copy() signInErrorCopy {
+	switch {
+	case v.Code == "AUT005" && v.Reason == "removed":
+		return signInErrorCopy{title: "You can't sign in here", rest: "Ask an admin to check your account."}
+	case v.Code == "AUT005" && v.Reason == "email_unverified":
+		return signInErrorCopy{
+			title: "Verify your email", lead: v.Email, rest: "isn't verified at your sign-in provider yet. Verify it there, then sign in again.", another: true,
+		}
+	case v.Code == "AUT005":
+		return signInErrorCopy{
+			title: "You need an invite", lead: v.Email,
+			rest: "has no account here. Ask an admin to invite this email, then sign in again.", another: true,
+		}
+	case v.Code == "AUT007" && v.PasswordOff:
+		return signInErrorCopy{
+			title: "This account uses another sign-in", lead: v.Email,
+			rest: "is linked to a different identity at your sign-in provider. Sign in with that one.", another: true,
+		}
+	case v.Code == "AUT007":
+		return signInErrorCopy{
+			title: "This account uses another sign-in", lead: v.Email,
+			rest: "is linked to a different identity at your sign-in provider. Sign in with that one, or with your password.", another: true,
+		}
+	default:
+		return signInErrorCopy{title: "This sign-in expired", rest: "Start again from the sign-in page. Make sure this site may use cookies."}
+	}
+}
+
+templ SignInError(d layout.LayoutData, v SignInErrorData) {
+	@layout.Layout(d) {
+		{{ c := v.copy() }}
+		@layout.Card(c.title) {
+			<div role="alert" class="alert alert-error alert-soft">
+				<span>
+					if c.lead != "" {
+						<span class="font-medium break-all">{ c.lead }</span>
+					}
+					{ c.rest }
+				</span>
+			</div>
+			<div class="flex flex-col gap-2">
+				if c.another && v.AnotherURL != "" {
+					<a class="btn btn-primary btn-block" href={ templ.SafeURL(v.AnotherURL) }>Sign in with another account</a>
+				}
+				<a class="btn btn-ghost btn-block" href={ templ.SafeURL(v.BackURL) }>Back to sign in</a>
+			</div>
+			<p class="text-xs text-base-content/60">Error code: { v.Code }</p>
+		}
+	}
+}

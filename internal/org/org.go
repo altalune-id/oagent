@@ -128,7 +128,8 @@ func (r *orgRow) toOrg() *Org {
 	}
 }
 
-func orgToProto(o *Org) *orgv1.Org {
+// OrgProto maps an org to its wire form, named by its public id.
+func OrgProto(o *Org) *orgv1.Org {
 	return &orgv1.Org{
 		Id:        o.PublicID,
 		Slug:      o.Slug,

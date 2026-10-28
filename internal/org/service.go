@@ -21,6 +21,7 @@ type Service struct {
 	unexpected      apperror.UnexpectedFunc
 	afterCreate     func(ctx context.Context, o *Org) error
 	creationAllowed bool
+	memberRoles     MemberRoles
 }
 
 // NewService builds a Service over store; Create runs as one unit of work on uow and is allowed until WithCreation(false).
@@ -32,6 +33,27 @@ func NewService(store Store, uow db.Transactor, unexpected apperror.UnexpectedFu
 func (s *Service) WithCreation(allowed bool) *Service {
 	s.creationAllowed = allowed
 	return s
+}
+
+// CreationAllowed reports whether Create may add orgs on this deployment.
+func (s *Service) CreationAllowed() bool { return s.creationAllowed }
+
+// WithMemberRoles lets MemberRoles read a person's roles through r.
+func (s *Service) WithMemberRoles(r MemberRoles) *Service {
+	s.memberRoles = r
+	return s
+}
+
+// MemberRoles returns userID's role in each org they belong to, keyed by org id; empty without WithMemberRoles.
+func (s *Service) MemberRoles(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]string, error) {
+	if s.memberRoles == nil {
+		return nil, nil
+	}
+	roles, err := s.memberRoles.Roles(ctx, userID)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "org: member roles", err)
+	}
+	return roles, nil
 }
 
 // WithAfterCreate registers a hook run after an org is created (e.g. to seed a default project).

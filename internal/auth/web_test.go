@@ -342,12 +342,15 @@ func TestLogout_ServiceErrorIsReportedAndCookieCleared(t *testing.T) {
 }
 
 type fakeAuth struct {
-	users      map[string]string
-	principal  session.Principal
-	loggedOut  []string
-	loginCalls int
-	loginErr   error
-	logoutErr  error
+	oidc        []OIDCLogin
+	oidcErr     error
+	otherInvite string
+	users       map[string]string
+	principal   session.Principal
+	loggedOut   []string
+	loginCalls  int
+	loginErr    error
+	logoutErr   error
 }
 
 func (f *fakeAuth) LoginLocal(_ context.Context, c Credentials) (session.Principal, error) {
@@ -361,6 +364,18 @@ func (f *fakeAuth) LoginLocal(_ context.Context, c Credentials) (session.Princip
 	p := f.principal
 	p.Email = c.Email
 	return p, nil
+}
+
+func (f *fakeAuth) LoginOIDC(_ context.Context, in OIDCLogin) (session.Principal, error) {
+	f.oidc = append(f.oidc, in)
+	if f.oidcErr != nil {
+		return session.Principal{}, f.oidcErr
+	}
+	return f.principal, nil
+}
+
+func (f *fakeAuth) InviteMismatch(_ context.Context, invite, _ string) (bool, error) {
+	return invite == f.otherInvite, nil
 }
 
 func (f *fakeAuth) Logout(_ context.Context, sid string) error {
@@ -379,4 +394,23 @@ func cookieNamed(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 		}
 	}
 	return nil
+}
+
+func TestLogin_WithoutPasswords(t *testing.T) {
+	signIn := &fakeAuth{users: map[string]string{"ada@example.com": "correct horse battery"}}
+	mux := http.NewServeMux()
+	NewWeb(layout.Kit{}, signIn, testSessions(session.NewMemoryStore()), fakes.NewPublicIDs()).WithoutPasswords().Register(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, loginPost("", url.Values{"email": {"ada@example.com"}, "password": {"correct horse battery"}}))
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code, "no password sign-in")
+
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/login", nil))
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.NotContains(t, rec.Body.String(), `name="password"`)
+
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/forgot-password", nil))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
 }

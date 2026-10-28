@@ -86,3 +86,62 @@ func termsExpr(u *User) postgres.TimestampzExpression {
 	}
 	return postgres.TimestampzT(u.TermsAcceptedAt.UTC())
 }
+
+// SetPasswordHash updates only password_hash, so a stale read never writes back other columns.
+func (s *postgresStore) SetPasswordHash(ctx context.Context, id uuid.UUID, hash string) error {
+	stmt := s.users.UPDATE(s.users.PasswordHash, s.users.UpdatedAt).
+		SET(postgres.String(hash), postgres.NOW()).
+		WHERE(s.users.ID.EQ(postgres.UUID(id))).
+		RETURNING(s.users.ID)
+	var row struct {
+		ID uuid.UUID `alias:"users.id"`
+	}
+	err := db.Write(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) })
+	switch {
+	case db.IsNoRows(err):
+		return &NotFoundError{}
+	case err != nil:
+		return fmt.Errorf("user.postgres: SetPasswordHash: %w", err)
+	}
+	return nil
+}
+
+// LinkIDP sets the user's identity only while it has none, in one conditional UPDATE.
+func (s *postgresStore) LinkIDP(ctx context.Context, id uuid.UUID, issuer, subject string) (bool, error) {
+	stmt := s.users.UPDATE(s.users.IDPIssuer, s.users.IDPSubject, s.users.UpdatedAt).
+		SET(postgres.String(issuer), postgres.String(subject), postgres.NOW()).
+		WHERE(s.users.ID.EQ(postgres.UUID(id)).AND(s.users.IDPIssuer.IS_NULL())).
+		RETURNING(s.users.ID)
+	var row struct {
+		ID uuid.UUID `alias:"users.id"`
+	}
+	err := db.Write(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) })
+	switch {
+	case db.IsNoRows(err):
+		return false, nil
+	case db.IsUniqueViolation(err):
+		return false, nil
+	case err != nil:
+		return false, fmt.Errorf("user.postgres: LinkIDP: %w", err)
+	}
+	return true, nil
+}
+
+// Lock takes the user's row FOR NO KEY UPDATE in the unit of work on ctx. NOTE: a foreign key's KEY SHARE doesn't wait on it.
+func (s *postgresStore) Lock(ctx context.Context, id uuid.UUID) error {
+	if _, ok := db.CurrentTx(ctx); !ok {
+		return errLockOutsideTx
+	}
+	stmt := postgres.SELECT(s.users.ID).FROM(s.users).WHERE(s.users.ID.EQ(postgres.UUID(id))).FOR(postgres.NO_KEY_UPDATE())
+	var row struct {
+		ID uuid.UUID `alias:"users.id"`
+	}
+	err := db.Write(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) })
+	switch {
+	case db.IsNoRows(err):
+		return &NotFoundError{}
+	case err != nil:
+		return fmt.Errorf("user.postgres: Lock: %w", err)
+	}
+	return nil
+}

@@ -71,3 +71,12 @@ func TestValidateSlugReasons(t *testing.T) {
 		(&InvalidNameError{Reason: NameLength}).ToAppError().Meta())
 	assert.Equal(t, map[string]string{"slug": "taken"}, (&AlreadyExistsError{Slug: "taken"}).ToAppError().Meta())
 }
+
+func TestAlreadyOwnedError(t *testing.T) {
+	err := &AlreadyOwnedError{}
+	assert.True(t, IsAlreadyOwnedError(err))
+	assert.False(t, IsAlreadyOwnedError(assert.AnError))
+	assert.True(t, IsExpectedError(err))
+	assert.NotEmpty(t, err.Error())
+	assert.Equal(t, apperror.CodeOrgAlreadyOwned, err.ToAppError().Code())
+}

@@ -50,6 +50,8 @@ type Services struct {
 	Invites  *invite.Service
 	Auth     *auth.Service
 	Refs     Refs
+	// Passwords is true when console password sign-in is on.
+	Passwords bool
 }
 
 // Refs turns the public ids every surface carries into ids and back, for every domain's handler.
@@ -122,7 +124,7 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 		s.InviteSvc = invite.NewControlPlane(svcs.Invites, svcs.Refs)
 	}
 	if svcs.Orgs != nil && svcs.Projects != nil && svcs.Users != nil {
-		s.AuthSvc = auth.NewControlPlane(svcs.Orgs, svcs.Projects, svcs.Users).WithProfiles(svcs.Auth)
+		s.AuthSvc = auth.NewControlPlane(svcs.Orgs, svcs.Projects, svcs.Users).WithProfiles(svcs.Auth).WithPasswords(svcs.Passwords)
 	}
 	return s
 }

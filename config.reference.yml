@@ -34,6 +34,9 @@ auth:
     password: ""
   # env: OAGENT_AUTH_MODE
   mode: local
+  # password:
+  #   # env: OAGENT_AUTH_PASSWORD_ENABLED
+  #   enabled:
   # env: OAGENT_AUTH_SESSION_TTL
   sessionTTL: 24h
 
@@ -125,6 +128,18 @@ nats:
   url: ""
   # env: OAGENT_NATS_USER
   user: ""
+
+oidc:
+  # env: OAGENT_OIDC_BUTTON_LABEL
+  buttonLabel: Continue with SSO
+  # env: OAGENT_OIDC_CLIENT_ID
+  clientID: ""
+  # [secret] env: OAGENT_OIDC_CLIENT_SECRET
+  clientSecret: ""
+  # env: OAGENT_OIDC_ISSUER
+  issuer: ""
+  # env: OAGENT_OIDC_SCOPES
+  scopes: openid,profile,email
 
 postgres:
   # env: OAGENT_POSTGRES_CONN_MAX_IDLE_TIME

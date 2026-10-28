@@ -4,6 +4,7 @@ import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import scopes from '@shared/scope/scopes.json';
 import { useErrorMessage } from '~/composables/useErrorMessage';
 import { useScopeLabel } from '~/composables/useScopeLabel';
+import { isPerson } from '~/lib/auth/person';
 import { mcpURL } from '~/lib/auth/urls';
 import { toAPIKey, useAPIKeysStore } from '~/stores/apiKeys';
 import { useAuthStore } from '~/stores/auth';
@@ -28,7 +29,7 @@ export function usePersonalKeys(orgId: string) {
   const mine = computed(() => keys.items.filter(k => k.kind === 'personal').map(k => ({ ...k, scopes: k.scopes.map(scopeLabel) })));
   const mintable = computed(() => mintableForMe(scopes, auth.me?.permissions ?? []).map(s => ({ name: s.name, label: scopeLabel(s.name) })));
   const orgProjects = computed(() => projects.forOrg(orgId).map(p => ({ id: p.id, name: p.name })));
-  const signedIn = computed(() => auth.me?.source === 'local');
+  const signedIn = computed(() => isPerson(auth.me));
 
   async function create(form: PersonalKeyForm) {
     busy.value = true;

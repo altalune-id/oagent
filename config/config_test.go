@@ -51,10 +51,18 @@ func TestLoad_ModeAndEnvOverride(t *testing.T) {
 	t.Setenv("OAGENT_ENV", "production")
 
 	_, err := Load(missingPath(t))
-	assert.True(t, IsCloudRequiresOIDCError(err), "cloud must refuse to boot until OIDC (P3); got %v", err)
+	assert.True(t, IsCloudRequiresOIDCError(err), "cloud refuses to boot without oidc.issuer; got %v", err)
+
+	t.Setenv("OAGENT_OIDC_ISSUER", "https://idp.example.com")
+	t.Setenv("OAGENT_OIDC_CLIENT_ID", "oagent")
+	c, err := Load(missingPath(t))
+	require.NoError(t, err)
+	assert.Equal(t, ModeCloud, c.Mode)
+	assert.False(t, c.PasswordsOn())
+	t.Setenv("OAGENT_OIDC_ISSUER", "")
 
 	t.Setenv("OAGENT_MODE", "selfhosted")
-	c, err := Load(missingPath(t))
+	c, err = Load(missingPath(t))
 	require.NoError(t, err)
 	assert.Equal(t, ModeSelfhosted, c.Mode)
 	assert.True(t, c.Env.IsProduction())

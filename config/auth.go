@@ -24,11 +24,29 @@ const (
 
 // AuthConfig configures how people and machines sign in.
 type AuthConfig struct {
-	Mode       AuthMode      `yaml:"mode"       mapstructure:"mode"       validate:"required,oneof=local basic"`
-	Basic      BasicConfig   `yaml:"basic"      mapstructure:"basic"`
-	Genesis    GenesisConfig `yaml:"genesis"    mapstructure:"genesis"`
-	SessionTTL time.Duration `yaml:"sessionTTL" mapstructure:"sessionTTL" validate:"gte=1h,lte=720h"`
+	Mode       AuthMode       `yaml:"mode"       mapstructure:"mode"       validate:"required,oneof=local basic"`
+	Basic      BasicConfig    `yaml:"basic"      mapstructure:"basic"`
+	Genesis    GenesisConfig  `yaml:"genesis"    mapstructure:"genesis"`
+	Password   PasswordConfig `yaml:"password"   mapstructure:"password"`
+	SessionTTL time.Duration  `yaml:"sessionTTL" mapstructure:"sessionTTL" validate:"gte=1h,lte=720h"`
 }
+
+// PasswordConfig turns console password sign-in on or off; the OIDC provider, when configured, is always on.
+type PasswordConfig struct {
+	// Enabled defaults to on in selfhosted and off in cloud, which refuses it on.
+	Enabled *bool `yaml:"enabled" mapstructure:"enabled"`
+}
+
+// PasswordsOn reports whether console password sign-in is on: auth.password.enabled, else on in selfhosted and off in cloud.
+func (c *Config) PasswordsOn() bool {
+	if c.Auth.Password.Enabled != nil {
+		return *c.Auth.Password.Enabled
+	}
+	return c.Mode != ModeCloud
+}
+
+// OpenSignup reports whether any verified OIDC sign-in may create an account with no org: cloud only.
+func (c *Config) OpenSignup() bool { return c.Mode == ModeCloud }
 
 // BasicConfig is the single credential accepted when auth.mode is basic.
 type BasicConfig struct {
@@ -59,23 +77,35 @@ func (c *Config) validateAuth() error {
 			return fmt.Errorf("config: auth.basic.password: %w", err)
 		}
 	}
-	g := c.Auth.Genesis
-	if (g.Email == "") != (g.Password == "") {
-		return &MissingSettingError{Keys: "auth.genesis.email, auth.genesis.password", Reason: "set both or neither"}
+	if c.Mode == ModeCloud && !c.OIDC.Enabled() {
+		return &CloudRequiresOIDCError{}
 	}
-	if g.Email != "" {
-		if c.Mode == ModeCloud {
-			return &GenesisInCloudError{}
-		}
-		if err := password.Check(g.Password, password.Hints{Email: g.Email}); err != nil {
-			return fmt.Errorf("config: auth.genesis.password: %w", err)
-		}
+	if c.Mode == ModeCloud && c.PasswordsOn() {
+		return &InvalidSettingError{Key: "auth.password.enabled", Reason: "cloud signs people in through the OIDC provider only"}
 	}
-	if err := c.validateSecrets(); err != nil {
+	if !c.PasswordsOn() && !c.OIDC.Enabled() {
+		return &InvalidSettingError{Key: "auth.password.enabled", Reason: "off leaves no way to sign in; set oidc.issuer"}
+	}
+	if err := c.validateGenesis(); err != nil {
 		return err
 	}
-	if c.Mode == ModeCloud {
-		return &CloudRequiresOIDCError{}
+	return c.validateSecrets()
+}
+
+func (c *Config) validateGenesis() error {
+	g := c.Auth.Genesis
+	switch {
+	case g.Email == "" && g.Password == "":
+		return nil
+	case c.Mode == ModeCloud:
+		return &GenesisInCloudError{}
+	case !c.PasswordsOn():
+		return &InvalidSettingError{Key: "auth.genesis.email", Reason: "auth.password.enabled is off; install through /install"}
+	case g.Email == "" || g.Password == "":
+		return &MissingSettingError{Keys: "auth.genesis.email, auth.genesis.password", Reason: "set both or neither"}
+	}
+	if err := password.Check(g.Password, password.Hints{Email: g.Email}); err != nil {
+		return fmt.Errorf("config: auth.genesis.password: %w", err)
 	}
 	return nil
 }
