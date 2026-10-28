@@ -18,8 +18,6 @@ import (
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/testutil/pgtest"
 	"altalune.id/oagent/internal/user"
-	"altalune.id/oagent/migrator"
-	"altalune.id/oagent/schema"
 )
 
 func TestSystemOrg_LoadAndUnique(t *testing.T) {
@@ -131,33 +129,6 @@ func TestOrgCreatedBy_ForeignKey(t *testing.T) {
 	got, err := orgs.ByID(as(ctx, o), o.ID)
 	require.NoError(t, err, "deleting the founder keeps the org")
 	assert.False(t, got.CreatedBy.Valid, "created_by is set to NULL")
-}
-
-func TestMigration009_ClearsOrphanCreatedBy(t *testing.T) {
-	h := pgtest.New(t)
-	sqlDB := h.OpenDB(t)
-	cfg := migrator.Config{Schema: h.Schema}
-	ctx := t.Context()
-	require.NoError(t, schema.MigrateUp(ctx, sqlDB, cfg))
-	require.NoError(t, schema.MigrateDownTo(ctx, sqlDB, cfg, 8))
-
-	orphan, kept := uuid.New(), uuid.New()
-	_, err := sqlDB.ExecContext(ctx,
-		`INSERT INTO users (id, public_id, email, created_at, updated_at) VALUES ($1, 'u-kept', 'kept@example.com', now(), now())`, kept)
-	require.NoError(t, err)
-	_, err = sqlDB.ExecContext(ctx, `INSERT INTO orgs (id, public_id, slug, name, created_by, created_at, updated_at) VALUES
-		($1, 'o-orphan', 'orphan', 'Orphan', $2, now(), now()),
-		($3, 'o-kept', 'kept', 'Kept', $4, now(), now())`, uuid.New(), orphan, uuid.New(), kept)
-	require.NoError(t, err)
-
-	require.NoError(t, schema.MigrateUp(ctx, sqlDB, cfg), "009 must apply on a DB that was not reset")
-
-	var orphanBy, keptBy *uuid.UUID
-	require.NoError(t, sqlDB.QueryRowContext(ctx, `SELECT created_by FROM orgs WHERE slug = 'orphan'`).Scan(&orphanBy))
-	require.NoError(t, sqlDB.QueryRowContext(ctx, `SELECT created_by FROM orgs WHERE slug = 'kept'`).Scan(&keptBy))
-	assert.Nil(t, orphanBy, "an orphan created_by is cleared")
-	require.NotNil(t, keptBy)
-	assert.Equal(t, kept, *keptBy, "a valid created_by is kept")
 }
 
 func as(ctx context.Context, o *org.Org) context.Context {

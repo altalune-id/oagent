@@ -14,8 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/testutil/pgtest"
-	"altalune.id/oagent/migrator"
-	"altalune.id/oagent/schema"
 )
 
 type twoOrgs struct {
@@ -105,27 +103,6 @@ func TestProjectFK_DeletingAProjectStillCascades(t *testing.T) {
 		require.NoError(t, db.QueryRowContext(t.Context(), `SELECT count(*) FROM `+table+` WHERE project_id = $1`, s.prjA).Scan(&n))
 		assert.Zero(t, n, table)
 	}
-}
-
-func TestProjectFK_MigrationRefusesExistingCrossOrgRows(t *testing.T) {
-	h := pgtest.New(t)
-	db := h.OpenDB(t)
-	cfg := migrator.Config{Schema: h.Schema}
-	ctx := t.Context()
-	require.NoError(t, schema.MigrateUp(ctx, db, cfg))
-	require.NoError(t, schema.MigrateDownTo(ctx, db, cfg, 11))
-
-	s := seedTwoOrgs(t, db)
-	require.NoError(t, inserts(s)["agents"](ctx, db, s.orgA, s.prjB), "version 11 still allows it")
-
-	err := schema.MigrateUp(ctx, db, cfg)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "agents")
-	assert.Contains(t, err.Error(), "project from another org")
-
-	var n int
-	require.NoError(t, db.QueryRowContext(ctx, `SELECT count(*) FROM agents`).Scan(&n))
-	assert.Equal(t, 1, n, "the bad row is left for a person to fix")
 }
 
 func TestProjectFK_OneCompositeKeyPerTable(t *testing.T) {

@@ -10,7 +10,8 @@ CREATE TABLE {{.Schema}}.{{.TablePrefix}}projects (
   created_by          UUID,
   created_at          TIMESTAMPTZ NOT NULL,
   updated_at          TIMESTAMPTZ NOT NULL,
-  UNIQUE (org_id, slug)
+  UNIQUE (org_id, slug),
+  CONSTRAINT {{.TablePrefix}}projects_org_id_id_key UNIQUE (org_id, id)
 );
 
 CREATE INDEX {{.TablePrefix}}projects_org_id_idx ON {{.Schema}}.{{.TablePrefix}}projects (org_id);

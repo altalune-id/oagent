@@ -1,13 +1,10 @@
 -- +goose Up
 -- +goose StatementBegin
 
-ALTER TABLE {{.Schema}}.{{.TablePrefix}}projects
-  ADD CONSTRAINT {{.TablePrefix}}projects_org_id_id_key UNIQUE (org_id, id);
-
 CREATE TABLE {{.Schema}}.{{.TablePrefix}}api_keys (
   id                  UUID PRIMARY KEY,
   org_id              UUID NOT NULL REFERENCES {{.Schema}}.{{.TablePrefix}}orgs (id) ON DELETE CASCADE,
-  project_id          UUID REFERENCES {{.Schema}}.{{.TablePrefix}}projects (id) ON DELETE CASCADE,
+  project_id          UUID,
   kind                TEXT NOT NULL,
   all_projects        BOOLEAN NOT NULL DEFAULT false,
   name                TEXT NOT NULL,
@@ -24,7 +21,9 @@ CREATE TABLE {{.Schema}}.{{.TablePrefix}}api_keys (
   CONSTRAINT {{.TablePrefix}}api_keys_kind_shape CHECK (
     (kind = 'project' AND project_id IS NOT NULL AND NOT all_projects)
     OR (kind = 'org' AND project_id IS NULL)
-  )
+  ),
+  CONSTRAINT {{.TablePrefix}}api_keys_org_project_fkey FOREIGN KEY (org_id, project_id)
+    REFERENCES {{.Schema}}.{{.TablePrefix}}projects (org_id, id) ON DELETE CASCADE
 );
 
 CREATE UNIQUE INDEX {{.TablePrefix}}api_keys_secret_hash_key
@@ -67,6 +66,5 @@ CREATE POLICY {{.TablePrefix}}api_key_projects_tenant ON {{.Schema}}.{{.TablePre
 
 DROP TABLE IF EXISTS {{.Schema}}.{{.TablePrefix}}api_key_projects;
 DROP TABLE IF EXISTS {{.Schema}}.{{.TablePrefix}}api_keys;
-ALTER TABLE {{.Schema}}.{{.TablePrefix}}projects DROP CONSTRAINT IF EXISTS {{.TablePrefix}}projects_org_id_id_key;
 
 -- +goose StatementEnd

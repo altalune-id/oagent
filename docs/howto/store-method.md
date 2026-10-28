@@ -83,7 +83,7 @@ Use this when a service needs a database verb its `Store` does not have. The `St
 - Total order: [internal/apikey/pgreader.go](../../internal/apikey/pgreader.go), [internal/org/member/pgreader.go](../../internal/org/member/pgreader.go)
 - Unit of work: [internal/kernel/db/db.go](../../internal/kernel/db/db.go) (`Read`, `ReadPrimary`, `Write`), [internal/kernel/db/uow.go](../../internal/kernel/db/uow.go) (`InTx`, the tenant scope), [internal/kernel/db/errors.go](../../internal/kernel/db/errors.go) (`IsNoRows`, `IsUniqueViolation`, `IsForeignKeyViolation`, `ViolatedConstraint`)
 - Guard tests: [internal/kernel/db/guard_test.go](../../internal/kernel/db/guard_test.go) (`TestOnlyKernelDBBeginsTransactions`, `TestOnlyKernelDBTouchesThePoolHandles`, `TestOnlyKernelDBSetsSessionState`, `TestReadersNeverWrite`)
-- Definer lookup: [internal/apikey/pgreader.go](../../internal/apikey/pgreader.go) (`BySecretHash`), [internal/agent/pgreader.go](../../internal/agent/pgreader.go) (`Resolve`), [schema/migrations/018_tenant_lookups.sql](../../schema/migrations/018_tenant_lookups.sql)
+- Definer lookup: [internal/apikey/pgreader.go](../../internal/apikey/pgreader.go) (`BySecretHash`), [internal/agent/pgreader.go](../../internal/agent/pgreader.go) (`Resolve`), [schema/migrations/017_tenant_lookups.sql](../../schema/migrations/017_tenant_lookups.sql)
 - Binding: [schema/entity/agents.go](../../schema/entity/agents.go) (`NewAgents`)
 - Fake: [internal/testutil/fakes/agent.go](../../internal/testutil/fakes/agent.go) (`AgentStore`)
 - Tests: [internal/agent/postgres_test.go](../../internal/agent/postgres_test.go), [internal/agent/postgres_integration_test.go](../../internal/agent/postgres_integration_test.go)

@@ -287,7 +287,7 @@ Global tables, with no org and no row level security: `users`, `sessions`, `pass
 
 ## Lookup functions
 
-`018_tenant_lookups.sql` holds the `SECURITY DEFINER` functions for reads that must run before a tenant scope
+`017_tenant_lookups.sql` holds the `SECURITY DEFINER` functions for reads that must run before a tenant scope
 exists, or across every org. Each one runs as the owner with `search_path = <schema>, pg_catalog, pg_temp`,
 matches one key, returns public columns only (never a hash), and is closed to `PUBLIC`; the service role gets
 `EXECUTE` through the owner's default privileges. `lookups_integration_test.go` checks all of this and that no
