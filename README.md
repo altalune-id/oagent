@@ -11,7 +11,7 @@ It already covers orgs, projects, members, API keys and webhooks. The agent runt
 
 ## Requirements
 
-- Go 1.26.9
+- Go 1.26.10
 - Node 24.15 or newer
 - pnpm 10 (`corepack enable` picks the version pinned in `package.json`)
 - Docker, for local dependencies and the integration tests

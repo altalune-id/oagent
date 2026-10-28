@@ -83,11 +83,12 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
   - The default is no comment.
   - Exported symbols get a one-sentence doc.
   - Keep only markers (`TODO`, `NOTE`, `SECURITY`…) or links. No rationale, history or section headers.
+  - Never reference untracked files or IDs defined only in them.
 - Generated code (`gen/`, `*_templ.go`, `ui/console/gen/`) is never edited by hand.
 
 **Versions**
 
-- Go 1.26.9, Node 24.15 or newer, pnpm 10 (never 11).
+- Go 1.26.10, Node 24.15 or newer, pnpm 10 (never 11).
 - Use the latest stable dependency versions that are at least a few days old.
 - Docker images are pinned by version, not digest.
 
@@ -100,7 +101,7 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
 
 ## Agent skills
 
-Skills in `.agents/skills/` (each linked from `.claude/skills/`) are committed and carry the same conventions. The linters skip them:
+Skills in `.agents/skills/` (each linked from `.claude/skills/`) and agents in `.agents/agents/` (each linked from `.claude/agents/`) are committed and carry the same conventions. The linters skip them:
 
 - `oagent-go-convention`: build a change the oagent way.
 - `oagent-go-review`: review a change; it runs the gates.
@@ -108,5 +109,6 @@ Skills in `.agents/skills/` (each linked from `.claude/skills/`) are committed a
 - `vue`, `pinia`, `vite`, `vitest`, `nuxt`, `eslint-config`: the console and the UI toolchain.
 - `daisyui`: daisyUI 5 classes, colors and themes for the console and the sign-in pages.
 - `cobra-viper`, `go-release`, `go-spec-reviewer`: CLI and config, releases, spec review.
+- Agent `go-expert-reviewer`: an independent, read-only scorecard of a Go repo (idioms, packaging and cycles, architecture, production readiness); it loads `go` and `go-proverb`.
 
-A new skill goes in `.agents/skills/<name>/` with a `.claude/skills/<name>` link, in the same commit.
+A new skill or agent goes in `.agents/{skills,agents}/<name>` with a `.claude/{skills,agents}/<name>` link, in the same commit.
