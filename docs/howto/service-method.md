@@ -6,6 +6,7 @@ Use this when a domain that already exists needs a new use case: create, change,
 
 - [ ] **Where does the rule live?** An invariant on one aggregate goes on the aggregate (`Agent.Update`, `agent.New`), not in the service. The service loads, calls the verb, saves.
 - [ ] **Inputs.** UUIDs only (`orgID`, `projectID`, `id`). Public ids are resolved at the edge ([public-ids.md](public-ids.md)). More than two or three fields → a `<Verb>Request` struct, like `agent.CreateRequest`.
+- [ ] **Tenant scope.** A method that takes an org id starts with `ctx = tenant.WithOrg(ctx, orgID)`, so every unit of work it opens carries that org into Postgres. A method that creates an org scopes to the new org's id before its transaction.
 - [ ] **Writes.** One row → call the store. More than one row, or a row plus an event or a mail → one unit of work through `s.uow.RunInTx`.
 - [ ] **Other domains.** Need something from another domain? Add a port in `ports.go` and a `With<Port>` option; boot wires it.
 - [ ] **Failures.** List the expected failures. Each is a typed error the aggregate or store returns, plus an error code ([error-code.md](error-code.md)). Everything else is unexpected.
@@ -65,7 +66,7 @@ Use this when a domain that already exists needs a new use case: create, change,
    }
    ```
 
-5. **Required ids and cross-domain checks.** A missing UUID is `apperror.Invalid("<field>", apperror.FieldRequired)`. A project that must belong to the org goes through `tenant.RequireProjectInOrg(ctx, s.projects, orgID, projectID)`.
+5. **Required ids, scope and cross-domain checks.** A missing UUID is `apperror.Invalid("<field>", apperror.FieldRequired)`. Then scope the context: `ctx = tenant.WithOrg(ctx, req.OrgID)` (as `project.Service.Create` does). A project that must belong to the org goes through `tenant.RequireProjectInOrg(ctx, s.projects, orgID, projectID)`.
 6. **Generated slugs.** An empty slug is minted with `slugpkg.Retry(slugpkg.MaxAttempts, IsAlreadyExistsError, ...)`, as in `agent.Service.createGenerated`.
 7. **New store verb?** [store-method.md](store-method.md). **New error?** [error-code.md](error-code.md), and add its `Is…` helper to `IsExpectedError` in `errors.go`.
 8. **Integration test** in `service_integration_test.go` (`//go:build integration`) when the method uses a unit of work: make the second write fail and assert nothing was saved.
@@ -78,6 +79,7 @@ Use this when a domain that already exists needs a new use case: create, change,
 - [ ] The method takes UUIDs, never public ids or slugs as lookup keys.
 - [ ] No permission or reach check in the service; that lives in `controlplane.go`. Domain rules (like `member.Authorize`) are fine.
 - [ ] Expected errors return unchanged; every store error goes through `errOrReport`, so unknown failures reach `s.unexpected` with a `"<domain>: <verb>"` message.
+- [ ] A method that takes an org id scopes `ctx` to it (`tenant.WithOrg`) before any store call.
 - [ ] Two or more writes run in one `s.uow.RunInTx`, and the closure uses its own `ctx`.
 - [ ] `service.go` imports no `database/sql` or `net/http` (lint rule `application-purity`).
 - [ ] Another domain is reached only through a port; the service never imports it.
@@ -93,5 +95,6 @@ Use this when a domain that already exists needs a new use case: create, change,
 - Ports and options: [internal/org/member/service.go](../../internal/org/member/service.go) (`WithEffects`, `WithDirectory`)
 - Transactor: [internal/kernel/db/uow.go](../../internal/kernel/db/uow.go) (`Transactor`, `RunInTx`)
 - Project in org: [internal/kernel/tenant/project.go](../../internal/kernel/tenant/project.go) (`RequireProjectInOrg`)
+- Tenant scope: [internal/kernel/tenant/context.go](../../internal/kernel/tenant/context.go) (`WithOrg`, `WithUser`), [internal/org/service.go](../../internal/org/service.go) (`Service.Create` scopes to the new org)
 - Unexpected errors: [apperror/reporter.go](../../apperror/reporter.go) (`UnexpectedFunc`)
 - Tests: [internal/agent/service_test.go](../../internal/agent/service_test.go), [internal/agent/service_integration_test.go](../../internal/agent/service_integration_test.go) (`TestService_CreateWithAFailedEventSavesNothing`)

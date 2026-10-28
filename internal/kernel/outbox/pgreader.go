@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
@@ -24,7 +25,7 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID, target string) (
 			AND(s.entries.Target.EQ(postgres.String(target))))
 
 	var row entryRow
-	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return Entry{}, &NotFoundError{ID: id.String()}
 		}
@@ -48,7 +49,7 @@ func (s *postgresStore) IDByPublicID(ctx context.Context, publicID, target strin
 	var row struct {
 		ID uuid.UUID `alias:"outbox_entries.id"`
 	}
-	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return uuid.Nil, &NotFoundError{ID: publicID}
 		}
@@ -71,7 +72,7 @@ func (s *postgresStore) ListByTarget(ctx context.Context, target string, limit i
 		LIMIT(listBatch(limit))
 
 	var rows []entryRow
-	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &rows); err != nil && !db.IsNoRows(err) {
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
 		return nil, fmt.Errorf("outbox.postgres: ListByTarget: %w", err)
 	}
 	out := make([]Entry, 0, len(rows))

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/db/dbtest"
 	"altalune.id/oagent/schema/entity"
 )
 
@@ -52,7 +53,9 @@ func TestList(t *testing.T) {
 	id := uuid.New()
 	rows := sqlmock.NewRows(orgRowColumns()).
 		AddRow(id, "p", "acme", "Acme", nil, time.Now(), time.Now(), false)
+	dbtest.ExpectTx(mock)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	mock.ExpectCommit()
 
 	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, orgs: entity.NewOrgs("public", "")}
 	got, err := s.List(context.Background())
@@ -65,7 +68,9 @@ func TestList(t *testing.T) {
 func TestByID_NotFound(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
+	dbtest.ExpectTx(mock)
 	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(orgRowColumns()))
+	mock.ExpectCommit()
 
 	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, orgs: entity.NewOrgs("public", "")}
 	_, err = s.ByID(context.Background(), uuid.New())
@@ -77,7 +82,9 @@ func TestBySlug(t *testing.T) {
 	require.NoError(t, err)
 	rows := sqlmock.NewRows(orgRowColumns()).
 		AddRow(uuid.New(), "p", "acme", "Acme", nil, time.Now(), time.Now(), false)
+	dbtest.ExpectTx(mock)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	mock.ExpectCommit()
 
 	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, orgs: entity.NewOrgs("public", "")}
 	got, err := s.BySlug(context.Background(), "acme")
@@ -88,7 +95,9 @@ func TestBySlug(t *testing.T) {
 func TestSave(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
+	dbtest.ExpectTx(mock)
 	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
 
 	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, orgs: entity.NewOrgs("public", "")}
 	o, err := NewOrg("acme", "Acme", uuid.Nil) // genesis: exercises the NULL created_by branch
@@ -99,7 +108,9 @@ func TestSave(t *testing.T) {
 func TestSave_AlreadyExists(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
+	dbtest.ExpectTx(mock)
 	mock.ExpectExec("INSERT").WillReturnError(&pgconn.PgError{Code: "23505"})
+	mock.ExpectRollback()
 
 	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, orgs: entity.NewOrgs("public", "")}
 	o, err := NewOrg("acme", "Acme", uuid.New())
@@ -137,14 +148,18 @@ func TestSystem(t *testing.T) {
 	require.NoError(t, err)
 	s := &postgresStore{pool: db.Pool{W: writer, R: reader}, orgs: entity.NewOrgs("public", "")}
 
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(orgRowColumns()).
 		AddRow(uuid.New(), "p", "acme", "Acme", nil, time.Now(), time.Now(), true))
+	wMock.ExpectCommit()
 	got, err := s.System(context.Background())
 	require.NoError(t, err)
 	assert.True(t, got.IsSystem)
 	assert.NoError(t, rMock.ExpectationsWereMet(), "the installed marker is read from the primary")
 
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(orgRowColumns()))
+	wMock.ExpectCommit()
 	_, err = s.System(context.Background())
 	assert.True(t, IsNotFoundError(err))
 }

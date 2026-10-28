@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/db/dbtest"
 )
 
 func userRowColumns() []string {
@@ -50,8 +51,10 @@ func TestUserRow_ToUser(t *testing.T) {
 func TestByID_UsesReader(t *testing.T) {
 	s, _, rMock := newMockStore(t)
 	id := uuid.New()
+	dbtest.ExpectTx(rMock)
 	rMock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(userRowColumns()).
 		AddRow(id, "p", "a@example.com", "", "", "", nil, nil, "", nil, time.Now(), time.Now()))
+	rMock.ExpectCommit()
 	got, err := s.ByID(context.Background(), id)
 	require.NoError(t, err)
 	assert.Equal(t, id, got.ID)
@@ -62,15 +65,19 @@ func TestByID_UsesReader(t *testing.T) {
 
 func TestByID_NotFound(t *testing.T) {
 	s, _, rMock := newMockStore(t)
+	dbtest.ExpectTx(rMock)
 	rMock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(userRowColumns()))
+	rMock.ExpectCommit()
 	_, err := s.ByID(context.Background(), uuid.New())
 	assert.True(t, IsNotFoundError(err))
 }
 
 func TestByEmail_UsesWriter(t *testing.T) {
 	s, wMock, rMock := newMockStore(t)
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectQuery("SELECT").WithArgs("alice@example.com", sqlmock.AnyArg()).WillReturnRows(sqlmock.NewRows(userRowColumns()).
 		AddRow(uuid.New(), "p", "alice@example.com", "", "", "", nil, nil, "", nil, time.Now(), time.Now()))
+	wMock.ExpectCommit()
 	got, err := s.ByEmail(context.Background(), " ALICE@example.com ")
 	require.NoError(t, err)
 	assert.Equal(t, "alice@example.com", got.Email)
@@ -88,7 +95,9 @@ func TestByEmail_InvalidIsNotFound(t *testing.T) {
 
 func TestSave(t *testing.T) {
 	s, wMock, _ := newMockStore(t)
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
+	wMock.ExpectCommit()
 	u, err := New("a@example.com", "A")
 	require.NoError(t, err)
 	at := time.Now()
@@ -100,7 +109,9 @@ func TestSave(t *testing.T) {
 
 func TestSave_AlreadyExists(t *testing.T) {
 	s, wMock, _ := newMockStore(t)
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectExec("INSERT").WillReturnError(&pgconn.PgError{Code: "23505"})
+	wMock.ExpectRollback()
 	u, err := New("a@example.com", "A")
 	require.NoError(t, err)
 	err = s.Save(context.Background(), u)
@@ -110,9 +121,15 @@ func TestSave_AlreadyExists(t *testing.T) {
 func TestStore_QueryErrors(t *testing.T) {
 	s, wMock, rMock := newMockStore(t)
 	boom := errors.New("boom")
+	dbtest.ExpectTx(rMock)
 	rMock.ExpectQuery("SELECT").WillReturnError(boom)
+	rMock.ExpectRollback()
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectQuery("SELECT").WillReturnError(boom)
+	wMock.ExpectRollback()
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectExec("INSERT").WillReturnError(boom)
+	wMock.ExpectRollback()
 
 	_, err := s.ByID(context.Background(), uuid.New())
 	assert.ErrorIs(t, err, boom)

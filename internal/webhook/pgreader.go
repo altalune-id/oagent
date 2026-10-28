@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
@@ -23,7 +24,7 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*Endpoint, erro
 			AND(s.endpoints.OrgID.EQ(postgres.UUID(tc.OrgID)))).
 		LIMIT(1)
 	var row endpointRow
-	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{ID: id.String()}
 		}
@@ -44,7 +45,7 @@ func (s *postgresStore) ByPublicID(ctx context.Context, publicID string) (*Endpo
 			AND(s.endpoints.OrgID.EQ(postgres.UUID(tc.OrgID)))).
 		LIMIT(1)
 	var row endpointRow
-	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{ID: publicID}
 		}
@@ -60,7 +61,7 @@ func (s *postgresStore) ListByOrg(ctx context.Context, orgID uuid.UUID) ([]*Endp
 		WHERE(s.endpoints.OrgID.EQ(postgres.UUID(orgID))).
 		ORDER_BY(s.endpoints.CreatedAt.ASC(), s.endpoints.ID.ASC())
 	var rows []endpointRow
-	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &rows); err != nil {
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil {
 		return nil, fmt.Errorf("webhook.postgres.ListByOrg: %w", err)
 	}
 	out := make([]*Endpoint, 0, len(rows))
@@ -87,7 +88,7 @@ func (s *postgresStore) List(ctx context.Context, orgID, projectID uuid.UUID) ([
 			AND(s.endpoints.ProjectID.EQ(postgres.UUID(projectID)))).
 		ORDER_BY(s.endpoints.CreatedAt.DESC(), s.endpoints.ID.DESC())
 	var rows []endpointRow
-	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &rows); err != nil {
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil {
 		return nil, fmt.Errorf("webhook.postgres.List: %w", err)
 	}
 	out := make([]*Endpoint, 0, len(rows))
@@ -114,7 +115,7 @@ func (s *postgresStore) ListAttempts(ctx context.Context, endpointID, deliveryID
 			AND(s.attempts.DeliveryID.EQ(postgres.UUID(deliveryID)))).
 		ORDER_BY(s.attempts.CreatedAt.DESC(), s.attempts.ID.DESC())
 	var rows []attemptRow
-	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &rows); err != nil {
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil {
 		return nil, fmt.Errorf("webhook.postgres.ListAttempts: %w", err)
 	}
 	out := make([]Attempt, 0, len(rows))

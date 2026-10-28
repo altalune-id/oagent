@@ -7,11 +7,11 @@ Use this when a service needs a database verb its `Store` does not have. The `St
 - [ ] **Reader or Writer?** `Store` embeds `Reader` (reads, may use a replica) and `Writer` (writes). Put the verb on the right one.
 - [ ] **Name.** Verbs used today: `ByID`, `ByPublicID`, `BySlug`, `List`, `Save`, `Delete`, `Add`, `Find`. Reuse one before you invent one.
 - [ ] **Keys.** It takes UUIDs. `ByPublicID` exists for the edge only ([public-ids.md](public-ids.md)).
-- [ ] **Scope.** Which predicate confines the row? An explicit argument (`List(ctx, projectID)`), or the tenant on `ctx` (`tenant.From(ctx)`, as the webhook store does).
+- [ ] **Scope.** Which predicate confines the row? An explicit argument (`List(ctx, projectID)`), or the tenant on `ctx` (`tenant.From(ctx)`, as the webhook store does). The service puts the org on `ctx` (`tenant.Into`/`tenant.WithOrg`) before the unit of work begins, and every transaction carries it into Postgres.
 - [ ] **Failures.** No row → the domain's `*NotFoundError`. Unique violation → `*AlreadyExistsError`. Nothing else is typed.
 - [ ] **Order.** A list needs a stable order. Use a total order: a timestamp and then `id`. The `apikey`, `member` and `webhook` readers do this; the `agent`, `project` and `org` `List` readers order by `created_at` only, so don't copy those.
 - [ ] **Text search.** No store does a `LIKE`/`ILIKE` or full-text search yet, so there is no reference for case, escaping or indexes. Ask before adding the first one.
-- [ ] **Transaction.** The store never begins one. It joins the unit of work on `ctx`, if any.
+- [ ] **Transaction.** The store never begins one. It joins the unit of work on `ctx`, if any. The tx scope follows the joining context: every join keeps the org (another org fails with `db.ErrTenantMismatch`, a missing one is set) and sets the project to the context's, or clears it when the context names none.
 
 ## Build
 
@@ -25,7 +25,7 @@ Use this when a service needs a database verb its `Store` does not have. The `St
    }
    ```
 
-2. **Postgres.** Reads in `pgreader.go`, writes in `pgwriter.go`, both on `postgresStore` (`postgres.go`). Build with the go-jet builder and the `schema/entity` binding. Run reads on `db.Reader(ctx, s.pool)` and writes on `db.Writer(ctx, s.pool)`; both return the transaction on `ctx` when there is one:
+2. **Postgres.** Reads in `pgreader.go`, writes in `pgwriter.go`, both on `postgresStore` (`postgres.go`). Build with the go-jet builder and the `schema/entity` binding. Every statement runs in a transaction that carries the tenant scope: `db.Read(ctx, s.pool, fn)` for reads (a read-only transaction on the replica), `db.ReadPrimary` for reads that must see the latest commit (authentication, membership, invites, resets), `db.Write` for writes. Each joins the transaction on `ctx` when there is one. A `pgreader.go` never calls `db.Write`, `db.InTx` or `db.RunInTx` (`TestReadersNeverWrite`):
 
    ```go
    // ByPublicID loads an agent by its public id.
@@ -35,7 +35,7 @@ Use this when a service needs a database verb its `Store` does not have. The `St
            WHERE(s.agents.PublicID.EQ(postgres.String(publicID))).
            LIMIT(1)
        var row agentRow
-       if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
+       if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
            if db.IsNoRows(err) {
                return nil, &NotFoundError{ID: publicID}
            }
@@ -64,7 +64,7 @@ Use this when a service needs a database verb its `Store` does not have. The `St
 
 ## Review
 
-- [ ] The store never begins a transaction. It uses `db.Reader`, `db.Writer` or `db.InTx` (`TestOnlyKernelDBBeginsTransactions` fails otherwise).
+- [ ] The store never begins a transaction or touches `pool.R`/`pool.W`. It uses `db.Read`, `db.ReadPrimary`, `db.Write` or `db.InTx` (`TestOnlyKernelDBBeginsTransactions` and `TestOnlyKernelDBTouchesThePoolHandles` fail otherwise); a `pgreader.go` only reads (`TestReadersNeverWrite`).
 - [ ] No driver error leaves the store untyped when it is expected: no row → `*NotFoundError`, unique violation → `*AlreadyExistsError`. Other errors are wrapped with the domain and the verb, like `"agent.postgres: ByID: %w"`.
 - [ ] The query names its scope (org, project or tenant from `ctx`). An upsert's conflict clause is guarded by org.
 - [ ] A list orders by a total order.
@@ -80,8 +80,8 @@ Use this when a service needs a database verb its `Store` does not have. The `St
 - Writes: [internal/agent/pgwriter.go](../../internal/agent/pgwriter.go) (`Save`, `Delete`, `createdByExpr`)
 - Guarded upsert and tenant on `ctx`: [internal/webhook/pgwriter.go](../../internal/webhook/pgwriter.go) (`Save`), [internal/webhook/pgreader.go](../../internal/webhook/pgreader.go) (`ByPublicID`)
 - Total order: [internal/apikey/pgreader.go](../../internal/apikey/pgreader.go), [internal/org/member/pgreader.go](../../internal/org/member/pgreader.go)
-- Unit of work: [internal/kernel/db/uow.go](../../internal/kernel/db/uow.go) (`Reader`, `Writer`, `InTx`), [internal/kernel/db/errors.go](../../internal/kernel/db/errors.go) (`IsNoRows`, `IsUniqueViolation`, `IsForeignKeyViolation`, `ViolatedConstraint`)
-- Guard test: [internal/kernel/db/guard_test.go](../../internal/kernel/db/guard_test.go) (`TestOnlyKernelDBBeginsTransactions`)
+- Unit of work: [internal/kernel/db/db.go](../../internal/kernel/db/db.go) (`Read`, `ReadPrimary`, `Write`), [internal/kernel/db/uow.go](../../internal/kernel/db/uow.go) (`InTx`, the tenant scope), [internal/kernel/db/errors.go](../../internal/kernel/db/errors.go) (`IsNoRows`, `IsUniqueViolation`, `IsForeignKeyViolation`, `ViolatedConstraint`)
+- Guard tests: [internal/kernel/db/guard_test.go](../../internal/kernel/db/guard_test.go) (`TestOnlyKernelDBBeginsTransactions`, `TestOnlyKernelDBTouchesThePoolHandles`, `TestOnlyKernelDBSetsSessionState`, `TestReadersNeverWrite`)
 - Binding: [schema/entity/agents.go](../../schema/entity/agents.go) (`NewAgents`)
 - Fake: [internal/testutil/fakes/agent.go](../../internal/testutil/fakes/agent.go) (`AgentStore`)
 - Tests: [internal/agent/postgres_test.go](../../internal/agent/postgres_test.go), [internal/agent/postgres_integration_test.go](../../internal/agent/postgres_integration_test.go)

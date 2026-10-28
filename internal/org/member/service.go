@@ -12,6 +12,7 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/org/member/views"
 	"altalune.id/oagent/mailer"
 	"altalune.id/oagent/scope"
@@ -55,6 +56,7 @@ func (s *Service) WithOperatorSupport(on bool) *Service {
 
 // Add makes userID a member of orgID with role.
 func (s *Service) Add(ctx context.Context, orgID, userID uuid.UUID, role Role) (*Membership, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	m, err := New(orgID, userID, role)
 	if err != nil {
 		return nil, err
@@ -67,6 +69,7 @@ func (s *Service) Add(ctx context.Context, orgID, userID uuid.UUID, role Role) (
 
 // Find returns the membership of userID in orgID.
 func (s *Service) Find(ctx context.Context, orgID, userID uuid.UUID) (*Membership, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	m, err := s.store.Find(ctx, orgID, userID)
 	if err != nil {
 		return nil, s.errOrReport(ctx, "member: find", err)
@@ -76,6 +79,7 @@ func (s *Service) Find(ctx context.Context, orgID, userID uuid.UUID) (*Membershi
 
 // ListByUser returns userID's memberships, oldest first.
 func (s *Service) ListByUser(ctx context.Context, userID uuid.UUID) ([]*Membership, error) {
+	ctx = tenant.WithUser(ctx, userID)
 	ms, err := s.store.ListByUser(ctx, userID)
 	if err != nil {
 		return nil, s.errOrReport(ctx, "member: list by user", err)
@@ -85,6 +89,7 @@ func (s *Service) ListByUser(ctx context.Context, userID uuid.UUID) ([]*Membersh
 
 // CountOwners returns how many owners orgID has.
 func (s *Service) CountOwners(ctx context.Context, orgID uuid.UUID) (int, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	n, err := s.store.CountOwners(ctx, orgID)
 	if err != nil {
 		return 0, s.errOrReport(ctx, "member: count owners", err)
@@ -94,6 +99,7 @@ func (s *Service) CountOwners(ctx context.Context, orgID uuid.UUID) (int, error)
 
 // List returns orgID's members with their email and name, owners first, then admins, then members.
 func (s *Service) List(ctx context.Context, orgID uuid.UUID) ([]Member, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	ms, err := s.store.ListByOrg(ctx, orgID)
 	if err != nil {
 		return nil, s.errOrReport(ctx, "member: list", err)
@@ -103,6 +109,7 @@ func (s *Service) List(ctx context.Context, orgID uuid.UUID) ([]Member, error) {
 
 // SetRole changes userID's role in orgID to the role to, on behalf of r; the org always keeps an owner.
 func (s *Service) SetRole(ctx context.Context, r Requester, orgID, userID uuid.UUID, to Role) (*Membership, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	if !to.IsValid() {
 		return nil, &InvalidRoleError{Role: string(to)}
 	}
@@ -132,6 +139,7 @@ func (s *Service) SetRole(ctx context.Context, r Requester, orgID, userID uuid.U
 
 // Remove takes userID out of orgID on behalf of r; the org always keeps an owner.
 func (s *Service) Remove(ctx context.Context, r Requester, orgID, userID uuid.UUID) error {
+	ctx = tenant.WithOrg(ctx, orgID)
 	err := s.guarded(ctx, orgID, userID, LastOwnerRemove, s.authorizer(r, orgID, ""),
 		func(ctx context.Context, _ *Membership) error {
 			if err := s.store.Delete(ctx, orgID, userID); err != nil {
@@ -147,6 +155,7 @@ func (s *Service) Remove(ctx context.Context, r Requester, orgID, userID uuid.UU
 
 // Leave takes userID out of orgID at their own request, unless they are its last owner.
 func (s *Service) Leave(ctx context.Context, orgID, userID uuid.UUID) error {
+	ctx = tenant.WithOrg(ctx, orgID)
 	err := s.guarded(ctx, orgID, userID, LastOwnerLeave, nil,
 		func(ctx context.Context, _ *Membership) error {
 			if err := s.store.Delete(ctx, orgID, userID); err != nil {
@@ -162,6 +171,7 @@ func (s *Service) Leave(ctx context.Context, orgID, userID uuid.UUID) error {
 
 // AddExisting makes the existing user userID a member of orgID with role, on behalf of r; an existing membership is never changed.
 func (s *Service) AddExisting(ctx context.Context, r Requester, orgID, userID uuid.UUID, role Role) (*Membership, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	if !role.IsValid() {
 		return nil, &InvalidRoleError{Role: string(role)}
 	}
@@ -184,6 +194,7 @@ func (s *Service) AddExisting(ctx context.Context, r Requester, orgID, userID uu
 
 // AddFromInvite makes userID a member of orgID with role unless they already belong to it; it joins the transaction on ctx.
 func (s *Service) AddFromInvite(ctx context.Context, orgID, userID uuid.UUID, role Role) (added bool, err error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	m, err := New(orgID, userID, role)
 	if err != nil {
 		return false, err
@@ -197,6 +208,7 @@ func (s *Service) AddFromInvite(ctx context.Context, orgID, userID uuid.UUID, ro
 
 // ActorFor resolves r for orgID with the rules SetRole and Remove use; it joins the transaction on ctx, where the membership row is locked.
 func (s *Service) ActorFor(ctx context.Context, r Requester, orgID uuid.UUID) (Actor, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	a, err := s.actor(ctx, r, orgID, nil)
 	if err != nil {
 		return Actor{}, s.errOrReport(ctx, "member: actor", err)

@@ -9,6 +9,7 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/authz"
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/scope"
 )
@@ -68,6 +69,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*APIKey, strin
 	if req.OrgID == uuid.Nil {
 		return nil, "", apperror.Invalid("organization_id", apperror.FieldRequired)
 	}
+	ctx = tenant.WithOrg(ctx, req.OrgID)
 	if req.Kind == KindPersonal {
 		if err := s.requirePersonalAllowed(req.CreatedBy); err != nil {
 			return nil, "", err
@@ -187,6 +189,7 @@ func (s *Service) requireOrgProjects(ctx context.Context, orgID uuid.UUID, grant
 
 // List returns an organization's keys; viewer sees only their own personal keys, uuid.Nil (a trusted caller) sees all.
 func (s *Service) List(ctx context.Context, orgID, viewer uuid.UUID) ([]*APIKey, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	keys, err := s.store.List(ctx, orgID)
 	if err != nil {
 		return nil, s.errOrReport(ctx, "apikey: list", err)
@@ -202,6 +205,7 @@ func (s *Service) List(ctx context.Context, orgID, viewer uuid.UUID) ([]*APIKey,
 
 // Revoke marks a key revoked; another person's personal key is not found, and any key but the viewer's own needs manage.
 func (s *Service) Revoke(ctx context.Context, orgID, id, viewer uuid.UUID, manage bool) error {
+	ctx = tenant.WithOrg(ctx, orgID)
 	k, err := s.store.ByID(ctx, id)
 	if err != nil {
 		return s.errOrReport(ctx, "apikey: revoke", err)
@@ -225,6 +229,7 @@ func (s *Service) revoke(ctx context.Context, orgID uuid.UUID, k *APIKey, viewer
 
 // RevokeByHint revokes orgID's live key whose secret ends with hint (a leading … as shown is ignored), under the same rules as Revoke.
 func (s *Service) RevokeByHint(ctx context.Context, orgID uuid.UUID, hint string, viewer uuid.UUID, manage bool) error {
+	ctx = tenant.WithOrg(ctx, orgID)
 	hint = strings.TrimSpace(hint)
 	hint = strings.TrimPrefix(strings.TrimPrefix(hint, "…"), "...")
 	k, err := s.store.ByHint(ctx, orgID, hint)
@@ -236,6 +241,7 @@ func (s *Service) RevokeByHint(ctx context.Context, orgID uuid.UUID, hint string
 
 // RevokePersonalOf revokes every live personal key userID owns in orgID; it joins the transaction on ctx.
 func (s *Service) RevokePersonalOf(ctx context.Context, orgID, userID uuid.UUID) (int, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	n, err := s.store.RevokePersonalOf(ctx, orgID, userID, s.now())
 	if err != nil {
 		return 0, s.errOrReport(ctx, "apikey: revoke personal keys", err)

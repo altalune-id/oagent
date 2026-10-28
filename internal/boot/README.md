@@ -161,8 +161,11 @@ flowchart TD
 **Unit of work:** a use case owns its transaction; stores never begin one. `buildServices` makes one
 `db.NewTransactor(k.Pool)` and hands it to every service that writes more than one row (`org`,
 `agent`, `org/member`, `org/invite`, `install`, `legal`, the password resets in `auth`). A store joins the transaction on `ctx`
-(`db.Reader`, `db.Writer`, `db.InTx`) or runs alone; a nested `RunInTx` joins the outer one.
-`kernel/db`'s guard test fails if any other package begins a transaction.
+(`db.Read`, `db.ReadPrimary`, `db.Write`, `db.InTx`) or runs in its own; a nested `RunInTx` joins the outer one.
+Every transaction starts with the tenant scope of `ctx` (`app.current_org_id`, `app.current_project_id`,
+`app.current_user_id`, transaction-local). The Connect interceptor and MCP authentication put the principal's
+org, project and user on `ctx`; a service method that takes an org id scopes to it first (`tenant.WithOrg`).
+`kernel/db`'s guard tests fail if any other package begins a transaction, touches the pool handles or sets session state.
 
 `org → project` is the after-create hook that adds the default project, in the org's unit of work:
 if it fails, the org is not created. An agent's save and its `agent.created`/`agent.updated` event

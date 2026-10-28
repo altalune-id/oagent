@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/go-jet/jet/v2/qrm"
 
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/schema/entity"
@@ -23,7 +24,7 @@ func (s *postgresStore) Save(ctx context.Context, o *Org) error {
 			s.orgs.Name.SET(postgres.String(o.Name)),
 			s.orgs.UpdatedAt.SET(postgres.TimestampzT(now)),
 		))
-	if _, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool)); err != nil {
+	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { _, err := stmt.ExecContext(ctx, q); return err }); err != nil {
 		if db.IsUniqueViolation(err) {
 			return &AlreadyExistsError{Slug: o.Slug}
 		}

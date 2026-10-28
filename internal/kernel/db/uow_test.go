@@ -174,23 +174,6 @@ func TestInTx_NilPool(t *testing.T) {
 	assert.Error(t, InTx(context.Background(), Pool{}, func(*sql.Tx) error { return nil }))
 }
 
-func TestReaderAndWriter(t *testing.T) {
-	pool, mock := mockPool(t)
-	ctx := context.Background()
-	assert.Same(t, pool.R, Reader(ctx, pool))
-	assert.Same(t, pool.W, Writer(ctx, pool))
-
-	mock.ExpectBegin()
-	expectScope(mock, tenant.Context{})
-	mock.ExpectCommit()
-	require.NoError(t, RunInTx(ctx, pool, func(ctx context.Context) error {
-		tx, _ := CurrentTx(ctx)
-		assert.Same(t, tx, Reader(ctx, pool), "Reader must use the ambient transaction")
-		assert.Same(t, tx, Writer(ctx, pool), "Writer must use the ambient transaction")
-		return nil
-	}))
-}
-
 func TestNewTransactor_RunsAUnitOfWork(t *testing.T) {
 	pool, mock := mockPool(t)
 	mock.ExpectBegin()

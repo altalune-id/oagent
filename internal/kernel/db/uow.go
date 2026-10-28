@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/tenant"
@@ -109,22 +108,6 @@ func scopeValue(id uuid.UUID) string {
 		return ""
 	}
 	return id.String()
-}
-
-// Reader returns the transaction on ctx, else pool.R.
-func Reader(ctx context.Context, pool Pool) qrm.DB {
-	if tx, ok := CurrentTx(ctx); ok {
-		return tx
-	}
-	return pool.R
-}
-
-// Writer returns the transaction on ctx, else pool.W.
-func Writer(ctx context.Context, pool Pool) qrm.DB {
-	if tx, ok := CurrentTx(ctx); ok {
-		return tx
-	}
-	return pool.W
 }
 
 // CurrentTx returns the transaction bound to ctx, or (nil, false) if none is active.

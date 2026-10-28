@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/db/dbtest"
 )
 
 func membershipColumns() []string {
@@ -34,7 +35,9 @@ func newMockStore(t *testing.T) (*postgresStore, sqlmock.Sqlmock, sqlmock.Sqlmoc
 
 func TestAdd(t *testing.T) {
 	s, wMock, _ := newMockStore(t)
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
+	wMock.ExpectCommit()
 	m, err := New(uuid.New(), uuid.New(), RoleOwner)
 	require.NoError(t, err)
 	require.NoError(t, s.Add(context.Background(), m))
@@ -43,7 +46,9 @@ func TestAdd(t *testing.T) {
 
 func TestAdd_AlreadyMember(t *testing.T) {
 	s, wMock, _ := newMockStore(t)
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectExec("INSERT").WillReturnError(&pgconn.PgError{Code: "23505"})
+	wMock.ExpectRollback()
 	m, err := New(uuid.New(), uuid.New(), RoleMember)
 	require.NoError(t, err)
 	err = s.Add(context.Background(), m)
@@ -56,8 +61,10 @@ func TestAdd_AlreadyMember(t *testing.T) {
 func TestFind_UsesWriter(t *testing.T) {
 	s, wMock, rMock := newMockStore(t)
 	org, usr := uuid.New(), uuid.New()
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(membershipColumns()).
 		AddRow(uuid.New(), "p", org, usr, "admin", time.Now()))
+	wMock.ExpectCommit()
 	m, err := s.Find(context.Background(), org, usr)
 	require.NoError(t, err)
 	assert.Equal(t, RoleAdmin, m.Role)
@@ -67,7 +74,9 @@ func TestFind_UsesWriter(t *testing.T) {
 
 func TestFind_NotFound(t *testing.T) {
 	s, wMock, _ := newMockStore(t)
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(membershipColumns()))
+	wMock.ExpectCommit()
 	_, err := s.Find(context.Background(), uuid.New(), uuid.New())
 	assert.True(t, IsNotFoundError(err))
 }
@@ -75,9 +84,11 @@ func TestFind_NotFound(t *testing.T) {
 func TestListByUser(t *testing.T) {
 	s, wMock, _ := newMockStore(t)
 	usr := uuid.New()
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(membershipColumns()).
 		AddRow(uuid.New(), "a", uuid.New(), usr, "owner", time.Unix(1, 0)).
 		AddRow(uuid.New(), "b", uuid.New(), usr, "member", time.Unix(2, 0)))
+	wMock.ExpectCommit()
 	got, err := s.ListByUser(context.Background(), usr)
 	require.NoError(t, err)
 	require.Len(t, got, 2)
@@ -87,7 +98,9 @@ func TestListByUser(t *testing.T) {
 
 func TestCountOwners(t *testing.T) {
 	s, wMock, _ := newMockStore(t)
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
+	wMock.ExpectCommit()
 	n, err := s.CountOwners(context.Background(), uuid.New())
 	require.NoError(t, err)
 	assert.Equal(t, 2, n)
@@ -96,10 +109,18 @@ func TestCountOwners(t *testing.T) {
 func TestStore_QueryErrors(t *testing.T) {
 	s, wMock, _ := newMockStore(t)
 	boom := errors.New("boom")
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectExec("INSERT").WillReturnError(boom)
+	wMock.ExpectRollback()
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectQuery("SELECT").WillReturnError(boom)
+	wMock.ExpectRollback()
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectQuery("SELECT").WillReturnError(boom)
+	wMock.ExpectRollback()
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectQuery("SELECT").WillReturnError(boom)
+	wMock.ExpectRollback()
 
 	m, _ := New(uuid.New(), uuid.New(), RoleMember)
 	assert.ErrorIs(t, s.Add(context.Background(), m), boom)

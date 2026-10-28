@@ -8,6 +8,7 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/tenant"
 	slugpkg "altalune.id/oagent/slug"
 )
 
@@ -57,7 +58,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*Org, error) {
 		if err != nil {
 			return nil, err
 		}
-		return o, s.uow.RunInTx(ctx, func(ctx context.Context) error {
+		// SECURITY: orgs and their first rows are scoped by the new org's own id, never the caller's active org.
+		scoped := tenant.Into(ctx, tenant.Context{OrgID: o.ID, UserID: req.CreatedBy})
+		return o, s.uow.RunInTx(scoped, func(ctx context.Context) error {
 			if err := s.store.Save(ctx, o); err != nil {
 				return err
 			}
@@ -94,7 +97,7 @@ func (s *Service) CreateSystem(ctx context.Context, req CreateRequest) (*Org, er
 	if err != nil {
 		return nil, err
 	}
-	if err := s.store.Save(ctx, o); err != nil {
+	if err := s.store.Save(tenant.WithOrg(ctx, o.ID), o); err != nil {
 		return nil, s.errOrReport(ctx, "org: create system", err)
 	}
 	return o, nil
@@ -117,6 +120,7 @@ func (s *Service) systemSlug(ctx context.Context, slug string) (string, error) {
 
 // Get loads an org by id.
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (*Org, error) {
+	ctx = tenant.WithOrg(ctx, id)
 	o, err := s.store.ByID(ctx, id)
 	if err != nil {
 		return nil, s.errOrReport(ctx, "org: get", err)
@@ -162,6 +166,7 @@ func (s *Service) List(ctx context.Context) ([]*Org, error) {
 
 // Update changes an org's display name and slug.
 func (s *Service) Update(ctx context.Context, id uuid.UUID, name, slug string) (*Org, error) {
+	ctx = tenant.WithOrg(ctx, id)
 	o, err := s.store.ByID(ctx, id)
 	if err != nil {
 		return nil, s.errOrReport(ctx, "org: update", err)

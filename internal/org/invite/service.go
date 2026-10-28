@@ -10,6 +10,7 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/events"
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org/invite/views"
 	"altalune.id/oagent/internal/org/member"
@@ -67,6 +68,7 @@ func (s *Service) WithClock(now func() time.Time) *Service {
 
 // Create invites email to orgID with role on behalf of r and queues the email; a live invite for that email is replaced.
 func (s *Service) Create(ctx context.Context, r member.Requester, orgID uuid.UUID, email string, role member.Role) (*Created, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	email, err := user.NormalizeEmail(email)
 	if err != nil {
 		return nil, err
@@ -96,6 +98,7 @@ func (s *Service) Create(ctx context.Context, r member.Requester, orgID uuid.UUI
 
 // Resend gives a pending or expired invite a new link and expiry, and emails it again.
 func (s *Service) Resend(ctx context.Context, r member.Requester, orgID, inviteID uuid.UUID) (*Created, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	var out *Created
 	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		inv, err := s.locked(ctx, r, orgID, inviteID, false)
@@ -113,27 +116,32 @@ func (s *Service) Resend(ctx context.Context, r member.Requester, orgID, inviteI
 
 // Revoke cancels a pending or expired invite; the row is kept.
 func (s *Service) Revoke(ctx context.Context, r member.Requester, orgID, inviteID uuid.UUID) error {
+	ctx = tenant.WithOrg(ctx, orgID)
 	return s.revoke(ctx, r, orgID, inviteID, false)
 }
 
 // DiscardDraft cancels a draft.
 func (s *Service) DiscardDraft(ctx context.Context, r member.Requester, orgID, inviteID uuid.UUID) error {
+	ctx = tenant.WithOrg(ctx, orgID)
 	return s.revoke(ctx, r, orgID, inviteID, true)
 }
 
 // ListPending returns orgID's pending and expired invites, without drafts, oldest first.
 func (s *Service) ListPending(ctx context.Context, orgID uuid.UUID) ([]*Invite, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	return s.list(ctx, orgID, func(i *Invite) bool { return !i.Draft })
 }
 
 // ListDrafts returns orgID's drafts that can still be confirmed, oldest first.
 func (s *Service) ListDrafts(ctx context.Context, orgID uuid.UUID) ([]*Invite, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	now := s.now()
 	return s.list(ctx, orgID, func(i *Invite) bool { return i.Draft && !i.expired(now) })
 }
 
 // Draft records an assistant's suggestion to invite email as a member: no token and no email until a person confirms it.
 func (s *Service) Draft(ctx context.Context, r member.Requester, orgID uuid.UUID, email string) (*Invite, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	email, err := user.NormalizeEmail(email)
 	if err != nil {
 		return nil, err
@@ -163,6 +171,7 @@ func (s *Service) Draft(ctx context.Context, r member.Requester, orgID uuid.UUID
 
 // ConfirmDraft turns a draft into an invite with a link and queues the email; a person must call it.
 func (s *Service) ConfirmDraft(ctx context.Context, r member.Requester, orgID, inviteID uuid.UUID) (*Created, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	var out *Created
 	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		inv, err := s.locked(ctx, r, orgID, inviteID, true)

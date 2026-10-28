@@ -17,7 +17,8 @@ func TestSave(t *testing.T) {
 
 	t.Run("upsert", func(t *testing.T) {
 		s, mock := newStoreTest(t)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectCommit()
 		e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project, URL: "u", Active: true, EventTypes: []events.Type{events.AgentCreated}}
@@ -26,7 +27,8 @@ func TestSave(t *testing.T) {
 
 	t.Run("org mismatch", func(t *testing.T) {
 		s, mock := newStoreTest(t)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectRollback()
 		e := &Endpoint{ID: uuid.New(), OrgID: uuid.New(), ProjectID: project}
 		assert.True(t, IsNotFoundError(s.Save(storeCtx(org, project), e)))
@@ -34,7 +36,8 @@ func TestSave(t *testing.T) {
 
 	t.Run("no rows", func(t *testing.T) {
 		s, mock := newStoreTest(t)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 0))
 		mock.ExpectCommit()
 		e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project, EventTypes: []events.Type{events.AgentCreated}}
@@ -49,7 +52,8 @@ func TestSaveSecrets(t *testing.T) {
 
 	t.Run("updated", func(t *testing.T) {
 		s, mock := newStoreTest(t)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectCommit()
 		assert.NoError(t, s.SaveSecrets(storeCtx(org, project), id, SealedSecrets{Primary: []byte("e")}, next))
@@ -58,7 +62,8 @@ func TestSaveSecrets(t *testing.T) {
 	t.Run("conflict", func(t *testing.T) {
 		s, mock := newStoreTest(t)
 		rows := sqlmock.NewRows([]string{"webhook_endpoints.id"}).AddRow(id)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0))
 		mock.ExpectQuery("SELECT").WillReturnRows(rows)
 		mock.ExpectCommit()
@@ -67,7 +72,8 @@ func TestSaveSecrets(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		s, mock := newStoreTest(t)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0))
 		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"webhook_endpoints.id"}))
 		mock.ExpectCommit()
@@ -80,7 +86,8 @@ func TestDelete(t *testing.T) {
 
 	t.Run("deleted", func(t *testing.T) {
 		s, mock := newStoreTest(t)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectExec("DELETE").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectCommit()
 		assert.NoError(t, s.Delete(storeCtx(org, project), uuid.New()))
@@ -88,7 +95,8 @@ func TestDelete(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		s, mock := newStoreTest(t)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectExec("DELETE").WillReturnResult(sqlmock.NewResult(0, 0))
 		mock.ExpectCommit()
 		assert.True(t, IsNotFoundError(s.Delete(storeCtx(org, project), uuid.New())))
@@ -100,7 +108,8 @@ func TestSaveAttempt(t *testing.T) {
 
 	t.Run("inserts", func(t *testing.T) {
 		s, mock := newStoreTest(t)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectCommit()
 		a := Attempt{OrgID: org, ProjectID: project, EndpointID: uuid.New(), EventType: events.AgentCreated, ResponseHeaders: nil}
@@ -109,7 +118,8 @@ func TestSaveAttempt(t *testing.T) {
 
 	t.Run("foreign key", func(t *testing.T) {
 		s, mock := newStoreTest(t)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectExec("INSERT").WillReturnError(&pgconn.PgError{Code: "23503"})
 		mock.ExpectRollback()
 		a := Attempt{OrgID: org, ProjectID: project, EndpointID: uuid.New()}
@@ -118,7 +128,8 @@ func TestSaveAttempt(t *testing.T) {
 
 	t.Run("scope mismatch", func(t *testing.T) {
 		s, mock := newStoreTest(t)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectRollback()
 		a := Attempt{OrgID: uuid.New(), ProjectID: project}
 		assert.True(t, IsInvalidAttemptError(s.SaveAttempt(storeCtx(org, project), a)))
@@ -136,7 +147,8 @@ func TestWriterErrorBranches(t *testing.T) {
 
 	t.Run("save exec error", func(t *testing.T) {
 		s, mock := newStoreTest(t)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectExec("INSERT").WillReturnError(errBoom)
 		mock.ExpectRollback()
 		e := &Endpoint{ID: uuid.New(), OrgID: org, ProjectID: project, EventTypes: []events.Type{events.AgentCreated}}
@@ -145,7 +157,8 @@ func TestWriterErrorBranches(t *testing.T) {
 
 	t.Run("saveSecrets exec error", func(t *testing.T) {
 		s, mock := newStoreTest(t)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectExec("UPDATE").WillReturnError(errBoom)
 		mock.ExpectRollback()
 		assert.Error(t, s.SaveSecrets(ctx, uuid.New(), SealedSecrets{}, SealedSecrets{Primary: []byte("n")}))
@@ -153,7 +166,8 @@ func TestWriterErrorBranches(t *testing.T) {
 
 	t.Run("delete exec error", func(t *testing.T) {
 		s, mock := newStoreTest(t)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectExec("DELETE").WillReturnError(errBoom)
 		mock.ExpectRollback()
 		assert.Error(t, s.Delete(ctx, uuid.New()))
@@ -161,7 +175,8 @@ func TestWriterErrorBranches(t *testing.T) {
 
 	t.Run("saveAttempt exec error", func(t *testing.T) {
 		s, mock := newStoreTest(t)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectExec("INSERT").WillReturnError(errBoom)
 		mock.ExpectRollback()
 		assert.Error(t, s.SaveAttempt(ctx, Attempt{OrgID: org, ProjectID: project, EndpointID: uuid.New()}))
@@ -175,7 +190,8 @@ func TestWriterErrorBranches(t *testing.T) {
 
 	t.Run("commit error", func(t *testing.T) {
 		s, mock := newStoreTest(t)
-		dbtest.ExpectTx(mock)
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
 		mock.ExpectExec("DELETE").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectCommit().WillReturnError(errBoom)
 		assert.Error(t, s.Delete(ctx, uuid.New()))

@@ -13,7 +13,7 @@ import (
 
 // ByID loads a user by id.
 func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*User, error) {
-	return s.one(ctx, db.Reader(ctx, s.pool), "ByID", s.users.ID.EQ(postgres.UUID(id)))
+	return s.one(ctx, db.Read, "ByID", s.users.ID.EQ(postgres.UUID(id)))
 }
 
 // ByEmail loads a user by normalized email from the primary.
@@ -22,18 +22,20 @@ func (s *postgresStore) ByEmail(ctx context.Context, email string) (*User, error
 	if err != nil {
 		return nil, &NotFoundError{}
 	}
-	return s.one(ctx, db.Writer(ctx, s.pool), "ByEmail", s.users.Email.EQ(postgres.String(e)))
+	return s.one(ctx, db.ReadPrimary, "ByEmail", s.users.Email.EQ(postgres.String(e)))
 }
 
 // ByPublicID loads a user by public id.
 func (s *postgresStore) ByPublicID(ctx context.Context, publicID string) (*User, error) {
-	return s.one(ctx, db.Reader(ctx, s.pool), "ByPublicID", s.users.PublicID.EQ(postgres.String(publicID)))
+	return s.one(ctx, db.Read, "ByPublicID", s.users.PublicID.EQ(postgres.String(publicID)))
 }
 
-func (s *postgresStore) one(ctx context.Context, conn qrm.DB, op string, where postgres.BoolExpression) (*User, error) {
+func (s *postgresStore) one(
+	ctx context.Context, run func(context.Context, db.Pool, func(qrm.DB) error) error, op string, where postgres.BoolExpression,
+) (*User, error) {
 	stmt := postgres.SELECT(s.users.AllColumns).FROM(s.users).WHERE(where).LIMIT(1)
 	var row userRow
-	if err := stmt.QueryContext(ctx, conn, &row); err != nil {
+	if err := run(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{}
 		}

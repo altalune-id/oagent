@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
@@ -102,7 +103,11 @@ func (s *postgresStore) RevokePersonalOf(ctx context.Context, orgID, ownerID uui
 			AND(t.Kind.EQ(postgres.String(string(KindPersonal)))).
 			AND(t.CreatedBy.EQ(postgres.UUID(ownerID))).
 			AND(t.RevokedAt.IS_NULL()))
-	res, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool))
+	var res sql.Result
+	err := db.Write(ctx, s.pool, func(q qrm.DB) (err error) {
+		res, err = stmt.ExecContext(ctx, q)
+		return err
+	})
 	if err != nil {
 		return 0, fmt.Errorf("apikey.postgres: RevokePersonalOf: %w", err)
 	}

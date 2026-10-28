@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
@@ -17,7 +18,7 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*Org, error) {
 		WHERE(s.orgs.ID.EQ(postgres.UUID(id))).
 		LIMIT(1)
 	var row orgRow
-	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{ID: id.String()}
 		}
@@ -33,7 +34,7 @@ func (s *postgresStore) BySlug(ctx context.Context, slug string) (*Org, error) {
 		WHERE(s.orgs.Slug.EQ(postgres.String(slug))).
 		LIMIT(1)
 	var row orgRow
-	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{Slug: slug}
 		}
@@ -49,7 +50,7 @@ func (s *postgresStore) ByPublicID(ctx context.Context, publicID string) (*Org, 
 		WHERE(s.orgs.PublicID.EQ(postgres.String(publicID))).
 		LIMIT(1)
 	var row orgRow
-	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{}
 		}
@@ -64,7 +65,7 @@ func (s *postgresStore) List(ctx context.Context) ([]*Org, error) {
 		FROM(s.orgs).
 		ORDER_BY(s.orgs.CreatedAt.ASC())
 	var rows []orgRow
-	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &rows); err != nil {
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil {
 		return nil, fmt.Errorf("org.postgres: List: %w", err)
 	}
 	out := make([]*Org, 0, len(rows))
@@ -81,7 +82,7 @@ func (s *postgresStore) System(ctx context.Context) (*Org, error) {
 		WHERE(s.orgs.IsSystem.IS_TRUE()).
 		LIMIT(1)
 	var row orgRow
-	if err := stmt.QueryContext(ctx, db.Writer(ctx, s.pool), &row); err != nil {
+	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{}
 		}

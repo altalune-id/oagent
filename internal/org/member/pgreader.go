@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
@@ -17,7 +18,7 @@ func (s *postgresStore) Find(ctx context.Context, orgID, userID uuid.UUID) (*Mem
 		WHERE(t.OrgID.EQ(postgres.UUID(orgID)).AND(t.UserID.EQ(postgres.UUID(userID)))).
 		LIMIT(1)
 	var row membershipRow
-	if err := stmt.QueryContext(ctx, db.Writer(ctx, s.pool), &row); err != nil {
+	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{}
 		}
@@ -33,7 +34,7 @@ func (s *postgresStore) ListByUser(ctx context.Context, userID uuid.UUID) ([]*Me
 		WHERE(t.UserID.EQ(postgres.UUID(userID))).
 		ORDER_BY(t.CreatedAt.ASC(), t.ID.ASC())
 	var rows []membershipRow
-	if err := stmt.QueryContext(ctx, db.Writer(ctx, s.pool), &rows); err != nil && !db.IsNoRows(err) {
+	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
 		return nil, fmt.Errorf("member.postgres: ListByUser: %w", err)
 	}
 	out := make([]*Membership, 0, len(rows))
@@ -51,7 +52,7 @@ func (s *postgresStore) CountOwners(ctx context.Context, orgID uuid.UUID) (int, 
 	var res struct {
 		Count int64 `alias:"count"`
 	}
-	if err := stmt.QueryContext(ctx, db.Writer(ctx, s.pool), &res); err != nil {
+	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &res) }); err != nil {
 		return 0, fmt.Errorf("member.postgres: CountOwners: %w", err)
 	}
 	return int(res.Count), nil
@@ -69,7 +70,7 @@ func (s *postgresStore) ListByOrg(ctx context.Context, orgID uuid.UUID) ([]Membe
 			u.Email.ASC(), t.ID.ASC(),
 		)
 	var rows []memberRow
-	if err := stmt.QueryContext(ctx, db.Writer(ctx, s.pool), &rows); err != nil && !db.IsNoRows(err) {
+	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
 		return nil, fmt.Errorf("member.postgres: ListByOrg: %w", err)
 	}
 	out := make([]Member, 0, len(rows))

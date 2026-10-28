@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
@@ -27,7 +28,7 @@ func (s *resetPostgres) Insert(ctx context.Context, r *Reset) error {
 	stmt := t.INSERT(t.AllColumns).VALUES(
 		r.ID, r.PublicID, r.UserID, r.TokenHash, r.ExpiresAt.UTC(), entity.NullTimestampz(), r.CreatedAt.UTC(),
 	)
-	if _, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool)); err != nil {
+	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { _, err := stmt.ExecContext(ctx, q); return err }); err != nil {
 		return fmt.Errorf("auth.resets: Insert: %w", err)
 	}
 	return nil
@@ -36,7 +37,7 @@ func (s *resetPostgres) Insert(ctx context.Context, r *Reset) error {
 func (s *resetPostgres) DeleteUnused(ctx context.Context, userID uuid.UUID) error {
 	t := s.resets
 	stmt := t.DELETE().WHERE(t.UserID.EQ(postgres.UUID(userID)).AND(t.UsedAt.IS_NULL()))
-	if _, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool)); err != nil {
+	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { _, err := stmt.ExecContext(ctx, q); return err }); err != nil {
 		return fmt.Errorf("auth.resets: DeleteUnused: %w", err)
 	}
 	return nil
@@ -50,7 +51,7 @@ func (s *resetPostgres) HasRecentUnused(ctx context.Context, userID uuid.UUID, s
 	var row struct {
 		ID uuid.UUID `alias:"password_resets.id"`
 	}
-	if err := stmt.QueryContext(ctx, db.Writer(ctx, s.pool), &row); err != nil {
+	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return false, nil
 		}
@@ -78,7 +79,7 @@ func (s *resetPostgres) MarkUsed(ctx context.Context, publicID string, now time.
 		WHERE(t.PublicID.EQ(postgres.String(publicID)).AND(t.UsedAt.IS_NULL()).AND(t.ExpiresAt.GT(at))).
 		RETURNING(t.AllColumns)
 	var row resetRow
-	if err := stmt.QueryContext(ctx, db.Writer(ctx, s.pool), &row); err != nil {
+	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &ResetNotUsableError{Reason: ResetNotFound}
 		}
@@ -89,7 +90,7 @@ func (s *resetPostgres) MarkUsed(ctx context.Context, publicID string, now time.
 
 func (s *resetPostgres) one(ctx context.Context, op string, stmt postgres.SelectStatement) (*Reset, error) {
 	var row resetRow
-	if err := stmt.QueryContext(ctx, db.Writer(ctx, s.pool), &row); err != nil {
+	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &ResetNotUsableError{Reason: ResetNotFound}
 		}

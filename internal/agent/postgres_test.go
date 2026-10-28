@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/db/dbtest"
 	"altalune.id/oagent/schema/entity"
 )
 
@@ -55,7 +56,9 @@ func TestList(t *testing.T) {
 	id := uuid.New()
 	rows := sqlmock.NewRows(agentRowColumns()).
 		AddRow(id, "p", uuid.New(), uuid.New(), "acme", "Acme", "d", nil, time.Now(), time.Now())
+	dbtest.ExpectTx(mock)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	mock.ExpectCommit()
 
 	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, agents: entity.NewAgents("public", "")}
 	got, err := s.List(context.Background(), uuid.New())
@@ -67,7 +70,9 @@ func TestList(t *testing.T) {
 func TestByID_NotFound(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
+	dbtest.ExpectTx(mock)
 	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(agentRowColumns()))
+	mock.ExpectRollback()
 
 	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, agents: entity.NewAgents("public", "")}
 	_, err = s.ByID(context.Background(), uuid.New())
@@ -77,7 +82,9 @@ func TestByID_NotFound(t *testing.T) {
 func TestSave(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
+	dbtest.ExpectTx(mock)
 	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
 
 	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, agents: entity.NewAgents("public", "")}
 	a, err := New(uuid.New(), uuid.New(), "acme", "Acme", "", uuid.Nil) // genesis: exercises the NULL created_by branch
@@ -88,7 +95,9 @@ func TestSave(t *testing.T) {
 func TestSave_AlreadyExists(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
+	dbtest.ExpectTx(mock)
 	mock.ExpectExec("INSERT").WillReturnError(&pgconn.PgError{Code: "23505"})
+	mock.ExpectRollback()
 
 	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, agents: entity.NewAgents("public", "")}
 	a, err := New(uuid.New(), uuid.New(), "acme", "Acme", "", uuid.New())
@@ -99,7 +108,9 @@ func TestSave_AlreadyExists(t *testing.T) {
 func TestDelete(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
+	dbtest.ExpectTx(mock)
 	mock.ExpectExec("DELETE").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
 
 	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, agents: entity.NewAgents("public", "")}
 	assert.NoError(t, s.Delete(context.Background(), uuid.New()))
@@ -108,7 +119,9 @@ func TestDelete(t *testing.T) {
 func TestDelete_NotFound(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
+	dbtest.ExpectTx(mock)
 	mock.ExpectExec("DELETE").WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectCommit()
 
 	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, agents: entity.NewAgents("public", "")}
 	assert.True(t, IsNotFoundError(s.Delete(context.Background(), uuid.New())))

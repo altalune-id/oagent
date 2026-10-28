@@ -55,6 +55,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*Agent, error)
 	if req.OrgID == uuid.Nil {
 		return nil, apperror.Invalid("organization_id", apperror.FieldRequired)
 	}
+	ctx = tenant.WithOrg(ctx, req.OrgID)
 	if req.ProjectID == uuid.Nil {
 		return nil, apperror.Invalid("project_id", apperror.FieldRequired)
 	}
