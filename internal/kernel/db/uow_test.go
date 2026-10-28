@@ -9,19 +9,27 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"altalune.id/oagent/internal/kernel/tenant"
 )
 
 func mockPool(t *testing.T) (Pool, sqlmock.Sqlmock) {
 	t.Helper()
+	pool, wmock, _ := mockPools(t)
+	return pool, wmock
+}
+
+func mockPools(t *testing.T) (Pool, sqlmock.Sqlmock, sqlmock.Sqlmock) {
+	t.Helper()
 	w, wmock, err := sqlmock.New()
 	require.NoError(t, err)
-	r, _, err := sqlmock.New()
+	r, rmock, err := sqlmock.New()
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_ = w.Close()
 		_ = r.Close()
 	})
-	return Pool{W: w, R: r}, wmock
+	return Pool{W: w, R: r}, wmock, rmock
 }
 
 func TestRunInTx_NilPool(t *testing.T) {
@@ -32,6 +40,7 @@ func TestRunInTx_NilPool(t *testing.T) {
 func TestRunInTx_Commit(t *testing.T) {
 	pool, mock := mockPool(t)
 	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
 	mock.ExpectCommit()
 
 	err := RunInTx(context.Background(), pool, func(ctx context.Context) error {
@@ -46,6 +55,7 @@ func TestRunInTx_Commit(t *testing.T) {
 func TestRunInTx_Rollback(t *testing.T) {
 	pool, mock := mockPool(t)
 	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
 	mock.ExpectRollback()
 
 	err := RunInTx(context.Background(), pool, func(context.Context) error {
@@ -66,6 +76,7 @@ func TestRunInTx_BeginError(t *testing.T) {
 func TestRunInTx_NestedJoinsAndCommitsOnce(t *testing.T) {
 	pool, mock := mockPool(t)
 	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
 	mock.ExpectCommit()
 
 	err := RunInTx(context.Background(), pool, func(ctx context.Context) error {
@@ -84,6 +95,7 @@ func TestRunInTx_NestedJoinsAndCommitsOnce(t *testing.T) {
 func TestRunInTx_NestedErrorRollsBackTheOuter(t *testing.T) {
 	pool, mock := mockPool(t)
 	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
 	mock.ExpectRollback()
 	boom := errors.New("boom")
 
@@ -97,6 +109,7 @@ func TestRunInTx_NestedErrorRollsBackTheOuter(t *testing.T) {
 func TestInTx_OwnsATransactionWhenNoneIsAmbient(t *testing.T) {
 	pool, mock := mockPool(t)
 	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
 	mock.ExpectCommit()
 
 	require.NoError(t, InTx(context.Background(), pool, func(tx *sql.Tx) error {
@@ -109,6 +122,7 @@ func TestInTx_OwnsATransactionWhenNoneIsAmbient(t *testing.T) {
 func TestInTx_RollsBackItsOwnTransactionOnError(t *testing.T) {
 	pool, mock := mockPool(t)
 	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
 	mock.ExpectRollback()
 	boom := errors.New("boom")
 
@@ -119,6 +133,7 @@ func TestInTx_RollsBackItsOwnTransactionOnError(t *testing.T) {
 func TestInTx_RollsBackItsOwnTransactionOnPanic(t *testing.T) {
 	pool, mock := mockPool(t)
 	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
 	mock.ExpectRollback()
 
 	assert.Panics(t, func() {
@@ -130,6 +145,7 @@ func TestInTx_RollsBackItsOwnTransactionOnPanic(t *testing.T) {
 func TestInTx_ReportsACommitFailure(t *testing.T) {
 	pool, mock := mockPool(t)
 	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
 	mock.ExpectCommit().WillReturnError(errors.New("lost"))
 
 	err := InTx(context.Background(), pool, func(*sql.Tx) error { return nil })
@@ -140,6 +156,7 @@ func TestInTx_ReportsACommitFailure(t *testing.T) {
 func TestInTx_JoinsTheAmbientTransaction(t *testing.T) {
 	pool, mock := mockPool(t)
 	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
 	mock.ExpectCommit()
 
 	err := RunInTx(context.Background(), pool, func(ctx context.Context) error {
@@ -164,6 +181,7 @@ func TestReaderAndWriter(t *testing.T) {
 	assert.Same(t, pool.W, Writer(ctx, pool))
 
 	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
 	mock.ExpectCommit()
 	require.NoError(t, RunInTx(ctx, pool, func(ctx context.Context) error {
 		tx, _ := CurrentTx(ctx)
@@ -176,6 +194,7 @@ func TestReaderAndWriter(t *testing.T) {
 func TestNewTransactor_RunsAUnitOfWork(t *testing.T) {
 	pool, mock := mockPool(t)
 	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
 	mock.ExpectCommit()
 	uow := NewTransactor(pool)
 

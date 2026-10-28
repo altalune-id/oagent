@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/db/dbtest"
 )
 
 func TestRow_ToKey(t *testing.T) {
@@ -112,7 +113,7 @@ func TestByID_NotFound(t *testing.T) {
 func TestSave(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	mock.ExpectBegin()
+	dbtest.ExpectTx(mock)
 	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("DELETE").WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
@@ -126,7 +127,7 @@ func TestSave(t *testing.T) {
 func TestSave_OrgGrants(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	mock.ExpectBegin()
+	dbtest.ExpectTx(mock)
 	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("DELETE").WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))

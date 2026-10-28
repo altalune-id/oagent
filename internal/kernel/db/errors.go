@@ -13,6 +13,9 @@ const (
 	sqlstateForeignKeyViolation = "23503"
 )
 
+// ErrTenantMismatch rejects joining a unit of work scoped to one org from a context scoped to another.
+var ErrTenantMismatch = errors.New("db: unit of work joined with a different tenant scope")
+
 // IsNoRows reports whether err means a query found no row, from jet or database/sql.
 func IsNoRows(err error) bool {
 	return errors.Is(err, qrm.ErrNoRows) || errors.Is(err, sql.ErrNoRows)

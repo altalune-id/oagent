@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/db/dbtest"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/schema/entity"
 )
@@ -81,7 +82,7 @@ func TestEnqueue(t *testing.T) {
 
 	t.Run("org mismatch", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectRollback()
 		e := Entry{ID: uuid.New(), EventID: uuid.New(), OrgID: uuid.New(), ProjectID: project, Target: "t"}
 		assert.True(t, IsInvalidEntryError(s.Enqueue(ctx, e)))
@@ -89,7 +90,7 @@ func TestEnqueue(t *testing.T) {
 
 	t.Run("project mismatch", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectRollback()
 		e := Entry{ID: uuid.New(), EventID: uuid.New(), OrgID: org, ProjectID: uuid.New(), Target: "t"}
 		assert.True(t, IsInvalidEntryError(s.Enqueue(ctx, e)))
@@ -97,7 +98,7 @@ func TestEnqueue(t *testing.T) {
 
 	t.Run("inserts", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectCommit()
 		e := Entry{ID: uuid.New(), PublicID: "d", EventID: uuid.New(), EventPublicID: "e", OrgID: org, ProjectID: project, Target: "t", Payload: []byte("{}")}
@@ -113,7 +114,7 @@ func TestClaimDue(t *testing.T) {
 		s, mock, _ := newTestStore(t)
 		rows := sqlmock.NewRows(entryColumns()).
 			AddRow(uuid.New(), uuid.New(), org, project, "ep", []byte("{}"), 1, time.Now(), string(StatusPending), "", time.Now(), nil)
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0)) // reap
 		mock.ExpectQuery("SELECT").WillReturnRows(lockedRows())             // lock
 		mock.ExpectQuery("UPDATE").WillReturnRows(rows)                     // claim
@@ -127,7 +128,7 @@ func TestClaimDue(t *testing.T) {
 
 	t.Run("claim error rolls back", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0))
 		mock.ExpectQuery("SELECT").WillReturnRows(lockedRows())
 		mock.ExpectQuery("UPDATE").WillReturnError(errBoom)
@@ -138,7 +139,7 @@ func TestClaimDue(t *testing.T) {
 
 	t.Run("lock error rolls back", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0))
 		mock.ExpectQuery("SELECT").WillReturnError(errBoom)
 		mock.ExpectRollback()
@@ -148,7 +149,7 @@ func TestClaimDue(t *testing.T) {
 
 	t.Run("nothing due claims nothing", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0))
 		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"outbox_entries.id"}))
 		mock.ExpectCommit()
@@ -160,7 +161,7 @@ func TestClaimDue(t *testing.T) {
 
 	t.Run("reap error rolls back", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectExec("UPDATE").WillReturnError(errBoom)
 		mock.ExpectRollback()
 		_, err := s.ClaimDue(ctx, time.Now(), 10)
@@ -175,7 +176,7 @@ func TestSucceed(t *testing.T) {
 
 	t.Run("settles", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectCommit()
 		assert.NoError(t, s.Succeed(ctx, e, time.Now()))
@@ -184,7 +185,7 @@ func TestSucceed(t *testing.T) {
 	t.Run("stale claim", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
 		rows := sqlmock.NewRows([]string{"outbox_entries.status", "outbox_entries.attempt"}).AddRow(string(StatusPending), 2)
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0))
 		mock.ExpectQuery("SELECT").WillReturnRows(rows)
 		mock.ExpectCommit()
@@ -194,7 +195,7 @@ func TestSucceed(t *testing.T) {
 	t.Run("terminal", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
 		rows := sqlmock.NewRows([]string{"outbox_entries.status", "outbox_entries.attempt"}).AddRow(string(StatusDelivered), 1)
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0))
 		mock.ExpectQuery("SELECT").WillReturnRows(rows)
 		mock.ExpectCommit()
@@ -204,7 +205,7 @@ func TestSucceed(t *testing.T) {
 	t.Run("missing", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
 		rows := sqlmock.NewRows([]string{"outbox_entries.status", "outbox_entries.attempt"})
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0))
 		mock.ExpectQuery("SELECT").WillReturnRows(rows)
 		mock.ExpectCommit()
@@ -213,7 +214,7 @@ func TestSucceed(t *testing.T) {
 
 	t.Run("settle error", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectExec("UPDATE").WillReturnError(errBoom)
 		mock.ExpectRollback()
 		assert.Error(t, s.Succeed(ctx, e, time.Now()))
@@ -221,7 +222,7 @@ func TestSucceed(t *testing.T) {
 
 	t.Run("refuse read error", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0))
 		mock.ExpectQuery("SELECT").WillReturnError(errBoom)
 		mock.ExpectCommit()
@@ -232,7 +233,7 @@ func TestSucceed(t *testing.T) {
 func TestFail(t *testing.T) {
 	org, project := uuid.New(), uuid.New()
 	s, mock, _ := newTestStore(t)
-	mock.ExpectBegin()
+	dbtest.ExpectTx(mock)
 	mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 	assert.NoError(t, s.Fail(tenantedCtx(org, project), Entry{ID: uuid.New(), OrgID: org, ProjectID: project, Target: "ep", Attempt: 1}, time.Now(), "boom"))
@@ -245,7 +246,7 @@ func TestRequeue(t *testing.T) {
 
 	t.Run("requeues failed", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectCommit()
 		assert.NoError(t, s.Requeue(ctx, id, "ep"))
@@ -254,7 +255,7 @@ func TestRequeue(t *testing.T) {
 	t.Run("not failed", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
 		rows := sqlmock.NewRows([]string{"outbox_entries.status"}).AddRow(string(StatusPending))
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0))
 		mock.ExpectQuery("SELECT").WillReturnRows(rows)
 		mock.ExpectCommit()
@@ -264,7 +265,7 @@ func TestRequeue(t *testing.T) {
 	t.Run("missing", func(t *testing.T) {
 		s, mock, _ := newTestStore(t)
 		rows := sqlmock.NewRows([]string{"outbox_entries.status"})
-		mock.ExpectBegin()
+		dbtest.ExpectTx(mock)
 		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0))
 		mock.ExpectQuery("SELECT").WillReturnRows(rows)
 		mock.ExpectCommit()
@@ -275,7 +276,7 @@ func TestRequeue(t *testing.T) {
 func TestRequeueFailed(t *testing.T) {
 	org, project := uuid.New(), uuid.New()
 	s, mock, _ := newTestStore(t)
-	mock.ExpectBegin()
+	dbtest.ExpectTx(mock)
 	mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 3))
 	mock.ExpectCommit()
 	n, err := s.RequeueFailed(tenantedCtx(org, project), "ep")
