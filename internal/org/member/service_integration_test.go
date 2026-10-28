@@ -84,7 +84,7 @@ func TestService_OwnersRemovingEachOther(t *testing.T) {
 	}
 }
 
-// Review Focus: the actor's role is read under the owner lock, so a demoted owner can't use the role they just lost.
+// The actor's role is read under the owner lock, so a demoted owner can't use the role they just lost.
 func TestService_ActorRoleIsReadUnderTheLock(t *testing.T) {
 	f := newMemberFixture(t)
 	svc := f.service()

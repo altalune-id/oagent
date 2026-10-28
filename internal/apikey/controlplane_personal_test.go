@@ -198,7 +198,7 @@ func revoke(orgPub, hint string) *connect.Request[apikeyv1.RevokeAPIKeyRequest] 
 	return connect.NewRequest(&apikeyv1.RevokeAPIKeyRequest{OrgId: orgPub, Hint: hint})
 }
 
-// Review Focus 4: a member manages their own personal keys and nothing wider.
+// A member manages their own personal keys and nothing wider.
 func TestAPIKeyService_MemberManagesOnlyOwnPersonalKeys(t *testing.T) {
 	orgID, me, other := uuid.New(), uuid.New(), uuid.New()
 	refs := fakes.NewPublicIDs()

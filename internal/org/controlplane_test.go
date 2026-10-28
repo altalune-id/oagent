@@ -94,7 +94,7 @@ func TestOrgService_ListOrgs_StoreError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// Review Focus 4: with no request rules in front, the domain still refuses a bad name and slug.
+// With no request rules in front, the domain still refuses a bad name and slug.
 func TestOrgService_DomainRefusesWithoutTheRules(t *testing.T) {
 	h := org.NewControlPlane(org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, nil).WithCreation(true))
 	for name, tc := range map[string]struct {

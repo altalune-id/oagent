@@ -111,7 +111,7 @@ func TestAgentReach_OwnAgentWorks(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// D7: listing a project's agents needs reach into that project; an unknown project looks the same.
+// Listing a project's agents needs reach into that project; an unknown project looks the same.
 func TestAgentReach_ListNeedsProjectReach(t *testing.T) {
 	refs := fakes.NewPublicIDs()
 	orgA, orgB, prjB, prjB2 := uuid.New(), uuid.New(), uuid.New(), uuid.New()

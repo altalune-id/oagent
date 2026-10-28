@@ -64,7 +64,7 @@ func assertNoSecrets(t *testing.T, s string) {
 	assert.NotContains(t, s, natsTestToken)
 }
 
-// Review Focus 1: with nothing selecting NATS, boot never dials it, even when nats.url is set.
+// With nothing selecting NATS, boot never dials it, even when nats.url is set.
 func TestBuildNATS_UnusedNeverConnects(t *testing.T) {
 	restoreSeams(t)
 	calls, _ := stubNATS(t)
@@ -115,7 +115,7 @@ func TestBuildNATS_ConnectErrorFailsBoot(t *testing.T) {
 	assert.ErrorContains(t, err, "boot: nats: cannot connect")
 }
 
-// Review Focus 1: the default config never dials NATS and adds no NATS readiness worker.
+// The default config never dials NATS and adds no NATS readiness worker.
 func TestBoot_DefaultConfigNeverOpensNATS(t *testing.T) {
 	restoreSeams(t)
 	calls, _ := stubNATS(t)

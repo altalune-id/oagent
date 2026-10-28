@@ -22,7 +22,7 @@ import (
 
 const signInRequired = "Sign in required"
 
-// AuthOptions configures Authenticate; ResourceMetadataURL is empty until MCP OAuth (P4).
+// AuthOptions configures Authenticate; ResourceMetadataURL stays empty while MCP OAuth is not offered.
 type AuthOptions struct {
 	Chain               authn.Chain
 	KeyPrefix           string

@@ -44,7 +44,7 @@ func ReachResource(ctx context.Context, orgID, projectID, resourceID uuid.UUID) 
 	return trusted(p) || p.ReachesResource(orgID, projectID, resourceID)
 }
 
-// SECURITY: a person reaches only their active org (P1); operators reach every org and keys are never operators.
+// SECURITY: a person reaches only their active org; operators reach every org and keys are never operators.
 func trusted(p session.Principal) bool {
 	return p.Operator
 }

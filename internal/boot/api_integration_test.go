@@ -245,7 +245,7 @@ func withCookie[T any](req *connect.Request[T], cookie string) *connect.Request[
 	return req
 }
 
-// Review Focus 4: a member mints and revokes only their own personal keys, never wider than their role.
+// A member mints and revokes only their own personal keys, never wider than their role.
 func TestAPI_MemberManagesOwnPersonalKeys(t *testing.T) {
 	f := newAPIFixture(t)
 	cookie, memberID := f.memberCookie(t)
@@ -326,7 +326,7 @@ func TestAPI_WebhookBadSchemeIsInvalidArgument(t *testing.T) {
 	assert.NotContains(t, det.GetMeta(), "underlying_error")
 }
 
-// Review Focus 3: a removed person loses access at once, and their personal key is revoked, not just inactive.
+// A removed person loses access at once, and their personal key is revoked, not just inactive.
 func TestAPI_RemovedMemberLosesAccess(t *testing.T) {
 	f := newAPIFixture(t)
 	ctx := t.Context()

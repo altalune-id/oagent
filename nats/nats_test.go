@@ -57,7 +57,7 @@ func assertNoSecrets(t *testing.T, s string) {
 	assert.NotContains(t, s, testToken)
 }
 
-// Review Focus 3: a refused connection names the host, never the URL credentials, the token or the password.
+// A refused connection names the host, never the URL credentials, the token or the password.
 func TestOpen_RefusedHasNoCredentials(t *testing.T) {
 	for name, c := range map[string]Config{
 		"url credentials": testConfig("nats://oagent:" + testPassword + "@127.0.0.1:1"),

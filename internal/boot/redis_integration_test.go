@@ -33,7 +33,7 @@ func TestBoot_RedisFeatureOpensTheRealServer(t *testing.T) {
 	assert.ErrorContains(t, err, "mail", "boot reached the mailer, so Redis connected")
 }
 
-// Review Focus 5: boot writes rate limit keys under redis.keyPrefix + "rl:", each with a TTL.
+// Boot writes rate limit keys under redis.keyPrefix + "rl:", each with a TTL.
 func TestBuildLimiters_RedisKeysUnderPrefix(t *testing.T) {
 	h := redistest.New(t)
 	rdb := h.Client(t)

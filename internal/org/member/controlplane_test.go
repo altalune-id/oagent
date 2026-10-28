@@ -454,7 +454,7 @@ func TestRequesterFrom(t *testing.T) {
 	}
 }
 
-// Review Focus 4: with no request rules in front, the domain still refuses an unknown role.
+// With no request rules in front, the domain still refuses an unknown role.
 func TestMemberService_DomainRefusesAnUnknownRoleWithoutTheRules(t *testing.T) {
 	f := newCPFixture(t)
 	owner := f.add(member.RoleOwner, "owner@example.com")

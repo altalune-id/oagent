@@ -15,7 +15,7 @@ import (
 	"altalune.id/oagent/internal/org/member"
 )
 
-// Task 8: every acceptance of the built-in terms is kept with the exact versions accepted.
+// Every acceptance of the built-in terms is kept with the exact versions accepted.
 func TestTermsHistory_RecordsEveryAcceptance(t *testing.T) {
 	f := newAPIFixture(t)
 	ctx := t.Context()
