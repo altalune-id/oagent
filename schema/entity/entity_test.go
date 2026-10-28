@@ -43,7 +43,7 @@ func TestBindings(t *testing.T) {
 			"invites",
 			func(s, p string) binding { b := entity.NewInvites(s, p); return binding{b, b.AllColumns} },
 			[]string{
-				"id", "public_id", "org_id", "email", "role", "token_hash", "draft", "invited_by",
+				"id", "public_id", "org_id", "email", "role", "token_hash", "draft", "email_only", "invited_by",
 				"expires_at", "accepted_at", "accepted_by", "revoked_at", "created_at", "updated_at",
 			},
 		},

@@ -54,7 +54,7 @@ type BasicConfig struct {
 	Password string `yaml:"password" mapstructure:"password" awareness:"secret"`
 }
 
-// GenesisConfig installs the first owner from the environment on a headless selfhosted boot.
+// GenesisConfig installs the first owner from the environment on a headless selfhosted boot; with passwords off, only the email.
 type GenesisConfig struct {
 	Email    string `yaml:"email"    mapstructure:"email"    validate:"omitempty,email"`
 	Password string `yaml:"password" mapstructure:"password" awareness:"secret"`
@@ -99,8 +99,10 @@ func (c *Config) validateGenesis() error {
 		return nil
 	case c.Mode == ModeCloud:
 		return &GenesisInCloudError{}
+	case !c.PasswordsOn() && g.Password != "":
+		return &InvalidSettingError{Key: "auth.genesis.password", Reason: "auth.password.enabled is off, so genesis takes only the email"}
 	case !c.PasswordsOn():
-		return &InvalidSettingError{Key: "auth.genesis.email", Reason: "auth.password.enabled is off; install through /install"}
+		return nil
 	case g.Email == "" || g.Password == "":
 		return &MissingSettingError{Keys: "auth.genesis.email, auth.genesis.password", Reason: "set both or neither"}
 	}

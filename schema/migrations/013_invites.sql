@@ -10,6 +10,8 @@ CREATE TABLE {{.Schema}}.{{.TablePrefix}}invites (
   -- SECURITY: only the SHA-256 of the token is stored; NULL only for a draft.
   token_hash  TEXT UNIQUE,
   draft       BOOLEAN NOT NULL DEFAULT false,
+  -- SECURITY: marks install's owner seat, which a verified sign-in with its email claims without the link.
+  email_only  BOOLEAN NOT NULL,
   invited_by  UUID REFERENCES {{.Schema}}.{{.TablePrefix}}users (id) ON DELETE SET NULL,
   expires_at  TIMESTAMPTZ NOT NULL,
   accepted_at TIMESTAMPTZ,
@@ -17,7 +19,9 @@ CREATE TABLE {{.Schema}}.{{.TablePrefix}}invites (
   revoked_at  TIMESTAMPTZ,
   created_at  TIMESTAMPTZ NOT NULL,
   updated_at  TIMESTAMPTZ NOT NULL,
-  CONSTRAINT {{.TablePrefix}}invites_token_or_draft CHECK (draft OR token_hash IS NOT NULL)
+  CONSTRAINT {{.TablePrefix}}invites_token_or_draft CHECK (draft OR token_hash IS NOT NULL),
+  CONSTRAINT {{.TablePrefix}}invites_email_only_owner
+    CHECK (NOT email_only OR (role = 'owner' AND invited_by IS NULL AND NOT draft))
 );
 
 CREATE UNIQUE INDEX {{.TablePrefix}}invites_live_idx

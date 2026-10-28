@@ -13,6 +13,7 @@ type Invites struct {
 	Role       postgres.ColumnString
 	TokenHash  postgres.ColumnString
 	Draft      postgres.ColumnBool
+	EmailOnly  postgres.ColumnBool
 	InvitedBy  postgres.ColumnString
 	ExpiresAt  postgres.ColumnTimestampz
 	AcceptedAt postgres.ColumnTimestampz
@@ -37,6 +38,7 @@ func NewInvites(schema, tablePrefix string) *Invites {
 		role       = postgres.StringColumn("role")
 		tokenHash  = postgres.StringColumn("token_hash")
 		draft      = postgres.BoolColumn("draft")
+		emailOnly  = postgres.BoolColumn("email_only")
 		invitedBy  = postgres.StringColumn("invited_by")
 		expiresAt  = postgres.TimestampzColumn("expires_at")
 		acceptedAt = postgres.TimestampzColumn("accepted_at")
@@ -45,7 +47,7 @@ func NewInvites(schema, tablePrefix string) *Invites {
 		createdAt  = postgres.TimestampzColumn("created_at")
 		updatedAt  = postgres.TimestampzColumn("updated_at")
 		all        = postgres.ColumnList{
-			id, publicID, orgID, email, role, tokenHash, draft, invitedBy,
+			id, publicID, orgID, email, role, tokenHash, draft, emailOnly, invitedBy,
 			expiresAt, acceptedAt, acceptedBy, revokedAt, createdAt, updatedAt,
 		}
 	)
@@ -58,6 +60,7 @@ func NewInvites(schema, tablePrefix string) *Invites {
 		Role:       role,
 		TokenHash:  tokenHash,
 		Draft:      draft,
+		EmailOnly:  emailOnly,
 		InvitedBy:  invitedBy,
 		ExpiresAt:  expiresAt,
 		AcceptedAt: acceptedAt,

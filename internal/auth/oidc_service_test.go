@@ -75,6 +75,15 @@ func (f *fakeInvites) Seat(_ context.Context, publicID string) (*Seat, error) {
 	return nil, nil
 }
 
+func (f *fakeInvites) OwnerSeat(_ context.Context, orgID uuid.UUID, email string) (*Seat, error) {
+	for _, s := range f.byPublicID {
+		if s.seat.OrgID == orgID && strings.EqualFold(s.seat.Email, email) && !s.accepted {
+			return &s.seat, nil
+		}
+	}
+	return nil, nil
+}
+
 func (f *fakeInvites) Claim(_ context.Context, seat *Seat, userID uuid.UUID) (bool, error) {
 	for _, s := range f.byPublicID {
 		if s.seat.ID != seat.ID || s.accepted {
@@ -187,6 +196,45 @@ func TestLoginOIDC_Refusals(t *testing.T) {
 	require.ErrorAs(t, err, &none)
 	assert.Equal(t, NoConsoleRemoved, none.Reason, "an account in no org is removed from this deployment")
 	assert.Equal(t, "sub-3", cara.IDPSubject)
+}
+
+// The email-only owner seat install leaves is claimed by the first verified sign-in with that email.
+func TestLoginOIDC_ClaimsTheOwnerSeat(t *testing.T) {
+	f := newOIDCFixture(t, false)
+	_, seat := f.invite(t, f.sys, "owner@example.com", member.RoleOwner)
+
+	_, err := f.svc.LoginOIDC(context.Background(), oidcLogin("sub-9", "eve@example.com"))
+	var none *NoConsoleAccountError
+	require.ErrorAs(t, err, &none)
+	assert.Equal(t, NoConsoleNotInvited, none.Reason, "another email can't claim the owner seat")
+
+	p, err := f.svc.LoginOIDC(context.Background(), oidcLogin("sub-1", "Owner@Example.com"))
+	require.NoError(t, err)
+	owner := f.users.byEmail["owner@example.com"]
+	require.NotNil(t, owner)
+	assert.Equal(t, owner.ID, p.UserID)
+	assert.Equal(t, "sub-1", owner.IDPSubject)
+	assert.Empty(t, owner.PasswordHash, "an account made by an OIDC sign-in has no password")
+	assert.Equal(t, []uuid.UUID{seat}, f.invites.accepted)
+	assert.Equal(t, f.sys.ID, p.ActiveOrgID)
+}
+
+// An existing account in no org with the seat's email claims the seat too.
+func TestLoginOIDC_ExistingAccountClaimsTheOwnerSeat(t *testing.T) {
+	f := newOIDCFixture(t, false)
+	ada := f.addUser(t, "ada@example.com", false)
+	_, seat := f.invite(t, f.sys, "ada@example.com", member.RoleOwner)
+
+	p, err := f.svc.LoginOIDC(context.Background(), oidcLogin("sub-1", "ada@example.com"))
+	require.NoError(t, err)
+	assert.Equal(t, ada.ID, p.UserID)
+	assert.Equal(t, []uuid.UUID{seat}, f.invites.accepted)
+	assert.Equal(t, f.sys.ID, p.ActiveOrgID)
+
+	again, err := f.svc.LoginOIDC(context.Background(), oidcLogin("sub-1", "ada@example.com"))
+	require.NoError(t, err, "the linked account signs in; the used seat is skipped")
+	assert.Equal(t, ada.ID, again.UserID)
+	assert.Len(t, f.invites.accepted, 1)
 }
 
 func TestLoginOIDC_CloudCreatesAnAccountWithNoOrg(t *testing.T) {

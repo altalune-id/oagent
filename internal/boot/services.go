@@ -150,6 +150,9 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		OpenSignup: cfg.OpenSignup(),
 	})
 	installer := install.NewService(uow, users, orgs, members, projects)
+	if !cfg.PasswordsOn() {
+		installer.WithoutPasswords(invites)
+	}
 
 	svcs := &Services{
 		OrgStore:     orgStore,
@@ -363,6 +366,17 @@ func (c oidcInvites) Seat(ctx context.Context, publicID string) (*auth.Seat, err
 		return nil, noSeat(err)
 	}
 	if usable := c.invites.Usable(inv) == nil; !usable {
+		return nil, nil
+	}
+	return &auth.Seat{ID: inv.ID, OrgID: inv.OrgID, Email: inv.Email}, nil
+}
+
+func (c oidcInvites) OwnerSeat(ctx context.Context, orgID uuid.UUID, email string) (*auth.Seat, error) {
+	inv, err := c.invites.Live(ctx, orgID, email)
+	if err != nil {
+		return nil, noSeat(err)
+	}
+	if !inv.EmailOnly {
 		return nil, nil
 	}
 	return &auth.Seat{ID: inv.ID, OrgID: inv.OrgID, Email: inv.Email}, nil

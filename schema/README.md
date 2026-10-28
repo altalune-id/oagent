@@ -173,6 +173,7 @@ erDiagram
         text role "owner, admin, member"
         text token_hash UK "SHA-256 of the token, NULL only for a draft"
         bool draft "an MCP suggestion a person must confirm"
+        bool email_only "install's owner seat, claimed by its verified email"
         uuid invited_by FK "NULL for a non-person operator"
         timestamptz expires_at
         timestamptz accepted_at
@@ -257,6 +258,7 @@ Rules the diagram can't show. Names omit `{{.TablePrefix}}`.
 | `invites`                                                                         | `invites_live_idx` (unique, `WHERE accepted_at IS NULL AND revoked_at IS NULL`)                 | one live invite per org and email; a re-invite updates that row                                                                            |
 | `invites`                                                                         | `invites_token_or_draft` (check), `token_hash` unique                                           | every invite but a draft has a token; tokens are found by their hash                                                                       |
 | `invites`                                                                         | `email` check                                                                                   | email is stored trimmed and lowercase                                                                                                      |
+| `invites`                                                                         | `invites_email_only_owner` (check)                                                              | only an owner invite with no inviter and no draft can be the email-only seat                                                               |
 | `legal_documents`                                                                 | `legal_documents_slug_version_key` (unique)                                                     | one snapshot per document version; built-in documents only (a custom terms or privacy URL keeps no history)                                |
 | `terms_acceptances`                                                               | `terms_acceptances_user_idx`                                                                    | one person's acceptances, oldest first                                                                                                     |
 | `mail_queue`                                                                      | `mail_queue_settled_erased`, `mail_queue_pending_payload` (checks)                              | a pending row holds its payload; a sent or failed row holds none                                                                           |

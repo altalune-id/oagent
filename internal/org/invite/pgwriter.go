@@ -23,7 +23,7 @@ func (s *postgresStore) LockEmail(ctx context.Context, orgID uuid.UUID, email st
 func (s *postgresStore) Insert(ctx context.Context, i *Invite) error {
 	t := s.invites
 	stmt := t.INSERT(t.AllColumns).VALUES(
-		i.ID, i.PublicID, i.OrgID, i.Email, string(i.Role), tokenExpr(i.TokenHash), i.Draft, userExpr(i.InvitedBy),
+		i.ID, i.PublicID, i.OrgID, i.Email, string(i.Role), tokenExpr(i.TokenHash), i.Draft, i.EmailOnly, userExpr(i.InvitedBy),
 		i.ExpiresAt.UTC(), entity.NullTimestampz(), entity.NullUUID(), entity.NullTimestampz(), i.CreatedAt.UTC(), i.UpdatedAt.UTC(),
 	)
 	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { _, err := stmt.ExecContext(ctx, q); return err }); err != nil {
@@ -32,13 +32,14 @@ func (s *postgresStore) Insert(ctx context.Context, i *Invite) error {
 	return nil
 }
 
-// Update writes i's role, token, draft flag, inviter and expiry.
+// Update writes i's role, token, draft and email-only flags, inviter and expiry.
 func (s *postgresStore) Update(ctx context.Context, i *Invite) error {
 	t := s.invites
 	stmt := t.UPDATE().SET(
 		t.Role.SET(postgres.String(string(i.Role))),
 		t.TokenHash.SET(tokenExpr(i.TokenHash)),
 		t.Draft.SET(postgres.Bool(i.Draft)),
+		t.EmailOnly.SET(postgres.Bool(i.EmailOnly)),
 		t.InvitedBy.SET(userExpr(i.InvitedBy)),
 		t.ExpiresAt.SET(postgres.TimestampzT(i.ExpiresAt.UTC())),
 		t.UpdatedAt.SET(postgres.TimestampzT(i.UpdatedAt.UTC())),

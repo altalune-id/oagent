@@ -114,6 +114,8 @@ type Seat struct {
 type OIDCInvites interface {
 	// Seat returns the usable invite with publicID, or nil when it is unknown, used, revoked or expired.
 	Seat(ctx context.Context, publicID string) (*Seat, error)
+	// OwnerSeat returns orgID's usable email-only owner invite for email, or nil.
+	OwnerSeat(ctx context.Context, orgID uuid.UUID, email string) (*Seat, error)
 	// Claim uses seat up for userID and adds them to its org; false when it is no longer usable or not for their email.
 	Claim(ctx context.Context, seat *Seat, userID uuid.UUID) (bool, error)
 }

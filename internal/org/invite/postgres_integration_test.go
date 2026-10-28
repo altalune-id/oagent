@@ -434,3 +434,56 @@ func TestPostgresInvite_ByPublicIDIsScopedAndResolveIsNot(t *testing.T) {
 	assert.Equal(t, c.Invite.ID, resolved.ID)
 	assert.Empty(t, resolved.TokenHash, "the definer returns no hash")
 }
+
+// SECURITY: only InviteOwner marks the email-only seat, and the table refuses the mark on any other invite.
+func TestPostgresInvite_EmailOnly(t *testing.T) {
+	f := newPGFixture(t)
+	seat, err := f.svc.InviteOwner(f.ctx, f.org.ID, "seat@example.com")
+	require.NoError(t, err)
+	stored, err := f.store.ByID(f.scoped(), seat.ID)
+	require.NoError(t, err)
+	assert.True(t, stored.EmailOnly)
+
+	c, err := f.svc.Create(f.ctx, member.Requester{Operator: true}, f.org.ID, "seat@example.com", member.RoleOwner)
+	require.NoError(t, err)
+	stored, err = f.store.ByID(f.scoped(), c.Invite.ID)
+	require.NoError(t, err)
+	assert.False(t, stored.EmailOnly, "an invite someone sends needs its link, even with no inviter")
+
+	for name, inv := range map[string]invite.Invite{
+		"a member invite": {Role: member.RoleMember},
+		"with an inviter": {Role: member.RoleOwner, InvitedBy: f.owner.ID},
+		"a draft":         {Role: member.RoleOwner, Draft: true},
+	} {
+		inv.ID, inv.PublicID, inv.OrgID, inv.Email, inv.EmailOnly = uuid.New(), uuid.NewString(), f.org.ID, "x-"+uuid.NewString()[:8]+"@example.com", true
+		inv.TokenHash, inv.ExpiresAt, inv.CreatedAt, inv.UpdatedAt = uuid.NewString(), f.now().Add(time.Hour), f.now(), f.now()
+		if inv.Draft {
+			inv.TokenHash = ""
+		}
+		assert.Error(t, f.store.Insert(f.scoped(), &inv), name)
+	}
+}
+
+// Only a live owner invite keeps /install closed: a member invite, a draft or a revoked owner invite does not.
+func TestService_PendingOwner(t *testing.T) {
+	f := newPGFixture(t)
+	r := member.Requester{UserID: f.owner.ID}
+	pending := func() bool {
+		t.Helper()
+		got, err := f.svc.PendingOwner(f.ctx, f.org.ID)
+		require.NoError(t, err)
+		return got
+	}
+
+	f.invite("mem@example.com", member.RoleMember)
+	assert.False(t, pending(), "a live member invite")
+	_, err := f.svc.Draft(f.ctx, r, f.org.ID, "draft@example.com")
+	require.NoError(t, err)
+	assert.False(t, pending(), "a draft")
+	revoked := f.invite("gone@example.com", member.RoleOwner)
+	require.NoError(t, f.svc.Revoke(f.ctx, r, f.org.ID, revoked.Invite.ID))
+	assert.False(t, pending(), "a revoked owner invite")
+
+	f.invite("co@example.com", member.RoleOwner)
+	assert.True(t, pending(), "a live owner invite")
+}

@@ -20,6 +20,7 @@ import (
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/testutil/pgtest"
@@ -299,4 +300,63 @@ func TestInstall_RecordsAcceptedTerms(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, stored.TermsAcceptedAt)
 	assert.True(t, stored.TermsAcceptedAt.After(before))
+}
+
+type ownerInvites struct {
+	mu      sync.Mutex
+	emails  []string
+	pending bool
+	err     error
+}
+
+func (o *ownerInvites) InviteOwner(_ context.Context, _ uuid.UUID, email string) (*invite.Invite, error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.err != nil {
+		return nil, o.err
+	}
+	o.emails, o.pending = append(o.emails, email), true
+	return &invite.Invite{Email: email, Role: member.RoleOwner}, nil
+}
+
+func (o *ownerInvites) PendingOwner(context.Context, uuid.UUID) (bool, error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.pending, o.err
+}
+
+// With passwords off, install creates the ownerless system org and its default project, and invites the owner.
+func TestInstall_EmailOnly(t *testing.T) {
+	f := newInstallFixture(t)
+	ctx := t.Context()
+	invites := &ownerInvites{}
+	f.svc = f.svc.WithoutPasswords(invites)
+
+	u, err := f.svc.Install(ctx, install.Request{Email: "ada@example.com", OrgName: "Acme"})
+	require.NoError(t, err)
+	assert.Nil(t, u, "no account until the invite is claimed")
+	assert.Equal(t, []string{"ada@example.com"}, invites.emails)
+	sys, err := f.orgs.System(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, "Acme", sys.Name)
+	assert.False(t, sys.CreatedBy.Valid)
+	owners, err := f.members.CountOwners(ctx, sys.ID)
+	require.NoError(t, err)
+	assert.Zero(t, owners)
+	_, err = f.projects.BySlug(ctx, sys.ID, project.DefaultSlug)
+	require.NoError(t, err)
+	_, err = f.users.ByEmail(ctx, "ada@example.com")
+	assert.True(t, user.IsNotFoundError(err))
+
+	required, err := f.svc.Required(ctx, false)
+	require.NoError(t, err)
+	assert.False(t, required, "the pending owner invite closes /install")
+	_, err = f.svc.Install(ctx, install.Request{Email: "eve@example.com"})
+	assert.True(t, install.IsAlreadyInstalledError(err))
+
+	g := newInstallFixture(t)
+	g.svc = g.svc.WithoutPasswords(&ownerInvites{err: errInjected})
+	_, err = g.svc.Install(ctx, install.Request{Email: "ada@example.com"})
+	require.ErrorIs(t, err, errInjected)
+	assert.Zero(t, g.orgCount(t), "a failed invite rolls back the system org")
 }

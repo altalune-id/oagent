@@ -11,6 +11,7 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/org"
+	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/testutil/fakes"
 )
@@ -48,6 +49,41 @@ func TestRequired(t *testing.T) {
 	got, err = svc.Required(ctx, false)
 	require.NoError(t, err)
 	assert.False(t, got)
+}
+
+type ownerInvites struct {
+	pending bool
+	err     error
+}
+
+func (o *ownerInvites) InviteOwner(context.Context, uuid.UUID, string) (*invite.Invite, error) {
+	return nil, o.err
+}
+
+func (o *ownerInvites) PendingOwner(context.Context, uuid.UUID) (bool, error) {
+	return o.pending, o.err
+}
+
+func TestRequired_PendingOwner(t *testing.T) {
+	ctx := context.Background()
+	sys, err := org.NewSystemOrg("default", "Default", uuid.Nil)
+	require.NoError(t, err)
+	svc, _ := newRequiredService(t, sys)
+	assert.True(t, svc.Passwords())
+	invites := &ownerInvites{pending: true}
+	svc = svc.WithoutPasswords(invites)
+	assert.False(t, svc.Passwords())
+
+	got, err := svc.Required(ctx, false)
+	require.NoError(t, err)
+	assert.False(t, got, "a pending owner invite (passwords off) counts as installed")
+	invites.pending = false
+	got, err = svc.Required(ctx, false)
+	require.NoError(t, err)
+	assert.True(t, got, "an expired or used-up seat with no owner reopens install")
+	invites.err = errors.New("invites down")
+	_, err = svc.Required(ctx, false)
+	require.Error(t, err)
 }
 
 func TestAlreadyInstalledError(t *testing.T) {
