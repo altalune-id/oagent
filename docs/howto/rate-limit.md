@@ -1,6 +1,6 @@
 # Rate-limit an action
 
-Use this when an action needs oagent's own limiter: a form that can be brute-forced or used to spam mail. oagent's limiter is **off by default**, because many deployments limit at the edge (a CDN, nginx, an API gateway). Each **group** of limits has its own switch, and every group shares one store. The only group today is `auth` (sign-in, password reset, invite pages); it is applied on pre-sign-in web forms only.
+Use this when an action needs oagent's own limiter: a form that can be brute-forced or used to spam mail. oagent's `auth` group is **on by default** (memory driver); a deployment that limits at the edge (a CDN, nginx, an API gateway) may turn it off. Behind a reverse proxy, set `http.trustedProxyHops`, or every visitor shares the proxy's IP bucket. With `rateLimit.driver: redis`, the default `auth` group needs `redis.url`. Each **group** of limits has its own switch, and every group shares one store. The only group today is `auth` (sign-in, password reset, invite pages); it is applied on pre-sign-in web forms only.
 
 The `internal/kernel/ratelimit` feature is generic: a `Rule` (GCRA: `Rate` calls per `Per`, `Burst` at once), a key, and a `Limiter` with `Allow` and `Reset`. Drivers, picked by `rateLimit.driver`: `ratelimit/memory` (per server, bounded, with a janitor worker) and `ratelimit/redis` (one Lua script over the shared Redis connection, so every server counts against one limit).
 
@@ -43,7 +43,7 @@ The `internal/kernel/ratelimit` feature is generic: a `Rule` (GCRA: `Rate` calls
    `auth.WriteLimited` answers 429 with `Retry-After` and a generic message, or 503 and reports the error once. A JSON caller of `/login` gets `AUT003` with `retry_after` (`RateLimitedError.ToAppError`).
 
 3. **A new page** gets `auth.Limits` in its options from `authLimits(cfg, svcs)` in `buildRoutes` (`internal/boot/http.go`). It carries the auth group's limiter and `http.trustedProxyHops`.
-4. **Tests** in the page's `web_limits_test.go`, with the memory store (`memory.New(10_000)`) for "on" and `ratelimit.Disabled()` (or the zero `auth.Limits`) for "off": limited after `Burst` calls with 429 and `Retry-After`; per email across IPs and per IP across emails where both apply; a broken limiter gives 503 (fail closed); off by default never limits; known and unknown emails get identical answers.
+4. **Tests** in the page's `web_limits_test.go`, with the memory store (`memory.New(10_000)`) for "on" and `ratelimit.Disabled()` (or the zero `auth.Limits`) for "off": limited after `Burst` calls with 429 and `Retry-After`; per email across IPs and per IP across emails where both apply; a broken limiter gives 503 (fail closed); off never limits; known and unknown emails get identical answers.
 
 ## Build: a new group
 
@@ -61,7 +61,7 @@ A driver subpackage `ratelimit/<driver>` that implements `ratelimit.Limiter`, va
 - [ ] Applied through `auth.Limits` and answered through `auth.WriteLimited`; no direct `Limiter` call in a handler.
 - [ ] No key, log line or message holds a raw email or password; email subjects are hashed.
 - [ ] Same answer for known and unknown accounts, limiter on and off.
-- [ ] Off by default; a group that is off gets `ratelimit.Disabled()` and starts no janitor.
+- [ ] A new group is off by default (`auth` is the exception); a group that is off gets `ratelimit.Disabled()` and starts no janitor.
 - [ ] `internal/boot/README.md` **Rate limits** section updated in the same commit (where each group applies, its numbers, its keys).
 - [ ] Gates: `make check`, `make cover` (≥ 85% per package), `make test-integration` (Redis store and boot), `make config-check` for a new key.
 

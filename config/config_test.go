@@ -140,3 +140,11 @@ func TestLoad_RequireFileMissing(t *testing.T) {
 	_, err := Load(missingPath(t), WithRequireFile())
 	assert.Error(t, err)
 }
+
+func TestLoad_RemovedMCPKeysAreIgnored(t *testing.T) {
+	setRequiredEnv(t)
+	path := writeConfig(t, t.TempDir(), "config.yaml", "mcp:\n  enabled: true\n  audience: https://x.example/mcp\n  audienceOverride: true\n  challengeToken: t\n  challengePrefix: p\n")
+	c, err := Load(path)
+	require.NoError(t, err)
+	assert.Equal(t, MCPConfig{Enabled: true}, c.MCP)
+}

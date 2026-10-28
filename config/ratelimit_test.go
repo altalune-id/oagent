@@ -9,8 +9,8 @@ import (
 
 func TestLoad_RateLimitDefaults(t *testing.T) {
 	c := validConfig(t)
-	assert.False(t, c.RateLimit.Auth.Enabled)
-	assert.False(t, c.RateLimit.AnyEnabled())
+	assert.True(t, c.RateLimit.Auth.Enabled, "a default deploy limits sign-in, reset and invite forms")
+	assert.True(t, c.RateLimit.AnyEnabled())
 	assert.Equal(t, RateLimitDriverMemory, c.RateLimit.Driver)
 	assert.Equal(t, 100_000, c.RateLimit.MaxKeys)
 	assert.Zero(t, c.HTTP.TrustedProxyHops)
@@ -18,14 +18,14 @@ func TestLoad_RateLimitDefaults(t *testing.T) {
 
 func TestLoad_RateLimitFromEnv(t *testing.T) {
 	setRequiredEnv(t)
-	t.Setenv("OAGENT_RATE_LIMIT_AUTH_ENABLED", "true")
+	t.Setenv("OAGENT_RATE_LIMIT_AUTH_ENABLED", "false")
 	t.Setenv("OAGENT_RATE_LIMIT_MAX_KEYS", "500")
 	t.Setenv("OAGENT_RATE_LIMIT_DRIVER", "memory")
 	t.Setenv("OAGENT_HTTP_TRUSTED_PROXY_HOPS", "2")
 	c, err := Load(missingPath(t))
 	require.NoError(t, err)
-	assert.True(t, c.RateLimit.Auth.Enabled)
-	assert.True(t, c.RateLimit.AnyEnabled())
+	assert.False(t, c.RateLimit.Auth.Enabled, "an edge-limited deploy can turn it off")
+	assert.False(t, c.RateLimit.AnyEnabled())
 	assert.Equal(t, 500, c.RateLimit.MaxKeys)
 	assert.Equal(t, 2, c.HTTP.TrustedProxyHops)
 }
@@ -61,6 +61,7 @@ func TestValidate_RateLimit(t *testing.T) {
 			mutate: func(c *Config) {
 				c.RateLimit.Driver = RateLimitDriverRedis
 				c.RateLimit.MaxKeys = 0
+				c.RateLimit.Auth.Enabled = false
 			},
 			check: func(t *testing.T, err error) { assert.NoError(t, err) },
 		},

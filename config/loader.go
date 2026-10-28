@@ -126,7 +126,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("mail.smtp.timeout", "10s")
 	v.SetDefault("rateLimit.driver", string(RateLimitDriverMemory))
 	v.SetDefault("rateLimit.maxKeys", 100_000)
-	v.SetDefault("rateLimit.auth.enabled", false)
+	v.SetDefault("rateLimit.auth.enabled", true)
 	v.SetDefault("http.trustedProxyHops", 0)
 	v.SetDefault("redis.keyPrefix", "oagent:")
 	v.SetDefault("redis.maxConnections", 10)

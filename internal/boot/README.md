@@ -309,9 +309,11 @@ listener (`k.Queue.Listener`, which starts at the stream's next message) wheneve
 
 ## Rate limits
 
-oagent's own rate limiter is **off by default**: many deployments limit at the edge (a CDN, nginx,
-an API gateway). Each group has its own switch and all groups share one store. The only group now is
-`auth` (`rateLimit.auth.enabled`). With every group off, no store and no janitor exist and every
+oagent's own rate limiter has one switch per group, and all groups share one store. The only group now is
+`auth` (`rateLimit.auth.enabled`), **on by default** with the `memory` driver, so a default deploy limits the
+sign-in, password reset and invite forms. A deployment that limits at the edge (a CDN, nginx, an API gateway)
+may turn it off. Behind a reverse proxy, set `http.trustedProxyHops`, or every visitor shares the proxy's IP
+bucket. With every group off, no store and no janitor exist and every
 group gets `ratelimit.Disabled()`, which allows every call.
 
 - **Driver:** `rateLimit.driver` picks the store: `memory` (default, per server) or `redis` (shared by

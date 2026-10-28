@@ -53,12 +53,8 @@ type SecretsConfig struct {
 
 // MCPConfig configures the Model Context Protocol surface mounted at BasePath+"/mcp".
 type MCPConfig struct {
-	Enabled          bool   `yaml:"enabled"          mapstructure:"enabled"`
-	AppsUI           bool   `yaml:"appsUI"           mapstructure:"appsUI"`
-	Audience         string `yaml:"audience"         mapstructure:"audience"`
-	AudienceOverride bool   `yaml:"audienceOverride" mapstructure:"audienceOverride"`
-	ChallengeToken   string `yaml:"challengeToken"   mapstructure:"challengeToken"`
-	ChallengePrefix  string `yaml:"challengePrefix"  mapstructure:"challengePrefix"`
+	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
+	AppsUI  bool `yaml:"appsUI"  mapstructure:"appsUI"`
 }
 
 // HTTPConfig configures the web-facing HTTP server.
