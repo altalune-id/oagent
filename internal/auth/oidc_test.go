@@ -139,7 +139,7 @@ func TestOIDCSignIn_Start(t *testing.T) {
 func TestOIDCSignIn_Callback(t *testing.T) {
 	f := newOIDCWebFixture(t, false)
 	f.auth.principal.Source, f.auth.principal.IDToken = session.SourceOIDC, "the.id.token"
-	c, state := f.start(t, "return_to=/console/x")
+	c, state := f.start(t, "return_to=/console/x&invite=inv-1")
 
 	rec := f.callback("code=c1&state="+state, c)
 	require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
@@ -147,7 +147,7 @@ func TestOIDCSignIn_Callback(t *testing.T) {
 	assert.Equal(t, "no-referrer", rec.Header().Get("Referrer-Policy"))
 	require.NotNil(t, cookieNamed(rec, session.CookieName), "signed in")
 	require.Len(t, f.auth.oidc, 1)
-	assert.Equal(t, OIDCLogin{Subject: "sub-1", Email: "ada@example.com", EmailVerified: true, Name: "Ada", IDToken: "the.id.token"}, f.auth.oidc[0])
+	assert.Equal(t, OIDCLogin{Subject: "sub-1", Email: "ada@example.com", EmailVerified: true, Name: "Ada", IDToken: "the.id.token", Invite: "inv-1"}, f.auth.oidc[0])
 	cleared := cookieNamed(rec, signInCookieName)
 	require.NotNil(t, cleared)
 	assert.Negative(t, cleared.MaxAge, "the state is single use")
@@ -314,4 +314,19 @@ func TestOIDCSignIn_LimitedPerIP(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "Too many attempts")
 	assert.Equal(t, http.StatusTooManyRequests, f.do(from("/login/oidc", "198.51.100.7")).Code, "the start shares the bucket")
 	assert.Equal(t, http.StatusBadRequest, f.do(from("/oauth/callback?code=c&state=s", "198.51.100.8")).Code, "another IP goes on")
+}
+
+// A sign-in from an invite for another email lands on the invite, which shows Mismatch; one for this email goes on.
+func TestOIDCSignIn_InviteForAnotherEmail(t *testing.T) {
+	f := newOIDCWebFixture(t, false)
+	f.auth.otherInvite = "inv-dan"
+	c, state := f.start(t, "return_to=/console/x&invite=inv-dan")
+	rec := f.callback("code=c1&state="+state, c)
+	require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
+	assert.Equal(t, "/invite", rec.Header().Get("Location"))
+	assert.NotNil(t, cookieNamed(rec, session.CookieName), "signed in, so the landing shows who is signed in")
+
+	c, state = f.start(t, "return_to=/console/x&invite=inv-ada")
+	rec = f.callback("code=c1&state="+state, c)
+	assert.Equal(t, "/console/x", rec.Header().Get("Location"))
 }

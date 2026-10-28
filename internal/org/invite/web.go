@@ -20,22 +20,29 @@ import (
 
 const cookieName = "oagent_invite"
 
-// MethodPassword is the sign-in method for a local account with a password.
-const MethodPassword = "password"
+// The sign-in methods an invitee may join with.
+const (
+	// MethodPassword is a local account with a password.
+	MethodPassword = "password"
+	// MethodOIDC is sign-in through the configured OIDC provider.
+	MethodOIDC = "oidc"
+)
 
 // WebOpts configures the invite pages.
 type WebOpts struct {
-	Kit          layout.Kit
-	Invites      *Service
-	Users        Users
-	Members      Memberships
-	Orgs         Orgs
-	OrgLinks     OrgLinks
-	People       People
-	SignIn       SignIn
-	Sessions     Sessions
-	Consent      layout.ConsentData
-	Methods      []string
+	Kit      layout.Kit
+	Invites  *Service
+	Users    Users
+	Members  Memberships
+	Orgs     Orgs
+	OrgLinks OrgLinks
+	People   People
+	SignIn   SignIn
+	Sessions Sessions
+	Consent  layout.ConsentData
+	Methods  []string
+	// OIDCLabel is the OIDC sign-in button's text, with MethodOIDC on.
+	OIDCLabel    string
 	StateSecret  []byte
 	CookieSecure bool
 	Now          func() time.Time
@@ -124,7 +131,7 @@ func (h *Web) postJoin(w http.ResponseWriter, r *http.Request) {
 		h.o.Kit.Fail(w, r, "web: invite join", err)
 		return
 	}
-	if v.State != views.StateJoin {
+	if v.State != views.StateJoin || !v.Password {
 		h.render(w, r, http.StatusConflict, v)
 		return
 	}
@@ -158,7 +165,7 @@ func (h *Web) postJoin(w http.ResponseWriter, r *http.Request) {
 	h.done(w, r, inv)
 }
 
-// TODO(P3): require email_verified and a matching email before accept.
+// SECURITY: Accept refuses another email (INV002); an OIDC email is verified at sign-in, a password one came by invite or install.
 func (h *Web) postAccept(w http.ResponseWriter, r *http.Request) {
 	inv, ok := h.fromCookie(w, r)
 	if !ok {
@@ -225,11 +232,16 @@ func (h *Web) landing(r *http.Request, inv *Invite) (views.LandingData, error) {
 		switch {
 		case err == nil:
 			v.State, v.LoginURL = views.StateSignIn, h.loginURL(inv.Email)
+			return v, nil
 		case !user.IsNotFoundError(err):
 			return views.LandingData{}, err
-		case slices.Contains(h.o.Methods, MethodPassword):
-			v.State = views.StateJoin
-		default:
+		}
+		v.Password = slices.Contains(h.o.Methods, MethodPassword)
+		if slices.Contains(h.o.Methods, MethodOIDC) {
+			v.OIDCURL, v.OIDCLabel = h.oidcURL(inv), h.o.OIDCLabel
+		}
+		v.State = views.StateJoin
+		if !v.Password && v.OIDCURL == "" {
 			v.State = views.StateNoMethod
 		}
 	}
@@ -349,4 +361,12 @@ func (h *Web) readCookie(r *http.Request) (publicID string, issued int64, ok boo
 		return "", 0, false
 	}
 	return publicID, issued, true
+}
+
+// NOTE: the OIDC sign-in claims the invite by its public id, for its verified email only; the account picker lets the invitee choose.
+func (h *Web) oidcURL(inv *Invite) string {
+	q := url.Values{
+		"invite": {inv.PublicID}, "login_hint": {inv.Email}, "prompt": {"select_account"}, "return_to": {h.o.Kit.Path("/console/")},
+	}
+	return h.o.Kit.Path("/login/oidc") + "?" + q.Encode()
 }

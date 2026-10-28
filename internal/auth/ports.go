@@ -94,10 +94,26 @@ type Deps struct {
 	From       string
 	BaseURL    string
 	Identities Identities
+	Invites    OIDCInvites
 	// Issuer is the normalized oidc.issuer every account link is stored under.
 	Issuer string
 	// OpenSignup lets a verified OIDC sign-in with no account create one (cloud); otherwise it needs an account already.
 	OpenSignup bool
+}
+
+// Seat is a usable invite an OIDC sign-in may claim: who it is for and which org it joins.
+type Seat struct {
+	ID    uuid.UUID
+	OrgID uuid.UUID
+	Email string
+}
+
+// OIDCInvites finds and uses up the invites an OIDC sign-in may claim; boot adapts invite.Service to it.
+type OIDCInvites interface {
+	// Seat returns the usable invite with publicID, or nil when it is unknown, used, revoked or expired.
+	Seat(ctx context.Context, publicID string) (*Seat, error)
+	// Claim uses seat up for userID and adds them to its org; false when it is no longer usable or not for their email.
+	Claim(ctx context.Context, seat *Seat, userID uuid.UUID) (bool, error)
 }
 
 // Identities finds, links and creates the accounts an OIDC sign-in names; user.Service is it.

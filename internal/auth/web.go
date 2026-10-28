@@ -32,6 +32,7 @@ const (
 type SignIn interface {
 	LoginLocal(ctx context.Context, c Credentials) (session.Principal, error)
 	LoginOIDC(ctx context.Context, in OIDCLogin) (session.Principal, error)
+	InviteMismatch(ctx context.Context, invite, email string) (bool, error)
 	Logout(ctx context.Context, sid string) error
 }
 

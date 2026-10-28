@@ -61,7 +61,7 @@ AS $$
   LIMIT 1;
 $$;
 
--- SECURITY: resolves the invite named by the landing cookie before any tenant scope exists; the row names the org.
+-- SECURITY: resolves an invite by its public id before any tenant scope exists (the landing cookie, an OIDC sign-in started from it); the row names the org.
 CREATE FUNCTION {{.Schema}}.{{.TablePrefix}}resolve_invite_by_public_id(p_public_id text)
 RETURNS TABLE (id uuid, public_id text, org_id uuid, email text, role text, draft boolean, invited_by uuid, expires_at timestamptz, accepted_at timestamptz, accepted_by uuid, revoked_at timestamptz, created_at timestamptz, updated_at timestamptz)
 LANGUAGE sql STABLE

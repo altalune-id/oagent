@@ -110,6 +110,21 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	keyAuthn := apikey.NewAuthenticator(apiKeyStore, keyUsage, keyScheme, owners, k.Reporter.Unexpected)
 	sessions := buildSessionStore(k, cfg, sl, secretsLog(k.Log, caps))
 	mailQueue := buildMailQueue(k.Pool, cfg, sl)
+	terms := buildLegal(k, cfg, users)
+	invites := invite.NewService(invite.Deps{
+		Store:      invite.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix),
+		Transactor: uow,
+		Members:    members,
+		Mail:       mailQueue,
+		Users:      users,
+		Terms:      terms,
+		Events:     webhooks,
+		Orgs:       memberOrgs{orgs: orgs},
+		People:     memberPeople{users: users},
+		From:       cfg.Mail.From,
+		BaseURL:    publicBase(cfg.HTTP),
+		Unexpected: k.Reporter.Unexpected,
+	})
 	authn := auth.NewService(auth.Deps{
 		Users:      users,
 		Members:    members,
@@ -124,6 +139,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		From:       cfg.Mail.From,
 		BaseURL:    publicBase(cfg.HTTP),
 		Identities: users,
+		Invites:    oidcInvites{invites: invites},
 		Issuer:     cfg.OIDC.NormalizedIssuer(),
 		OpenSignup: cfg.OpenSignup(),
 	})
@@ -151,7 +167,8 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Sessions:     sessions,
 		Auth:         authn,
 		Install:      installer,
-		Legal:        buildLegal(k, cfg, users),
+		Legal:        terms,
+		Invites:      invites,
 		Caps:         caps,
 		AuthLimiter:  ratelimit.Disabled(),
 		OIDC:         buildOIDCProvider(cfg),
@@ -168,20 +185,6 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	})
 	members.WithEffects(memberEffects(cfg, svcs)).WithDirectory(memberDirectory{users: users, orgs: orgs})
 	installer.WithTerms(svcs.Legal)
-	svcs.Invites = invite.NewService(invite.Deps{
-		Store:      invite.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix),
-		Transactor: uow,
-		Members:    members,
-		Mail:       svcs.MailQueue,
-		Users:      users,
-		Terms:      svcs.Legal,
-		Events:     webhooks,
-		Orgs:       memberOrgs{orgs: orgs},
-		People:     memberPeople{users: users},
-		From:       cfg.Mail.From,
-		BaseURL:    publicBase(cfg.HTTP),
-		Unexpected: k.Reporter.Unexpected,
-	})
 	return svcs
 }
 
@@ -344,4 +347,32 @@ func capabilitiesConfig(cfg config.Config) capabilities.Config {
 		EnvGenesis: cfg.Auth.Genesis.Email != "",
 		Passwords:  cfg.PasswordsOn(),
 	}
+}
+
+type oidcInvites struct{ invites *invite.Service }
+
+func (c oidcInvites) Seat(ctx context.Context, publicID string) (*auth.Seat, error) {
+	inv, err := c.invites.Landing(ctx, publicID)
+	if err != nil {
+		return nil, noSeat(err)
+	}
+	if usable := c.invites.Usable(inv) == nil; !usable {
+		return nil, nil
+	}
+	return &auth.Seat{ID: inv.ID, OrgID: inv.OrgID, Email: inv.Email}, nil
+}
+
+func (c oidcInvites) Claim(ctx context.Context, seat *auth.Seat, userID uuid.UUID) (bool, error) {
+	if _, err := c.invites.Accept(ctx, seat.OrgID, seat.ID, userID); err != nil {
+		return false, noSeat(err)
+	}
+	return true, nil
+}
+
+// NOTE: an invite that is gone, used, expired or for another email is no seat to claim, not a failure.
+func noSeat(err error) error {
+	if invite.IsNotFoundError(err) || invite.IsNotUsableError(err) || invite.IsEmailMismatchError(err) {
+		return nil
+	}
+	return err
 }

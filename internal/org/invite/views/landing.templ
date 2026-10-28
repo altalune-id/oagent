@@ -27,6 +27,10 @@ type LandingData struct {
 	LoginURL      string
 	Error         string
 	Consent       layout.ConsentData
+	// OIDCURL joins through the OIDC provider, on a button labelled OIDCLabel; Password offers the password form.
+	OIDCURL   string
+	OIDCLabel string
+	Password  bool
 }
 
 // GoneData is the page for an invite link that no longer works.
@@ -46,19 +50,27 @@ templ Landing(d layout.LayoutData, v LandingData) {
 			switch v.State {
 				case StateJoin:
 					<p>{ v.Inviter } invited you to join { v.Org } as { v.Role }. Create your account to join.</p>
-					<form method="post" action={ d.Href("/invite/join") } class="flex flex-col gap-3">
-						<label class="floating-label">
-							<span>Email</span>
-							<input class="input w-full" type="email" name="email" value={ v.Email } placeholder="Email" autocomplete="username" readonly/>
-						</label>
-						<label class="floating-label">
-							<span>Your name</span>
-							<input class="input w-full" type="text" name="name" value={ v.Name } placeholder="Your name" autocomplete="name" autofocus/>
-						</label>
-						@layout.PasswordField(d, layout.PasswordFieldData{Name: "password", Label: "Password", EmailInput: "email", NameInput: "name"})
-						@layout.Consent(d, v.Consent)
-						<button class="btn btn-primary mt-2" type="submit">Join { v.Org }</button>
-					</form>
+					if v.OIDCURL != "" {
+						<a class="btn btn-primary btn-block" href={ templ.SafeURL(v.OIDCURL) }>{ v.OIDCLabel }</a>
+					}
+					if v.OIDCURL != "" && v.Password {
+						@layout.Divider("or join with a password")
+					}
+					if v.Password {
+						<form method="post" action={ d.Href("/invite/join") } class="flex flex-col gap-3">
+							<label class="floating-label">
+								<span>Email</span>
+								<input class="input w-full" type="email" name="email" value={ v.Email } placeholder="Email" autocomplete="username" readonly/>
+							</label>
+							<label class="floating-label">
+								<span>Your name</span>
+								<input class="input w-full" type="text" name="name" value={ v.Name } placeholder="Your name" autocomplete="name" autofocus/>
+							</label>
+							@layout.PasswordField(d, layout.PasswordFieldData{Name: "password", Label: "Password", EmailInput: "email", NameInput: "name"})
+							@layout.Consent(d, v.Consent)
+							<button class={ "btn mt-2", templ.KV("btn-outline", v.OIDCURL != ""), templ.KV("btn-primary", v.OIDCURL == "") } type="submit">Join { v.Org }</button>
+						</form>
+					}
 				case StateSignIn:
 					<p>{ v.Inviter } invited you to join { v.Org } as { v.Role }. You already have an account with { v.Email }.</p>
 					<a class="btn btn-primary" href={ templ.SafeURL(v.LoginURL) }>Sign in to join</a>

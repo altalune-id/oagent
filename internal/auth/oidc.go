@@ -43,6 +43,7 @@ type signInState struct {
 	Nonce    string `json:"n"`
 	Verifier string `json:"v"`
 	ReturnTo string `json:"r,omitempty"`
+	Invite   string `json:"i,omitempty"`
 	IssuedAt int64  `json:"t"`
 }
 
@@ -100,7 +101,7 @@ func (h *Web) startOIDC(w http.ResponseWriter, r *http.Request) {
 	}
 	raw, err := json.Marshal(signInState{
 		State: req.State, Nonce: req.Nonce, Verifier: req.CodeVerifier,
-		ReturnTo: layout.SanitizeReturnTo(h.kit.BasePath, q.Get("return_to")), IssuedAt: h.signInNow().Unix(),
+		ReturnTo: layout.SanitizeReturnTo(h.kit.BasePath, q.Get("return_to")), Invite: q.Get("invite"), IssuedAt: h.signInNow().Unix(),
 	})
 	if err != nil {
 		h.kit.Fail(w, r, "web: oidc sign-in", err)
@@ -138,18 +139,33 @@ func (h *Web) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p, err := h.signIn.LoginOIDC(r.Context(), OIDCLogin{
-		Subject: tok.Subject, Email: tok.Email, EmailVerified: tok.EmailVerified, Name: tok.Name, IDToken: tok.Raw,
+		Subject: tok.Subject, Email: tok.Email, EmailVerified: tok.EmailVerified, Name: tok.Name, IDToken: tok.Raw, Invite: st.Invite,
 	})
 	if err != nil {
 		h.signInFailed(w, r, err, tok.Email, st.ReturnTo)
+		return
+	}
+	to, err := h.afterSignIn(r.Context(), st, tok.Email)
+	if err != nil {
+		h.kit.Fail(w, r, "web: oidc sign-in invite", err)
 		return
 	}
 	if _, _, err := h.sessions.Start(r.Context(), w, p); err != nil {
 		h.kit.Fail(w, r, "web: start session", err)
 		return
 	}
-	to := layout.ResolveReturnTo(h.kit.BasePath, st.ReturnTo)
 	http.Redirect(w, r, to, http.StatusSeeOther) //nolint:gosec // G710: ResolveReturnTo sanitizes.
+}
+
+// NOTE: a sign-in from an invite for another email lands on the invite, whose Mismatch state offers to switch account.
+func (h *Web) afterSignIn(ctx context.Context, st signInState, email string) (string, error) {
+	if st.Invite != "" {
+		other, err := h.signIn.InviteMismatch(ctx, st.Invite, email)
+		if err != nil || other {
+			return h.kit.Path("/invite"), err
+		}
+	}
+	return layout.ResolveReturnTo(h.kit.BasePath, st.ReturnTo), nil
 }
 
 // NOTE: a forged or replayed callback, a mix-up or a token that fails validation are all "start again", never upstream text.

@@ -226,6 +226,9 @@ func (s *Service) Landing(ctx context.Context, publicID string) (*Invite, error)
 	return inv, nil
 }
 
+// Usable returns nil when a person may still accept inv, by the service's clock.
+func (s *Service) Usable(inv *Invite) error { return inv.Usable(s.now()) }
+
 // Accept uses up orgID's invite inviteID for userID and adds them to the org; an existing member keeps their role.
 func (s *Service) Accept(ctx context.Context, orgID, inviteID, userID uuid.UUID) (Outcome, error) {
 	ctx = tenant.Into(ctx, tenant.Context{OrgID: orgID, UserID: userID})

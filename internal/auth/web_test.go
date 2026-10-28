@@ -342,14 +342,15 @@ func TestLogout_ServiceErrorIsReportedAndCookieCleared(t *testing.T) {
 }
 
 type fakeAuth struct {
-	oidc       []OIDCLogin
-	oidcErr    error
-	users      map[string]string
-	principal  session.Principal
-	loggedOut  []string
-	loginCalls int
-	loginErr   error
-	logoutErr  error
+	oidc        []OIDCLogin
+	oidcErr     error
+	otherInvite string
+	users       map[string]string
+	principal   session.Principal
+	loggedOut   []string
+	loginCalls  int
+	loginErr    error
+	logoutErr   error
 }
 
 func (f *fakeAuth) LoginLocal(_ context.Context, c Credentials) (session.Principal, error) {
@@ -371,6 +372,10 @@ func (f *fakeAuth) LoginOIDC(_ context.Context, in OIDCLogin) (session.Principal
 		return session.Principal{}, f.oidcErr
 	}
 	return f.principal, nil
+}
+
+func (f *fakeAuth) InviteMismatch(_ context.Context, invite, _ string) (bool, error) {
+	return invite == f.otherInvite, nil
 }
 
 func (f *fakeAuth) Logout(_ context.Context, sid string) error {

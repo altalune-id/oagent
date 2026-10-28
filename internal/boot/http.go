@@ -16,7 +16,6 @@ import (
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/install"
 	"altalune.id/oagent/internal/kernel/authn"
-	"altalune.id/oagent/internal/kernel/capabilities"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/legal"
 	mcpinternal "altalune.id/oagent/internal/mcp"
@@ -194,7 +193,8 @@ func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected
 			SignIn:       svcs.Auth,
 			Sessions:     sessions,
 			Consent:      consentData(cfg),
-			Methods:      inviteMethods(svcs.Caps),
+			Methods:      inviteMethods(svcs),
+			OIDCLabel:    cfg.OIDC.ButtonLabel,
 			StateSecret:  svcs.StateSecret,
 			CookieSecure: cfg.HTTP.CookieSecure,
 			Limits:       limits,
@@ -286,10 +286,13 @@ func consoleWeb(cfg config.Config, svcs *Services, kit layout.Kit, sessions auth
 	return w.WithResets(svcs.Resets)
 }
 
-func inviteMethods(caps capabilities.Capabilities) []string {
+func inviteMethods(svcs *Services) []string {
 	var methods []string
-	if caps.Passwords {
+	if svcs.Caps.Passwords {
 		methods = append(methods, invite.MethodPassword)
+	}
+	if svcs.OIDC != nil {
+		methods = append(methods, invite.MethodOIDC)
 	}
 	return methods
 }

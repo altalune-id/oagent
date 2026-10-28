@@ -558,3 +558,12 @@ func TestService_EventFailureFailsTheChange(t *testing.T) {
 	_, err := f.svc.Create(f.ctx, f.owner, f.org, "bob@x.io", member.RoleMember)
 	assert.True(t, isUnexpected(err), "got %v", err)
 }
+
+// Usable reads the service's clock, so a caller outside the package never brings its own.
+func TestService_Usable(t *testing.T) {
+	f := newFixture(t)
+	c := f.create("bob@x.io", member.RoleMember)
+	require.NoError(t, f.svc.Usable(c.Invite))
+	f.clock = f.clock.Add(invite.TTL)
+	assert.True(t, invite.IsNotUsableError(f.svc.Usable(c.Invite)), "expired by the service's clock")
+}

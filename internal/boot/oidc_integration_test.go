@@ -15,6 +15,7 @@ import (
 
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/org/member"
 )
 
 type oidcApp struct {
@@ -47,8 +48,13 @@ func newOIDCApp(t *testing.T, passwords bool) *oidcApp {
 
 func (a *oidcApp) signIn(t *testing.T, user oidcrptest.User) *httptest.ResponseRecorder {
 	t.Helper()
+	return a.signInFrom(t, user, "")
+}
+
+func (a *oidcApp) signInFrom(t *testing.T, user oidcrptest.User, invite string) *httptest.ResponseRecorder {
+	t.Helper()
 	a.idp.User = user
-	start := serve(a.h, httptest.NewRequest(http.MethodGet, "/login/oidc?return_to=/console/", nil))
+	start := serve(a.h, httptest.NewRequest(http.MethodGet, "/login/oidc?return_to=/console/&invite="+invite, nil))
 	require.Equal(t, http.StatusFound, start.Code, start.Body.String())
 	q := a.idp.Authorize(start.Header().Get("Location"))
 	return serve(a.h, httptest.NewRequest(http.MethodGet, "/oauth/callback?"+q.Encode(), nil), cookieNamed(start, "oagent_signin"))
@@ -125,4 +131,36 @@ func whoamiRequest() *http.Request {
 	req := httptest.NewRequest(http.MethodPost, "/api/auth.v1.AuthService/Whoami", strings.NewReader("{}"))
 	req.Header.Set("Content-Type", "application/json")
 	return req
+}
+
+// SECURITY: an invite joins only its own verified email, once; another email joins nothing.
+func TestOIDCSignIn_FromAnInvite(t *testing.T) {
+	a := newOIDCApp(t, false)
+	ctx := t.Context()
+	sys, err := a.svcs.Orgs.System(ctx)
+	require.NoError(t, err)
+	c, err := a.svcs.Invites.Create(ctx, member.Requester{Operator: true}, sys.ID, "Bob@Example.com", member.RoleMember)
+	require.NoError(t, err)
+
+	eve := a.signInFrom(t, oidcrptest.User{Subject: "sub-eve", Email: "eve@example.com", EmailVerified: true}, c.Invite.PublicID)
+	assert.Equal(t, http.StatusForbidden, eve.Code, "someone else's invite: selfhosted needs one of their own")
+	_, err = a.svcs.Users.ByEmail(ctx, "eve@example.com")
+	assert.Error(t, err, "no account for eve")
+
+	bob := a.signInFrom(t, oidcrptest.User{Subject: "sub-bob", Email: "bob@example.com", EmailVerified: true, Name: "Bob"}, c.Invite.PublicID)
+	require.Equal(t, http.StatusSeeOther, bob.Code, bob.Body.String())
+	assert.Equal(t, "/console/", bob.Header().Get("Location"))
+	u, err := a.svcs.Users.ByEmail(ctx, "bob@example.com")
+	require.NoError(t, err)
+	assert.Equal(t, "sub-bob", u.IDPSubject)
+	assert.False(t, u.HasPassword(), "an OIDC account has no password")
+	m, err := a.svcs.Members.Find(ctx, sys.ID, u.ID)
+	require.NoError(t, err)
+	assert.Equal(t, member.RoleMember, m.Role)
+	stored, err := a.svcs.Invites.Landing(ctx, c.Invite.PublicID)
+	require.NoError(t, err)
+	assert.NotNil(t, stored.AcceptedAt, "the invite is used up")
+
+	again := a.signInFrom(t, oidcrptest.User{Subject: "sub-bob", Email: "bob@example.com", EmailVerified: true}, c.Invite.PublicID)
+	assert.Equal(t, http.StatusSeeOther, again.Code, "a used invite is skipped; the linked account signs in")
 }

@@ -66,6 +66,10 @@ func newWebFixture(t *testing.T, requireTerms bool) *webFixture {
 }
 
 func newLimitedWebFixture(t *testing.T, requireTerms bool, limits auth.Limits) *webFixture {
+	return newMethodsWebFixture(t, requireTerms, limits, invite.MethodPassword)
+}
+
+func newMethodsWebFixture(t *testing.T, requireTerms bool, limits auth.Limits, methods ...string) *webFixture {
 	f := &webFixture{fixture: newFixture(t), sessions: session.NewMemoryStore()}
 	f.signIn = &fakeSignIn{users: f.users}
 	cookies := auth.CookieSessions{Store: f.sessions, Secret: webSecret, Cookie: session.CookieOptions{Path: "/", Secure: true}, TTL: time.Hour}
@@ -75,7 +79,7 @@ func newLimitedWebFixture(t *testing.T, requireTerms bool, limits auth.Limits) *
 			Kit: layout.Kit{}, Invites: f.svc, Users: f.users, Members: f.members,
 			Orgs: orgNames{f.org: "Acme"}, OrgLinks: slugs{f.org: "acme"}, People: directory{people: f.people, users: f.users},
 			SignIn: f.signIn, Sessions: cookies, Consent: layout.ConsentData{Required: requireTerms},
-			Methods: []string{invite.MethodPassword}, StateSecret: webSecret, CookieSecure: true,
+			Methods: methods, OIDCLabel: "Continue with SSO", StateSecret: webSecret, CookieSecure: true,
 			Now: func() time.Time { return f.clock }, Limits: limits,
 		})},
 	})
@@ -114,11 +118,16 @@ func (f *webFixture) open(t *testing.T, c *invite.Created) *http.Cookie {
 
 func (f *webFixture) sessionFor(t *testing.T, email string) *http.Cookie {
 	t.Helper()
+	return f.sessionFrom(t, email, session.SourceLocal)
+}
+
+func (f *webFixture) sessionFrom(t *testing.T, email string, source session.Source) *http.Cookie {
+	t.Helper()
 	u, err := f.users.ByEmail(f.ctx, email)
 	require.NoError(t, err)
 	sid, err := session.NewID()
 	require.NoError(t, err)
-	p := session.Principal{UserID: u.ID, Email: u.Email, Source: session.SourceLocal}
+	p := session.Principal{UserID: u.ID, Email: u.Email, Source: source}
 	require.NoError(t, f.sessions.Save(f.ctx, sid, p, time.Now().Add(time.Hour)))
 	return &http.Cookie{Name: session.CookieName, Value: session.Sign(webSecret, sid)}
 }
@@ -468,4 +477,53 @@ func TestWeb_NoSignInMethod(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), "this server has no way to sign in yet")
 	assert.NotContains(t, rec.Body.String(), `action="/invite/join"`)
+}
+
+// With passwords off an invitee joins only through the OIDC provider, which carries the invite to the sign-in.
+func TestWeb_JoinWithOIDCOnly(t *testing.T) {
+	f := newMethodsWebFixture(t, false, auth.Limits{}, invite.MethodOIDC)
+	c := f.create("bob@x.io", member.RoleMember)
+	ck := f.open(t, c)
+	rec := f.get("/invite", ck)
+	require.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+	assert.Contains(t, body, "Continue with SSO")
+	assert.Contains(t, body, "/login/oidc?invite="+c.Invite.PublicID)
+	assert.Contains(t, body, "login_hint=bob%40x.io")
+	assert.Contains(t, body, "prompt=select_account", "the provider shows its account picker, so another signed-in account is not used silently")
+	assert.NotContains(t, body, `name="password"`)
+	assert.NotContains(t, body, "or join with a password")
+
+	rec = f.post("/invite/join", url.Values{"name": {"Bob"}, "password": {"quiet forest lamp nine"}}, ck)
+	assert.Equal(t, http.StatusConflict, rec.Code, "no password join when passwords are off")
+	_, err := f.users.ByEmail(f.ctx, "bob@x.io")
+	assert.True(t, user.IsNotFoundError(err), "no account was created")
+
+	both := newMethodsWebFixture(t, false, auth.Limits{}, invite.MethodPassword, invite.MethodOIDC)
+	ck = both.open(t, both.create("cara@x.io", member.RoleMember))
+	body = both.get("/invite", ck).Body.String()
+	assert.Contains(t, body, "Continue with SSO")
+	assert.Contains(t, body, "or join with a password")
+	assert.Contains(t, body, `name="password"`)
+
+	none := newMethodsWebFixture(t, false, auth.Limits{})
+	ck = none.open(t, none.create("dan@x.io", member.RoleMember))
+	assert.Contains(t, none.get("/invite", ck).Body.String(), "no way to sign in yet")
+}
+
+// SECURITY: a person signed in through the OIDC provider accepts only an invite for their own email.
+func TestWeb_OIDCPersonAcceptsOnlyTheirOwnEmail(t *testing.T) {
+	f := newMethodsWebFixture(t, false, auth.Limits{}, invite.MethodOIDC)
+	f.account(t, "carol@x.io")
+	c := f.create("bob@x.io", member.RoleMember)
+	ck := f.open(t, c)
+	refused := f.post("/invite/accept", nil, ck, f.sessionFrom(t, "carol@x.io", session.SourceOIDC))
+	assert.Equal(t, http.StatusForbidden, refused.Code)
+	stored, err := f.store.ByID(f.ctx, c.Invite.ID)
+	require.NoError(t, err)
+	assert.Nil(t, stored.AcceptedAt, "the invite is untouched")
+
+	mine := f.create("carol@x.io", member.RoleMember)
+	rec := f.post("/invite/accept", nil, f.open(t, mine), f.sessionFrom(t, "carol@x.io", session.SourceOIDC))
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
 }

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -54,10 +55,53 @@ func (f *fakeIdentities) CreateLinked(_ context.Context, email, name, issuer, su
 	return u, nil
 }
 
+type fakeSeat struct {
+	seat     Seat
+	role     member.Role
+	accepted bool
+}
+
+type fakeInvites struct {
+	byPublicID map[string]*fakeSeat
+	members    *fakeMembers
+	users      *fakeUsers
+	accepted   []uuid.UUID
+}
+
+func (f *fakeInvites) Seat(_ context.Context, publicID string) (*Seat, error) {
+	if s, ok := f.byPublicID[publicID]; ok && !s.accepted {
+		return &s.seat, nil
+	}
+	return nil, nil
+}
+
+func (f *fakeInvites) Claim(_ context.Context, seat *Seat, userID uuid.UUID) (bool, error) {
+	for _, s := range f.byPublicID {
+		if s.seat.ID != seat.ID || s.accepted {
+			continue
+		}
+		for _, u := range f.users.byEmail {
+			if u.ID == userID && !strings.EqualFold(u.Email, s.seat.Email) {
+				return false, nil
+			}
+		}
+		s.accepted = true
+		m, err := member.New(seat.OrgID, userID, s.role)
+		if err != nil {
+			return false, err
+		}
+		f.members.byUser[userID] = append(f.members.byUser[userID], m)
+		f.accepted = append(f.accepted, seat.ID)
+		return true, nil
+	}
+	return false, nil
+}
+
 type oidcFixture struct {
 	*fixture
-	ids *fakeIdentities
-	sys *org.Org
+	invites *fakeInvites
+	ids     *fakeIdentities
+	sys     *org.Org
 }
 
 func newOIDCFixture(t *testing.T, openSignup bool) *oidcFixture {
@@ -65,11 +109,19 @@ func newOIDCFixture(t *testing.T, openSignup bool) *oidcFixture {
 	f := &oidcFixture{fixture: newFixture(t, BasicCredentials{})}
 	f.sys = f.addOrg(t, true)
 	f.addProject(f.sys)
+	f.invites = &fakeInvites{byPublicID: map[string]*fakeSeat{}, members: f.members, users: f.users}
 	d := f.svc.deps
 	f.ids = &fakeIdentities{users: f.users}
-	d.Identities, d.Issuer, d.OpenSignup = f.ids, testIssuer, openSignup
+	d.Identities, d.Invites, d.Issuer, d.OpenSignup = f.ids, f.invites, testIssuer, openSignup
 	f.svc = NewService(d)
 	return f
+}
+
+func (f *oidcFixture) invite(t *testing.T, o *org.Org, email string, role member.Role) (publicID string, id uuid.UUID) {
+	t.Helper()
+	publicID, id = "inv-"+uuid.NewString()[:8], uuid.New()
+	f.invites.byPublicID[publicID] = &fakeSeat{seat: Seat{ID: id, OrgID: o.ID, Email: email}, role: role}
+	return publicID, id
 }
 
 func oidcLogin(sub, email string) OIDCLogin {
@@ -174,4 +226,74 @@ func TestLoginOIDC_CreateRace(t *testing.T) {
 	f.ids.race = func(string) {}
 	_, err = f.svc.LoginOIDC(context.Background(), oidcLogin("sub-3", "cy@shop.test"))
 	assert.True(t, IsIdentityConflictError(err), "nothing to find again: AUT007, %v", err)
+}
+
+func TestLoginOIDC_FromAnInvite(t *testing.T) {
+	f := newOIDCFixture(t, false)
+	acme := f.addOrg(t, false)
+	theirs, _ := f.invite(t, acme, "cara@example.com", member.RoleMember)
+
+	in := oidcLogin("sub-1", "dan@example.com")
+	in.Invite = theirs
+	_, err := f.svc.LoginOIDC(context.Background(), in)
+	assert.True(t, IsNoConsoleAccountError(err), "someone else's invite creates nothing")
+	assert.Empty(t, f.invites.accepted)
+
+	in = oidcLogin("sub-2", "Cara@Example.com")
+	in.Invite = theirs
+	p, err := f.svc.LoginOIDC(context.Background(), in)
+	require.NoError(t, err, "the invite's email matches whatever its case")
+	assert.Equal(t, acme.ID, p.ActiveOrgID)
+
+	ada := f.addUser(t, "ada@example.com", true)
+	f.join(t, f.sys, ada, member.RoleOwner)
+	joins, joinsID := f.invite(t, acme, "ada@example.com", member.RoleAdmin)
+	in = oidcLogin("sub-3", "ada@example.com")
+	in.Invite = joins
+	_, err = f.svc.LoginOIDC(context.Background(), in)
+	require.NoError(t, err)
+	assert.Contains(t, f.invites.accepted, joinsID, "an existing account joins the org it was invited to")
+	assert.Len(t, f.members.byUser[ada.ID], 2)
+
+	used := oidcLogin("sub-3", "ada@example.com")
+	used.Invite = joins
+	_, err = f.svc.LoginOIDC(context.Background(), used)
+	require.NoError(t, err, "a used invite is skipped, the sign-in goes on")
+	assert.Len(t, f.members.byUser[ada.ID], 2)
+}
+
+// Cloud signup is open, so someone else's invite opens an account without claiming it; the web then shows the invite's Mismatch.
+func TestLoginOIDC_CloudInviteForAnotherEmail(t *testing.T) {
+	f := newOIDCFixture(t, true)
+	acme := f.addOrg(t, false)
+	dans, _ := f.invite(t, acme, "dan@x.test", member.RoleMember)
+
+	in := oidcLogin("sub-eve", "eve@x.test")
+	in.Invite = dans
+	p, err := f.svc.LoginOIDC(context.Background(), in)
+	require.NoError(t, err)
+	eve := f.users.byEmail["eve@x.test"]
+	require.NotNil(t, eve)
+	assert.Equal(t, eve.ID, p.UserID)
+	assert.Empty(t, f.invites.accepted, "Dan's invite stays open")
+	assert.Empty(t, f.members.byUser[eve.ID])
+
+	other, err := f.svc.InviteMismatch(context.Background(), dans, "Eve@x.test")
+	require.NoError(t, err)
+	assert.True(t, other)
+	other, err = f.svc.InviteMismatch(context.Background(), dans, "DAN@x.test")
+	require.NoError(t, err)
+	assert.False(t, other)
+	other, err = f.svc.InviteMismatch(context.Background(), "inv-gone", "eve@x.test")
+	require.NoError(t, err)
+	assert.False(t, other, "a used, expired or unknown invite is no mismatch")
+
+	self := newOIDCFixture(t, false)
+	theirs, _ := self.invite(t, self.addOrg(t, false), "dan@x.test", member.RoleMember)
+	in = oidcLogin("sub-eve", "eve@x.test")
+	in.Invite = theirs
+	_, err = self.svc.LoginOIDC(context.Background(), in)
+	var none *NoConsoleAccountError
+	require.ErrorAs(t, err, &none, "selfhosted creates no account")
+	assert.Equal(t, NoConsoleNotInvited, none.Reason)
 }

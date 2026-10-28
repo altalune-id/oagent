@@ -87,8 +87,11 @@ func TestBuildRoutes_PasswordsOff(t *testing.T) {
 	assert.Equal(t, http.StatusMethodNotAllowed, serveRoutes(cfg, svcs, http.MethodPost, "/login").Code)
 	assert.Equal(t, http.StatusNotFound, serveRoutes(cfg, svcs, http.MethodGet, "/forgot-password").Code)
 	assert.Equal(t, http.StatusNotFound, serveRoutes(cfg, svcs, http.MethodGet, "/reset-password/abc").Code)
-	assert.Empty(t, inviteMethods(svcs.Caps))
-	assert.Equal(t, []string{invite.MethodPassword}, inviteMethods(capabilities.Capabilities{LocalLogin: true, Passwords: true}))
+	assert.Empty(t, inviteMethods(svcs))
+	assert.Equal(t, []string{invite.MethodPassword}, inviteMethods(&Services{Caps: capabilities.Capabilities{LocalLogin: true, Passwords: true}}))
+	assert.Equal(t, []string{invite.MethodPassword, invite.MethodOIDC}, inviteMethods(&Services{
+		Caps: capabilities.Capabilities{LocalLogin: true, Passwords: true}, OIDC: newOIDCProvider(config.Config{}, nil),
+	}))
 }
 
 func TestAPIChain(t *testing.T) {
