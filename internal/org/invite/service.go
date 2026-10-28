@@ -10,6 +10,7 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/events"
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org/invite/views"
 	"altalune.id/oagent/internal/org/member"
@@ -67,6 +68,7 @@ func (s *Service) WithClock(now func() time.Time) *Service {
 
 // Create invites email to orgID with role on behalf of r and queues the email; a live invite for that email is replaced.
 func (s *Service) Create(ctx context.Context, r member.Requester, orgID uuid.UUID, email string, role member.Role) (*Created, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	email, err := user.NormalizeEmail(email)
 	if err != nil {
 		return nil, err
@@ -96,6 +98,7 @@ func (s *Service) Create(ctx context.Context, r member.Requester, orgID uuid.UUI
 
 // Resend gives a pending or expired invite a new link and expiry, and emails it again.
 func (s *Service) Resend(ctx context.Context, r member.Requester, orgID, inviteID uuid.UUID) (*Created, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	var out *Created
 	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		inv, err := s.locked(ctx, r, orgID, inviteID, false)
@@ -113,27 +116,32 @@ func (s *Service) Resend(ctx context.Context, r member.Requester, orgID, inviteI
 
 // Revoke cancels a pending or expired invite; the row is kept.
 func (s *Service) Revoke(ctx context.Context, r member.Requester, orgID, inviteID uuid.UUID) error {
+	ctx = tenant.WithOrg(ctx, orgID)
 	return s.revoke(ctx, r, orgID, inviteID, false)
 }
 
 // DiscardDraft cancels a draft.
 func (s *Service) DiscardDraft(ctx context.Context, r member.Requester, orgID, inviteID uuid.UUID) error {
+	ctx = tenant.WithOrg(ctx, orgID)
 	return s.revoke(ctx, r, orgID, inviteID, true)
 }
 
 // ListPending returns orgID's pending and expired invites, without drafts, oldest first.
 func (s *Service) ListPending(ctx context.Context, orgID uuid.UUID) ([]*Invite, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	return s.list(ctx, orgID, func(i *Invite) bool { return !i.Draft })
 }
 
 // ListDrafts returns orgID's drafts that can still be confirmed, oldest first.
 func (s *Service) ListDrafts(ctx context.Context, orgID uuid.UUID) ([]*Invite, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	now := s.now()
 	return s.list(ctx, orgID, func(i *Invite) bool { return i.Draft && !i.expired(now) })
 }
 
 // Draft records an assistant's suggestion to invite email as a member: no token and no email until a person confirms it.
 func (s *Service) Draft(ctx context.Context, r member.Requester, orgID uuid.UUID, email string) (*Invite, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	email, err := user.NormalizeEmail(email)
 	if err != nil {
 		return nil, err
@@ -163,6 +171,7 @@ func (s *Service) Draft(ctx context.Context, r member.Requester, orgID uuid.UUID
 
 // ConfirmDraft turns a draft into an invite with a link and queues the email; a person must call it.
 func (s *Service) ConfirmDraft(ctx context.Context, r member.Requester, orgID, inviteID uuid.UUID) (*Created, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	var out *Created
 	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		inv, err := s.locked(ctx, r, orgID, inviteID, true)
@@ -208,8 +217,18 @@ func (s *Service) ByPublicID(ctx context.Context, publicID string) (*Invite, err
 	return inv, nil
 }
 
-// Accept uses up inviteID for userID and adds them to the org; an existing member keeps their role.
-func (s *Service) Accept(ctx context.Context, inviteID, userID uuid.UUID) (Outcome, error) {
+// Landing returns the invite with publicID for the pre-sign-in landing page, in any org; never save what it returns.
+func (s *Service) Landing(ctx context.Context, publicID string) (*Invite, error) {
+	inv, err := s.store.ResolveByPublicID(ctx, publicID)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "invite: landing", err)
+	}
+	return inv, nil
+}
+
+// Accept uses up orgID's invite inviteID for userID and adds them to the org; an existing member keeps their role.
+func (s *Service) Accept(ctx context.Context, orgID, inviteID, userID uuid.UUID) (Outcome, error) {
+	ctx = tenant.Into(ctx, tenant.Context{OrgID: orgID, UserID: userID})
 	var out Outcome
 	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		var err error
@@ -222,8 +241,9 @@ func (s *Service) Accept(ctx context.Context, inviteID, userID uuid.UUID) (Outco
 	return out, nil
 }
 
-// Join creates the account the invite inviteID names, records the terms when acceptTerms, and accepts the invite, in one transaction.
-func (s *Service) Join(ctx context.Context, inviteID uuid.UUID, name, password string, acceptTerms bool) (uuid.UUID, error) {
+// Join creates the account orgID's invite inviteID names, records the terms when acceptTerms, and accepts the invite, in one transaction.
+func (s *Service) Join(ctx context.Context, orgID, inviteID uuid.UUID, name, password string, acceptTerms bool) (uuid.UUID, error) {
+	ctx = tenant.Into(ctx, tenant.Context{OrgID: orgID})
 	var userID uuid.UUID
 	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		inv, err := s.store.ByID(ctx, inviteID)

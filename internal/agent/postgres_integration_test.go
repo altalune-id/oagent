@@ -17,6 +17,7 @@ import (
 
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/testutil/pgtest"
@@ -33,8 +34,7 @@ type pgFixture struct {
 
 func newPgFixture(t *testing.T) *pgFixture {
 	t.Helper()
-	sqlDB, schemaName := pgtest.Migrated(t)
-	pool := db.Pool{W: sqlDB, R: sqlDB}
+	pool, sqlDB, schemaName := pgtest.MigratedRLS(t)
 	return &pgFixture{
 		sqlDB:    sqlDB,
 		pool:     pool,
@@ -48,7 +48,7 @@ func (f *pgFixture) seedOrg(t *testing.T) uuid.UUID {
 	t.Helper()
 	o, err := org.NewOrg("org-"+uuid.NewString()[:8], "Org", uuid.Nil)
 	require.NoError(t, err)
-	require.NoError(t, f.orgs.Save(t.Context(), o))
+	require.NoError(t, f.orgs.Save(in(o.ID), o))
 	return o.ID
 }
 
@@ -56,7 +56,7 @@ func (f *pgFixture) seedProject(t *testing.T, orgID uuid.UUID) uuid.UUID {
 	t.Helper()
 	p, err := project.NewProject(orgID, "prj-"+uuid.NewString()[:8], "Project", uuid.Nil)
 	require.NoError(t, err)
-	require.NoError(t, f.projects.Save(t.Context(), p))
+	require.NoError(t, f.projects.Save(in(orgID), p))
 	return p.ID
 }
 
@@ -64,6 +64,10 @@ func (f *pgFixture) seedScope(t *testing.T) (orgID, projectID uuid.UUID) {
 	t.Helper()
 	orgID = f.seedOrg(t)
 	return orgID, f.seedProject(t, orgID)
+}
+
+func in(orgID uuid.UUID) context.Context {
+	return tenant.Into(context.Background(), tenant.Context{OrgID: orgID})
 }
 
 func newAgent(t *testing.T, orgID, projectID uuid.UUID, slug string) *agent.Agent {
@@ -101,10 +105,10 @@ func TestPostgres_AgentRoundTrip(t *testing.T) {
 			a.CreatedAt = time.Date(2026, 3, 4, 5, 6, 7, 123456789, loc)
 
 			before := time.Now().UTC().Truncate(time.Microsecond)
-			require.NoError(t, f.store.Save(t.Context(), a))
+			require.NoError(t, f.store.Save(in(orgID), a))
 			after := time.Now().UTC()
 
-			got, err := f.store.ByID(t.Context(), a.ID)
+			got, err := f.store.ByID(in(orgID), a.ID)
 			require.NoError(t, err)
 			assert.Equal(t, a.ID, got.ID)
 			assert.Equal(t, a.PublicID, got.PublicID)
@@ -128,12 +132,14 @@ func TestPostgres_AgentRoundTrip(t *testing.T) {
 func TestPostgres_AgentSaveUpdatesOnlyMutableColumns(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
+	siblingProject := f.seedProject(t, orgID)
 	otherOrg, otherProject := f.seedScope(t)
+	ctx := in(orgID)
 
 	a, err := agent.New(orgID, projectID, "first-slug", "First", "first description", uuid.New())
 	require.NoError(t, err)
-	require.NoError(t, f.store.Save(t.Context(), a))
-	saved, err := f.store.ByID(t.Context(), a.ID)
+	require.NoError(t, f.store.Save(ctx, a))
+	saved, err := f.store.ByID(ctx, a.ID)
 	require.NoError(t, err)
 
 	changed := *a
@@ -146,9 +152,12 @@ func TestPostgres_AgentSaveUpdatesOnlyMutableColumns(t *testing.T) {
 	changed.ProjectID = otherProject
 	changed.CreatedBy = uuid.NullUUID{}
 	changed.CreatedAt = a.CreatedAt.Add(-48 * time.Hour)
-	require.NoError(t, f.store.Save(t.Context(), &changed))
+	assert.Equal(t, "42501", pgCode(f.store.Save(ctx, &changed)), "row level security refuses moving an agent to another org")
+	changed.OrgID = orgID
+	changed.ProjectID = siblingProject
+	require.NoError(t, f.store.Save(ctx, &changed))
 
-	got, err := f.store.ByID(t.Context(), a.ID)
+	got, err := f.store.ByID(ctx, a.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "second-slug", got.Slug)
 	assert.Equal(t, "Second", got.Name)
@@ -169,29 +178,30 @@ func TestPostgres_AgentUniqueConstraints(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
 	siblingProject := f.seedProject(t, orgID)
+	ctx := in(orgID)
 
 	existing := newAgent(t, orgID, projectID, "taken")
-	require.NoError(t, f.store.Save(t.Context(), existing))
+	require.NoError(t, f.store.Save(ctx, existing))
 
 	t.Run("slug reused in the same project", func(t *testing.T) {
-		err := f.store.Save(t.Context(), newAgent(t, orgID, projectID, "taken"))
+		err := f.store.Save(ctx, newAgent(t, orgID, projectID, "taken"))
 		require.Error(t, err)
 		assert.True(t, agent.IsAlreadyExistsError(err), "got %v", err)
 	})
 
 	t.Run("slug reused in another project", func(t *testing.T) {
-		require.NoError(t, f.store.Save(t.Context(), newAgent(t, orgID, siblingProject, "taken")))
+		require.NoError(t, f.store.Save(ctx, newAgent(t, orgID, siblingProject, "taken")))
 	})
 
 	t.Run("rename onto a sibling's slug", func(t *testing.T) {
 		other := newAgent(t, orgID, projectID, "other")
-		require.NoError(t, f.store.Save(t.Context(), other))
+		require.NoError(t, f.store.Save(ctx, other))
 		other.Slug = "taken"
-		err := f.store.Save(t.Context(), other)
+		err := f.store.Save(ctx, other)
 		require.Error(t, err)
 		assert.True(t, agent.IsAlreadyExistsError(err), "got %v", err)
 
-		got, err := f.store.ByID(t.Context(), other.ID)
+		got, err := f.store.ByID(ctx, other.ID)
 		require.NoError(t, err)
 		assert.Equal(t, "other", got.Slug, "a refused update leaves the row unchanged")
 	})
@@ -199,7 +209,7 @@ func TestPostgres_AgentUniqueConstraints(t *testing.T) {
 	t.Run("public id reused", func(t *testing.T) {
 		dup := newAgent(t, orgID, projectID, "fresh-slug")
 		dup.PublicID = existing.PublicID
-		err := f.store.Save(t.Context(), dup)
+		err := f.store.Save(ctx, dup)
 		require.Error(t, err)
 		assert.True(t, agent.IsAlreadyExistsError(err), "a public_id clash is a conflict, got %v", err)
 	})
@@ -219,7 +229,7 @@ func TestPostgres_AgentForeignKeys(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := f.store.Save(t.Context(), newAgent(t, tc.orgID, tc.projectID, "orphan"))
+			err := f.store.Save(in(tc.orgID), newAgent(t, tc.orgID, tc.projectID, "orphan"))
 			require.Error(t, err)
 			assert.False(t, agent.IsAlreadyExistsError(err))
 			assert.Equal(t, "23503", pgCode(err), "a foreign-key violation surfaces raw, got %v", err)
@@ -232,7 +242,7 @@ func TestPostgres_AgentProjectMustBelongToItsOrg(t *testing.T) {
 	orgA := f.seedOrg(t)
 	_, projectB := f.seedScope(t)
 
-	err := f.store.Save(t.Context(), newAgent(t, orgA, projectB, "cross-org"))
+	err := f.store.Save(in(orgA), newAgent(t, orgA, projectB, "cross-org"))
 	if err == nil {
 		t.Skip("BUG: agents has no composite FK (org_id, project_id) -> projects (org_id, id); an agent can claim org A inside org B's project")
 	}
@@ -249,43 +259,44 @@ func TestPostgres_AgentCascades(t *testing.T) {
 	kept := newAgent(t, orgID, keptProject, "kept")
 	foreign := newAgent(t, otherOrg, otherProject, "foreign")
 	for _, a := range []*agent.Agent{gone, kept, foreign} {
-		require.NoError(t, f.store.Save(t.Context(), a))
+		require.NoError(t, f.store.Save(in(a.OrgID), a))
 	}
 
 	_, err := f.sqlDB.ExecContext(t.Context(), `DELETE FROM projects WHERE id = $1`, projectID)
 	require.NoError(t, err)
-	_, err = f.store.ByID(t.Context(), gone.ID)
+	_, err = f.store.ByID(in(orgID), gone.ID)
 	assert.True(t, agent.IsNotFoundError(err), "deleting a project removes its agents, got %v", err)
-	_, err = f.store.ByID(t.Context(), kept.ID)
+	_, err = f.store.ByID(in(orgID), kept.ID)
 	require.NoError(t, err, "a sibling project's agents survive")
 
 	_, err = f.sqlDB.ExecContext(t.Context(), `DELETE FROM orgs WHERE id = $1`, orgID)
 	require.NoError(t, err)
-	_, err = f.store.ByID(t.Context(), kept.ID)
+	_, err = f.store.ByID(in(orgID), kept.ID)
 	assert.True(t, agent.IsNotFoundError(err), "deleting an org removes its agents, got %v", err)
-	_, err = f.store.ByID(t.Context(), foreign.ID)
+	_, err = f.store.ByID(in(otherOrg), foreign.ID)
 	require.NoError(t, err, "another org's agents survive")
 }
 
 func TestPostgres_AgentNotFoundAndDelete(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
 
 	missing := uuid.New()
-	_, err := f.store.ByID(t.Context(), missing)
+	_, err := f.store.ByID(ctx, missing)
 	var nf *agent.NotFoundError
 	require.ErrorAs(t, err, &nf)
 	assert.Equal(t, missing.String(), nf.ID)
 
-	err = f.store.Delete(t.Context(), missing)
+	err = f.store.Delete(ctx, missing)
 	assert.True(t, agent.IsNotFoundError(err), "deleting a missing agent is NotFound, got %v", err)
 
 	a := newAgent(t, orgID, projectID, "doomed")
-	require.NoError(t, f.store.Save(t.Context(), a))
-	require.NoError(t, f.store.Delete(t.Context(), a.ID))
-	_, err = f.store.ByID(t.Context(), a.ID)
+	require.NoError(t, f.store.Save(ctx, a))
+	require.NoError(t, f.store.Delete(ctx, a.ID))
+	_, err = f.store.ByID(ctx, a.ID)
 	assert.True(t, agent.IsNotFoundError(err))
-	assert.True(t, agent.IsNotFoundError(f.store.Delete(t.Context(), a.ID)), "a second delete is NotFound")
+	assert.True(t, agent.IsNotFoundError(f.store.Delete(ctx, a.ID)), "a second delete is NotFound")
 }
 
 func TestPostgres_AgentListOrderAndScope(t *testing.T) {
@@ -300,13 +311,13 @@ func TestPostgres_AgentListOrderAndScope(t *testing.T) {
 	for _, i := range []int{2, 0, 1} {
 		a := newAgent(t, orgID, projectID, []string{"aaa", "bbb", "ccc"}[i])
 		a.CreatedAt = base.Add(time.Duration(i) * time.Minute)
-		require.NoError(t, f.store.Save(t.Context(), a))
+		require.NoError(t, f.store.Save(in(orgID), a))
 		want[i] = a.ID
 	}
-	require.NoError(t, f.store.Save(t.Context(), newAgent(t, orgID, siblingProject, "aaa")))
-	require.NoError(t, f.store.Save(t.Context(), newAgent(t, otherOrg, otherProject, "aaa")))
+	require.NoError(t, f.store.Save(in(orgID), newAgent(t, orgID, siblingProject, "aaa")))
+	require.NoError(t, f.store.Save(in(otherOrg), newAgent(t, otherOrg, otherProject, "aaa")))
 
-	got, err := f.store.List(t.Context(), projectID)
+	got, err := f.store.List(in(orgID), projectID)
 	require.NoError(t, err)
 	ids := make([]uuid.UUID, 0, len(got))
 	for _, a := range got {
@@ -315,7 +326,7 @@ func TestPostgres_AgentListOrderAndScope(t *testing.T) {
 	}
 	assert.Equal(t, want, ids, "List orders by created_at ascending, not insertion order")
 
-	empty, err := f.store.List(t.Context(), emptyProject)
+	empty, err := f.store.List(in(orgID), emptyProject)
 	require.NoError(t, err)
 	assert.NotNil(t, empty)
 	assert.Empty(t, empty)
@@ -324,42 +335,44 @@ func TestPostgres_AgentListOrderAndScope(t *testing.T) {
 func TestPostgres_AgentHonorsUnitOfWork(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
 	errAbort := errors.New("abort")
 
 	rolledBack := newAgent(t, orgID, projectID, "rolled-back")
-	err := db.RunInTx(t.Context(), f.pool, func(ctx context.Context) error {
+	err := db.RunInTx(ctx, f.pool, func(ctx context.Context) error {
 		require.NoError(t, f.store.Save(ctx, rolledBack))
 		_, rerr := f.store.ByID(ctx, rolledBack.ID)
 		require.NoError(t, rerr, "a read inside the unit of work sees its own write")
-		_, rerr = f.store.ByID(t.Context(), rolledBack.ID)
+		_, rerr = f.store.ByID(in(orgID), rolledBack.ID)
 		assert.True(t, agent.IsNotFoundError(rerr), "a read outside the unit of work does not see the uncommitted row")
 		return errAbort
 	})
 	require.ErrorIs(t, err, errAbort)
-	_, err = f.store.ByID(t.Context(), rolledBack.ID)
+	_, err = f.store.ByID(ctx, rolledBack.ID)
 	assert.True(t, agent.IsNotFoundError(err), "a rolled-back unit of work leaves nothing")
 
 	committed := newAgent(t, orgID, projectID, "committed")
-	require.NoError(t, db.RunInTx(t.Context(), f.pool, func(ctx context.Context) error {
+	require.NoError(t, db.RunInTx(ctx, f.pool, func(ctx context.Context) error {
 		return f.store.Save(ctx, committed)
 	}))
-	_, err = f.store.ByID(t.Context(), committed.ID)
+	_, err = f.store.ByID(ctx, committed.ID)
 	require.NoError(t, err, "a committed unit of work persists")
 
 	deleted := newAgent(t, orgID, projectID, "kept-on-rollback")
-	require.NoError(t, f.store.Save(t.Context(), deleted))
-	err = db.RunInTx(t.Context(), f.pool, func(ctx context.Context) error {
+	require.NoError(t, f.store.Save(ctx, deleted))
+	err = db.RunInTx(ctx, f.pool, func(ctx context.Context) error {
 		require.NoError(t, f.store.Delete(ctx, deleted.ID))
 		return errAbort
 	})
 	require.ErrorIs(t, err, errAbort)
-	_, err = f.store.ByID(t.Context(), deleted.ID)
+	_, err = f.store.ByID(ctx, deleted.ID)
 	require.NoError(t, err, "a rolled-back delete keeps the row")
 }
 
 func TestPostgres_AgentConcurrentSlugClaim(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
 
 	const writers = 8
 	start := make(chan struct{})
@@ -369,7 +382,7 @@ func TestPostgres_AgentConcurrentSlugClaim(t *testing.T) {
 		a := newAgent(t, orgID, projectID, "contended")
 		wg.Go(func() {
 			<-start
-			errs[i] = f.store.Save(t.Context(), a)
+			errs[i] = f.store.Save(ctx, a)
 		})
 	}
 	close(start)
@@ -385,7 +398,7 @@ func TestPostgres_AgentConcurrentSlugClaim(t *testing.T) {
 	}
 	assert.Equal(t, 1, wins, "exactly one concurrent writer claims the slug")
 
-	got, err := f.store.List(t.Context(), projectID)
+	got, err := f.store.List(ctx, projectID)
 	require.NoError(t, err)
 	assert.Len(t, got, 1)
 }
@@ -396,30 +409,31 @@ func TestPostgres_AgentUpsertCannotRewriteAnotherOrgsAgent(t *testing.T) {
 	orgB, projectB := f.seedScope(t)
 
 	victim := newAgent(t, orgA, projectA, "victim")
-	require.NoError(t, f.store.Save(t.Context(), victim))
+	require.NoError(t, f.store.Save(in(orgA), victim))
 
 	intruder := newAgent(t, orgB, projectB, "hijacked")
 	intruder.ID = victim.ID
-	_ = f.store.Save(t.Context(), intruder)
+	assert.Equal(t, "42501", pgCode(f.store.Save(in(orgB), intruder)), "row level security refuses an upsert onto another org's agent")
 
-	got, err := f.store.ByID(t.Context(), victim.ID)
+	got, err := f.store.ByID(in(orgA), victim.ID)
 	require.NoError(t, err)
-	if got.Slug != "victim" || got.Name != victim.Name {
-		t.Skip("BUG: agent Save ON CONFLICT (id) DO UPDATE has no org/project guard; a colliding id from org B rewrites org A's agent")
-	}
+	assert.Equal(t, "victim", got.Slug)
+	assert.Equal(t, victim.Name, got.Name)
+	assert.Equal(t, orgA, got.OrgID)
+	assert.Equal(t, projectA, got.ProjectID)
 }
 
-func TestPostgres_ByPublicID(t *testing.T) {
+func TestPostgres_AgentResolveNamesTheTenantWithoutAScope(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
 	a := newAgent(t, orgID, projectID, "bot")
-	require.NoError(t, f.store.Save(t.Context(), a))
+	require.NoError(t, f.store.Save(in(orgID), a))
 
-	got, err := f.store.ByPublicID(t.Context(), a.PublicID)
+	got, err := f.store.Resolve(t.Context(), a.PublicID)
 	require.NoError(t, err)
-	assert.Equal(t, a.ID, got.ID)
+	assert.Equal(t, agent.Ref{ID: a.ID, OrgID: orgID, ProjectID: projectID}, got)
 	for _, bad := range []string{"", "nope", a.ID.String()} {
-		_, err = f.store.ByPublicID(t.Context(), bad)
+		_, err = f.store.Resolve(t.Context(), bad)
 		assert.True(t, agent.IsNotFoundError(err), "%q is not a public id", bad)
 	}
 }

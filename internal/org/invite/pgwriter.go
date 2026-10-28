@@ -2,10 +2,12 @@ package invite
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
@@ -24,7 +26,7 @@ func (s *postgresStore) Insert(ctx context.Context, i *Invite) error {
 		i.ID, i.PublicID, i.OrgID, i.Email, string(i.Role), tokenExpr(i.TokenHash), i.Draft, userExpr(i.InvitedBy),
 		i.ExpiresAt.UTC(), entity.NullTimestampz(), entity.NullUUID(), entity.NullTimestampz(), i.CreatedAt.UTC(), i.UpdatedAt.UTC(),
 	)
-	if _, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool)); err != nil {
+	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { _, err := stmt.ExecContext(ctx, q); return err }); err != nil {
 		return fmt.Errorf("invite.postgres: Insert: %w", err)
 	}
 	return nil
@@ -57,7 +59,7 @@ func (s *postgresStore) MarkAccepted(ctx context.Context, id, userID uuid.UUID, 
 		AND(t.Draft.IS_FALSE()).AND(t.ExpiresAt.GT(at)),
 	).RETURNING(t.AllColumns)
 	var row inviteRow
-	if err := stmt.QueryContext(ctx, db.Writer(ctx, s.pool), &row); err != nil {
+	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{}
 		}
@@ -76,7 +78,11 @@ func (s *postgresStore) Revoke(ctx context.Context, id uuid.UUID, now time.Time)
 }
 
 func (s *postgresStore) execOne(ctx context.Context, op string, stmt postgres.Statement) error {
-	res, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool))
+	var res sql.Result
+	err := db.Write(ctx, s.pool, func(q qrm.DB) (err error) {
+		res, err = stmt.ExecContext(ctx, q)
+		return err
+	})
 	if err != nil {
 		return fmt.Errorf("invite.postgres: %s: %w", op, err)
 	}

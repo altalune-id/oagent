@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/kernel/db"
-	"altalune.id/oagent/schema/entity"
+	"altalune.id/oagent/internal/kernel/db/dbtest"
 )
 
 func TestOrgRow_ToOrg(t *testing.T) {
@@ -52,9 +52,11 @@ func TestList(t *testing.T) {
 	id := uuid.New()
 	rows := sqlmock.NewRows(orgRowColumns()).
 		AddRow(id, "p", "acme", "Acme", nil, time.Now(), time.Now(), false)
+	dbtest.ExpectTx(mock)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	mock.ExpectCommit()
 
-	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, orgs: entity.NewOrgs("public", "")}
+	s := NewStore(db.Pool{W: sqlDB, R: sqlDB}, "public", "")
 	got, err := s.List(context.Background())
 	require.NoError(t, err)
 	require.Len(t, got, 1)
@@ -65,9 +67,11 @@ func TestList(t *testing.T) {
 func TestByID_NotFound(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
+	dbtest.ExpectTx(mock)
 	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(orgRowColumns()))
+	mock.ExpectCommit()
 
-	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, orgs: entity.NewOrgs("public", "")}
+	s := NewStore(db.Pool{W: sqlDB, R: sqlDB}, "public", "")
 	_, err = s.ByID(context.Background(), uuid.New())
 	assert.True(t, IsNotFoundError(err))
 }
@@ -77,9 +81,11 @@ func TestBySlug(t *testing.T) {
 	require.NoError(t, err)
 	rows := sqlmock.NewRows(orgRowColumns()).
 		AddRow(uuid.New(), "p", "acme", "Acme", nil, time.Now(), time.Now(), false)
+	dbtest.ExpectTx(mock)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	mock.ExpectCommit()
 
-	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, orgs: entity.NewOrgs("public", "")}
+	s := NewStore(db.Pool{W: sqlDB, R: sqlDB}, "public", "")
 	got, err := s.BySlug(context.Background(), "acme")
 	require.NoError(t, err)
 	assert.Equal(t, "acme", got.Slug)
@@ -88,9 +94,11 @@ func TestBySlug(t *testing.T) {
 func TestSave(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
+	dbtest.ExpectTx(mock)
 	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
 
-	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, orgs: entity.NewOrgs("public", "")}
+	s := NewStore(db.Pool{W: sqlDB, R: sqlDB}, "public", "")
 	o, err := NewOrg("acme", "Acme", uuid.Nil) // genesis: exercises the NULL created_by branch
 	require.NoError(t, err)
 	assert.NoError(t, s.Save(context.Background(), o))
@@ -99,9 +107,11 @@ func TestSave(t *testing.T) {
 func TestSave_AlreadyExists(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
+	dbtest.ExpectTx(mock)
 	mock.ExpectExec("INSERT").WillReturnError(&pgconn.PgError{Code: "23505"})
+	mock.ExpectRollback()
 
-	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, orgs: entity.NewOrgs("public", "")}
+	s := NewStore(db.Pool{W: sqlDB, R: sqlDB}, "public", "")
 	o, err := NewOrg("acme", "Acme", uuid.New())
 	require.NoError(t, err)
 	assert.True(t, IsAlreadyExistsError(s.Save(context.Background(), o)))
@@ -113,7 +123,7 @@ func TestStore_QueryErrors(t *testing.T) {
 	mock.ExpectClose()
 	require.NoError(t, sqlDB.Close())
 
-	s := &postgresStore{pool: db.Pool{W: sqlDB, R: sqlDB}, orgs: entity.NewOrgs("public", "")}
+	s := NewStore(db.Pool{W: sqlDB, R: sqlDB}, "public", "")
 	ctx := context.Background()
 
 	_, err = s.ByID(ctx, uuid.New())
@@ -123,6 +133,10 @@ func TestStore_QueryErrors(t *testing.T) {
 	_, err = s.ByPublicID(ctx, "x")
 	assert.Error(t, err)
 	_, err = s.List(ctx)
+	assert.Error(t, err)
+	_, err = s.IDs(ctx)
+	assert.Error(t, err)
+	_, err = s.System(ctx)
 	assert.Error(t, err)
 
 	o, err := NewOrg("acme", "Acme", uuid.New())
@@ -135,16 +149,35 @@ func TestSystem(t *testing.T) {
 	require.NoError(t, err)
 	reader, rMock, err := sqlmock.New()
 	require.NoError(t, err)
-	s := &postgresStore{pool: db.Pool{W: writer, R: reader}, orgs: entity.NewOrgs("public", "")}
+	s := NewStore(db.Pool{W: writer, R: reader}, "public", "")
 
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(orgRowColumns()).
 		AddRow(uuid.New(), "p", "acme", "Acme", nil, time.Now(), time.Now(), true))
+	wMock.ExpectCommit()
 	got, err := s.System(context.Background())
 	require.NoError(t, err)
 	assert.True(t, got.IsSystem)
 	assert.NoError(t, rMock.ExpectationsWereMet(), "the installed marker is read from the primary")
 
+	dbtest.ExpectTx(wMock)
 	wMock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(orgRowColumns()))
+	wMock.ExpectCommit()
 	_, err = s.System(context.Background())
 	assert.True(t, IsNotFoundError(err))
+}
+
+func TestIDs(t *testing.T) {
+	sqlDB, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	s := NewStore(db.Pool{W: sqlDB, R: sqlDB}, "public", "")
+	id := uuid.New()
+
+	dbtest.ExpectTx(mock)
+	mock.ExpectQuery(`list_org_ids`).WillReturnRows(sqlmock.NewRows([]string{"orgs.id"}).AddRow(id))
+	mock.ExpectCommit()
+	ids, err := s.IDs(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, []uuid.UUID{id}, ids)
+	require.NoError(t, mock.ExpectationsWereMet())
 }

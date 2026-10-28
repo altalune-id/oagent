@@ -57,7 +57,8 @@ func Authenticate(o AuthOptions) func(http.Handler) http.Handler {
 				writeUnauthorized(w, r, challenge)
 				return
 			}
-			next.ServeHTTP(w, r.WithContext(session.PrincipalInto(r.Context(), p)))
+			ctx := session.WithTenant(session.PrincipalInto(r.Context(), p), p)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }

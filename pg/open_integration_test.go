@@ -49,13 +49,12 @@ func TestOpen_AppliesPoolTuning(t *testing.T) {
 	require.NoError(t, sqlDB.PingContext(t.Context()))
 }
 
-func TestOpen_SetsTheRoleOnEveryConnection(t *testing.T) {
+func TestOpen_NeverSwitchesRoleOnAnyConnection(t *testing.T) {
 	dsn := pgtest.New(t).DSN
-	role := createRole(t, dsn)
 	login, _ := currentUsers(t, openReplica(t, dsn))
 
 	const conns = 3
-	sqlDB, err := pg.Open(t.Context(), pg.Config{DSN: dsn, Role: role, MaxOpenConns: conns}, nil)
+	sqlDB, err := pg.Open(t.Context(), pg.Config{DSN: dsn, Role: login, MaxOpenConns: conns}, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = sqlDB.Close() })
 
@@ -71,27 +70,19 @@ func TestOpen_SetsTheRoleOnEveryConnection(t *testing.T) {
 		held = append(held, c)
 		var current, session string
 		require.NoError(t, c.QueryRowContext(t.Context(), `SELECT current_user, session_user`).Scan(&current, &session))
-		assert.Equal(t, role, current)
+		assert.Equal(t, login, current, "behind a transaction pooler a session SET ROLE leaks, so Open never switches role")
 		assert.Equal(t, login, session)
 	}
-	assert.Equal(t, conns, sqlDB.Stats().OpenConnections)
 }
 
-func TestOpen_UnknownRoleFailsFastWithoutRetrying(t *testing.T) {
+func TestOpen_RefusesARoleOtherThanTheLogin(t *testing.T) {
 	dsn := pgtest.New(t).DSN
+	role := createRole(t, dsn)
 	start := time.Now()
-	_, err := pg.Open(t.Context(), pg.Config{
-		DSN: dsn, Role: "pgt_role_does_not_exist", ConnectTimeout: 20 * time.Second,
-	}, nil)
+	_, err := pg.Open(t.Context(), pg.Config{DSN: dsn, Role: role, ConnectTimeout: 20 * time.Second}, nil)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "SET ROLE")
-	assert.Less(t, time.Since(start), 10*time.Second, "a SET ROLE rejected by the server is permanent and must not be retried")
-}
-
-func TestOpen_InvalidRoleIdentifierIsRejectedBeforeConnecting(t *testing.T) {
-	_, err := pg.Open(t.Context(), pg.Config{DSN: pgtest.New(t).DSN, Role: "bad\nrole"}, nil)
-	require.Error(t, err)
-	assert.True(t, pg.IsInvalidIdentifierError(err), "got %v", err)
+	assert.True(t, pg.IsLoginRoleError(err), "got %v", err)
+	assert.Less(t, time.Since(start), 10*time.Second, "a wrong login is permanent and must not be retried")
 }
 
 func TestOpen_UnreachableServerRetriesUntilTheBudget(t *testing.T) {

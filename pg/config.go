@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Config is one Postgres connection: the DSN, the role set on every new connection, the pool and the connect retry.
+// Config is one Postgres connection: the DSN, the login role it must use, the pool and the connect retry.
 type Config struct {
 	DSN             string
 	Role            string

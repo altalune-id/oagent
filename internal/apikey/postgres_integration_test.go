@@ -21,6 +21,7 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/testutil/pgtest"
@@ -39,8 +40,7 @@ type pgFixture struct {
 
 func newPgFixture(t *testing.T) *pgFixture {
 	t.Helper()
-	sqlDB, schemaName := pgtest.Migrated(t)
-	pool := db.Pool{W: sqlDB, R: sqlDB}
+	pool, sqlDB, schemaName := pgtest.MigratedRLS(t)
 	return &pgFixture{
 		schema:   schemaName,
 		sqlDB:    sqlDB,
@@ -55,7 +55,7 @@ func (f *pgFixture) seedOrg(t *testing.T) uuid.UUID {
 	t.Helper()
 	o, err := org.NewOrg("org-"+uuid.NewString()[:8], "Org", uuid.Nil)
 	require.NoError(t, err)
-	require.NoError(t, f.orgs.Save(t.Context(), o))
+	require.NoError(t, f.orgs.Save(tenant.Into(t.Context(), tenant.Context{OrgID: o.ID}), o))
 	return o.ID
 }
 
@@ -63,7 +63,7 @@ func (f *pgFixture) seedProject(t *testing.T, orgID uuid.UUID) uuid.UUID {
 	t.Helper()
 	p, err := project.NewProject(orgID, "prj-"+uuid.NewString()[:8], "Project", uuid.Nil)
 	require.NoError(t, err)
-	require.NoError(t, f.projects.Save(t.Context(), p))
+	require.NoError(t, f.projects.Save(tenant.Into(t.Context(), tenant.Context{OrgID: p.OrgID}), p))
 	return p.ID
 }
 
@@ -145,9 +145,9 @@ func TestPostgres_ProjectKeyRoundTrip(t *testing.T) {
 			k := projectKey(t, orgID, projectID)
 			k.CreatedAt = *at(9)
 			tc.mutate(k)
-			require.NoError(t, f.store.Save(t.Context(), k))
+			require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
 
-			got, err := f.store.ByID(t.Context(), k.ID)
+			got, err := f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k.ID)
 			require.NoError(t, err)
 			assert.Equal(t, k.ID, got.ID)
 			assert.Equal(t, orgID, got.OrgID)
@@ -198,8 +198,8 @@ func TestPostgres_OrgKeyRoundTrip(t *testing.T) {
 	p2 := f.seedProject(t, orgID)
 
 	named := orgKey(t, orgID, apikey.ProjectGrant{ProjectIDs: []uuid.UUID{p1, p2}})
-	require.NoError(t, f.store.Save(t.Context(), named))
-	got, err := f.store.ByID(t.Context(), named.ID)
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: named.OrgID}), named))
+	got, err := f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: named.OrgID}), named.ID)
 	require.NoError(t, err)
 	assert.Equal(t, apikey.KindOrg, got.Kind)
 	assert.Equal(t, uuid.Nil, got.ProjectID, "an org key has a NULL project_id")
@@ -208,8 +208,8 @@ func TestPostgres_OrgKeyRoundTrip(t *testing.T) {
 	assert.Equal(t, 2, f.count(t, `SELECT count(*) FROM api_key_projects WHERE key_id = $1 AND org_id = $2`, named.ID, orgID))
 
 	all := orgKey(t, orgID, apikey.ProjectGrant{All: true})
-	require.NoError(t, f.store.Save(t.Context(), all))
-	got, err = f.store.ByID(t.Context(), all.ID)
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: all.OrgID}), all))
+	got, err = f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: all.OrgID}), all.ID)
 	require.NoError(t, err)
 	assert.True(t, got.AllProjects)
 	assert.NotNil(t, got.ProjectIDs)
@@ -224,8 +224,8 @@ func TestPostgres_KeySaveUpdatesOnlyMutableColumns(t *testing.T) {
 	k := projectKey(t, orgID, projectID)
 	k.CreatedBy = f.seedUser(t)
 	k.ResourceIDs = []uuid.UUID{uuid.New()}
-	require.NoError(t, f.store.Save(t.Context(), k))
-	saved, err := f.store.ByID(t.Context(), k.ID)
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
+	saved, err := f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k.ID)
 	require.NoError(t, err)
 
 	changed := *k
@@ -241,9 +241,9 @@ func TestPostgres_KeySaveUpdatesOnlyMutableColumns(t *testing.T) {
 	changed.SecretHint = "zzzz"
 	changed.CreatedBy = f.seedUser(t)
 	changed.CreatedAt = k.CreatedAt.Add(-time.Hour)
-	require.NoError(t, f.store.Save(t.Context(), &changed))
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: changed.OrgID}), &changed))
 
-	got, err := f.store.ByID(t.Context(), k.ID)
+	got, err := f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "renamed", got.Name)
 	assert.Equal(t, changed.Scopes, got.Scopes)
@@ -268,7 +268,7 @@ func TestPostgres_KeySaveSyncsGrants(t *testing.T) {
 	p2, p3 := f.seedProject(t, orgID), f.seedProject(t, orgID)
 
 	k := orgKey(t, orgID, apikey.ProjectGrant{ProjectIDs: []uuid.UUID{p1, p2}})
-	require.NoError(t, f.store.Save(t.Context(), k))
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
 	grantCreatedAt := func(projectID uuid.UUID) time.Time {
 		var at time.Time
 		require.NoError(t, f.sqlDB.QueryRowContext(t.Context(),
@@ -278,8 +278,8 @@ func TestPostgres_KeySaveSyncsGrants(t *testing.T) {
 	keptAt := grantCreatedAt(p2)
 
 	k.ProjectIDs = []uuid.UUID{p2, p3}
-	require.NoError(t, f.store.Save(t.Context(), k))
-	got, err := f.store.ByID(t.Context(), k.ID)
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
+	got, err := f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k.ID)
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []uuid.UUID{p2, p3}, got.ProjectIDs, "a dropped project is pruned and a new one added")
 	assert.True(t, keptAt.Equal(grantCreatedAt(p2)), "a kept grant row is left untouched")
@@ -287,8 +287,8 @@ func TestPostgres_KeySaveSyncsGrants(t *testing.T) {
 
 	k.ProjectIDs = nil
 	k.AllProjects = true
-	require.NoError(t, f.store.Save(t.Context(), k))
-	got, err = f.store.ByID(t.Context(), k.ID)
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
+	got, err = f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k.ID)
 	require.NoError(t, err)
 	assert.True(t, got.AllProjects)
 	assert.Empty(t, got.ProjectIDs)
@@ -319,11 +319,11 @@ func TestPostgres_KeyKindShapeCheck(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			k := projectKey(t, orgID, projectID)
 			tc.mutate(k)
-			err := f.store.Save(t.Context(), k)
+			err := f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k)
 			require.Error(t, err)
 			assert.Equal(t, "23514", pgCode(err), "a CHECK violation surfaces raw, got %v", err)
 			assert.False(t, apikey.IsExpectedError(err))
-			_, err = f.store.ByID(t.Context(), k.ID)
+			_, err = f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k.ID)
 			assert.True(t, apikey.IsNotFoundError(err))
 		})
 	}
@@ -335,16 +335,16 @@ func TestPostgres_KeySecretHashIsUnique(t *testing.T) {
 	otherOrg, otherProject := f.seedScope(t)
 
 	first := projectKey(t, orgID, projectID)
-	require.NoError(t, f.store.Save(t.Context(), first))
-	require.NoError(t, f.store.Save(t.Context(), first), "re-saving the same key is not a collision")
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: first.OrgID}), first))
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: first.OrgID}), first), "re-saving the same key is not a collision")
 
 	dup := projectKey(t, otherOrg, otherProject)
 	dup.SecretHash = first.SecretHash
-	err := f.store.Save(t.Context(), dup)
+	err := f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: dup.OrgID}), dup)
 	require.Error(t, err)
 	assert.True(t, db.IsUniqueViolation(err), "the secret-hash index is global across orgs, got %v", err)
 	assert.False(t, apikey.IsExpectedError(err), "the store does not map the collision to a domain error")
-	_, err = f.store.ByID(t.Context(), dup.ID)
+	_, err = f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: dup.OrgID}), dup.ID)
 	assert.True(t, apikey.IsNotFoundError(err))
 }
 
@@ -354,19 +354,19 @@ func TestPostgres_GrantCannotNameAnotherOrgsProject(t *testing.T) {
 	_, projectB := f.seedScope(t)
 
 	k := orgKey(t, orgA, apikey.ProjectGrant{ProjectIDs: []uuid.UUID{projectA, projectB}})
-	err := f.store.Save(t.Context(), k)
+	err := f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k)
 	require.Error(t, err)
 	assert.Equal(t, "23503", pgCode(err), "the composite FK (org_id, project_id) refuses it, got %v", err)
 
-	_, err = f.store.ByID(t.Context(), k.ID)
+	_, err = f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k.ID)
 	assert.True(t, apikey.IsNotFoundError(err), "a refused grant rolls back the key row too")
 	assert.Zero(t, f.count(t, `SELECT count(*) FROM api_key_projects`))
 
 	valid := orgKey(t, orgA, apikey.ProjectGrant{ProjectIDs: []uuid.UUID{projectA}})
-	require.NoError(t, f.store.Save(t.Context(), valid))
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: valid.OrgID}), valid))
 	valid.ProjectIDs = []uuid.UUID{projectB}
-	require.Error(t, f.store.Save(t.Context(), valid))
-	got, err := f.store.ByID(t.Context(), valid.ID)
+	require.Error(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: valid.OrgID}), valid))
+	got, err := f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: valid.OrgID}), valid.ID)
 	require.NoError(t, err)
 	assert.Equal(t, []uuid.UUID{projectA}, got.ProjectIDs, "a refused re-grant keeps the old grant, the prune is rolled back")
 }
@@ -376,7 +376,7 @@ func TestPostgres_GrantRowOrgMustMatchKeyAndProject(t *testing.T) {
 	orgA, projectA := f.seedScope(t)
 	orgB, projectB := f.seedScope(t)
 	k := orgKey(t, orgA, apikey.ProjectGrant{All: true})
-	require.NoError(t, f.store.Save(t.Context(), k))
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
 
 	cases := []struct {
 		name      string
@@ -403,7 +403,7 @@ func TestPostgres_ProjectKeyProjectMustBelongToItsOrg(t *testing.T) {
 	orgA := f.seedOrg(t)
 	_, projectB := f.seedScope(t)
 
-	err := f.store.Save(t.Context(), projectKey(t, orgA, projectB))
+	err := f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: orgA}), projectKey(t, orgA, projectB))
 	if err == nil {
 		t.Skip("BUG: api_keys.project_id has a plain FK, not (org_id, project_id) -> projects (org_id, id); a project key of org A can bind org B's project")
 	}
@@ -420,23 +420,23 @@ func TestPostgres_KeyCascades(t *testing.T) {
 	ok := orgKey(t, orgID, apikey.ProjectGrant{ProjectIDs: []uuid.UUID{doomed, kept}})
 	foreign := orgKey(t, otherOrg, apikey.ProjectGrant{ProjectIDs: []uuid.UUID{otherProject}})
 	for _, k := range []*apikey.APIKey{pk, ok, foreign} {
-		require.NoError(t, f.store.Save(t.Context(), k))
+		require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
 	}
 
 	_, err := f.sqlDB.ExecContext(t.Context(), `DELETE FROM projects WHERE id = $1`, doomed)
 	require.NoError(t, err)
-	_, err = f.store.ByID(t.Context(), pk.ID)
+	_, err = f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: pk.OrgID}), pk.ID)
 	assert.True(t, apikey.IsNotFoundError(err), "deleting a project removes its project keys, got %v", err)
-	got, err := f.store.ByID(t.Context(), ok.ID)
+	got, err := f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: ok.OrgID}), ok.ID)
 	require.NoError(t, err, "an org key outlives one granted project")
 	assert.Equal(t, []uuid.UUID{kept}, got.ProjectIDs, "only the deleted project's grant row goes")
 
 	_, err = f.sqlDB.ExecContext(t.Context(), `DELETE FROM orgs WHERE id = $1`, orgID)
 	require.NoError(t, err)
-	_, err = f.store.ByID(t.Context(), ok.ID)
+	_, err = f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: ok.OrgID}), ok.ID)
 	assert.True(t, apikey.IsNotFoundError(err), "deleting an org removes its keys")
 	assert.Zero(t, f.count(t, `SELECT count(*) FROM api_key_projects WHERE org_id = $1`, orgID))
-	got, err = f.store.ByID(t.Context(), foreign.ID)
+	got, err = f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: foreign.OrgID}), foreign.ID)
 	require.NoError(t, err, "another org's keys survive")
 	assert.Equal(t, []uuid.UUID{otherProject}, got.ProjectIDs)
 }
@@ -468,12 +468,12 @@ func TestPostgres_KeyListOrderAndScope(t *testing.T) {
 	foreign := projectKey(t, otherOrg, otherProject)
 	foreign.CreatedAt = base.Add(2 * time.Hour)
 	for _, k := range []*apikey.APIKey{tieA, foreign, older, newest, tieB} {
-		require.NoError(t, f.store.Save(t.Context(), k))
+		require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
 	}
 
 	ties := sortedIDs(tieA.ID, tieB.ID)
 	want := []uuid.UUID{newest.ID, ties[1], ties[0], older.ID}
-	got, err := f.store.List(t.Context(), orgID)
+	got, err := f.store.List(tenant.Into(t.Context(), tenant.Context{OrgID: orgID}), orgID)
 	require.NoError(t, err)
 	ids := make([]uuid.UUID, 0, len(got))
 	for _, k := range got {
@@ -483,7 +483,7 @@ func TestPostgres_KeyListOrderAndScope(t *testing.T) {
 	assert.Equal(t, want, ids, "newest first, ties broken by id descending")
 	assert.Equal(t, []uuid.UUID{projectID}, got[0].ProjectIDs, "List carries each key's grant")
 
-	empty, err := f.store.List(t.Context(), emptyOrg)
+	empty, err := f.store.List(tenant.Into(t.Context(), tenant.Context{OrgID: emptyOrg}), emptyOrg)
 	require.NoError(t, err)
 	assert.NotNil(t, empty)
 	assert.Empty(t, empty)
@@ -493,26 +493,26 @@ func TestPostgres_KeyUnitOfWork(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
 	existing := projectKey(t, orgID, projectID)
-	require.NoError(t, f.store.Save(t.Context(), existing))
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: existing.OrgID}), existing))
 	errAbort := errors.New("abort")
 
 	fresh := projectKey(t, orgID, projectID)
-	err := db.RunInTx(t.Context(), f.pool, func(ctx context.Context) error {
-		got, rerr := f.store.ByID(ctx, existing.ID)
+	err := db.RunInTx(tenant.Into(t.Context(), tenant.Context{OrgID: orgID}), f.pool, func(ctx context.Context) error {
+		got, rerr := f.store.ByID(tenant.Into(ctx, tenant.Context{OrgID: existing.OrgID}), existing.ID)
 		require.NoError(t, rerr, "reads run on the unit of work's transaction")
 		assert.Equal(t, existing.ID, got.ID)
-		listed, rerr := f.store.List(ctx, orgID)
+		listed, rerr := f.store.List(tenant.Into(ctx, tenant.Context{OrgID: orgID}), orgID)
 		require.NoError(t, rerr)
 		assert.Len(t, listed, 1)
 
-		require.NoError(t, f.store.Save(ctx, fresh), "Save joins the outer unit of work")
-		saved, rerr := f.store.ByID(ctx, fresh.ID)
+		require.NoError(t, f.store.Save(tenant.Into(ctx, tenant.Context{OrgID: fresh.OrgID}), fresh), "Save joins the outer unit of work")
+		saved, rerr := f.store.ByID(tenant.Into(ctx, tenant.Context{OrgID: fresh.OrgID}), fresh.ID)
 		require.NoError(t, rerr, "the key is visible inside the outer transaction")
 		assert.Equal(t, fresh.ProjectID, saved.ProjectID)
 		return errAbort
 	})
 	require.ErrorIs(t, err, errAbort)
-	_, err = f.store.ByID(t.Context(), fresh.ID)
+	_, err = f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: fresh.OrgID}), fresh.ID)
 	assert.True(t, apikey.IsNotFoundError(err), "the key rolled back with the outer unit of work")
 }
 
@@ -530,7 +530,7 @@ func TestPostgres_ConcurrentSecretHashClaim(t *testing.T) {
 		k.SecretHash = hash
 		wg.Go(func() {
 			<-start
-			errs[i] = f.store.Save(t.Context(), k)
+			errs[i] = f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k)
 		})
 	}
 	close(start)
@@ -555,7 +555,7 @@ func TestPostgres_ConcurrentGrantSyncsDoNotMerge(t *testing.T) {
 
 	for range 20 {
 		k := orgKey(t, orgID, apikey.ProjectGrant{ProjectIDs: []uuid.UUID{p0}})
-		require.NoError(t, f.store.Save(t.Context(), k))
+		require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
 
 		start := make(chan struct{})
 		errs := make([]error, 2)
@@ -565,7 +565,7 @@ func TestPostgres_ConcurrentGrantSyncsDoNotMerge(t *testing.T) {
 			copyK.ProjectIDs = grant
 			wg.Go(func() {
 				<-start
-				errs[i] = f.store.Save(t.Context(), &copyK)
+				errs[i] = f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: copyK.OrgID}), &copyK)
 			})
 		}
 		close(start)
@@ -573,7 +573,7 @@ func TestPostgres_ConcurrentGrantSyncsDoNotMerge(t *testing.T) {
 		require.NoError(t, errs[0])
 		require.NoError(t, errs[1])
 
-		got, err := f.store.ByID(t.Context(), k.ID)
+		got, err := f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k.ID)
 		require.NoError(t, err)
 		require.Len(t, got.ProjectIDs, 1, "the key row lock serialises grant syncs; the last writer's grant wins whole, got %v", got.ProjectIDs)
 		assert.Contains(t, []uuid.UUID{p1, p2}, got.ProjectIDs[0])
@@ -586,7 +586,7 @@ func TestPostgres_KeyUpsertCannotRewriteAnotherOrgsKey(t *testing.T) {
 	orgB, projectB := f.seedScope(t)
 
 	victim := projectKey(t, orgA, projectA)
-	require.NoError(t, f.store.Save(t.Context(), victim))
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: victim.OrgID}), victim))
 
 	intruder := projectKey(t, orgB, projectB)
 	intruder.ID = victim.ID
@@ -594,13 +594,17 @@ func TestPostgres_KeyUpsertCannotRewriteAnotherOrgsKey(t *testing.T) {
 	intruder.Scopes = []string{scope.AgentWrite, scope.ProjectWrite}
 	far := time.Now().UTC().Add(300 * 24 * time.Hour)
 	intruder.ExpiresAt = &far
-	_ = f.store.Save(t.Context(), intruder)
+	err := f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: intruder.OrgID}), intruder)
+	require.Error(t, err)
+	assert.Equal(t, "42501", pgCode(err), "row-level security refuses the cross-org upsert, got %v", err)
 
-	got, err := f.store.ByID(t.Context(), victim.ID)
+	got, err := f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: victim.OrgID}), victim.ID)
 	require.NoError(t, err)
-	if got.Name != victim.Name || !slices.Equal(got.Scopes, victim.Scopes) {
-		t.Skip("BUG: apikey Save ON CONFLICT (id) DO UPDATE has no org_id guard; a colliding id from org B rewrites org A's key scopes/expiry")
-	}
+	assert.Equal(t, orgA, got.OrgID)
+	assert.Equal(t, victim.Name, got.Name)
+	assert.Equal(t, victim.Scopes, got.Scopes)
+	require.NotNil(t, got.ExpiresAt)
+	assert.True(t, victim.ExpiresAt.Truncate(time.Microsecond).Equal(*got.ExpiresAt))
 }
 
 func TestPostgres_BySecretHashLoadsGrants(t *testing.T) {
@@ -610,7 +614,7 @@ func TestPostgres_BySecretHashLoadsGrants(t *testing.T) {
 	k, plain, err := apikey.NewScheme("").MintOrg(orgID, "ci", []string{"agent:read"},
 		apikey.ProjectGrant{ProjectIDs: []uuid.UUID{p1, p2}}, expiry(), time.Now().UTC())
 	require.NoError(t, err)
-	require.NoError(t, f.store.Save(t.Context(), k))
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
 
 	got, err := f.store.BySecretHash(t.Context(), sha256.Sum256([]byte(plain)))
 	require.NoError(t, err)
@@ -627,20 +631,24 @@ func TestPostgres_TouchLastUsedNeverMovesBack(t *testing.T) {
 	orgID, projectID := f.seedScope(t)
 	k, _, err := apikey.NewScheme("").MintProject(orgID, projectID, "bot", []string{"agent:read"}, nil, expiry(), time.Now().UTC())
 	require.NoError(t, err)
-	require.NoError(t, f.store.Save(t.Context(), k))
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
 
 	later := time.Now().UTC().Truncate(time.Microsecond)
 	earlier := later.Add(-time.Hour)
 
-	require.NoError(t, f.store.TouchLastUsed(t.Context(), map[uuid.UUID]time.Time{k.ID: later}))
-	require.NoError(t, f.store.TouchLastUsed(t.Context(), map[uuid.UUID]time.Time{k.ID: earlier}))
+	scoped := tenant.Into(t.Context(), tenant.Context{OrgID: orgID})
+	require.NoError(t, f.store.TouchLastUsed(scoped, map[uuid.UUID]time.Time{k.ID: later}))
+	require.NoError(t, f.store.TouchLastUsed(scoped, map[uuid.UUID]time.Time{k.ID: earlier}))
+	require.NoError(t, f.store.TouchLastUsed(tenant.Into(t.Context(), tenant.Context{OrgID: uuid.New()}), map[uuid.UUID]time.Time{k.ID: later.Add(time.Hour)}),
+		"another org's scope touches nothing")
 
-	got, err := f.store.ByID(t.Context(), k.ID)
+	got, err := f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k.ID)
 	require.NoError(t, err)
 	require.NotNil(t, got.LastUsedAt)
 	assert.True(t, later.Equal(*got.LastUsedAt), "got %v want %v", got.LastUsedAt, later)
 
-	require.NoError(t, f.store.TouchLastUsed(t.Context(), map[uuid.UUID]time.Time{}))
+	require.NoError(t, f.store.TouchLastUsed(scoped, map[uuid.UUID]time.Time{}))
+	assert.True(t, tenant.IsMissingError(f.store.TouchLastUsed(t.Context(), map[uuid.UUID]time.Time{k.ID: later})), "an unscoped flush is refused")
 }
 
 func (f *pgFixture) seedUser(t *testing.T) uuid.UUID {
@@ -658,7 +666,7 @@ func TestPostgres_PersonalKeyRoundTrip(t *testing.T) {
 	k, plain, err := apikey.NewScheme("").MintPersonal(orgID, owner, "laptop", []string{"agent:read"},
 		apikey.ProjectGrant{ProjectIDs: []uuid.UUID{projectID}}, expiry(), time.Now().UTC())
 	require.NoError(t, err)
-	require.NoError(t, f.store.Save(t.Context(), k))
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
 
 	got, err := f.store.BySecretHash(t.Context(), sha256.Sum256([]byte(plain)))
 	require.NoError(t, err)
@@ -678,14 +686,14 @@ func TestPostgres_DeletingUserNullsKeyOwner(t *testing.T) {
 	machine := projectKey(t, orgID, projectID)
 	machine.CreatedBy = owner
 	for _, k := range []*apikey.APIKey{personal, machine} {
-		require.NoError(t, f.store.Save(t.Context(), k))
+		require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
 	}
 
 	_, err = f.sqlDB.ExecContext(t.Context(), `DELETE FROM users WHERE id = $1`, owner)
 	require.NoError(t, err)
 
 	for _, id := range []uuid.UUID{personal.ID, machine.ID} {
-		got, err := f.store.ByID(t.Context(), id)
+		got, err := f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: orgID}), id)
 		require.NoError(t, err, "keys outlive their creator")
 		assert.Equal(t, uuid.Nil, got.CreatedBy)
 	}
@@ -696,7 +704,7 @@ func TestPostgres_KeyCreatorMustExist(t *testing.T) {
 	orgID, projectID := f.seedScope(t)
 	k := projectKey(t, orgID, projectID)
 	k.CreatedBy = uuid.New()
-	err := f.store.Save(t.Context(), k)
+	err := f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k)
 	require.Error(t, err)
 	assert.Equal(t, "23503", pgCode(err))
 }
@@ -723,27 +731,27 @@ func TestPostgres_RevokePersonalOf(t *testing.T) {
 	earlier := time.Now().UTC().Add(-time.Hour).Truncate(time.Microsecond)
 	already.RevokedAt = &earlier
 	for _, k := range []*apikey.APIKey{mine, mineToo, elsewhere, theirs, machine, org, already} {
-		require.NoError(t, f.store.Save(t.Context(), k))
+		require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
 	}
 
 	at := time.Now().UTC().Truncate(time.Microsecond)
-	n, err := f.store.RevokePersonalOf(t.Context(), orgID, owner, at)
+	n, err := f.store.RevokePersonalOf(tenant.Into(t.Context(), tenant.Context{OrgID: orgID}), orgID, owner, at)
 	require.NoError(t, err)
 	assert.Equal(t, 2, n, "only the owner's live personal keys in that org")
 
 	for _, k := range []*apikey.APIKey{mine, mineToo} {
-		got, err := f.store.ByID(t.Context(), k.ID)
+		got, err := f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k.ID)
 		require.NoError(t, err)
 		if assert.NotNil(t, got.RevokedAt) {
 			assert.True(t, got.RevokedAt.Equal(at))
 		}
 	}
 	for _, k := range []*apikey.APIKey{elsewhere, theirs, machine, org} {
-		got, err := f.store.ByID(t.Context(), k.ID)
+		got, err := f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k.ID)
 		require.NoError(t, err)
 		assert.Nil(t, got.RevokedAt, "key %s stays live", got.Kind)
 	}
-	got, err := f.store.ByID(t.Context(), already.ID)
+	got, err := f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: already.OrgID}), already.ID)
 	require.NoError(t, err)
 	assert.True(t, got.RevokedAt.Equal(earlier), "the first revocation wins")
 }
@@ -755,17 +763,17 @@ func TestPostgres_RevokePersonalOfJoinsTheTransaction(t *testing.T) {
 	k, _, err := apikey.NewScheme("").MintPersonal(orgID, owner, "laptop", []string{"agent:read"},
 		apikey.ProjectGrant{All: true}, expiry(), time.Now().UTC())
 	require.NoError(t, err)
-	require.NoError(t, f.store.Save(t.Context(), k))
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
 
 	rollback := errors.New("rollback")
-	err = db.RunInTx(t.Context(), f.pool, func(ctx context.Context) error {
-		n, err := f.store.RevokePersonalOf(ctx, orgID, owner, time.Now().UTC())
+	err = db.RunInTx(tenant.Into(t.Context(), tenant.Context{OrgID: orgID}), f.pool, func(ctx context.Context) error {
+		n, err := f.store.RevokePersonalOf(tenant.Into(ctx, tenant.Context{OrgID: orgID}), orgID, owner, time.Now().UTC())
 		require.NoError(t, err)
 		assert.Equal(t, 1, n)
 		return rollback
 	})
 	require.ErrorIs(t, err, rollback)
-	got, err := f.store.ByID(t.Context(), k.ID)
+	got, err := f.store.ByID(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k.ID)
 	require.NoError(t, err)
 	assert.Nil(t, got.RevokedAt)
 }
@@ -775,19 +783,19 @@ func TestPostgres_LiveHintsAreUniquePerOrg(t *testing.T) {
 	orgID, projectID := f.seedScope(t)
 	otherOrg, otherProject := f.seedScope(t)
 	first := projectKey(t, orgID, projectID)
-	require.NoError(t, f.store.Save(t.Context(), first))
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: first.OrgID}), first))
 
 	twin := projectKey(t, orgID, projectID)
 	twin.SecretHint = first.SecretHint
-	assert.True(t, apikey.IsHintTakenError(f.store.Save(t.Context(), twin)), "two live keys in one org never share a hint")
+	assert.True(t, apikey.IsHintTakenError(f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: twin.OrgID}), twin)), "two live keys in one org never share a hint")
 
 	elsewhere := projectKey(t, otherOrg, otherProject)
 	elsewhere.SecretHint = first.SecretHint
-	require.NoError(t, f.store.Save(t.Context(), elsewhere), "another org may use the same hint")
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: elsewhere.OrgID}), elsewhere), "another org may use the same hint")
 
 	first.Revoke(time.Now().UTC())
-	require.NoError(t, f.store.Save(t.Context(), first))
-	require.NoError(t, f.store.Save(t.Context(), twin), "a revoked key frees its hint")
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: first.OrgID}), first))
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: twin.OrgID}), twin), "a revoked key frees its hint")
 }
 
 func TestPostgres_RevokeByHintRevokesExactlyOneKey(t *testing.T) {
@@ -802,10 +810,10 @@ func TestPostgres_RevokeByHintRevokesExactlyOneKey(t *testing.T) {
 	elsewhere.SecretHint = target.SecretHint
 	bystander := projectKey(t, orgID, projectID)
 	for _, k := range []*apikey.APIKey{revoked, target, elsewhere, bystander} {
-		require.NoError(t, f.store.Save(t.Context(), k))
+		require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
 	}
 
-	got, err := f.store.ByHint(t.Context(), orgID, target.SecretHint)
+	got, err := f.store.ByHint(tenant.Into(t.Context(), tenant.Context{OrgID: orgID}), orgID, target.SecretHint)
 	require.NoError(t, err)
 	assert.Equal(t, target.ID, got.ID, "ByHint finds the live key, not a revoked one with the same hint")
 
@@ -814,7 +822,7 @@ func TestPostgres_RevokeByHintRevokesExactlyOneKey(t *testing.T) {
 	live := f.count(t, `SELECT count(*) FROM api_keys WHERE revoked_at IS NULL AND id = ANY($1)`,
 		pgUUIDs(target.ID, elsewhere.ID, bystander.ID))
 	assert.Equal(t, 2, live, "only the target is revoked")
-	_, err = f.store.ByHint(t.Context(), orgID, target.SecretHint)
+	_, err = f.store.ByHint(tenant.Into(t.Context(), tenant.Context{OrgID: orgID}), orgID, target.SecretHint)
 	assert.True(t, apikey.IsNotFoundError(err))
 }
 
@@ -824,4 +832,25 @@ func pgUUIDs(ids ...uuid.UUID) string {
 		s[i] = id.String()
 	}
 	return "{" + strings.Join(s, ",") + "}"
+}
+
+// SECURITY: the hash lookup never returns the hash, and saving the key it returns must not overwrite the stored one.
+func TestPostgres_SavingAHashLoadedKeyKeepsItsSecret(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	k, plaintext, err := apikey.NewScheme("").MintProject(orgID, projectID, "bot", []string{"agent:read"}, nil, expiry(), time.Now().UTC())
+	require.NoError(t, err)
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: k.OrgID}), k))
+	hash := sha256.Sum256([]byte(plaintext))
+
+	loaded, err := f.store.BySecretHash(t.Context(), hash)
+	require.NoError(t, err)
+	assert.Equal(t, [32]byte{}, loaded.SecretHash, "the definer returns no hash")
+	assert.Equal(t, k.SecretHint, loaded.SecretHint)
+
+	loaded.Name = "renamed"
+	require.NoError(t, f.store.Save(tenant.Into(t.Context(), tenant.Context{OrgID: orgID}), loaded))
+	again, err := f.store.BySecretHash(t.Context(), hash)
+	require.NoError(t, err, "the stored hash survives the save")
+	assert.Equal(t, "renamed", again.Name)
 }

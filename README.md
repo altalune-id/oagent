@@ -39,7 +39,7 @@ It already covers orgs, projects, members, API keys and webhooks. The agent runt
    docker compose up -d
    ```
 
-4. Create your config. Point both DSNs at the compose Postgres (`postgres://postgres:postgres@localhost:5432/oagent?sslmode=disable`) and generate the two secrets with `openssl rand -hex 32`.
+4. Create your config. The example DSNs log in as the roles the compose Postgres creates on its first start (`oagent_service` for the app, `oagent_migrator` as `oagent_owner` for migrations); the app refuses to start as a superuser or the schema owner. Generate the two secrets with `openssl rand -hex 32`.
 
    ```sh
    cp config.example.yml config.yml
@@ -61,11 +61,11 @@ It already covers orgs, projects, members, API keys and webhooks. The agent runt
 `scripts/db/provision.sh` creates the database and three roles on any Postgres (self-hosted, RDS, Neon and others).
 It is safe to re-run, and a re-run sets the passwords you pass.
 
-| Role              | Purpose                                             |
-| ----------------- | --------------------------------------------------- |
-| `oagent_owner`    | owns the schema and tables; nobody logs in as it    |
-| `oagent_migrator` | runs migrations as the owner                        |
-| `oagent_service`  | used by the running app; reads and writes rows only |
+| Role              | Purpose                                                                                       |
+| ----------------- | --------------------------------------------------------------------------------------------- |
+| `oagent_owner`    | owns the schema, tables and lookup functions; `BYPASSRLS`; nobody logs in as it               |
+| `oagent_migrator` | runs migrations as the owner                                                                  |
+| `oagent_service`  | used by the running app; reads and writes rows only, under row-level security (`NOBYPASSRLS`) |
 
 ```sh
 ADMIN_URL='postgres://admin:...@db.example.com:5432?sslmode=require' \
@@ -74,7 +74,8 @@ MIG_PW=gen SVC_PW=gen scripts/db/provision.sh
 
 - Run it without the variables to be asked for each value.
 - `gen` creates a password and writes it to `oagent-db-credentials.env` (mode 0600). Passwords are never printed.
-- The script prints the matching `postgres.dsn`, `postgres.migrator.dsn`, `postgres.migrator.role` and `postgres.schema` settings.
+- The script prints the matching `postgres.dsn`, `postgres.migrator.dsn`, `postgres.migrator.role`, `postgres.schema` and `postgres.tablePrefix` settings, then checks the roles and privileges with `scripts/db/verify.template.sql` and fails on drift.
+- The app checks the same at boot and refuses to start when it can bypass row-level security.
 
 ## Run with Docker
 
@@ -132,4 +133,4 @@ the host against it: `OAGENT_NATS_URL=nats://localhost:4222`, `OAGENT_NATS_USER=
 
 ## License
 
-[MIT](LICENSE)
+[Apache License 2.0](LICENSE). See [NOTICE](NOTICE).

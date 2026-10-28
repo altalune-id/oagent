@@ -12,7 +12,6 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel"
-	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/testutil/pgtest"
@@ -24,9 +23,9 @@ func TestAddMember(t *testing.T) {
 	cfg.HTTP.StateSecret = strings.Repeat("s", 40)
 	cfg.Secrets.EncryptionKey = testKeyHex
 	cfg.Auth.Genesis = config.GenesisConfig{Email: "root@example.com", Password: "genesis-password"}
-	sqlDB, schemaName := pgtest.Migrated(t)
+	svc, sqlDB, schemaName := pgtest.MigratedRLS(t)
 	cfg.Postgres.Schema = schemaName
-	svcs := buildServices(kernel.Kernel{Pool: db.Pool{W: sqlDB, R: sqlDB}, Reporter: apperror.NewReporter(nil, false)}, cfg)
+	svcs := buildServices(kernel.Kernel{Pool: svc, Reporter: apperror.NewReporter(nil, false)}, cfg)
 	require.NoError(t, buildAuthSecrets(cfg, svcs, testLogger()))
 	svcs.Caps.EnvGenesis = true
 	ctx := t.Context()

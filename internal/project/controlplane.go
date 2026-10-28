@@ -9,6 +9,7 @@ import (
 	projectv1 "altalune.id/oagent/gen/go/project/v1"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
 	"altalune.id/oagent/internal/kernel/authz"
+	"altalune.id/oagent/internal/kernel/tenant"
 )
 
 // ProjectService implements project.v1.ProjectService; every id it takes and returns is a public id.
@@ -29,7 +30,7 @@ func (s *ProjectService) CreateProject(
 	ctx context.Context,
 	req *connect.Request[projectv1.CreateProjectRequest],
 ) (*connect.Response[projectv1.CreateProjectResponse], error) {
-	orgID, err := s.org(ctx, req.Msg.GetOrgId(), authz.ReachWholeOrg)
+	ctx, orgID, err := s.org(ctx, req.Msg.GetOrgId(), authz.ReachWholeOrg)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +46,7 @@ func (s *ProjectService) GetProject(
 	ctx context.Context,
 	req *connect.Request[projectv1.GetProjectRequest],
 ) (*connect.Response[projectv1.GetProjectResponse], error) {
-	p, err := s.reachable(ctx, req.Msg.GetId(), authz.ReachProject)
+	ctx, p, err := s.reachable(ctx, req.Msg.GetId(), authz.ReachProject)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +62,7 @@ func (s *ProjectService) ListProjects(
 	ctx context.Context,
 	req *connect.Request[projectv1.ListProjectsRequest],
 ) (*connect.Response[projectv1.ListProjectsResponse], error) {
-	orgID, err := s.org(ctx, req.Msg.GetOrgId(), authz.ReachOrg)
+	ctx, orgID, err := s.org(ctx, req.Msg.GetOrgId(), authz.ReachOrg)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +84,7 @@ func (s *ProjectService) UpdateProject(
 	ctx context.Context,
 	req *connect.Request[projectv1.UpdateProjectRequest],
 ) (*connect.Response[projectv1.UpdateProjectResponse], error) {
-	p, err := s.reachable(ctx, req.Msg.GetId(), authz.ReachWholeProject)
+	ctx, p, err := s.reachable(ctx, req.Msg.GetId(), authz.ReachWholeProject)
 	if err != nil {
 		return nil, err
 	}
@@ -98,35 +99,42 @@ func (s *ProjectService) UpdateProject(
 	return connect.NewResponse(&projectv1.UpdateProjectResponse{Project: out}), nil
 }
 
-// SECURITY: an unknown org and an org out of reach answer the same not-found.
-func (s *ProjectService) org(ctx context.Context, publicID string, reach func(context.Context, uuid.UUID) bool) (uuid.UUID, error) {
+// SECURITY: an unknown org and an org out of reach answer the same not-found; a reached org scopes the rest of the call to itself.
+func (s *ProjectService) org(
+	ctx context.Context, publicID string, reach func(context.Context, uuid.UUID) bool,
+) (context.Context, uuid.UUID, error) {
 	id, ok, err := s.orgs.OrgID(ctx, publicID)
 	if err != nil {
-		return uuid.Nil, err
+		return ctx, uuid.Nil, err
 	}
 	if !ok || !reach(ctx, id) {
-		return uuid.Nil, &NotFoundError{}
+		return ctx, uuid.Nil, &NotFoundError{}
 	}
-	return id, nil
+	return tenant.WithOrg(ctx, id), id, nil
 }
 
-// SECURITY: an unknown project and a project out of reach answer the same not-found.
+// SECURITY: an unknown project and a project out of reach answer the same not-found; a reached project scopes the call to its org.
 func (s *ProjectService) reachable(
 	ctx context.Context,
 	publicID string,
 	reach func(ctx context.Context, orgID, projectID uuid.UUID) bool,
-) (*Project, error) {
-	p, err := s.projects.ByPublicID(ctx, publicID)
+) (context.Context, *Project, error) {
+	r, err := s.projects.Resolve(ctx, publicID)
 	if IsNotFoundError(err) {
-		return nil, &NotFoundError{}
+		return ctx, nil, &NotFoundError{}
 	}
 	if err != nil {
-		return nil, err
+		return ctx, nil, err
 	}
-	if !reach(ctx, p.OrgID, p.ID) {
-		return nil, &NotFoundError{}
+	if !reach(ctx, r.OrgID, r.ID) {
+		return ctx, nil, &NotFoundError{}
 	}
-	return p, nil
+	ctx = tenant.WithOrg(ctx, r.OrgID)
+	p, err := s.projects.Get(ctx, r.ID)
+	if IsNotFoundError(err) {
+		return ctx, nil, &NotFoundError{}
+	}
+	return ctx, p, err
 }
 
 func (s *ProjectService) toProto(ctx context.Context, p *Project) (*projectv1.Project, error) {

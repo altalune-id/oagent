@@ -15,7 +15,7 @@ type Store interface {
 // Reader reads Agent aggregates; implementations may use a read replica.
 type Reader interface {
 	ByID(ctx context.Context, id uuid.UUID) (*Agent, error)
-	ByPublicID(ctx context.Context, publicID string) (*Agent, error)
+	Resolve(ctx context.Context, publicID string) (Ref, error)
 	List(ctx context.Context, projectID uuid.UUID) ([]*Agent, error)
 }
 

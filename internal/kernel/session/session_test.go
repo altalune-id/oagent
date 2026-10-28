@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"altalune.id/oagent/internal/kernel/tenant"
 )
 
 func TestPrincipalContext_RoundTrip(t *testing.T) {
@@ -17,6 +19,16 @@ func TestPrincipalContext_RoundTrip(t *testing.T) {
 
 func TestPrincipalFrom_EmptyWhenMissing(t *testing.T) {
 	assert.Equal(t, Principal{}, PrincipalFrom(context.Background()))
+}
+
+func TestWithTenant_ScopesToTheActiveOrg(t *testing.T) {
+	p := Principal{UserID: uuid.New(), ActiveOrgID: uuid.New(), ActiveProjectID: uuid.New()}
+	tc, err := tenant.From(WithTenant(context.Background(), p))
+	require.NoError(t, err)
+	assert.Equal(t, tenant.Context{OrgID: p.ActiveOrgID, ProjectID: p.ActiveProjectID, UserID: p.UserID}, tc)
+
+	_, err = tenant.From(WithTenant(context.Background(), Principal{UserID: uuid.New()}))
+	assert.Error(t, err, "a principal without an active org carries no tenant")
 }
 
 func TestPrincipal_JSONDropsAuthority(t *testing.T) {

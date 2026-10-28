@@ -72,3 +72,16 @@ func IsCloudRequiresOIDCError(err error) bool {
 	_, ok := errors.AsType[*CloudRequiresOIDCError](err)
 	return ok
 }
+
+// RLSBypassError reports db.rls.allowBypass outside development: production and cloud always enforce row-level security.
+type RLSBypassError struct{}
+
+func (*RLSBypassError) Error() string {
+	return "config: db.rls.allowBypass is refused in production and in cloud mode; log in as the service role instead"
+}
+
+// IsRLSBypassError reports whether err's tree contains a *RLSBypassError.
+func IsRLSBypassError(err error) bool {
+	_, ok := errors.AsType[*RLSBypassError](err)
+	return ok
+}

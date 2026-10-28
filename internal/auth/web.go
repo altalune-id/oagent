@@ -113,6 +113,8 @@ func (h *Web) viewOf(ctx context.Context, p session.Principal) (principalView, e
 		Operator:    p.Operator,
 	}
 	var err error
+	// SECURITY: the lookups run in the principal's own active org, the scope row-level security reads them under.
+	ctx = session.WithTenant(ctx, p)
 	if p.UserID != uuid.Nil {
 		if v.UserID, err = h.ids.UserPublicID(ctx, p.UserID); err != nil {
 			return principalView{}, err

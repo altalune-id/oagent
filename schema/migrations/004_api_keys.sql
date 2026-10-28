@@ -46,6 +46,20 @@ CREATE TABLE {{.Schema}}.{{.TablePrefix}}api_key_projects (
 CREATE INDEX {{.TablePrefix}}api_key_projects_org_project_idx
   ON {{.Schema}}.{{.TablePrefix}}api_key_projects (org_id, project_id);
 
+ALTER TABLE {{.Schema}}.{{.TablePrefix}}api_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE {{.Schema}}.{{.TablePrefix}}api_keys FORCE ROW LEVEL SECURITY;
+CREATE POLICY {{.TablePrefix}}api_keys_tenant ON {{.Schema}}.{{.TablePrefix}}api_keys
+  FOR ALL
+  USING (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id())
+  WITH CHECK (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id());
+
+ALTER TABLE {{.Schema}}.{{.TablePrefix}}api_key_projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE {{.Schema}}.{{.TablePrefix}}api_key_projects FORCE ROW LEVEL SECURITY;
+CREATE POLICY {{.TablePrefix}}api_key_projects_tenant ON {{.Schema}}.{{.TablePrefix}}api_key_projects
+  FOR ALL
+  USING (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id())
+  WITH CHECK (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id());
+
 -- +goose StatementEnd
 
 -- +goose Down

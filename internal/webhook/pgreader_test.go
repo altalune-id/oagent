@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"altalune.id/oagent/internal/kernel/db/dbtest"
 )
 
 func TestByID(t *testing.T) {
@@ -16,7 +18,9 @@ func TestByID(t *testing.T) {
 
 	t.Run("found", func(t *testing.T) {
 		s, mock := newStoreTest(t)
+		dbtest.ExpectTx(mock)
 		mock.ExpectQuery("SELECT").WillReturnRows(rows)
+		mock.ExpectCommit()
 		e, err := s.ByID(storeCtx(org, uuid.New()), uuid.New())
 		require.NoError(t, err)
 		assert.Equal(t, "u", e.URL)
@@ -24,7 +28,9 @@ func TestByID(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		s, mock := newStoreTest(t)
+		dbtest.ExpectTx(mock)
 		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(endpointColumns()))
+		mock.ExpectCommit()
 		_, err := s.ByID(storeCtx(org, uuid.New()), uuid.New())
 		assert.True(t, IsNotFoundError(err))
 	})
@@ -34,7 +40,9 @@ func TestList(t *testing.T) {
 	org, project := uuid.New(), uuid.New()
 	rows := sqlmock.NewRows(endpointColumns()).AddRow(uuid.New(), "pub", org, project, "u", "", "[]", []byte("p"), nil, true, time.Now(), time.Now())
 	s, mock := newStoreTest(t)
+	dbtest.ExpectTx(mock)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	mock.ExpectCommit()
 	got, err := s.List(storeCtx(org, project), org, project)
 	require.NoError(t, err)
 	assert.Len(t, got, 1)
@@ -44,7 +52,9 @@ func TestListAttempts(t *testing.T) {
 	org := uuid.New()
 	rows := sqlmock.NewRows(attemptColumns()).AddRow(uuid.New(), org, uuid.New(), uuid.New(), uuid.New(), uuid.New(), "x", 1, 200, "", "", false, "[]", 3, time.Now())
 	s, mock := newStoreTest(t)
+	dbtest.ExpectTx(mock)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	mock.ExpectCommit()
 	got, err := s.ListAttempts(storeCtx(org, uuid.New()), uuid.New(), uuid.New())
 	require.NoError(t, err)
 	assert.Len(t, got, 1)
@@ -56,21 +66,27 @@ func TestReaderErrorBranches(t *testing.T) {
 
 	t.Run("byID query error", func(t *testing.T) {
 		s, mock := newStoreTest(t)
+		dbtest.ExpectTx(mock)
 		mock.ExpectQuery("SELECT").WillReturnError(errBoom)
+		mock.ExpectRollback()
 		_, err := s.ByID(ctx, uuid.New())
 		assert.Error(t, err)
 	})
 
 	t.Run("list query error", func(t *testing.T) {
 		s, mock := newStoreTest(t)
+		dbtest.ExpectTx(mock)
 		mock.ExpectQuery("SELECT").WillReturnError(errBoom)
+		mock.ExpectRollback()
 		_, err := s.List(ctx, org, project)
 		assert.Error(t, err)
 	})
 
 	t.Run("list attempts query error", func(t *testing.T) {
 		s, mock := newStoreTest(t)
+		dbtest.ExpectTx(mock)
 		mock.ExpectQuery("SELECT").WillReturnError(errBoom)
+		mock.ExpectRollback()
 		_, err := s.ListAttempts(ctx, uuid.New(), uuid.New())
 		assert.Error(t, err)
 	})

@@ -16,8 +16,9 @@ flowchart TD
     A[setupTelemetry] --> B["openDB: db.driver postgres opens the writer and the optional reader"]
     B --> C{db.autoMigrate?}
     C -- yes --> D[migrate]
-    C -- no --> E
-    D --> E[kernel: log, pool, tracer, meter, reporter]
+    C -- no --> GR
+    D --> GR["guardRLS: refuse a writer or reader pool that row-level security would not hold"]
+    GR --> E[kernel: log, pool, tracer, meter, reporter]
     E --> NA["buildNATS: opens NATS only when a feature selects it"]
     NA --> Q["buildQueue: queue.driver picks the driver, Disabled when queue.enabled is false"]
     Q --> RD["buildRedis: opens Redis only when a feature selects it"]
@@ -161,8 +162,11 @@ flowchart TD
 **Unit of work:** a use case owns its transaction; stores never begin one. `buildServices` makes one
 `db.NewTransactor(k.Pool)` and hands it to every service that writes more than one row (`org`,
 `agent`, `org/member`, `org/invite`, `install`, `legal`, the password resets in `auth`). A store joins the transaction on `ctx`
-(`db.Reader`, `db.Writer`, `db.InTx`) or runs alone; a nested `RunInTx` joins the outer one.
-`kernel/db`'s guard test fails if any other package begins a transaction.
+(`db.Read`, `db.ReadPrimary`, `db.Write`, `db.InTx`) or runs in its own; a nested `RunInTx` joins the outer one.
+Every transaction starts with the tenant scope of `ctx` (`app.current_org_id` and
+`app.current_user_id`, transaction-local). The Connect interceptor and MCP authentication put the principal's
+org, project and user on `ctx`; a service method that takes an org id scopes to it first (`tenant.WithOrg`).
+`kernel/db`'s guard tests fail if any other package begins a transaction, touches the pool handles or sets session state.
 
 `org → project` is the after-create hook that adds the default project, in the org's unit of work:
 if it fails, the org is not created. An agent's save and its `agent.created`/`agent.updated` event
@@ -206,8 +210,8 @@ is snapshotted and no history is kept (a known limit); the gate then uses
 `db.driver` (`postgres`, the default and only driver) is the feature: the stores, the outbox, the
 mail queue and the sessions keep their tables there. `postgres.*` is the connection.
 
-- **Config:** `postgres.dsn` (secret, required), `postgres.role` (`SET ROLE` on every new
-  connection), `postgres.schema` (default `public`) and `postgres.tablePrefix` (both bootstrap: the
+- **Config:** `postgres.dsn` (secret, required), `postgres.role` (the role the DSN must log in as;
+  empty skips the check), `postgres.schema` (default `public`) and `postgres.tablePrefix` (both bootstrap: the
   stores and the templated migrations use them), the pool (`postgres.maxOpenConns`,
   `postgres.maxIdleConns`, `postgres.connMaxLifetime`, `postgres.connMaxIdleTime`), the connect
   retry (`postgres.connectTimeout` 5s, `postgres.connectBackoff` 250ms), `postgres.reader.*` (a
@@ -215,13 +219,24 @@ mail queue and the sessions keep their tables there. `postgres.*` is the connect
   credential migrations run on; empty uses `postgres.dsn`) and `postgres.health.{interval,timeout}`
   (30s, 2s). `db.autoMigrate` (default true) migrates at start. Env: `OAGENT_POSTGRES_DSN`,
   `OAGENT_POSTGRES_MIGRATOR_DSN`, `OAGENT_DB_DRIVER`, `OAGENT_DB_AUTO_MIGRATE`, …
-- **Connection:** the root package `pg` (`pg.Open`) opens a `*sql.DB` with the role, retries the
-  ping with backoff within `postgres.connectTimeout`, and applies the pool. No error or log carries
+- **Connection:** the root package `pg` (`pg.Open`) opens a `*sql.DB`, retries the ping with backoff
+  within `postgres.connectTimeout`, applies the pool, and fails with `pg.LoginRoleError` when
+  `session_user` is not `postgres.role` (a `SET ROLE` does not survive a transaction-mode pooler). No error or log carries
   a password. `db.go` here maps `postgres.*` to one `pg.Config` for the writer and one for the
   reader, and builds `db.Pool{W, R}`; the reader aliases the writer when it has no DSN.
 - **Migrations:** `migrate` opens `postgres.migrator.dsn` (or `postgres.dsn`) with
   `postgres.migrator.role` and runs every migration under the advisory lock
   `migrate:<postgres.tablePrefix>` (`pg.RunWithAdvisoryLock`), so concurrent instances migrate once.
+- **Row-level security:** the app logs in as the service role (`scripts/db/provision.sh`). After
+  migrating, `guardRLS` (`db.go`) probes the writer and a distinct reader (`pg.ProbeRLS`) and
+  `db.CheckRLS` refuses to start when the login can bypass RLS (superuser, `BYPASSRLS`, schema or
+  table owner, or a member of one), `row_security` is off, an org-owned table lacks `ENABLE`,
+  `FORCE` or a policy that reads the scope and covers writes, any populated org-owned table shows rows
+  to a scope no tenant owns (`db.ProbeLeaks`, run only when the login cannot bypass RLS), or a definer is not
+  owned by the schema owner or is executable by `PUBLIC`. `db.rls.allowBypass: true` turns only the role check
+  into a WARN, in development; config refuses it in production and cloud mode (`RLSBypassError`).
+  Every unit of work carries the tenant scope of `ctx` (see Service wiring); cross-org reads go
+  through the lookup functions in `schema/README.md`.
 - **Shutdown and readiness:** the kernel closes the pool on shutdown. The `db-health` worker
   (`pg.HealthMonitor`) pings the writer and a distinct reader every `postgres.health.interval`;
   while one does not answer, `/readyz` answers 503.
@@ -359,18 +374,18 @@ group gets `ratelimit.Disabled()`, which allows every call.
 
 The supervisor runs these next to the HTTP server.
 
-| Worker                    | What it does                                                                                       | When it runs                                                     |
-| ------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `http`                    | the HTTP server (all surfaces above)                                                               | always                                                           |
-| `db-health`               | pings the pool; `health` reads it for `/readyz`                                                    | always                                                           |
-| `redis-health`            | pings Redis every 5 s; `health` reads it for `/readyz`                                             | when a feature uses Redis                                        |
-| `nats-health`             | checks the NATS connection every 5 s; `health` reads it for `/readyz`                              | when a feature uses NATS                                         |
-| `outbox`                  | claims due outbox entries, delivers signed webhooks                                                | always                                                           |
-| `mailqueue.send`          | claims due queued mail, sends it through the mailer, erases the sealed payload once sent or failed | always                                                           |
-| `apikey-usage`            | batches `last_used_at` writes every 30 s                                                           | always                                                           |
-| `ratelimit.janitor`       | drops rate limit keys that have fully refilled, every minute                                       | when a rate limit group is on and `rateLimit.driver` is `memory` |
-| `scheduler`               | cron jobs (expired-session sweep)                                                                  | `scheduler.enabled`, unless `--no-scheduler` or consumer-only    |
-| queue consumer / listener | queue handlers (none yet)                                                                          | when `queue.enabled`                                             |
+| Worker                    | What it does                                                                                                                                                              | When it runs                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `http`                    | the HTTP server (all surfaces above)                                                                                                                                      | always                                                           |
+| `db-health`               | pings the pool; `health` reads it for `/readyz`                                                                                                                           | always                                                           |
+| `redis-health`            | pings Redis every 5 s; `health` reads it for `/readyz`                                                                                                                    | when a feature uses Redis                                        |
+| `nats-health`             | checks the NATS connection every 5 s; `health` reads it for `/readyz`                                                                                                     | when a feature uses NATS                                         |
+| `outbox`                  | per org (`list_org_ids`, then scoped): claims due outbox entries, delivers signed webhooks; each org drains on its own, so one org's failed delivery never blocks another | always                                                           |
+| `mailqueue.send`          | claims due queued mail, sends it through the mailer, erases the sealed payload once sent or failed                                                                        | always                                                           |
+| `apikey-usage`            | batches `last_used_at` writes every 30 s (`kernel/usage`), one batch per org under that org's scope                                                                       | always                                                           |
+| `ratelimit.janitor`       | drops rate limit keys that have fully refilled, every minute                                                                                                              | when a rate limit group is on and `rateLimit.driver` is `memory` |
+| `scheduler`               | cron jobs (expired-session sweep)                                                                                                                                         | `scheduler.enabled`, unless `--no-scheduler` or consumer-only    |
+| queue consumer / listener | queue handlers (none yet)                                                                                                                                                 | when `queue.enabled`                                             |
 
 ## Files
 

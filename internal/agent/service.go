@@ -55,6 +55,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*Agent, error)
 	if req.OrgID == uuid.Nil {
 		return nil, apperror.Invalid("organization_id", apperror.FieldRequired)
 	}
+	ctx = tenant.WithOrg(ctx, req.OrgID)
 	if req.ProjectID == uuid.Nil {
 		return nil, apperror.Invalid("project_id", apperror.FieldRequired)
 	}
@@ -100,13 +101,13 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (*Agent, error) {
 	return a, nil
 }
 
-// ByPublicID loads an agent by its public id.
-func (s *Service) ByPublicID(ctx context.Context, publicID string) (*Agent, error) {
-	a, err := s.store.ByPublicID(ctx, publicID)
+// Resolve names publicID's agent and its org, in any org; the caller checks reach before it reads the agent.
+func (s *Service) Resolve(ctx context.Context, publicID string) (Ref, error) {
+	r, err := s.store.Resolve(ctx, publicID)
 	if err != nil {
-		return nil, s.errOrReport(ctx, "agent: by public id", err)
+		return Ref{}, s.errOrReport(ctx, "agent: resolve", err)
 	}
-	return a, nil
+	return r, nil
 }
 
 // List returns a project's agents.

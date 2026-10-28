@@ -11,10 +11,16 @@ type DBDriver string
 // DBDriverPostgres keeps every table in Postgres.
 const DBDriverPostgres DBDriver = "postgres"
 
-// DBConfig picks the database driver and whether the schema is migrated at start.
+// DBConfig picks the database driver, whether the schema is migrated at start, and the row-level-security guard.
 type DBConfig struct {
-	Driver      DBDriver `yaml:"driver"      mapstructure:"driver"      validate:"oneof=postgres"`
-	AutoMigrate bool     `yaml:"autoMigrate" mapstructure:"autoMigrate"`
+	Driver      DBDriver  `yaml:"driver"      mapstructure:"driver"      validate:"oneof=postgres"`
+	AutoMigrate bool      `yaml:"autoMigrate" mapstructure:"autoMigrate"`
+	RLS         RLSConfig `yaml:"rls"         mapstructure:"rls"`
+}
+
+// RLSConfig tunes the boot row-level-security guard.
+type RLSConfig struct {
+	AllowBypass bool `yaml:"allowBypass" mapstructure:"allowBypass" awareness:"bootstrap"`
 }
 
 // PostgresConfig is the Postgres connection; it is opened only when a feature selects driver postgres.
@@ -66,6 +72,9 @@ func (c *Config) PostgresFeatures() []string {
 }
 
 func (c *Config) validatePostgres() error {
+	if c.DB.RLS.AllowBypass && (c.Env.IsProduction() || c.Mode == ModeCloud) {
+		return &RLSBypassError{}
+	}
 	features := c.PostgresFeatures()
 	if len(features) == 0 {
 		return nil

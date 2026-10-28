@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"altalune.id/oagent/internal/kernel/tenant"
 )
 
 // Source names the credential a Principal came from.
@@ -72,6 +74,14 @@ func PrincipalInto(ctx context.Context, p Principal) context.Context {
 func PrincipalFrom(ctx context.Context) Principal {
 	p, _ := ctx.Value(principalKey{}).(Principal)
 	return p
+}
+
+// WithTenant returns ctx scoped to p's active org, project and user, or ctx unchanged when p has no active org.
+func WithTenant(ctx context.Context, p Principal) context.Context {
+	if p.ActiveOrgID == uuid.Nil {
+		return ctx
+	}
+	return tenant.Into(ctx, tenant.Context{OrgID: p.ActiveOrgID, ProjectID: p.ActiveProjectID, UserID: p.UserID})
 }
 
 type sidKey struct{}

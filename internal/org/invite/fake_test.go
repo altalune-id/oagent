@@ -63,6 +63,10 @@ func (m *memStore) ByPublicID(_ context.Context, publicID string) (*invite.Invit
 	return m.find(func(i *invite.Invite) bool { return i.PublicID == publicID })
 }
 
+func (m *memStore) ResolveByPublicID(ctx context.Context, publicID string) (*invite.Invite, error) {
+	return m.ByPublicID(ctx, publicID)
+}
+
 func (m *memStore) write(fn func() error) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

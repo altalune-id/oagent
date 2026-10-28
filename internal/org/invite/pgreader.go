@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
@@ -37,16 +38,22 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*Invite, error)
 	return s.one(ctx, "ByID", postgres.SELECT(t.AllColumns).FROM(t).WHERE(t.ID.EQ(postgres.UUID(id))))
 }
 
-// ByTokenHash returns the invite whose token hashes to hash.
+// ByTokenHash returns the invite whose token hashes to hash through a definer, before any tenant scope exists.
 func (s *postgresStore) ByTokenHash(ctx context.Context, hash string) (*Invite, error) {
-	t := s.invites
-	return s.one(ctx, "ByTokenHash", postgres.SELECT(t.AllColumns).FROM(t).WHERE(t.TokenHash.EQ(postgres.String(hash))))
+	// SECURITY: the definer never returns the hash, so TokenHash is empty; never Save it, reload it by id in a scoped unit of work.
+	return s.one(ctx, "ByTokenHash", postgres.RawStatement(s.byTokenHash, postgres.RawArgs{"#hash": hash}))
 }
 
-// ByPublicID returns the invite with publicID.
+// ByPublicID returns the invite with publicID in the tenant scope on ctx.
 func (s *postgresStore) ByPublicID(ctx context.Context, publicID string) (*Invite, error) {
 	t := s.invites
 	return s.one(ctx, "ByPublicID", postgres.SELECT(t.AllColumns).FROM(t).WHERE(t.PublicID.EQ(postgres.String(publicID))))
+}
+
+// ResolveByPublicID returns the invite with publicID through a definer, before any tenant scope exists.
+func (s *postgresStore) ResolveByPublicID(ctx context.Context, publicID string) (*Invite, error) {
+	// SECURITY: the definer never returns the hash, so TokenHash is empty; never Save it, reload it by id in a scoped unit of work.
+	return s.one(ctx, "ResolveByPublicID", postgres.RawStatement(s.byPublicID, postgres.RawArgs{"#publicID": publicID}))
 }
 
 // ListLive returns orgID's live invites and drafts with the inviter's name, or their email when the name is empty.
@@ -57,7 +64,7 @@ func (s *postgresStore) ListLive(ctx context.Context, orgID uuid.UUID) ([]*Invit
 		WHERE(t.OrgID.EQ(postgres.UUID(orgID)).AND(t.AcceptedAt.IS_NULL()).AND(t.RevokedAt.IS_NULL())).
 		ORDER_BY(t.CreatedAt.ASC(), t.Email.ASC())
 	var rows []listedRow
-	if err := stmt.QueryContext(ctx, db.Writer(ctx, s.pool), &rows); err != nil && !db.IsNoRows(err) {
+	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
 		return nil, fmt.Errorf("invite.postgres: ListLive: %w", err)
 	}
 	out := make([]*Invite, 0, len(rows))
@@ -72,9 +79,9 @@ func (s *postgresStore) ListLive(ctx context.Context, orgID uuid.UUID) ([]*Invit
 	return out, nil
 }
 
-func (s *postgresStore) one(ctx context.Context, op string, stmt postgres.SelectStatement) (*Invite, error) {
+func (s *postgresStore) one(ctx context.Context, op string, stmt postgres.Statement) (*Invite, error) {
 	var row inviteRow
-	if err := stmt.QueryContext(ctx, db.Writer(ctx, s.pool), &row); err != nil {
+	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{}
 		}

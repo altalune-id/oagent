@@ -46,3 +46,16 @@ func WithOrg(ctx context.Context, orgID uuid.UUID) context.Context {
 	tc.OrgID = orgID
 	return Into(ctx, tc)
 }
+
+// WithUser returns ctx carrying userID, keeping any org and project already carried on it.
+func WithUser(ctx context.Context, userID uuid.UUID) context.Context {
+	tc, _ := ctx.Value(ctxKey{}).(Context)
+	tc.UserID = userID
+	return Into(ctx, tc)
+}
+
+// Peek returns the tenant Context carried by ctx, or the zero Context; it never rejects a missing or unscoped one.
+func Peek(ctx context.Context) Context {
+	tc, _ := ctx.Value(ctxKey{}).(Context)
+	return tc
+}

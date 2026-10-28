@@ -129,6 +129,7 @@ func (s *Service) Enqueue(ctx context.Context, t events.Type, data any) error {
 
 // EnqueueOrg fans an org event out to the subscribed endpoints of every project in orgID, one event per project.
 func (s *Service) EnqueueOrg(ctx context.Context, orgID uuid.UUID, t events.Type, data any) error {
+	ctx = tenant.WithOrg(ctx, orgID)
 	spec, ok := events.Lookup(t)
 	if !ok {
 		return &events.UnknownTypeError{Type: t}

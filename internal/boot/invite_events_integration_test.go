@@ -25,7 +25,7 @@ func TestInviteEvents_ReachEveryProjectsSubscribers(t *testing.T) {
 	ctx := t.Context()
 	o, err := org.NewOrg("evt-org", "Events Org", uuid.Nil)
 	require.NoError(t, err)
-	require.NoError(t, f.svcs.OrgStore.Save(ctx, o))
+	require.NoError(t, f.svcs.OrgStore.Save(tenant.WithOrg(ctx, o.ID), o))
 	main, err := f.svcs.Projects.Create(ctx, project.CreateRequest{OrgID: o.ID, Slug: "main", Name: "Main"})
 	require.NoError(t, err)
 	side, err := f.svcs.Projects.Create(ctx, project.CreateRequest{OrgID: o.ID, Slug: "side", Name: "Side"})
@@ -38,7 +38,7 @@ func TestInviteEvents_ReachEveryProjectsSubscribers(t *testing.T) {
 
 	c, err := f.svcs.Invites.Create(ctx, member.Requester{Operator: true}, o.ID, "joiner@example.com", member.RoleMember)
 	require.NoError(t, err)
-	_, err = f.svcs.Invites.Join(ctx, c.Invite.ID, "Joiner", "a sturdy passphrase", true)
+	_, err = f.svcs.Invites.Join(ctx, c.Invite.OrgID, c.Invite.ID, "Joiner", "a sturdy passphrase", true)
 	require.NoError(t, err)
 
 	rows, err := f.db.QueryContext(ctx, `SELECT project_id, convert_from(payload, 'UTF8') FROM outbox_entries WHERE org_id = $1`, o.ID)

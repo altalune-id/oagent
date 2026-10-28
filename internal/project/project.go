@@ -131,3 +131,9 @@ func projectToProto(p *Project, orgPublicID string) *projectv1.Project {
 		UpdatedAt: timestamppb.New(p.UpdatedAt),
 	}
 }
+
+// Ref names a project and the tenant it belongs to, before any row is read.
+type Ref struct {
+	ID    uuid.UUID
+	OrgID uuid.UUID
+}

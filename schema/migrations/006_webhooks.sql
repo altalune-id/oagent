@@ -42,6 +42,20 @@ CREATE TABLE {{.Schema}}.{{.TablePrefix}}webhook_deliveries (
 CREATE INDEX {{.TablePrefix}}webhook_deliveries_org_delivery_idx
   ON {{.Schema}}.{{.TablePrefix}}webhook_deliveries (org_id, delivery_id);
 
+ALTER TABLE {{.Schema}}.{{.TablePrefix}}webhook_endpoints ENABLE ROW LEVEL SECURITY;
+ALTER TABLE {{.Schema}}.{{.TablePrefix}}webhook_endpoints FORCE ROW LEVEL SECURITY;
+CREATE POLICY {{.TablePrefix}}webhook_endpoints_tenant ON {{.Schema}}.{{.TablePrefix}}webhook_endpoints
+  FOR ALL
+  USING (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id())
+  WITH CHECK (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id());
+
+ALTER TABLE {{.Schema}}.{{.TablePrefix}}webhook_deliveries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE {{.Schema}}.{{.TablePrefix}}webhook_deliveries FORCE ROW LEVEL SECURITY;
+CREATE POLICY {{.TablePrefix}}webhook_deliveries_tenant ON {{.Schema}}.{{.TablePrefix}}webhook_deliveries
+  FOR ALL
+  USING (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id())
+  WITH CHECK (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id());
+
 -- +goose StatementEnd
 
 -- +goose Down

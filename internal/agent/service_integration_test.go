@@ -36,11 +36,12 @@ func TestService_CreateWithAFailedEventSavesNothing(t *testing.T) {
 		t.Run("slug="+slug, func(t *testing.T) {
 			f := newPgFixture(t)
 			orgID, projectID := f.seedScope(t)
+			ctx := in(orgID)
 			pub := &txPublisher{err: errors.New("outbox down")}
 
-			_, err := f.service(pub).Create(t.Context(), agent.CreateRequest{OrgID: orgID, ProjectID: projectID, Slug: slug, Name: "Bot"})
+			_, err := f.service(pub).Create(ctx, agent.CreateRequest{OrgID: orgID, ProjectID: projectID, Slug: slug, Name: "Bot"})
 			require.Error(t, err)
-			listed, lerr := f.store.List(t.Context(), projectID)
+			listed, lerr := f.store.List(ctx, projectID)
 			require.NoError(t, lerr)
 			assert.Empty(t, listed, "an agent is never saved without its event")
 		})
@@ -50,12 +51,13 @@ func TestService_CreateWithAFailedEventSavesNothing(t *testing.T) {
 func TestService_UpdateWithAFailedEventChangesNothing(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
 	a := newAgent(t, orgID, projectID, "bot")
-	require.NoError(t, f.store.Save(t.Context(), a))
+	require.NoError(t, f.store.Save(ctx, a))
 
-	_, err := f.service(&txPublisher{err: errors.New("outbox down")}).Update(t.Context(), a.ID, "Renamed", "new")
+	_, err := f.service(&txPublisher{err: errors.New("outbox down")}).Update(ctx, a.ID, "Renamed", "new")
 	require.Error(t, err)
-	got, gerr := f.store.ByID(t.Context(), a.ID)
+	got, gerr := f.store.ByID(ctx, a.ID)
 	require.NoError(t, gerr)
 	assert.Equal(t, a.Name, got.Name, "an update is never saved without its event")
 }
@@ -63,12 +65,13 @@ func TestService_UpdateWithAFailedEventChangesNothing(t *testing.T) {
 func TestService_EventsAreEnqueuedInTheSaveTransaction(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
 	pub := &txPublisher{}
 	svc := f.service(pub)
 
-	a, err := svc.Create(t.Context(), agent.CreateRequest{OrgID: orgID, ProjectID: projectID, Name: "Bot"})
+	a, err := svc.Create(ctx, agent.CreateRequest{OrgID: orgID, ProjectID: projectID, Name: "Bot"})
 	require.NoError(t, err)
-	_, err = svc.Update(t.Context(), a.ID, "Renamed", "")
+	_, err = svc.Update(ctx, a.ID, "Renamed", "")
 	require.NoError(t, err)
 	assert.Equal(t, []bool{true, true}, pub.inTx)
 }

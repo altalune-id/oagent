@@ -11,6 +11,7 @@ import (
 	invitev1 "altalune.id/oagent/gen/go/invite/v1"
 	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
 	"altalune.id/oagent/internal/kernel/authz"
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
 )
@@ -171,7 +172,7 @@ func (s *InviteService) target(
 	if orgID, r, err = s.writer(ctx, orgPublicID); err != nil {
 		return uuid.Nil, uuid.Nil, member.Requester{}, err
 	}
-	inv, err := s.invites.ByPublicID(ctx, invitePublicID)
+	inv, err := s.invites.ByPublicID(tenant.WithOrg(ctx, orgID), invitePublicID)
 	if err != nil {
 		return uuid.Nil, uuid.Nil, member.Requester{}, err
 	}

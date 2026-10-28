@@ -139,6 +139,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("nats.connectTimeout", "10s")
 	v.SetDefault("db.driver", string(DBDriverPostgres))
 	v.SetDefault("db.autoMigrate", true)
+	v.SetDefault("db.rls.allowBypass", false)
 	v.SetDefault("postgres.schema", "public")
 	v.SetDefault("postgres.health.interval", "30s")
 	v.SetDefault("postgres.health.timeout", "2s")

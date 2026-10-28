@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/pg"
 )
 
@@ -15,6 +16,7 @@ func TestLockInTx(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
 	mock.ExpectExec("SELECT pg_advisory_xact_lock").WithArgs(pg.LockKey("install")).WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
 

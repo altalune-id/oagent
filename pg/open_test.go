@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"io"
 	"log/slog"
-	"strings"
 	"testing"
 	"time"
 
@@ -70,19 +70,8 @@ func TestOpenPostgres_NoRole(t *testing.T) {
 	assert.NoError(t, sqlDB.Close())
 }
 
-func TestOpenPostgres_WithRole(t *testing.T) {
-	sqlDB, err := openPostgres(Config{DSN: okDSN, Role: "owner"})
-	require.NoError(t, err)
-	assert.NoError(t, sqlDB.Close())
-}
-
 func TestOpenPostgres_BadDSN(t *testing.T) {
 	_, err := openPostgres(Config{DSN: "postgres://u:p@h:notaport/db"})
-	assert.Error(t, err)
-}
-
-func TestOpenPostgres_BadRole(t *testing.T) {
-	_, err := openPostgres(Config{DSN: okDSN, Role: strings.Repeat("a", 64)})
 	assert.Error(t, err)
 }
 
@@ -105,4 +94,48 @@ func TestOpen_NeverLeaksThePassword(t *testing.T) {
 			assert.NotContains(t, logs.String(), password)
 		})
 	}
+}
+
+func openWithMock(t *testing.T) (sqlmock.Sqlmock, func()) {
+	t.Helper()
+	sqlDB, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	orig := openFunc
+	openFunc = func(Config) (*sql.DB, error) { return sqlDB, nil }
+	return mock, func() { openFunc = orig }
+}
+
+func TestOpen_AcceptsTheExpectedLoginRole(t *testing.T) {
+	mock, restore := openWithMock(t)
+	t.Cleanup(restore)
+	mock.ExpectQuery(`SELECT session_user`).WillReturnRows(sqlmock.NewRows([]string{"session_user"}).AddRow("oagent_service"))
+
+	sqlDB, err := Open(context.Background(), Config{DSN: okDSN, Role: "oagent_service"}, nil)
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet(), "Open must never SET ROLE")
+	_ = sqlDB.Close()
+}
+
+func TestOpen_RefusesALoginOtherThanTheRole(t *testing.T) {
+	mock, restore := openWithMock(t)
+	t.Cleanup(restore)
+	mock.ExpectQuery(`SELECT session_user`).WillReturnRows(sqlmock.NewRows([]string{"session_user"}).AddRow("oagent_owner"))
+	mock.ExpectClose()
+
+	_, err := Open(context.Background(), Config{DSN: okDSN, Role: "oagent_service"}, nil)
+	require.Error(t, err)
+	assert.True(t, IsLoginRoleError(err), "got %v", err)
+	assert.Contains(t, err.Error(), `logged in as "oagent_owner"`)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestOpen_LoginRoleQueryFails(t *testing.T) {
+	mock, restore := openWithMock(t)
+	t.Cleanup(restore)
+	mock.ExpectQuery(`SELECT session_user`).WillReturnError(errors.New("gone"))
+	mock.ExpectClose()
+
+	_, err := Open(context.Background(), Config{DSN: okDSN, Role: "oagent_service"}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "pg: login role")
 }

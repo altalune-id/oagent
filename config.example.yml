@@ -1,10 +1,12 @@
 # development prints emails to the log (console mail driver) and allows http:// webhook URLs.
 # For production, set production and configure mail, see the commented lines below.
 env: development
+# roles from scripts/db/provision.sh (the compose Postgres runs it on first start; dev-only passwords)
 postgres:
-  dsn: postgres://postgres:postgres@localhost-pooler:5432/oagent?sslmode=disable
+  dsn: postgres://oagent_service:oagent-dev-service-password@localhost-pooler:5432/oagent?sslmode=disable
   migrator:
-    dsn: postgres://postgres:postgres@localhost:5432/oagent?sslmode=disable
+    dsn: postgres://oagent_migrator:oagent-dev-migrator-password@localhost:5432/oagent?sslmode=disable
+    role: oagent_owner
 http:
   # generate: openssl rand -hex 32
   stateSecret: "f8e6ed3aae2d359d0ecd41f884ffc71631bb16e10cc69205da1e7767aeab9074"

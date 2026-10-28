@@ -8,39 +8,26 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestOnlyKernelDBBeginsTransactions(t *testing.T) {
-	root := moduleRoot(t)
-	own := filepath.Join(root, "internal", "kernel", "db")
-	var bad []string
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			switch d.Name() {
-			case "node_modules", "gen", "testdata", ".git", ".agents", ".claude", ".superpowers":
-				return filepath.SkipDir
-			}
-			if path == own {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") || strings.HasSuffix(path, "_templ.go") {
-			return nil
-		}
-		rel, _ := filepath.Rel(root, path)
-		bad = append(bad, txViolations(t, path, rel)...)
-		return nil
-	})
-	require.NoError(t, err)
-	require.Empty(t, bad, "use db.Reader, db.Writer, db.InTx or a db.Transactor instead")
+	bad := walkGo(t, []string{filepath.Join("internal", "kernel", "db")}, txViolations)
+	require.Empty(t, bad, "use db.Read, db.Write, db.InTx or a db.Transactor instead")
+}
+
+func TestGuardsExemptOnlyTestutilPaths(t *testing.T) {
+	assert.True(t, guardExempt(filepath.Join("internal", "testutil", "pgtest")))
+	assert.True(t, guardExempt(filepath.Join("internal", "testutil")))
+	assert.False(t, guardExempt(filepath.Join("internal", "kernel", "testutil")), "only the internal/testutil path prefix is exempt, never a package name")
+	assert.False(t, guardExempt(filepath.Join("internal", "testutility")))
+	assert.False(t, guardExempt(filepath.Join("internal", "org")))
 }
 
 func TestTxViolationsFindsEachKind(t *testing.T) {
@@ -143,4 +130,170 @@ func moduleRoot(t *testing.T) string {
 		require.NotEqual(t, dir, parent, "go.mod not found")
 		dir = parent
 	}
+}
+
+// NOTE: boot is the composition root; it hands pool.W to the session store and the health monitor, which get no RLS.
+func TestOnlyKernelDBTouchesThePoolHandles(t *testing.T) {
+	bad := walkGo(t, []string{filepath.Join("internal", "kernel", "db"), filepath.Join("internal", "boot")}, poolHandleViolations)
+	require.Empty(t, bad, "use db.Read, db.Write, db.InTx or a db.Transactor instead of pool.R or pool.W")
+}
+
+func TestOnlyKernelDBSetsSessionState(t *testing.T) {
+	bad := walkGo(t, []string{filepath.Join("internal", "kernel", "db"), "migrator"}, sessionStateViolations)
+	require.Empty(t, bad, "the tenant scope is set only by kernel/db with set_config(…, true); never SET or RESET a session")
+}
+
+func TestPoolHandleAndSessionStateViolationsFindEachKind(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "store.go")
+	src := `package store
+
+import "altalune.id/oagent/internal/kernel/db"
+
+type s struct{ pool db.Pool }
+
+func (x s) a() { _ = x.pool.R; _ = x.pool.W }
+func b(pool db.Pool) { _ = pool.W }
+func c(k struct{ Pool db.Pool }) { _ = k.Pool.R }
+func d() string { return "SET ROLE app" }
+func e() string { return "select set_config('x', 'y', false)" }
+func f() string { return ` + "`RESET ROLE`" + ` }
+func g() string { return "SETTINGS are fine" }
+`
+	require.NoError(t, os.WriteFile(path, []byte(src), 0o600))
+	assert.Len(t, poolHandleViolations(t, path, "store.go"), 4)
+	assert.Len(t, sessionStateViolations(t, path, "store.go"), 3)
+}
+
+func walkGo(t *testing.T, allowed []string, check func(*testing.T, string, string) []string) []string {
+	t.Helper()
+	root := moduleRoot(t)
+	var bad []string
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(root, path)
+		if d.IsDir() {
+			switch d.Name() {
+			case "node_modules", "gen", "testdata", ".git", ".agents", ".claude", ".superpowers":
+				return filepath.SkipDir
+			}
+			if slices.Contains(allowed, rel) || guardExempt(rel) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") || strings.HasSuffix(path, "_templ.go") {
+			return nil
+		}
+		bad = append(bad, check(t, path, rel)...)
+		return nil
+	})
+	require.NoError(t, err)
+	return bad
+}
+
+// NOTE: test helpers under internal/testutil drive raw transactions and roles on purpose; the guards skip that path only.
+func guardExempt(rel string) bool {
+	prefix := filepath.Join("internal", "testutil")
+	return rel == prefix || strings.HasPrefix(rel, prefix+string(filepath.Separator))
+}
+
+func parseGo(t *testing.T, path string) (*token.FileSet, *ast.File) {
+	t.Helper()
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+	require.NoError(t, err)
+	return fset, f
+}
+
+func poolHandleViolations(t *testing.T, path, rel string) []string {
+	t.Helper()
+	fset, f := parseGo(t, path)
+	if ast.IsGenerated(f) {
+		return nil
+	}
+	var out []string
+	ast.Inspect(f, func(n ast.Node) bool {
+		sel, ok := n.(*ast.SelectorExpr)
+		if !ok || (sel.Sel.Name != "R" && sel.Sel.Name != "W") {
+			return true
+		}
+		var name string
+		switch x := sel.X.(type) {
+		case *ast.Ident:
+			name = x.Name
+		case *ast.SelectorExpr:
+			name = x.Sel.Name
+		}
+		if strings.EqualFold(name, "pool") {
+			out = append(out, fmt.Sprintf("%s:%d: uses %s.%s", rel, fset.Position(sel.Pos()).Line, name, sel.Sel.Name))
+		}
+		return true
+	})
+	return out
+}
+
+//nolint:gochecknoglobals // compiled once for the guard.
+var sessionStatement = regexp.MustCompile(`(^|;)\s*(SET|RESET)\s+[A-Za-z_]`)
+
+func sessionStateViolations(t *testing.T, path, rel string) []string {
+	t.Helper()
+	fset, f := parseGo(t, path)
+	if ast.IsGenerated(f) {
+		return nil
+	}
+	var out []string
+	ast.Inspect(f, func(n ast.Node) bool {
+		lit, ok := n.(*ast.BasicLit)
+		if !ok || lit.Kind != token.STRING {
+			return true
+		}
+		s := strings.Trim(lit.Value, "`\"")
+		if strings.Contains(strings.ToLower(s), "set_config(") || sessionStatement.MatchString(s) {
+			out = append(out, fmt.Sprintf("%s:%d: sets session state: %s", rel, fset.Position(lit.Pos()).Line, lit.Value))
+		}
+		return true
+	})
+	return out
+}
+
+func TestReadersNeverWrite(t *testing.T) {
+	bad := walkGo(t, nil, func(t *testing.T, path, rel string) []string {
+		t.Helper()
+		if !strings.HasSuffix(path, "pgreader.go") {
+			return nil
+		}
+		return dbCalls(t, path, rel, "Write", "InTx", "RunInTx")
+	})
+	require.Empty(t, bad, "a pgreader reads with db.Read or db.ReadPrimary; writes belong in pgwriter")
+}
+
+func TestDBCallsFindsTheNamedFunctions(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "x_pgreader.go")
+	src := `package x
+
+import "altalune.id/oagent/internal/kernel/db"
+
+func a() { _ = db.Write(nil, db.Pool{}, nil); _ = db.ReadPrimary(nil, db.Pool{}, nil); _ = db.InTx(nil, db.Pool{}, nil) }
+`
+	require.NoError(t, os.WriteFile(path, []byte(src), 0o600))
+	assert.Len(t, dbCalls(t, path, "x_pgreader.go", "Write", "InTx"), 2)
+}
+
+func dbCalls(t *testing.T, path, rel string, names ...string) []string {
+	t.Helper()
+	fset, f := parseGo(t, path)
+	var out []string
+	ast.Inspect(f, func(n ast.Node) bool {
+		sel, ok := n.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		if pkg, ok := sel.X.(*ast.Ident); ok && pkg.Name == "db" && slices.Contains(names, sel.Sel.Name) {
+			out = append(out, fmt.Sprintf("%s:%d: uses db.%s", rel, fset.Position(sel.Pos()).Line, sel.Sel.Name))
+		}
+		return true
+	})
+	return out
 }

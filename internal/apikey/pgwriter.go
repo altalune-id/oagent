@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/tenant"
 )
 
 // Save upserts a key and syncs its project grant in one transaction.
@@ -74,17 +76,21 @@ func (s *postgresStore) syncGrants(ctx context.Context, tx *sql.Tx, k *APIKey) e
 	return nil
 }
 
-// TouchLastUsed moves each key's last_used_at forward to its time; it never moves it backwards.
+// TouchLastUsed moves each of the scoped org's keys' last_used_at forward to its time; it never moves it backwards.
 func (s *postgresStore) TouchLastUsed(ctx context.Context, used map[uuid.UUID]time.Time) error {
 	if len(used) == 0 {
 		return nil
+	}
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return err
 	}
 	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error {
 		for id, at := range used {
 			ts := postgres.TimestampzT(at.UTC())
 			stmt := s.keys.UPDATE(s.keys.LastUsedAt).
 				SET(postgres.GREATEST(postgres.COALESCE(s.keys.LastUsedAt, ts), ts)).
-				WHERE(s.keys.ID.EQ(postgres.UUID(id)))
+				WHERE(s.keys.ID.EQ(postgres.UUID(id)).AND(s.keys.OrgID.EQ(postgres.UUID(tc.OrgID))))
 			if _, err := stmt.ExecContext(ctx, tx); err != nil {
 				return fmt.Errorf("apikey.postgres: TouchLastUsed: %w", err)
 			}
@@ -102,7 +108,11 @@ func (s *postgresStore) RevokePersonalOf(ctx context.Context, orgID, ownerID uui
 			AND(t.Kind.EQ(postgres.String(string(KindPersonal)))).
 			AND(t.CreatedBy.EQ(postgres.UUID(ownerID))).
 			AND(t.RevokedAt.IS_NULL()))
-	res, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool))
+	var res sql.Result
+	err := db.Write(ctx, s.pool, func(q qrm.DB) (err error) {
+		res, err = stmt.ExecContext(ctx, q)
+		return err
+	})
 	if err != nil {
 		return 0, fmt.Errorf("apikey.postgres: RevokePersonalOf: %w", err)
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/internal/kernel/tenant"
 	slugpkg "altalune.id/oagent/slug"
 )
 
@@ -34,6 +35,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (*Project, erro
 	if req.OrgID == uuid.Nil {
 		return nil, apperror.Invalid("organization_id", apperror.FieldRequired)
 	}
+	ctx = tenant.WithOrg(ctx, req.OrgID)
 	if strings.TrimSpace(req.Slug) == "" {
 		return s.createGenerated(ctx, req)
 	}
@@ -70,17 +72,18 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (*Project, error) {
 	return p, nil
 }
 
-// ByPublicID loads a project by its public id.
-func (s *Service) ByPublicID(ctx context.Context, publicID string) (*Project, error) {
-	p, err := s.store.ByPublicID(ctx, publicID)
+// Resolve names publicID's project and its org, in any org; the caller checks reach before it reads the project.
+func (s *Service) Resolve(ctx context.Context, publicID string) (Ref, error) {
+	r, err := s.store.Resolve(ctx, publicID)
 	if err != nil {
-		return nil, s.errOrReport(ctx, "project: by public id", err)
+		return Ref{}, s.errOrReport(ctx, "project: resolve", err)
 	}
-	return p, nil
+	return r, nil
 }
 
 // BySlug loads a project by slug within an org.
 func (s *Service) BySlug(ctx context.Context, orgID uuid.UUID, slug string) (*Project, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	p, err := s.store.BySlug(ctx, orgID, slug)
 	if err != nil {
 		return nil, s.errOrReport(ctx, "project: by slug", err)
@@ -90,6 +93,7 @@ func (s *Service) BySlug(ctx context.Context, orgID uuid.UUID, slug string) (*Pr
 
 // List returns an organization's projects.
 func (s *Service) List(ctx context.Context, orgID uuid.UUID) ([]*Project, error) {
+	ctx = tenant.WithOrg(ctx, orgID)
 	projects, err := s.store.List(ctx, orgID)
 	if err != nil {
 		return nil, s.errOrReport(ctx, "project: list", err)

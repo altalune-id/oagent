@@ -49,6 +49,20 @@ func TestOutboxTenantsFnError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestOutboxTenantsStopsWhenCancelled(t *testing.T) {
+	a, b := &org.Org{ID: uuid.New()}, &org.Org{ID: uuid.New()}
+	svc := org.NewService(&fakes.OrgStore{Orgs: []*org.Org{a, b}}, fakes.Transactor{}, testUnexpected())
+	ctx, cancel := context.WithCancel(context.Background())
+	calls := 0
+	err := outboxTenants{orgs: svc}.Each(ctx, func(ctx context.Context, _ string) error {
+		calls++
+		cancel()
+		return ctx.Err()
+	})
+	require.ErrorIs(t, err, context.Canceled)
+	assert.Equal(t, 1, calls)
+}
+
 func TestBuildOutboxWorker(t *testing.T) {
 	svcs := &Services{
 		Outbox:       outbox.NewStore(db.Pool{}, "public", ""),

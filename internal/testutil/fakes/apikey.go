@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/apikey"
+	"altalune.id/oagent/internal/kernel/tenant"
 )
 
 // APIKeyStore is an apikey.Store test double: reads return Key/Keys or Err, writes record their input.
@@ -21,8 +22,9 @@ type APIKeyStore struct {
 	RevokeCount int
 	Revocations []PersonalRevocation
 
-	mu      sync.Mutex
-	Touched []map[uuid.UUID]time.Time
+	mu          sync.Mutex
+	Touched     []map[uuid.UUID]time.Time
+	TouchedOrgs []uuid.UUID
 }
 
 var _ apikey.Store = (*APIKeyStore)(nil)
@@ -94,11 +96,12 @@ func (f *APIKeyStore) BySecretHash(_ context.Context, hash [32]byte) (*apikey.AP
 	return f.Key, nil
 }
 
-// TouchLastUsed implements apikey.Store and records each batch.
-func (f *APIKeyStore) TouchLastUsed(_ context.Context, used map[uuid.UUID]time.Time) error {
+// TouchLastUsed implements apikey.Store and records each batch and the org it was scoped to.
+func (f *APIKeyStore) TouchLastUsed(ctx context.Context, used map[uuid.UUID]time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.Touched = append(f.Touched, used)
+	f.TouchedOrgs = append(f.TouchedOrgs, tenant.Peek(ctx).OrgID)
 	return f.Err
 }
 

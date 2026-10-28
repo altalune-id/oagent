@@ -56,6 +56,9 @@ db:
   autoMigrate: true
   # env: OAGENT_DB_DRIVER
   driver: postgres
+  rls:
+    # [bootstrap] env: OAGENT_DB_RLS_ALLOW_BYPASS
+    allowBypass: false
 
 # [required, bootstrap] env: OAGENT_ENV
 env: production

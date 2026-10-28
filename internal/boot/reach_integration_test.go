@@ -82,10 +82,10 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 	var s reachOrg
 	a, err := org.NewOrg("org-a", "Org A", uuid.Nil)
 	require.NoError(t, err)
-	require.NoError(t, f.svcs.OrgStore.Save(ctx, a))
+	require.NoError(t, f.svcs.OrgStore.Save(tenant.WithOrg(ctx, a.ID), a))
 	b, err := org.NewOrg("org-b", "Org B", uuid.Nil)
 	require.NoError(t, err)
-	require.NoError(t, f.svcs.OrgStore.Save(ctx, b))
+	require.NoError(t, f.svcs.OrgStore.Save(tenant.WithOrg(ctx, b.ID), b))
 	s.orgA, s.orgB = a.ID, b.ID
 
 	prj, err := f.svcs.Projects.Create(ctx, project.CreateRequest{OrgID: b.ID, Slug: "main", Name: "Main"})

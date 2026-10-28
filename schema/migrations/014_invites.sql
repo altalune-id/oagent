@@ -24,6 +24,13 @@ CREATE UNIQUE INDEX {{.TablePrefix}}invites_live_idx
   ON {{.Schema}}.{{.TablePrefix}}invites (org_id, email)
   WHERE accepted_at IS NULL AND revoked_at IS NULL;
 
+ALTER TABLE {{.Schema}}.{{.TablePrefix}}invites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE {{.Schema}}.{{.TablePrefix}}invites FORCE ROW LEVEL SECURITY;
+CREATE POLICY {{.TablePrefix}}invites_tenant ON {{.Schema}}.{{.TablePrefix}}invites
+  FOR ALL
+  USING (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id())
+  WITH CHECK (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id());
+
 -- +goose StatementEnd
 
 -- +goose Down

@@ -17,6 +17,7 @@ import (
 	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/permission"
 	rootmcp "altalune.id/oagent/mcp"
@@ -44,6 +45,7 @@ func (c *chainStub) Authenticate(_ context.Context, cred authn.Credential) (sess
 type seen struct {
 	called bool
 	p      session.Principal
+	scope  tenant.Context
 }
 
 func guarded(t *testing.T, o AuthOptions, s *seen) http.Handler {
@@ -51,6 +53,7 @@ func guarded(t *testing.T, o AuthOptions, s *seen) http.Handler {
 	return Authenticate(o)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s.called = true
 		s.p = session.PrincipalFrom(r.Context())
+		s.scope = tenant.Peek(r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))
 }
@@ -134,6 +137,16 @@ func TestAuthenticate_ValidKeyPutsThePrincipal(t *testing.T) {
 		http.Header{"Authorization": {"Bearer " + goodKey}})
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, p.KeyID, s.p.KeyID)
+}
+
+// SECURITY: tools call the controlplane handlers directly, so the request carries the principal's tenant scope as /api's interceptor gives it.
+func TestAuthenticate_ScopesTheRequestToTheActiveOrg(t *testing.T) {
+	p := keyPrincipal()
+	p.ActiveOrgID, p.ActiveProjectID = uuid.New(), uuid.New()
+	var s seen
+	call(guarded(t, AuthOptions{Chain: authn.Chain{&chainStub{p: p}}, KeyPrefix: "oagent_", Required: true}, &s),
+		http.Header{"Authorization": {"Bearer " + goodKey}})
+	assert.Equal(t, tenant.Context{OrgID: p.ActiveOrgID, ProjectID: p.ActiveProjectID}, s.scope)
 }
 
 func TestAuthenticate_BasicPutsTheOperator(t *testing.T) {

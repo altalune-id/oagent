@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # Creates the oagent database and its roles on any Postgres; safe to re-run, and a re-run sets the passwords it is given.
 #
-# Roles: <PREFIX>_owner (NOLOGIN, owns the schema and tables), <PREFIX>_migrator (LOGIN, runs
-# migrations as the owner), <PREFIX>_service (LOGIN, reads and writes rows for the running app).
+# Roles: <PREFIX>_owner (NOLOGIN BYPASSRLS, owns the schema, tables and definer functions), <PREFIX>_migrator
+# (LOGIN, runs migrations as the owner), <PREFIX>_service (LOGIN NOBYPASSRLS, reads and writes rows for the
+# running app, subject to row-level security). verify.template.sql checks the result and fails the run on drift.
 #
 # Env (asked for interactively when missing):
 #   ADMIN_URL         admin connection URL without /<db>, e.g. postgres://postgres:pw@localhost:5432?sslmode=disable
 #   DB_NAME           application database (default oagent)
 #   PREFIX            role prefix (default oagent)
 #   SCHEMA            schema oagent uses, postgres.schema (default public)
+#   TABLE_PREFIX      table prefix oagent uses, postgres.tablePrefix (default empty)
 #   ADMIN_DB          database used for CREATE DATABASE (default postgres; neondb on Neon)
 #   MIG_PW, SVC_PW    migrator and service passwords (16+ characters, no ' or \); "gen" generates one
 #   CREDENTIALS_FILE  where generated passwords are written, mode 0600 (default ./oagent-db-credentials.env)
@@ -82,6 +84,7 @@ ADMIN_URL="${ADMIN_URL-}"
 DB_NAME="${DB_NAME-}"
 PREFIX="${PREFIX-}"
 SCHEMA="${SCHEMA-}"
+TABLE_PREFIX="${TABLE_PREFIX-}"
 ADMIN_DB="${ADMIN_DB-}"
 MIG_PW="${MIG_PW-}"
 SVC_PW="${SVC_PW-}"
@@ -123,6 +126,10 @@ for pair in "DB_NAME:$DB_NAME" "SCHEMA:$SCHEMA"; do
     exit 1
   fi
 done
+if [[ ! "$TABLE_PREFIX" =~ ^[a-z0-9_]{0,30}$ ]]; then
+  echo "TABLE_PREFIX must match [a-z0-9_]{0,30} (got $TABLE_PREFIX)" >&2
+  exit 1
+fi
 if [[ ! "$PREFIX" =~ ^[a-z][a-z0-9_]{0,40}$ ]]; then
   echo "PREFIX must match [a-z][a-z0-9_]{0,40} (got $PREFIX)" >&2
   exit 1
@@ -148,7 +155,7 @@ if $interactive; then
 About to provision:
   server    $(redact "$ADMIN_URL")
   database  $DB_NAME (created if missing, via $ADMIN_DB)
-  schema    $SCHEMA, owned by ${PREFIX}_owner
+  schema    $SCHEMA, owned by ${PREFIX}_owner (table prefix '${TABLE_PREFIX}')
   roles     ${PREFIX}_owner, ${PREFIX}_migrator, ${PREFIX}_service
 
 EOF
@@ -156,21 +163,26 @@ EOF
   [[ "$ans" =~ ^(y|Y|yes)$ ]] || { echo "Aborted."; exit 130; }
 fi
 
-echo "==> [1/2] database $DB_NAME"
+render() { sed -e "s/@@PREFIX@@/$PREFIX/g" -e "s/@@SCHEMA@@/$SCHEMA/g" -e "s/@@TABLE_PREFIX@@/$TABLE_PREFIX/g" "$1"; }
+
+echo "==> [1/3] database $DB_NAME"
 "$PSQL" -qX -v ON_ERROR_STOP=1 "$(with_db "$ADMIN_URL" "$ADMIN_DB")" <<SQL
 SELECT format('CREATE DATABASE %I', '$DB_NAME')
  WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME')\gexec
 SQL
 
-echo "==> [2/2] roles, schema and privileges (one transaction)"
+echo "==> [2/3] roles, schema and privileges (one transaction)"
 {
   # passwords travel on stdin, never on the command line
   printf "\\\\set migrator_password '%s'\n" "$MIG_PW"
   printf "\\\\set service_password '%s'\n" "$SVC_PW"
   echo "BEGIN;"
-  sed -e "s/@@PREFIX@@/$PREFIX/g" -e "s/@@SCHEMA@@/$SCHEMA/g" "$script_dir/bootstrap.template.sql"
+  render "$script_dir/bootstrap.template.sql"
   echo "COMMIT;"
 } | "$PSQL" -qX -v ON_ERROR_STOP=1 "$(with_db "$ADMIN_URL" "$DB_NAME")"
+
+echo "==> [3/3] verify"
+render "$script_dir/verify.template.sql" | "$PSQL" -qX -v ON_ERROR_STOP=1 "$(with_db "$ADMIN_URL" "$DB_NAME")"
 
 if (( ${#generated[@]} > 0 )); then
   (
@@ -182,7 +194,8 @@ if (( ${#generated[@]} > 0 )); then
   echo "==> generated passwords written to $CREDENTIALS_FILE (mode 0600); move them to your secret store and delete the file"
 fi
 
-host="$(redact "$ADMIN_URL" | sed -E 's#^[a-z]+://([^@]*@)?##')"
+host="$(redact "$ADMIN_URL" | sed -E 's#^[a-z]+://([^@]*@)?##; s#/$##')"
+[[ -n "$host" ]] || host="<host>:5432"
 cat <<EOF
 ==> done
 
@@ -191,5 +204,10 @@ Point oagent at it (passwords are the ones you set):
   postgres.migrator.dsn:   postgres://${PREFIX}_migrator:<MIG_PW>@${host}/${DB_NAME}
   postgres.migrator.role:  ${PREFIX}_owner
   postgres.schema:         ${SCHEMA}
+  postgres.tablePrefix:    ${TABLE_PREFIX}
+Optionally set postgres.role: ${PREFIX}_service, so oagent refuses to start when the DSN logs in as another role.
+Re-check the roles and privileges at any time, for example after migrations:
+  sed -e 's/@@PREFIX@@/${PREFIX}/g' -e 's/@@SCHEMA@@/${SCHEMA}/g' -e 's/@@TABLE_PREFIX@@/${TABLE_PREFIX}/g' \\
+    scripts/db/verify.template.sql | psql "<ADMIN_URL with /${DB_NAME}>"
 Keep the URL's query string (sslmode and so on). oagent migrates on start (db.autoMigrate).
 EOF

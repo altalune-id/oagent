@@ -25,6 +25,8 @@ type (
 	openMigratorFunc func(context.Context, string, migrator.Config) (*sql.DB, error)
 	migrateUpFunc    func(context.Context, *sql.DB, migrator.Config) error
 	withLockFunc     func(context.Context, *sql.DB, string, func(context.Context) error) error
+	probeRLSFunc     func(ctx context.Context, db *sql.DB, schema, tenantColumn, scopeGUC string, extraTables ...string) (pg.RLSReport, error)
+	probeLeaksFunc   func(ctx context.Context, handle *sql.DB, schema string, tables []pg.TableRLS) error
 )
 
 //nolint:gochecknoglobals // test seams.
@@ -34,6 +36,8 @@ var (
 	openMigrator openMigratorFunc = migrator.Open
 	migrateUp    migrateUpFunc    = schema.MigrateUp
 	withLock     withLockFunc     = pg.RunWithAdvisoryLock
+	probeRLS     probeRLSFunc     = pg.ProbeRLS
+	probeLeaks   probeLeaksFunc   = db.ProbeLeaks
 )
 
 func openDB(ctx context.Context, cfg config.Config, log *slog.Logger) (db.Pool, error) {
@@ -113,4 +117,39 @@ func migratorDSN(c config.PostgresConfig) string {
 		return c.Migrator.DSN
 	}
 	return c.DSN
+}
+
+// SECURITY: the app must not serve requests from a pool that row-level security would not hold; see db.CheckRLS.
+func guardRLS(ctx context.Context, pool db.Pool, c config.Config, log *slog.Logger) error {
+	schemaName := c.Postgres.Schema
+	if schemaName == "" {
+		schemaName = "public"
+	}
+	type handle struct {
+		name string
+		db   *sql.DB
+	}
+	handles := []handle{{"writer", pool.W}}
+	if pool.R != nil && pool.R != pool.W {
+		handles = append(handles, handle{"reader", pool.R})
+	}
+	for _, h := range handles {
+		report, err := probeRLS(ctx, h.db, schemaName, "org_id", "app.current_org_id", c.Postgres.TablePrefix+"orgs")
+		if err != nil {
+			return fmt.Errorf("boot: rls guard on the %s pool: %w", h.name, err)
+		}
+		if len(report.Reach) == 0 {
+			if err := probeLeaks(ctx, h.db, schemaName, report.Tables); err != nil {
+				return fmt.Errorf("boot: rls guard on the %s pool: %w", h.name, err)
+			}
+		}
+		warn, err := db.CheckRLS(h.name, report, db.RLSConfig{AllowBypass: c.DB.RLS.AllowBypass})
+		if err != nil {
+			return err
+		}
+		if warn != "" && log != nil {
+			log.WarnContext(ctx, warn)
+		}
+	}
+	return nil
 }

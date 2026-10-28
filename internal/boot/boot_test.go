@@ -36,11 +36,66 @@ import (
 func restoreSeams(t *testing.T) {
 	t.Helper()
 	s, p, o, m, u, l := setupTelemetry, openPool, openPostgres, openMigrator, migrateUp, withLock
-	bq, or, on := buildQueueFn, openRedisFn, openNATSFn
+	bq, or, on, pr, pl := buildQueueFn, openRedisFn, openNATSFn, probeRLS, probeLeaks
 	t.Cleanup(func() {
 		setupTelemetry, openPool, openPostgres, openMigrator, migrateUp, withLock = s, p, o, m, u, l
-		buildQueueFn, openRedisFn, openNATSFn = bq, or, on
+		buildQueueFn, openRedisFn, openNATSFn, probeRLS, probeLeaks = bq, or, on, pr, pl
 	})
+	probeRLS = stubProbe(pg.RLSReport{RowSecurity: "on"})
+	probeLeaks = func(context.Context, *sql.DB, string, []pg.TableRLS) error { return nil }
+}
+
+func stubProbe(r pg.RLSReport) probeRLSFunc {
+	return func(context.Context, *sql.DB, string, string, string, ...string) (pg.RLSReport, error) { return r, nil }
+}
+
+func TestBoot_RefusesAPoolThatBypassesRLS(t *testing.T) {
+	restoreSeams(t)
+	poolDB, mock := newDB(t)
+	setupTelemetry = stubTelemetry(nil, nil)
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
+		return db.Pool{W: poolDB, R: poolDB}, nil
+	}
+	probeRLS = stubProbe(pg.RLSReport{RowSecurity: "on", Reach: []pg.RoleReach{{Role: "zzz_owner", BypassRLS: true}}})
+	cfg := config.Config{HTTP: config.HTTPConfig{Addr: ":5150"}, Env: config.EnvDevelopment, Postgres: config.PostgresConfig{DSN: "x"}}
+
+	_, err := Boot(context.Background(), cfg, nil)
+	require.True(t, db.IsRLSError(err), "got %v", err)
+	assert.NoError(t, mock.ExpectationsWereMet(), "a refused boot closes the pool")
+
+	poolDB, _ = newDB(t)
+	var logs bytes.Buffer
+	cfg.DB.RLS.AllowBypass = true
+	app, err := Boot(context.Background(), cfg, slog.New(slog.NewTextHandler(&logs, nil)))
+	require.NoError(t, err)
+	assert.Contains(t, logs.String(), "tenant isolation is NOT enforced")
+	require.NoError(t, app.Close(context.Background()))
+}
+
+func TestBoot_ProbeErrorStopsTheBoot(t *testing.T) {
+	restoreSeams(t)
+	poolDB, _ := newDB(t)
+	setupTelemetry = stubTelemetry(nil, nil)
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
+		return db.Pool{W: poolDB, R: poolDB}, nil
+	}
+	probeRLS = func(context.Context, *sql.DB, string, string, string, ...string) (pg.RLSReport, error) {
+		return pg.RLSReport{}, errors.New("catalog unreachable")
+	}
+	_, err := Boot(context.Background(), config.Config{HTTP: config.HTTPConfig{Addr: ":5150"}, Postgres: config.PostgresConfig{DSN: "x"}}, nil)
+	require.ErrorContains(t, err, "catalog unreachable")
+}
+
+func TestBoot_LeakProbeErrorStopsTheBoot(t *testing.T) {
+	restoreSeams(t)
+	poolDB, _ := newDB(t)
+	setupTelemetry = stubTelemetry(nil, nil)
+	openPool = func(context.Context, config.PostgresConfig, *slog.Logger) (db.Pool, error) {
+		return db.Pool{W: poolDB, R: poolDB}, nil
+	}
+	probeLeaks = func(context.Context, *sql.DB, string, []pg.TableRLS) error { return errors.New("leak probe failed") }
+	_, err := Boot(context.Background(), config.Config{HTTP: config.HTTPConfig{Addr: ":5150"}, Postgres: config.PostgresConfig{DSN: "x"}}, nil)
+	require.ErrorContains(t, err, "leak probe failed")
 }
 
 func stubTelemetry(called *bool, err error) telemetrySetupFunc {

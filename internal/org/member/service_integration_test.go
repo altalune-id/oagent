@@ -76,7 +76,7 @@ func TestService_OwnersRemovingEachOther(t *testing.T) {
 				failed := errors.Join(errs...)
 				assert.Equal(t, 1, countNil(errs), "exactly one removal succeeds: %v", failed)
 				tc.refused(t, failed)
-				n, err := f.store.CountOwners(f.ctx, o.ID)
+				n, err := f.store.CountOwners(f.in(o.ID), o.ID)
 				require.NoError(t, err)
 				assert.Equal(t, 1, n, "one owner remains")
 			}
@@ -118,7 +118,7 @@ func TestService_ActorRoleIsReadUnderTheLock(t *testing.T) {
 	require.NoError(t, <-demoted)
 	err := <-promoted
 	assert.True(t, member.IsRoleNotAllowedError(err), "B is an admin once A commits: %v", err)
-	m, err := f.store.Find(f.ctx, o.ID, c.ID)
+	m, err := f.store.Find(f.in(o.ID), o.ID, c.ID)
 	require.NoError(t, err)
 	assert.Equal(t, member.RoleMember, m.Role)
 }
@@ -159,7 +159,7 @@ func TestService_LastOwnerOnPostgres(t *testing.T) {
 	_, err = svc.SetRole(f.ctx, operator, o.ID, admin.ID, member.RoleOwner)
 	require.NoError(t, err)
 	require.NoError(t, svc.Leave(f.ctx, o.ID, owner.ID))
-	n, err := f.store.CountOwners(f.ctx, o.ID)
+	n, err := f.store.CountOwners(f.in(o.ID), o.ID)
 	require.NoError(t, err)
 	assert.Equal(t, 1, n)
 
@@ -191,7 +191,7 @@ func TestService_FailedEffectRollsBack(t *testing.T) {
 	_, err := svc.SetRole(f.ctx, actor, o.ID, admin.ID, member.RoleMember)
 	assert.Error(t, err)
 
-	m, err := f.store.Find(f.ctx, o.ID, admin.ID)
+	m, err := f.store.Find(f.in(o.ID), o.ID, admin.ID)
 	require.NoError(t, err, "the removal rolled back")
 	assert.Equal(t, member.RoleAdmin, m.Role, "the role change rolled back")
 	assert.Len(t, e.sessionsEnded, 2, "effects ran inside the transaction")

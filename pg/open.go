@@ -3,13 +3,11 @@ package pg
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -30,6 +28,10 @@ func Open(ctx context.Context, cfg Config, log *slog.Logger) (*sql.DB, error) {
 	if pingErr != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("pg: ping: %w", pingErr)
+	}
+	if err := checkLoginRole(ctx, db, cfg.Role); err != nil {
+		_ = db.Close()
+		return nil, err
 	}
 
 	if cfg.MaxOpenConns > 0 {
@@ -60,22 +62,19 @@ func openPostgres(cfg Config) (*sql.DB, error) {
 		return nil, fmt.Errorf("pg: parse dsn: %w", err)
 	}
 	connCfg.Tracer = otelpgx.NewTracer()
-	if cfg.Role == "" {
-		return stdlib.OpenDB(*connCfg), nil
-	}
-	if err := ValidateIdentifier(cfg.Role); err != nil {
-		return nil, err
-	}
-	stmt := "SET ROLE " + QuoteIdentifier(cfg.Role)
-	afterConnect := func(ctx context.Context, conn *pgx.Conn) error {
-		if _, execErr := conn.Exec(ctx, stmt); execErr != nil {
-			wrapped := fmt.Errorf("pg: SET ROLE %q: %w", cfg.Role, execErr)
-			if _, ok := errors.AsType[*pgconn.PgError](execErr); ok {
-				return permanent(wrapped)
-			}
-			return wrapped
-		}
+	return stdlib.OpenDB(*connCfg), nil
+}
+
+func checkLoginRole(ctx context.Context, db *sql.DB, want string) error {
+	if want == "" {
 		return nil
 	}
-	return stdlib.OpenDB(*connCfg, stdlib.OptionAfterConnect(afterConnect)), nil
+	var got string
+	if err := db.QueryRowContext(ctx, "SELECT session_user").Scan(&got); err != nil {
+		return fmt.Errorf("pg: login role: %w", err)
+	}
+	if got != want {
+		return &LoginRoleError{Want: want, Got: got}
+	}
+	return nil
 }

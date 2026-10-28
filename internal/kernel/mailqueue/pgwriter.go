@@ -32,7 +32,7 @@ func (s *postgresStore) Enqueue(ctx context.Context, m mailer.Message) (uuid.UUI
 	now := time.Now().UTC()
 	stmt := s.q.INSERT(s.q.AllColumns).
 		VALUES(id, payload, sealed, string(StatusPending), 0, now, "", now, entity.NullTimestampz())
-	if _, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool)); err != nil {
+	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { _, err := stmt.ExecContext(ctx, q); return err }); err != nil {
 		return uuid.Nil, fmt.Errorf("mailqueue.postgres.Enqueue: %w", err)
 	}
 	return id, nil
@@ -142,7 +142,11 @@ func (s *postgresStore) PruneSettled(ctx context.Context, before time.Time) (int
 	stmt := s.q.DELETE().
 		WHERE(s.q.Status.NOT_EQ(postgres.String(string(StatusPending))).
 			AND(s.q.SettledAt.LT(postgres.TimestampzT(before.UTC()))))
-	res, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool))
+	var res sql.Result
+	err := db.Write(ctx, s.pool, func(q qrm.DB) (err error) {
+		res, err = stmt.ExecContext(ctx, q)
+		return err
+	})
 	if err != nil {
 		return 0, fmt.Errorf("mailqueue.postgres.PruneSettled: %w", err)
 	}
@@ -165,7 +169,11 @@ type pgExecutable interface {
 }
 
 func (s *postgresStore) settle(ctx context.Context, e Entry, stmt pgExecutable) error {
-	res, err := stmt.ExecContext(ctx, db.Writer(ctx, s.pool))
+	var res sql.Result
+	err := db.Write(ctx, s.pool, func(q qrm.DB) (err error) {
+		res, err = stmt.ExecContext(ctx, q)
+		return err
+	})
 	if err != nil {
 		return fmt.Errorf("mailqueue.postgres: settle: %w", err)
 	}

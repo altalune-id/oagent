@@ -36,8 +36,7 @@ type pgFixture struct {
 
 func newPgFixture(t *testing.T) *pgFixture {
 	t.Helper()
-	sqlDB, schemaName := pgtest.Migrated(t)
-	pool := db.Pool{W: sqlDB, R: sqlDB}
+	pool, sqlDB, schemaName := pgtest.MigratedRLS(t)
 	return &pgFixture{
 		store:    webhook.NewStore(pool, schemaName, ""),
 		sqlDB:    sqlDB,
@@ -55,7 +54,7 @@ func (f *pgFixture) seedTenant(t *testing.T) tenant.Context {
 	t.Helper()
 	o, err := org.NewOrg(shortSlug("o-"), "Org", uuid.Nil)
 	require.NoError(t, err)
-	require.NoError(t, f.orgs.Save(t.Context(), o))
+	require.NoError(t, f.orgs.Save(tenant.Into(t.Context(), tenant.Context{OrgID: o.ID}), o))
 	return tenant.Context{OrgID: o.ID, ProjectID: f.seedProject(t, o.ID)}
 }
 
@@ -63,7 +62,7 @@ func (f *pgFixture) seedProject(t *testing.T, orgID uuid.UUID) uuid.UUID {
 	t.Helper()
 	p, err := project.NewProject(orgID, shortSlug("p-"), "Project", uuid.Nil)
 	require.NoError(t, err)
-	require.NoError(t, f.projects.Save(t.Context(), p))
+	require.NoError(t, f.projects.Save(tenant.Into(t.Context(), tenant.Context{OrgID: p.OrgID}), p))
 	return p.ID
 }
 
@@ -674,7 +673,7 @@ func TestPostgresEndpoint_ListByOrg(t *testing.T) {
 	require.NoError(t, f.store.Save(tenant.Into(t.Context(), sibling), second))
 	require.NoError(t, f.store.Save(tenant.Into(t.Context(), b), newEndpoint(t, b)))
 
-	got, err := f.store.ListByOrg(t.Context(), a.OrgID)
+	got, err := f.store.ListByOrg(tenant.Into(t.Context(), tenant.Context{OrgID: a.OrgID}), a.OrgID)
 	require.NoError(t, err)
 	require.Len(t, got, 2, "both projects of org A, none of org B")
 	assert.Equal(t, first.ID, got[0].ID)

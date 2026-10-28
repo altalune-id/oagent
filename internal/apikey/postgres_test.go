@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/db/dbtest"
 )
 
 func TestRow_ToKey(t *testing.T) {
@@ -90,7 +91,9 @@ func TestList(t *testing.T) {
 		uuid.New(), uuid.New(), nil, "org", true, "{}", "n", []byte{1, 2}, "hint", "{}", "{}", nil,
 		time.Now(), nil, nil, nil,
 	)
+	dbtest.ExpectTx(mock)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	mock.ExpectCommit()
 
 	s := NewStore(db.Pool{W: sqlDB, R: sqlDB}, "public", "")
 	got, err := s.List(context.Background(), uuid.New())
@@ -102,7 +105,9 @@ func TestList(t *testing.T) {
 func TestByID_NotFound(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
+	dbtest.ExpectTx(mock)
 	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(apiKeyColumns()))
+	mock.ExpectCommit()
 
 	s := NewStore(db.Pool{W: sqlDB, R: sqlDB}, "public", "")
 	_, err = s.ByID(context.Background(), uuid.New())
@@ -113,6 +118,7 @@ func TestSave(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	mock.ExpectBegin()
+	dbtest.ExpectScope(mock)
 	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("DELETE").WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectCommit()
@@ -127,6 +133,7 @@ func TestSave_OrgGrants(t *testing.T) {
 	sqlDB, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	mock.ExpectBegin()
+	dbtest.ExpectScope(mock)
 	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("DELETE").WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))

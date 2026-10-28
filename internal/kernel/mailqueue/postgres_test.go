@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/db/dbtest"
 	"altalune.id/oagent/mailer"
 	"altalune.id/oagent/sealer"
 )
@@ -66,7 +67,9 @@ func TestEnqueueRejectsAnInvalidMessage(t *testing.T) {
 func TestEnqueueSealsThePayload(t *testing.T) {
 	s, mock, _ := newTestStore(t, testSealer(t), true)
 	id, payload, sealed := &capture{}, &capture{}, &capture{}
+	dbtest.ExpectTx(mock)
 	expectInsert(mock, id, payload, sealed)
+	mock.ExpectCommit()
 
 	got, err := s.Enqueue(context.Background(), testMessage())
 	require.NoError(t, err)
@@ -98,7 +101,9 @@ func TestEnqueueRequiresASealerUnlessPlainIsAllowed(t *testing.T) {
 func TestEnqueueStoresPlainOnlyWhenAllowed(t *testing.T) {
 	s, mock, _ := newTestStore(t, sealer.Disabled(), true)
 	id, payload, sealed := &capture{}, &capture{}, &capture{}
+	dbtest.ExpectTx(mock)
 	expectInsert(mock, id, payload, sealed)
+	mock.ExpectCommit()
 
 	got, err := s.Enqueue(context.Background(), testMessage())
 	require.NoError(t, err)
@@ -121,7 +126,9 @@ func TestEnqueueSealerFailure(t *testing.T) {
 
 func TestEnqueueInsertError(t *testing.T) {
 	s, mock, _ := newTestStore(t, testSealer(t), false)
+	dbtest.ExpectTx(mock)
 	mock.ExpectExec(`INSERT INTO public.mail_queue`).WillReturnError(errors.New("boom"))
+	mock.ExpectRollback()
 	_, err := s.Enqueue(context.Background(), testMessage())
 	assert.ErrorContains(t, err, "boom")
 }

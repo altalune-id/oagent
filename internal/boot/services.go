@@ -20,6 +20,7 @@ import (
 	"altalune.id/oagent/internal/kernel/outbox"
 	"altalune.id/oagent/internal/kernel/ratelimit"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/kernel/usage"
 	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/invite"
@@ -45,7 +46,7 @@ type Services struct {
 	APIKeys         *apikey.Service
 	KeyScheme       apikey.Scheme
 	KeyAuthn        *apikey.Authenticator
-	KeyUsage        *apikey.UsageWorker
+	KeyUsage        *usage.Worker
 	Outbox          outbox.Store
 	WebhookStore    webhook.Store
 	Webhooks        *webhook.Service
@@ -103,7 +104,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	apiKeys := apikey.NewService(apiKeyStore, keyScheme, projectIDs{projects: projects}, k.Reporter.Unexpected).
 		WithOwnerRoles(owners).
 		WithPersonalKeys(caps.PersonalKeys)
-	keyUsage := apikey.NewUsageWorker(apiKeyStore, keyUsageInterval, k.Log)
+	keyUsage := usage.New("apikey-usage", apiKeyStore, keyUsageInterval, k.Log)
 	keyAuthn := apikey.NewAuthenticator(apiKeyStore, keyUsage, keyScheme, owners, k.Reporter.Unexpected)
 	sessions := buildSessionStore(k, cfg, sl, secretsLog(k.Log, caps))
 	mailQueue := buildMailQueue(k.Pool, cfg, sl)

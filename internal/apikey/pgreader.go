@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
@@ -17,7 +18,7 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*APIKey, error)
 		WHERE(s.keys.ID.EQ(postgres.UUID(id))).
 		LIMIT(1)
 	var row apiKeyRow
-	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{ID: id.String()}
 		}
@@ -35,7 +36,7 @@ func (s *postgresStore) ByHint(ctx context.Context, orgID uuid.UUID, hint string
 			AND(s.keys.RevokedAt.IS_NULL())).
 		LIMIT(1)
 	var row apiKeyRow
-	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &row); err != nil {
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{}
 		}
@@ -51,7 +52,7 @@ func (s *postgresStore) List(ctx context.Context, orgID uuid.UUID) ([]*APIKey, e
 		WHERE(s.keys.OrgID.EQ(postgres.UUID(orgID))).
 		ORDER_BY(s.keys.CreatedAt.DESC(), s.keys.ID.DESC())
 	var rows []apiKeyRow
-	if err := stmt.QueryContext(ctx, db.Reader(ctx, s.pool), &rows); err != nil {
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil {
 		return nil, fmt.Errorf("apikey.postgres: List: %w", err)
 	}
 	out := make([]*APIKey, 0, len(rows))
@@ -65,14 +66,12 @@ func (s *postgresStore) List(ctx context.Context, orgID uuid.UUID) ([]*APIKey, e
 	return out, nil
 }
 
-// BySecretHash loads the key whose secret hashes to hash. SECURITY: reads the writer, so a revoked key is never stale.
+// BySecretHash loads the key whose secret hashes to hash through a definer, before any tenant scope exists.
 func (s *postgresStore) BySecretHash(ctx context.Context, hash [32]byte) (*APIKey, error) {
-	stmt := postgres.SELECT(s.selectColumns()).
-		FROM(s.keys).
-		WHERE(s.keys.SecretHash.EQ(postgres.Bytea(hash[:]))).
-		LIMIT(1)
+	// SECURITY: reads the writer, so a revoked key is never stale; the definer never returns the hash, so SecretHash stays zero.
+	stmt := postgres.RawStatement(s.bySecret, postgres.RawArgs{"#hash": hash[:]})
 	var row apiKeyRow
-	if err := stmt.QueryContext(ctx, db.Writer(ctx, s.pool), &row); err != nil {
+	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
 		if db.IsNoRows(err) {
 			return nil, &NotFoundError{}
 		}

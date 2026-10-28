@@ -6,14 +6,14 @@ Pick the shape first:
 
 | I want                                                                   | Shape                                                                                       |
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| a loop on every replica (drain a table, batch writes, ping a dependency) | a `worker.Worker` (`outbox.Worker`, `mailqueue.Worker`, `apikey.UsageWorker`)               |
+| a loop on every replica (drain a table, batch writes, ping a dependency) | a `worker.Worker` (`outbox.Worker`, `mailqueue.Worker`, `usage.Worker`)                     |
 | a periodic job on an interval, daily or cron schedule                    | a `scheduler.Job` from a domain's `SchedulerJobs()` (`session.Scheduler`)                   |
 | work done once, retried and dead-lettered, on the queue                  | a `queue.Handler` (none exist yet)                                                          |
 | to tell a tenant something happened                                      | none of these: a [webhook event](webhook-event.md), delivered by the existing outbox worker |
 
 ## Plan
 
-- [ ] **Where it lives.** Next to the data it owns: a domain (`internal/apikey/usage.go`), a kernel package (`internal/kernel/outbox/worker.go`), or a kernel feature's driver (`internal/kernel/ratelimit/memory`).
+- [ ] **Where it lives.** Next to the data it owns: a domain, a kernel package (`internal/kernel/outbox/worker.go`, `internal/kernel/usage/usage.go`), or a kernel feature's driver (`internal/kernel/ratelimit/memory`).
 - [ ] **When it runs.** Always, or only when a feature is on (the janitor only with the memory rate limit store, `redis-health` only when Redis is used).
 - [ ] **Tenancy.** A loop over tenant rows takes a `Tenants` port and binds each org with `tenant.Into` (`outboxTenants` in `internal/boot/outbox.go`). System work binds nothing.
 - [ ] **Shutdown.** What must finish when the context is cancelled, and in how long. The HTTP server gets 10 s; keep a final drain within a few seconds.
@@ -42,7 +42,7 @@ Pick the shape first:
    - A ticker and `ctx.Done()`, never `time.Sleep` in a loop.
    - A failed tick is logged (or reported) and the loop goes on. Returning an error from `Run` stops every worker and the process.
    - On cancel return `nil` or `ctx.Err()`: `Supervisor.Run` treats `context.Canceled` during shutdown as a clean exit.
-   - Work that must survive the cancel (a final flush) uses `context.WithTimeout(context.WithoutCancel(ctx), …)`, as `UsageWorker.Run` does.
+   - Work that must survive the cancel (a final flush) uses `context.WithTimeout(context.WithoutCancel(ctx), …)`, as `usage.Worker.Run` does.
    - A worker whose dependencies are nil logs once and returns `nil` (`outbox.Worker.Run`).
 
 2. **Name** in the existing style: `<package>.<verb>` for kernel workers (`outbox.dispatch`, `mailqueue.send`), a short kebab name otherwise (`apikey-usage`, `db-health`). Export it as `WorkerName` when tests or boot refer to it.
@@ -87,7 +87,7 @@ Pick the shape first:
 - [worker/worker.go](../../worker/worker.go), [worker/supervisor.go](../../worker/supervisor.go): `Worker`, `Supervisor.Run`
 - [internal/kernel/outbox/worker.go](../../internal/kernel/outbox/worker.go): `Worker`, `WorkerOpts`, `Tenants`
 - [internal/kernel/mailqueue/worker.go](../../internal/kernel/mailqueue/worker.go): `Worker`
-- [internal/apikey/usage.go](../../internal/apikey/usage.go): `UsageWorker` (drain on shutdown)
+- [internal/kernel/usage/usage.go](../../internal/kernel/usage/usage.go): `Worker` (flush per tenant, drain on shutdown)
 - [internal/kernel/ratelimit/memory/memory.go](../../internal/kernel/ratelimit/memory/memory.go): `Store.Run` (a janitor on a store)
 - [internal/kernel/session/scheduler.go](../../internal/kernel/session/scheduler.go): `Scheduler.SchedulerJobs`
 - [scheduler/scheduler.go](../../scheduler/scheduler.go), [scheduler/provider.go](../../scheduler/provider.go): `Job`, `Provider`, `Locker`

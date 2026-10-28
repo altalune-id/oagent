@@ -23,16 +23,6 @@ func TestRetry_SucceedsAfterFailure(t *testing.T) {
 	assert.Equal(t, 2, attempts)
 }
 
-func TestRetry_StopsOnPermanent(t *testing.T) {
-	attempts := 0
-	err := retry(context.Background(), time.Second, time.Millisecond, func(context.Context) error {
-		attempts++
-		return permanent(errors.New("fatal"))
-	})
-	assert.True(t, isPermanentError(err))
-	assert.Equal(t, 1, attempts)
-}
-
 func TestRetry_ContextCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -65,17 +55,6 @@ func TestRetry_CanceledDuringSleep(t *testing.T) {
 		return errors.New("boom")
 	})
 	assert.Error(t, err)
-}
-
-func TestPermanent_Nil(t *testing.T) {
-	assert.NoError(t, permanent(nil))
-}
-
-func TestPermanentError_ErrorAndUnwrap(t *testing.T) {
-	base := errors.New("boom")
-	err := permanent(base)
-	assert.Equal(t, "boom", err.Error())
-	assert.ErrorIs(t, err, base)
 }
 
 func TestWithRetryLogger_Nil(t *testing.T) {
