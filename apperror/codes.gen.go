@@ -18,6 +18,7 @@ const (
 	CodeOrgInvalidSlug      Code = "ORG003"
 	CodeOrgInvalidName      Code = "ORG004"
 	CodeOrgCreationDisabled Code = "ORG005"
+	CodeOrgAlreadyOwned     Code = "ORG006"
 
 	CodeProjectNotFound      Code = "PRJ001"
 	CodeProjectAlreadyExists Code = "PRJ002"
@@ -59,6 +60,9 @@ const (
 	CodeAuthPasswordPolicy     Code = "AUT002"
 	CodeAuthRateLimited        Code = "AUT003"
 	CodeAuthResetNotUsable     Code = "AUT004"
+	CodeAuthNoConsoleAccount   Code = "AUT005"
+	CodeAuthSignInExpired      Code = "AUT006"
+	CodeAuthIdentityConflict   Code = "AUT007"
 
 	CodeInstallAlreadyDone Code = "INS001"
 	CodeInstallRequired    Code = "INS002"
@@ -89,6 +93,7 @@ var kinds = map[Code]Kind{
 	CodeOrgInvalidSlug:      KindInvalid,
 	CodeOrgInvalidName:      KindInvalid,
 	CodeOrgCreationDisabled: KindFailedPrecondition,
+	CodeOrgAlreadyOwned:     KindFailedPrecondition,
 
 	CodeProjectNotFound:      KindNotFound,
 	CodeProjectAlreadyExists: KindAlreadyExists,
@@ -130,6 +135,9 @@ var kinds = map[Code]Kind{
 	CodeAuthPasswordPolicy:     KindInvalid,
 	CodeAuthRateLimited:        KindResourceExhausted,
 	CodeAuthResetNotUsable:     KindFailedPrecondition,
+	CodeAuthNoConsoleAccount:   KindForbidden,
+	CodeAuthSignInExpired:      KindFailedPrecondition,
+	CodeAuthIdentityConflict:   KindFailedPrecondition,
 
 	CodeInstallAlreadyDone: KindAlreadyExists,
 	CodeInstallRequired:    KindFailedPrecondition,

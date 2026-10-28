@@ -50,6 +50,11 @@ func (m userByID) ByID(_ context.Context, id uuid.UUID) (*user.User, error) {
 
 func whoamiClient(t *testing.T, orgs OrgGetter, projects ProjectGetter, users UserGetter, p session.Principal) authv1connect.AuthServiceClient {
 	t.Helper()
+	return authClient(t, NewControlPlane(orgs, projects, users), p)
+}
+
+func authClient(t *testing.T, svc *AuthService, p session.Principal) authv1connect.AuthServiceClient {
+	t.Helper()
 	inject := connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			if p.Source != "" {
@@ -62,7 +67,7 @@ func whoamiClient(t *testing.T, orgs OrgGetter, projects ProjectGetter, users Us
 			return resp, err
 		}
 	})
-	_, h := authv1connect.NewAuthServiceHandler(NewControlPlane(orgs, projects, users), connect.WithInterceptors(inject))
+	_, h := authv1connect.NewAuthServiceHandler(svc, connect.WithInterceptors(inject))
 	ts := httptest.NewServer(h)
 	t.Cleanup(ts.Close)
 	return authv1connect.NewAuthServiceClient(http.DefaultClient, ts.URL)
@@ -217,4 +222,30 @@ func TestWhoami_LookupErrorFails(t *testing.T) {
 			assert.Error(t, err)
 		})
 	}
+}
+
+// The console offers Change password only to a person who has one, where password sign-in is on.
+func TestWhoami_ReportsWhetherAPasswordCanChange(t *testing.T) {
+	withPw := &user.User{ID: uuid.New(), PublicID: "adaUserPublicId000001", PasswordHash: "hash"}
+	noPw := &user.User{ID: uuid.New(), PublicID: "bobUserPublicId000001"}
+	users := userByID{withPw.ID: withPw, noPw.ID: noPw}
+	for name, tc := range map[string]struct {
+		on   bool
+		who  *user.User
+		want bool
+	}{
+		"on, has one":    {true, withPw, true},
+		"on, OIDC only":  {true, noPw, false},
+		"off, has one":   {false, withPw, false},
+		"off, OIDC only": {false, noPw, false},
+	} {
+		p := session.Principal{Source: session.SourceOIDC, UserID: tc.who.ID}
+		got, err := whoami(t, authClient(t, NewControlPlane(orgByID{}, projectByID{}, users).WithPasswords(tc.on), p))
+		require.NoError(t, err, name)
+		assert.Equal(t, tc.want, got.GetPasswords(), name)
+	}
+	key := session.Principal{Source: session.SourceAPIKey}
+	got, err := whoami(t, authClient(t, NewControlPlane(orgByID{}, projectByID{}, users).WithPasswords(true), key))
+	require.NoError(t, err)
+	assert.False(t, got.GetPasswords(), "a key has no password to change")
 }

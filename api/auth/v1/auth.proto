@@ -49,6 +49,8 @@ message WhoamiResponse {
   // Effective permissions after roles, key scopes and grants are intersected.
   repeated string permissions = 11;
   bool operator = 12;
+  // Whether this person can change a password: password sign-in is on here and they have one.
+  bool passwords = 15;
 }
 
 message UpdateProfileRequest {

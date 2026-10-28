@@ -56,3 +56,31 @@ func TestResetNotUsableError(t *testing.T) {
 	assert.False(t, IsResetNotUsableError(assert.AnError))
 	assert.Empty(t, ResetReasonOf(assert.AnError))
 }
+
+func TestNoConsoleAccountError(t *testing.T) {
+	for _, reason := range []NoConsoleReason{NoConsoleNotInvited, NoConsoleRemoved, NoConsoleUnverified} {
+		err := &NoConsoleAccountError{Reason: reason}
+		assert.True(t, IsNoConsoleAccountError(err))
+		assert.Contains(t, err.Error(), string(reason))
+		ae := err.ToAppError()
+		assert.Equal(t, apperror.CodeAuthNoConsoleAccount, ae.Code())
+		assert.Equal(t, map[string]string{"reason": string(reason)}, ae.Meta())
+	}
+	assert.False(t, IsNoConsoleAccountError(assert.AnError))
+}
+
+func TestSignInExpiredError(t *testing.T) {
+	err := &SignInExpiredError{}
+	assert.True(t, IsSignInExpiredError(err))
+	assert.False(t, IsSignInExpiredError(assert.AnError))
+	assert.NotEmpty(t, err.Error())
+	assert.Equal(t, apperror.CodeAuthSignInExpired, err.ToAppError().Code())
+}
+
+func TestIdentityConflictError(t *testing.T) {
+	err := &IdentityConflictError{}
+	assert.True(t, IsIdentityConflictError(err))
+	assert.False(t, IsIdentityConflictError(assert.AnError))
+	assert.NotEmpty(t, err.Error())
+	assert.Equal(t, apperror.CodeAuthIdentityConflict, err.ToAppError().Code())
+}

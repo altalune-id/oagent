@@ -30,6 +30,7 @@ export function useProfile() {
   const signOutError = ref<ShownError | null>(null);
 
   const isPerson = computed(() => auth.me?.source === 'local' && !!auth.me.userId);
+  const canChangePassword = computed(() => isPerson.value && auth.me?.passwords === true);
   const person = computed<AvatarPerson | null>(() => {
     const me = auth.me;
     return isPerson.value && me ? { id: me.userId, name: me.name, email: me.email, avatarUrl: me.avatarUrl } : null;
@@ -130,6 +131,7 @@ export function useProfile() {
     confirmingSignOut,
     signOutError,
     isPerson,
+    canChangePassword,
     person,
     load,
     saveName,

@@ -131,6 +131,8 @@ func postLogin(ctx context.Context, base, email, password string) (CLISession, e
 	case http.StatusOK:
 	case http.StatusUnauthorized:
 		return CLISession{}, apperror.New(apperror.CodeAuthInvalidCredentials, "invalid email or password")
+	case http.StatusNotFound, http.StatusMethodNotAllowed:
+		return CLISession{}, fmt.Errorf("login: password sign-in is off on this server (%s)", base)
 	default:
 		return CLISession{}, fmt.Errorf("login: %s answered %s", base, resp.Status)
 	}

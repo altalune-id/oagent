@@ -673,12 +673,15 @@ func TestBoot_MailerError(t *testing.T) {
 }
 
 func TestCapabilitiesConfig(t *testing.T) {
-	assert.Equal(t, capabilities.Config{Selfhosted: true, EnvGenesis: true}, capabilitiesConfig(config.Config{
+	assert.Equal(t, capabilities.Config{Selfhosted: true, EnvGenesis: true, Passwords: true}, capabilitiesConfig(config.Config{
 		Mode: config.ModeSelfhosted,
 		Auth: config.AuthConfig{Mode: config.AuthModeLocal, Genesis: config.GenesisConfig{Email: "root@example.com"}},
 	}))
-	assert.Equal(t, capabilities.Config{Selfhosted: true, BasicAuth: true}, capabilitiesConfig(config.Config{
+	assert.Equal(t, capabilities.Config{Selfhosted: true, BasicAuth: true, Passwords: true}, capabilitiesConfig(config.Config{
 		Mode: config.ModeSelfhosted, Auth: config.AuthConfig{Mode: config.AuthModeBasic},
+	}))
+	assert.Equal(t, capabilities.Config{Selfhosted: true}, capabilitiesConfig(config.Config{
+		Mode: config.ModeSelfhosted, Auth: config.AuthConfig{Password: config.PasswordConfig{Enabled: new(false)}},
 	}))
 	assert.Equal(t, capabilities.Config{Cloud: true}, capabilitiesConfig(config.Config{Mode: config.ModeCloud}))
 }

@@ -281,6 +281,13 @@ func TestLogin_Failures(t *testing.T) {
 			},
 		},
 		{
+			name: "password sign-in off",
+			handle: func(w http.ResponseWriter, _ *http.Request) {
+				http.Error(w, "server detail", http.StatusMethodNotAllowed)
+			},
+			wantErr: "password sign-in is off on this server",
+		},
+		{
 			name: "other status hides the body",
 			handle: func(w http.ResponseWriter, _ *http.Request) {
 				http.Error(w, "server detail", http.StatusInternalServerError)

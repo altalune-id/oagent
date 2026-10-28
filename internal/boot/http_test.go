@@ -16,6 +16,7 @@ import (
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/capabilities"
 	"altalune.id/oagent/internal/legal"
+	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/web/layout"
 )
@@ -70,10 +71,24 @@ func TestBuildRoutes_LoginOnlyWithLocalLogin(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, serveRoutes(cfg, nil, http.MethodGet, "/forgot-password").Code)
 
-	svcs := &Services{Caps: capabilities.Capabilities{LocalLogin: true}, Auth: &auth.Service{}, Resets: auth.NewResets(auth.ResetDeps{})}
+	svcs := &Services{Caps: capabilities.Capabilities{LocalLogin: true, Passwords: true}, Auth: &auth.Service{}, Resets: auth.NewResets(auth.ResetDeps{})}
 	assert.Equal(t, http.StatusOK, serveRoutes(cfg, svcs, http.MethodGet, "/login").Code)
 	assert.Contains(t, serveRoutes(cfg, svcs, http.MethodGet, "/login").Body.String(), "Forgot password?")
 	assert.Equal(t, http.StatusOK, serveRoutes(cfg, svcs, http.MethodGet, "/forgot-password").Code)
+}
+
+// auth.password.enabled off: no password sign-in, no reset pages, and the invite landing offers no password join.
+func TestBuildRoutes_PasswordsOff(t *testing.T) {
+	cfg := config.Config{}
+	svcs := &Services{Caps: capabilities.Capabilities{LocalLogin: true}, Auth: &auth.Service{}, Resets: auth.NewResets(auth.ResetDeps{})}
+	login := serveRoutes(cfg, svcs, http.MethodGet, "/login")
+	assert.Equal(t, http.StatusOK, login.Code)
+	assert.NotContains(t, login.Body.String(), `name="password"`)
+	assert.Equal(t, http.StatusMethodNotAllowed, serveRoutes(cfg, svcs, http.MethodPost, "/login").Code)
+	assert.Equal(t, http.StatusNotFound, serveRoutes(cfg, svcs, http.MethodGet, "/forgot-password").Code)
+	assert.Equal(t, http.StatusNotFound, serveRoutes(cfg, svcs, http.MethodGet, "/reset-password/abc").Code)
+	assert.Empty(t, inviteMethods(svcs.Caps))
+	assert.Equal(t, []string{invite.MethodPassword}, inviteMethods(capabilities.Capabilities{LocalLogin: true, Passwords: true}))
 }
 
 func TestAPIChain(t *testing.T) {
@@ -162,7 +177,7 @@ func TestConsentData(t *testing.T) {
 
 // SECURITY: a cached pre-sign-in page replays its one-time verdict; a token page's Referer leaks its token.
 func TestBuildRoutes_PreSignInPagesNoStore(t *testing.T) {
-	svcs := &Services{Caps: capabilities.Capabilities{LocalLogin: true}, Auth: &auth.Service{}, Resets: auth.NewResets(auth.ResetDeps{})}
+	svcs := &Services{Caps: capabilities.Capabilities{LocalLogin: true, Passwords: true}, Auth: &auth.Service{}, Resets: auth.NewResets(auth.ResetDeps{})}
 	cfg := config.Config{}
 	for _, tc := range []struct {
 		method, path, referrer string

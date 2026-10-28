@@ -16,6 +16,7 @@ import (
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/install"
 	"altalune.id/oagent/internal/kernel/authn"
+	"altalune.id/oagent/internal/kernel/capabilities"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/legal"
 	mcpinternal "altalune.id/oagent/internal/mcp"
@@ -70,6 +71,8 @@ func buildAPIHandler(
 		Invites:  svcs.Invites,
 		Auth:     svcs.Auth,
 		Refs:     newPublicIDs(svcs),
+
+		Passwords: svcs.Caps.Passwords,
 	}, unexpected, opts).Handler(basePath)
 	if requireCredentials && svcs.Caps.BasicAuth {
 		h = auth.BasicChallenge(h)
@@ -168,7 +171,7 @@ func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected
 	legalOpts.RequireAcceptance = cfg.Compliance.RequireAcceptance
 	return []web.Registrar{
 		legal.NewWeb(legalOpts),
-		auth.NewWeb(kit, svcs.Auth, sessions, newPublicIDs(svcs)).WithLimits(limits).WithResets(svcs.Resets),
+		consoleWeb(svcs, kit, sessions, limits),
 		install.NewWeb(install.WebOpts{
 			Kit:       kit,
 			Installer: svcs.Install,
@@ -191,7 +194,7 @@ func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected
 			SignIn:       svcs.Auth,
 			Sessions:     sessions,
 			Consent:      consentData(cfg),
-			Methods:      []string{invite.MethodPassword},
+			Methods:      inviteMethods(svcs.Caps),
 			StateSecret:  svcs.StateSecret,
 			CookieSecure: cfg.HTTP.CookieSecure,
 			Limits:       limits,
@@ -268,4 +271,20 @@ func buildHTTPHandler(s httpSurfaces) http.Handler {
 		ConsoleGate: s.consoleGate,
 		CrossOrigin: s.crossOrigin,
 	})
+}
+
+func consoleWeb(svcs *Services, kit layout.Kit, sessions auth.CookieSessions, limits auth.Limits) *auth.Web {
+	w := auth.NewWeb(kit, svcs.Auth, sessions, newPublicIDs(svcs)).WithLimits(limits)
+	if !svcs.Caps.Passwords {
+		return w.WithoutPasswords()
+	}
+	return w.WithResets(svcs.Resets)
+}
+
+func inviteMethods(caps capabilities.Capabilities) []string {
+	var methods []string
+	if caps.Passwords {
+		methods = append(methods, invite.MethodPassword)
+	}
+	return methods
 }

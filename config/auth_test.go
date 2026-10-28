@@ -2,6 +2,8 @@ package config
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -107,6 +109,7 @@ func TestValidate_Auth(t *testing.T) {
 		},
 		"genesis in cloud": {
 			mutate: func(c *Config) {
+				oidcOn(c)
 				c.Mode = ModeCloud
 				c.Auth.Genesis = GenesisConfig{Email: "root@example.com", Password: "long-enough-phrase"}
 			},
@@ -249,4 +252,78 @@ func TestErrors_Messages(t *testing.T) {
 	assert.Equal(t, "config: auth.basic.user required: auth.mode is basic", (&MissingSettingError{Keys: "auth.basic.user", Reason: "auth.mode is basic"}).Error())
 	assert.Contains(t, (&GenesisInCloudError{}).Error(), "selfhosted only")
 	assert.Equal(t, "config: http.stateSecret: too short", (&InvalidSettingError{Key: "http.stateSecret", Reason: "too short"}).Error())
+}
+
+// auth.password.enabled: unset is on in selfhosted and off in cloud; cloud refuses it on.
+func TestPasswordsOn(t *testing.T) {
+	c := validConfig(t)
+	assert.True(t, c.PasswordsOn(), "selfhosted default")
+	c.Auth.Password.Enabled = new(false)
+	assert.False(t, c.PasswordsOn())
+	assert.False(t, c.OpenSignup(), "selfhosted joins by invite only")
+	oidcOn(c)
+	c.Mode, c.Auth.Password.Enabled = ModeCloud, nil
+	assert.True(t, c.OpenSignup())
+	assert.False(t, c.PasswordsOn(), "cloud default")
+	c.Auth.Password.Enabled = new(true)
+	var invalid *InvalidSettingError
+	require.ErrorAs(t, c.validateAuth(), &invalid)
+	assert.Equal(t, "auth.password.enabled", invalid.Key)
+}
+
+func TestValidate_GenesisFollowsPasswords(t *testing.T) {
+	for name, tc := range map[string]struct {
+		genesis GenesisConfig
+		key     string
+	}{
+		"email alone":        {GenesisConfig{Email: "root@example.com"}, "auth.genesis.email"},
+		"email and password": {GenesisConfig{Email: "root@example.com", Password: "correct horse battery"}, "auth.genesis.email"},
+		"password alone":     {GenesisConfig{Password: "correct horse battery"}, "auth.genesis.email"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := validConfig(t)
+			oidcOn(c)
+			c.Auth.Password.Enabled, c.Auth.Genesis = new(false), tc.genesis
+			var invalid *InvalidSettingError
+			require.ErrorAs(t, c.validateAuth(), &invalid)
+			assert.Equal(t, tc.key, invalid.Key)
+		})
+	}
+}
+
+func TestLoad_PasswordEnabledFromEnv(t *testing.T) {
+	setRequiredEnv(t)
+	c, err := Load(missingPath(t))
+	require.NoError(t, err)
+	assert.Nil(t, c.Auth.Password.Enabled, "unset: the mode decides")
+
+	t.Setenv("OAGENT_AUTH_PASSWORD_ENABLED", "false")
+	t.Setenv("OAGENT_OIDC_ISSUER", "https://idp.example.com")
+	t.Setenv("OAGENT_OIDC_CLIENT_ID", "oagent")
+	c, err = Load(missingPath(t))
+	require.NoError(t, err)
+	require.NotNil(t, c.Auth.Password.Enabled)
+	assert.False(t, c.PasswordsOn())
+}
+
+// A blank auth.password.enabled stays unset, so the mode's default applies.
+func TestLoad_BlankPasswordEnabledKeepsTheDefault(t *testing.T) {
+	setRequiredEnv(t)
+	path := filepath.Join(t.TempDir(), "oagent.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("auth:\n  password:\n    enabled: \"\"\n"), 0o600))
+	c, err := Load(path)
+	require.NoError(t, err)
+	assert.Nil(t, c.Auth.Password.Enabled)
+	assert.True(t, c.PasswordsOn())
+
+	t.Setenv("OAGENT_AUTH_PASSWORD_ENABLED", "  ")
+	c, err = Load(missingPath(t))
+	require.NoError(t, err)
+	assert.Nil(t, c.Auth.Password.Enabled)
+
+	t.Setenv("OAGENT_AUTH_PASSWORD_ENABLED", "true")
+	c, err = Load(missingPath(t))
+	require.NoError(t, err)
+	require.NotNil(t, c.Auth.Password.Enabled)
+	assert.True(t, c.PasswordsOn())
 }

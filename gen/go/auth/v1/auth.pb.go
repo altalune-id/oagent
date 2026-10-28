@@ -76,8 +76,10 @@ type WhoamiResponse struct {
 	ActiveOrgSlug   string `protobuf:"bytes,9,opt,name=active_org_slug,json=activeOrgSlug,proto3" json:"active_org_slug,omitempty"`
 	ActiveProjectId string `protobuf:"bytes,10,opt,name=active_project_id,json=activeProjectId,proto3" json:"active_project_id,omitempty"`
 	// Effective permissions after roles, key scopes and grants are intersected.
-	Permissions   []string `protobuf:"bytes,11,rep,name=permissions,proto3" json:"permissions,omitempty"`
-	Operator      bool     `protobuf:"varint,12,opt,name=operator,proto3" json:"operator,omitempty"`
+	Permissions []string `protobuf:"bytes,11,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	Operator    bool     `protobuf:"varint,12,opt,name=operator,proto3" json:"operator,omitempty"`
+	// Whether this person can change a password: password sign-in is on here and they have one.
+	Passwords     bool `protobuf:"varint,15,opt,name=passwords,proto3" json:"passwords,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -192,6 +194,13 @@ func (x *WhoamiResponse) GetPermissions() []string {
 func (x *WhoamiResponse) GetOperator() bool {
 	if x != nil {
 		return x.Operator
+	}
+	return false
+}
+
+func (x *WhoamiResponse) GetPasswords() bool {
+	if x != nil {
+		return x.Passwords
 	}
 	return false
 }
@@ -468,7 +477,7 @@ var File_auth_v1_auth_proto protoreflect.FileDescriptor
 const file_auth_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"\x12auth/v1/auth.proto\x12\aauth.v1\x1a\x1bbuf/validate/validate.proto\x1a\x18mcp/v1/annotations.proto\"\x0f\n" +
-	"\rWhoamiRequest\"\x84\x03\n" +
+	"\rWhoamiRequest\"\xa2\x03\n" +
 	"\x0eWhoamiResponse\x12\x16\n" +
 	"\x06source\x18\x01 \x01(\tR\x06source\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x14\n" +
@@ -483,7 +492,8 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\x11active_project_id\x18\n" +
 	" \x01(\tR\x0factiveProjectId\x12 \n" +
 	"\vpermissions\x18\v \x03(\tR\vpermissions\x12\x1a\n" +
-	"\boperator\x18\f \x01(\bR\boperatorJ\x04\b\x06\x10\aR\x06key_id\"\x8c\x01\n" +
+	"\boperator\x18\f \x01(\bR\boperator\x12\x1c\n" +
+	"\tpasswords\x18\x0f \x01(\bR\tpasswordsJ\x04\b\x06\x10\aR\x06key_id\"\x8c\x01\n" +
 	"\x14UpdateProfileRequest\x12t\n" +
 	"\x04name\x18\x01 \x01(\tB`\xbaH]\xba\x01Z\n" +
 	"\x15user.name.max_len.200\x1aAthis.trim().size() <= 200 ? '' : 'must be at most 200 characters'R\x04name\"D\n" +

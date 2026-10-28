@@ -227,3 +227,24 @@ func TestMain_ExitCodes(t *testing.T) {
 		})
 	}
 }
+
+// An optional (pointer) key with no default is commented out, so copying the example never sets it to "" by accident.
+func TestOptionalKeysAreCommentedOut(t *testing.T) {
+	keys := []config.EnvKey{{Key: "X_AUTH_PASSWORD_ENABLED", YAML: "auth.password.enabled", Optional: true}}
+	var env, yml strings.Builder
+	writeEnvSection(&env, keys)
+	writeYAMLTree(&yml, keys)
+	assert.Contains(t, env.String(), "# X_AUTH_PASSWORD_ENABLED=\n")
+	assert.NotContains(t, env.String(), "\nX_AUTH_PASSWORD_ENABLED=")
+	assert.Equal(t, `
+# auth:
+#   password:
+#     # env: X_AUTH_PASSWORD_ENABLED
+#     enabled:
+`, yml.String(), "a block of only optional keys is commented out whole, which yamllint accepts")
+
+	yml.Reset()
+	writeYAMLTree(&yml, append(keys, config.EnvKey{Key: "X_AUTH_PASSWORD_MIN", YAML: "auth.password.min", Default: 12}))
+	assert.Contains(t, yml.String(), "  password:\n    # env: X_AUTH_PASSWORD_ENABLED\n    # enabled:\n")
+	assert.Contains(t, yml.String(), "    min: 12\n")
+}

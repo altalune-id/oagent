@@ -8,6 +8,8 @@ type Capabilities struct {
 	OrgCreation  bool
 	EnvGenesis   bool
 	PersonalKeys bool
+	// Passwords is console password sign-in, beside the OIDC provider; off in cloud.
+	Passwords bool
 	// OperatorOrgSupport lets staff (an operator who is a person) manage, as an admin, the members of an org they do not belong to.
 	OperatorOrgSupport bool
 }
@@ -22,5 +24,6 @@ func From(c Config) Capabilities {
 		EnvGenesis:         local && c.EnvGenesis,
 		PersonalKeys:       !c.BasicAuth,
 		OperatorOrgSupport: c.Cloud,
+		Passwords:          local && c.Passwords,
 	}
 }

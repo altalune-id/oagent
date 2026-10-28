@@ -138,6 +138,21 @@ func TestValidate_EveryRule(t *testing.T) {
 		{"redis.readTimeout 0", func(c *Config) { redisFeature(c); c.Redis.ReadTimeout = 0 }, invalidSetting("redis.readTimeout")},
 		{"redis.writeTimeout 0", func(c *Config) { redisFeature(c); c.Redis.WriteTimeout = 0 }, invalidSetting("redis.writeTimeout")},
 		{"cloud requires oidc", func(c *Config) { c.Mode = ModeCloud }, func(t *testing.T, err error) { assert.True(t, IsCloudRequiresOIDCError(err), "got %v", err) }},
+		{"oidc on", oidcOn, valid},
+		{"oidc.issuer not a url", func(c *Config) { oidcOn(c); c.OIDC.Issuer = "not a url" }, invalidSetting("oidc.issuer")},
+		{"oidc.issuer http in production", func(c *Config) { oidcOn(c); c.OIDC.Issuer = "http://idp.example.com" }, invalidSetting("oidc.issuer")},
+		{"oidc.issuer http in development", func(c *Config) { oidcOn(c); devConsole(c); c.OIDC.Issuer = "http://localhost:8080" }, valid},
+		{"oidc.clientID empty", func(c *Config) { oidcOn(c); c.OIDC.ClientID = "" }, missingSetting("oidc.clientID")},
+		{"oidc.scopes without openid", func(c *Config) { oidcOn(c); c.OIDC.Scopes = []string{"email"} }, invalidSetting("oidc.scopes")},
+		{"oidc.scopes without email", func(c *Config) { oidcOn(c); c.OIDC.Scopes = []string{"openid", "profile"} }, invalidSetting("oidc.scopes")},
+		{"oidc.scopes with an empty one", func(c *Config) { oidcOn(c); c.OIDC.Scopes = []string{"openid", "email", " "} }, invalidSetting("oidc.scopes")},
+		{"oidc.scopes padded", func(c *Config) { oidcOn(c); c.OIDC.Scopes = []string{" openid", "email "} }, valid},
+		{"oidc.buttonLabel blank", func(c *Config) { oidcOn(c); c.OIDC.ButtonLabel = " " }, missingSetting("oidc.buttonLabel")},
+		{"oidc needs http.baseURL in production", func(c *Config) { oidcOn(c); c.HTTP.BaseURL = "" }, missingSetting("http.baseURL")},
+		{"oidc off ignores its keys", func(c *Config) { c.OIDC.ClientID, c.OIDC.Scopes = "", nil }, valid},
+		{"auth.password.enabled off with oidc", func(c *Config) { oidcOn(c); c.Auth.Password.Enabled = new(false) }, valid},
+		{"auth.password.enabled off without oidc", func(c *Config) { c.Auth.Password.Enabled = new(false) }, invalidSetting("auth.password.enabled")},
+		{"auth.password.enabled on in cloud", func(c *Config) { oidcOn(c); c.Mode = ModeCloud; c.Auth.Password.Enabled = new(true) }, invalidSetting("auth.password.enabled")},
 	}
 	for _, r := range rules {
 		t.Run(r.name, func(t *testing.T) {
@@ -232,6 +247,10 @@ func TestValidate_NoSecretInMessages(t *testing.T) {
 			c.Auth.Basic = BasicConfig{User: "ops", Password: "hunter2"}
 		},
 		"mail.from": func(c *Config) { c.Mail.From = secret },
+		"oidc.clientSecret": func(c *Config) {
+			oidcOn(c)
+			c.OIDC.ClientID, c.OIDC.ClientSecret = "", secret
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			c := validConfig(t)

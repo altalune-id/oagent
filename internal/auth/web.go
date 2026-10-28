@@ -36,13 +36,14 @@ type SignIn interface {
 
 // Web serves the login and logout pages.
 type Web struct {
-	kit      layout.Kit
-	signIn   SignIn
-	sessions CookieSessions
-	ids      PublicIDs
-	limits   Limits
-	resets   *Resets
-	reset    session.SignedCookie
+	kit         layout.Kit
+	signIn      SignIn
+	sessions    CookieSessions
+	ids         PublicIDs
+	limits      Limits
+	resets      *Resets
+	reset       session.SignedCookie
+	noPasswords bool
 }
 
 // NewWeb binds the login pages to the sign-in service, the browser sessions and the public id lookups.
@@ -66,10 +67,18 @@ func (h *Web) WithResets(r *Resets) *Web {
 	return h
 }
 
+// WithoutPasswords turns password sign-in off, as auth.password.enabled off does.
+func (h *Web) WithoutPasswords() *Web {
+	h.noPasswords = true
+	return h
+}
+
 // Register mounts GET/POST /login, POST /logout and, with resets, the password reset pages on mux.
 func (h *Web) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+h.kit.Path("/login"), h.getLogin)
-	mux.HandleFunc("POST "+h.kit.Path("/login"), h.postLogin)
+	if !h.noPasswords {
+		mux.HandleFunc("POST "+h.kit.Path("/login"), h.postLogin)
+	}
 	mux.HandleFunc("POST "+h.kit.Path("/logout"), h.postLogout)
 	if h.resets == nil {
 		return
@@ -140,7 +149,9 @@ func (h *Web) getLogin(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, to, http.StatusSeeOther) //nolint:gosec // G710: ResolveReturnTo sanitizes.
 		return
 	}
-	view := views.LoginData{ReturnTo: layout.SanitizeReturnTo(h.kit.BasePath, returnTo), ForgotURL: h.forgotURL()}
+	view := views.LoginData{
+		ReturnTo: layout.SanitizeReturnTo(h.kit.BasePath, returnTo), ForgotURL: h.forgotURL(), PasswordOff: h.noPasswords,
+	}
 	if r.URL.Query().Get("reset") == "done" {
 		view.Notice = resetDone
 	}

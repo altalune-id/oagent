@@ -25,10 +25,11 @@ type Profiles interface {
 
 // AuthService implements auth.v1.AuthService; every id it returns is a public id.
 type AuthService struct {
-	orgs     OrgGetter
-	projects ProjectGetter
-	users    UserGetter
-	profiles Profiles
+	orgs      OrgGetter
+	projects  ProjectGetter
+	users     UserGetter
+	profiles  Profiles
+	passwords bool
 }
 
 var _ authv1connect.AuthServiceHandler = (*AuthService)(nil)
@@ -41,6 +42,12 @@ func NewControlPlane(orgs OrgGetter, projects ProjectGetter, users UserGetter) *
 // WithProfiles serves the profile RPCs over p.
 func (s *AuthService) WithProfiles(p Profiles) *AuthService {
 	s.profiles = p
+	return s
+}
+
+// WithPasswords reports on whoami whether password sign-in is on, so a person with a password may change it.
+func (s *AuthService) WithPasswords(on bool) *AuthService {
+	s.passwords = on
 	return s
 }
 
@@ -126,6 +133,7 @@ func (s *AuthService) Whoami(
 		switch {
 		case err == nil:
 			out.UserId, out.Name = u.PublicID, u.Name
+			out.Passwords = s.passwords && u.HasPassword()
 		case !user.IsNotFoundError(err):
 			return nil, err
 		}

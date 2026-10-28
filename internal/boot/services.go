@@ -336,5 +336,6 @@ func capabilitiesConfig(cfg config.Config) capabilities.Config {
 		Cloud:      cfg.Mode == config.ModeCloud,
 		BasicAuth:  cfg.Auth.Mode == config.AuthModeBasic,
 		EnvGenesis: cfg.Auth.Genesis.Email != "",
+		Passwords:  cfg.PasswordsOn(),
 	}
 }

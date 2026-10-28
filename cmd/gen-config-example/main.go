@@ -118,6 +118,10 @@ func writeEnvField(buf *strings.Builder, k config.EnvKey) {
 	if !hasMarker(k.Awareness, "secret") {
 		value = normalizeDefault(k.FormatDefault())
 	}
+	if k.Optional && value == "" {
+		fmt.Fprintf(buf, "# %s=\n", k.Key)
+		return
+	}
 	fmt.Fprintf(buf, "%s=%s\n", k.Key, value)
 }
 
@@ -168,22 +172,60 @@ func writeYAMLTree(buf *strings.Builder, keys []config.EnvKey) {
 }
 
 func writeYAMLNode(buf *strings.Builder, n *yamlNode, indent int) {
+	if len(n.children) > 0 && n.allUnset() {
+		writeCommentedOut(buf, n, indent)
+		return
+	}
+	writeYAMLBlock(buf, n, indent, false)
+}
+
+func writeYAMLBlock(buf *strings.Builder, n *yamlNode, indent int, bare bool) {
 	pad := strings.Repeat("  ", indent)
 	if n.key != nil && len(n.children) == 0 {
-		writeYAMLLeaf(buf, n, indent)
+		writeYAMLLeaf(buf, n, indent, bare)
 		return
 	}
 	fmt.Fprintf(buf, "%s%s:\n", pad, n.name)
 	if n.key != nil {
-		writeYAMLLeaf(buf, &yamlNode{name: "value", key: n.key}, indent+1)
+		writeYAMLLeaf(buf, &yamlNode{name: "value", key: n.key}, indent+1, bare)
 	}
 	sort.Strings(n.order)
 	for _, name := range n.order {
+		if bare {
+			writeYAMLBlock(buf, n.children[name], indent+1, true)
+			continue
+		}
 		writeYAMLNode(buf, n.children[name], indent+1)
 	}
 }
 
-func writeYAMLLeaf(buf *strings.Builder, n *yamlNode, indent int) {
+// NOTE: yamllint refuses a mapping that holds only comments, so a block of optional keys is commented out whole.
+func writeCommentedOut(buf *strings.Builder, n *yamlNode, indent int) {
+	var block strings.Builder
+	writeYAMLBlock(&block, n, 0, true)
+	pad := strings.Repeat("  ", indent)
+	for line := range strings.Lines(block.String()) {
+		buf.WriteString(pad + "# " + line)
+	}
+}
+
+func (n *yamlNode) allUnset() bool {
+	if n.key != nil && !unset(*n.key) {
+		return false
+	}
+	for _, c := range n.children {
+		if !c.allUnset() {
+			return false
+		}
+	}
+	return true
+}
+
+func unset(k config.EnvKey) bool {
+	return k.Optional && normalizeDefault(k.FormatDefault()) == ""
+}
+
+func writeYAMLLeaf(buf *strings.Builder, n *yamlNode, indent int, bare bool) {
 	pad := strings.Repeat("  ", indent)
 	if len(n.key.Awareness) > 0 {
 		fmt.Fprintf(buf, "%s# [%s] env: %s\n", pad, strings.Join(n.key.Awareness, ", "), n.key.Key)
@@ -193,6 +235,14 @@ func writeYAMLLeaf(buf *strings.Builder, n *yamlNode, indent int) {
 	value := ""
 	if !hasMarker(n.key.Awareness, "secret") {
 		value = normalizeDefault(n.key.FormatDefault())
+	}
+	switch {
+	case n.key.Optional && value == "" && bare:
+		fmt.Fprintf(buf, "%s%s:\n", pad, n.name)
+		return
+	case n.key.Optional && value == "":
+		fmt.Fprintf(buf, "%s# %s:\n", pad, n.name)
+		return
 	}
 	fmt.Fprintf(buf, "%s%s: %s\n", pad, n.name, yamlScalar(value))
 }

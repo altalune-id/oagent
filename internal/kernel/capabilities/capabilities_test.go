@@ -17,6 +17,14 @@ func TestFrom(t *testing.T) {
 			cfg:  capabilities.Config{Selfhosted: true},
 			want: capabilities.Capabilities{LocalLogin: true, PersonalKeys: true},
 		},
+		"selfhosted local with passwords": {
+			cfg:  capabilities.Config{Selfhosted: true, Passwords: true},
+			want: capabilities.Capabilities{LocalLogin: true, PersonalKeys: true, Passwords: true},
+		},
+		"selfhosted basic ignores passwords": {
+			cfg:  capabilities.Config{Selfhosted: true, BasicAuth: true, Passwords: true},
+			want: capabilities.Capabilities{BasicAuth: true},
+		},
 		"selfhosted local with genesis": {
 			cfg:  capabilities.Config{Selfhosted: true, EnvGenesis: true},
 			want: capabilities.Capabilities{LocalLogin: true, PersonalKeys: true, EnvGenesis: true},

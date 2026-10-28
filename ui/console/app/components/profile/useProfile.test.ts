@@ -11,7 +11,7 @@ describe('useProfile', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     client = {
-      whoami: vi.fn().mockResolvedValue({ userId: 'V3StGXR8Z5jdHj6BmyT2a', source: 'local', name: 'Ana', email: 'ana@example.com', avatarUrl: '' }),
+      whoami: vi.fn().mockResolvedValue({ userId: 'V3StGXR8Z5jdHj6BmyT2a', source: 'local', name: 'Ana', email: 'ana@example.com', avatarUrl: '', passwords: true }),
       updateProfile: vi.fn().mockResolvedValue({ userId: 'V3StGXR8Z5jdHj6BmyT2a', name: 'Ana Maria' }),
       changePassword: vi.fn().mockResolvedValue({}),
       signOutEverywhere: vi.fn().mockResolvedValue({ signedOut: true }),
@@ -30,6 +30,13 @@ describe('useProfile', () => {
     expect(p.person.value).toEqual({ id: 'V3StGXR8Z5jdHj6BmyT2a', name: 'Ana', email: 'ana@example.com', avatarUrl: '' });
     expect(p.name.value).toBe('Ana');
     expect(p.isPerson.value).toBe(true);
+  });
+
+  it('offers a password change only when whoami says passwords is true', async () => {
+    expect((await loaded()).canChangePassword.value).toBe(true);
+    setActivePinia(createPinia());
+    client.whoami!.mockResolvedValue({ userId: 'V3StGXR8Z5jdHj6BmyT2a', source: 'local', name: 'Ana', email: 'ana@example.com', passwords: false });
+    expect((await loaded()).canChangePassword.value).toBe(false);
   });
 
   it('is not for keys or the basic login', async () => {

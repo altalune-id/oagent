@@ -253,6 +253,10 @@ components:
         operator:
           type: boolean
           title: operator
+        passwords:
+          type: boolean
+          title: passwords
+          description: 'Whether this person can change a password: password sign-in is on here and they have one.'
       title: WhoamiResponse
       additionalProperties: false
       description: Every id is a public id.
