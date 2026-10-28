@@ -36,7 +36,6 @@ export function oagent() {
         '.claude/**',
         '.playwright-mcp/**',
         'AUTH*.md',
-        'OAGENT-NOTES.md',
         '*_BACKLOG.md',
       ],
     },
