@@ -41,7 +41,7 @@ services:
   # One account per app, like the shared Altalune NATS (docker/nats/nats-server.conf); passwords at least 16 characters.
   # TODO: run ghcr.io/altalune-id/nats once it has a version tag; it already has the OAGENT account.
   nats:
-    image: nats:2.15.0-alpine3.22
+    image: nats:2.15.1-alpine3.22
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/etc/nats/require-passwords.sh"]
     command: ["nats-server", "--config", "/etc/nats/nats-server.conf"]
