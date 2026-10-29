@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/altalune-id/othra/oidcrp"
+	"github.com/altalune-id/oidcrp"
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/auth/views"

@@ -9,7 +9,7 @@ require (
 	connectrpc.com/otelconnect v0.12.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/a-h/templ v0.3.1070
-	github.com/altalune-id/othra/oidcrp v0.0.0-20261028060556-3d14da4d4b50
+	github.com/altalune-id/oidcrp v0.0.0-20261029065038-4ad7d20c0569
 	github.com/exaring/otelpgx v0.13.0
 	github.com/go-jet/jet/v2 v2.16.1
 	github.com/go-jose/go-jose/v4 v4.1.6

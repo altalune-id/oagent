@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/altalune-id/othra/oidcrp"
+	"github.com/altalune-id/oidcrp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

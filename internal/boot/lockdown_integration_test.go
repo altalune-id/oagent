@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/altalune-id/othra/oidcrp/oidcrptest"
+	"github.com/altalune-id/oidcrp/oidcrptest"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

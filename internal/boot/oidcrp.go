@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/altalune-id/othra/oidcrp"
+	"github.com/altalune-id/oidcrp"
 	"github.com/go-jose/go-jose/v4"
 
 	"altalune.id/oagent/config"
