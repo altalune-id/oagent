@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/altalune-id/othra/oidcrp"
-	"github.com/altalune-id/othra/oidcrp/oidcrptest"
+	"github.com/altalune-id/oidcrp"
+	"github.com/altalune-id/oidcrp/oidcrptest"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
