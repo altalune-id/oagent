@@ -12,11 +12,20 @@
     "@modelcontextprotocol/client": "^2.4.0",
     "@modelcontextprotocol/core": "^2.4.0",
     "@modelcontextprotocol/ext-apps": "^2.0.3",
-    "vue": "catalog:"
+    "vue": "catalog:",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "catalog:",
+    "@iconify/vue": "catalog:",
+    "@oagent/base": "workspace:*",
     "@oagent/vitest-config": "workspace:*",
+    "@tailwindcss/vite": "catalog:",
     "@vitejs/plugin-vue": "catalog:",
+    "@vue/test-utils": "catalog:",
+    "daisyui": "catalog:",
+    "happy-dom": "catalog:",
+    "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "unplugin-auto-import": "^21.1.0",
     "vite": "catalog:",

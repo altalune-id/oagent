@@ -1,0 +1,15 @@
+@import 'tailwindcss' source(none);
+@source "../src";
+@source "../../base/app/components/ui";
+
+@plugin "daisyui" {
+  themes: false;
+}
+
+@import '../../theme.css';
+
+:root,
+:root[data-theme],
+body {
+  background-color: transparent;
+}

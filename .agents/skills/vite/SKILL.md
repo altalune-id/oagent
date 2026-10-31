@@ -11,7 +11,7 @@ metadata:
 ## In oagent
 
 - Vite 8 (Rolldown + Oxc) comes from the pnpm 10 workspace `catalog:` in `pnpm-workspace.yaml`; reference it as `"vite": "catalog:"`, never a pinned copy per package.
-- `ui/mcp` is a Vite + Vue single-file SPA (`vite-plugin-singlefile`, `unplugin-auto-import` for Vue APIs); `pnpm ui:mcp` builds it.
+- `ui/mcp` is a Vite + Vue single-file SPA (`vite-plugin-singlefile`, `unplugin-auto-import` for Vue APIs, `@tailwindcss/vite`, and `iconSubset`, which inlines only the lucide icons its sources name); it imports `ui/base` through `baseAliases`, and `pnpm ui:mcp` builds it.
 - `ui/web` uses Vite only to emit one ES module (`build.lib`, one entry) into `internal/web/static`; its CSS comes from the Tailwind CLI, not Vite.
 - `ui/console` is Nuxt 4; change its Vite settings through `vite:` in `nuxt.config.ts` (see the nuxt skill), not a `vite.config.ts`.
 - No SSR and no published libraries: every build is client code embedded in the Go binary.

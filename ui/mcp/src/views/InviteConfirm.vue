@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import type { Outcome, ToolCaller } from './invite';
+import ErrorText from '#base/components/ui/ErrorText.vue';
+import ViewShell from '../components/ViewShell.vue';
+import { t } from '../copy';
 import { confirmDraft, discardDraft, EXPIRED_MESSAGE, isExpired, parseDraft } from './invite';
 
 const props = defineProps<{ data: Record<string, unknown> }>();
@@ -34,65 +37,46 @@ const done = computed(() => outcome.value?.state === 'sent' || outcome.value?.st
 </script>
 
 <template>
-  <main class="card">
-    <header><span class="dot" /><strong>Invite a member</strong></header>
-
-    <p v-if="!draft" class="error">
-      This result has no draft invite.
-    </p>
+  <ViewShell :title="t('mcp.invite_title')">
+    <ErrorText v-if="!draft" :error="{ message: t('mcp.invite_missing') }" />
     <template v-else>
-      <p>An assistant suggests inviting this person. Nothing is sent until you confirm.</p>
-      <dl>
-        <dt>Email</dt><dd>{{ draft.email }}</dd>
-        <dt>Organization</dt><dd>{{ draft.orgName }}</dd>
-        <dt>Role</dt><dd>{{ draft.role }}</dd>
+      <p>{{ t('mcp.invite_intro') }}</p>
+      <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+        <dt class="text-base-content/60">
+          {{ t('field.email') }}
+        </dt>
+        <dd class="font-mono break-all">
+          {{ draft.email }}
+        </dd>
+        <dt class="text-base-content/60">
+          {{ t('mcp.title_org') }}
+        </dt>
+        <dd class="break-all">
+          {{ draft.orgName }}
+        </dd>
+        <dt class="text-base-content/60">
+          {{ t('field.role') }}
+        </dt>
+        <dd>{{ draft.role }}</dd>
       </dl>
 
-      <div v-if="!done" class="actions">
-        <button type="button" class="primary" :disabled="busy" @click="confirm">
-          {{ busy ? "Working…" : "Confirm and send" }}
+      <div v-if="!done" class="flex gap-2">
+        <button type="button" class="btn btn-primary btn-sm" :disabled="busy" @click="confirm">
+          <span v-if="busy" class="loading loading-spinner loading-xs" aria-hidden="true" />
+          {{ t('mcp.invite_send') }}
         </button>
-        <button type="button" class="ghost" :disabled="busy" @click="discard">
-          Discard
+        <button type="button" class="btn btn-ghost btn-sm" :disabled="busy" @click="discard">
+          {{ t('mcp.invite_discard') }}
         </button>
       </div>
 
-      <p v-if="outcome?.state === 'sent'">
-        Invite sent to {{ outcome.email }}.
+      <p v-if="outcome?.state === 'sent'" role="status">
+        {{ t('mcp.invite_sent_to', { email: outcome.email }) }}
       </p>
-      <p v-else-if="outcome?.state === 'discarded'" class="muted">
-        Draft discarded. No invite was sent.
+      <p v-else-if="outcome?.state === 'discarded'" role="status" class="text-sm text-base-content/60">
+        {{ t('mcp.invite_discarded_body') }}
       </p>
-      <p v-else-if="outcome?.state === 'expired'" class="error">
-        {{ outcome.message }}
-      </p>
-      <p v-else-if="outcome?.state === 'error'" class="error">
-        {{ outcome.message }}
-      </p>
+      <ErrorText v-else-if="outcome?.state === 'expired' || outcome?.state === 'error'" :error="{ message: outcome.message }" />
     </template>
-  </main>
+  </ViewShell>
 </template>
-
-<style scoped>
-.actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-.primary {
-  padding: 6px 14px;
-  border: 0;
-  border-radius: 6px;
-  background: #3b82f6;
-  color: #fff;
-  font: inherit;
-  cursor: pointer;
-}
-.primary:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-.actions .ghost {
-  margin-top: 0;
-}
-</style>

@@ -56,7 +56,7 @@ describe('confirmDraft', () => {
   it('calls the app-only confirm tool and returns no link', async () => {
     const { app, calls } = caller({ structuredContent: { invite: { email: 'dina@x.io' } } });
     const out = await confirmDraft(app, parseDraft(result)!, now);
-    expect(calls).toEqual([{ name: 'member_invite_confirm', arguments: { org_id: 'org1', invite_id: 'inv1' } }]);
+    expect(calls).toEqual([{ name: 'member_invite_confirm', arguments: { orgId: 'org1', inviteId: 'inv1' } }]);
     expect(out).toEqual({ state: 'sent', email: 'dina@x.io' });
   });
 
@@ -75,7 +75,7 @@ describe('confirmDraft', () => {
 
   it('shows any other error message', async () => {
     const { app } = caller({ isError: true, content: [{ type: 'text', text: '{"code":"GEN007","message":"Forbidden"}' }] });
-    expect(await confirmDraft(app, parseDraft(result)!, now)).toEqual({ state: 'error', message: 'Forbidden' });
+    expect(await confirmDraft(app, parseDraft(result)!, now)).toEqual({ state: 'error', message: 'Forbidden (GEN007)' });
     const bad = caller({ isError: true, content: [{ type: 'text', text: 'not json' }] });
     expect(await confirmDraft(bad.app, parseDraft(result)!, now)).toEqual({ state: 'error', message: 'not json' });
     const thrown: ToolCaller = { callServerTool: async () => {
@@ -89,11 +89,11 @@ describe('discardDraft', () => {
   it('calls the app-only discard tool', async () => {
     const { app, calls } = caller({ structuredContent: {} });
     expect(await discardDraft(app, parseDraft(result)!)).toEqual({ state: 'discarded' });
-    expect(calls).toEqual([{ name: 'member_invite_discard', arguments: { org_id: 'org1', invite_id: 'inv1' } }]);
+    expect(calls).toEqual([{ name: 'member_invite_discard', arguments: { orgId: 'org1', inviteId: 'inv1' } }]);
   });
 
   it('shows the error', async () => {
     const { app } = caller({ isError: true, content: [{ type: 'text', text: '{"code":"GEN005","message":"Invite not found"}' }] });
-    expect(await discardDraft(app, parseDraft(result)!)).toEqual({ state: 'error', message: 'Invite not found' });
+    expect(await discardDraft(app, parseDraft(result)!)).toEqual({ state: 'error', message: 'Not found (GEN005)' });
   });
 });

@@ -87,6 +87,8 @@ The pnpm workspace `ui/*` builds assets that the binary embeds. The builds are n
 | `ui/mcp`     | MCP Apps view                  | `make ui-mcp`     | `internal/mcp/ui/assets`      |
 | `ui/web`     | Tailwind CSS + password script | `make web`        | `internal/web/static`         |
 
+Every surface shares one look: `ui/theme.css` holds the daisyUI themes, and `ui/base` (a Nuxt layer) holds the shared components. `ui/mcp` is plain Vite + Vue in a sandboxed iframe, so it imports `ui/base/app/components/ui/*` source directly (the `@oagent/base` workspace dev dependency and `baseAliases`) and registers the two Nuxt globals those components use with `installStandalone`. A test keeps `components/ui` free of Nuxt composables, and the MCP build inlines only the icons its sources name.
+
 `make ui` builds all three. `ui/scripts/compress.mts` (package `@oagent/scripts`) then writes a `.br` and `.gz` next to each console and sign-in text file over 1 KiB. See [console-page.md](../howto/console-page.md) and [web-page.md](../howto/web-page.md).
 
 ## Data

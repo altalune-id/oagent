@@ -2,13 +2,27 @@
   "compilerOptions": {
     "target": "ESNext",
     "jsx": "preserve",
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ESNext",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "moduleDetection": "force",
     "useDefineForClassFields": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "paths": {
+      "#base/*": [
+        "../base/app/*"
+      ],
+      "#gen/*": [
+        "../base/gen/*"
+      ]
+    },
     "resolveJsonModule": true,
-    "types": [],
+    "types": [
+      "vite/client"
+    ],
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
@@ -16,6 +30,15 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue", "vite.config.ts"],
-  "exclude": ["dist", "node_modules"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.vue",
+    "vite.config.ts",
+    "iconSubset.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ]
 }

@@ -45,6 +45,7 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
 - Only `pg`, `internal/kernel/db`, `migrator` and `pgtest` import the Postgres driver; domains use `db.IsUniqueViolation`, `db.IsForeignKeyViolation` and `db.ViolatedConstraint`. Domains never import `pg`, `nats` or `redis` (depguard).
 - A domain package holds only the files it needs: `<domain>.go` (aggregate, no I/O), `errors.go`, `ports.go`, `store.go` + `postgres.go`/`pgreader.go`/`pgwriter.go`, `service.go`, then one file per surface: `controlplane.go`, `cli.go`, `web.go`. See [module](docs/howto/module.md).
 - Dev tools live in `internal/tool/`; their commands in `cmd/`.
+- `ui/mcp` imports `ui/base/app/components/ui` source directly, so those components stay Nuxt-free (only the `Icon` and `NuxtLink` globals). See [UI builds](docs/architecture/README.md#ui-builds).
 
 **Surfaces**
 

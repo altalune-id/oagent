@@ -1,35 +1,15 @@
-// MemberData is member.v1.Member as protojson sends it: empty fields are left out.
-export interface MemberData {
-  userId?: string;
-  email?: string;
-  name?: string;
-  role?: string;
-  joinedAt?: string;
-}
+import { t } from '../copy';
 
-export interface MemberRow {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
-
-const roles: Record<string, string> = {
-  owner: 'Owner',
-  admin: 'Admin',
-  member: 'Member',
-};
+// roles labels each org role, for badges and the invite view.
+export const roles = {
+  owner: { label: t('members.role_owner'), tone: 'info' },
+  admin: { label: t('members.role_admin'), tone: 'neutral' },
+  member: { label: t('members.role_member'), tone: 'ghost' },
+} as const;
 
 export function roleLabel(role: string | undefined): string {
-  return role ? (roles[role] ?? role) : '';
-}
-
-export function memberRows(data: Record<string, unknown> | undefined): MemberRow[] {
-  const list = data?.members;
-  if (!Array.isArray(list)) {
-    return [];
+  if (!role) {
+    return '';
   }
-  return list
-    .filter((m): m is MemberData => typeof m === 'object' && m !== null)
-    .map(m => ({ id: m.userId ?? '', name: m.name ?? '', email: m.email ?? '', role: roleLabel(m.role) }));
+  return role in roles ? roles[role as keyof typeof roles].label : role;
 }
