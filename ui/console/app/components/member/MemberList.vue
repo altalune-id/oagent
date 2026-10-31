@@ -155,7 +155,7 @@ function onRole(m: MemberListRow, event: Event) {
             <td>
               <select
                 v-if="m.roles.length > 0"
-                class="select select-sm w-36 border-base-300"
+                class="select w-36"
                 :value="m.role"
                 :aria-label="`${labels.role}: ${displayName(m)}`"
                 :disabled="busy"
@@ -170,8 +170,8 @@ function onRole(m: MemberListRow, event: Event) {
               </span>
             </td>
             <td class="whitespace-nowrap text-right">
-              <button v-if="m.removable" type="button" class="btn btn-ghost btn-xs text-error" :disabled="busy" @click="emit('remove', m.userId)">
-                <Icon name="lucide:user-minus" size="14" />
+              <button v-if="m.removable" type="button" class="btn btn-ghost btn-xs" :disabled="busy" @click="emit('remove', m.userId)">
+                <Icon name="lucide:user-minus" size="14" class="text-error" />
                 {{ labels.remove }}
               </button>
               <button v-else-if="m.self && canLeave" type="button" class="btn btn-ghost btn-xs" :disabled="busy" @click="emit('leave')">

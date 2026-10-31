@@ -212,5 +212,12 @@
   "webhooks.tested": "Test sent",
   "webhooks.title": "Webhooks",
   "webhooks.url": "Endpoint URL",
-  "webhooks.view_attempts": "Attempts"
+  "webhooks.view_attempts": "Attempts",
+  "project.name_placeholder": "Customer Portal",
+  "project.slug_placeholder": "customer-portal",
+  "project.slug_random_help": "Leave empty for a random name like wispy-frost-4821. You can change it later.",
+  "agent.name_placeholder": "Support Bot",
+  "agent.slug_placeholder": "support-bot",
+  "agent.slug_random_help": "Leave empty for a random name like wispy-frost-4821. You can change it later.",
+  "agent.description_placeholder": "What this agent does"
 }

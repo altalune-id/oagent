@@ -137,8 +137,8 @@ function closeRotate() {
               <Icon name="lucide:key-round" size="14" />
               {{ t('webhooks.rotate') }}
             </button>
-            <button class="btn btn-ghost btn-xs text-error" :disabled="busyId === webhook.id" @click="destroy(webhook)">
-              <Icon name="lucide:trash-2" size="14" />
+            <button class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="destroy(webhook)">
+              <Icon name="lucide:trash-2" size="14" class="text-error" />
               {{ t('common.delete') }}
             </button>
           </td>
@@ -149,7 +149,8 @@ function closeRotate() {
 
   <AppModal :open="!!rotating" :title="t('webhooks.rotate')" @close="closeRotate()">
     <div class="space-y-3">
-      <p class="text-sm text-warning">
+      <p class="flex items-start gap-1 text-sm text-base-content">
+        <Icon name="lucide:triangle-alert" size="14" class="mt-0.5 shrink-0 text-warning" />
         {{ t('webhooks.secret_warning') }}
       </p>
       <SecretField :value="rotatedSecret" :label="t('common.copy')" />

@@ -10,6 +10,7 @@ import { useWebhookCreate } from './useWebhookCreate';
 const { orgId, projectId } = defineProps<{ orgId: string, projectId: string }>();
 
 const { t } = useI18n();
+const ids = { url: useId(), urlErr: useId(), description: useId(), descriptionErr: useId(), eventsErr: useId() };
 const create = useWebhookCreate(orgId, projectId);
 const { open, url, description, eventTypes, busy, error, fieldErrors, secret, pingBusy, pingError, pinged } = create;
 </script>
@@ -22,7 +23,8 @@ const { open, url, description, eventTypes, busy, error, fieldErrors, secret, pi
 
   <AppModal :open="open" :title="t('webhooks.new')" @close="create.hide()">
     <div v-if="secret" class="space-y-3">
-      <p class="text-sm text-warning">
+      <p class="flex items-start gap-1 text-sm text-base-content">
+        <Icon name="lucide:triangle-alert" size="14" class="mt-0.5 shrink-0 text-warning" />
         {{ t('webhooks.secret_warning') }}
       </p>
       <SecretField :value="secret" :label="t('common.copy')" />
@@ -35,33 +37,35 @@ const { open, url, description, eventTypes, busy, error, fieldErrors, secret, pi
       <ErrorText :error="pingError" />
     </div>
 
-    <form v-else novalidate class="space-y-3" @submit.prevent="create.submit()">
-      <label class="block">
-        <span class="mb-1 block text-xs text-base-content/60">{{ t('webhooks.url') }}</span>
+    <form v-else novalidate class="space-y-1" @submit.prevent="create.submit()">
+      <div class="fieldset">
+        <label :for="ids.url" class="fieldset-legend">{{ t('webhooks.url') }}</label>
         <input
-          v-model="url" type="url" class="input input-sm input-bordered w-full" :class="{ 'input-error': fieldErrors.url }"
-          placeholder="https://example.com/hook" :disabled="busy" :aria-invalid="!!fieldErrors.url" aria-describedby="webhook-url-error"
+          :id="ids.url" v-model="url" type="url" class="input w-full" :class="{ 'input-error': fieldErrors.url }"
+          placeholder="https://example.com/hook" :disabled="busy" :aria-invalid="!!fieldErrors.url" :aria-describedby="ids.urlErr"
         >
-        <FieldError id="webhook-url-error" :message="fieldErrors.url" />
-      </label>
-      <label class="block">
-        <span class="mb-1 block text-xs text-base-content/60">{{ t('common.description') }}</span>
+        <FieldError :id="ids.urlErr" :message="fieldErrors.url" />
+      </div>
+      <div class="fieldset">
+        <label :for="ids.description" class="fieldset-legend">{{ t('common.description') }}</label>
         <input
-          v-model="description" type="text" class="input input-sm input-bordered w-full" :class="{ 'input-error': fieldErrors.description }"
-          :disabled="busy" :aria-invalid="!!fieldErrors.description" aria-describedby="webhook-description-error"
+          :id="ids.description" v-model="description" type="text" class="input w-full" :class="{ 'input-error': fieldErrors.description }"
+          :disabled="busy" :aria-invalid="!!fieldErrors.description" :aria-describedby="ids.descriptionErr"
         >
-        <FieldError id="webhook-description-error" :message="fieldErrors.description" />
-      </label>
-      <div>
-        <span class="mb-1 block text-xs text-base-content/60">{{ t('webhooks.events') }}</span>
+        <FieldError :id="ids.descriptionErr" :message="fieldErrors.description" />
+      </div>
+      <fieldset class="fieldset" :aria-describedby="ids.eventsErr">
+        <legend class="fieldset-legend">
+          {{ t('webhooks.events') }}
+        </legend>
         <div class="space-y-1">
           <label v-for="event in webhookEvents" :key="event.name" class="flex items-center gap-2 text-sm">
-            <input v-model="eventTypes" type="checkbox" :value="event.name" class="checkbox checkbox-xs" :disabled="busy">
+            <input v-model="eventTypes" type="checkbox" :value="event.name" class="checkbox checkbox-xs rounded-sm" :disabled="busy">
             {{ t(event.labelKey) }}
           </label>
         </div>
-        <FieldError id="webhook-event-types-error" :message="fieldErrors.event_types" />
-      </div>
+        <FieldError :id="ids.eventsErr" :message="fieldErrors.event_types" />
+      </fieldset>
       <ErrorText :error="error" />
     </form>
 

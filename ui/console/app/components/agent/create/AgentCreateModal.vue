@@ -8,6 +8,7 @@ import { useAgentCreate } from './useAgentCreate';
 const { orgId, projectId, label } = defineProps<{ orgId: string, projectId: string, label?: string }>();
 
 const { t } = useI18n();
+const ids = { name: useId(), nameErr: useId(), slug: useId(), slugErr: useId(), slugHelp: useId(), description: useId(), descriptionErr: useId() };
 const { open, name, slug, description, busy, error, fieldErrors, show, hide, submit } = useAgentCreate(orgId, projectId);
 </script>
 
@@ -18,31 +19,34 @@ const { open, name, slug, description, busy, error, fieldErrors, show, hide, sub
   </AppButton>
 
   <AppModal :open="open" :title="t('agent.new')" @close="hide()">
-    <form novalidate class="space-y-3" @submit.prevent="submit()">
-      <label class="block">
-        <span class="mb-1 block text-xs text-base-content/60">{{ t('common.name') }}</span>
+    <form novalidate class="space-y-1" @submit.prevent="submit()">
+      <div class="fieldset">
+        <label :for="ids.name" class="fieldset-legend">{{ t('common.name') }}</label>
         <input
-          v-model="name" type="text" class="input input-sm input-bordered w-full" :class="{ 'input-error': fieldErrors.name }"
-          placeholder="Support Bot" :disabled="busy" :aria-invalid="!!fieldErrors.name" aria-describedby="agent-name-error"
+          :id="ids.name" v-model="name" type="text" class="input w-full" :class="{ 'input-error': fieldErrors.name }"
+          :placeholder="t('agent.name_placeholder')" :disabled="busy" :aria-invalid="!!fieldErrors.name" :aria-describedby="ids.nameErr"
         >
-        <FieldError id="agent-name-error" :message="fieldErrors.name" />
-      </label>
-      <label class="block">
-        <span class="mb-1 block text-xs text-base-content/60">{{ t('common.slug') }}</span>
+        <FieldError :id="ids.nameErr" :message="fieldErrors.name" />
+      </div>
+      <div class="fieldset">
+        <label :for="ids.slug" class="fieldset-legend">{{ t('common.slug') }}</label>
         <input
-          v-model="slug" type="text" class="input input-sm input-bordered w-full" :class="{ 'input-error': fieldErrors.slug }"
-          placeholder="support-bot (generated when empty)" :disabled="busy" :aria-invalid="!!fieldErrors.slug" aria-describedby="agent-slug-error"
+          :id="ids.slug" v-model="slug" type="text" class="input w-full font-mono" :class="{ 'input-error': fieldErrors.slug }"
+          :placeholder="t('agent.slug_placeholder')" :disabled="busy" :aria-invalid="!!fieldErrors.slug" :aria-describedby="`${ids.slugHelp} ${ids.slugErr}`"
         >
-        <FieldError id="agent-slug-error" :message="fieldErrors.slug" />
-      </label>
-      <label class="block">
-        <span class="mb-1 block text-xs text-base-content/60">{{ t('common.description') }}</span>
+        <FieldError :id="ids.slugErr" :message="fieldErrors.slug" />
+        <p :id="ids.slugHelp" class="label whitespace-normal">
+          {{ t('agent.slug_random_help') }}
+        </p>
+      </div>
+      <div class="fieldset">
+        <label :for="ids.description" class="fieldset-legend">{{ t('common.description') }}</label>
         <textarea
-          v-model="description" rows="3" class="textarea textarea-bordered textarea-sm w-full" :class="{ 'textarea-error': fieldErrors.description }"
-          placeholder="What this agent does" :disabled="busy" :aria-invalid="!!fieldErrors.description" aria-describedby="agent-description-error"
+          :id="ids.description" v-model="description" rows="3" class="textarea w-full" :class="{ 'textarea-error': fieldErrors.description }"
+          :placeholder="t('agent.description_placeholder')" :disabled="busy" :aria-invalid="!!fieldErrors.description" :aria-describedby="ids.descriptionErr"
         />
-        <FieldError id="agent-description-error" :message="fieldErrors.description" />
-      </label>
+        <FieldError :id="ids.descriptionErr" :message="fieldErrors.description" />
+      </div>
       <ErrorText :error="error" />
     </form>
     <template #footer>

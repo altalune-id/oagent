@@ -3,6 +3,7 @@ import type { ShownError } from '#base/lib/apperror/message';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import AppModal from '#base/components/ui/AppModal.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
+import SavedNote from '#base/components/ui/SavedNote.vue';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
@@ -192,9 +193,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
     </div>
 
     <ErrorText :error="retryError" />
-    <p v-if="requeued" class="text-sm text-success">
-      {{ requeued }}
-    </p>
+    <SavedNote v-if="requeued" :label="requeued" />
 
     <ErrorText v-if="error" :error="error" />
     <p v-else-if="deliveries.length === 0" class="text-sm text-base-content/60">
@@ -251,7 +250,8 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
             <span class="text-base-content/60">#{{ attempt.attempt }}</span>
             <span class="text-base-content/60">{{ attempt.durationMs }}ms</span>
           </div>
-          <p v-if="attempt.error" class="mt-1 text-sm text-error">
+          <p v-if="attempt.error" class="mt-1 flex items-start gap-1 text-sm text-base-content">
+            <Icon name="lucide:circle-alert" size="14" class="mt-0.5 shrink-0 text-error" />
             {{ attempt.error }}
           </p>
           <div v-if="attempt.responseBody" class="mt-2 space-y-1">

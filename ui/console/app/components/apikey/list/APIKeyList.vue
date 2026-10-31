@@ -67,8 +67,8 @@ async function revoke(hint: string) {
             </span>
           </td>
           <td class="whitespace-nowrap text-right">
-            <button v-if="!k.revokedAt" class="btn btn-ghost btn-xs text-error" @click="revoke(k.secretHint)">
-              <Icon name="lucide:ban" size="14" />
+            <button v-if="!k.revokedAt" class="btn btn-ghost btn-xs" @click="revoke(k.secretHint)">
+              <Icon name="lucide:ban" size="14" class="text-error" />
               {{ t('common.revoke') }}
             </button>
           </td>

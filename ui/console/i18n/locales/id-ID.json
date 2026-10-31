@@ -212,5 +212,12 @@
   "webhooks.tested": "Tes terkirim",
   "webhooks.title": "Webhook",
   "webhooks.url": "URL endpoint",
-  "webhooks.view_attempts": "Percobaan"
+  "webhooks.view_attempts": "Percobaan",
+  "project.name_placeholder": "Portal Pelanggan",
+  "project.slug_placeholder": "portal-pelanggan",
+  "project.slug_random_help": "Kosongkan untuk mendapatkan nama acak seperti wispy-frost-4821. Anda dapat mengubahnya nanti.",
+  "agent.name_placeholder": "Bot Dukungan",
+  "agent.slug_placeholder": "bot-dukungan",
+  "agent.slug_random_help": "Kosongkan untuk mendapatkan nama acak seperti wispy-frost-4821. Anda dapat mengubahnya nanti.",
+  "agent.description_placeholder": "Apa yang dilakukan agen ini"
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ShownError } from '#base/lib/apperror/message';
-import { reactive, ref, watch } from 'vue';
+import { reactive, ref, useId, watch } from 'vue';
 import CopyButton from '#base/components/ui/CopyButton.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import SecretField from '#base/components/ui/SecretField.vue';
@@ -103,6 +103,8 @@ const emit = defineEmits<{
   dismiss: [],
 }>();
 
+const ids = { name: useId(), expires: useId() };
+
 const form = reactive<PersonalKeyForm>({ name: '', scopes: [], expiresInHours: 720, allProjects: true, projectIds: [] });
 const confirming = ref('');
 
@@ -132,7 +134,8 @@ function revoke(hint: string) {
 
   <div v-else class="space-y-6">
     <div v-if="created" class="space-y-3 rounded-box border border-warning/40 bg-base-100 p-4">
-      <p class="text-sm text-warning">
+      <p class="flex items-start gap-1 text-sm text-base-content">
+        <Icon name="lucide:triangle-alert" size="14" class="mt-0.5 shrink-0 text-warning" />
         {{ labels.secretWarning }}
       </p>
       <SecretField :value="created.plaintext" :label="labels.copy" />
@@ -149,39 +152,47 @@ function revoke(hint: string) {
     </div>
 
     <form v-else class="space-y-3 rounded-box border border-base-300 bg-base-100 p-4" @submit.prevent="submit">
-      <label class="block">
-        <span class="mb-1 block text-xs text-base-content/60">{{ labels.name }}</span>
-        <input v-model="form.name" type="text" class="input input-sm input-bordered w-full" placeholder="laptop" :disabled="busy">
-      </label>
+      <div class="fieldset">
+        <label :for="ids.name" class="fieldset-legend">{{ labels.name }}</label>
+        <input :id="ids.name" v-model="form.name" type="text" class="input w-full" placeholder="laptop" :disabled="busy">
+      </div>
 
       <div>
         <span class="mb-1 block text-xs text-base-content/60">{{ labels.scopes }}</span>
         <div class="grid grid-cols-2 gap-1">
           <label v-for="s in scopes" :key="s.name" class="flex items-center gap-2 text-sm">
-            <input v-model="form.scopes" type="checkbox" :value="s.name" class="checkbox checkbox-xs" :disabled="busy">{{ s.label }}
+            <input v-model="form.scopes" type="checkbox" :value="s.name" class="checkbox checkbox-xs rounded-sm" :disabled="busy">{{ s.label }}
           </label>
         </div>
       </div>
 
       <div class="space-y-2">
         <span class="block text-xs text-base-content/60">{{ labels.projects }}</span>
-        <label class="flex items-center gap-2 text-sm"><input v-model="form.allProjects" type="checkbox" class="checkbox checkbox-sm" :disabled="busy">{{ labels.allProjects }}</label>
+        <label class="flex items-center gap-2 text-sm"><input v-model="form.allProjects" type="checkbox" class="checkbox checkbox-sm rounded-sm" :disabled="busy">{{ labels.allProjects }}</label>
         <div v-if="!form.allProjects" class="max-h-32 space-y-1 overflow-auto rounded-box border border-base-300 p-2">
           <label v-for="p in projects" :key="p.id" class="flex items-center gap-2 text-sm">
-            <input v-model="form.projectIds" type="checkbox" :value="p.id" class="checkbox checkbox-xs" :disabled="busy">{{ p.name }}
+            <input v-model="form.projectIds" type="checkbox" :value="p.id" class="checkbox checkbox-xs rounded-sm" :disabled="busy">{{ p.name }}
           </label>
         </div>
       </div>
 
-      <label class="block">
-        <span class="mb-1 block text-xs text-base-content/60">{{ labels.expires }}</span>
-        <select v-model.number="form.expiresInHours" class="select select-sm select-bordered w-full" :disabled="busy">
-          <option :value="168">{{ labels.days7 }}</option>
-          <option :value="720">{{ labels.days30 }}</option>
-          <option :value="2160">{{ labels.days90 }}</option>
-          <option :value="8760">{{ labels.days365 }}</option>
+      <div class="fieldset">
+        <label :for="ids.expires" class="fieldset-legend">{{ labels.expires }}</label>
+        <select :id="ids.expires" v-model.number="form.expiresInHours" class="select w-full" :disabled="busy">
+          <option :value="168">
+            {{ labels.days7 }}
+          </option>
+          <option :value="720">
+            {{ labels.days30 }}
+          </option>
+          <option :value="2160">
+            {{ labels.days90 }}
+          </option>
+          <option :value="8760">
+            {{ labels.days365 }}
+          </option>
         </select>
-      </label>
+      </div>
 
       <ErrorText :error="error" />
       <button type="submit" class="btn btn-primary btn-sm" :disabled="busy || !form.name.trim()">
@@ -229,8 +240,8 @@ function revoke(hint: string) {
                     {{ labels.cancel }}
                   </button>
                 </template>
-                <button v-else type="button" class="btn btn-ghost btn-xs text-error" @click="confirming = k.secretHint">
-                  <Icon name="lucide:ban" size="14" />
+                <button v-else type="button" class="btn btn-ghost btn-xs" @click="confirming = k.secretHint">
+                  <Icon name="lucide:ban" size="14" class="text-error" />
                   {{ labels.revoke }}
                 </button>
               </template>

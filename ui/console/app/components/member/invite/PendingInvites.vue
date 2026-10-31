@@ -162,8 +162,8 @@ function when(d?: Date): string {
                       <Icon name="lucide:send" size="14" />
                       {{ labels.resend }}
                     </button>
-                    <button type="button" class="btn btn-ghost btn-xs text-error" :disabled="busy" @click="emit('revoke', i.id)">
-                      <Icon name="lucide:x" size="14" />
+                    <button type="button" class="btn btn-ghost btn-xs" :disabled="busy" @click="emit('revoke', i.id)">
+                      <Icon name="lucide:x" size="14" class="text-error" />
                       {{ labels.revoke }}
                     </button>
                   </template>

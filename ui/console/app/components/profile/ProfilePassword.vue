@@ -2,6 +2,7 @@
 import type { ShownError } from '#base/lib/apperror/message';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import FieldError from '#base/components/ui/FieldError.vue';
+import SavedNote from '#base/components/ui/SavedNote.vue';
 
 export interface ProfilePasswordLabels {
   title: string;
@@ -53,9 +54,7 @@ const next = defineModel<string>('next', { required: true });
         {{ labels.rules }}
       </p>
       <ErrorText :error="error" />
-      <p v-if="notice" role="status" class="text-sm text-success">
-        {{ notice }}
-      </p>
+      <SavedNote v-if="notice" :label="notice" />
       <div class="card-actions items-center justify-between">
         <p class="text-xs text-base-content/60">
           {{ labels.hint }}

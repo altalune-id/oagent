@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ErrorText from '#base/components/ui/ErrorText.vue';
+import SavedNote from '#base/components/ui/SavedNote.vue';
 import InviteModal from '~/components/member/invite/InviteModal.vue';
 import PendingInvites from '~/components/member/invite/PendingInvites.vue';
 import { useInvite } from '~/components/member/invite/useInvite';
@@ -128,9 +129,7 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('members.tit
       @confirm="members.confirm"
       @cancel="members.cancel"
     />
-    <p v-if="inviteNotice" class="text-sm text-success">
-      {{ inviteNotice }}
-    </p>
+    <SavedNote v-if="inviteNotice" :label="inviteNotice" />
     <ErrorText v-if="canInvite && inviteLoadError" :error="inviteLoadError" />
     <PendingInvites
       v-else-if="canInvite"

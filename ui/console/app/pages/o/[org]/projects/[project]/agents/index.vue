@@ -92,8 +92,8 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
                 <Icon name="lucide:pencil" size="14" />
                 {{ t('common.edit') }}
               </button>
-              <button class="btn btn-ghost btn-xs text-error" @click="destroy(agent.id)">
-                <Icon name="lucide:trash-2" size="14" />
+              <button class="btn btn-ghost btn-xs" @click="destroy(agent.id)">
+                <Icon name="lucide:trash-2" size="14" class="text-error" />
                 {{ t('common.delete') }}
               </button>
             </td>

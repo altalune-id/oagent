@@ -5,6 +5,7 @@ import FieldError from '#base/components/ui/FieldError.vue';
 import { useProjectEdit } from './useProjectEdit';
 
 const { t } = useI18n();
+const ids = { name: useId(), nameErr: useId(), slug: useId(), slugErr: useId() };
 const { open, name, slug, busy, error, fieldErrors, show, hide, submit } = useProjectEdit();
 
 defineExpose({ show });
@@ -12,23 +13,23 @@ defineExpose({ show });
 
 <template>
   <AppModal :open="open" :title="t('project.edit')" @close="hide()">
-    <form novalidate class="space-y-3" @submit.prevent="submit()">
-      <label class="block">
-        <span class="mb-1 block text-xs text-base-content/60">{{ t('common.name') }}</span>
+    <form novalidate class="space-y-1" @submit.prevent="submit()">
+      <div class="fieldset">
+        <label :for="ids.name" class="fieldset-legend">{{ t('common.name') }}</label>
         <input
-          v-model="name" type="text" class="input input-sm input-bordered w-full" :class="{ 'input-error': fieldErrors.name }"
-          :disabled="busy" :aria-invalid="!!fieldErrors.name" aria-describedby="project-edit-name-error"
+          :id="ids.name" v-model="name" type="text" class="input w-full" :class="{ 'input-error': fieldErrors.name }"
+          :disabled="busy" :aria-invalid="!!fieldErrors.name" :aria-describedby="ids.nameErr"
         >
-        <FieldError id="project-edit-name-error" :message="fieldErrors.name" />
-      </label>
-      <label class="block">
-        <span class="mb-1 block text-xs text-base-content/60">{{ t('common.slug') }}</span>
+        <FieldError :id="ids.nameErr" :message="fieldErrors.name" />
+      </div>
+      <div class="fieldset">
+        <label :for="ids.slug" class="fieldset-legend">{{ t('common.slug') }}</label>
         <input
-          v-model="slug" type="text" class="input input-sm input-bordered w-full" :class="{ 'input-error': fieldErrors.slug }"
-          :disabled="busy" :aria-invalid="!!fieldErrors.slug" aria-describedby="project-edit-slug-error"
+          :id="ids.slug" v-model="slug" type="text" class="input w-full font-mono" :class="{ 'input-error': fieldErrors.slug }"
+          :disabled="busy" :aria-invalid="!!fieldErrors.slug" :aria-describedby="ids.slugErr"
         >
-        <FieldError id="project-edit-slug-error" :message="fieldErrors.slug" />
-      </label>
+        <FieldError :id="ids.slugErr" :message="fieldErrors.slug" />
+      </div>
       <ErrorText :error="error" />
     </form>
     <template #footer>
