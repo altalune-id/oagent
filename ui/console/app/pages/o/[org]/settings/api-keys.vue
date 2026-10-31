@@ -14,7 +14,7 @@ await auth.load();
 // NOTE: with nobody signed in (before credentials are required) the button stays; the server decides.
 const canManage = computed(() => !auth.me || auth.me.operator || grants(auth.me.permissions, 'apikey:write'));
 
-useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('apikeys.title')} · oagent` });
+useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('apikeys.title')} · OAgent` });
 </script>
 
 <template>

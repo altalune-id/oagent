@@ -40,7 +40,7 @@ func swaggerHTML(specURL, nonce string) []byte {
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>oagent API docs</title>
+  <title>OAgent API docs</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@%[1]s/swagger-ui.css">
   <style>body{margin:0;background:#fafafa;}</style>

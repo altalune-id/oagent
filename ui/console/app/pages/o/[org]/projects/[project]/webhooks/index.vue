@@ -17,7 +17,7 @@ if (!project.value) {
   throw createError({ statusCode: 404, statusMessage: t('error.project_not_found'), fatal: true });
 }
 
-useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('webhooks.title')} · oagent` });
+useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('webhooks.title')} · OAgent` });
 </script>
 
 <template>

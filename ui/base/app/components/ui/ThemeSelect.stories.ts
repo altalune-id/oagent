@@ -9,7 +9,7 @@ const meta = {
     label: 'Theme',
     open: true,
     families: [
-      { id: 'oagent', label: 'oagent', theme: 'oagent-light' },
+      { id: 'oagent', label: 'OAgent', theme: 'oagent-light' },
       { id: 'bumblebee', label: 'Bumblebee', theme: 'bumblebee-light' },
       { id: 'retro', label: 'Retro', theme: 'retro-light' },
       { id: 'coffee', label: 'Coffee', theme: 'coffee-dark' },

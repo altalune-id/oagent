@@ -11,7 +11,7 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
-      title: 'oagent',
+      title: 'OAgent',
       htmlAttrs: { lang: 'en' },
       link: [{ key: 'icon', rel: 'icon', href: 'data:,' }],
     },

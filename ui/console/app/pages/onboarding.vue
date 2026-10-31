@@ -19,7 +19,7 @@ if (!orgs.error && (orgs.items.length > 0 || auth.me?.orgCreation !== true)) {
   await navigateTo(await resolve(), { replace: true });
 }
 
-useHead({ title: () => `${t('onboarding.title')} · oagent` });
+useHead({ title: () => `${t('onboarding.title')} · OAgent` });
 </script>
 
 <template>

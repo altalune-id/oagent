@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const { t } = useI18n();
 const route = useRoute();
-useHead({ title: () => `${route.params.agent} · ${t('nav.model')} · oagent` });
+useHead({ title: () => `${route.params.agent} · ${t('nav.model')} · OAgent` });
 </script>
 
 <template>

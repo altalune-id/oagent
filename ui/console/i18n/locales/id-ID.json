@@ -158,7 +158,7 @@
   "profile.password_hint": "Sesi Anda yang lain akan dikeluarkan.",
   "profile.password_rules": "Minimal 12 karakter, bukan kata sandi yang umum, dan tidak memuat email atau nama Anda.",
   "profile.password_title": "Kata sandi",
-  "profile.sessions_body": "Keluar dari oagent di semua browser dan perangkat, termasuk yang ini.",
+  "profile.sessions_body": "Keluar dari OAgent di semua browser dan perangkat, termasuk yang ini.",
   "profile.sessions_title": "Sesi",
   "profile.sign_out_confirm_body": "Anda perlu masuk lagi di setiap perangkat, termasuk yang ini.",
   "profile.sign_out_confirm_title": "Keluar di semua perangkat?",

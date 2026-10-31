@@ -158,7 +158,7 @@
   "profile.password_hint": "Your other sessions are signed out.",
   "profile.password_rules": "At least 12 characters, not a common password, and not your email or name.",
   "profile.password_title": "Password",
-  "profile.sessions_body": "Sign out of oagent in every browser and on every device, this one too.",
+  "profile.sessions_body": "Sign out of OAgent in every browser and on every device, this one too.",
   "profile.sessions_title": "Sessions",
   "profile.sign_out_confirm_body": "You will need to sign in again on every device, this one too.",
   "profile.sign_out_confirm_title": "Sign out everywhere?",

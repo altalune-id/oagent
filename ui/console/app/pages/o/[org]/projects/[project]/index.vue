@@ -23,7 +23,7 @@ await agents.ensureLoaded(project.value.id);
 
 const items = computed(() => (project.value ? agents.forProject(project.value.id) : []));
 
-useHead({ title: () => `${project.value?.name ?? t('project.title')} · oagent` });
+useHead({ title: () => `${project.value?.name ?? t('project.title')} · OAgent` });
 </script>
 
 <template>

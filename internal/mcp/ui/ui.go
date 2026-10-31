@@ -15,8 +15,8 @@ var assets embed.FS
 
 const fallback = `<!doctype html>
 <html lang="en">
-  <head><meta charset="utf-8" /><title>oagent</title></head>
-  <body><p>oagent MCP app not built. Run: make ui-mcp</p></body>
+  <head><meta charset="utf-8" /><title>OAgent</title></head>
+  <body><p>OAgent MCP app not built. Run: make ui-mcp</p></body>
 </html>
 `
 

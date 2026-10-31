@@ -32,7 +32,7 @@ const slots = useSlots();
     </ul>
     <div v-if="slots.footer || version" data-sidebar-footer class="mt-auto px-4 py-3 text-xs text-base-content/40">
       <slot name="footer">
-        <span v-if="version">oagent v{{ version }}</span>
+        <span v-if="version">OAgent v{{ version }}</span>
       </slot>
     </div>
   </aside>

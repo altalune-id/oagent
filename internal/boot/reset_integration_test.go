@@ -96,7 +96,7 @@ func TestPasswordReset_EndToEnd(t *testing.T) {
 	assert.False(t, ok, "the old session is gone")
 	changed := claimMail(t, svcs)
 	require.Len(t, changed, 1)
-	assert.Equal(t, "Your oagent password was changed", changed[0].Subject)
+	assert.Equal(t, "Your OAgent password was changed", changed[0].Subject)
 
 	_, err = svcs.Auth.LoginLocal(ctx, auth.Credentials{Email: "root@example.com", Password: "a brand new passphrase"})
 	require.NoError(t, err, "the new password signs in")

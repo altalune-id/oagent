@@ -9,7 +9,7 @@ export interface ThemeFamily {
 
 // Keep in sync with the @plugin "daisyui/theme" blocks in app/assets/css/main.css.
 export const themeFamilies: ThemeFamily[] = [
-  { id: 'oagent', label: 'oagent', default: 'light', themes: { light: 'oagent-light', dark: 'oagent-dark' } },
+  { id: 'oagent', label: 'OAgent', default: 'light', themes: { light: 'oagent-light', dark: 'oagent-dark' } },
   { id: 'bumblebee', label: 'Bumblebee', default: 'light', themes: { light: 'bumblebee-light', dark: 'bumblebee-dark' } },
   { id: 'retro', label: 'Retro', default: 'light', themes: { light: 'retro-light', dark: 'retro-dark' } },
   { id: 'pastel', label: 'Pastel', default: 'light', themes: { light: 'pastel-light', dark: 'pastel-dark' } },

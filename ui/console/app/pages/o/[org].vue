@@ -54,7 +54,7 @@ await projects.ensureLoaded(org.value.id);
         <SettingsSidebar v-if="inSettings" />
       </template>
       <div v-if="appVersion" class="flex flex-1 items-end border-r border-base-300 bg-base-200/40 px-4 py-3 text-xs text-base-content/40 md:hidden">
-        oagent v{{ appVersion }}
+        OAgent v{{ appVersion }}
       </div>
     </div>
     <main class="min-w-0 flex-1 p-4 sm:p-6">

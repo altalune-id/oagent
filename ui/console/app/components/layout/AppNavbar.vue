@@ -45,7 +45,7 @@ onMounted(() => auth.load());
       </button>
       <NuxtLink to="/" class="btn btn-ghost gap-2 px-2 text-base font-bold tracking-tight" :class="{ 'max-sm:hidden': hasNav }">
         <img :src="logoUrl" alt="" width="28" height="28" class="h-7 w-7 rounded-md">
-        oagent
+        OAgent
       </NuxtLink>
     </template>
     <OrgSelector @focusin="ui.navOpen = false" />

@@ -157,7 +157,7 @@ func TestResets_RequestKnownEmailQueuesOneLink(t *testing.T) {
 	m := f.mail.sent[0]
 	assert.Equal(t, "ada@example.com", m.To)
 	assert.Equal(t, "oagent <noreply@example.com>", m.From)
-	assert.Equal(t, "Reset your oagent password", m.Subject)
+	assert.Equal(t, "Reset your OAgent password", m.Subject)
 	raw := linkToken(t, m)
 	assert.Contains(t, m.HTMLBody, "/reset-password/"+raw)
 	assert.Contains(t, m.TextBody, "13 October 2026, 10:00 UTC")
@@ -282,7 +282,7 @@ func TestResets_CompleteSetsThePasswordEndsEverySessionAndTellsThePerson(t *test
 	require.Len(t, f.mail.sent, 2)
 	changed := f.mail.sent[1]
 	assert.Equal(t, "ada@example.com", changed.To)
-	assert.Equal(t, "Your oagent password was changed", changed.Subject)
+	assert.Equal(t, "Your OAgent password was changed", changed.Subject)
 	assert.Contains(t, changed.TextBody, "https://oagent.example.com/app/login")
 
 	err = f.svc.Complete(ctx, r.PublicID, "another new passphrase")

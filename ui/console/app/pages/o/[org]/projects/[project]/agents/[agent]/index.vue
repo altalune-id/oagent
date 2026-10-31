@@ -24,7 +24,7 @@ watch(project, (value) => {
   }
 }, { immediate: true });
 
-useHead({ title: () => `${agent.value?.name ?? route.params.agent} · ${t('nav.general')} · oagent` });
+useHead({ title: () => `${agent.value?.name ?? route.params.agent} · ${t('nav.general')} · OAgent` });
 </script>
 
 <template>

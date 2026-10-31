@@ -48,7 +48,7 @@ async function save() {
   }
 }
 
-useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('settings.title')} · oagent` });
+useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('settings.title')} · OAgent` });
 </script>
 
 <template>

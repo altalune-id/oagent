@@ -103,7 +103,7 @@ A page in the web console (`ui/console`): the Nuxt 4 single-page app served at `
      throw createError({ statusCode: 404, statusMessage: t('error.org_not_found'), fatal: true });
    }
 
-   useHead({ title: () => `${t('things.title')} · oagent` });
+   useHead({ title: () => `${t('things.title')} · OAgent` });
    </script>
    ```
 

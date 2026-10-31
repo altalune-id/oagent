@@ -15,7 +15,7 @@ export const Default: Story = {
     template: `
       <NavbarShell>
         <template #brand>
-          <span class="btn btn-ghost px-2 font-bold">oagent</span>
+          <span class="btn btn-ghost px-2 font-bold">OAgent</span>
         </template>
         <span class="text-sm text-base-content/60">acme / support-bot</span>
         <template #end>

@@ -92,7 +92,7 @@ if (canInvite.value) {
   await invite.load();
 }
 
-useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('members.title')} · oagent` });
+useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('members.title')} · OAgent` });
 </script>
 
 <template>

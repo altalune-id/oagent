@@ -28,7 +28,7 @@ const emptyLabels = computed(() => ({
   signOut: t('auth.sign_out'),
 }));
 
-useHead({ title: () => `${t('org.all')} · oagent` });
+useHead({ title: () => `${t('org.all')} · OAgent` });
 </script>
 
 <template>
