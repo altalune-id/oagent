@@ -16,6 +16,14 @@ describe('useErrorMessage', () => {
     expect(shown).toEqual({ message: 'apperror.GEN007|{"permission":"scope.agent_read"}' });
   });
 
+  it('shows a time param as a local time and leaves a non-time value alone', () => {
+    setKnownKeys('apperror.GEN005');
+    const iso = '2026-10-20T14:05:30Z';
+    const local = new Intl.DateTimeFormat(undefined, { timeStyle: 'medium' }).format(new Date(iso));
+    expect(useErrorMessage()(connectError('GEN005', { time: iso }, ''), 'error.load_orgs')).toEqual({ message: `apperror.GEN005|${JSON.stringify({ time: local })}` });
+    expect(useErrorMessage()(connectError('GEN005', { time: 'soon' }, ''), 'error.load_orgs')).toEqual({ message: 'apperror.GEN005|{"time":"soon"}' });
+  });
+
   it('passes field labels to the message', () => {
     setKnownKeys('apperror.GEN004', 'field.organization_id');
     const shown = useErrorMessage()(connectError('GEN004', { field: 'organization_id' }, ''), 'error.load_orgs');

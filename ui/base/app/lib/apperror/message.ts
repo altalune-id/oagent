@@ -13,11 +13,17 @@ export interface ErrorView {
 
 export interface ErrorLabels {
   scope?: (name: string) => string;
+  time?: (iso: string) => string;
 }
 
 // errorCode is the app error code an RPC failed with, or '' when there is none.
 export function errorCode(err: unknown): string {
   return err instanceof ConnectError ? (err.findDetails(ErrorDetailSchema)[0]?.code ?? '') : '';
+}
+
+// errorMeta is the params an RPC failure carries, or none.
+export function errorMeta(err: unknown): Record<string, string> {
+  return err instanceof ConnectError ? { ...err.findDetails(ErrorDetailSchema)[0]?.meta } : {};
 }
 
 // Operator diagnostics: never shown, never passed to a message.
@@ -54,6 +60,9 @@ export function describeError(err: unknown, t: Translate, te: HasKey, fallback: 
 function label(key: string, value: string, te: HasKey, t: Translate, labels: ErrorLabels): string {
   if ((key === 'scope' || key === 'permission') && labels.scope) {
     return labels.scope(value);
+  }
+  if (key === 'time' && labels.time && !Number.isNaN(Date.parse(value))) {
+    return labels.time(value);
   }
   if (key === 'field' && te(`field.${value}`)) {
     return t(`field.${value}`);

@@ -3,7 +3,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { describe, expect, it } from 'vitest';
 
 import { ErrorDetailSchema } from '#gen/apperror/v1/error_pb';
-import { describeError, toShown } from './message';
+import { describeError, errorMeta, toShown } from './message';
 
 const messages: Record<string, string> = {
   'apperror.ORG003': 'Slug {slug} must be {min} to {max} characters',
@@ -97,5 +97,13 @@ describe('toShown', () => {
     const ref = (id: string) => `Ref: ${id}`;
     expect(toShown({ message: 'Nope', code: 'X', requestId: 'req-1' }, ref)).toEqual({ message: 'Nope', reference: 'Ref: req-1' });
     expect(toShown({ message: 'Nope' }, ref)).toEqual({ message: 'Nope' });
+  });
+});
+
+describe('errorMeta', () => {
+  it('reads the params of an app error and nothing from other errors', () => {
+    expect(errorMeta(connectError('WHK002', { field: 'url', reason: 'https_required' }))).toEqual({ field: 'url', reason: 'https_required' });
+    expect(errorMeta(new ConnectError('plain'))).toEqual({});
+    expect(errorMeta(new Error('x'))).toEqual({});
   });
 });

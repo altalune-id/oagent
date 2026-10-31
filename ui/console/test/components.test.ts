@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AppModal from '#base/components/ui/AppModal.vue';
 import { APIKeySchema } from '#gen/apikey/v1/apikey_pb';
+import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { WebhookSchema } from '#gen/webhook/v1/webhook_pb';
 import { mountPage } from '#test/mount-page';
 import { setClient, setRoute } from '#test/nuxt-globals';
@@ -18,6 +19,10 @@ import OrgFields from '~/components/org/create/OrgFields.vue';
 import WebhookCreateModal from '~/components/webhook/create/WebhookCreateModal.vue';
 import WebhookList from '~/components/webhook/list/WebhookList.vue';
 import AgentsPage from '~/pages/o/[org]/projects/[project]/agents/index.vue';
+import ProjectSettings from '~/pages/o/[org]/projects/[project]/settings.vue';
+import WebhooksPage from '~/pages/o/[org]/projects/[project]/webhooks/index.vue';
+import ProjectsPage from '~/pages/o/[org]/projects/index.vue';
+import OrgSettings from '~/pages/o/[org]/settings/index.vue';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 
@@ -72,7 +77,7 @@ describe('destructive actions ask first', () => {
   it('revokes an API key only after a confirm naming the key', async () => {
     const revokeAPIKey = vi.fn().mockResolvedValue({});
     setClient('$apiKeyClient', { listAPIKeys: vi.fn().mockResolvedValue({ keys: [create(APIKeySchema, { id: 'K9tWq4ZbN2xLm7VcR5pHs', name: 'deploy-bot', kind: 'org', secretHint: 'ab12' })] }), revokeAPIKey });
-    const w = await mountPage(APIKeyList, { pageProps: { orgId }, attachTo: document.body });
+    const w = await mountPage(APIKeyList, { pageProps: { orgId, canManage: true }, attachTo: document.body });
     await w.get('tbody button').trigger('click');
     expect(revokeAPIKey).not.toHaveBeenCalled();
     expect(openDialog()!.textContent).toContain('apikeys.revoke_confirm');
@@ -85,7 +90,7 @@ describe('destructive actions ask first', () => {
   it('asks before deleting a webhook', async () => {
     const deleteWebhook = vi.fn().mockResolvedValue({});
     setClient('$webhookClient', { listWebhooks: vi.fn().mockResolvedValue({ webhooks: [create(WebhookSchema, { id: 'H3nVb8XqT1wLp6RkZ2mJc', projectId, url: 'https://hooks.acme.test/oagent', active: true, eventTypes: [] })] }), deleteWebhook });
-    const w = await mountPage(WebhookList, { pageProps: { orgId, projectId }, attachTo: document.body });
+    const w = await mountPage(WebhookList, { pageProps: { orgId, projectId, canManage: true }, attachTo: document.body });
     await w.findAll('button').find(b => b.text().includes('common.delete'))!.trigger('click');
     expect(deleteWebhook).not.toHaveBeenCalled();
     expect(openDialog()!.textContent).toContain('webhooks.delete_title');
@@ -96,6 +101,7 @@ describe('destructive actions ask first', () => {
     useOrgsStore().items = [{ id: orgId, slug: 'acme', name: 'Acme' }];
     useProjectsStore().items = [{ id: projectId, orgId, slug: 'web', name: 'Web' }];
     setRoute({ path: '/o/acme/projects/web/agents', params: { org: 'acme', project: 'web' } });
+    signedInWith('agent:read', 'agent:write');
     const deleteAgent = vi.fn().mockResolvedValue({});
     setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ id: 'A7kPq2WxN4mLt8VcR3bZs', projectId, slug: 'support', name: 'Support', description: '' }] }), deleteAgent });
     const w = await mountPage(AgentsPage, { attachTo: document.body });
@@ -144,9 +150,82 @@ describe('a one-time secret stays until Done', () => {
       listWebhooks: vi.fn().mockResolvedValue({ webhooks: [create(WebhookSchema, { id: 'H3nVb8XqT1wLp6RkZ2mJc', projectId, url: 'https://hooks.acme.test/oagent', active: true, eventTypes: [] })] }),
       rotateWebhookSecret: vi.fn().mockResolvedValue({ secret: 'whsec_rotated' }),
     });
-    const w = await mountPage(WebhookList, { pageProps: { orgId, projectId }, attachTo: document.body });
+    const w = await mountPage(WebhookList, { pageProps: { orgId, projectId, canManage: true }, attachTo: document.body });
     await w.findAll('button').find(b => b.text().includes('webhooks.rotate'))!.trigger('click');
     await flushPromises();
     await escapeKeepsIt(w, 'whsec_rotated');
+  });
+});
+
+function signedInWith(...permissions: string[]) {
+  setClient('$authClient', { whoami: vi.fn().mockResolvedValue(create(WhoamiResponseSchema, { source: 'local', userId: 'F5pLm2XwQ8kRt3VnZ7bYc', permissions })) });
+}
+
+function inProject(path: string) {
+  useOrgsStore().items = [{ id: orgId, slug: 'acme', name: 'Acme', role: 'member' }];
+  useProjectsStore().items = [{ id: projectId, orgId, slug: 'web', name: 'Web' }];
+  setRoute({ path: `/o/acme/projects/web${path}`, params: { org: 'acme', project: 'web' } });
+}
+
+const buttonTexts = (w: { findAll: (s: string) => { text: () => string }[] }) => w.findAll('button').map(b => b.text());
+
+describe('actions follow the caller\'s permissions', () => {
+  it('shows API key Revoke only to people who manage keys', async () => {
+    setClient('$apiKeyClient', { listAPIKeys: vi.fn().mockResolvedValue({ keys: [create(APIKeySchema, { id: 'K9tWq4ZbN2xLm7VcR5pHs', name: 'deploy-bot', kind: 'org', secretHint: 'ab12' })] }) });
+    const w = await mountPage(APIKeyList, { pageProps: { orgId } });
+    expect(w.findAll('tbody button')).toHaveLength(0);
+  });
+
+  it('makes org settings read-only for people without org:write', async () => {
+    useOrgsStore().items = [{ id: orgId, slug: 'acme', name: 'Acme', role: 'member' }];
+    setRoute({ path: '/o/acme/settings', params: { org: 'acme' } });
+    signedInWith('org:read');
+    const w = await mountPage(OrgSettings);
+    expect(w.find('form').exists()).toBe(false);
+    expect(w.get('dl').text()).toContain('Acme');
+    expect(w.text()).toContain('settings.read_only');
+  });
+
+  it('keeps org settings editable with org:write', async () => {
+    useOrgsStore().items = [{ id: orgId, slug: 'acme', name: 'Acme', role: 'owner' }];
+    setRoute({ path: '/o/acme/settings', params: { org: 'acme' } });
+    signedInWith('org:read', 'org:write');
+    const w = await mountPage(OrgSettings);
+    expect(w.find('form').exists()).toBe(true);
+    expect(w.text()).not.toContain('settings.read_only');
+  });
+
+  it('makes project settings read-only for people without project:write', async () => {
+    inProject('/settings');
+    signedInWith('project:read');
+    const w = await mountPage(ProjectSettings);
+    expect(w.find('form').exists()).toBe(false);
+    expect(w.text()).toContain('project.read_only');
+  });
+
+  it('offers New project and Edit only with project:write', async () => {
+    inProject('');
+    setRoute({ path: '/o/acme/projects', params: { org: 'acme' } });
+    signedInWith('project:read');
+    const w = await mountPage(ProjectsPage);
+    expect(buttonTexts(w).filter(t => t.includes('project.new') || t.includes('common.edit'))).toEqual([]);
+  });
+
+  it('offers no agent changes without agent:write', async () => {
+    inProject('/agents');
+    signedInWith('agent:read');
+    setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ id: 'A7kPq2WxN4mLt8VcR3bZs', projectId, slug: 'support', name: 'Support', description: '' }] }) });
+    const w = await mountPage(AgentsPage);
+    expect(w.text()).toContain('Support');
+    expect(buttonTexts(w).filter(t => /agent\.new|common\.(?:edit|delete)/.test(t))).toEqual([]);
+  });
+
+  it('offers no webhook changes without webhook:write, only the delivery log', async () => {
+    inProject('/webhooks');
+    signedInWith('webhook:read');
+    setClient('$webhookClient', { listWebhooks: vi.fn().mockResolvedValue({ webhooks: [create(WebhookSchema, { id: 'H3nVb8XqT1wLp6RkZ2mJc', projectId, url: 'https://hooks.acme.test/oagent', active: true, eventTypes: [] })] }) });
+    const w = await mountPage(WebhooksPage);
+    expect(w.text()).toContain('https://hooks.acme.test/oagent');
+    expect(buttonTexts(w).filter(t => /webhooks\.(?:new|ping|rotate|activate|deactivate|retry)|common\.delete/.test(t))).toEqual([]);
   });
 });

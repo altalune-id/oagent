@@ -5,11 +5,15 @@ import CopyButton from '#base/components/ui/CopyButton.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import SavedNote from '#base/components/ui/SavedNote.vue';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
+import ProjectReadOnlyNote from '~/components/project/ProjectReadOnlyNote.vue';
+import { useCan } from '~/composables/useCan';
+import { useAuthStore } from '~/stores/auth';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 
 const route = useRoute();
 const { t } = useI18n();
+const canEdit = useCan('project:write');
 const ids = { name: useId(), slug: useId() };
 const errorMessage = useErrorMessage();
 const orgs = useOrgsStore();
@@ -56,6 +60,8 @@ async function save() {
 }
 
 useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('settings.title')} · OAgent` });
+
+await useAuthStore().load();
 </script>
 
 <template>
@@ -63,6 +69,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('set
     <h1 class="text-2xl font-bold">
       {{ t('settings.title') }}
     </h1>
+    <ProjectReadOnlyNote v-if="!canEdit" :text="t('project.read_only')" />
 
     <div class="space-y-1">
       <span class="block text-xs text-base-content/60">{{ t('common.id') }}</span>
@@ -72,7 +79,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('set
       </div>
     </div>
 
-    <form novalidate class="space-y-2" @submit.prevent="save()">
+    <form v-if="canEdit" novalidate class="space-y-2" @submit.prevent="save()">
       <div class="fieldset">
         <label :for="ids.name" class="fieldset-legend">{{ t('common.name') }}</label>
         <input :id="ids.name" v-model="name" type="text" class="input w-full" :disabled="busy">
@@ -90,5 +97,21 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('set
         <SavedNote v-if="saved" :label="t('common.saved')" />
       </div>
     </form>
+    <dl v-else class="space-y-2">
+      <div class="fieldset">
+        <dt class="fieldset-legend">
+          {{ t('common.name') }}
+        </dt>
+        <dd>{{ project.name }}</dd>
+      </div>
+      <div class="fieldset">
+        <dt class="fieldset-legend">
+          {{ t('common.slug') }}
+        </dt>
+        <dd class="font-mono text-sm">
+          {{ project.slug }}
+        </dd>
+      </div>
+    </dl>
   </div>
 </template>

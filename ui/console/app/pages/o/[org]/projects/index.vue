@@ -4,6 +4,8 @@ import AppButton from '#base/components/ui/AppButton.vue';
 import CopyButton from '#base/components/ui/CopyButton.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import ProjectEditModal from '~/components/project/edit/ProjectEditModal.vue';
+import { useCan } from '~/composables/useCan';
+import { useAuthStore } from '~/stores/auth';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 import { useUIStore } from '~/stores/ui';
@@ -13,6 +15,7 @@ const { t } = useI18n();
 const orgs = useOrgsStore();
 const projects = useProjectsStore();
 const ui = useUIStore();
+const canEdit = useCan('project:write');
 const org = computed(() => orgs.bySlug(route.params.org as string));
 const items = computed(() => (org.value ? projects.forOrg(org.value.id) : []));
 
@@ -20,6 +23,8 @@ const editModal = ref<InstanceType<typeof ProjectEditModal>>();
 function edit(project: Project) {
   editModal.value?.show(project);
 }
+
+await useAuthStore().load();
 </script>
 
 <template>
@@ -28,7 +33,7 @@ function edit(project: Project) {
       <h1 class="text-2xl font-bold">
         {{ t('project.title') }}
       </h1>
-      <AppButton v-if="org" size="sm" @click="ui.openProjectCreate()">
+      <AppButton v-if="org && canEdit" size="sm" @click="ui.openProjectCreate()">
         <Icon name="lucide:plus" size="16" />
         {{ t('project.new') }}
       </AppButton>
@@ -66,7 +71,7 @@ function edit(project: Project) {
                 <Icon name="lucide:external-link" size="14" />
                 {{ t('common.open') }}
               </NuxtLink>
-              <button class="btn btn-ghost btn-xs" @click="edit(project)">
+              <button v-if="canEdit" type="button" class="btn btn-ghost btn-xs" @click="edit(project)">
                 <Icon name="lucide:pencil" size="14" />
                 {{ t('common.edit') }}
               </button>
@@ -79,6 +84,6 @@ function edit(project: Project) {
       {{ t('project.empty') }}
     </p>
 
-    <ProjectEditModal ref="editModal" />
+    <ProjectEditModal v-if="canEdit" ref="editModal" />
   </div>
 </template>

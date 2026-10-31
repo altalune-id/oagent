@@ -134,7 +134,7 @@ ESLint runs the root [eslint.config.mjs](../../eslint.config.mjs) (`@antfu/eslin
 - [ ] Logic lives in `.ts` files with tests; coverage thresholds hold.
 - [ ] Presentational components have stories and no store, client or i18n.
 - [ ] No hand-rolled confirm modal, spinner, dropdown or date formatter: the shared pieces above are used.
-- [ ] Hiding a control the caller cannot use is fine, but the server decides.
+- [ ] Hiding a control the caller cannot use is fine, through `useCan('<scope>')` ([app/composables/useCan.ts](../../ui/console/app/composables/useCan.ts)), but the server decides.
 - [ ] Gates pass: `make ui-test`, `pnpm -r typecheck`, `pnpm lint`, `pnpm --filter @oagent/console build-storybook`, `make ui`, `make check` (and `make generate` when protos changed).
 
 ## Reference code

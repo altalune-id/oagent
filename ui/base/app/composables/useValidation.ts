@@ -13,6 +13,12 @@ export interface ValidationOptions {
   codes?: Record<string, string>;
 }
 
+const formatKeys: Record<string, string> = {
+  slug: 'validation.slug_format',
+  email: 'validation.email_format',
+  url: 'validation.absolute_url',
+};
+
 // useValidation checks a request against its proto rules before it is sent, and places the server's refusals under the same inputs.
 export function useValidation<Desc extends DescMessage>(schema: Desc, options: ValidationOptions) {
   const { t, te } = useI18n();
@@ -23,8 +29,8 @@ export function useValidation<Desc extends DescMessage>(schema: Desc, options: V
   const shown = new Set(options.fields);
 
   function describe(field: string, issue: FieldIssue): string {
-    if (field === 'slug' && issue.reason === 'invalid_format') {
-      return t('validation.slug_format');
+    if (issue.reason === 'invalid_format' && formatKeys[field]) {
+      return t(formatKeys[field]);
     }
     if (!issue.param) {
       return t(`validation.${issue.reason}`);

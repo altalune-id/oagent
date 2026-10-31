@@ -6,6 +6,8 @@ import ErrorText from '#base/components/ui/ErrorText.vue';
 import SavedNote from '#base/components/ui/SavedNote.vue';
 import { useDates } from '#base/composables/useDates';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { useCan } from '~/composables/useCan';
+import { useAuthStore } from '~/stores/auth';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 
@@ -31,6 +33,7 @@ interface Attempt {
 
 const route = useRoute();
 const { t } = useI18n();
+const canRetry = useCan('webhook:write');
 const { moment } = useDates();
 const errorMessage = useErrorMessage();
 const orgs = useOrgsStore();
@@ -167,8 +170,9 @@ const prettyPayload = computed(() => {
   }
 });
 
-await load();
 useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('webhooks.deliveries')} · OAgent` });
+
+await Promise.all([load(), useAuthStore().load()]);
 </script>
 
 <template>
@@ -183,7 +187,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
         </h1>
       </div>
       <div class="flex items-center gap-2">
-        <button class="btn btn-ghost btn-sm" :disabled="retrying" @click="retryFailed">
+        <button v-if="canRetry" type="button" class="btn btn-ghost btn-sm" :disabled="retrying" @click="retryFailed">
           <Icon name="lucide:rotate-cw" size="14" />
           {{ t('webhooks.retry_failed') }}
         </button>
@@ -277,7 +281,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
       <template #footer>
         <ErrorText :error="retryOneError" class="mr-auto" />
         <button
-          v-if="selected?.status === 'failed'"
+          v-if="canRetry && selected?.status === 'failed'"
           class="btn btn-primary btn-sm"
           :disabled="retrying"
           @click="retryOne"

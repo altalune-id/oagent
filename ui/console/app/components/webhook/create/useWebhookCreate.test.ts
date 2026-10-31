@@ -101,7 +101,7 @@ describe('useWebhookCreate', () => {
     form.eventTypes.value = [];
     await form.submit();
     expect(createWebhook).not.toHaveBeenCalled();
-    expect(form.fieldErrors.value).toEqual({ url: 'validation.invalid_format', event_types: 'validation.required' });
+    expect(form.fieldErrors.value).toEqual({ url: 'validation.absolute_url', event_types: 'validation.required' });
   });
 
   it('pings the created webhook', async () => {

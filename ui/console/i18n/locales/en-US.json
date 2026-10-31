@@ -234,5 +234,7 @@
   "tokens.expires_soon": "Expires in {days} days",
   "tokens.status_active": "Active",
   "tokens.status_expired": "Expired",
-  "tokens.status_revoked": "Revoked"
+  "tokens.status_revoked": "Revoked",
+  "settings.read_only": "Only org owners can change these settings.",
+  "project.read_only": "Only org owners and admins can change these settings."
 }

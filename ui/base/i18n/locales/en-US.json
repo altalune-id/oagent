@@ -196,5 +196,7 @@
   "validation.invalid": "Not valid",
   "validation.other": "{field}: {message}",
   "common.retry": "Retry",
-  "common.loading": "Loading…"
+  "common.loading": "Loading…",
+  "validation.email_format": "Enter an email address, like name{'@'}example.com",
+  "validation.absolute_url": "Enter a full URL, like https://example.com/hook"
 }

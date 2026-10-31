@@ -195,7 +195,7 @@ describe('useInvite', () => {
     inv.email.value = 'cy at x.io';
     await inv.submit();
     expect(client.createInvite).not.toHaveBeenCalled();
-    expect(inv.fieldErrors.value).toEqual({ email: 'validation.invalid_format' });
+    expect(inv.fieldErrors.value).toEqual({ email: 'validation.email_format' });
     inv.close();
     expect(inv.fieldErrors.value).toEqual({});
   });

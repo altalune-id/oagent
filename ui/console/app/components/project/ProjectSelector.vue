@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { EntityItem } from '#base/components/ui/types';
 import EntitySelect from '#base/components/ui/EntitySelect.vue';
+import { useCan } from '~/composables/useCan';
 import { useOrgsStore } from '~/stores/orgs';
 import { usePinnedStore } from '~/stores/pinned';
 import { useProjectsStore } from '~/stores/projects';
@@ -12,6 +13,7 @@ const pinned = usePinnedStore();
 const ui = useUIStore();
 const route = useRoute();
 const { t } = useI18n();
+const canCreate = useCan('project:write');
 
 const org = computed(() => route.params.org as string | undefined);
 const project = computed(() => route.params.project as string | undefined);
@@ -66,7 +68,7 @@ function onCreate() {
     @select="onSelect"
     @pin="onPin"
   >
-    <template #actions>
+    <template v-if="canCreate" #actions>
       <li>
         <button type="button" @click="onCreate">
           <Icon name="lucide:plus" size="16" />

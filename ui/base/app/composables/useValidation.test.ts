@@ -3,7 +3,9 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { ErrorDetailSchema, ViolationSchema } from '#gen/apperror/v1/error_pb';
+import { CreateInviteRequestSchema } from '#gen/invite/v1/invite_pb';
 import { CreateOrgRequestSchema, UpdateOrgRequestSchema } from '#gen/org/v1/org_pb';
+import { CreateWebhookRequestSchema } from '#gen/webhook/v1/webhook_pb';
 import { connectError, setKnownKeys } from '#test/nuxt-globals';
 import { useValidation } from './useValidation';
 
@@ -38,6 +40,16 @@ describe('useValidation', () => {
     expect(v.errors.value).toEqual({ slug: 'validation.slug_format' });
     expect(v.check(create(CreateOrgRequestSchema, { name: 'Acme', slug: 'ab' }))).toBe(false);
     expect(v.errors.value).toEqual({ slug: 'validation.too_short|{"min":"3"}' });
+  });
+
+  it('words an email and a URL format refusal with an example', () => {
+    const orgId = 'V3StGXR8Z5jdHj6BmyT2a';
+    const invite = useValidation(CreateInviteRequestSchema, { fields: ['email'] });
+    expect(invite.check(create(CreateInviteRequestSchema, { orgId, email: 'not an email', role: 'member' }))).toBe(false);
+    expect(invite.errors.value).toEqual({ email: 'validation.email_format' });
+    const hook = useValidation(CreateWebhookRequestSchema, { fields: ['url'] });
+    expect(hook.check(create(CreateWebhookRequestSchema, { orgId, projectId: 'x6MH9WPWjktMwCBKHy4pF', url: 'hooks.acme.test', eventTypes: ['agent.created'] }))).toBe(false);
+    expect(hook.errors.value).toEqual({ url: 'validation.absolute_url' });
   });
 
   it('reports a refused field the form does not show as a form error', () => {

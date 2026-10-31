@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import WebhookCreateModal from '~/components/webhook/create/WebhookCreateModal.vue';
 import WebhookList from '~/components/webhook/list/WebhookList.vue';
+import { useCan } from '~/composables/useCan';
+import { useAuthStore } from '~/stores/auth';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 
@@ -8,6 +10,7 @@ const route = useRoute();
 const { t } = useI18n();
 const orgs = useOrgsStore();
 const projects = useProjectsStore();
+const canManage = useCan('webhook:write');
 const org = computed(() => orgs.bySlug(route.params.org as string));
 const project = computed(() =>
   projects.items.find(item => item.orgId === org.value?.id && item.slug === route.params.project),
@@ -18,6 +21,8 @@ if (!project.value) {
 }
 
 useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('webhooks.title')} · OAgent` });
+
+await useAuthStore().load();
 </script>
 
 <template>
@@ -31,8 +36,8 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
           {{ t('webhooks.subtitle') }}
         </p>
       </div>
-      <WebhookCreateModal :org-id="org.id" :project-id="project.id" />
+      <WebhookCreateModal v-if="canManage" :org-id="org.id" :project-id="project.id" />
     </div>
-    <WebhookList :org-id="org.id" :project-id="project.id" />
+    <WebhookList :org-id="org.id" :project-id="project.id" :can-manage="canManage" />
   </div>
 </template>

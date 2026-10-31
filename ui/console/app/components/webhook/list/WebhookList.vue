@@ -9,7 +9,7 @@ import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { webhookEvents } from '~/components/webhook/events';
 import { toWebhook, useWebhooksStore } from '~/stores/webhooks';
 
-const { orgId, projectId } = defineProps<{ orgId: string, projectId: string }>();
+const { orgId, projectId, canManage = false } = defineProps<{ orgId: string, projectId: string, canManage?: boolean }>();
 
 const route = useRoute();
 const { t } = useI18n();
@@ -120,19 +120,19 @@ function closeRotate() {
               <Icon name="lucide:scroll-text" size="14" />
               {{ t('webhooks.logs') }}
             </NuxtLink>
-            <button class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="ping(webhook)">
+            <button v-if="canManage" type="button" class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="ping(webhook)">
               <Icon name="lucide:send" size="14" />
               {{ t('webhooks.ping') }}
             </button>
-            <button class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="toggle(webhook)">
+            <button v-if="canManage" type="button" class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="toggle(webhook)">
               <Icon :name="webhook.active ? 'lucide:pause' : 'lucide:play'" size="14" />
               {{ webhook.active ? t('webhooks.deactivate') : t('webhooks.activate') }}
             </button>
-            <button class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="rotate(webhook)">
+            <button v-if="canManage" type="button" class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="rotate(webhook)">
               <Icon name="lucide:key-round" size="14" />
               {{ t('webhooks.rotate') }}
             </button>
-            <button class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="deleting.ask(webhook)">
+            <button v-if="canManage" type="button" class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="deleting.ask(webhook)">
               <Icon name="lucide:trash-2" size="14" class="text-error" />
               {{ t('common.delete') }}
             </button>
@@ -156,6 +156,7 @@ function closeRotate() {
   </AppModal>
 
   <ConfirmModal
+    v-if="canManage"
     :handle="deleting"
     :title="t('webhooks.delete_title')"
     :body="t('webhooks.delete_body', { url: deleting.target.value?.url ?? '' })"

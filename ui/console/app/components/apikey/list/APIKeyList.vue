@@ -6,7 +6,7 @@ import { useConfirm } from '#base/composables/useConfirm';
 import { useScopeLabel } from '#base/composables/useScopeLabel';
 import { useAPIKeysStore } from '~/stores/apiKeys';
 
-const { orgId } = defineProps<{ orgId: string }>();
+const { orgId, canManage = false } = defineProps<{ orgId: string, canManage?: boolean }>();
 
 const { t } = useI18n();
 const scopeLabel = useScopeLabel();
@@ -64,7 +64,7 @@ const revoking = useConfirm<APIKey>(async (key) => {
             </span>
           </td>
           <td class="whitespace-nowrap text-right">
-            <button v-if="!k.revokedAt" class="btn btn-ghost btn-xs" @click="revoking.ask(k)">
+            <button v-if="canManage && !k.revokedAt" type="button" class="btn btn-ghost btn-xs" @click="revoking.ask(k)">
               <Icon name="lucide:ban" size="14" class="text-error" />
               {{ t('common.revoke') }}
             </button>
@@ -75,6 +75,7 @@ const revoking = useConfirm<APIKey>(async (key) => {
   </div>
 
   <ConfirmModal
+    v-if="canManage"
     :handle="revoking"
     :title="t('apikeys.revoke_confirm')"
     :body="t('apikeys.revoke_body', { name: revoking.target.value?.name ?? '', hint: revoking.target.value?.secretHint ?? '' })"

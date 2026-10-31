@@ -196,5 +196,7 @@
   "validation.invalid": "Tidak valid",
   "validation.other": "{field}: {message}",
   "common.retry": "Coba lagi",
-  "common.loading": "Memuat…"
+  "common.loading": "Memuat…",
+  "validation.email_format": "Masukkan alamat email, misalnya nama{'@'}contoh.com",
+  "validation.absolute_url": "Masukkan URL lengkap, misalnya https://contoh.com/hook"
 }
