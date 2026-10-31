@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { EntityItem } from './types';
+import AppDropdown from './AppDropdown.vue';
 
 withDefaults(defineProps<{
   label: string,
@@ -26,12 +27,12 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="dropdown min-w-0" :class="{ 'dropdown-open': open }">
-    <div tabindex="0" role="button" class="btn btn-ghost btn-sm max-w-full min-w-0 flex-nowrap gap-1 sm:gap-2" :aria-label="label">
+  <AppDropdown class="min-w-0" :open="open" trigger-class="max-w-full min-w-0 flex-nowrap gap-1 sm:gap-2">
+    <template #trigger>
       <Icon v-if="icon" :name="icon" size="16" class="shrink-0 max-sm:hidden" />
       <span class="min-w-0 truncate sm:max-w-32" :class="{ 'text-base-content/50': placeholder }">{{ label }}</span>
       <Icon name="lucide:chevron-down" size="14" class="shrink-0" />
-    </div>
+    </template>
     <ul tabindex="0" class="dropdown-content menu z-50 mt-1 w-60 rounded-box max-sm:fixed max-sm:inset-x-2 max-sm:top-full max-sm:w-auto border border-base-300 bg-base-100 p-2 shadow">
       <li v-for="item in items" :key="item.key">
         <div class="flex items-center gap-1 rounded-box" :class="{ 'menu-active': item.active }">
@@ -54,5 +55,5 @@ const emit = defineEmits<{
       </li>
       <slot name="actions" />
     </ul>
-  </div>
+  </AppDropdown>
 </template>

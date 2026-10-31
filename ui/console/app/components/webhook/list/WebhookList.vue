@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { Webhook } from '~/stores/webhooks';
 import AppModal from '#base/components/ui/AppModal.vue';
+import ConfirmModal from '#base/components/ui/ConfirmModal.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import SecretField from '#base/components/ui/SecretField.vue';
+import { useConfirm } from '#base/composables/useConfirm';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { webhookEvents } from '~/components/webhook/events';
 import { toWebhook, useWebhooksStore } from '~/stores/webhooks';
@@ -74,17 +76,10 @@ async function rotate(webhook: Webhook) {
   }
 }
 
-async function destroy(webhook: Webhook) {
-  busyId.value = webhook.id;
-  try {
-    await client.deleteWebhook({ orgId, projectId, id: webhook.id });
-    webhooks.remove(webhook.id);
-  } catch (e) {
-    webhooks.error = errorMessage(e, 'error.delete_webhook');
-  } finally {
-    busyId.value = '';
-  }
-}
+const deleting = useConfirm<Webhook>(async (webhook) => {
+  await client.deleteWebhook({ orgId, projectId, id: webhook.id });
+  webhooks.remove(webhook.id);
+}, 'error.delete_webhook');
 
 function closeRotate() {
   rotating.value = null;
@@ -137,7 +132,7 @@ function closeRotate() {
               <Icon name="lucide:key-round" size="14" />
               {{ t('webhooks.rotate') }}
             </button>
-            <button class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="destroy(webhook)">
+            <button class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="deleting.ask(webhook)">
               <Icon name="lucide:trash-2" size="14" class="text-error" />
               {{ t('common.delete') }}
             </button>
@@ -159,4 +154,12 @@ function closeRotate() {
       </button>
     </div>
   </AppModal>
+
+  <ConfirmModal
+    :handle="deleting"
+    :title="t('webhooks.delete_title')"
+    :body="t('webhooks.delete_body', { url: deleting.target.value?.url ?? '' })"
+    :confirm-label="t('common.delete')"
+    :cancel-label="t('common.cancel')"
+  />
 </template>

@@ -219,5 +219,11 @@
   "agent.name_placeholder": "Support Bot",
   "agent.slug_placeholder": "support-bot",
   "agent.slug_random_help": "Leave empty for a random name like wispy-frost-4821. You can change it later.",
-  "agent.description_placeholder": "What this agent does"
+  "agent.description_placeholder": "What this agent does",
+  "apikeys.revoke_body": "Anything using {name} (…{hint}) stops working at once. This can't be undone.",
+  "webhooks.delete_title": "Delete this webhook?",
+  "webhooks.delete_body": "OAgent stops sending events to {url} at once. This can't be undone.",
+  "agent.delete_title": "Delete this agent?",
+  "agent.delete_body": "{name} and its settings are deleted at once. This can't be undone.",
+  "members.actions_for": "Actions for {name}"
 }

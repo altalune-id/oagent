@@ -43,6 +43,12 @@ describe('guard: markup in every app', () => {
     expect(offenders(/<(?:button|NuxtLink|label|a)\s[^>]*\bclass="(?:[^"]*\s)?btn\s(?:[^"]*\s)?text-(?:error|warning|success|info)\b/)).toEqual([]);
   });
 
+  it('opens every focus dropdown from a focusable trigger, never a <button> Safari will not focus', () => {
+    expect(offenders(/class="dropdown\b[^"]*"[^>]*>\s*<button\b/)).toEqual([]);
+    const own = files.filter(f => /class="dropdown[\s"]/.test(f.text)).map(f => f.path);
+    expect(own).toEqual(['base/app/components/ui/AppDropdown.vue']);
+  });
+
   it('gives small checkboxes square corners so they do not look like radios', () => {
     const round = files.flatMap(f => (f.text.match(/class="checkbox checkbox-(?:xs|sm)\b[^"]*"/g) ?? []).filter(c => !c.includes('rounded-sm')).map(c => `${f.path}: ${c}`));
     expect(round).toEqual([]);

@@ -6,8 +6,8 @@ const meta = {
   component: AppButton,
   args: { variant: 'primary', size: 'md' },
   argTypes: {
-    variant: { control: 'select', options: ['primary', 'neutral', 'ghost', 'outline'] },
-    size: { control: 'inline-radio', options: ['sm', 'md', 'lg'] },
+    variant: { control: 'select', options: ['primary', 'neutral', 'ghost', 'outline', 'error', 'plain'] },
+    size: { control: 'inline-radio', options: ['xs', 'sm', 'md', 'lg'] },
     type: { control: 'select', options: ['button', 'submit', 'reset'] },
   },
 } satisfies Meta<typeof AppButton>;

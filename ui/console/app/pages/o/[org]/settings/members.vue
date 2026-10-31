@@ -45,6 +45,7 @@ const labels = computed(() => ({
   admin: t('members.role_admin'),
   memberRole: t('members.role_member'),
   remove: t('members.remove'),
+  actions: t('members.actions_for', { name: '{name}' }),
   leave: t('members.leave'),
   cancel: t('common.cancel'),
   removeTitle: t('members.remove_title'),

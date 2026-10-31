@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ShownError } from '#base/lib/apperror/message';
 import { computed } from 'vue';
+import AppDropdown from '#base/components/ui/AppDropdown.vue';
 import AppModal from '#base/components/ui/AppModal.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import { displayName } from './names';
@@ -31,6 +32,7 @@ export interface MemberListLabels {
   roleTitle: string;
   changeRole: string;
   empty: string;
+  actions: string;
 }
 
 const props = withDefaults(defineProps<{
@@ -62,6 +64,7 @@ const props = withDefaults(defineProps<{
     roleTitle: 'Change role?',
     changeRole: 'Change role',
     empty: 'No members yet.',
+    actions: 'Actions for {name}',
   }),
 });
 
@@ -170,14 +173,37 @@ function onRole(m: MemberListRow, event: Event) {
               </span>
             </td>
             <td class="whitespace-nowrap text-right">
-              <button v-if="m.removable" type="button" class="btn btn-ghost btn-xs" :disabled="busy" @click="emit('remove', m.userId)">
-                <Icon name="lucide:user-minus" size="14" class="text-error" />
-                {{ labels.remove }}
-              </button>
-              <button v-else-if="m.self && canLeave" type="button" class="btn btn-ghost btn-xs" :disabled="busy" @click="emit('leave')">
-                <Icon name="lucide:log-out" size="14" />
-                {{ labels.leave }}
-              </button>
+              <template v-if="m.removable || (m.self && canLeave)">
+                <div class="max-sm:hidden">
+                  <button v-if="m.removable" type="button" class="btn btn-ghost btn-xs" :disabled="busy" @click="emit('remove', m.userId)">
+                    <Icon name="lucide:user-minus" size="14" class="text-error" />
+                    {{ labels.remove }}
+                  </button>
+                  <button v-else type="button" class="btn btn-ghost btn-xs" :disabled="busy" @click="emit('leave')">
+                    <Icon name="lucide:log-out" size="14" />
+                    {{ labels.leave }}
+                  </button>
+                </div>
+                <AppDropdown class="dropdown-left sm:hidden" :label="labels.actions.replace('{name}', displayName(m))" :disabled="busy" trigger-class="btn-square">
+                  <template #trigger>
+                    <Icon name="lucide:ellipsis" size="16" />
+                  </template>
+                  <ul tabindex="-1" class="dropdown-content menu z-10 w-52 rounded-box border border-base-300 bg-base-100 p-1 shadow">
+                    <li v-if="m.removable">
+                      <button type="button" @click="emit('remove', m.userId)">
+                        <Icon name="lucide:user-minus" size="14" class="text-error" />
+                        {{ labels.remove }}
+                      </button>
+                    </li>
+                    <li v-else>
+                      <button type="button" @click="emit('leave')">
+                        <Icon name="lucide:log-out" size="14" />
+                        {{ labels.leave }}
+                      </button>
+                    </li>
+                  </ul>
+                </AppDropdown>
+              </template>
             </td>
           </tr>
         </tbody>

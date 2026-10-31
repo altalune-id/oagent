@@ -219,5 +219,11 @@
   "agent.name_placeholder": "Bot Dukungan",
   "agent.slug_placeholder": "bot-dukungan",
   "agent.slug_random_help": "Kosongkan untuk mendapatkan nama acak seperti wispy-frost-4821. Anda dapat mengubahnya nanti.",
-  "agent.description_placeholder": "Apa yang dilakukan agen ini"
+  "agent.description_placeholder": "Apa yang dilakukan agen ini",
+  "apikeys.revoke_body": "Apa pun yang memakai {name} (…{hint}) langsung berhenti berfungsi. Tindakan ini tidak dapat dibatalkan.",
+  "webhooks.delete_title": "Hapus webhook ini?",
+  "webhooks.delete_body": "OAgent langsung berhenti mengirim event ke {url}. Tindakan ini tidak dapat dibatalkan.",
+  "agent.delete_title": "Hapus agen ini?",
+  "agent.delete_body": "{name} dan pengaturannya langsung dihapus. Tindakan ini tidak dapat dibatalkan.",
+  "members.actions_for": "Tindakan untuk {name}"
 }

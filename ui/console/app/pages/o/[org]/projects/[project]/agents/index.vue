@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { Agent } from '~/stores/agents';
+import ConfirmModal from '#base/components/ui/ConfirmModal.vue';
 import CopyButton from '#base/components/ui/CopyButton.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
-import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { useConfirm } from '#base/composables/useConfirm';
 import AgentCreateModal from '~/components/agent/create/AgentCreateModal.vue';
 import AgentEditModal from '~/components/agent/edit/AgentEditModal.vue';
 import { useAgentsStore } from '~/stores/agents';
@@ -11,7 +12,6 @@ import { useProjectsStore } from '~/stores/projects';
 
 const route = useRoute();
 const { t } = useI18n();
-const errorMessage = useErrorMessage();
 const orgs = useOrgsStore();
 const projects = useProjectsStore();
 const agents = useAgentsStore();
@@ -35,14 +35,10 @@ function edit(agent: Agent) {
   editModal.value?.show(agent);
 }
 
-async function destroy(id: string) {
-  try {
-    await client.deleteAgent({ id });
-    agents.remove(id);
-  } catch (e) {
-    agents.error = errorMessage(e, 'error.delete_agent');
-  }
-}
+const deleting = useConfirm<Agent>(async (agent) => {
+  await client.deleteAgent({ id: agent.id });
+  agents.remove(agent.id);
+}, 'error.delete_agent');
 
 useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav.agents')} · OAgent` });
 </script>
@@ -92,7 +88,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
                 <Icon name="lucide:pencil" size="14" />
                 {{ t('common.edit') }}
               </button>
-              <button class="btn btn-ghost btn-xs" @click="destroy(agent.id)">
+              <button class="btn btn-ghost btn-xs" @click="deleting.ask(agent)">
                 <Icon name="lucide:trash-2" size="14" class="text-error" />
                 {{ t('common.delete') }}
               </button>
@@ -106,5 +102,12 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
     </p>
 
     <AgentEditModal ref="editModal" />
+    <ConfirmModal
+      :handle="deleting"
+      :title="t('agent.delete_title')"
+      :body="t('agent.delete_body', { name: deleting.target.value?.name ?? '' })"
+      :confirm-label="t('common.delete')"
+      :cancel-label="t('common.cancel')"
+    />
   </div>
 </template>
