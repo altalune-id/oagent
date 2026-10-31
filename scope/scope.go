@@ -4,6 +4,7 @@ package scope
 import (
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
 )
@@ -20,22 +21,57 @@ const (
 	LevelProject Level = "project"
 )
 
+// Holder names who may hold a scope, from the widest to the narrowest.
+type Holder string
+
+// The holders. SECURITY: a key holds only HolderAny, a token also HolderPerson, and only a web session HolderConsole.
+const (
+	HolderAny     Holder = ""
+	HolderPerson  Holder = "person"
+	HolderConsole Holder = "console"
+)
+
+func (h Holder) rank() int {
+	switch h {
+	case HolderAny:
+		return 0
+	case HolderPerson:
+		return 1
+	case HolderConsole:
+		return 2
+	}
+	return -1
+}
+
 // Spec describes one scope.
 type Spec struct {
-	Name       string `json:"name"`
-	Level      Level  `json:"level"`
-	PersonOnly bool   `json:"personOnly,omitempty"`
+	Name   string `json:"name"`
+	Level  Level  `json:"level"`
+	Holder Holder `json:"holder,omitempty"`
 }
 
 //nolint:gochecknoglobals // immutable catalog parsed once from the embedded file.
 var catalog = mustParse(scopesJSON)
 
 func mustParse(b []byte) []Spec {
-	var out []Spec
-	if err := json.Unmarshal(b, &out); err != nil {
+	out, err := parse(b)
+	if err != nil {
 		panic("scope: invalid scopes.json: " + err.Error())
 	}
 	return out
+}
+
+func parse(b []byte) ([]Spec, error) {
+	var out []Spec
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil, err
+	}
+	for _, s := range out {
+		if s.Holder.rank() < 0 {
+			return nil, fmt.Errorf("scope %s: unknown holder %q", s.Name, s.Holder)
+		}
+	}
+	return out, nil
 }
 
 // All returns the catalog.
@@ -64,10 +100,10 @@ func LevelOf(name string) (Level, bool) {
 	return catalog[i].Level, true
 }
 
-// Mintable reports whether an API key may hold name. SECURITY: person-only scopes never go on a key.
-func Mintable(name string) bool {
+// Holds reports whether a caller of kind by may hold name; a name outside the catalog is held by nobody.
+func Holds(name string, by Holder) bool {
 	i := slices.IndexFunc(catalog, func(s Spec) bool { return s.Name == name })
-	return i >= 0 && !catalog[i].PersonOnly
+	return i >= 0 && by.rank() >= catalog[i].Holder.rank()
 }
 
 // Grants reports whether granted covers required, honoring "*" and "<resource>:*" wildcards.

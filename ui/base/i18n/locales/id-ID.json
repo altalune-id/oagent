@@ -42,6 +42,7 @@
   "apperror.GEN006": "Data sudah ada",
   "apperror.GEN007": "Anda tidak punya izin untuk melakukan ini: {permission}",
   "apperror.GEN008": "Proyek ini bukan milik organisasi ini",
+  "apperror.GEN009": "Proses masuk belum bisa diperiksa sekarang. Silakan coba lagi.",
   "apperror.GEN900": "Terjadi kesalahan tak terduga. Silakan coba lagi.",
   "apperror.INS001": "Instans ini sudah terpasang",
   "apperror.INS002": "Instans ini belum disiapkan. Selesaikan pemasangan terlebih dahulu.",

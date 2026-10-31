@@ -60,3 +60,4 @@ ORG006 OrgAlreadyOwned
 AUT005 AuthNoConsoleAccount
 AUT006 AuthSignInExpired
 AUT007 AuthIdentityConflict
+GEN009 TokenUnavailable

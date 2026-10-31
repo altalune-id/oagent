@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"io"
 	"maps"
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -18,6 +21,7 @@ import (
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/internal/kernel/tokens"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/permission"
 	rootmcp "altalune.id/oagent/mcp"
@@ -157,16 +161,136 @@ func TestAuthenticate_BasicPutsTheOperator(t *testing.T) {
 	assert.True(t, s.p.Operator)
 }
 
-func TestAuthenticate_ResourceMetadataInTheChallenge(t *testing.T) {
-	var s seen
-	o := AuthOptions{Chain: authn.Chain{&chainStub{}}, KeyPrefix: "oagent_", Required: true, ResourceMetadataURL: "https://a.example/.well-known/oauth-protected-resource/mcp"}
-	rec := call(guarded(t, o, &s), nil)
-	assert.Equal(t, `Bearer resource_metadata="https://a.example/.well-known/oauth-protected-resource/mcp"`, rec.Header().Get("WWW-Authenticate"))
+const metadataURL = "https://oagent.example.com/.well-known/oauth-protected-resource/mcp"
+
+func mcpResource(t *testing.T) tokens.Resource {
+	t.Helper()
+	r, err := tokens.NewResource("https://oagent.example.com/mcp")
+	require.NoError(t, err)
+	require.Equal(t, metadataURL, r.MetadataURL)
+	return r
 }
 
-func TestWWWAuthenticate(t *testing.T) {
-	assert.Equal(t, "Bearer", WWWAuthenticate(""))
-	assert.Equal(t, `Bearer resource_metadata="https://a/x"`, WWWAuthenticate("https://a/x"))
+type tokenStub struct {
+	p   session.Principal
+	err error
+}
+
+func (s tokenStub) Authenticate(_ context.Context, cred authn.Credential) (session.Principal, error) {
+	if cred.Kind != authn.KindToken {
+		return session.Principal{}, errors.New("not a token")
+	}
+	return s.p, s.err
+}
+
+func tokenPrincipal(granted, held []string) session.Principal {
+	return session.Principal{Source: session.SourceToken, UserID: uuid.New(), TokenScopes: granted, Scopes: held}
+}
+
+func toolScopes(name string) []string {
+	return map[string][]string{
+		"agent_create":  {scope.AgentWrite},
+		"agent_list":    {scope.AgentRead},
+		"apikey_create": {scope.ApikeyWrite},
+		"auth_whoami":   {authz.AnyAuthenticated},
+	}[name]
+}
+
+func callTool(h http.Handler, bearer, tool string) *httptest.ResponseRecorder {
+	body := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"` + tool + `","arguments":{}}}`
+	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+bearer)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestAuthenticate_NoCredentialIsChallengedWithTheMetadata(t *testing.T) {
+	var s seen
+	rec := call(guarded(t, AuthOptions{Chain: authn.Chain{&chainStub{}}, KeyPrefix: "oagent_", Required: true, Resource: mcpResource(t)}, &s), nil)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.Equal(t, `Bearer resource_metadata="`+metadataURL+`"`, rec.Header().Get("WWW-Authenticate"))
+}
+
+// SECURITY: RFC 6750 Section 3.1: only the error code tells "no token" from "refused"; why stays masked.
+func TestAuthenticate_RefusedCredentialIsInvalidToken(t *testing.T) {
+	o := AuthOptions{Chain: authn.Chain{&chainStub{}, tokenStub{err: &tokens.InvalidTokenError{Reason: "expired"}}}, KeyPrefix: "oagent_", Resource: mcpResource(t)}
+	for _, bearer := range []string{"oagent_bad", "a.b.c"} {
+		var s seen
+		rec := call(guarded(t, o, &s), http.Header{"Authorization": {"Bearer " + bearer}})
+		assert.Equal(t, http.StatusUnauthorized, rec.Code, bearer)
+		assert.Equal(t, `Bearer resource_metadata="`+metadataURL+`", error="invalid_token"`, rec.Header().Get("WWW-Authenticate"), bearer)
+		assert.NotContains(t, rec.Body.String(), "expired")
+	}
+}
+
+// NOTE: no WWW-Authenticate, so a client keeps its token through a provider or database outage.
+func TestAuthenticate_AnOutageAnswers503WithoutAChallenge(t *testing.T) {
+	var s seen
+	o := AuthOptions{Chain: authn.Chain{&chainStub{}, tokenStub{err: &authn.UnavailableError{Cause: errors.New("provider down")}}}, KeyPrefix: "oagent_", Resource: mcpResource(t)}
+	rec := call(guarded(t, o, &s), http.Header{"Authorization": {"Bearer a.b.c"}})
+	assert.False(t, s.called)
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	assert.Empty(t, rec.Header().Get("WWW-Authenticate"))
+	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+	var body rootmcp.ErrorPayload
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	assert.Equal(t, "GEN009", body.Code)
+	assert.NotContains(t, rec.Body.String(), "provider down")
+}
+
+// NOTE: RFC 6750 Section 3.1 step-up: a token never granted the tool's scope gets a 403 naming it, before dispatch.
+func TestAuthenticate_TokenWithoutTheToolScopeGetsAStepUp(t *testing.T) {
+	var s seen
+	o := AuthOptions{Chain: authn.Chain{tokenStub{p: tokenPrincipal([]string{scope.AgentRead}, []string{scope.AgentRead})}}, Resource: mcpResource(t), ToolScopes: toolScopes}
+	rec := callTool(guarded(t, o, &s), "a.b.c", "agent_create")
+	assert.False(t, s.called)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Equal(t, `Bearer resource_metadata="`+metadataURL+`", error="insufficient_scope", scope="agent:write"`, rec.Header().Get("WWW-Authenticate"))
+	var body rootmcp.ErrorPayload
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	assert.Equal(t, "GEN007", body.Code)
+	assert.Equal(t, scope.AgentWrite, body.Meta["scope"])
+}
+
+func TestAuthenticate_NoStepUpWhenConsentCannotHelp(t *testing.T) {
+	for name, tc := range map[string]struct {
+		p    session.Principal
+		tool string
+	}{
+		"granted, the role refuses":    {tokenPrincipal([]string{scope.AgentWrite}, nil), "agent_create"},
+		"a console scope":              {tokenPrincipal(nil, nil), "apikey_create"},
+		"a marker, not a scope":        {tokenPrincipal(nil, nil), "auth_whoami"},
+		"an unknown tool":              {tokenPrincipal(nil, nil), "nope"},
+		"a key keeps in-result denial": {keyPrincipal(), "agent_create"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var s seen
+			chain := authn.Chain{tokenStub{p: tc.p}}
+			bearer := "a.b.c"
+			if tc.p.Source == session.SourceAPIKey {
+				chain, bearer = authn.Chain{&chainStub{p: tc.p}}, goodKey
+			}
+			o := AuthOptions{Chain: chain, KeyPrefix: "oagent_", Resource: mcpResource(t), ToolScopes: toolScopes}
+			rec := callTool(guarded(t, o, &s), bearer, tc.tool)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.True(t, s.called, "the tool's own check answers in the result")
+		})
+	}
+}
+
+func TestAuthenticate_StepUpCheckRestoresTheBody(t *testing.T) {
+	o := AuthOptions{Chain: authn.Chain{tokenStub{p: tokenPrincipal([]string{scope.AgentRead}, []string{scope.AgentRead})}}, Resource: mcpResource(t), ToolScopes: toolScopes}
+	var got string
+	h := Authenticate(o)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		got = string(b)
+		w.WriteHeader(http.StatusOK)
+	}))
+	rec := callTool(h, "a.b.c", "agent_list")
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, got, `"name":"agent_list"`)
 }
 
 func allToolScopes() []string {

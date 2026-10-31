@@ -108,8 +108,8 @@ func TestInterceptor(t *testing.T) {
 	}{
 		{"nothing, optional", false, "", procRead, &fakeAuthn{p: reader}, 0, true},
 		{"nothing, required", true, "", procRead, &fakeAuthn{p: reader}, connect.CodeUnauthenticated, false},
-		{"malformed, optional", false, "Bearer nope", procRead, &fakeAuthn{p: reader}, connect.CodeUnauthenticated, false},
-		{"malformed, required", true, "Bearer nope", procRead, &fakeAuthn{p: reader}, connect.CodeUnauthenticated, false},
+		{"malformed, optional", false, "Digest nope", procRead, &fakeAuthn{p: reader}, connect.CodeUnauthenticated, false},
+		{"malformed, required", true, "Digest nope", procRead, &fakeAuthn{p: reader}, connect.CodeUnauthenticated, false},
 		{"rejected, optional", false, "Bearer oagent_x", procRead, &fakeAuthn{err: errors.New("revoked")}, connect.CodeUnauthenticated, false},
 		{"rejected, required", true, "Bearer oagent_x", procRead, &fakeAuthn{err: errors.New("revoked")}, connect.CodeUnauthenticated, false},
 		{"unmapped, optional", false, "Bearer oagent_x", procUnmapped, &fakeAuthn{p: reader}, connect.CodePermissionDenied, false},

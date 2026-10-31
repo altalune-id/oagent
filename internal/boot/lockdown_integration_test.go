@@ -47,13 +47,22 @@ func newLockdown(t *testing.T, cfg config.Config, idp ...*oidcrptest.IDP) *lockd
 	svcs.InstallRequired = required
 	for _, p := range idp {
 		svcs.OIDC = newOIDCProvider(cfg, p.Client())
+		svcs.MCPTokens, err = buildMCPTokens(cfg, p.Client())
+		require.NoError(t, err)
 	}
+
+	mcpCfg := cfg.MCP
+	mcpCfg.Enabled = true
+	mcpServer := buildMCPServer(mcpCfg, svcs, testLogger())
+	resource, docs, err := buildMCPResource(cfg, mcpServer, testLogger())
+	require.NoError(t, err)
 
 	console := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("console")) })
 	h := buildHTTPHandler(httpSurfaces{
 		probes:          health.NewWeb(health.NewService()),
 		api:             buildAPIHandler(svcs, nil, cfg.API, "", testLogger()),
-		mcp:             buildMCPHandler(buildMCPServer(config.MCPConfig{Enabled: true}, svcs, testLogger()), svcs, testLogger()),
+		mcp:             buildMCPHandler(mcpServer, svcs, resource, testLogger()),
+		mcpDocs:         docs,
 		console:         console,
 		consoleGate:     buildConsoleGate(cfg, svcs),
 		routes:          buildRoutes(cfg, svcs, nil, nil),
@@ -97,6 +106,7 @@ func localLockdown(t *testing.T) *lockdown {
 	cfg.Auth.Genesis = config.GenesisConfig{Email: "root@example.com", Password: "genesis-password"}
 	idp := oidcrptest.New(t)
 	cfg.OIDC = config.OIDCConfig{Issuer: idp.Issuer(), ClientID: "oagent", Scopes: []string{"openid", "email"}, ButtonLabel: "Continue with SSO"}
+	cfg.MCP.Enabled = true
 	return newLockdown(t, cfg, idp)
 }
 
@@ -109,7 +119,7 @@ func TestLockdown_NoCredential(t *testing.T) {
 
 	rec = l.do(http.MethodPost, "/mcp", mcpJSON(), listTools)
 	assert.Equal(t, http.StatusUnauthorized, rec.Code, "/mcp")
-	assert.Equal(t, "Bearer", rec.Header().Get("WWW-Authenticate"))
+	assert.Equal(t, `Bearer resource_metadata="http://localhost:5150/.well-known/oauth-protected-resource/mcp"`, rec.Header().Get("WWW-Authenticate"))
 
 	for path, want := range map[string]string{
 		"/console/":             "/login?return_to=%2Fconsole%2F",
@@ -121,7 +131,9 @@ func TestLockdown_NoCredential(t *testing.T) {
 		assert.Equal(t, want, rec.Header().Get("Location"), path)
 	}
 
-	for _, path := range []string{"/login", "/terms", "/privacy", "/static/favicon.ico", "/healthz", "/readyz"} {
+	for _, path := range []string{
+		"/login", "/terms", "/privacy", "/static/favicon.ico", "/healthz", "/readyz", "/.well-known/oauth-protected-resource/mcp",
+	} {
 		rec = l.do(http.MethodGet, path, nil, "")
 		assert.Equal(t, http.StatusOK, rec.Code, path)
 	}

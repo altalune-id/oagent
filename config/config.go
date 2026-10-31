@@ -54,8 +54,11 @@ type SecretsConfig struct {
 
 // MCPConfig configures the Model Context Protocol surface mounted at BasePath+"/mcp".
 type MCPConfig struct {
-	Enabled bool `yaml:"enabled" mapstructure:"enabled"`
-	AppsUI  bool `yaml:"appsUI"  mapstructure:"appsUI"`
+	Enabled          bool          `yaml:"enabled"          mapstructure:"enabled"`
+	AppsUI           bool          `yaml:"appsUI"           mapstructure:"appsUI"`
+	Audience         string        `yaml:"audience"         mapstructure:"audience"`
+	AudienceOverride bool          `yaml:"audienceOverride" mapstructure:"audienceOverride"`
+	ClockSkew        time.Duration `yaml:"clockSkew"        mapstructure:"clockSkew"        validate:"gte=0"`
 }
 
 // HTTPConfig configures the web-facing HTTP server.
@@ -150,6 +153,7 @@ func (c *Config) Validate() error {
 	for _, check := range []func() error{
 		c.validatePostgres,
 		c.validateOIDC,
+		c.validateMCP,
 		c.validateAuth,
 		c.validateCompliance,
 		c.validateMail,

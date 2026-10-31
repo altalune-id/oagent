@@ -160,7 +160,7 @@ func (sc Scheme) mint(orgID uuid.UUID, name string, scopes []string, expiresAt *
 		if !scope.Valid(s) {
 			return nil, "", &UnknownScopeError{Scope: s}
 		}
-		if !scope.Mintable(s) {
+		if !scope.Holds(s, scope.HolderAny) {
 			return nil, "", &PersonOnlyScopeError{Scope: s}
 		}
 	}

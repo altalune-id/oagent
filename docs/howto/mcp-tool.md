@@ -58,7 +58,7 @@ Two transports serve the same registry: `/mcp` over HTTP (an API key or Basic au
 
 ## How it behaves
 
-- `tools/list` and `tools/call` both check every permission of the tool against the caller's (`mcpinternal.ScopesFromContext`). A tool whose RPC has no table entry has no permissions and is denied, even to the stdio operator.
+- `tools/list` and `tools/call` both check every permission of the tool against the caller's (`mcpinternal.ScopesFromContext`). A tool whose RPC has no table entry has no permissions and is denied, even to the stdio operator. With MCP OAuth, the tool's scopes that a token may hold (`holder` left out or `person`) are listed in the RFC 9728 document, and a token never granted one gets a 403 `insufficient_scope` naming it.
 - A request that breaks its rules is refused with `GEN004` and the same `violations` as on `/api`. Bad JSON is `INVALID_ARGUMENT`; a missing permission is `FORBIDDEN`.
 - A tool failure is a tool result with `isError`, never a JSON-RPC error. App errors carry their catalog code, message, meta and violations (`mcpinternal.ErrorPayload`); anything else is `GEN900`.
 - With `mcp.appsUI` off, app-only tools are not registered and `ui` metadata is not sent.

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/altalune-id/oidcrp/oidcrptest"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,24 +57,44 @@ type apiFixture struct {
 
 func newAPIFixture(t *testing.T) *apiFixture {
 	t.Helper()
+	return startAPIFixture(t, nil)
+}
+
+func startAPIFixture(t *testing.T, idp *oidcrptest.IDP) *apiFixture {
+	t.Helper()
 	cfg := devLocalConfig()
 	cfg.HTTP.StateSecret = strings.Repeat("s", 40)
 	cfg.Secrets.EncryptionKey = testKeyHex
 	cfg.Auth.SessionTTL = 24 * time.Hour
 	cfg.Auth.Genesis = config.GenesisConfig{Email: "root@example.com", Password: "genesis-password"}
+	cfg.MCP.Enabled = true
+	if idp != nil {
+		cfg.HTTP.BaseURL = "https://oagent.example.com"
+		cfg.OIDC = config.OIDCConfig{Issuer: idp.Issuer(), ClientID: "oagent", Scopes: []string{"openid", "email"}, ButtonLabel: "Continue with SSO"}
+		cfg.MCP.AppsUI = true
+	}
 	svc, sqlDB, schemaName := pgtest.MigratedRLS(t)
 	cfg.Postgres.Schema = schemaName
 	svcs := buildServices(kernel.Kernel{Pool: svc, Reporter: apperror.NewReporter(nil, false)}, cfg)
+	if idp != nil {
+		var err error
+		svcs.MCPTokens, err = buildMCPTokens(cfg, idp.Client())
+		require.NoError(t, err)
+	}
 	require.NoError(t, buildAuthSecrets(cfg, svcs, testLogger()))
 	svcs.Caps.EnvGenesis = true
 	require.NoError(t, firstBoot(t.Context(), cfg, svcs, testLogger(), false))
 	required, err := installRequired(t.Context(), svcs)
 	require.NoError(t, err)
 	svcs.InstallRequired = required
+	mcpServer := buildMCPServer(cfg.MCP, svcs, testLogger())
+	mcpResource, mcpDocs, err := buildMCPResource(cfg, mcpServer, testLogger())
+	require.NoError(t, err)
 
 	h := buildHTTPHandler(httpSurfaces{
 		api:             buildAPIHandler(svcs, nil, cfg.API, "", testLogger()),
-		mcp:             buildMCPHandler(buildMCPServer(config.MCPConfig{Enabled: true}, svcs, testLogger()), svcs, testLogger()),
+		mcp:             buildMCPHandler(mcpServer, svcs, mcpResource, testLogger()),
+		mcpDocs:         mcpDocs,
 		routes:          buildRoutes(cfg, svcs, nil, nil),
 		session:         buildSessionMiddleware(svcs, nil),
 		installRequired: required,
@@ -268,7 +289,7 @@ func TestAPI_MemberManagesOwnPersonalKeys(t *testing.T) {
 	_, err = create("personal", "org:write")
 	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "above the member role")
 	_, err = create("personal", "apikey:write")
-	require.Error(t, err, "person-only scope")
+	require.Error(t, err, "a scope a key can't hold")
 	_, err = create("org", "agent:read")
 	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "org keys need apikey:write")
 

@@ -31,7 +31,7 @@ func TestFromHeader(t *testing.T) {
 		"bearer key":                {"Bearer oagent_abc", "", Credential{Kind: KindAPIKey, Token: "oagent_abc"}, true},
 		"lowercase bearer":          {"bearer oagent_abc", "", Credential{Kind: KindAPIKey, Token: "oagent_abc"}, true},
 		"bearer extra spaces":       {"Bearer   oagent_abc  ", "", Credential{Kind: KindAPIKey, Token: "oagent_abc"}, true},
-		"bearer without prefix":     {"Bearer eyJ.abc.def", "", Credential{}, true},
+		"bearer token":              {"Bearer eyJ.abc.def", "", Credential{Kind: KindToken, Token: "eyJ.abc.def"}, true},
 		"bearer empty":              {"Bearer ", "", Credential{}, true},
 		"unknown scheme":            {"Digest abc", "", Credential{}, true},
 		"basic good":                {basic("admin", "s3:cret"), "", Credential{Kind: KindBasic, User: "admin", Password: "s3:cret"}, true},
@@ -41,7 +41,8 @@ func TestFromHeader(t *testing.T) {
 		"cookie good":               {"", goodCookie, Credential{Kind: KindSession, Token: "sid-1"}, true},
 		"cookie tampered":           {"", goodCookie + "x", Credential{}, true},
 		"header beats cookie":       {"Bearer oagent_abc", goodCookie, Credential{Kind: KindAPIKey, Token: "oagent_abc"}, true},
-		"bad header ignores cookie": {"Bearer nope", goodCookie, Credential{}, true},
+		"bad header ignores cookie": {"Digest nope", goodCookie, Credential{}, true},
+		"token ignores cookie":      {"Bearer nope", goodCookie, Credential{Kind: KindToken, Token: "nope"}, true},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -64,5 +65,5 @@ func TestFromHeader_EmptyPrefixUsesNoKeys(t *testing.T) {
 	h.Set("Authorization", "Bearer anything")
 	got, present := FromHeader(h, "", testSecret)
 	assert.True(t, present)
-	assert.Equal(t, KindNone, got.Kind)
+	assert.Equal(t, KindToken, got.Kind)
 }

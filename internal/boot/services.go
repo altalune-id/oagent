@@ -21,6 +21,7 @@ import (
 	"altalune.id/oagent/internal/kernel/outbox"
 	"altalune.id/oagent/internal/kernel/ratelimit"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/kernel/tokens"
 	"altalune.id/oagent/internal/kernel/usage"
 	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/org"
@@ -61,7 +62,9 @@ type Services struct {
 	Auth         *auth.Service
 	Resets       *auth.Resets
 	// OIDC is the relying party at oidc.issuer, or nil without one.
-	OIDC            auth.OIDCProvider
+	OIDC auth.OIDCProvider
+	// MCPTokens verifies the provider's access tokens on /mcp, or is nil without MCP OAuth.
+	MCPTokens       tokens.Verifier
 	Install         *install.Service
 	Legal           *legal.Service
 	InstallToken    install.Token

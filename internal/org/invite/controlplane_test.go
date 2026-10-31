@@ -226,6 +226,34 @@ func TestInviteService_OnlyPeopleWrite(t *testing.T) {
 	require.NoError(t, err, "a whole-org key may list")
 }
 
+func TestInviteService_TokenDraftsButNeverSends(t *testing.T) {
+	f := newCPFixture(t)
+	token := f.as(f.owner)
+	token.Source = session.SourceToken
+	c := f.client(token)
+	ctx := context.Background()
+
+	draft, err := c.DraftInvite(ctx, connect.NewRequest(&invitev1.DraftInviteRequest{OrgId: orgPublicID, Email: "dina@x.io"}))
+	require.NoError(t, err)
+	_, err = c.ConfirmDraftInvite(ctx, connect.NewRequest(&invitev1.ConfirmDraftInviteRequest{OrgId: orgPublicID, InviteId: draft.Msg.GetInvite().GetId()}))
+	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+	assert.Equal(t, apperror.CodeForbidden, errCode(t, err))
+
+	list, err := c.ListInvites(ctx, connect.NewRequest(&invitev1.ListInvitesRequest{OrgId: orgPublicID}))
+	require.NoError(t, err)
+	assert.Empty(t, list.Msg.GetInvites())
+	require.Len(t, list.Msg.GetDrafts(), 1)
+
+	_, err = f.client(f.as(f.owner)).ConfirmDraftInvite(ctx,
+		connect.NewRequest(&invitev1.ConfirmDraftInviteRequest{OrgId: orgPublicID, InviteId: draft.Msg.GetInvite().GetId()}))
+	require.NoError(t, err, "a person in the console sends it")
+
+	again, err := c.DraftInvite(ctx, connect.NewRequest(&invitev1.DraftInviteRequest{OrgId: orgPublicID, Email: "zed@x.io"}))
+	require.NoError(t, err)
+	_, err = c.DiscardDraftInvite(ctx, connect.NewRequest(&invitev1.DiscardDraftInviteRequest{OrgId: orgPublicID, InviteId: again.Msg.GetInvite().GetId()}))
+	require.NoError(t, err)
+}
+
 func TestInviteService_ActorComesFromTheMembership(t *testing.T) {
 	f := newCPFixture(t)
 	_, err := f.client(f.as(f.admin)).CreateInvite(context.Background(),

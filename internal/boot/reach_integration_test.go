@@ -223,7 +223,7 @@ func isRefused(err error) bool {
 }
 
 func mintableScopes() []string {
-	return slices.DeleteFunc(scope.Names(), func(n string) bool { return !scope.Mintable(n) })
+	return slices.DeleteFunc(scope.Names(), func(n string) bool { return !scope.Holds(n, scope.HolderAny) })
 }
 
 // A caller from another org reaches nothing in org B, and a new RPC fails here until it is covered.

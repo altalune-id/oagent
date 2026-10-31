@@ -73,7 +73,7 @@ func (e *ScopeLevelError) Error() string {
 	return fmt.Sprintf("apikey: scope %q is not project-level", apperror.Echo(e.Scope))
 }
 
-// PersonOnlyScopeError signals a person-only scope requested for a key.
+// PersonOnlyScopeError signals a scope requested for a key that no key may hold.
 type PersonOnlyScopeError struct{ Scope string }
 
 func (e *PersonOnlyScopeError) Error() string {

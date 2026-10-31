@@ -25,7 +25,7 @@ func Allowed(p session.Principal, permission string) bool {
 	if permission == PersonOnly {
 		return p.IsPerson()
 	}
-	if p.Source == session.SourceAPIKey && !scope.Mintable(permission) {
+	if !scope.Holds(permission, heldBy(p.Source)) {
 		return false
 	}
 	if p.Operator {
@@ -40,4 +40,14 @@ func Require(ctx context.Context, permission string) error {
 		return &ForbiddenError{Permission: permission}
 	}
 	return nil
+}
+
+func heldBy(source session.Source) scope.Holder {
+	switch source {
+	case session.SourceAPIKey:
+		return scope.HolderAny
+	case session.SourceToken:
+		return scope.HolderPerson
+	}
+	return scope.HolderConsole
 }

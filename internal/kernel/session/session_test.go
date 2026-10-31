@@ -34,7 +34,7 @@ func TestWithTenant_ScopesToTheActiveOrg(t *testing.T) {
 func TestPrincipal_JSONDropsAuthority(t *testing.T) {
 	p := Principal{
 		UserID: uuid.New(), Source: SourceLocal, Email: "a@example.com",
-		Scopes: []string{"*"}, Operator: true, AllProjects: true,
+		Scopes: []string{"*"}, TokenScopes: []string{"*"}, Operator: true, AllProjects: true,
 		ProjectIDs: []uuid.UUID{uuid.New()}, ResourceIDs: []uuid.UUID{uuid.New()},
 	}
 	raw, err := json.Marshal(p)
@@ -44,6 +44,7 @@ func TestPrincipal_JSONDropsAuthority(t *testing.T) {
 	assert.Equal(t, p.UserID, back.UserID)
 	assert.Equal(t, p.Email, back.Email)
 	assert.Empty(t, back.Scopes)
+	assert.Empty(t, back.TokenScopes)
 	assert.False(t, back.Operator)
 	assert.False(t, back.AllProjects)
 	assert.Empty(t, back.ProjectIDs)
@@ -55,6 +56,14 @@ func TestPrincipal_IsPerson(t *testing.T) {
 	assert.False(t, Principal{Source: SourceBasic}.IsPerson())
 	assert.False(t, Principal{Source: SourceAPIKey, KeyID: uuid.New()}.IsPerson())
 	assert.False(t, Principal{}.IsPerson())
+}
+
+func TestPrincipal_WithoutAuthority(t *testing.T) {
+	p := Principal{UserID: uuid.New(), Scopes: []string{"*"}, TokenScopes: []string{"*"}, Operator: true}.withoutAuthority()
+	assert.Empty(t, p.Scopes)
+	assert.Empty(t, p.TokenScopes)
+	assert.False(t, p.Operator)
+	assert.NotEqual(t, uuid.Nil, p.UserID)
 }
 
 func TestSystemPrincipal(t *testing.T) {

@@ -32,12 +32,48 @@ func TestEverySpecHasLevel(t *testing.T) {
 	}
 }
 
-func TestCatalog_PersonOnly(t *testing.T) {
-	assert.False(t, Mintable(MemberWrite))
-	assert.False(t, Mintable(ApikeyWrite))
-	assert.True(t, Mintable(MemberRead))
-	assert.True(t, Mintable(WebhookWrite))
-	assert.False(t, Mintable("nope:read"))
+func TestCatalog_Holders(t *testing.T) {
+	for _, s := range All() {
+		switch s.Name {
+		case MemberWrite:
+			assert.Equal(t, HolderPerson, s.Holder, s.Name)
+		case ApikeyWrite:
+			assert.Equal(t, HolderConsole, s.Holder, s.Name)
+		default:
+			assert.Equal(t, HolderAny, s.Holder, s.Name)
+		}
+	}
+}
+
+func TestHolds(t *testing.T) {
+	for name, tc := range map[string]struct {
+		scope string
+		by    Holder
+		want  bool
+	}{
+		"key, any scope":          {MemberRead, HolderAny, true},
+		"key, person scope":       {MemberWrite, HolderAny, false},
+		"key, console scope":      {ApikeyWrite, HolderAny, false},
+		"token, any scope":        {AgentWrite, HolderPerson, true},
+		"token, person scope":     {MemberWrite, HolderPerson, true},
+		"token, console scope":    {ApikeyWrite, HolderPerson, false},
+		"console, any scope":      {AgentRead, HolderConsole, true},
+		"console, person scope":   {MemberWrite, HolderConsole, true},
+		"console, console scope":  {ApikeyWrite, HolderConsole, true},
+		"outside the catalog":     {"nope:read", HolderConsole, false},
+		"an unknown holder holds": {AgentRead, Holder("root"), false},
+	} {
+		t.Run(name, func(t *testing.T) { assert.Equal(t, tc.want, Holds(tc.scope, tc.by)) })
+	}
+}
+
+func TestParse_RefusesAnUnknownHolder(t *testing.T) {
+	_, err := parse([]byte(`[{"name":"a:read","level":"org","holder":"any"}]`))
+	assert.ErrorContains(t, err, "a:read")
+
+	specs, err := parse([]byte(`[{"name":"a:read","level":"org","holder":"console"}]`))
+	assert.NoError(t, err)
+	assert.Equal(t, HolderConsole, specs[0].Holder)
 }
 
 func TestGrants(t *testing.T) {

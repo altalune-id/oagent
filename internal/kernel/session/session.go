@@ -42,6 +42,7 @@ type Principal struct {
 	IDPSubject      string
 	IDToken         string
 	Scopes          []string `json:"-"`
+	TokenScopes     []string `json:"-"`
 	Operator        bool     `json:"-"`
 	ActiveOrgID     uuid.UUID
 	ActiveProjectID uuid.UUID
@@ -59,7 +60,7 @@ func (p Principal) IsPerson() bool {
 }
 
 func (p Principal) withoutAuthority() Principal {
-	p.Scopes, p.Operator, p.ProjectIDs, p.AllProjects, p.ResourceIDs = nil, false, nil, false, nil
+	p.Scopes, p.TokenScopes, p.Operator, p.ProjectIDs, p.AllProjects, p.ResourceIDs = nil, nil, false, nil, false, nil
 	return p
 }
 

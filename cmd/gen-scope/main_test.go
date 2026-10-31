@@ -124,3 +124,13 @@ func TestMain_WritesTheGeneratedFile(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(out), "\tOrgRead = \"org:read\"\n")
 }
+
+func TestRun_RefusesAnUnknownHolder(t *testing.T) {
+	t.Chdir(t.TempDir())
+	require.NoError(t, os.Mkdir("scope", 0o750))
+	require.NoError(t, os.WriteFile("scope/scopes.json", []byte(`[{"name":"a:read","level":"org","holder":"root"}]`), 0o600))
+
+	err := run()
+	require.ErrorContains(t, err, "a:read")
+	assert.NoFileExists(t, "scope/names.gen.go")
+}

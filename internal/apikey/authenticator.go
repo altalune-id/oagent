@@ -97,7 +97,7 @@ func (a *Authenticator) actAsOwner(ctx context.Context, k *APIKey, p session.Pri
 	return p, nil
 }
 
-// SECURITY: a key is never an operator, and person-only scopes left in an old row are dropped.
+// SECURITY: a key is never an operator, and scopes a key can't hold left in an old row are dropped.
 func principalFor(k *APIKey, now time.Time) session.Principal {
 	return session.Principal{
 		UserID:          uuid.Nil,
@@ -105,7 +105,7 @@ func principalFor(k *APIKey, now time.Time) session.Principal {
 		KeyHint:         k.SecretHint,
 		Name:            k.Name,
 		Source:          session.SourceAPIKey,
-		Scopes:          mintableOnly(k.Scopes),
+		Scopes:          keyHeld(k.Scopes),
 		ActiveOrgID:     k.OrgID,
 		ActiveProjectID: k.ProjectID,
 		ProjectIDs:      k.ReachableProjects(),
@@ -115,10 +115,10 @@ func principalFor(k *APIKey, now time.Time) session.Principal {
 	}
 }
 
-func mintableOnly(scopes []string) []string {
+func keyHeld(scopes []string) []string {
 	out := make([]string, 0, len(scopes))
 	for _, s := range scopes {
-		if scope.Mintable(s) {
+		if scope.Holds(s, scope.HolderAny) {
 			out = append(out, s)
 		}
 	}

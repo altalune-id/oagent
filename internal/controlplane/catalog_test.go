@@ -51,6 +51,7 @@ func samples() []error {
 		&tenant.MissingError{},
 		&tenant.UnscopedError{},
 		&authn.UnauthorizedError{},
+		&authn.UnavailableError{},
 		apperror.Invalid("organization_id", apperror.FieldInvalid),
 		apperror.Invalid("owner", apperror.FieldRequired),
 		apperror.Validation([]apperror.Violation{{Field: "slug", Reason: apperror.FieldTooShort, Param: "3"}}),

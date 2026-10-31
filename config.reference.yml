@@ -111,6 +111,12 @@ mail:
 mcp:
   # env: OAGENT_MCP_APPS_UI
   appsUI: ""
+  # env: OAGENT_MCP_AUDIENCE
+  audience: ""
+  # env: OAGENT_MCP_AUDIENCE_OVERRIDE
+  audienceOverride: ""
+  # env: OAGENT_MCP_CLOCK_SKEW
+  clockSkew: 60s
   # env: OAGENT_MCP_ENABLED
   enabled: false
 
