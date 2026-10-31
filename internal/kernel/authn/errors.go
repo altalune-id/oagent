@@ -29,3 +29,16 @@ func IsUnauthorizedError(err error) bool {
 func (e *UnauthorizedError) ToAppError() *apperror.AppError {
 	return apperror.New(apperror.CodeUnauthenticated, "Sign in required").WithCause(e)
 }
+
+// UnavailableError signals that a credential could not be checked, such as an identity provider or database outage.
+type UnavailableError struct{ Cause error }
+
+func (*UnavailableError) Error() string { return "authn: credential check unavailable" }
+
+func (e *UnavailableError) Unwrap() error { return e.Cause }
+
+// IsUnavailableError reports whether err wraps an *UnavailableError.
+func IsUnavailableError(err error) bool {
+	_, ok := errors.AsType[*UnavailableError](err)
+	return ok
+}

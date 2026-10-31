@@ -99,6 +99,9 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 	}
 
 	svcs := buildServices(k, cfg)
+	if svcs.MCPTokens, err = buildMCPTokens(cfg, providerClient()); err != nil {
+		return nil, err
+	}
 	if svcs.Mailer, err = buildMailer(cfg); err != nil {
 		return nil, err
 	}

@@ -11,9 +11,11 @@ import (
 	invitev1 "altalune.id/oagent/gen/go/invite/v1"
 	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
 	"altalune.id/oagent/internal/kernel/authz"
+	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
+	"altalune.id/oagent/scope"
 )
 
 // InviteService implements invite.v1.InviteService; every id it takes and returns is a public id.
@@ -113,10 +115,13 @@ func (s *InviteService) DraftInvite(
 	}), nil
 }
 
-// ConfirmDraftInvite sends a drafted invite; its link goes only to the invitee's email.
+// ConfirmDraftInvite sends a drafted invite; its link goes only to the invitee's email. SECURITY: a token drafts but never sends.
 func (s *InviteService) ConfirmDraftInvite(
 	ctx context.Context, req *connect.Request[invitev1.ConfirmDraftInviteRequest],
 ) (*connect.Response[invitev1.ConfirmDraftInviteResponse], error) {
+	if session.PrincipalFrom(ctx).Source == session.SourceToken {
+		return nil, &authz.ForbiddenError{Permission: scope.MemberWrite}
+	}
 	orgID, inviteID, r, err := s.target(ctx, req.Msg.GetOrgId(), req.Msg.GetInviteId())
 	if err != nil {
 		return nil, err

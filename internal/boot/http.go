@@ -117,6 +117,9 @@ func buildMCPHandler(srv *rootmcp.Server, svcs *Services, log *slog.Logger) http
 // SECURITY: no session authenticator — /mcp has no CSRF guard, so a browser cookie must never act on it.
 func mcpChain(svcs *Services) authn.Chain {
 	chain := authn.Chain{svcs.KeyAuthn}
+	if svcs.MCPTokens != nil {
+		chain = append(chain, auth.TokenAuthenticator{Verifier: svcs.MCPTokens, Auth: svcs.Auth})
+	}
 	if svcs.Caps.BasicAuth {
 		chain = append(chain, auth.BasicAuthenticator{Auth: svcs.Auth})
 	}

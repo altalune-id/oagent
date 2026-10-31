@@ -104,11 +104,34 @@ func (s *Service) Basic(ctx context.Context, username, pass string) (session.Pri
 	return s.Refresh(ctx, session.Principal{Source: session.SourceBasic, Name: want.User, IssuedAt: s.now()})
 }
 
+// Token resolves a verified access token to its linked person. SECURITY: an unknown subject is a 401; a store failure is unavailable.
+func (s *Service) Token(ctx context.Context, verified session.Principal) (session.Principal, error) {
+	if s.deps.Identities == nil {
+		return session.Principal{}, &authn.UnauthorizedError{}
+	}
+	u, err := s.deps.Identities.ByIDP(ctx, s.deps.Issuer, verified.IDPSubject)
+	switch {
+	case user.IsNotFoundError(err):
+		return session.Principal{}, &authn.UnauthorizedError{}
+	case err != nil:
+		return session.Principal{}, &authn.UnavailableError{Cause: err}
+	}
+	p := principalOf(u, s.now())
+	p.Source, p.IDPIssuer, p.IDPSubject, p.TokenScopes = session.SourceToken, s.deps.Issuer, verified.IDPSubject, verified.Scopes
+	p, err = s.Refresh(ctx, p)
+	if err != nil {
+		return session.Principal{}, &authn.UnavailableError{Cause: err}
+	}
+	return p, nil
+}
+
 // Refresh rebuilds p's Scopes, Operator flag and active org and project from the database; API key Principals are returned as-is.
 func (s *Service) Refresh(ctx context.Context, p session.Principal) (session.Principal, error) {
 	switch {
 	case p.Source == session.SourceAPIKey:
 		return p, nil
+	case p.Source == session.SourceToken:
+		return s.refreshToken(ctx, p)
 	case p.IsPerson():
 		return s.refreshPerson(ctx, withoutAuthority(p))
 	case p.Source == session.SourceBasic:
@@ -216,6 +239,28 @@ func (s *Service) refreshPerson(ctx context.Context, p session.Principal) (sessi
 	return s.withActiveOrg(ctx, p, active.OrgID)
 }
 
+// SECURITY: a token acts only in the person's one org, holds what it was granted within their role there, and is never an operator.
+func (s *Service) refreshToken(ctx context.Context, p session.Principal) (session.Principal, error) {
+	granted := p.TokenScopes
+	p = withoutAuthority(p)
+	p.TokenScopes = granted
+	ms, err := s.deps.Members.ListByUser(ctx, p.UserID)
+	if err != nil {
+		return session.Principal{}, err
+	}
+	if len(ms) != 1 {
+		p.ActiveOrgID, p.ActiveProjectID = uuid.Nil, uuid.Nil
+		return p, nil
+	}
+	role := member.BuiltinPermissions(ms[0].Role)
+	for _, g := range granted {
+		if scope.Valid(g) && scope.Grants(role, g) && scope.Holds(g, scope.HolderPerson) && !slices.Contains(p.Scopes, g) {
+			p.Scopes = append(p.Scopes, g)
+		}
+	}
+	return s.withActiveOrg(ctx, p, ms[0].OrgID)
+}
+
 func (s *Service) refreshBasic(ctx context.Context, p session.Principal) (session.Principal, error) {
 	sys, err := s.deps.Orgs.System(ctx)
 	if err != nil {
@@ -257,6 +302,6 @@ func (s *Service) withActiveOrg(ctx context.Context, p session.Principal, orgID 
 }
 
 func withoutAuthority(p session.Principal) session.Principal {
-	p.Scopes, p.Operator, p.ProjectIDs, p.AllProjects, p.ResourceIDs = nil, false, nil, false, nil
+	p.Scopes, p.TokenScopes, p.Operator, p.ProjectIDs, p.AllProjects, p.ResourceIDs = nil, nil, false, nil, false, nil
 	return p
 }

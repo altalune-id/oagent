@@ -151,6 +151,27 @@ func TestValidate_EveryRule(t *testing.T) {
 		{"oidc.buttonLabel blank", func(c *Config) { oidcOn(c); c.OIDC.ButtonLabel = " " }, missingSetting("oidc.buttonLabel")},
 		{"oidc needs http.baseURL in production", func(c *Config) { oidcOn(c); c.HTTP.BaseURL = "" }, missingSetting("http.baseURL")},
 		{"oidc off ignores its keys", func(c *Config) { c.OIDC.ClientID, c.OIDC.Scopes = "", nil }, valid},
+		{"mcp oauth on", mcpOAuthOn, valid},
+		{"mcp.audience matching the mounted url", func(c *Config) { mcpOAuthOn(c); c.MCP.Audience = "https://oagent.example.com/mcp" }, valid},
+		{"mcp.audience typo", func(c *Config) { mcpOAuthOn(c); c.MCP.Audience = "https://oagent.exmple.com/mcp" }, invalidSetting("mcp.audience")},
+		{"mcp.audience another url with the override", func(c *Config) {
+			mcpOAuthOn(c)
+			c.MCP.Audience, c.MCP.AudienceOverride = "https://proxy.example.com/mcp", true
+		}, valid},
+		{"mcp.audience relative", func(c *Config) { mcpOAuthOn(c); c.MCP.Audience, c.MCP.AudienceOverride = "/mcp", true }, invalidSetting("mcp.audience")},
+		{"mcp.audience not http", func(c *Config) { mcpOAuthOn(c); c.MCP.Audience, c.MCP.AudienceOverride = "urn:oagent:mcp", true }, invalidSetting("mcp.audience")},
+		{"mcp.audience with a fragment", func(c *Config) {
+			mcpOAuthOn(c)
+			c.MCP.Audience, c.MCP.AudienceOverride = "https://proxy.example.com/mcp#x", true
+		}, invalidSetting("mcp.audience")},
+		{"mcp.audience in development without http.baseURL", func(c *Config) {
+			mcpOAuthOn(c)
+			devConsole(c)
+			c.OIDC.Issuer, c.HTTP.BaseURL, c.MCP.Audience = "http://localhost:8080", "", "http://localhost:5150/mcp"
+		}, valid},
+		{"mcp.clockSkew zero", func(c *Config) { c.MCP.ClockSkew = 0 }, valid},
+		{"mcp.clockSkew negative", func(c *Config) { c.MCP.ClockSkew = -time.Second }, invalidSetting("mcp.clockSkew")},
+		{"mcp off ignores mcp.audience", func(c *Config) { oidcOn(c); c.MCP.Audience = "nope" }, valid},
 		{"auth.password.enabled off with oidc", func(c *Config) { oidcOn(c); c.Auth.Password.Enabled = new(false) }, valid},
 		{"auth.password.enabled off without oidc", func(c *Config) { c.Auth.Password.Enabled = new(false) }, invalidSetting("auth.password.enabled")},
 		{"auth.genesis.email alone with passwords off", func(c *Config) {

@@ -20,12 +20,17 @@ const (
 
 type oidcProvider struct{ rp *oidcrp.Client }
 
-// NOTE: nil without oidc.issuer; private hosts are allowed because the issuer is operator config, like a webhook URL is.
+// NOTE: nil without oidc.issuer.
 func buildOIDCProvider(cfg config.Config) auth.OIDCProvider {
 	if !cfg.OIDC.Enabled() {
 		return nil
 	}
-	return newOIDCProvider(cfg, httpclient.New(httpclient.WithAllowPrivateHosts(true), httpclient.WithTimeout(oidcTimeout)))
+	return newOIDCProvider(cfg, providerClient())
+}
+
+// NOTE: private hosts are allowed because the issuer is operator config, like a webhook URL is.
+func providerClient() *http.Client {
+	return httpclient.New(httpclient.WithAllowPrivateHosts(true), httpclient.WithTimeout(oidcTimeout))
 }
 
 func newOIDCProvider(cfg config.Config, client *http.Client) *oidcProvider {

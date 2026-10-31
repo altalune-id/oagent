@@ -17,6 +17,7 @@ const (
 	KindAPIKey
 	KindBasic
 	KindSession
+	KindToken
 )
 
 // Credential is what a request presents; exactly one kind per request.
@@ -47,10 +48,13 @@ func fromAuthorization(v, keyPrefix string) Credential {
 	rest = strings.TrimSpace(rest)
 	switch {
 	case strings.EqualFold(scheme, "Bearer"):
-		if keyPrefix == "" || !strings.HasPrefix(rest, keyPrefix) {
+		switch {
+		case rest == "":
 			return Credential{}
+		case keyPrefix != "" && strings.HasPrefix(rest, keyPrefix):
+			return Credential{Kind: KindAPIKey, Token: rest}
 		}
-		return Credential{Kind: KindAPIKey, Token: rest}
+		return Credential{Kind: KindToken, Token: rest}
 	case strings.EqualFold(scheme, "Basic"):
 		raw, err := base64.StdEncoding.DecodeString(rest)
 		if err != nil {

@@ -8,7 +8,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/altalune-id/oidcrp/oidcrptest"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,6 +30,7 @@ import (
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/capabilities"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/kernel/tokens"
 	mcpinternal "altalune.id/oagent/internal/mcp"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/permission"
@@ -53,6 +56,80 @@ func TestMCPChain(t *testing.T) {
 	chain = mcpChain(basic)
 	require.Len(t, chain, 2)
 	assert.IsType(t, auth.BasicAuthenticator{}, chain[1])
+}
+
+func TestMCPChain_TokensWhenMCPOAuthIsOn(t *testing.T) {
+	svcs := &Services{KeyAuthn: &apikey.Authenticator{}, Auth: &auth.Service{}, MCPTokens: fakeTokens{}}
+	chain := mcpChain(svcs)
+	require.Len(t, chain, 2)
+	assert.Equal(t, auth.TokenAuthenticator{Verifier: fakeTokens{}, Auth: svcs.Auth}, chain[1])
+}
+
+type fakeTokens struct{}
+
+func (fakeTokens) Verify(context.Context, string) (session.Principal, error) {
+	return session.Principal{}, &tokens.InvalidTokenError{}
+}
+
+func mcpOAuthConfig(issuer string) config.Config {
+	cfg := devLocalConfig()
+	cfg.HTTP.BaseURL = "https://oagent.example.com"
+	cfg.MCP.Enabled = true
+	cfg.OIDC = config.OIDCConfig{Issuer: issuer, ClientID: "oagent"}
+	return cfg
+}
+
+func TestMCPAudience(t *testing.T) {
+	cfg := mcpOAuthConfig("https://idp.example.com")
+	assert.Equal(t, "https://oagent.example.com/mcp", mcpAudience(cfg))
+	cfg.HTTP.BasePath = "/oagent"
+	assert.Equal(t, "https://oagent.example.com/oagent/mcp", mcpAudience(cfg))
+	cfg.HTTP.BaseURL = ""
+	assert.Equal(t, "http://localhost:5150/oagent/mcp", mcpAudience(cfg), "development falls back to the listen address")
+	cfg.MCP.Audience = "https://proxy.example.com/mcp"
+	assert.Equal(t, "https://proxy.example.com/mcp", mcpAudience(cfg))
+}
+
+func TestBuildMCPTokens_OnlyWithMCPOAuth(t *testing.T) {
+	for name, cfg := range map[string]config.Config{
+		"no issuer": devLocalConfig(),
+		"mcp off":   func() config.Config { c := mcpOAuthConfig("https://idp.example.com"); c.MCP.Enabled = false; return c }(),
+	} {
+		v, err := buildMCPTokens(cfg, nil)
+		require.NoError(t, err, name)
+		assert.Nil(t, v, name)
+	}
+}
+
+func TestBuildMCPTokens_TakesTheClockSkew(t *testing.T) {
+	idp := oidcrptest.New(t)
+	now := time.Now()
+	late := idp.AccessToken(map[string]any{
+		"aud": "https://oagent.example.com/mcp", "iat": now.Add(-time.Hour).Unix(), "exp": now.Add(-45 * time.Second).Unix(),
+	})
+	for skew, ok := range map[time.Duration]bool{time.Minute: true, 10 * time.Second: false} {
+		cfg := mcpOAuthConfig(idp.Issuer())
+		cfg.MCP.ClockSkew = skew
+		v, err := buildMCPTokens(cfg, idp.Client())
+		require.NoError(t, err)
+		_, err = v.Verify(t.Context(), late)
+		assert.Equal(t, ok, err == nil, "skew %s: %v", skew, err)
+	}
+}
+
+// SECURITY: RFC 8707: the verifier takes only tokens minted for this MCP endpoint.
+func TestBuildMCPTokens_PinsTheAudience(t *testing.T) {
+	idp := oidcrptest.New(t)
+	v, err := buildMCPTokens(mcpOAuthConfig(idp.Issuer()), idp.Client())
+	require.NoError(t, err)
+	require.NotNil(t, v)
+
+	p, err := v.Verify(t.Context(), idp.AccessToken(map[string]any{"aud": "https://oagent.example.com/mcp"}))
+	require.NoError(t, err)
+	assert.Equal(t, session.SourceToken, p.Source)
+
+	_, err = v.Verify(t.Context(), idp.AccessToken(map[string]any{"aud": "https://oagent.example.com/api"}))
+	assert.ErrorAs(t, err, new(*tokens.InvalidTokenError))
 }
 
 func TestBuildMCPHandler(t *testing.T) {

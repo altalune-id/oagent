@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/altalune-id/oidcrp"
+
 	"altalune.id/oagent/config"
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
 	authv1mcp "altalune.id/oagent/gen/go/auth/v1/authv1mcp"
@@ -15,6 +17,7 @@ import (
 	webhookv1mcp "altalune.id/oagent/gen/go/webhook/v1/webhookv1mcp"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/auth"
+	"altalune.id/oagent/internal/kernel/tokens"
 	mcpinternal "altalune.id/oagent/internal/mcp"
 	mcpui "altalune.id/oagent/internal/mcp/ui"
 	"altalune.id/oagent/internal/org"
@@ -77,4 +80,20 @@ func mcpHTTPHandler(srv *rootmcp.Server) http.Handler {
 		return nil
 	}
 	return srv.Handler()
+}
+
+// SECURITY: RFC 8707: the verifier is pinned to the MCP audience, so a token minted for another resource is refused; nil without MCP OAuth.
+func buildMCPTokens(cfg config.Config, client *http.Client) (tokens.Verifier, error) {
+	if !cfg.MCP.OAuth(cfg.OIDC) {
+		return nil, nil
+	}
+	tc := tokens.Config{Issuer: cfg.OIDC.Issuer, Audience: mcpAudience(cfg), ClockSkew: cfg.MCP.ClockSkew}
+	return tokens.NewVerifier(tc, oidcrp.NewKeySource(cfg.OIDC.Issuer, client))
+}
+
+func mcpAudience(cfg config.Config) string {
+	if cfg.MCP.Audience != "" {
+		return cfg.MCP.Audience
+	}
+	return publicBase(cfg.HTTP) + "/mcp"
 }

@@ -47,6 +47,8 @@ func newLockdown(t *testing.T, cfg config.Config, idp ...*oidcrptest.IDP) *lockd
 	svcs.InstallRequired = required
 	for _, p := range idp {
 		svcs.OIDC = newOIDCProvider(cfg, p.Client())
+		svcs.MCPTokens, err = buildMCPTokens(cfg, p.Client())
+		require.NoError(t, err)
 	}
 
 	console := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("console")) })
