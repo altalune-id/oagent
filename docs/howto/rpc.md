@@ -8,7 +8,7 @@ The request chain on `/api` is: authn and the permission check (`internal/permis
 
 - [ ] A new RPC, or a new field on an existing one (for example an optional filter on a `List` call)? A field needs no new permission, tool or command. When the request does not say, ask.
 - [ ] Which domain owns it? The handler goes in that domain's `controlplane.go`, never in `internal/controlplane`.
-- [ ] Which permission does the caller need (`scope/scopes.json`)? Reuse `<domain>:read` / `<domain>:write`; `authz.AnyAuthenticated` only for calls about the caller itself, `authz.PersonOnly` when a key must never call it.
+- [ ] Which permission does the caller need (`scope/scopes.json`)? Reuse `<domain>:read` / `<domain>:write`; `authz.AnyAuthenticated` only for calls about the caller itself, `authz.PersonOnly` when a key must never call it. A new scope that a key must never hold gets `"holder": "person"` in `scopes.json`; one that only the web console may hold gets `"console"`.
 - [ ] Which ids does the request name? Every id is a public id ([public-ids.md](public-ids.md)). Slugs never travel as ids.
 - [ ] Which reach check fits: `ReachOrg`, `ReachWholeOrg`, `ReachProject`, `ReachWholeProject` or `ReachResource` (`internal/kernel/authz`)?
 - [ ] Which shape rules go in the proto, and which domain rules stay in the service? Shape (required, length, format) lives only in the proto; never repeat it in Go. The service checks what only it can know: existence, state, ownership, uniqueness.

@@ -20,11 +20,12 @@ describe('mintableForMe', () => {
     { name: 'org:write', level: 'org', labelKey: 'scope.org_write' },
     { name: 'agent:read', level: 'project', labelKey: 'scope.agent_read' },
     { name: 'agent:write', level: 'project', labelKey: 'scope.agent_write' },
-    { name: 'apikey:write', level: 'org', labelKey: 'scope.apikey_write', personOnly: true },
+    { name: 'member:write', level: 'org', labelKey: 'scope.member_write', holder: 'person' },
+    { name: 'apikey:write', level: 'org', labelKey: 'scope.apikey_write', holder: 'console' },
   ];
 
-  it('drops person-only and above-role scopes', () => {
-    expect(mintableForMe(catalog, ['agent:*', 'apikey:write']).map(s => s.name)).toEqual(['agent:read', 'agent:write']);
+  it('drops scopes only a person holds and above-role scopes', () => {
+    expect(mintableForMe(catalog, ['agent:*', 'member:write', 'apikey:write']).map(s => s.name)).toEqual(['agent:read', 'agent:write']);
   });
 
   it('an owner mints every mintable scope', () => {

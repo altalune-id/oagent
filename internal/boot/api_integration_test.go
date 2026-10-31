@@ -268,7 +268,7 @@ func TestAPI_MemberManagesOwnPersonalKeys(t *testing.T) {
 	_, err = create("personal", "org:write")
 	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "above the member role")
 	_, err = create("personal", "apikey:write")
-	require.Error(t, err, "person-only scope")
+	require.Error(t, err, "a scope a key can't hold")
 	_, err = create("org", "agent:read")
 	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err), "org keys need apikey:write")
 

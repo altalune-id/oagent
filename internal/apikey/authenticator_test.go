@@ -133,7 +133,7 @@ func TestAuthenticator_NotFoundIsNotReported(t *testing.T) {
 	assert.Empty(t, r.errs)
 }
 
-func TestAuthenticator_StripsPersonOnlyScopes(t *testing.T) {
+func TestAuthenticator_StripsScopesAKeyCannotHold(t *testing.T) {
 	k, plain := mintOrgKey(t, []string{"agent:read"})
 	k.Scopes = append(k.Scopes, "apikey:write", "member:write")
 	a := apikey.NewAuthenticator(&fakes.APIKeyStore{Key: k}, nil, apikey.NewScheme(""), nil, nil)

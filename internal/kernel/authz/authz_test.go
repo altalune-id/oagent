@@ -26,14 +26,38 @@ func TestAllowed(t *testing.T) {
 	assert.False(t, authz.Allowed(person, ""), "an unmapped procedure is denied")
 }
 
-func TestAllowed_KeyNeverHoldsPersonOnly(t *testing.T) {
-	key := session.Principal{Source: session.SourceAPIKey, Scopes: []string{"member:*"}}
-	assert.False(t, authz.Allowed(key, scope.MemberWrite))
+func TestAllowed_KeyHoldsOnlyAnyScopes(t *testing.T) {
+	key := session.Principal{Source: session.SourceAPIKey, Scopes: []string{"*"}}
 	assert.True(t, authz.Allowed(key, scope.MemberRead))
+	assert.False(t, authz.Allowed(key, scope.MemberWrite))
+	assert.False(t, authz.Allowed(key, scope.ApikeyWrite))
 
 	opKey := session.Principal{Source: session.SourceAPIKey, Operator: true}
 	assert.False(t, authz.Allowed(opKey, scope.MemberWrite))
 	assert.True(t, authz.Allowed(opKey, authz.AnyAuthenticated))
+}
+
+func TestAllowed_TokenNeverHoldsConsoleScopes(t *testing.T) {
+	token := session.Principal{Source: session.SourceToken, UserID: uuid.New(), Scopes: []string{"*"}}
+	assert.True(t, authz.Allowed(token, scope.AgentWrite))
+	assert.True(t, authz.Allowed(token, scope.MemberWrite))
+	assert.False(t, authz.Allowed(token, scope.ApikeyWrite))
+
+	opToken := session.Principal{Source: session.SourceToken, UserID: uuid.New(), Operator: true}
+	assert.False(t, authz.Allowed(opToken, scope.ApikeyWrite), "the holder is checked before the operator")
+}
+
+func TestAllowed_TheWebHoldsEveryScope(t *testing.T) {
+	for name, p := range map[string]session.Principal{
+		"local":  {Source: session.SourceLocal, UserID: uuid.New(), Scopes: []string{"*"}},
+		"oidc":   {Source: session.SourceOIDC, UserID: uuid.New(), Scopes: []string{"*"}},
+		"basic":  {Source: session.SourceBasic, Operator: true},
+		"system": session.System(),
+	} {
+		for _, perm := range []string{scope.AgentRead, scope.MemberWrite, scope.ApikeyWrite} {
+			assert.True(t, authz.Allowed(p, perm), "%s %s", name, perm)
+		}
+	}
 }
 
 func TestRequire(t *testing.T) {
