@@ -1,16 +1,18 @@
-import type { PersonalKeyForm } from './PersonalKeys.vue';
-import type { ShownError } from '~/lib/apperror/message';
-import { timestampFromDate } from '@bufbuild/protobuf/wkt';
-import scopes from '@shared/scope/scopes.json';
-import { useErrorMessage } from '~/composables/useErrorMessage';
-import { useScopeLabel } from '~/composables/useScopeLabel';
+import type { ShownError } from '#base/lib/apperror/message';
+import type { PersonalKeyView } from './PersonalKeys.vue';
+import { useDates } from '#base/composables/useDates';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { useScopeLabel } from '#base/composables/useScopeLabel';
+import { expiryState } from '#base/lib/tokens/keyStatus';
 import { isPerson } from '~/lib/auth/person';
-import { mcpURL } from '~/lib/auth/urls';
-import { toAPIKey, useAPIKeysStore } from '~/stores/apiKeys';
+import { useAPIKeysStore } from '~/stores/apiKeys';
 import { useAuthStore } from '~/stores/auth';
 import { useProjectsStore } from '~/stores/projects';
-import { mintableForMe } from './grants';
-import { mcpSnippet } from './mcpSnippet';
+
+export interface CreatedKey {
+  plaintext: string;
+  snippet: string;
+}
 
 // The server already hides other people's personal keys, so every personal key in the store is the viewer's.
 export function usePersonalKeys(orgId: string) {
@@ -19,41 +21,26 @@ export function usePersonalKeys(orgId: string) {
   const projects = useProjectsStore();
   const scopeLabel = useScopeLabel();
   const errorMessage = useErrorMessage();
+  const { date, when } = useDates();
   const { $apiKeyClient: client } = useNuxtApp();
-  const apiUrl = useRuntimeConfig().public.apiUrl;
 
-  const busy = ref(false);
   const error = ref<ShownError | null>(null);
-  const created = ref<{ plaintext: string, snippet: string } | null>(null);
+  const created = ref<CreatedKey | null>(null);
 
-  const mine = computed(() => keys.items.filter(k => k.kind === 'personal').map(k => ({ ...k, scopes: k.scopes.map(scopeLabel) })));
-  const mintable = computed(() => mintableForMe(scopes, auth.me?.permissions ?? []).map(s => ({ name: s.name, label: scopeLabel(s.name) })));
-  const orgProjects = computed(() => projects.forOrg(orgId).map(p => ({ id: p.id, name: p.name })));
   const signedIn = computed(() => isPerson(auth.me));
-
-  async function create(form: PersonalKeyForm) {
-    busy.value = true;
-    error.value = null;
-    try {
-      const res = await client.createAPIKey({
-        orgId,
-        kind: 'personal',
-        name: form.name,
-        scopes: form.scopes,
-        allProjects: form.allProjects,
-        projectIds: form.allProjects ? [] : form.projectIds,
-        expiresAt: timestampFromDate(new Date(Date.now() + form.expiresInHours * 3600_000)),
-      });
-      if (res.key) {
-        keys.add(toAPIKey(res.key));
-      }
-      created.value = { plaintext: res.plaintext, snippet: mcpSnippet('oagent', mcpURL(apiUrl, window.location.origin), res.plaintext) };
-    } catch (e) {
-      error.value = errorMessage(e, 'error.create_apikey');
-    } finally {
-      busy.value = false;
-    }
-  }
+  const rows = computed<PersonalKeyView[]>(() => {
+    const now = new Date();
+    return keys.items.filter(k => k.kind === 'personal').map(k => ({
+      rowKey: k.rowKey,
+      name: k.name,
+      secretHint: k.secretHint,
+      scopes: k.scopes.map(scopeLabel),
+      lastUsed: when(k.lastUsedAt),
+      expires: date(k.expiresAt),
+      expiry: expiryState(k.expiresAt, now),
+      revoked: !!k.revokedAt,
+    }));
+  });
 
   async function revoke(hint: string) {
     error.value = null;
@@ -73,5 +60,5 @@ export function usePersonalKeys(orgId: string) {
     await Promise.all([auth.load(), keys.ensureLoaded(orgId), projects.ensureLoaded(orgId)]);
   }
 
-  return { mine, mintable, orgProjects, signedIn, busy, error, created, create, revoke, dismiss, load };
+  return { rows, signedIn, error, created, revoke, dismiss, load };
 }

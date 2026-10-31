@@ -56,7 +56,7 @@ export const PasswordTooShort: Story = {
 
 const sessionLabels = {
   title: 'Sessions',
-  body: 'Sign out of oagent on every browser and device, this one too.',
+  body: 'Sign out of OAgent on every browser and device, this one too.',
   signOut: 'Sign out everywhere',
   confirmTitle: 'Sign out everywhere?',
   confirmBody: 'You will need to sign in again on every device.',

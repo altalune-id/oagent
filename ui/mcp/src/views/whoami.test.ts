@@ -39,7 +39,7 @@ describe('whoamiRows', () => {
   });
 
   it('shows an org key by its id', () => {
-    expect(whoamiRows({ source: 'apikey', keyHint: 'k1x9', activeOrgSlug: 'acme', permissions: ['agent:read'] })).toEqual([
+    expect(whoamiRows({ source: 'apikey', keyHint: 'k1x9', activeOrgSlug: 'acme', permissions: ['webhook:read'] })).toEqual([
       { label: 'Key', value: '…k1x9' },
       { label: 'Org', value: 'acme' },
     ]);
@@ -80,7 +80,7 @@ describe('permissionBadges', () => {
   });
 
   it('keeps short lists and handles none', () => {
-    expect(permissionBadges(['agent:read'])).toEqual({ shown: ['agent:read'], more: 0 });
+    expect(permissionBadges(['webhook:read'])).toEqual({ shown: ['webhook:read'], more: 0 });
     expect(permissionBadges(undefined)).toEqual({ shown: [], more: 0 });
   });
 });

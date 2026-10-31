@@ -1,7 +1,7 @@
-import type { APIKey as APIKeyPB } from '~~/gen/apikey/v1/apikey_pb';
-import type { ShownError } from '~/lib/apperror/message';
+import type { ShownError } from '#base/lib/apperror/message';
+import type { APIKey as APIKeyPB } from '#gen/apikey/v1/apikey_pb';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
-import { useErrorMessage } from '~/composables/useErrorMessage';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
 
 export interface APIKey {
   rowKey: string;
@@ -12,7 +12,9 @@ export interface APIKey {
   projectIds: string[];
   allProjects: boolean;
   secretHint: string;
+  createdAt?: Date;
   expiresAt?: Date;
+  lastUsedAt?: Date;
   revokedAt?: Date;
 }
 
@@ -28,7 +30,9 @@ export function toAPIKey(k: APIKeyPB): APIKey {
     projectIds: [...k.projectIds],
     allProjects: k.allProjects,
     secretHint: k.secretHint,
+    createdAt: k.createdAt ? timestampDate(k.createdAt) : undefined,
     expiresAt: k.expiresAt ? timestampDate(k.expiresAt) : undefined,
+    lastUsedAt: k.lastUsedAt ? timestampDate(k.lastUsedAt) : undefined,
     revokedAt: k.revokedAt ? timestampDate(k.revokedAt) : undefined,
   };
 }

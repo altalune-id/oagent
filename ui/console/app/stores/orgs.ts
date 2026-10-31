@@ -1,5 +1,5 @@
-import type { ShownError } from '~/lib/apperror/message';
-import { useErrorMessage } from '~/composables/useErrorMessage';
+import type { ShownError } from '#base/lib/apperror/message';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
 
 export interface Org {
   id: string;

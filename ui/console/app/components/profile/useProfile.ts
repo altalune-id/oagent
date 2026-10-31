@@ -1,11 +1,11 @@
-import type { AvatarPerson } from '~/components/ui/avatar';
+import type { AvatarPerson } from '#base/components/ui/avatar';
 
-import type { ShownError } from '~/lib/apperror/message';
+import type { ShownError } from '#base/lib/apperror/message';
 import { create } from '@bufbuild/protobuf';
-import { ChangePasswordRequestSchema, UpdateProfileRequestSchema } from '~~/gen/auth/v1/auth_pb';
-import { useErrorMessage } from '~/composables/useErrorMessage';
-import { useValidation } from '~/composables/useValidation';
-import { errorCode } from '~/lib/apperror/message';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { useValidation } from '#base/composables/useValidation';
+import { errorCode } from '#base/lib/apperror/message';
+import { ChangePasswordRequestSchema, UpdateProfileRequestSchema } from '#gen/auth/v1/auth_pb';
 import { isPerson as personOf } from '~/lib/auth/person';
 import { siblingURL } from '~/lib/auth/urls';
 import { useAuthStore } from '~/stores/auth';

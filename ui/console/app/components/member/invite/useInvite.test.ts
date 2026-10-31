@@ -3,9 +3,9 @@ import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
+import { InviteSchema } from '#gen/invite/v1/invite_pb';
+import { connectError, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { useInvitesStore } from '~/stores/invites';
-import { InviteSchema } from '../../../../gen/invite/v1/invite_pb';
-import { connectError, setClient, setKnownKeys } from '../../../../test/nuxt-globals';
 import { useInvite } from './useInvite';
 
 const bob = create(InviteSchema, { id: '2MPkgPSKGTZpjjYvbdNZd', email: 'bob@x.io', role: 'admin', status: 'pending', invitedByName: 'Olga' });
@@ -195,7 +195,7 @@ describe('useInvite', () => {
     inv.email.value = 'cy at x.io';
     await inv.submit();
     expect(client.createInvite).not.toHaveBeenCalled();
-    expect(inv.fieldErrors.value).toEqual({ email: 'validation.invalid_format' });
+    expect(inv.fieldErrors.value).toEqual({ email: 'validation.email_format' });
     inv.close();
     expect(inv.fieldErrors.value).toEqual({});
   });

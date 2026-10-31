@@ -1,3 +1,5 @@
+import { t } from '../copy';
+
 // WhoamiData is auth.v1.WhoamiResponse as protojson sends it: empty fields are left out.
 export interface WhoamiData {
   source?: string;
@@ -20,12 +22,12 @@ export interface Row {
 }
 
 const sources: Record<string, string> = {
-  local: 'Signed in',
-  oidc: 'Signed in',
-  token: 'Signed in',
-  apikey: 'API key',
-  system: 'System (stdio)',
-  basic: 'Operator (basic)',
+  local: t('mcp.signed_in'),
+  oidc: t('mcp.signed_in'),
+  token: t('mcp.signed_in'),
+  apikey: t('mcp.whoami_apikey'),
+  system: t('mcp.whoami_system'),
+  basic: t('mcp.whoami_basic'),
 };
 
 export function sourceLabel(source: string | undefined): string {
@@ -51,17 +53,17 @@ export function whoamiRows(data: WhoamiData): Row[] {
   };
   if (data.source === 'apikey') {
     if (data.ownerId) {
-      add('Acts for', data.name && data.email ? `${data.name} <${data.email}>` : data.email || data.name);
+      add(t('mcp.whoami_acts_for'), data.name && data.email ? `${data.name} <${data.email}>` : data.email || data.name);
     }
     if (data.keyHint) {
-      add('Key', `…${data.keyHint}`);
+      add(t('mcp.whoami_key'), `…${data.keyHint}`);
     }
   } else if (data.source !== 'system' && data.source !== 'basic') {
     if (data.name) {
-      add('Email', data.email);
+      add(t('field.email'), data.email);
     }
   }
-  add('Org', data.activeOrgSlug);
+  add(t('mcp.whoami_org'), data.activeOrgSlug);
   return rows;
 }
 

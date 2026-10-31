@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import AppDropdown from '#base/components/ui/AppDropdown.vue';
+import Avatar from '#base/components/ui/Avatar.vue';
 import { isPerson as personOf } from '~/lib/auth/person';
-import Avatar from '../ui/Avatar.vue';
 
 export interface UserMenuIdentity {
   source: string;
@@ -43,11 +44,13 @@ const sourceBadge = computed(() => {
 </script>
 
 <template>
-  <div v-if="me" class="dropdown dropdown-end">
-    <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2 px-1.5" :aria-label="`${labels.signedInAs} ${display}`">
-      <Avatar :id="me.userId ?? ''" :name="me.name || display" :email="me.email" :avatar-url="me.avatarUrl" size="sm" />
-      <span class="max-w-40 truncate max-sm:hidden">{{ display }}</span>
-    </div>
+  <AppDropdown v-if="me" class="dropdown-end" :label="labels.signedInAs" trigger-class="gap-2 px-1.5">
+    <template #trigger>
+      <span aria-hidden="true">
+        <Avatar :id="me.userId ?? ''" :name="me.name || display" :email="me.email" :avatar-url="me.avatarUrl" size="sm" />
+      </span>
+      <span class="max-w-40 truncate max-sm:sr-only">{{ display }}</span>
+    </template>
     <div tabindex="0" class="dropdown-content z-30 mt-2 w-64 rounded-box border border-base-300 bg-base-100 p-3 shadow-lg">
       <p class="text-xs text-base-content/60">
         {{ labels.signedInAs }}
@@ -73,5 +76,5 @@ const sourceBadge = computed(() => {
         </button>
       </form>
     </div>
-  </div>
+  </AppDropdown>
 </template>

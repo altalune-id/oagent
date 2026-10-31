@@ -7,7 +7,7 @@ description: Component auto-imports, lazy loading, and how to turn auto-imports 
 
 Nuxt automatically imports Vue components from the `app/components/` directory by default.
 
-> **In oagent:** `components: { dirs: [] }` in `nuxt.config.ts` turns this off (see "Disabling Component Auto-imports" below). Import each component from its file: `import AppButton from '~/components/ui/AppButton.vue';`. For a lazy component use `defineAsyncComponent(() => import('~/components/...'))`. The rest of this page explains the default behavior you will meet in Nuxt docs and other projects.
+> **In oagent:** `components: { dirs: [] }` in `nuxt.config.ts` turns this off (see "Disabling Component Auto-imports" below). Import each component from its file: `import AppButton from '#base/components/ui/AppButton.vue';`. For a lazy component use `defineAsyncComponent(() => import('~/components/...'))`. The rest of this page explains the default behavior you will meet in Nuxt docs and other projects.
 
 ## Basic Auto-imports
 

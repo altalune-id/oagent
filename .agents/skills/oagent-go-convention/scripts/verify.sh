@@ -35,7 +35,7 @@ else
   step "generated code"
   run generate make generate || { tail -15 "$log/generate.log"; why "make generate failed"; }
   run configex make config-examples || why "make config-examples failed"
-  git status --short -- gen ui/console/gen '*_templ.go' scope apperror .env.reference config.reference.yml | head -10
+  git status --short -- gen ui/base/gen '*_templ.go' scope apperror .env.reference config.reference.yml | head -10
 fi
 
 step "make check (vet, golangci-lint, ESLint, config linters, unit tests)"

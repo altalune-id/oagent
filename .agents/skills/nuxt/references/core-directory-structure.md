@@ -64,7 +64,7 @@ Because `~` points at `app/`, reference root-level files with `~~` — e.g. `~~/
 
 Vue components auto-imported by name (by default):
 
-> **In oagent:** `components: { dirs: [] }` turns this off. Import every component explicitly: `import AppButton from '~/components/ui/AppButton.vue';`. Only module components such as `<Icon>` and Nuxt built-ins (`<NuxtLink>`, `<NuxtPage>`) are global.
+> **In oagent:** `components: { dirs: [] }` turns this off. Import every component explicitly: `import AppButton from '#base/components/ui/AppButton.vue';`. Only module components such as `<Icon>` and Nuxt built-ins (`<NuxtLink>`, `<NuxtPage>`) are global.
 
 ```
 components/
@@ -92,7 +92,7 @@ components/
 
 Vue composables auto-imported (top-level files only, by default):
 
-> **In oagent:** `imports: { scan: false }` turns scanning off. Import your composables explicitly (`import { useErrorMessage } from '~/composables/useErrorMessage';`); Vue, Nuxt and module APIs stay auto-imported.
+> **In oagent:** `imports: { scan: false }` turns scanning off. Import your composables explicitly (`import { useErrorMessage } from '#base/composables/useErrorMessage';`); Vue, Nuxt and module APIs stay auto-imported.
 
 ```
 composables/

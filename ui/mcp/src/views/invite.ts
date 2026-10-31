@@ -1,6 +1,9 @@
+import type { ToolCaller, ToolResult } from '../generic/bridge';
+import { t } from '../copy';
+import { errorEnvelope, errorText } from '../generic/bridge';
 import { roleLabel } from './members';
 
-export const EXPIRED_MESSAGE = 'This draft expired; ask the assistant again.';
+export const EXPIRED_MESSAGE = t('mcp.invite_expired');
 
 export interface Draft {
   id: string;
@@ -12,16 +15,7 @@ export interface Draft {
   expiresAt: Date | null;
 }
 
-interface ToolResult {
-  isError?: boolean;
-  content?: { type: string, text?: string }[];
-  structuredContent?: Record<string, unknown>;
-}
-
-// ToolCaller is the part of the MCP App bridge the invite view uses.
-export interface ToolCaller {
-  callServerTool: (params: { name: string, arguments: Record<string, unknown> }) => Promise<ToolResult>;
-}
+export type { ToolCaller };
 
 export type Outcome
   = | { state: 'sent', email: string }
@@ -74,24 +68,20 @@ type Called = { ok: true, data: Record<string, unknown> } | { ok: false, outcome
 async function call(app: ToolCaller, name: string, d: Draft): Promise<Called> {
   let res: ToolResult;
   try {
-    res = await app.callServerTool({ name, arguments: { org_id: d.orgId, invite_id: d.id } });
+    res = await app.callServerTool({ name, arguments: { orgId: d.orgId, inviteId: d.id } });
   } catch (err) {
     return { ok: false, outcome: { state: 'error', message: String(err) } };
   }
   if (!res.isError) {
     return { ok: true, data: res.structuredContent ?? {} };
   }
-  return { ok: false, outcome: failure(res.content?.find(c => c.type === 'text')?.text ?? '') };
+  return { ok: false, outcome: failure(res) };
 }
 
-function failure(text: string): Outcome {
-  try {
-    const payload = JSON.parse(text) as { code?: string, message?: string };
-    if (payload.code === 'INV003') {
-      return { state: 'expired', message: EXPIRED_MESSAGE };
-    }
-    return { state: 'error', message: payload.message || text };
-  } catch {
-    return { state: 'error', message: text };
+function failure(res: ToolResult): Outcome {
+  const text = res.content?.find(c => c.type === 'text')?.text ?? '';
+  if (errorEnvelope(text)?.code === 'INV003') {
+    return { state: 'expired', message: EXPIRED_MESSAGE };
   }
+  return { state: 'error', message: errorText(res) };
 }

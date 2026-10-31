@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { WhoamiData } from './whoami';
+import ViewShell from '../components/ViewShell.vue';
+import { t } from '../copy';
 import { permissionBadges, sourceLabel, whoamiRows, whoamiTitle } from './whoami';
 
 const props = defineProps<{ data: Record<string, unknown> }>();
@@ -13,52 +15,33 @@ const badges = computed(() => permissionBadges(who.value.permissions));
 </script>
 
 <template>
-  <main class="card">
-    <header>
-      <span class="avatar">{{ initial }}</span>
-      <strong v-if="title">{{ title }}</strong>
-      <span v-if="source && source !== title" class="badge">{{ source }}</span>
-      <span v-if="who.operator" class="badge operator">operator</span>
-    </header>
+  <ViewShell :title="title || 'OAgent'">
+    <template #badges>
+      <span v-if="source && source !== title" class="badge badge-sm badge-ghost">{{ source }}</span>
+      <span v-if="who.operator" class="badge badge-sm badge-warning">{{ t('mcp.whoami_operator') }}</span>
+    </template>
 
-    <dl v-if="rows.length">
-      <template v-for="row in rows" :key="row.label">
-        <dt>{{ row.label }}</dt><dd>{{ row.value }}</dd>
-      </template>
-    </dl>
+    <div class="flex items-center gap-3">
+      <div class="avatar avatar-placeholder">
+        <div class="w-8 rounded-full bg-primary text-primary-content">
+          <span class="text-sm font-semibold">{{ initial }}</span>
+        </div>
+      </div>
+      <dl v-if="rows.length" class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+        <template v-for="row in rows" :key="row.label">
+          <dt class="text-base-content/60">
+            {{ row.label }}
+          </dt>
+          <dd class="font-mono break-all">
+            {{ row.value }}
+          </dd>
+        </template>
+      </dl>
+    </div>
 
-    <p v-if="badges.shown.length" class="badges">
-      <span v-for="p in badges.shown" :key="p" class="badge mono">{{ p }}</span>
-      <span v-if="badges.more" class="badge muted">+{{ badges.more }}</span>
+    <p v-if="badges.shown.length" class="flex flex-wrap gap-1">
+      <span v-for="p in badges.shown" :key="p" class="badge badge-sm badge-ghost font-mono">{{ p }}</span>
+      <span v-if="badges.more" class="badge badge-sm badge-ghost">+{{ badges.more }}</span>
     </p>
-  </main>
+  </ViewShell>
 </template>
-
-<style scoped>
-.avatar {
-  display: inline-grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #3b82f6;
-  color: #fff;
-  font-weight: 600;
-}
-.badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 12px 0 0;
-}
-.badge {
-  padding: 1px 8px;
-  border: 1px solid rgba(128, 128, 128, 0.4);
-  border-radius: 999px;
-  font-size: 12px;
-}
-.operator {
-  border-color: #f59e0b;
-  color: #b45309;
-}
-</style>

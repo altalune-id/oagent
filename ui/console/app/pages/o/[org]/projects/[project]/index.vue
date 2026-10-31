@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import CopyButton from '~/components/ui/CopyButton.vue';
+import CopyButton from '#base/components/ui/CopyButton.vue';
 import { useAgentsStore } from '~/stores/agents';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
@@ -23,7 +23,7 @@ await agents.ensureLoaded(project.value.id);
 
 const items = computed(() => (project.value ? agents.forProject(project.value.id) : []));
 
-useHead({ title: () => `${project.value?.name ?? t('project.title')} · oagent` });
+useHead({ title: () => `${project.value?.name ?? t('project.title')} · OAgent` });
 </script>
 
 <template>

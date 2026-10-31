@@ -13,7 +13,7 @@ metadata:
 - `ui/console` is a Nuxt 4 SPA: `ssr: false`, built with `nuxt generate` and embedded into the Go binary (`make ui-console`). There is no Nuxt server, no `server/` directory and no server routes; the Go binary is the backend.
 - Data comes from typed Connect clients provided by `app/plugins/connect.client.ts` and called from Pinia setup stores, not from `useFetch` against `/api`.
 - Auto-imports are narrowed: `components: { dirs: [] }` and `imports: { scan: false }`. Vue, Nuxt and module APIs stay global; import components, stores and own composables from their files.
-- Modules: `@nuxt/eslint`, `@nuxt/icon`, `@pinia/nuxt`, `@vueuse/nuxt`, `@nuxtjs/i18n` (`no_prefix` strategy, `en-US` and `id-ID`). Styling is Tailwind CSS 4 + daisyUI 5 through `@tailwindcss/vite`.
+- The console extends the `ui/base` Nuxt layer (`extends: ['@oagent/base']`), which brings `@nuxt/eslint`, `@nuxt/icon`, `@pinia/nuxt`, `@nuxtjs/i18n` (`no_prefix` strategy, `en-US` and `id-ID`), the shared components, composables, locales, CSS and the `#base`, `#gen`, `#test` aliases; the console adds `@vueuse/nuxt`. Styling is Tailwind CSS 4 + daisyUI 5 through `@tailwindcss/vite`.
 - Routes use slugs in the path (`/o/<slug>/...`); every id shown or sent is a public id, never a UUID.
 - `runtimeConfig.public` (`apiUrl`, `appVersion`) stays empty at build time; the Go handler fills it in per request.
 - See docs/howto/console-page.md for adding a page end to end.

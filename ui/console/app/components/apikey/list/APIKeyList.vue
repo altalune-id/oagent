@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import ErrorText from '~/components/ui/ErrorText.vue';
-import { useErrorMessage } from '~/composables/useErrorMessage';
-import { useScopeLabel } from '~/composables/useScopeLabel';
+import type { APIKey } from '~/stores/apiKeys';
+import ConfirmModal from '#base/components/ui/ConfirmModal.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
+import { useConfirm } from '#base/composables/useConfirm';
+import { useScopeLabel } from '#base/composables/useScopeLabel';
 import { useAPIKeysStore } from '~/stores/apiKeys';
 
-const { orgId } = defineProps<{ orgId: string }>();
+const { orgId, canManage = false } = defineProps<{ orgId: string, canManage?: boolean }>();
 
 const { t } = useI18n();
-const errorMessage = useErrorMessage();
 const scopeLabel = useScopeLabel();
 const keys = useAPIKeysStore();
 const { $apiKeyClient: client } = useNuxtApp();
@@ -24,14 +25,10 @@ function kindLabel(kind: string): string {
   return t('apikeys.kind_project');
 }
 
-async function revoke(hint: string) {
-  try {
-    await client.revokeAPIKey({ orgId, hint });
-    keys.markRevoked(hint);
-  } catch (e) {
-    keys.error = errorMessage(e, 'error.revoke_apikey');
-  }
-}
+const revoking = useConfirm<APIKey>(async (key) => {
+  await client.revokeAPIKey({ orgId, hint: key.secretHint });
+  keys.markRevoked(key.secretHint);
+}, 'error.revoke_apikey');
 </script>
 
 <template>
@@ -67,8 +64,8 @@ async function revoke(hint: string) {
             </span>
           </td>
           <td class="whitespace-nowrap text-right">
-            <button v-if="!k.revokedAt" class="btn btn-ghost btn-xs text-error" @click="revoke(k.secretHint)">
-              <Icon name="lucide:ban" size="14" />
+            <button v-if="canManage && !k.revokedAt" type="button" class="btn btn-ghost btn-xs" @click="revoking.ask(k)">
+              <Icon name="lucide:ban" size="14" class="text-error" />
               {{ t('common.revoke') }}
             </button>
           </td>
@@ -76,4 +73,13 @@ async function revoke(hint: string) {
       </tbody>
     </table>
   </div>
+
+  <ConfirmModal
+    v-if="canManage"
+    :handle="revoking"
+    :title="t('apikeys.revoke_confirm')"
+    :body="t('apikeys.revoke_body', { name: revoking.target.value?.name ?? '', hint: revoking.target.value?.secretHint ?? '' })"
+    :confirm-label="t('common.revoke')"
+    :cancel-label="t('common.cancel')"
+  />
 </template>

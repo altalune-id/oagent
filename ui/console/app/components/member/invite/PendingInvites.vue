@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { ShownError } from '../../../lib/apperror/message';
+import type { ShownError } from '#base/lib/apperror/message';
 import type { Invite } from '../../../stores/invites';
-import AppModal from '../../ui/AppModal.vue';
-import ErrorText from '../../ui/ErrorText.vue';
-import SecretField from '../../ui/SecretField.vue';
+import AppModal from '#base/components/ui/AppModal.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
+import SecretField from '#base/components/ui/SecretField.vue';
+import { formatDate } from '#base/lib/format/date';
 
 export interface PendingInvitesLabels {
   title: string;
@@ -39,7 +40,9 @@ const props = withDefaults(defineProps<{
   confirming?: { id: string } | null,
   confirmMessage?: string,
   labels?: PendingInvitesLabels,
+  moment?: (d?: Date) => string,
 }>(), {
+  moment: (d?: Date) => formatDate(d, 'en-US', { style: 'moment' }),
   canManage: false,
   busy: false,
   error: null,
@@ -86,10 +89,6 @@ function roleLabel(r: string): string {
 
 function statusLabel(s: string): string {
   return s === 'expired' ? props.labels.expired : props.labels.pending;
-}
-
-function when(d?: Date): string {
-  return d ? d.toLocaleString() : '';
 }
 </script>
 
@@ -154,7 +153,7 @@ function when(d?: Date): string {
                 </td>
                 <td>{{ i.invitedByName }}</td>
                 <td class="whitespace-nowrap text-xs">
-                  {{ when(i.expiresAt) }}
+                  {{ moment(i.expiresAt) }}
                 </td>
                 <td class="whitespace-nowrap text-right">
                   <template v-if="canManage">
@@ -162,8 +161,8 @@ function when(d?: Date): string {
                       <Icon name="lucide:send" size="14" />
                       {{ labels.resend }}
                     </button>
-                    <button type="button" class="btn btn-ghost btn-xs text-error" :disabled="busy" @click="emit('revoke', i.id)">
-                      <Icon name="lucide:x" size="14" />
+                    <button type="button" class="btn btn-ghost btn-xs" :disabled="busy" @click="emit('revoke', i.id)">
+                      <Icon name="lucide:x" size="14" class="text-error" />
                       {{ labels.revoke }}
                     </button>
                   </template>

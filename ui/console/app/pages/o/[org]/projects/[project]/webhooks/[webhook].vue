@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import type { ShownError } from '~/lib/apperror/message';
+import type { ShownError } from '#base/lib/apperror/message';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
-import AppModal from '~/components/ui/AppModal.vue';
-import ErrorText from '~/components/ui/ErrorText.vue';
-import { useErrorMessage } from '~/composables/useErrorMessage';
+import AppModal from '#base/components/ui/AppModal.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
+import SavedNote from '#base/components/ui/SavedNote.vue';
+import { useDates } from '#base/composables/useDates';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { useCan } from '~/composables/useCan';
+import { useAuthStore } from '~/stores/auth';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 
@@ -29,6 +33,8 @@ interface Attempt {
 
 const route = useRoute();
 const { t } = useI18n();
+const canRetry = useCan('webhook:write');
+const { moment } = useDates();
 const errorMessage = useErrorMessage();
 const orgs = useOrgsStore();
 const projects = useProjectsStore();
@@ -164,8 +170,9 @@ const prettyPayload = computed(() => {
   }
 });
 
-await load();
-useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('webhooks.deliveries')} · oagent` });
+useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('webhooks.deliveries')} · OAgent` });
+
+await Promise.all([load(), useAuthStore().load()]);
 </script>
 
 <template>
@@ -180,7 +187,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
         </h1>
       </div>
       <div class="flex items-center gap-2">
-        <button class="btn btn-ghost btn-sm" :disabled="retrying" @click="retryFailed">
+        <button v-if="canRetry" type="button" class="btn btn-ghost btn-sm" :disabled="retrying" @click="retryFailed">
           <Icon name="lucide:rotate-cw" size="14" />
           {{ t('webhooks.retry_failed') }}
         </button>
@@ -192,9 +199,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
     </div>
 
     <ErrorText :error="retryError" />
-    <p v-if="requeued" class="text-sm text-success">
-      {{ requeued }}
-    </p>
+    <SavedNote v-if="requeued" :label="requeued" />
 
     <ErrorText v-if="error" :error="error" />
     <p v-else-if="deliveries.length === 0" class="text-sm text-base-content/60">
@@ -223,7 +228,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
             </td>
             <td>{{ delivery.attempt }}</td>
             <td class="text-base-content/60">
-              {{ delivery.createdAt?.toLocaleString() }}
+              {{ moment(delivery.createdAt) }}
             </td>
             <td class="text-right text-base-content/40">
               <Icon name="lucide:chevron-right" size="16" />
@@ -251,7 +256,8 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
             <span class="text-base-content/60">#{{ attempt.attempt }}</span>
             <span class="text-base-content/60">{{ attempt.durationMs }}ms</span>
           </div>
-          <p v-if="attempt.error" class="mt-1 text-sm text-error">
+          <p v-if="attempt.error" class="mt-1 flex items-start gap-1 text-sm text-base-content">
+            <Icon name="lucide:circle-alert" size="14" class="mt-0.5 shrink-0 text-error" />
             {{ attempt.error }}
           </p>
           <div v-if="attempt.responseBody" class="mt-2 space-y-1">
@@ -275,7 +281,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
       <template #footer>
         <ErrorText :error="retryOneError" class="mr-auto" />
         <button
-          v-if="selected?.status === 'failed'"
+          v-if="canRetry && selected?.status === 'failed'"
           class="btn btn-primary btn-sm"
           :disabled="retrying"
           @click="retryOne"

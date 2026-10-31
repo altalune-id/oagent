@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { deferred, setClient } from '../../test/nuxt-globals';
+import { deferred, setClient } from '#test/nuxt-globals';
 import { useAuthStore } from './auth';
 
 describe('useAuthStore', () => {

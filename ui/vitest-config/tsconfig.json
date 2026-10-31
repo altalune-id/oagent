@@ -9,5 +9,5 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["base.ts", "node.ts", "browser.ts"]
+  "include": ["base.ts", "node.ts", "browser.ts", "vue.ts", "vue-setup.ts"]
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue';
-import ErrorText from '~/components/ui/ErrorText.vue';
+import AppModal from '#base/components/ui/AppModal.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
 import OrgFields from './OrgFields.vue';
 import { useOrgCreate } from './useOrgCreate';
 

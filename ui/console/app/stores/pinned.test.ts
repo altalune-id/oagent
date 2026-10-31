@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { fakeStorage } from '../../test/nuxt-globals';
+import { fakeStorage } from '#test/nuxt-globals';
 import { usePinnedStore } from './pinned';
 
 describe('usePinnedStore', () => {

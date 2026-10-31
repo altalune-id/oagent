@@ -6,9 +6,16 @@
   "exports": {
     "./base": "./base.ts",
     "./node": "./node.ts",
-    "./browser": "./browser.ts"
+    "./browser": "./browser.ts",
+    "./vue": "./vue.ts"
   },
-  "files": ["base.ts", "browser.ts", "node.ts"],
+  "files": [
+    "base.ts",
+    "browser.ts",
+    "node.ts",
+    "vue-setup.ts",
+    "vue.ts"
+  ],
   "engines": {
     "node": ">=24.15"
   },
@@ -16,12 +23,20 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "peerDependencies": {
-    "vitest": "catalog:"
+    "@vitejs/plugin-vue": "catalog:",
+    "@vue/test-utils": "catalog:",
+    "happy-dom": "catalog:",
+    "vitest": "catalog:",
+    "vue": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
+    "@vue/test-utils": "catalog:",
+    "happy-dom": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vue": "catalog:"
   }
 }

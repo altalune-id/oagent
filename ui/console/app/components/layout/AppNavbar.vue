@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import LanguageSwitcher from '~/components/layout/LanguageSwitcher.vue';
+import LanguageSwitcher from '#base/components/layout/LanguageSwitcher.vue';
+import ThemeSwitcher from '#base/components/layout/ThemeSwitcher.vue';
+import NavbarShell from '#base/components/ui/NavbarShell.vue';
 import ThemeFamilySwitcher from '~/components/layout/ThemeFamilySwitcher.vue';
-import ThemeSwitcher from '~/components/layout/ThemeSwitcher.vue';
 import UserMenu from '~/components/layout/UserMenu.vue';
 import OrgSelector from '~/components/org/OrgSelector.vue';
 import ProjectSelector from '~/components/project/ProjectSelector.vue';
-import NavbarShell from '~/components/ui/NavbarShell.vue';
 import { siblingURL, staticURL } from '~/lib/auth/urls';
 import { useAuthStore } from '~/stores/auth';
 import { useUIStore } from '~/stores/ui';
@@ -45,7 +45,7 @@ onMounted(() => auth.load());
       </button>
       <NuxtLink to="/" class="btn btn-ghost gap-2 px-2 text-base font-bold tracking-tight" :class="{ 'max-sm:hidden': hasNav }">
         <img :src="logoUrl" alt="" width="28" height="28" class="h-7 w-7 rounded-md">
-        oagent
+        OAgent
       </NuxtLink>
     </template>
     <OrgSelector @focusin="ui.navOpen = false" />

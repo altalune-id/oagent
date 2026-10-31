@@ -4,12 +4,14 @@ import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { APIKeySchema } from '../../gen/apikey/v1/apikey_pb';
-import { connectError, deferred, setClient, setKnownKeys } from '../../test/nuxt-globals';
+import { APIKeySchema } from '#gen/apikey/v1/apikey_pb';
+import { connectError, deferred, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { toAPIKey, useAPIKeysStore } from './apiKeys';
 
 const expires = new Date('2027-01-01T00:00:00Z');
 const revoked = new Date('2026-06-01T00:00:00Z');
+const createdAt = new Date('2026-05-01T00:00:00Z');
+const lastUsedAt = new Date('2026-05-20T00:00:00Z');
 const keyPB = create(APIKeySchema, {
   kind: 'org',
   name: 'CI',
@@ -18,7 +20,9 @@ const keyPB = create(APIKeySchema, {
   projectIds: ['x6MH9WPWjktMwCBKHy4pF'],
   allProjects: false,
   secretHint: 'abcd',
+  createdAt: timestampFromDate(createdAt),
   expiresAt: timestampFromDate(expires),
+  lastUsedAt: timestampFromDate(lastUsedAt),
 });
 const key: APIKey = {
   rowKey: expect.any(String),
@@ -29,7 +33,9 @@ const key: APIKey = {
   projectIds: ['x6MH9WPWjktMwCBKHy4pF'],
   allProjects: false,
   secretHint: 'abcd',
+  createdAt,
   expiresAt: expires,
+  lastUsedAt,
   revokedAt: undefined,
 };
 
@@ -38,6 +44,7 @@ describe('toAPIKey', () => {
     expect(toAPIKey(keyPB)).toEqual(key);
     const k = toAPIKey(create(APIKeySchema, { secretHint: 'abcd', revokedAt: timestampFromDate(revoked) }));
     expect(k.expiresAt).toBeUndefined();
+    expect(k.lastUsedAt).toBeUndefined();
     expect(k.revokedAt).toEqual(revoked);
   });
 

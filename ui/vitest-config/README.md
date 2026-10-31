@@ -4,11 +4,12 @@ Shared Vitest presets. Every `ui/*` package with tests extends one of these, so 
 
 ## Presets
 
-| Entry                           | Environment                                                |
-| ------------------------------- | ---------------------------------------------------------- |
-| `@oagent/vitest-config/base`    | none: base config only (10 s timeouts, CI reporter toggle) |
-| `@oagent/vitest-config/node`    | Node: pure TS helpers (most tests)                         |
-| `@oagent/vitest-config/browser` | happy-dom: tests that need the DOM                         |
+| Entry                           | Environment                                                                                                                                         |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@oagent/vitest-config/base`    | none: base config only (10 s timeouts, CI reporter toggle)                                                                                          |
+| `@oagent/vitest-config/node`    | Node: pure TS helpers (most tests)                                                                                                                  |
+| `@oagent/vitest-config/browser` | happy-dom: tests that need the DOM                                                                                                                  |
+| `@oagent/vitest-config/vue`     | Node plus the Vue plugin, `Icon` and `NuxtLink` stubs and auto-unmount: mounted components (start the file with `// @vitest-environment happy-dom`) |
 
 ## Usage
 

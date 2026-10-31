@@ -15,7 +15,7 @@ plugins:
     opt:
       - format=yaml
   - remote: buf.build/bufbuild/es:v2.6.3
-    out: ui/console/gen
+    out: ui/base/gen
     include_imports: true
     opt:
       - target=ts

@@ -3,8 +3,8 @@ import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { InviteSchema } from '../../gen/invite/v1/invite_pb';
-import { deferred, setClient, setKnownKeys } from '../../test/nuxt-globals';
+import { InviteSchema } from '#gen/invite/v1/invite_pb';
+import { deferred, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { toInvite, useInvitesStore } from './invites';
 
 const expires = new Date('2026-10-20T09:00:00Z');

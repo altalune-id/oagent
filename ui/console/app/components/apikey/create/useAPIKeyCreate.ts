@@ -1,9 +1,9 @@
-import type { ShownError } from '~/lib/apperror/message';
+import type { ShownError } from '#base/lib/apperror/message';
 import { create } from '@bufbuild/protobuf';
 
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
-import { CreateAPIKeyRequestSchema } from '~~/gen/apikey/v1/apikey_pb';
-import { useValidation } from '~/composables/useValidation';
+import { useValidation } from '#base/composables/useValidation';
+import { CreateAPIKeyRequestSchema } from '#gen/apikey/v1/apikey_pb';
 import { toAPIKey, useAPIKeysStore } from '~/stores/apiKeys';
 
 export function useAPIKeyCreate(orgId: string) {

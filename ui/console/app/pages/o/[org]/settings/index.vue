@@ -1,13 +1,19 @@
 <script setup lang="ts">
-import type { ShownError } from '~/lib/apperror/message';
-import AppButton from '~/components/ui/AppButton.vue';
-import CopyButton from '~/components/ui/CopyButton.vue';
-import ErrorText from '~/components/ui/ErrorText.vue';
-import { useErrorMessage } from '~/composables/useErrorMessage';
+import type { ShownError } from '#base/lib/apperror/message';
+import AppButton from '#base/components/ui/AppButton.vue';
+import CopyButton from '#base/components/ui/CopyButton.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
+import SavedNote from '#base/components/ui/SavedNote.vue';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
+import ProjectReadOnlyNote from '~/components/project/ProjectReadOnlyNote.vue';
+import { useCan } from '~/composables/useCan';
+import { useAuthStore } from '~/stores/auth';
 import { useOrgsStore } from '~/stores/orgs';
 
 const route = useRoute();
 const { t } = useI18n();
+const canEdit = useCan('org:write');
+const ids = { name: useId(), slug: useId() };
 const errorMessage = useErrorMessage();
 const orgs = useOrgsStore();
 const { $orgClient: client } = useNuxtApp();
@@ -48,7 +54,9 @@ async function save() {
   }
 }
 
-useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('settings.title')} · oagent` });
+useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('settings.title')} · OAgent` });
+
+await useAuthStore().load();
 </script>
 
 <template>
@@ -56,6 +64,7 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('settings.ti
     <h1 class="text-2xl font-bold">
       {{ t('settings.title') }}
     </h1>
+    <ProjectReadOnlyNote v-if="!canEdit" :text="t('settings.read_only')" />
 
     <div class="space-y-1">
       <span class="block text-xs text-base-content/60">{{ t('common.id') }}</span>
@@ -65,23 +74,39 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('settings.ti
       </div>
     </div>
 
-    <form class="space-y-3" @submit.prevent="save()">
-      <label class="block">
-        <span class="mb-1 block text-xs text-base-content/60">{{ t('common.name') }}</span>
-        <input v-model="name" type="text" class="input input-sm input-bordered w-full" :disabled="busy">
-      </label>
-      <label class="block">
-        <span class="mb-1 block text-xs text-base-content/60">{{ t('common.slug') }}</span>
-        <input v-model="slug" type="text" class="input input-sm input-bordered w-full" :disabled="busy">
-      </label>
+    <form v-if="canEdit" novalidate class="space-y-2" @submit.prevent="save()">
+      <div class="fieldset">
+        <label :for="ids.name" class="fieldset-legend">{{ t('common.name') }}</label>
+        <input :id="ids.name" v-model="name" type="text" class="input w-full" :disabled="busy">
+      </div>
+      <div class="fieldset">
+        <label :for="ids.slug" class="fieldset-legend">{{ t('common.slug') }}</label>
+        <input :id="ids.slug" v-model="slug" type="text" class="input w-full font-mono" :disabled="busy">
+      </div>
       <ErrorText :error="error" />
       <div class="flex items-center gap-3">
         <AppButton type="submit" size="sm" :disabled="busy || !name.trim()">
           <Icon name="lucide:check" size="16" />
           {{ busy ? t('common.saving') : t('common.save') }}
         </AppButton>
-        <span v-if="saved" class="text-sm text-success">{{ t('common.saved') }}</span>
+        <SavedNote v-if="saved" :label="t('common.saved')" />
       </div>
     </form>
+    <dl v-else class="space-y-2">
+      <div class="fieldset">
+        <dt class="fieldset-legend">
+          {{ t('common.name') }}
+        </dt>
+        <dd>{{ org.name }}</dd>
+      </div>
+      <div class="fieldset">
+        <dt class="fieldset-legend">
+          {{ t('common.slug') }}
+        </dt>
+        <dd class="font-mono text-sm">
+          {{ org.slug }}
+        </dd>
+      </div>
+    </dl>
   </div>
 </template>

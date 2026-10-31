@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import CopyButton from '~/components/ui/CopyButton.vue';
+import CopyButton from '#base/components/ui/CopyButton.vue';
 import { useAgentsStore } from '~/stores/agents';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
@@ -24,7 +24,7 @@ watch(project, (value) => {
   }
 }, { immediate: true });
 
-useHead({ title: () => `${agent.value?.name ?? route.params.agent} · ${t('nav.general')} · oagent` });
+useHead({ title: () => `${agent.value?.name ?? route.params.agent} · ${t('nav.general')} · OAgent` });
 </script>
 
 <template>

@@ -9,7 +9,7 @@
     "prepare": "husky",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "ui:mcp": "pnpm --filter @oagent/mcp-ui build",
+    "ui:mcp": "pnpm --filter @oagent/base exec nuxt prepare && pnpm --filter @oagent/mcp-ui build",
     "ui:console": "pnpm --filter @oagent/console generate",
     "ui:test": "pnpm -r --if-present test"
   },

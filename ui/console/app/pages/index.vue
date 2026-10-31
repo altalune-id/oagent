@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import ErrorText from '#base/components/ui/ErrorText.vue';
 import { useLanding } from '~/components/layout/useLanding';
-import ErrorText from '~/components/ui/ErrorText.vue';
 import { useOrgsStore } from '~/stores/orgs';
 
 const orgs = useOrgsStore();

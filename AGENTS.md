@@ -45,6 +45,7 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
 - Only `pg`, `internal/kernel/db`, `migrator` and `pgtest` import the Postgres driver; domains use `db.IsUniqueViolation`, `db.IsForeignKeyViolation` and `db.ViolatedConstraint`. Domains never import `pg`, `nats` or `redis` (depguard).
 - A domain package holds only the files it needs: `<domain>.go` (aggregate, no I/O), `errors.go`, `ports.go`, `store.go` + `postgres.go`/`pgreader.go`/`pgwriter.go`, `service.go`, then one file per surface: `controlplane.go`, `cli.go`, `web.go`. See [module](docs/howto/module.md).
 - Dev tools live in `internal/tool/`; their commands in `cmd/`.
+- `ui/mcp` imports `ui/base/app/components/ui` source directly, so those components stay Nuxt-free (only the `Icon` and `NuxtLink` globals). See [UI builds](docs/architecture/README.md#ui-builds).
 
 **Surfaces**
 
@@ -63,7 +64,7 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
 - A new error code means all of these, in the same commit:
   - an `apperror/codes.json` entry, then `make generate`
   - a line in `apperror/issued_codes.txt`
-  - translations in every console locale
+  - translations in every locale of the `ui/base` layer
 - Codes are append-only: never delete, rename or reuse one. See [error-code](docs/howto/error-code.md).
 
 **Config**
@@ -84,7 +85,7 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
   - Exported symbols get a one-sentence doc.
   - Keep only markers (`TODO`, `NOTE`, `SECURITY`…) or links. No rationale, history or section headers.
   - Never reference untracked files or IDs defined only in them.
-- Generated code (`gen/`, `*_templ.go`, `ui/console/gen/`) is never edited by hand.
+- Generated code (`gen/`, `*_templ.go`, `ui/base/gen/`) is never edited by hand.
 
 **Versions**
 

@@ -1,12 +1,12 @@
 import type { Ref } from 'vue';
-import type { Role } from '../roles';
+import type { ShownError } from '#base/lib/apperror/message';
 
-import type { ShownError } from '~/lib/apperror/message';
+import type { Role } from '../roles';
 import { create } from '@bufbuild/protobuf';
-import { CreateInviteRequestSchema } from '~~/gen/invite/v1/invite_pb';
-import { useErrorMessage } from '~/composables/useErrorMessage';
-import { useValidation } from '~/composables/useValidation';
-import { errorCode } from '~/lib/apperror/message';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { useValidation } from '#base/composables/useValidation';
+import { errorCode } from '#base/lib/apperror/message';
+import { CreateInviteRequestSchema } from '#gen/invite/v1/invite_pb';
 import { toInvite, useInvitesStore } from '~/stores/invites';
 import { inviteRoles } from '../roles';
 

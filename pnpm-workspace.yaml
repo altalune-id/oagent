@@ -9,10 +9,15 @@ minimumReleaseAgeStrict: true
 
 # Versions shared by more than one ui/* package; reference them as "catalog:".
 catalog:
+  "@iconify-json/lucide": ^1.2.147
+  "@iconify/vue": ^5.0.4
+  "@tailwindcss/vite": ^4.3.3
   "@types/node": ^26.6.5
   "@vitejs/plugin-vue": ^6.0.10
   "@vitest/coverage-v8": 5.0.5
+  "@vue/test-utils": 2.5.1
   daisyui: ^5.7.50
+  happy-dom: 21.0.4
   tailwindcss: ^4.3.3
   typescript: 6.0.3
   vite: ^8.3.5

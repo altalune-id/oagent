@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import AppModal from '~/components/ui/AppModal.vue';
-import ErrorText from '~/components/ui/ErrorText.vue';
-import FieldError from '~/components/ui/FieldError.vue';
+import AppModal from '#base/components/ui/AppModal.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
+import FieldError from '#base/components/ui/FieldError.vue';
 import { useAgentEdit } from './useAgentEdit';
 
 const { t } = useI18n();
+const ids = { name: useId(), nameErr: useId(), description: useId(), descriptionErr: useId() };
 const { open, name, description, busy, error, fieldErrors, show, hide, submit } = useAgentEdit();
 
 defineExpose({ show });
@@ -12,23 +13,23 @@ defineExpose({ show });
 
 <template>
   <AppModal :open="open" :title="t('agent.edit')" @close="hide()">
-    <form novalidate class="space-y-3" @submit.prevent="submit()">
-      <label class="block">
-        <span class="mb-1 block text-xs text-base-content/60">{{ t('common.name') }}</span>
+    <form novalidate class="space-y-1" @submit.prevent="submit()">
+      <div class="fieldset">
+        <label :for="ids.name" class="fieldset-legend">{{ t('common.name') }}</label>
         <input
-          v-model="name" type="text" class="input input-sm input-bordered w-full" :class="{ 'input-error': fieldErrors.name }"
-          :disabled="busy" :aria-invalid="!!fieldErrors.name" aria-describedby="agent-edit-name-error"
+          :id="ids.name" v-model="name" type="text" class="input w-full" :class="{ 'input-error': fieldErrors.name }"
+          :disabled="busy" :aria-invalid="!!fieldErrors.name" :aria-describedby="ids.nameErr"
         >
-        <FieldError id="agent-edit-name-error" :message="fieldErrors.name" />
-      </label>
-      <label class="block">
-        <span class="mb-1 block text-xs text-base-content/60">{{ t('common.description') }}</span>
+        <FieldError :id="ids.nameErr" :message="fieldErrors.name" />
+      </div>
+      <div class="fieldset">
+        <label :for="ids.description" class="fieldset-legend">{{ t('common.description') }}</label>
         <textarea
-          v-model="description" rows="3" class="textarea textarea-bordered textarea-sm w-full" :class="{ 'textarea-error': fieldErrors.description }"
-          :disabled="busy" :aria-invalid="!!fieldErrors.description" aria-describedby="agent-edit-description-error"
+          :id="ids.description" v-model="description" rows="3" class="textarea w-full" :class="{ 'textarea-error': fieldErrors.description }"
+          :disabled="busy" :aria-invalid="!!fieldErrors.description" :aria-describedby="ids.descriptionErr"
         />
-        <FieldError id="agent-edit-description-error" :message="fieldErrors.description" />
-      </label>
+        <FieldError :id="ids.descriptionErr" :message="fieldErrors.description" />
+      </div>
       <ErrorText :error="error" />
     </form>
     <template #footer>

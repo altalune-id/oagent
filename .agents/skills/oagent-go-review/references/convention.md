@@ -24,7 +24,7 @@ The rules live in `AGENTS.md` and `docs/howto/`. This list is what to look for i
 - **A write split in two statements.** Both halves are guarded, but a second writer can interleave between them.
 - **A success message for work that did not happen.** Check that every reported side effect has a matching write.
 - **Timestamps.** Postgres `timestamptz` keeps microseconds; compare with `Truncate(time.Microsecond)` in integration tests, or they pass on macOS and fail on Linux CI.
-- **Generated code edited by hand.** `gen/`, `ui/console/gen/`, `*_templ.go` change only through `make generate`.
+- **Generated code edited by hand.** `gen/`, `ui/base/gen/`, `*_templ.go` change only through `make generate`.
 
 ## Domain module checklist
 

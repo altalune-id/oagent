@@ -1,7 +1,7 @@
-import type { Member as MemberPB } from '~~/gen/member/v1/member_pb';
-import type { ShownError } from '~/lib/apperror/message';
+import type { ShownError } from '#base/lib/apperror/message';
+import type { Member as MemberPB } from '#gen/member/v1/member_pb';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
-import { useErrorMessage } from '~/composables/useErrorMessage';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
 
 export interface Member {
   userId: string;

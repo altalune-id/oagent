@@ -1,9 +1,9 @@
-import type { ShownError } from '~/lib/apperror/message';
+import type { ShownError } from '#base/lib/apperror/message';
 
 import { create } from '@bufbuild/protobuf';
-import { CreateWebhookRequestSchema } from '~~/gen/webhook/v1/webhook_pb';
-import { useErrorMessage } from '~/composables/useErrorMessage';
-import { useValidation } from '~/composables/useValidation';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { useValidation } from '#base/composables/useValidation';
+import { CreateWebhookRequestSchema } from '#gen/webhook/v1/webhook_pb';
 import { toWebhook, useWebhooksStore } from '~/stores/webhooks';
 
 export function useWebhookCreate(orgId: string, projectId: string) {

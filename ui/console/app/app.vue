@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useTheme } from '~/components/layout/useTheme';
+import { useTheme } from '#base/components/layout/useTheme';
 import { staticURL } from '~/lib/auth/urls';
 
 const { init } = useTheme();

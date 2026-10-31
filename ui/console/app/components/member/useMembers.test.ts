@@ -2,9 +2,9 @@ import { create } from '@bufbuild/protobuf';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { MemberSchema } from '#gen/member/v1/member_pb';
+import { connectError, deferred, navigateTo, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { useMembersStore } from '~/stores/members';
-import { MemberSchema } from '../../../gen/member/v1/member_pb';
-import { connectError, deferred, navigateTo, setClient, setKnownKeys } from '../../../test/nuxt-globals';
 import { useMembers } from './useMembers';
 
 const owner = create(MemberSchema, { userId: 'FtGrdYskgDVDf8apKsMdn', email: 'ann@example.com', name: 'Ann Lee', role: 'owner' });

@@ -332,7 +332,7 @@ func TestEveryInvalidFieldHasALabel(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, fields)
 
-	locales, err := filepath.Glob("../../ui/console/i18n/locales/*.json")
+	locales, err := filepath.Glob("../../ui/base/i18n/locales/*.json")
 	require.NoError(t, err)
 	require.NotEmpty(t, locales)
 	for _, path := range locales {

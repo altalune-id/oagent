@@ -1,8 +1,8 @@
-import type { ShownError } from '~/lib/apperror/message';
+import type { ShownError } from '#base/lib/apperror/message';
 
 import { create } from '@bufbuild/protobuf';
-import { CreateAgentRequestSchema } from '~~/gen/agent/v1/agent_pb';
-import { useValidation } from '~/composables/useValidation';
+import { useValidation } from '#base/composables/useValidation';
+import { CreateAgentRequestSchema } from '#gen/agent/v1/agent_pb';
 import { useAgentsStore } from '~/stores/agents';
 
 export function useAgentCreate(orgId: string, projectId: string) {

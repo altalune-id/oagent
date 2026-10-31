@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { ThemeFamilyOption } from '~/components/ui/types';
-import { useTheme } from '~/components/layout/useTheme';
-import ThemeSelect from '~/components/ui/ThemeSelect.vue';
+import type { ThemeFamilyOption } from '#base/components/ui/types';
+import { useTheme } from '#base/components/layout/useTheme';
+import ThemeSelect from '#base/components/ui/ThemeSelect.vue';
 
 const { t } = useI18n();
 const { family, families, setFamily } = useTheme();

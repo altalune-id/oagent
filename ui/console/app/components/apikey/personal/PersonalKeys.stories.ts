@@ -1,18 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { mcpSnippet } from './mcpSnippet';
+import type { PersonalKeyView } from './PersonalKeys.vue';
+import { mcpSnippet } from '#base/lib/tokens/mcpSnippet';
 import PersonalKeys from './PersonalKeys.vue';
 
-const scopes = [
-  { name: 'agent:read', label: 'Read agents' },
-  { name: 'agent:write', label: 'Write agents' },
-  { name: 'webhook:read', label: 'Read webhooks' },
+const keys: PersonalKeyView[] = [
+  { rowKey: 'key-1', name: 'Laptop', secretHint: 'a1b2', scopes: ['Read agents', 'Manage agents'], lastUsed: '2 hours ago', expires: 'Jan 14, 2027', expiry: { kind: 'ok' }, revoked: false },
+  { rowKey: 'key-2', name: 'CI', secretHint: 'c3d4', scopes: ['Read projects'], lastUsed: '', expires: 'Oct 6, 2026', expiry: { kind: 'soon', days: 5 }, revoked: false },
+  { rowKey: 'key-3', name: 'Old script', secretHint: 'e5f6', scopes: ['Read projects'], lastUsed: '2 months ago', expires: 'Sep 1, 2026', expiry: { kind: 'expired' }, revoked: false },
+  { rowKey: 'key-4', name: 'Retired', secretHint: 'g7h8', scopes: ['Read webhooks'], lastUsed: '30 days ago', expires: '', expiry: { kind: 'ok' }, revoked: true },
 ];
-const projects = [{ id: 'x6MH9WPWjktMwCBKHy4pF', name: 'Default' }, { id: 'KdrF3t3FHtppBPmMgj4sy', name: 'Support' }];
 
 const meta = {
   title: 'API keys/PersonalKeys',
   component: PersonalKeys,
-  args: { keys: [], scopes, projects },
+  args: { keys },
 } satisfies Meta<typeof PersonalKeys>;
 
 export default meta;
@@ -21,24 +22,18 @@ type Story = StoryObj<typeof meta>;
 const render: Story['render'] = args => ({
   components: { PersonalKeys },
   setup: () => ({ args }),
-  template: '<div class="max-w-3xl p-8"><PersonalKeys v-bind="args" /></div>',
+  template: '<div class="max-w-5xl p-8"><PersonalKeys v-bind="args" /></div>',
 });
 
-export const Empty: Story = { render };
+export const Filled: Story = { render };
 
-export const List: Story = {
-  args: {
-    keys: [
-      { rowKey: 'key-1', name: 'laptop', scopes: ['agent:read', 'agent:write'], secretHint: 'a1b2' },
-      { rowKey: 'key-2', name: 'old ci', scopes: ['agent:read'], secretHint: 'c3d4', revokedAt: new Date('2026-10-01') },
-    ],
-  },
+export const Empty: Story = {
+  args: { keys: [] },
   render,
 };
 
 export const JustCreated: Story = {
   args: {
-    keys: [{ rowKey: 'key-1', name: 'laptop', scopes: ['agent:read'], secretHint: 'uAuE' }],
     created: {
       plaintext: 'oagent_Q0QeIWMvn5Tf84kAq2gaFarjbHX2PQA__J-NsdUqAuE',
       snippet: mcpSnippet('oagent', 'https://oagent.example.com/mcp', 'oagent_Q0QeIWMvn5Tf84kAq2gaFarjbHX2PQA__J-NsdUqAuE'),
@@ -47,7 +42,12 @@ export const JustCreated: Story = {
   render,
 };
 
+export const RevokeFailed: Story = {
+  args: { error: { message: 'Missing permission: Manage API keys', reference: 'Reference: req-1' } },
+  render,
+};
+
 export const SignedOut: Story = {
-  args: { signedIn: false },
+  args: { keys: [], signedIn: false },
   render,
 };

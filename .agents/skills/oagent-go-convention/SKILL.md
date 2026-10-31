@@ -47,7 +47,7 @@ These are the ones reviews keep finding. The recipes have the detail.
 - **Unit of work.** A write and its event or outbox row commit together through `db.Transactor` (see `service-method.md`).
 - **Layering.** Domains import only `internal/kernel/*`, root packages, other domains' ports and `internal/web/layout`. depguard `domain-boundary` checks every `internal/*` package except the shells; the rest is review.
 - **Features pick a driver; connections are root libraries.** A feature lives in `internal/kernel/<feature>`, names its driver in its own block (`db.driver`, `rateLimit.driver`, `queue.driver`) and takes a driver-agnostic interface (`ratelimit.Limiter`, `queue.Queue`) or, for the database, `db.Pool` and `db.Transactor`. A feature with several backends keeps each in a sub-package (`queue/nats`, `ratelimit/memory`, `ratelimit/redis`); one that must commit with domain data (`outbox`, `mailqueue`, `session`) keeps its Postgres store in-package. The connection is its own block (`postgres.*`, `redis.*`, `nats.*`) and a root package (`pg`, `redis`, `nats`) that opens, health-checks and closes it and returns the real client; boot opens it only when `<Backend>Features()` lists a user. Kernel packages and connections never import `config`: one that needs settings has its own `Config` in `config.go`, mapped by boot (depguard `config-boundary`). Only the connection, its drivers, boot and test helpers import pgx, go-redis or NATS (`pgx-boundary`, `redis-boundary`, `nats-boundary`); domains use `db.IsUniqueViolation`, `db.IsForeignKeyViolation` and `db.ViolatedConstraint`, and never import `pg`, `nats` or `redis`. On a shared NATS server each app has its own account; names are not prefixed.
-- **Error codes are append-only** and translated in every console locale.
+- **Error codes are append-only** and translated in every locale of the `ui/base` layer.
 - **Fresh-database migrations.** No backfills, guards or SQL id generators.
 - **READMEs move with the code.** `schema/README.md` for schema changes, `internal/boot/README.md` for wiring changes, in the same commit.
 - **Comments.** Default none; follow the `comment-discipline` skill. `make comment-check` must stay at 0.
@@ -74,5 +74,5 @@ Then open what you changed: a console page in the browser, a CLI command in a te
 
 - Commit, stage or push. The user commits.
 - Add AI attribution anywhere.
-- Edit generated code (`gen/`, `ui/console/gen/`, `*_templ.go`) by hand.
+- Edit generated code (`gen/`, `ui/base/gen/`, `*_templ.go`) by hand.
 - Weaken a linter, a coverage floor or a test to get green.

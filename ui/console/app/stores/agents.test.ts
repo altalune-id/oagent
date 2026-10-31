@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { connectError, deferred, setClient, setKnownKeys } from '../../test/nuxt-globals';
+import { connectError, deferred, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { useAgentsStore } from './agents';
 
 const bot = { id: 'EW7HBTpNTTPAuNhPZB62M', projectId: 'x6MH9WPWjktMwCBKHy4pF', slug: 'bot', name: 'Bot', description: 'Helps' };

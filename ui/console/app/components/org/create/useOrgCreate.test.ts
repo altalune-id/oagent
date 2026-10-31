@@ -1,9 +1,9 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { connectError, deferred, navigateTo, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { useOrgsStore } from '~/stores/orgs';
 import { useUIStore } from '~/stores/ui';
-import { connectError, deferred, navigateTo, setClient, setKnownKeys } from '../../../../test/nuxt-globals';
 import { useOrgCreate } from './useOrgCreate';
 
 const org = { id: 'V3StGXR8Z5jdHj6BmyT2a', slug: 'acme', name: 'Acme' };

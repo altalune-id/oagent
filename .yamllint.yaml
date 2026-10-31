@@ -11,6 +11,8 @@ ignore: |
   docs/superpowers/
   ui/console/.nuxt/
   ui/console/.output/
+  ui/base/.nuxt/
+  ui/base/.output/
 
 rules:
   line-length:

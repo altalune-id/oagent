@@ -11,7 +11,7 @@ Two transports serve the same registry: `/mcp` over HTTP (an API key or Basic au
 - [ ] Tool name: `<domain>_<verb>` in snake case (`agent_create`, `webhook_retry_failed`), matching `^[a-z_][a-z0-9_]{0,63}$`, unique across all protos.
 - [ ] Does it write (`mutation: true`)? Does it delete or overwrite (`destructive: true`)? Both hints must be true to the facts; hosts use them for confirmation prompts.
 - [ ] Should the model see it, or only the MCP view (`app_only: true`, needs `ui`)? A step that sends something on the user's behalf after a draft (`member_invite_confirm`) is app-only.
-- [ ] Does it need a view in the MCP App (`ui: "app"`), or is the generic `DefaultView` enough?
+- [ ] Does it need a view in the MCP App (`ui: "app"`)? A list, a detail or a result is a descriptor; only a tool with its own interaction needs a component.
 
 ## Build
 
@@ -45,7 +45,7 @@ Two transports serve the same registry: `/mcp` over HTTP (an API key or Basic au
 
    An existing service needs no wiring: the new tool is already inside its `Register…Tools`.
 
-4. **View (optional).** Add a Vue component in `ui/mcp/src/views/` and map the tool name to it in `registry` (`ui/mcp/src/views/index.ts`). Pure helpers go in a `.ts` file with a `.test.ts` beside it (`members.ts`, `members.test.ts`). Then `make ui-mcp` rebuilds `internal/mcp/ui/assets/app.html`, which the binary embeds.
+4. **View (optional).** For a list, a detail or a result, add an entry to `descriptors` (`ui/mcp/src/views/descriptors.ts`): where the rows or the object sit in `structuredContent`, and how each field shows. The generic `ListView` and `DetailView` render it on daisyUI with the shared `ui/base` components, and the copy comes from `ui/base/i18n/locales/en-US.json` (`mcp.*`). Only a tool with its own interaction (`member_invite`, `auth_whoami`) gets a Vue component in `ui/mcp/src/views/`, mapped in `registry` (`ui/mcp/src/views/index.ts`). Pure helpers go in a `.ts` file with a `.test.ts` beside it (`members.ts`, `members.test.ts`); add the tool to `descriptors.test.ts`. Then `make ui-mcp` rebuilds `internal/mcp/ui/assets/app.html`, which the binary embeds.
 
 5. **Tests.**
    - Add the tool and its permissions to `want` in `TestMCPTools_PermissionsComeFromTheTable` (`internal/boot/mcp_test.go`).
@@ -89,4 +89,5 @@ Two transports serve the same registry: `/mcp` over HTTP (an API key or Basic au
 - [internal/mcp/payload.go](../../internal/mcp/payload.go): `ErrorPayload`
 - [internal/mcp/auth.go](../../internal/mcp/auth.go): `Authenticate`, `ScopesFromContext`
 - [ui/mcp/src/views/index.ts](../../ui/mcp/src/views/index.ts): `resolveView`
+- [ui/mcp/src/views/descriptors.ts](../../ui/mcp/src/views/descriptors.ts): `descriptors`
 - [internal/boot/mcp_test.go](../../internal/boot/mcp_test.go): `TestMCPTools_PermissionsComeFromTheTable`
