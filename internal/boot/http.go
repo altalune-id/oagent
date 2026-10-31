@@ -17,6 +17,7 @@ import (
 	"altalune.id/oagent/internal/install"
 	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/kernel/tokens"
 	"altalune.id/oagent/internal/legal"
 	mcpinternal "altalune.id/oagent/internal/mcp"
 	"altalune.id/oagent/internal/org/invite"
@@ -101,16 +102,18 @@ func apiChain(svcs *Services) authn.Chain {
 	return chain
 }
 
-func buildMCPHandler(srv *rootmcp.Server, svcs *Services, log *slog.Logger) http.Handler {
+func buildMCPHandler(srv *rootmcp.Server, svcs *Services, resource tokens.Resource, log *slog.Logger) http.Handler {
 	h := mcpHTTPHandler(srv)
 	if h == nil {
 		return nil
 	}
 	return mcpinternal.Authenticate(mcpinternal.AuthOptions{
-		Chain:     mcpChain(svcs),
-		KeyPrefix: svcs.KeyScheme.Prefix(),
-		Required:  requireCredentials,
-		Logger:    log,
+		Chain:      mcpChain(svcs),
+		KeyPrefix:  svcs.KeyScheme.Prefix(),
+		Required:   requireCredentials,
+		Resource:   resource,
+		ToolScopes: toolScopes(srv.Registry()),
+		Logger:     log,
 	})(h)
 }
 
@@ -247,6 +250,7 @@ type httpSurfaces struct {
 	api        http.Handler
 	console    http.Handler
 	mcp        http.Handler
+	mcpDocs    map[string]http.Handler
 	routes     []web.Registrar
 
 	installRequired *atomic.Bool
@@ -268,6 +272,8 @@ func buildHTTPHandler(s httpSurfaces) http.Handler {
 		Log:        s.log,
 		Unexpected: s.unexpected,
 		Probes:     s.probes,
+
+		ResourceMetadata: s.mcpDocs,
 
 		Gate:        install.InstallGate(s.basePath, s.installRequired),
 		Session:     s.session,

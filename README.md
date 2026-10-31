@@ -148,6 +148,47 @@ The provider must send `email` and `email_verified` in the ID token. oagent link
 email, so configure only a provider you trust to verify it. Every link stores `oidc.issuer` (without a trailing
 `/`): changing the issuer locks out every linked person, whose next sign-in is refused with `AUT007`.
 
+### Sign in to MCP with OAuth
+
+With `oidc.issuer` set and `mcp.enabled: true`, an MCP client given only `<http.baseURL>/mcp` signs a person in
+through the same provider and calls tools as that person. API keys keep working on `/mcp`; `oagent mcp` (stdio)
+is unchanged.
+
+```sh
+OAGENT_MCP_ENABLED=true
+OAGENT_MCP_AUDIENCE=https://oagent.example.com/mcp   # optional; default <http.baseURL><http.basePath>/mcp
+OAGENT_MCP_AUDIENCE_OVERRIDE=true                    # only when a proxy serves /mcp at another public URL
+```
+
+At the provider, register a resource server (API) with:
+
+- identifier `mcp.audience` (`https://oagent.example.com/mcp`); the provider puts it in each token's `aud`, and
+  oagent refuses a token for any other resource;
+- the scopes listed in `scopes_supported` of `https://oagent.example.com/.well-known/oauth-protected-resource/mcp`
+  (a scope only the console may hold, such as `apikey:write`, is never offered);
+- JWT access tokens (RFC 9068).
+
+Then let MCP clients sign in to it: a client that publishes a Client ID Metadata Document (CIMD), such as
+Claude Code, needs no registration when the provider accepts CIMD clients; otherwise register the client and give it
+its client id. The client finds everything else itself: `/mcp` answers 401 with
+`WWW-Authenticate: Bearer resource_metadata="…"`, and the document names the provider.
+
+What a token can do:
+
+- it acts as the person who signed in to the website through the provider at least once (matched by the
+  provider's `sub`); anyone else gets 401;
+- it acts in the person's only organization and its first project; someone in several organizations reaches
+  nothing until per-call organizations arrive;
+- it holds the scopes the person granted, limited by their role in that organization, and never an operator's;
+- it can draft an invite (`member_invite`) and discard a draft, but never send one: a person sends it from the
+  console;
+- a tool whose scope the token was never granted answers 403 with `error="insufficient_scope"`, so the client
+  asks for it; a provider or database outage answers 503 with `GEN009` and no challenge, so the client keeps its
+  token.
+
+At startup oagent logs `boot: mcp oauth on` with the audience and the document's path. When every token gets 401,
+compare that audience with the resource's identifier at the provider.
+
 ## Everyday commands
 
 | Command                      | What it does                                                         |

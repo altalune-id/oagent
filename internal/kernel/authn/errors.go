@@ -37,6 +37,11 @@ func (*UnavailableError) Error() string { return "authn: credential check unavai
 
 func (e *UnavailableError) Unwrap() error { return e.Cause }
 
+// ToAppError maps UnavailableError to the TokenUnavailable envelope. SECURITY: the cause is logged, never sent.
+func (e *UnavailableError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeTokenUnavailable, "Credential verification unavailable, try again").WithCause(e)
+}
+
 // IsUnavailableError reports whether err wraps an *UnavailableError.
 func IsUnavailableError(err error) bool {
 	_, ok := errors.AsType[*UnavailableError](err)

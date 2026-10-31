@@ -6,6 +6,7 @@
   { "code": "GEN006", "name": "AlreadyExists", "kind": "already_exists", "params": [], "reasons": [] },
   { "code": "GEN007", "name": "Forbidden", "kind": "forbidden", "params": ["permission"], "reasons": [] },
   { "code": "GEN008", "name": "ProjectNotInOrg", "kind": "invalid", "params": [], "reasons": [] },
+  { "code": "GEN009", "name": "TokenUnavailable", "kind": "internal", "params": [], "reasons": [] },
   { "code": "GEN900", "name": "Unexpected", "kind": "internal", "params": [], "reasons": [] },
   { "code": "ORG001", "name": "OrgNotFound", "kind": "not_found", "params": [], "reasons": [] },
   { "code": "ORG002", "name": "OrgAlreadyExists", "kind": "already_exists", "params": ["slug"], "reasons": [] },

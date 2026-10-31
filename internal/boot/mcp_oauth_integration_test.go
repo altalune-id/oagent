@@ -253,3 +253,66 @@ func TestMCPOAuth_OffWithoutIssuer(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, status, string(body))
 	assert.Nil(t, f.svcs.MCPTokens)
 }
+
+const mcpOAuthMetadata = "https://oagent.example.com/.well-known/oauth-protected-resource/mcp"
+
+func TestMCPOAuth_ServesProtectedResourceMetadata(t *testing.T) {
+	f := newMCPOAuthFixture(t)
+	resp, err := http.Get(strings.TrimSuffix(f.url, "/api") + "/.well-known/oauth-protected-resource/mcp")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var doc struct {
+		Resource             string   `json:"resource"`
+		AuthorizationServers []string `json:"authorization_servers"`
+		ScopesSupported      []string `json:"scopes_supported"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&doc))
+	assert.Equal(t, mcpOAuthAudience, doc.Resource)
+	assert.Equal(t, []string{f.idp.Issuer()}, doc.AuthorizationServers)
+	assert.Contains(t, doc.ScopesSupported, "agent:read")
+	assert.Contains(t, doc.ScopesSupported, "member:write")
+	assert.NotContains(t, doc.ScopesSupported, "apikey:write", "no token may hold it")
+	assert.NotContains(t, doc.ScopesSupported, "@authenticated")
+}
+
+// SECURITY: RFC 6750 Section 3.1: the challenge names the metadata; only the error code tells "no token" from "refused".
+func TestMCPOAuth_ChallengeNamesTheMetadata(t *testing.T) {
+	f := newMCPOAuthFixture(t)
+
+	status, header, _ := f.mcpCall(t, "", toolCall("auth_whoami", map[string]any{}))
+	assert.Equal(t, http.StatusUnauthorized, status)
+	assert.Equal(t, `Bearer resource_metadata="`+mcpOAuthMetadata+`"`, header.Get("WWW-Authenticate"))
+
+	for _, bearer := range []string{"oagent_nope", f.token("sub-stranger", mcpOAuthAudience, "member:read")} {
+		status, header, _ = f.mcpCall(t, bearer, toolCall("auth_whoami", map[string]any{}))
+		assert.Equal(t, http.StatusUnauthorized, status)
+		assert.Equal(t, `Bearer resource_metadata="`+mcpOAuthMetadata+`", error="invalid_token"`, header.Get("WWW-Authenticate"))
+	}
+}
+
+func TestMCPOAuth_TokenWithoutTheToolScopeGetsAStepUp(t *testing.T) {
+	f := newMCPOAuthFixture(t)
+	acme := f.newOrg(t, "acme-org")
+	f.linkedPerson(t, "sub-ada", map[*org.Org]member.Role{acme: member.RoleAdmin})
+
+	status, header, body := f.mcpCall(t, f.token("sub-ada", mcpOAuthAudience, "member:read"),
+		toolCall("member_invite", map[string]any{"orgId": acme.PublicID, "email": "new@example.com"}))
+	assert.Equal(t, http.StatusForbidden, status, string(body))
+	assert.Equal(t, `Bearer resource_metadata="`+mcpOAuthMetadata+`", error="insufficient_scope", scope="member:write"`, header.Get("WWW-Authenticate"))
+}
+
+// NOTE: no challenge on an outage, so the client keeps its token.
+func TestMCPOAuth_ProviderDownIs503(t *testing.T) {
+	f := newMCPOAuthFixture(t)
+	acme := f.newOrg(t, "acme-org")
+	f.linkedPerson(t, "sub-ada", map[*org.Org]member.Role{acme: member.RoleAdmin})
+	tok := f.token("sub-ada", mcpOAuthAudience, "member:read")
+	f.idp.Close()
+
+	status, header, body := f.mcpCall(t, tok, toolCall("auth_whoami", map[string]any{}))
+	assert.Equal(t, http.StatusServiceUnavailable, status, string(body))
+	assert.Empty(t, header.Get("WWW-Authenticate"))
+	assert.Contains(t, string(body), `"code":"GEN009"`)
+}

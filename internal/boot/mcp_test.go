@@ -132,11 +132,65 @@ func TestBuildMCPTokens_PinsTheAudience(t *testing.T) {
 	assert.ErrorAs(t, err, new(*tokens.InvalidTokenError))
 }
 
+// SECURITY: the RFC 9728 document offers only catalog scopes a token may hold, whatever a tool declares.
+func TestRegisteredScopes_OfferOnlyTokenScopes(t *testing.T) {
+	noop := func(context.Context, json.RawMessage) (json.RawMessage, error) { return nil, nil }
+	reg := rootmcp.NewRegistry()
+	reg.Register(rootmcp.ToolSpec{Name: "agent_list", Scopes: []string{scope.AgentRead}, Handler: noop}, nil)
+	reg.Register(rootmcp.ToolSpec{Name: "agent_get", Scopes: []string{scope.AgentRead}, Handler: noop}, nil)
+	reg.Register(rootmcp.ToolSpec{Name: "member_invite", Scopes: []string{scope.MemberWrite}, Handler: noop}, nil)
+	reg.Register(rootmcp.ToolSpec{Name: "apikey_create", Scopes: []string{scope.ApikeyWrite}, Handler: noop}, nil)
+	reg.Register(rootmcp.ToolSpec{Name: "auth_whoami", Scopes: []string{authz.AnyAuthenticated}, Handler: noop}, nil)
+
+	assert.Equal(t, []string{scope.AgentRead, scope.MemberWrite}, registeredScopes(reg))
+	assert.Equal(t, []string{scope.MemberWrite}, toolScopes(reg)("member_invite"))
+	assert.Nil(t, toolScopes(reg)("nope"))
+}
+
+func TestBuildMCPResource(t *testing.T) {
+	srv := buildMCPServer(config.MCPConfig{Enabled: true}, &Services{Orgs: org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, nil)}, nil)
+
+	log, buf := bufferLogger()
+	r, docs, err := buildMCPResource(devLocalConfig(), srv, log)
+	require.NoError(t, err)
+	assert.Equal(t, tokens.Resource{}, r, "off without MCP OAuth")
+	assert.Nil(t, docs)
+	assert.Empty(t, buf.String())
+
+	cfg := mcpOAuthConfig("https://idp.example.com")
+	cfg.HTTP.BasePath = "/oagent"
+	r, docs, err = buildMCPResource(cfg, srv, log)
+	require.NoError(t, err)
+	assert.Equal(t, "https://oagent.example.com/oagent/mcp", r.Identifier)
+	assert.Contains(t, buf.String(), `msg="boot: mcp oauth on" audience=https://oagent.example.com/oagent/mcp`)
+	assert.Contains(t, buf.String(), "metadata=/.well-known/oauth-protected-resource/oagent/mcp")
+	assert.Contains(t, buf.String(), "issuer=https://idp.example.com")
+	require.Contains(t, docs, "/.well-known/oauth-protected-resource/oagent/mcp")
+
+	rec := httptest.NewRecorder()
+	docs[r.MetadataPath].ServeHTTP(rec, httptest.NewRequest(http.MethodGet, r.MetadataPath, nil))
+	require.Equal(t, http.StatusOK, rec.Code)
+	var doc struct {
+		Resource             string   `json:"resource"`
+		AuthorizationServers []string `json:"authorization_servers"`
+		ScopesSupported      []string `json:"scopes_supported"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &doc))
+	assert.Equal(t, r.Identifier, doc.Resource)
+	assert.Equal(t, []string{"https://idp.example.com"}, doc.AuthorizationServers)
+	assert.Contains(t, doc.ScopesSupported, scope.MemberWrite)
+	assert.NotContains(t, doc.ScopesSupported, scope.ApikeyWrite)
+
+	cfg.MCP.Audience = "urn:oagent:mcp"
+	_, _, err = buildMCPResource(cfg, srv, log)
+	assert.ErrorAs(t, err, new(*tokens.ResourceInvalidError))
+}
+
 func TestBuildMCPHandler(t *testing.T) {
 	svcs := &Services{Orgs: org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, nil), KeyScheme: apikey.NewScheme(""), KeyAuthn: &apikey.Authenticator{}}
-	assert.Nil(t, buildMCPHandler(nil, svcs, nil))
+	assert.Nil(t, buildMCPHandler(nil, svcs, tokens.Resource{}, nil))
 
-	h := buildMCPHandler(buildMCPServer(config.MCPConfig{Enabled: true}, svcs, nil), svcs, nil)
+	h := buildMCPHandler(buildMCPServer(config.MCPConfig{Enabled: true}, svcs, nil), svcs, tokens.Resource{}, nil)
 	require.NotNil(t, h)
 
 	req := httptest.NewRequest(http.MethodPost, "/mcp", nil)

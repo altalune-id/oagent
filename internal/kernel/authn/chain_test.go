@@ -68,6 +68,11 @@ func TestUnavailableError(t *testing.T) {
 	assert.ErrorIs(t, err, cause)
 	assert.Equal(t, "authn: credential check unavailable", err.Error())
 	assert.False(t, IsUnavailableError(errors.New("x")))
+
+	ae := err.ToAppError()
+	assert.Equal(t, apperror.CodeTokenUnavailable, ae.Code())
+	assert.Equal(t, "Credential verification unavailable, try again", ae.Message())
+	assert.NotContains(t, ae.Message(), "provider down")
 }
 
 func TestChain_Empty(t *testing.T) {

@@ -231,3 +231,23 @@ func TestSecurityHeadersOnEverySurfaceButMCP(t *testing.T) {
 type registrarFunc func(mux *http.ServeMux)
 
 func (f registrarFunc) Register(mux *http.ServeMux) { f(mux) }
+
+func TestResourceMetadataIsServedOutsideTheSession(t *testing.T) {
+	doc := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("doc")) })
+	srv := NewServer(ServerOpts{
+		BasePath:         "/app",
+		Routes:           []Registrar{pageRoute{}},
+		ResourceMetadata: map[string]http.Handler{"/.well-known/oauth-protected-resource/app/mcp": doc},
+		Gate:             tag("gate"),
+		Session:          tag("session"),
+		SessionGate:      tag("session-gate"),
+	})
+	rec := get(t, srv, "/.well-known/oauth-protected-resource/app/mcp")
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "doc", rec.Body.String())
+	assert.Equal(t, []string{"gate"}, rec.Header().Values("X-Trace"))
+
+	post := httptest.NewRecorder()
+	srv.ServeHTTP(post, httptest.NewRequest(http.MethodPost, "/.well-known/oauth-protected-resource/app/mcp", nil))
+	assert.NotEqual(t, "doc", post.Body.String(), "the document is GET only")
+}

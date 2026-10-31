@@ -4,14 +4,15 @@ package apperror
 
 // Error codes: <DOM><NNN>, append-only; 900-999 is reserved for internal failures.
 const (
-	CodeTenantMissing   Code = "GEN001"
-	CodeUnauthenticated Code = "GEN002"
-	CodeValidation      Code = "GEN004"
-	CodeNotFound        Code = "GEN005"
-	CodeAlreadyExists   Code = "GEN006"
-	CodeForbidden       Code = "GEN007"
-	CodeProjectNotInOrg Code = "GEN008"
-	CodeUnexpected      Code = "GEN900"
+	CodeTenantMissing    Code = "GEN001"
+	CodeUnauthenticated  Code = "GEN002"
+	CodeValidation       Code = "GEN004"
+	CodeNotFound         Code = "GEN005"
+	CodeAlreadyExists    Code = "GEN006"
+	CodeForbidden        Code = "GEN007"
+	CodeProjectNotInOrg  Code = "GEN008"
+	CodeTokenUnavailable Code = "GEN009"
+	CodeUnexpected       Code = "GEN900"
 
 	CodeOrgNotFound         Code = "ORG001"
 	CodeOrgAlreadyExists    Code = "ORG002"
@@ -79,14 +80,15 @@ const (
 )
 
 var kinds = map[Code]Kind{
-	CodeTenantMissing:   KindUnauthenticated,
-	CodeUnauthenticated: KindUnauthenticated,
-	CodeValidation:      KindInvalid,
-	CodeNotFound:        KindNotFound,
-	CodeAlreadyExists:   KindAlreadyExists,
-	CodeForbidden:       KindForbidden,
-	CodeProjectNotInOrg: KindInvalid,
-	CodeUnexpected:      KindInternal,
+	CodeTenantMissing:    KindUnauthenticated,
+	CodeUnauthenticated:  KindUnauthenticated,
+	CodeValidation:       KindInvalid,
+	CodeNotFound:         KindNotFound,
+	CodeAlreadyExists:    KindAlreadyExists,
+	CodeForbidden:        KindForbidden,
+	CodeProjectNotInOrg:  KindInvalid,
+	CodeTokenUnavailable: KindInternal,
+	CodeUnexpected:       KindInternal,
 
 	CodeOrgNotFound:         KindNotFound,
 	CodeOrgAlreadyExists:    KindAlreadyExists,

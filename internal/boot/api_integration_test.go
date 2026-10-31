@@ -87,10 +87,14 @@ func startAPIFixture(t *testing.T, idp *oidcrptest.IDP) *apiFixture {
 	required, err := installRequired(t.Context(), svcs)
 	require.NoError(t, err)
 	svcs.InstallRequired = required
+	mcpServer := buildMCPServer(cfg.MCP, svcs, testLogger())
+	mcpResource, mcpDocs, err := buildMCPResource(cfg, mcpServer, testLogger())
+	require.NoError(t, err)
 
 	h := buildHTTPHandler(httpSurfaces{
 		api:             buildAPIHandler(svcs, nil, cfg.API, "", testLogger()),
-		mcp:             buildMCPHandler(buildMCPServer(cfg.MCP, svcs, testLogger()), svcs, testLogger()),
+		mcp:             buildMCPHandler(mcpServer, svcs, mcpResource, testLogger()),
+		mcpDocs:         mcpDocs,
 		routes:          buildRoutes(cfg, svcs, nil, nil),
 		session:         buildSessionMiddleware(svcs, nil),
 		installRequired: required,

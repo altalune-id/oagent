@@ -1,9 +1,12 @@
 package boot
 
 import (
+	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/url"
+	"slices"
 
 	"github.com/altalune-id/oidcrp"
 
@@ -27,6 +30,7 @@ import (
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/webhook"
 	rootmcp "altalune.id/oagent/mcp"
+	"altalune.id/oagent/scope"
 	"altalune.id/oagent/version"
 )
 
@@ -96,4 +100,41 @@ func mcpAudience(cfg config.Config) string {
 		return cfg.MCP.Audience
 	}
 	return publicBase(cfg.HTTP) + "/mcp"
+}
+
+// NOTE: zero without MCP OAuth; the RFC 9728 document is mounted at the root, outside http.basePath, as RFC 9728 Section 3.1 places it.
+func buildMCPResource(cfg config.Config, srv *rootmcp.Server, log *slog.Logger) (tokens.Resource, map[string]http.Handler, error) {
+	if srv == nil || !cfg.MCP.OAuth(cfg.OIDC) {
+		return tokens.Resource{}, nil, nil
+	}
+	r, err := tokens.NewResource(mcpAudience(cfg))
+	if err != nil {
+		return tokens.Resource{}, nil, fmt.Errorf("boot: mcp resource: %w", err)
+	}
+	log.Info("boot: mcp oauth on", "audience", r.Identifier, "metadata", r.MetadataPath, "issuer", cfg.OIDC.Issuer)
+	return r, map[string]http.Handler{r.MetadataPath: r.MetadataHandler(cfg.OIDC.Issuer, registeredScopes(srv.Registry()))}, nil
+}
+
+// SECURITY: only catalog scopes a token may hold are offered, so a client never asks consent for one it can't use.
+func registeredScopes(reg *rootmcp.Registry) []string {
+	out := map[string]struct{}{}
+	for _, name := range reg.Names() {
+		spec, _ := reg.Spec(name)
+		for _, s := range spec.Scopes {
+			if scope.Valid(s) && scope.Holds(s, scope.HolderPerson) {
+				out[s] = struct{}{}
+			}
+		}
+	}
+	return slices.Sorted(maps.Keys(out))
+}
+
+func toolScopes(reg *rootmcp.Registry) func(string) []string {
+	return func(name string) []string {
+		spec, ok := reg.Spec(name)
+		if !ok {
+			return nil
+		}
+		return spec.Scopes
+	}
 }

@@ -131,6 +131,10 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 	}
 	consoleHandler := buildConsoleHandler(cfg.HTTP.BasePath)
 	mcpServer := buildMCPServer(cfg.MCP, svcs, log, mcpPublicHost(cfg.HTTP)...)
+	mcpResource, mcpDocs, err := buildMCPResource(cfg, mcpServer, log)
+	if err != nil {
+		return nil, err
+	}
 
 	sup := worker.New(log)
 	sup.Register(httpserver.New(
@@ -142,7 +146,8 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 			basePath:   cfg.HTTP.BasePath,
 			api:        apiHandler,
 			console:    consoleHandler,
-			mcp:        buildMCPHandler(mcpServer, svcs, log),
+			mcp:        buildMCPHandler(mcpServer, svcs, mcpResource, log),
+			mcpDocs:    mcpDocs,
 			routes:     buildRoutes(cfg, svcs, log, k.Reporter.Unexpected),
 
 			installRequired: svcs.InstallRequired,
