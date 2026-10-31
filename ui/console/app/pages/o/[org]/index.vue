@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { StatItem } from '~/components/ui/types';
-import AppStats from '~/components/ui/AppStats.vue';
-import CopyButton from '~/components/ui/CopyButton.vue';
+import type { StatItem } from '#base/components/ui/types';
+import AppStats from '#base/components/ui/AppStats.vue';
+import CopyButton from '#base/components/ui/CopyButton.vue';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 

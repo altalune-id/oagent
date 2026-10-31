@@ -31,9 +31,9 @@ The request chain on `/api` is: authn and the permission check (`internal/permis
 
    When no shared rule fits, write a field CEL rule whose id is `<domain>.<field>.<rule>`, with the limit as a trailing number (`agent.description.max_len.2000`). The validator turns the last segment into the reason and the number into `param`. Add every new rule id to `internal/controlplane/testdata/rule_reasons.json`. A field that truly needs no rule (an empty request, a bool) goes in the `unruled` allowlist in `internal/controlplane/rules_test.go`, with a reason.
 
-2. **`make generate`.** It runs `buf generate` (Go, Connect, OpenAPI under `gen/openapi`, TypeScript under `ui/console/gen`), `buf generate --template buf.gen.mcp.yaml` (MCP tools), `gen-scope` and `gen-apperror`. Never edit `gen/` by hand.
+2. **`make generate`.** It runs `buf generate` (Go, Connect, OpenAPI under `gen/openapi`, TypeScript under `ui/base/gen`), `buf generate --template buf.gen.mcp.yaml` (MCP tools), `gen-scope` and `gen-apperror`. Never edit `gen/` by hand.
 
-3. **Permission.** Add the procedure to `Table()` in `internal/permission/permission.go`, keyed by the generated `…Procedure` constant. Bump the count and the per-service tally in `TestEveryRPCHasAPermission`. A new permission is a `scope/scopes.json` entry (with its `labelKey` translated in every console locale) followed by `make generate`.
+3. **Permission.** Add the procedure to `Table()` in `internal/permission/permission.go`, keyed by the generated `…Procedure` constant. Bump the count and the per-service tally in `TestEveryRPCHasAPermission`. A new permission is a `scope/scopes.json` entry (with its `labelKey` translated in every locale under `ui/base/i18n/locales/`) followed by `make generate`.
 
 4. **Service method.** Add it in `internal/<domain>/service.go` ([service-method.md](service-method.md)). It takes ids, enforces domain rules and owns the transaction. It never checks permissions or reach.
 

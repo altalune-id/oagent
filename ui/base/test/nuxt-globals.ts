@@ -5,7 +5,7 @@ import { defineStore } from 'pinia';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { computed, ref } from 'vue';
 
-import { ErrorDetailSchema } from '../gen/apperror/v1/error_pb';
+import { ErrorDetailSchema } from '#gen/apperror/v1/error_pb';
 
 // Stand-ins for the Nuxt auto-imports the app uses (nuxt.config.ts has imports.scan: false, so only built-ins are globals).
 

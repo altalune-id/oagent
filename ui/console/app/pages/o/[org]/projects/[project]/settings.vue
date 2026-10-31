@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { ShownError } from '~/lib/apperror/message';
-import AppButton from '~/components/ui/AppButton.vue';
-import CopyButton from '~/components/ui/CopyButton.vue';
-import ErrorText from '~/components/ui/ErrorText.vue';
-import { useErrorMessage } from '~/composables/useErrorMessage';
+import type { ShownError } from '#base/lib/apperror/message';
+import AppButton from '#base/components/ui/AppButton.vue';
+import CopyButton from '#base/components/ui/CopyButton.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { LanguageOption } from '~/components/ui/types';
-import LanguageSelect from '~/components/ui/LanguageSelect.vue';
+import type { LanguageOption } from '../ui/types';
+import LanguageSelect from '../ui/LanguageSelect.vue';
 
 const { locale, locales, setLocale, t } = useI18n();
 

@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import ErrorText from '#base/components/ui/ErrorText.vue';
 import InviteModal from '~/components/member/invite/InviteModal.vue';
 import PendingInvites from '~/components/member/invite/PendingInvites.vue';
 import { useInvite } from '~/components/member/invite/useInvite';
 import MemberList from '~/components/member/MemberList.vue';
 import { useMembers } from '~/components/member/useMembers';
-import ErrorText from '~/components/ui/ErrorText.vue';
 import { useOrgsStore } from '~/stores/orgs';
 
 const route = useRoute();

@@ -40,7 +40,7 @@ Most bad input does **not** need a new code. A request that breaks its proto rul
 
    A code with reasons sends `meta["reason"]` from a typed constant (`SlugLength`, `SlugFormat`). The service returns the domain error; `controlplane.Translate` (`/api`), `mcpinternal.ErrorPayload` (MCP) and `ExitCodeFor` (CLI) read `ToAppError()`. Handlers never build `apperror.New` for a domain failure.
 
-5. **Translations.** Add the keys to **every** locale in `ui/console/i18n/locales/` (`en-US.json`, `id-ID.json`): `apperror.<CODE>`, plus `apperror.<CODE>_<reason>` for each reason. Messages use only the declared params:
+5. **Translations.** Add the keys to **every** locale in `ui/base/i18n/locales/` (the shared layer) (`en-US.json`, `id-ID.json`): `apperror.<CODE>`, plus `apperror.<CODE>_<reason>` for each reason. Messages use only the declared params:
 
    ```json
    {
@@ -65,7 +65,7 @@ Most bad input does **not** need a new code. A request that breaks its proto rul
 | `TestEveryCodeSendsItsCatalogParams` (`controlplane`) | a code with no sample, an undeclared meta key, a declared param or reason never sent                 |
 | `TestEchoedInputIsCapped` (`controlplane`)            | echoed input longer than `apperror.EchoLimit`                                                        |
 | `TestEveryInvalidFieldHasALabel` (`controlplane`)     | an `apperror.Invalid` field with no `field.<name>` label                                             |
-| `catalog.test.ts` (`ui/console/app/lib/apperror`)     | a missing `apperror.<CODE>` or `_<reason>` key, an undeclared `{param}`, a stray key, locales differ |
+| `catalog.test.ts` (`ui/base/app/lib/apperror`)        | a missing `apperror.<CODE>` or `_<reason>` key, an undeclared `{param}`, a stray key, locales differ |
 
 ## Review
 
@@ -91,4 +91,4 @@ Most bad input does **not** need a new code. A request that breaks its proto rul
 - [internal/controlplane/catalog_test.go](../../internal/controlplane/catalog_test.go): `samples`
 - [internal/cli/exit.go](../../internal/cli/exit.go): `ExitCodeFor`
 - [internal/mcp/payload.go](../../internal/mcp/payload.go): `ErrorPayload`
-- [ui/console/app/lib/apperror/catalog.test.ts](../../ui/console/app/lib/apperror/catalog.test.ts)
+- [ui/base/app/lib/apperror/catalog.test.ts](../../ui/base/app/lib/apperror/catalog.test.ts)

@@ -1,9 +1,9 @@
+import type { ShownError } from '#base/lib/apperror/message';
 import type { PersonalKeyForm } from './PersonalKeys.vue';
-import type { ShownError } from '~/lib/apperror/message';
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import scopes from '@shared/scope/scopes.json';
-import { useErrorMessage } from '~/composables/useErrorMessage';
-import { useScopeLabel } from '~/composables/useScopeLabel';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { useScopeLabel } from '#base/composables/useScopeLabel';
 import { isPerson } from '~/lib/auth/person';
 import { mcpURL } from '~/lib/auth/urls';
 import { toAPIKey, useAPIKeysStore } from '~/stores/apiKeys';

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { EntityItem } from '~/components/ui/types';
-import EntitySelect from '~/components/ui/EntitySelect.vue';
+import type { EntityItem } from '#base/components/ui/types';
+import EntitySelect from '#base/components/ui/EntitySelect.vue';
 import { useOrgsStore } from '~/stores/orgs';
 import { usePinnedStore } from '~/stores/pinned';
 import { useProjectsStore } from '~/stores/projects';

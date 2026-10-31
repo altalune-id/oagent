@@ -8,6 +8,7 @@ ENV PNPM_HOME=/pnpm \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY ui/base/package.json ui/base/
 COPY ui/console/package.json ui/console/
 COPY ui/mcp/package.json ui/mcp/
 COPY ui/web/package.json ui/web/

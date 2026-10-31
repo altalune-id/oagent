@@ -4,8 +4,8 @@ import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemberSchema } from '../../gen/member/v1/member_pb';
-import { connectError, deferred, setClient, setKnownKeys } from '../../test/nuxt-globals';
+import { MemberSchema } from '#gen/member/v1/member_pb';
+import { connectError, deferred, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { toMember, useMembersStore } from './members';
 
 const joined = new Date('2026-09-01T00:00:00Z');

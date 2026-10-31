@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import LanguageSwitcher from '~/components/layout/LanguageSwitcher.vue';
+import LanguageSwitcher from '#base/components/layout/LanguageSwitcher.vue';
+import ThemeSwitcher from '#base/components/layout/ThemeSwitcher.vue';
+import NavbarShell from '#base/components/ui/NavbarShell.vue';
 import ThemeFamilySwitcher from '~/components/layout/ThemeFamilySwitcher.vue';
-import ThemeSwitcher from '~/components/layout/ThemeSwitcher.vue';
 import UserMenu from '~/components/layout/UserMenu.vue';
 import OrgSelector from '~/components/org/OrgSelector.vue';
 import ProjectSelector from '~/components/project/ProjectSelector.vue';
-import NavbarShell from '~/components/ui/NavbarShell.vue';
 import { siblingURL, staticURL } from '~/lib/auth/urls';
 import { useAuthStore } from '~/stores/auth';
 import { useUIStore } from '~/stores/ui';

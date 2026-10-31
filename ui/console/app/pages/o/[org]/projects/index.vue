@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { Project } from '~/stores/projects';
+import AppButton from '#base/components/ui/AppButton.vue';
+import CopyButton from '#base/components/ui/CopyButton.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
 import ProjectEditModal from '~/components/project/edit/ProjectEditModal.vue';
-import AppButton from '~/components/ui/AppButton.vue';
-import CopyButton from '~/components/ui/CopyButton.vue';
-import ErrorText from '~/components/ui/ErrorText.vue';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 import { useUIStore } from '~/stores/ui';

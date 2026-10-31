@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { ShownError } from '../../../lib/apperror/message';
+import type { ShownError } from '#base/lib/apperror/message';
 import type { Invite } from '../../../stores/invites';
-import AppModal from '../../ui/AppModal.vue';
-import ErrorText from '../../ui/ErrorText.vue';
-import SecretField from '../../ui/SecretField.vue';
+import AppModal from '#base/components/ui/AppModal.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
+import SecretField from '#base/components/ui/SecretField.vue';
 
 export interface PendingInvitesLabels {
   title: string;

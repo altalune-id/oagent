@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { fakeStorage } from '../../../test/nuxt-globals';
+import { fakeStorage } from '#test/nuxt-globals';
 import { themeFamilies, useTheme } from './useTheme';
 
 describe('useTheme', () => {

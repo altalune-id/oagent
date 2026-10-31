@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import Avatar from '#base/components/ui/Avatar.vue';
 import ProfileName from '~/components/profile/ProfileName.vue';
 import ProfilePassword from '~/components/profile/ProfilePassword.vue';
 import ProfileSessions from '~/components/profile/ProfileSessions.vue';
 import { useProfile } from '~/components/profile/useProfile';
-import Avatar from '~/components/ui/Avatar.vue';
 
 const { t } = useI18n();
 const profile = useProfile();

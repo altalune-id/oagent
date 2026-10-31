@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import AppButton from '~/components/ui/AppButton.vue';
-import AppModal from '~/components/ui/AppModal.vue';
-import ErrorText from '~/components/ui/ErrorText.vue';
-import FieldError from '~/components/ui/FieldError.vue';
-import SecretField from '~/components/ui/SecretField.vue';
+import AppButton from '#base/components/ui/AppButton.vue';
+import AppModal from '#base/components/ui/AppModal.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
+import FieldError from '#base/components/ui/FieldError.vue';
+import SecretField from '#base/components/ui/SecretField.vue';
 import { webhookEvents } from '~/components/webhook/events';
 import { useWebhookCreate } from './useWebhookCreate';
 

@@ -1,6 +1,6 @@
-import type { ShownError } from '~/lib/apperror/message';
-import { useScopeLabel } from '~/composables/useScopeLabel';
-import { describeError, toShown } from '~/lib/apperror/message';
+import type { ShownError } from '../lib/apperror/message';
+import { describeError, toShown } from '../lib/apperror/message';
+import { useScopeLabel } from './useScopeLabel';
 
 // One place that wires the i18n functions and scope labels into describeError.
 export function useErrorMessage() {

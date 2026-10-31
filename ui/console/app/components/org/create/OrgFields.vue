@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import FieldError from '~/components/ui/FieldError.vue';
+import FieldError from '#base/components/ui/FieldError.vue';
 
 const { fieldErrors, busy = false } = defineProps<{ fieldErrors: Record<string, string>, busy?: boolean }>();
 const name = defineModel<string>('name', { required: true });

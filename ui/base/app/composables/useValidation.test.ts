@@ -2,9 +2,9 @@ import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { ErrorDetailSchema, ViolationSchema } from '../../gen/apperror/v1/error_pb';
-import { CreateOrgRequestSchema, UpdateOrgRequestSchema } from '../../gen/org/v1/org_pb';
-import { connectError, setKnownKeys } from '../../test/nuxt-globals';
+import { ErrorDetailSchema, ViolationSchema } from '#gen/apperror/v1/error_pb';
+import { CreateOrgRequestSchema, UpdateOrgRequestSchema } from '#gen/org/v1/org_pb';
+import { connectError, setKnownKeys } from '#test/nuxt-globals';
 import { useValidation } from './useValidation';
 
 function violations(...vs: { field: string, reason: string, param?: string }[]): ConnectError {

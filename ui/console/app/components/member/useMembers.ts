@@ -1,7 +1,7 @@
+import type { ShownError } from '#base/lib/apperror/message';
 import type { Party, Role } from './roles';
-import type { ShownError } from '~/lib/apperror/message';
 import type { Member } from '~/stores/members';
-import { useErrorMessage } from '~/composables/useErrorMessage';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { useAuthStore } from '~/stores/auth';
 import { toMember, useMembersStore } from '~/stores/members';
 import { useOrgsStore } from '~/stores/orgs';

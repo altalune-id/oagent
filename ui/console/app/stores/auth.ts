@@ -1,4 +1,4 @@
-import type { WhoamiResponse } from '~~/gen/auth/v1/auth_pb';
+import type { WhoamiResponse } from '#gen/auth/v1/auth_pb';
 
 // me stays null when whoami fails (nobody signed in); before credentials are required that console still works.
 export const useAuthStore = defineStore('auth', () => {

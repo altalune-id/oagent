@@ -11,7 +11,7 @@ metadata:
 ## In oagent
 
 - One root `eslint.config.mjs` exports `oagent()`, built on `@antfu/eslint-config` 9 with ESLint 10. It lints every JS/TS/Vue/JSON/Markdown/CSS file in the repo.
-- `ui/console/eslint.config.mjs` wraps it: `withNuxt(oagent())` adds the `@nuxt/eslint` rules (`eslint: { config: { standalone: false } }` in `nuxt.config.ts`). It needs `.nuxt/` (run `nuxt prepare`, done by `postinstall`).
+- `ui/console/eslint.config.mjs` and `ui/base/eslint.config.mjs` wrap it: `withNuxt(oagent())` adds the `@nuxt/eslint` rules (`eslint: { config: { standalone: false } }` in `nuxt.config.ts`). It needs `.nuxt/` (run `nuxt prepare`, done by `postinstall`).
 - YAML is not ESLint's job (`yaml: false`); yamllint checks it. Go, shell, Dockerfiles and protos have their own linters (see lint-staged in the root `package.json`).
 - Commands: `pnpm lint` (`eslint .`), `pnpm lint:fix` (`eslint . --fix`), `make lint-js`. The husky pre-commit hook runs `lint-staged`, which runs `eslint --fix --no-warn-ignored` on staged files.
 - pnpm 10 workspace: `pnpm/json-enforce-catalog` is off, because the `catalog:` holds only versions shared by several `ui/*` packages.

@@ -5,7 +5,7 @@ import lucide from '@iconify-json/lucide/icons.json';
 import { addCollection, Icon as IconifyIcon } from '@iconify/vue';
 import { setup } from '@storybook/vue3';
 import { defineComponent } from 'vue';
-import '../app/assets/css/main.css';
+import '#base/assets/css/main.css';
 
 addCollection(lucide);
 addCollection(circleFlags);

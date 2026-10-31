@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { Agent } from '~/stores/agents';
+import CopyButton from '#base/components/ui/CopyButton.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
 import AgentCreateModal from '~/components/agent/create/AgentCreateModal.vue';
 import AgentEditModal from '~/components/agent/edit/AgentEditModal.vue';
-import CopyButton from '~/components/ui/CopyButton.vue';
-import ErrorText from '~/components/ui/ErrorText.vue';
-import { useErrorMessage } from '~/composables/useErrorMessage';
 import { useAgentsStore } from '~/stores/agents';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';

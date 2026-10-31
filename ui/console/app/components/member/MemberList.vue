@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { ShownError } from '../../lib/apperror/message';
+import type { ShownError } from '#base/lib/apperror/message';
 import { computed } from 'vue';
-import AppModal from '../ui/AppModal.vue';
-import ErrorText from '../ui/ErrorText.vue';
+import AppModal from '#base/components/ui/AppModal.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
 import { displayName } from './names';
 
 export interface MemberListRow {

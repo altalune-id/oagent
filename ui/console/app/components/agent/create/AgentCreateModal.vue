@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import AppButton from '~/components/ui/AppButton.vue';
-import AppModal from '~/components/ui/AppModal.vue';
-import ErrorText from '~/components/ui/ErrorText.vue';
-import FieldError from '~/components/ui/FieldError.vue';
+import AppButton from '#base/components/ui/AppButton.vue';
+import AppModal from '#base/components/ui/AppModal.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
+import FieldError from '#base/components/ui/FieldError.vue';
 import { useAgentCreate } from './useAgentCreate';
 
 const { orgId, projectId, label } = defineProps<{ orgId: string, projectId: string, label?: string }>();

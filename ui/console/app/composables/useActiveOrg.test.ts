@@ -2,8 +2,8 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { setClient } from '#test/nuxt-globals';
 import { useOrgsStore } from '~/stores/orgs';
-import { setClient } from '../../test/nuxt-globals';
 import { useActiveOrg } from './useActiveOrg';
 
 function setup(me: Record<string, unknown>) {

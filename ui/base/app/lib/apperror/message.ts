@@ -1,6 +1,6 @@
 import { ConnectError } from '@connectrpc/connect';
 
-import { ErrorDetailSchema } from '../../../gen/apperror/v1/error_pb';
+import { ErrorDetailSchema } from '#gen/apperror/v1/error_pb';
 
 export type Translate = (key: string, params?: Record<string, unknown>) => string;
 export type HasKey = (key: string) => boolean;

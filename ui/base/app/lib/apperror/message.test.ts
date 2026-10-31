@@ -2,7 +2,7 @@ import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { describe, expect, it } from 'vitest';
 
-import { ErrorDetailSchema } from '../../../gen/apperror/v1/error_pb';
+import { ErrorDetailSchema } from '#gen/apperror/v1/error_pb';
 import { describeError, toShown } from './message';
 
 const messages: Record<string, string> = {

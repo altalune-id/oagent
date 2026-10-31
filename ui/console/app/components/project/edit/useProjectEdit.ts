@@ -1,9 +1,9 @@
-import type { ShownError } from '~/lib/apperror/message';
+import type { ShownError } from '#base/lib/apperror/message';
 
 import type { Project } from '~/stores/projects';
 import { create } from '@bufbuild/protobuf';
-import { UpdateProjectRequestSchema } from '~~/gen/project/v1/project_pb';
-import { useValidation } from '~/composables/useValidation';
+import { useValidation } from '#base/composables/useValidation';
+import { UpdateProjectRequestSchema } from '#gen/project/v1/project_pb';
 import { useProjectsStore } from '~/stores/projects';
 
 export function useProjectEdit() {

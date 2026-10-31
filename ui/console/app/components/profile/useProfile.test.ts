@@ -1,8 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { connectError, navigateTo, runtimeConfig, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { useAuthStore } from '~/stores/auth';
-import { connectError, navigateTo, runtimeConfig, setClient, setKnownKeys } from '../../../test/nuxt-globals';
 import { useProfile } from './useProfile';
 
 describe('useProfile', () => {

@@ -83,6 +83,7 @@ The pnpm workspace `ui/*` builds assets that the binary embeds. The builds are n
 | Package      | What                           | Build             | Embedded at                   |
 | ------------ | ------------------------------ | ----------------- | ----------------------------- |
 | `ui/console` | Nuxt 4 console SPA             | `make ui-console` | `internal/web/console/public` |
+| `ui/base`    | shared Nuxt layer              | `make ui-base`    | (extended by `ui/console`)    |
 | `ui/mcp`     | MCP Apps view                  | `make ui-mcp`     | `internal/mcp/ui/assets`      |
 | `ui/web`     | Tailwind CSS + password script | `make web`        | `internal/web/static`         |
 
@@ -94,6 +95,6 @@ Postgres only (`db.driver: postgres`, connection `postgres.*`). Migrations live 
 
 ## Code generation and dev tools
 
-- `make generate`: protos (Go, Connect, OpenAPI, MCP tools, console TypeScript in `ui/console/gen`), scope names, error codes and templ.
+- `make generate`: protos (Go, Connect, OpenAPI, MCP tools, TypeScript in `ui/base/gen`), scope names, error codes and templ.
 - `cmd/*`: the generators and linters (`gen-apperror`, `gen-scope`, `gen-config-example`, `protoc-gen-mcp`, `comment-lint`). `protoc-gen-mcp` and `comment-lint` keep their code in `internal/tool` (`protocmcp`, `commentlint`).
 - `make check`: vet, lint and tests.

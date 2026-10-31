@@ -15,7 +15,7 @@ metadata:
 - `defineStore`, `ref` and `computed` are auto-imported; stores, components and own composables are imported explicitly (`imports.scan: false`).
 - Stores call the Connect clients from `useNuxtApp()` (`$orgClient` and friends) and expose `items`, `loading`, `loaded`, `error` plus actions such as `load()` and `ensureLoaded()`.
 - Errors shown to users go through `useErrorMessage()`; ids held in state are public ids, never UUIDs.
-- Test each store next to it (`orgs.test.ts`) with `setActivePinia(createPinia())` and mocked clients from `test/nuxt-globals.ts`; `@pinia/testing` is not installed.
+- Test each store next to it (`orgs.test.ts`) with `setActivePinia(createPinia())` and mocked clients from `#test/nuxt-globals` (`ui/base/test/nuxt-globals.ts`); `@pinia/testing` is not installed.
 - See docs/howto/console-page.md for how a console page, its store and its tests fit together.
 
 Pinia is the official state management library for Vue, designed to be intuitive and type-safe. It supports Options API and setup (Composition API) stores, with first-class TypeScript support and devtools integration. oagent uses setup stores.

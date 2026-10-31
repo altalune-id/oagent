@@ -4,8 +4,8 @@ import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { APIKeySchema } from '../../gen/apikey/v1/apikey_pb';
-import { connectError, deferred, setClient, setKnownKeys } from '../../test/nuxt-globals';
+import { APIKeySchema } from '#gen/apikey/v1/apikey_pb';
+import { connectError, deferred, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { toAPIKey, useAPIKeysStore } from './apiKeys';
 
 const expires = new Date('2027-01-01T00:00:00Z');

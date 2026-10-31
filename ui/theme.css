@@ -1,4 +1,4 @@
-/* Shared daisyUI themes for the console and the server pages; registry: ui/console/app/components/layout/useTheme.ts. */
+/* Shared daisyUI themes for the console and the server pages; registry: ui/base/app/components/layout/useTheme.ts. */
 @custom-variant dark (&:where([data-theme="oagent-dark"], [data-theme="oagent-dark"] *, [data-theme="bumblebee-dark"], [data-theme="bumblebee-dark"] *, [data-theme="retro-dark"], [data-theme="retro-dark"] *, [data-theme="pastel-dark"], [data-theme="pastel-dark"] *, [data-theme="caramellatte-dark"], [data-theme="caramellatte-dark"] *, [data-theme="coffee-dark"], [data-theme="coffee-dark"] *, [data-theme="luxury-dark"], [data-theme="luxury-dark"] *, [data-theme="night-dark"], [data-theme="night-dark"] *, [data-theme="halloween-dark"], [data-theme="halloween-dark"] *));
 
 @plugin "daisyui/theme" {

@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { connectError, deferred, setClient, setKnownKeys } from '../../test/nuxt-globals';
+import { connectError, deferred, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { useOrgsStore } from './orgs';
 
 const acme = { id: 'V3StGXR8Z5jdHj6BmyT2a', slug: 'acme', name: 'Acme' };

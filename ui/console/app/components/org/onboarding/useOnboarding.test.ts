@@ -1,8 +1,8 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { connectError, fakeStorage, navigateTo, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { useOrgsStore } from '~/stores/orgs';
-import { connectError, fakeStorage, navigateTo, setClient, setKnownKeys } from '../../../../test/nuxt-globals';
 import { useOrgCreation } from '../create/useOrgCreation';
 import { useOnboarding } from './useOnboarding';
 

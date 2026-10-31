@@ -1,38 +1,14 @@
-import { fileURLToPath } from 'node:url';
-import tailwindcss from '@tailwindcss/vite';
-
 export default defineNuxtConfig({
+  extends: ['@oagent/base'],
   compatibilityDate: '2026-10-06',
-  modules: ['@nuxt/eslint', '@nuxt/icon', '@pinia/nuxt', '@vueuse/nuxt', '@nuxtjs/i18n'],
-  eslint: { config: { standalone: false } },
-  icon: {
-    mode: 'svg',
-    clientBundle: { scan: true, icons: ['circle-flags:us', 'circle-flags:id'] },
-    serverBundle: false,
-  },
-  i18n: {
-    strategy: 'no_prefix',
-    defaultLocale: 'en-US',
-    langDir: 'locales',
-    locales: [
-      { code: 'en-US', name: 'English (US)', file: 'en-US.json' },
-      { code: 'id-ID', name: 'Bahasa Indonesia', file: 'id-ID.json' },
-    ],
-    detectBrowserLanguage: {
-      useCookie: true,
-      cookieKey: 'oagent_lang',
-      redirectOn: 'root',
-      fallbackLocale: 'en-US',
-    },
-  },
-  alias: {
-    '@shared/scope': fileURLToPath(new URL('../../scope', import.meta.url)),
-    '@shared/apperror': fileURLToPath(new URL('../../apperror', import.meta.url)),
-  },
   components: { dirs: [] },
-  imports: { scan: false },
-  css: ['~/assets/css/main.css'],
-  vite: { plugins: [tailwindcss() as any] },
+  modules: ['@vueuse/nuxt'],
+  i18n: {
+    locales: [
+      { code: 'en-US', file: 'en-US.json' },
+      { code: 'id-ID', file: 'id-ID.json' },
+    ],
+  },
   app: {
     head: {
       title: 'oagent',
@@ -56,10 +32,5 @@ export default defineNuxtConfig({
   },
   $production: {
     ssr: false,
-  },
-  hooks: {
-    'prerender:routes': function ({ routes }) {
-      routes.clear();
-    },
   },
 });

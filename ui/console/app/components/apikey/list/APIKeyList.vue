@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import ErrorText from '~/components/ui/ErrorText.vue';
-import { useErrorMessage } from '~/composables/useErrorMessage';
-import { useScopeLabel } from '~/composables/useScopeLabel';
+import ErrorText from '#base/components/ui/ErrorText.vue';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { useScopeLabel } from '#base/composables/useScopeLabel';
 import { useAPIKeysStore } from '~/stores/apiKeys';
 
 const { orgId } = defineProps<{ orgId: string }>();

@@ -1,6 +1,6 @@
-import type { Webhook as WebhookPB } from '~~/gen/webhook/v1/webhook_pb';
-import type { ShownError } from '~/lib/apperror/message';
-import { useErrorMessage } from '~/composables/useErrorMessage';
+import type { ShownError } from '#base/lib/apperror/message';
+import type { Webhook as WebhookPB } from '#gen/webhook/v1/webhook_pb';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
 
 export interface Webhook {
   id: string;

@@ -63,7 +63,7 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
 - A new error code means all of these, in the same commit:
   - an `apperror/codes.json` entry, then `make generate`
   - a line in `apperror/issued_codes.txt`
-  - translations in every console locale
+  - translations in every locale of the `ui/base` layer
 - Codes are append-only: never delete, rename or reuse one. See [error-code](docs/howto/error-code.md).
 
 **Config**
@@ -84,7 +84,7 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
   - Exported symbols get a one-sentence doc.
   - Keep only markers (`TODO`, `NOTE`, `SECURITY`…) or links. No rationale, history or section headers.
   - Never reference untracked files or IDs defined only in them.
-- Generated code (`gen/`, `*_templ.go`, `ui/console/gen/`) is never edited by hand.
+- Generated code (`gen/`, `*_templ.go`, `ui/base/gen/`) is never edited by hand.
 
 **Versions**
 

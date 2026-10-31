@@ -1,14 +1,14 @@
 import type { DescField, DescMessage, MessageShape } from '@bufbuild/protobuf';
 import type { Violation } from '@bufbuild/protovalidate';
-import type { FieldRules } from '../../../gen/buf/validate/validate_pb';
+import type { FieldRules } from '#gen/buf/validate/validate_pb';
 import { createRegistry, getOption } from '@bufbuild/protobuf';
 import { pathToString } from '@bufbuild/protobuf/reflect';
 import { createValidator } from '@bufbuild/protovalidate';
 
 import { ConnectError } from '@connectrpc/connect';
-import { ErrorDetailSchema } from '../../../gen/apperror/v1/error_pb';
-import { field as fieldRules } from '../../../gen/buf/validate/validate_pb';
-import { file_oagent_v1_rules } from '../../../gen/oagent/v1/rules_pb';
+import { ErrorDetailSchema } from '#gen/apperror/v1/error_pb';
+import { field as fieldRules } from '#gen/buf/validate/validate_pb';
+import { file_oagent_v1_rules } from '#gen/oagent/v1/rules_pb';
 
 // FieldIssue is why one request field was refused, as the server's violations say it: never the value.
 export interface FieldIssue {

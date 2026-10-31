@@ -1,7 +1,7 @@
-import type { Invite as InvitePB } from '~~/gen/invite/v1/invite_pb';
-import type { ShownError } from '~/lib/apperror/message';
+import type { ShownError } from '#base/lib/apperror/message';
+import type { Invite as InvitePB } from '#gen/invite/v1/invite_pb';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
-import { useErrorMessage } from '~/composables/useErrorMessage';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
 
 export interface Invite {
   id: string;

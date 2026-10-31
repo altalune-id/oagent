@@ -1,10 +1,10 @@
 import type { DescMessage, MessageShape } from '@bufbuild/protobuf';
 
-import type { ShownError } from '~/lib/apperror/message';
-import type { FieldIssue, FieldIssues } from '~/lib/validation/violations';
-import { useErrorMessage } from '~/composables/useErrorMessage';
-import { errorCode } from '~/lib/apperror/message';
-import { checkRequest, serverIssues } from '~/lib/validation/violations';
+import type { ShownError } from '../lib/apperror/message';
+import type { FieldIssue, FieldIssues } from '../lib/validation/violations';
+import { errorCode } from '../lib/apperror/message';
+import { checkRequest, serverIssues } from '../lib/validation/violations';
+import { useErrorMessage } from './useErrorMessage';
 
 export interface ValidationOptions {
   // fields are the proto field names the form has an input for.

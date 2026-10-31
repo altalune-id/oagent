@@ -13,8 +13,8 @@ metadata:
 - Vitest 5 and `@vitest/coverage-v8` come from the workspace `catalog:`; every package extends a preset from `ui/vitest-config` (`node` for pure TS, `browser` for happy-dom).
 - `globals: false`: import `describe`, `it`, `expect`, `vi`, `beforeEach` from `'vitest'` in every file.
 - Write `it(...)` inside a `describe(...)` block, as the existing tests do; do not switch to top-level `test(...)`.
-- Tests sit next to the code (`app/stores/orgs.test.ts`); `ui/console/test/nuxt-globals.ts` stands in for Nuxt auto-imports and Connect clients (`setClient`, `connectError`).
-- `ui/console` runs `vitest run --coverage` with thresholds (lines/statements/functions 90, branches 85); a drop below fails the run.
+- Tests sit next to the code (`app/stores/orgs.test.ts`); `ui/base/test/nuxt-globals.ts` (imported as `#test/nuxt-globals`) stands in for Nuxt auto-imports and Connect clients (`setClient`, `connectError`).
+- `ui/console` and `ui/base` run `vitest run --coverage` with thresholds (`ui/base/vitest.app.ts`) (lines/statements/functions 90, branches 85); a drop below fails the run.
 - Store tests call `setActivePinia(createPinia())` in `beforeEach` (see the pinia skill).
 - Fixture ids are public ids, never UUIDs. Run all UI tests with `pnpm ui:test`. See docs/howto/console-page.md.
 

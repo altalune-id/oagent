@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import Avatar from '#base/components/ui/Avatar.vue';
 import { isPerson as personOf } from '~/lib/auth/person';
-import Avatar from '../ui/Avatar.vue';
 
 export interface UserMenuIdentity {
   source: string;

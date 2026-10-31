@@ -76,16 +76,20 @@ web-js: ## build internal/web/static/password.js
 web: web-css web-js ## build the templ pages' CSS and JS
 
 .PHONY: ui-mcp
-ui-mcp: ## build the MCP App (Vue) and embed it
+ui-mcp: ui-base ## build the MCP App (Vue) and embed it
 	pnpm --filter @oagent/mcp-ui build
 	cp ui/mcp/dist/index.html internal/mcp/ui/assets/app.html
 
 .PHONY: ui-test
-ui-test: ## run every ui/* package's tests
+ui-test: ui-base ## run every ui/* package's tests
 	pnpm -r --if-present test
 
+.PHONY: ui-base
+ui-base: ## prepare the shared UI layer, whose tsconfig the console and MCP builds read
+	pnpm --filter @oagent/base exec nuxt prepare
+
 .PHONY: ui-console
-ui-console: ## build the console SPA and embed it
+ui-console: ui-base ## build the console SPA and embed it
 	pnpm --filter @oagent/console generate
 	@mkdir -p internal/web/console/public
 	@find internal/web/console/public -mindepth 1 ! -name .gitkeep -exec rm -rf {} +

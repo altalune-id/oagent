@@ -2,12 +2,12 @@ import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { describe, expect, it } from 'vitest';
 
+import { CreateAPIKeyRequestSchema } from '#gen/apikey/v1/apikey_pb';
+import { ErrorDetailSchema, ViolationSchema } from '#gen/apperror/v1/error_pb';
+import { ChangePasswordRequestSchema } from '#gen/auth/v1/auth_pb';
+import { CreateOrgRequestSchema, UpdateOrgRequestSchema } from '#gen/org/v1/org_pb';
+import { CreateWebhookRequestSchema } from '#gen/webhook/v1/webhook_pb';
 import ruleReasons from '../../../../../internal/controlplane/testdata/rule_reasons.json';
-import { CreateAPIKeyRequestSchema } from '../../../gen/apikey/v1/apikey_pb';
-import { ErrorDetailSchema, ViolationSchema } from '../../../gen/apperror/v1/error_pb';
-import { ChangePasswordRequestSchema } from '../../../gen/auth/v1/auth_pb';
-import { CreateOrgRequestSchema, UpdateOrgRequestSchema } from '../../../gen/org/v1/org_pb';
-import { CreateWebhookRequestSchema } from '../../../gen/webhook/v1/webhook_pb';
 import { checkRequest, reasonOf, serverIssues } from './violations';
 
 const goodID = 'abcdefghjkmnpqrstuvwx';

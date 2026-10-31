@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import CopyButton from '~/components/ui/CopyButton.vue';
+import CopyButton from '#base/components/ui/CopyButton.vue';
 import { useAgentsStore } from '~/stores/agents';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';

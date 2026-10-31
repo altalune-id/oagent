@@ -2,9 +2,9 @@ import { create } from '@bufbuild/protobuf';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { WebhookSchema } from '#gen/webhook/v1/webhook_pb';
+import { connectError, deferred, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { useWebhooksStore } from '~/stores/webhooks';
-import { WebhookSchema } from '../../../../gen/webhook/v1/webhook_pb';
-import { connectError, deferred, setClient, setKnownKeys } from '../../../../test/nuxt-globals';
 import { useWebhookCreate } from './useWebhookCreate';
 
 const hookPB = create(WebhookSchema, { id: 'UxVy4UK3vmrHzPZ273hCA', orgId: 'V3StGXR8Z5jdHj6BmyT2a', projectId: 'x6MH9WPWjktMwCBKHy4pF', url: 'https://a.test', eventTypes: ['agent.created'], active: true });

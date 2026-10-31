@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { ShownError } from '../../../lib/apperror/message';
+import type { ShownError } from '#base/lib/apperror/message';
 import { reactive, ref, watch } from 'vue';
-import CopyButton from '../../ui/CopyButton.vue';
-import ErrorText from '../../ui/ErrorText.vue';
-import SecretField from '../../ui/SecretField.vue';
+import CopyButton from '#base/components/ui/CopyButton.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
+import SecretField from '#base/components/ui/SecretField.vue';
 
 export interface PersonalKey {
   rowKey: string;

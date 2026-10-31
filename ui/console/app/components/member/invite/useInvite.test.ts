@@ -3,9 +3,9 @@ import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
+import { InviteSchema } from '#gen/invite/v1/invite_pb';
+import { connectError, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { useInvitesStore } from '~/stores/invites';
-import { InviteSchema } from '../../../../gen/invite/v1/invite_pb';
-import { connectError, setClient, setKnownKeys } from '../../../../test/nuxt-globals';
 import { useInvite } from './useInvite';
 
 const bob = create(InviteSchema, { id: '2MPkgPSKGTZpjjYvbdNZd', email: 'bob@x.io', role: 'admin', status: 'pending', invitedByName: 'Olga' });

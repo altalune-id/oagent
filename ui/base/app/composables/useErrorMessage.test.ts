@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { connectError, setKnownKeys } from '../../test/nuxt-globals';
+import { connectError, setKnownKeys } from '#test/nuxt-globals';
 import { useErrorMessage } from './useErrorMessage';
 
 describe('useErrorMessage', () => {

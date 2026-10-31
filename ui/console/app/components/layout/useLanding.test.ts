@@ -2,9 +2,9 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { fakeStorage, setClient } from '#test/nuxt-globals';
 import { useOrgsStore } from '~/stores/orgs';
 import { usePinnedStore } from '~/stores/pinned';
-import { fakeStorage, setClient } from '../../../test/nuxt-globals';
 import { useLanding } from './useLanding';
 
 const acme = { id: 'V3StGXR8Z5jdHj6BmyT2a', slug: 'acme', name: 'Acme' };

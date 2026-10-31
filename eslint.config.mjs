@@ -1,7 +1,7 @@
 import antfu from '@antfu/eslint-config';
 
-// One config for every JS/TS/Vue/JSON/Markdown/CSS file in the repo; ui/console adds the Nuxt rules on top
-// (ui/console/eslint.config.mjs). YAML belongs to yamllint, so antfu's yaml support is off.
+// One config for every JS/TS/Vue/JSON/Markdown/CSS file in the repo; ui/console and the ui/base layer add the Nuxt rules
+// on top (their eslint.config.mjs). YAML belongs to yamllint, so antfu's yaml support is off.
 export function oagent() {
   return antfu(
     {

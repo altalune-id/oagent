@@ -1,7 +1,7 @@
-import type { APIKey as APIKeyPB } from '~~/gen/apikey/v1/apikey_pb';
-import type { ShownError } from '~/lib/apperror/message';
+import type { ShownError } from '#base/lib/apperror/message';
+import type { APIKey as APIKeyPB } from '#gen/apikey/v1/apikey_pb';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
-import { useErrorMessage } from '~/composables/useErrorMessage';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
 
 export interface APIKey {
   rowKey: string;

@@ -1,10 +1,10 @@
-import type { Org as OrgMessage } from '~~/gen/org/v1/org_pb';
-import type { ShownError } from '~/lib/apperror/message';
+import type { ShownError } from '#base/lib/apperror/message';
+import type { Org as OrgMessage } from '#gen/org/v1/org_pb';
 import type { Org } from '~/stores/orgs';
 
 import { create } from '@bufbuild/protobuf';
-import { CreateOwnOrgRequestSchema } from '~~/gen/auth/v1/auth_pb';
-import { useValidation } from '~/composables/useValidation';
+import { useValidation } from '#base/composables/useValidation';
+import { CreateOwnOrgRequestSchema } from '#gen/auth/v1/auth_pb';
 import { useOrgsStore } from '~/stores/orgs';
 import { useUIStore } from '~/stores/ui';
 

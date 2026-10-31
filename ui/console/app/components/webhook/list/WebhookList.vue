@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { Webhook } from '~/stores/webhooks';
-import AppModal from '~/components/ui/AppModal.vue';
-import ErrorText from '~/components/ui/ErrorText.vue';
-import SecretField from '~/components/ui/SecretField.vue';
+import AppModal from '#base/components/ui/AppModal.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
+import SecretField from '#base/components/ui/SecretField.vue';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { webhookEvents } from '~/components/webhook/events';
-import { useErrorMessage } from '~/composables/useErrorMessage';
 import { toWebhook, useWebhooksStore } from '~/stores/webhooks';
 
 const { orgId, projectId } = defineProps<{ orgId: string, projectId: string }>();

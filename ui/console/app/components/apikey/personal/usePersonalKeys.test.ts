@@ -3,10 +3,10 @@ import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { APIKeySchema } from '#gen/apikey/v1/apikey_pb';
+import { connectError, runtimeConfig, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { useAPIKeysStore } from '~/stores/apiKeys';
 import { useAuthStore } from '~/stores/auth';
-import { APIKeySchema } from '../../../../gen/apikey/v1/apikey_pb';
-import { connectError, runtimeConfig, setClient, setKnownKeys } from '../../../../test/nuxt-globals';
 import { mcpSnippet } from './mcpSnippet';
 import { usePersonalKeys } from './usePersonalKeys';
 

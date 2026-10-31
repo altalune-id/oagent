@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import scopes from '@shared/scope/scopes.json';
-import AppButton from '~/components/ui/AppButton.vue';
-import AppModal from '~/components/ui/AppModal.vue';
-import ErrorText from '~/components/ui/ErrorText.vue';
-import FieldError from '~/components/ui/FieldError.vue';
-import SecretField from '~/components/ui/SecretField.vue';
-import { useScopeLabel } from '~/composables/useScopeLabel';
+import AppButton from '#base/components/ui/AppButton.vue';
+import AppModal from '#base/components/ui/AppModal.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
+import FieldError from '#base/components/ui/FieldError.vue';
+import SecretField from '#base/components/ui/SecretField.vue';
+import { useScopeLabel } from '#base/composables/useScopeLabel';
 import { useProjectsStore } from '~/stores/projects';
 import { useAPIKeyCreate } from './useAPIKeyCreate';
 

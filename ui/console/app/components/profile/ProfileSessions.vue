@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { ShownError } from '../../lib/apperror/message';
-import AppModal from '../ui/AppModal.vue';
-import ErrorText from '../ui/ErrorText.vue';
+import type { ShownError } from '#base/lib/apperror/message';
+import AppModal from '#base/components/ui/AppModal.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
 
 export interface ProfileSessionsLabels {
   title: string;
