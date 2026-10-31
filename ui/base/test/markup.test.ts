@@ -61,3 +61,11 @@ describe('guard: forms that show field errors', () => {
     expect(bad).toEqual([]);
   });
 });
+
+describe('guard: theme contrast', () => {
+  it('darkens the oagent-dark primary for button text contrast', () => {
+    const theme = readFileSync(join(ui, 'theme.css'), 'utf8');
+    const dark = theme.slice(theme.indexOf('name: \'oagent-dark\''));
+    expect(dark.slice(0, dark.indexOf('}'))).toContain('--color-primary: oklch(55% 0.233 277.117);');
+  });
+});

@@ -25,3 +25,19 @@ export const Default: Story = {
     `,
   }),
 };
+
+export const NotDismissible: Story = {
+  args: { title: 'Save the client secret', dismissible: false },
+  render: args => ({
+    components: { AppModal },
+    setup: () => ({ args }),
+    template: `
+      <AppModal v-bind="args">
+        <p class="text-sm">Esc and the backdrop do nothing until the footer action runs.</p>
+        <template #footer>
+          <button class="btn btn-primary btn-sm">Done</button>
+        </template>
+      </AppModal>
+    `,
+  }),
+};

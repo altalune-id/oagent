@@ -83,4 +83,17 @@ describe('useTheme', () => {
     useTheme().setFamily('luxury');
     expect(useTheme().family.value.id).toBe('luxury');
   });
+
+  it('survives storage that throws', () => {
+    vi.stubGlobal('localStorage', { getItem: () => {
+      throw new Error('denied');
+    }, setItem: () => {
+      throw new Error('denied');
+    } });
+    const theme = useTheme();
+    theme.init();
+    expect(setAttribute).toHaveBeenCalledWith('data-theme', 'oagent-light');
+    theme.toggle();
+    expect(setAttribute).toHaveBeenLastCalledWith('data-theme', 'oagent-dark');
+  });
 });

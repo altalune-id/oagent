@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { NavItem } from './types';
+import { useSlots } from 'vue';
 
 withDefaults(defineProps<{
   label?: string,
@@ -22,14 +23,16 @@ const slots = useSlots();
     <div v-if="label" class="truncate px-4 pb-2 text-xs font-semibold tracking-widest text-base-content/50 uppercase" :class="slots.back ? 'pt-2' : 'pt-5'">
       {{ label }}
     </div>
-    <ul class="menu w-full gap-0.5 px-2">
-      <li v-for="item in items" :key="item.key">
-        <button type="button" :class="{ 'menu-active': item.active }" @click="emit('select', item.key)">
-          <Icon v-if="item.icon" :name="item.icon" size="16" />
-          {{ item.label }}
-        </button>
-      </li>
-    </ul>
+    <nav :aria-label="label || undefined">
+      <ul class="menu w-full gap-0.5 px-2">
+        <li v-for="item in items" :key="item.key">
+          <button type="button" :class="{ 'menu-active': item.active }" :aria-current="item.active ? 'page' : undefined" @click="emit('select', item.key)">
+            <Icon v-if="item.icon" :name="item.icon" size="16" />
+            {{ item.label }}
+          </button>
+        </li>
+      </ul>
+    </nav>
     <div v-if="slots.footer || version" data-sidebar-footer class="mt-auto px-4 py-3 text-xs text-base-content/40">
       <slot name="footer">
         <span v-if="version">OAgent v{{ version }}</span>

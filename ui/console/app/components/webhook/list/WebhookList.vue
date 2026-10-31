@@ -147,7 +147,7 @@ function closeRotate() {
     </table>
   </div>
 
-  <AppModal :open="!!rotating" :title="t('webhooks.rotate')" @close="closeRotate()">
+  <AppModal :open="!!rotating" :title="t('webhooks.rotate')" :dismissible="!rotatedSecret" @close="closeRotate()">
     <div class="space-y-3">
       <p class="flex items-start gap-1 text-sm text-base-content">
         <Icon name="lucide:triangle-alert" size="14" class="mt-0.5 shrink-0 text-warning" />

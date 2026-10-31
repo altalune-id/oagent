@@ -21,7 +21,7 @@ const { open, url, description, eventTypes, busy, error, fieldErrors, secret, pi
     {{ t('webhooks.new') }}
   </AppButton>
 
-  <AppModal :open="open" :title="t('webhooks.new')" @close="create.hide()">
+  <AppModal :open="open" :title="t('webhooks.new')" :dismissible="!secret" @close="create.hide()">
     <div v-if="secret" class="space-y-3">
       <p class="flex items-start gap-1 text-sm text-base-content">
         <Icon name="lucide:triangle-alert" size="14" class="mt-0.5 shrink-0 text-warning" />

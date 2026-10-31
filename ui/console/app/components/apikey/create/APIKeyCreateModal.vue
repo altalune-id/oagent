@@ -35,7 +35,7 @@ const expiryOptions = computed(() => [
     {{ t('apikeys.new') }}
   </AppButton>
 
-  <AppModal :open="open" :title="t('apikeys.new')" @close="create.hide()">
+  <AppModal :open="open" :title="t('apikeys.new')" :dismissible="!plaintext" @close="create.hide()">
     <div v-if="plaintext" class="space-y-3">
       <p class="flex items-start gap-1 text-sm text-base-content">
         <Icon name="lucide:triangle-alert" size="14" class="mt-0.5 shrink-0 text-warning" />

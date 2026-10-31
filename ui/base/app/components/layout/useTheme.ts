@@ -39,7 +39,10 @@ export function useTheme() {
       return;
     }
     document.documentElement.setAttribute('data-theme', themeName(family.value, mode.value));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ family: familyId.value, mode: mode.value }));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ family: familyId.value, mode: mode.value }));
+    } catch {
+    }
   }
 
   function setFamily(id: string) {

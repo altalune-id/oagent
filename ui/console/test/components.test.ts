@@ -1,10 +1,23 @@
 // @vitest-environment happy-dom
-import { mount } from '@vue/test-utils';
+import type { VueWrapper } from '@vue/test-utils';
+import { create } from '@bufbuild/protobuf';
+import { flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import AppModal from '#base/components/ui/AppModal.vue';
+import { WebhookSchema } from '#gen/webhook/v1/webhook_pb';
+import { mountPage } from '#test/mount-page';
+import { setClient } from '#test/nuxt-globals';
+import APIKeyCreateModal from '~/components/apikey/create/APIKeyCreateModal.vue';
 import OrgCreateModal from '~/components/org/create/OrgCreateModal.vue';
 import OrgFields from '~/components/org/create/OrgFields.vue';
+import WebhookCreateModal from '~/components/webhook/create/WebhookCreateModal.vue';
+import WebhookList from '~/components/webhook/list/WebhookList.vue';
+import { useProjectsStore } from '~/stores/projects';
+
+const projectId = 'x6MH9WPWjktMwCBKHy4pF';
+const openDialog = () => [...document.querySelectorAll('dialog')].find(d => d.open);
 
 beforeEach(() => {
   setActivePinia(createPinia());
@@ -35,5 +48,50 @@ describe('org fields', () => {
 
   it('is the same block in the modal and on onboarding', () => {
     expect(mount(OrgCreateModal).findComponent(OrgFields).exists()).toBe(true);
+  });
+});
+
+describe('a one-time secret stays until Done', () => {
+  const keyOrgId = 'V3StGXR8Z5jdHj6BmyT2a';
+
+  async function escapeKeepsIt(w: VueWrapper, secret: string) {
+    expect(openDialog()!.textContent).toContain(secret);
+    expect(openDialog()!.querySelector('.modal-backdrop')).toBeNull();
+    await w.get('dialog').trigger('cancel');
+    expect(w.getComponent(AppModal).emitted('close')).toBeUndefined();
+    expect(openDialog()!.textContent).toContain(secret);
+  }
+
+  it('keeps a new API key open on Escape', async () => {
+    useProjectsStore().items = [{ id: projectId, orgId: keyOrgId, slug: 'web', name: 'Web' }];
+    setClient('$apiKeyClient', { createAPIKey: vi.fn().mockResolvedValue({ plaintext: 'oak_once' }) });
+    const w = mount(APIKeyCreateModal, { props: { orgId: keyOrgId }, attachTo: document.body });
+    await w.get('button').trigger('click');
+    await w.get('dialog input[type="text"]').setValue('deploy');
+    await w.findAll('dialog button').find(b => b.text() === 'common.create')!.trigger('click');
+    await flushPromises();
+    await escapeKeepsIt(w, 'oak_once');
+  });
+
+  it('keeps a new webhook signing secret open on Escape', async () => {
+    setClient('$webhookClient', { createWebhook: vi.fn().mockResolvedValue({ secret: 'whsec_once' }) });
+    const w = mount(WebhookCreateModal, { props: { orgId: keyOrgId, projectId }, attachTo: document.body });
+    await w.get('button').trigger('click');
+    await w.get('dialog input[type="url"]').setValue('https://hooks.acme.test/oagent');
+    await w.get('dialog input[type="checkbox"]').setValue(true);
+    await w.findAll('dialog button').find(b => b.text() === 'common.create')!.trigger('click');
+    await flushPromises();
+    await escapeKeepsIt(w, 'whsec_once');
+  });
+
+  it('keeps a rotated webhook secret open on Escape', async () => {
+    setClient('$webhookClient', {
+      listWebhooks: vi.fn().mockResolvedValue({ webhooks: [create(WebhookSchema, { id: 'H3nVb8XqT1wLp6RkZ2mJc', projectId, url: 'https://hooks.acme.test/oagent', active: true, eventTypes: [] })] }),
+      rotateWebhookSecret: vi.fn().mockResolvedValue({ secret: 'whsec_rotated' }),
+    });
+    const w = await mountPage(WebhookList, { pageProps: { orgId, projectId }, attachTo: document.body });
+    await w.findAll('button').find(b => b.text().includes('webhooks.rotate'))!.trigger('click');
+    await flushPromises();
+    await escapeKeepsIt(w, 'whsec_rotated');
   });
 });
