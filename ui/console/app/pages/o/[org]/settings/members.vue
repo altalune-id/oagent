@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import ErrorText from '#base/components/ui/ErrorText.vue';
+import LoadError from '#base/components/ui/LoadError.vue';
+import LoadingStatus from '#base/components/ui/LoadingStatus.vue';
 import SavedNote from '#base/components/ui/SavedNote.vue';
+import { useDates } from '#base/composables/useDates';
 import InviteModal from '~/components/member/invite/InviteModal.vue';
 import PendingInvites from '~/components/member/invite/PendingInvites.vue';
 import { useInvite } from '~/components/member/invite/useInvite';
@@ -10,6 +12,7 @@ import { useOrgsStore } from '~/stores/orgs';
 
 const route = useRoute();
 const { t } = useI18n();
+const { moment } = useDates();
 const orgs = useOrgsStore();
 await orgs.ensureLoaded();
 const org = computed(() => orgs.bySlug(route.params.org as string));
@@ -34,6 +37,7 @@ const {
   notice: inviteNotice,
   confirming: inviteConfirming,
   confirmMessage: inviteConfirmMessage,
+  loading: inviteLoading,
   loadError: inviteLoadError,
 } = invite;
 
@@ -113,8 +117,8 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('members.tit
         {{ t('invites.invite') }}
       </button>
     </div>
-    <ErrorText v-if="loadError" :error="loadError" />
-    <span v-else-if="loading" class="loading loading-spinner loading-sm" />
+    <LoadError v-if="loadError" :error="loadError" :busy="loading" :retry-label="t('common.retry')" @retry="members.load()" />
+    <LoadingStatus v-else-if="loading" :label="t('common.loading')" />
     <MemberList
       v-else
       :rows="rows"
@@ -131,7 +135,7 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('members.tit
       @cancel="members.cancel"
     />
     <SavedNote v-if="inviteNotice" :label="inviteNotice" />
-    <ErrorText v-if="canInvite && inviteLoadError" :error="inviteLoadError" />
+    <LoadError v-if="canInvite && inviteLoadError" :error="inviteLoadError" :busy="inviteLoading" :retry-label="t('common.retry')" @retry="invite.load()" />
     <PendingInvites
       v-else-if="canInvite"
       :pending="pending"
@@ -143,6 +147,7 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('members.tit
       :confirming="inviteConfirming"
       :confirm-message="inviteConfirmMessage"
       :labels="inviteLabels"
+      :moment="moment"
       @resend="invite.resend"
       @revoke="invite.askRevoke"
       @confirm-draft="invite.confirmDraft"

@@ -1,47 +1,38 @@
 <script setup lang="ts">
 import type { ShownError } from '#base/lib/apperror/message';
-import { reactive, ref, useId, watch } from 'vue';
+import type { ExpiryState } from '#base/lib/tokens/keyStatus';
+import { ref } from 'vue';
 import CopyButton from '#base/components/ui/CopyButton.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import SecretField from '#base/components/ui/SecretField.vue';
+import { keyStatus } from '#base/lib/tokens/keyStatus';
 
-export interface PersonalKey {
+export interface PersonalKeyView {
   rowKey: string;
   name: string;
-  scopes: string[];
   secretHint: string;
-  expiresAt?: Date;
-  revokedAt?: Date;
-}
-
-export interface PersonalKeyForm {
-  name: string;
   scopes: string[];
-  expiresInHours: number;
-  allProjects: boolean;
-  projectIds: string[];
+  lastUsed: string;
+  expires: string;
+  expiry: ExpiryState;
+  revoked: boolean;
 }
 
 export interface PersonalKeysLabels {
   name: string;
   scopes: string;
-  projects: string;
-  allProjects: string;
+  lastUsed: string;
+  neverUsed: string;
   expires: string;
-  days7: string;
-  days30: string;
-  days90: string;
-  days365: string;
-  create: string;
-  creating: string;
-  empty: string;
-  hint: string;
+  expiresSoon: (days: number) => string;
+  expired: string;
   status: string;
   active: string;
   revoked: string;
   revoke: string;
   revokeConfirm: string;
   cancel: string;
+  empty: string;
   secretWarning: string;
   copy: string;
   snippet: string;
@@ -51,78 +42,54 @@ export interface PersonalKeysLabels {
   signInLink: string;
 }
 
-const props = withDefaults(defineProps<{
-  keys: PersonalKey[],
-  scopes: { name: string, label: string }[],
-  projects: { id: string, name: string }[],
+withDefaults(defineProps<{
+  keys: PersonalKeyView[],
   created?: { plaintext: string, snippet: string } | null,
-  busy?: boolean,
   error?: ShownError | null,
   signedIn?: boolean,
   loginUrl?: string,
   labels?: PersonalKeysLabels,
 }>(), {
   created: null,
-  busy: false,
   error: null,
   signedIn: true,
   loginUrl: '/login',
   labels: () => ({
     name: 'Name',
     scopes: 'Scopes',
-    projects: 'Projects',
-    allProjects: 'All projects',
-    expires: 'Expires in',
-    days7: '7 days',
-    days30: '30 days',
-    days90: '90 days',
-    days365: '1 year',
-    create: 'Create',
-    creating: 'Creating…',
-    empty: 'You have no personal keys yet.',
-    hint: 'Secret',
+    lastUsed: 'Last used',
+    neverUsed: 'Never used',
+    expires: 'Expires',
+    expiresSoon: (days: number) => `Expires in ${days} days`,
+    expired: 'Expired',
     status: 'Status',
     active: 'Active',
     revoked: 'Revoked',
     revoke: 'Revoke',
-    revokeConfirm: 'Revoke?',
+    revokeConfirm: 'Revoke this key?',
     cancel: 'Cancel',
-    secretWarning: 'Copy the secret now. It is shown only once.',
+    empty: 'You have no personal API keys in this organization yet.',
+    secretWarning: 'Copy this secret now — it will not be shown again.',
     copy: 'Copy',
     snippet: 'Add this to .mcp.json',
     copySnippet: 'Copy snippet',
     done: 'Done',
-    signIn: 'Sign in to manage your personal keys.',
+    signIn: 'Sign in to manage your personal API keys.',
     signInLink: 'Sign in',
   }),
 });
 
 const emit = defineEmits<{
-  create: [form: PersonalKeyForm],
   revoke: [hint: string],
   dismiss: [],
 }>();
 
-const ids = { name: useId(), expires: useId() };
-
-const form = reactive<PersonalKeyForm>({ name: '', scopes: [], expiresInHours: 720, allProjects: true, projectIds: [] });
 const confirming = ref('');
+const statusBadge = { active: 'badge-success', expired: 'badge-error', revoked: 'badge-ghost' } as const;
 
-watch(() => props.created, (created) => {
-  if (created) {
-    Object.assign(form, { name: '', scopes: [], expiresInHours: 720, allProjects: true, projectIds: [] });
-  }
-});
-
-function submit() {
-  if (!props.busy && form.name.trim()) {
-    emit('create', { ...form, name: form.name.trim(), scopes: [...form.scopes], projectIds: [...form.projectIds] });
-  }
-}
-
-function revoke(hint: string) {
+function revoke(k: PersonalKeyView) {
   confirming.value = '';
-  emit('revoke', hint);
+  emit('revoke', k.secretHint);
 }
 </script>
 
@@ -132,74 +99,29 @@ function revoke(hint: string) {
     <a :href="loginUrl" class="link link-primary">{{ labels.signInLink }}</a>
   </div>
 
-  <div v-else class="space-y-6">
-    <div v-if="created" class="space-y-3 rounded-box border border-warning/40 bg-base-100 p-4">
-      <p class="flex items-start gap-1 text-sm text-base-content">
-        <Icon name="lucide:triangle-alert" size="14" class="mt-0.5 shrink-0 text-warning" />
-        {{ labels.secretWarning }}
-      </p>
-      <SecretField :value="created.plaintext" :label="labels.copy" />
-      <div class="space-y-1">
+  <div v-else class="space-y-4">
+    <div v-if="created" role="alert" class="alert alert-success alert-soft flex flex-col items-stretch gap-3">
+      <div class="flex w-full items-center justify-between gap-3">
+        <p class="text-sm font-medium">
+          {{ labels.secretWarning }}
+        </p>
+        <button type="button" class="btn btn-sm shrink-0" @click="emit('dismiss')">
+          {{ labels.done }}
+        </button>
+      </div>
+      <div class="w-full min-w-0">
+        <SecretField :value="created.plaintext" :label="labels.copy" />
+      </div>
+      <div class="w-full min-w-0 space-y-1">
         <div class="flex items-center justify-between gap-2">
-          <span class="text-xs text-base-content/60">{{ labels.snippet }}</span>
+          <span class="text-xs">{{ labels.snippet }}</span>
           <CopyButton :value="created.snippet" :label="labels.copySnippet" />
         </div>
-        <pre class="overflow-x-auto rounded-box bg-base-200 p-3 text-xs">{{ created.snippet }}</pre>
+        <pre class="overflow-x-auto rounded-box bg-base-100 p-3 text-xs text-base-content">{{ created.snippet }}</pre>
       </div>
-      <button type="button" class="btn btn-sm" @click="emit('dismiss')">
-        {{ labels.done }}
-      </button>
     </div>
 
-    <form v-else class="space-y-3 rounded-box border border-base-300 bg-base-100 p-4" @submit.prevent="submit">
-      <div class="fieldset">
-        <label :for="ids.name" class="fieldset-legend">{{ labels.name }}</label>
-        <input :id="ids.name" v-model="form.name" type="text" class="input w-full" placeholder="laptop" :disabled="busy">
-      </div>
-
-      <div>
-        <span class="mb-1 block text-xs text-base-content/60">{{ labels.scopes }}</span>
-        <div class="grid grid-cols-2 gap-1">
-          <label v-for="s in scopes" :key="s.name" class="flex items-center gap-2 text-sm">
-            <input v-model="form.scopes" type="checkbox" :value="s.name" class="checkbox checkbox-xs rounded-sm" :disabled="busy">{{ s.label }}
-          </label>
-        </div>
-      </div>
-
-      <div class="space-y-2">
-        <span class="block text-xs text-base-content/60">{{ labels.projects }}</span>
-        <label class="flex items-center gap-2 text-sm"><input v-model="form.allProjects" type="checkbox" class="checkbox checkbox-sm rounded-sm" :disabled="busy">{{ labels.allProjects }}</label>
-        <div v-if="!form.allProjects" class="max-h-32 space-y-1 overflow-auto rounded-box border border-base-300 p-2">
-          <label v-for="p in projects" :key="p.id" class="flex items-center gap-2 text-sm">
-            <input v-model="form.projectIds" type="checkbox" :value="p.id" class="checkbox checkbox-xs rounded-sm" :disabled="busy">{{ p.name }}
-          </label>
-        </div>
-      </div>
-
-      <div class="fieldset">
-        <label :for="ids.expires" class="fieldset-legend">{{ labels.expires }}</label>
-        <select :id="ids.expires" v-model.number="form.expiresInHours" class="select w-full" :disabled="busy">
-          <option :value="168">
-            {{ labels.days7 }}
-          </option>
-          <option :value="720">
-            {{ labels.days30 }}
-          </option>
-          <option :value="2160">
-            {{ labels.days90 }}
-          </option>
-          <option :value="8760">
-            {{ labels.days365 }}
-          </option>
-        </select>
-      </div>
-
-      <ErrorText :error="error" />
-      <button type="submit" class="btn btn-primary btn-sm" :disabled="busy || !form.name.trim()">
-        <Icon name="lucide:plus" size="16" />
-        {{ busy ? labels.creating : labels.create }}
-      </button>
-    </form>
+    <ErrorText :error="error" />
 
     <p v-if="keys.length === 0" class="text-sm text-base-content/60">
       {{ labels.empty }}
@@ -210,37 +132,46 @@ function revoke(hint: string) {
           <tr>
             <th>{{ labels.name }}</th>
             <th>{{ labels.scopes }}</th>
-            <th>{{ labels.hint }}</th>
+            <th>{{ labels.lastUsed }}</th>
+            <th>{{ labels.expires }}</th>
             <th>{{ labels.status }}</th>
             <th />
           </tr>
         </thead>
         <tbody>
           <tr v-for="k in keys" :key="k.rowKey" class="hover:bg-base-200">
-            <td>{{ k.name }}</td>
+            <td class="whitespace-nowrap">
+              <span class="font-medium">{{ k.name }}</span>
+              <span class="ml-2 font-mono text-xs text-base-content/60">…{{ k.secretHint }}</span>
+            </td>
             <td class="text-base-content/60">
               {{ k.scopes.join(', ') }}
             </td>
-            <td class="text-base-content/60">
-              …{{ k.secretHint }}
+            <td class="whitespace-nowrap text-base-content/60">
+              {{ k.lastUsed || labels.neverUsed }}
+            </td>
+            <td class="whitespace-nowrap">
+              <span v-if="k.revoked || k.expiry.kind === 'none'" class="text-base-content/60">—</span>
+              <span v-else-if="k.expiry.kind === 'soon'" class="badge badge-sm badge-warning">{{ labels.expiresSoon(k.expiry.days) }}</span>
+              <span v-else class="text-base-content/60">{{ k.expires }}</span>
             </td>
             <td>
-              <span class="badge badge-sm" :class="k.revokedAt ? 'badge-error' : 'badge-success'">
-                {{ k.revokedAt ? labels.revoked : labels.active }}
+              <span class="badge badge-sm" :class="statusBadge[keyStatus(k.revoked, k.expiry)]">
+                {{ labels[keyStatus(k.revoked, k.expiry)] }}
               </span>
             </td>
             <td class="whitespace-nowrap text-right">
-              <template v-if="!k.revokedAt">
-                <template v-if="confirming === k.secretHint">
+              <template v-if="keyStatus(k.revoked, k.expiry) === 'active'">
+                <template v-if="confirming === k.rowKey">
                   <span class="mr-1 text-xs">{{ labels.revokeConfirm }}</span>
-                  <button type="button" class="btn btn-error btn-xs" @click="revoke(k.secretHint)">
+                  <button type="button" class="btn btn-error btn-xs" @click="revoke(k)">
                     {{ labels.revoke }}
                   </button>
                   <button type="button" class="btn btn-ghost btn-xs" @click="confirming = ''">
                     {{ labels.cancel }}
                   </button>
                 </template>
-                <button v-else type="button" class="btn btn-ghost btn-xs" @click="confirming = k.secretHint">
+                <button v-else type="button" class="btn btn-ghost btn-xs" @click="confirming = k.rowKey">
                   <Icon name="lucide:ban" size="14" class="text-error" />
                   {{ labels.revoke }}
                 </button>

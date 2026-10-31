@@ -194,5 +194,7 @@
   "validation.not_allowed": "Not an allowed value",
   "validation.too_many": "At most {max} items",
   "validation.invalid": "Not valid",
-  "validation.other": "{field}: {message}"
+  "validation.other": "{field}: {message}",
+  "common.retry": "Retry",
+  "common.loading": "Loading…"
 }

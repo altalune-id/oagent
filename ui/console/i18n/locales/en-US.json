@@ -225,5 +225,14 @@
   "webhooks.delete_body": "OAgent stops sending events to {url} at once. This can't be undone.",
   "agent.delete_title": "Delete this agent?",
   "agent.delete_body": "{name} and its settings are deleted at once. This can't be undone.",
-  "members.actions_for": "Actions for {name}"
+  "members.actions_for": "Actions for {name}",
+  "apikeys.col_last_used": "Last used",
+  "apikeys.expires_help": "The key stops working on this date. You can't extend it; create a new key instead.",
+  "apikeys.select_projects": "Only select projects",
+  "apikeys.scopes_help": "Pick only what the script or client needs. You can grant only what your role allows.",
+  "tokens.never_used": "Never used",
+  "tokens.expires_soon": "Expires in {days} days",
+  "tokens.status_active": "Active",
+  "tokens.status_expired": "Expired",
+  "tokens.status_revoked": "Revoked"
 }

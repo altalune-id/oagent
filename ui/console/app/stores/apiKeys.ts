@@ -12,7 +12,9 @@ export interface APIKey {
   projectIds: string[];
   allProjects: boolean;
   secretHint: string;
+  createdAt?: Date;
   expiresAt?: Date;
+  lastUsedAt?: Date;
   revokedAt?: Date;
 }
 
@@ -28,7 +30,9 @@ export function toAPIKey(k: APIKeyPB): APIKey {
     projectIds: [...k.projectIds],
     allProjects: k.allProjects,
     secretHint: k.secretHint,
+    createdAt: k.createdAt ? timestampDate(k.createdAt) : undefined,
     expiresAt: k.expiresAt ? timestampDate(k.expiresAt) : undefined,
+    lastUsedAt: k.lastUsedAt ? timestampDate(k.lastUsedAt) : undefined,
     revokedAt: k.revokedAt ? timestampDate(k.revokedAt) : undefined,
   };
 }

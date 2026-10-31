@@ -53,6 +53,11 @@ describe('guard: markup in every app', () => {
     const round = files.flatMap(f => (f.text.match(/class="checkbox checkbox-(?:xs|sm)\b[^"]*"/g) ?? []).filter(c => !c.includes('rounded-sm')).map(c => `${f.path}: ${c}`));
     expect(round).toEqual([]);
   });
+
+  it('announces page spinners through LoadingStatus and hides decorative ones from screen readers', () => {
+    expect(offenders(/class="loading loading-spinner loading-sm"(?![^>]*aria-hidden="true")/)).toEqual([]);
+    expect(offenders(/aria-busy="true"/)).toEqual([]);
+  });
 });
 
 describe('guard: forms that show field errors', () => {

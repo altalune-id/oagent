@@ -86,7 +86,12 @@ A page in the web console (`ui/console`): the Nuxt 4 single-page app served at `
 
    Show `validation.errors` with `FieldError` and the form error with `ErrorText`. Other calls use `useErrorMessage()(e, 'error.<action>')`.
 
-4. **Components.** `app/components/<area>/...`. The `ui/base` layer sets `imports.scan: false` and each app's `nuxt.config.ts` sets `components.dirs: []` (that one is per layer): import every component, store and composable explicitly (Vue and Nuxt built-ins such as `ref`, `useI18n` and `useRoute` stay global). A component with a story is presentational: props in, events out, labels passed as props, relative imports, `computed` imported from `vue`, no `useI18n`, store or client (see `MemberList.vue`). Shared pieces live in the `ui/base` layer and are imported as `#base/...` (`#base/components/ui/AppButton.vue`).
+4. **Components.** `app/components/<area>/...`. The `ui/base` layer sets `imports.scan: false` and each app's `nuxt.config.ts` sets `components.dirs: []` (that one is per layer): import every component, store and composable explicitly (Vue and Nuxt built-ins such as `ref`, `useI18n` and `useRoute` stay global). A component with a story is presentational: props in, events out, labels passed as props, relative imports, `computed` imported from `vue`, no `useI18n`, store or client (see `MemberList.vue`). Reuse the shared pieces in the `ui/base` layer (imported as `#base/...`) before writing markup:
+   - `AppButton` (variants `primary`, `neutral`, `ghost`, `outline`, `error`, `plain`; `soft`, `square`, `busy`; `to` for an in-app link, `href` for a plain one) for new buttons.
+   - `ConfirmModal` with a `useConfirm` handle for every destructive action; `AppModal` for anything else.
+   - `LoadError` (the error plus Retry) for a failed load, and `LoadingStatus` for a page spinner.
+   - `AppDropdown` for every menu: its trigger is a focusable `div` that Safari opens, and its `label` is added to the visible text.
+   - `useDates()` (`date`, `moment`, `when`) and `formatDate` for every date; never a new `Intl.DateTimeFormat` or `toLocaleString()`.
 5. **Page.** `app/pages/o/[org]/.../<name>.vue`. Resolve the slugs from the route through the stores, throw a 404 when not found, set the title, and pass public ids down.
 
    ```vue
@@ -128,6 +133,7 @@ ESLint runs the root [eslint.config.mjs](../../eslint.config.mjs) (`@antfu/eslin
 - [ ] Every new key exists in every locale; no hard-coded user-facing text.
 - [ ] Logic lives in `.ts` files with tests; coverage thresholds hold.
 - [ ] Presentational components have stories and no store, client or i18n.
+- [ ] No hand-rolled confirm modal, spinner, dropdown or date formatter: the shared pieces above are used.
 - [ ] Hiding a control the caller cannot use is fine, but the server decides.
 - [ ] Gates pass: `make ui-test`, `pnpm -r typecheck`, `pnpm lint`, `pnpm --filter @oagent/console build-storybook`, `make ui`, `make check` (and `make generate` when protos changed).
 
@@ -141,5 +147,9 @@ ESLint runs the root [eslint.config.mjs](../../eslint.config.mjs) (`@antfu/eslin
 - [app/components/member/MemberList.vue](../../ui/console/app/components/member/MemberList.vue) and [MemberList.stories.ts](../../ui/console/app/components/member/MemberList.stories.ts)
 - [ui/base/app/composables/useValidation.ts](../../ui/base/app/composables/useValidation.ts): `useValidation`, `ValidationOptions`
 - [ui/base/app/composables/useErrorMessage.ts](../../ui/base/app/composables/useErrorMessage.ts): `useErrorMessage`
+- [ui/base/app/composables/useConfirm.ts](../../ui/base/app/composables/useConfirm.ts) and [ConfirmModal.vue](../../ui/base/app/components/ui/ConfirmModal.vue): confirm a destructive action
+- [ui/base/app/components/ui/LoadError.vue](../../ui/base/app/components/ui/LoadError.vue), [LoadingStatus.vue](../../ui/base/app/components/ui/LoadingStatus.vue), [AppDropdown.vue](../../ui/base/app/components/ui/AppDropdown.vue), [AppButton.vue](../../ui/base/app/components/ui/AppButton.vue)
+- [ui/base/app/composables/useDates.ts](../../ui/base/app/composables/useDates.ts) and [lib/format/date.ts](../../ui/base/app/lib/format/date.ts): `useDates`, `formatDate`
+- [app/pages/o/[org]/settings/members.vue](../../ui/console/app/pages/o/[org]/settings/members.vue): `LoadError`, `LoadingStatus` and `useDates` on a page
 - [app/components/project/ProjectSidebar.vue](../../ui/console/app/components/project/ProjectSidebar.vue): nav items
 - [ui/base/vitest.app.ts](../../ui/base/vitest.app.ts): coverage thresholds

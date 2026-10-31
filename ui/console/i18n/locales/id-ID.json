@@ -225,5 +225,14 @@
   "webhooks.delete_body": "OAgent langsung berhenti mengirim event ke {url}. Tindakan ini tidak dapat dibatalkan.",
   "agent.delete_title": "Hapus agen ini?",
   "agent.delete_body": "{name} dan pengaturannya langsung dihapus. Tindakan ini tidak dapat dibatalkan.",
-  "members.actions_for": "Tindakan untuk {name}"
+  "members.actions_for": "Tindakan untuk {name}",
+  "apikeys.col_last_used": "Terakhir dipakai",
+  "apikeys.expires_help": "Kunci berhenti berfungsi pada tanggal ini. Masa berlakunya tidak dapat diperpanjang; buat kunci baru sebagai gantinya.",
+  "apikeys.select_projects": "Hanya proyek tertentu",
+  "apikeys.scopes_help": "Pilih hanya yang dibutuhkan skrip atau klien. Anda hanya dapat memberikan akses yang diizinkan peran Anda.",
+  "tokens.never_used": "Belum pernah dipakai",
+  "tokens.expires_soon": "Kedaluwarsa dalam {days} hari",
+  "tokens.status_active": "Aktif",
+  "tokens.status_expired": "Kedaluwarsa",
+  "tokens.status_revoked": "Dicabut"
 }

@@ -4,6 +4,7 @@ import { timestampDate } from '@bufbuild/protobuf/wkt';
 import AppModal from '#base/components/ui/AppModal.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import SavedNote from '#base/components/ui/SavedNote.vue';
+import { useDates } from '#base/composables/useDates';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
@@ -30,6 +31,7 @@ interface Attempt {
 
 const route = useRoute();
 const { t } = useI18n();
+const { moment } = useDates();
 const errorMessage = useErrorMessage();
 const orgs = useOrgsStore();
 const projects = useProjectsStore();
@@ -222,7 +224,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('web
             </td>
             <td>{{ delivery.attempt }}</td>
             <td class="text-base-content/60">
-              {{ delivery.createdAt?.toLocaleString() }}
+              {{ moment(delivery.createdAt) }}
             </td>
             <td class="text-right text-base-content/40">
               <Icon name="lucide:chevron-right" size="16" />

@@ -194,5 +194,7 @@
   "validation.not_allowed": "Nilai ini tidak diizinkan",
   "validation.too_many": "Maksimal {max} item",
   "validation.invalid": "Tidak valid",
-  "validation.other": "{field}: {message}"
+  "validation.other": "{field}: {message}",
+  "common.retry": "Coba lagi",
+  "common.loading": "Memuat…"
 }

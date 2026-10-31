@@ -14,7 +14,7 @@ metadata:
 - Vue APIs (`ref`, `computed`, `watch`, ...) are auto-imported in both apps; shared `components/ui/*` files import them from `'vue'` explicitly. Follow the neighbouring files.
 - Components and own composables are imported explicitly (`components.dirs: []`, `imports.scan: false` in `nuxt.config.ts`).
 - Styling is Tailwind CSS 4 + daisyUI 5 classes in the template (`btn`, `dropdown`, `menu`); not UnoCSS. Visible text comes from `@nuxtjs/i18n` (`useI18n().t`), never hard-coded.
-- Shared building blocks live in the `ui/base` Nuxt layer (`ui/base/app/components/ui/`, imported as `#base/components/ui/...`) and have Storybook 10 stories; reuse them before writing new markup.
+- Shared building blocks live in the `ui/base` Nuxt layer (`ui/base/app/components/ui/`, imported as `#base/components/ui/...`) and have Storybook 10 stories; reuse them before writing new markup (`ConfirmModal` + `useConfirm`, `LoadError`, `LoadingStatus`, `AppDropdown`, `useDates`).
 - Show and pass public ids, never UUIDs; slugs only in route paths.
 - Examples in `references/` use upstream style (no semicolons); write new code in oagent's lint style (see the eslint-config skill). See docs/howto/console-page.md.
 
