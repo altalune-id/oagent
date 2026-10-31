@@ -16,7 +16,7 @@
     "@tailwindcss/cli": "4.3.3",
     "@vitest/coverage-v8": "catalog:",
     "daisyui": "catalog:",
-    "happy-dom": "21.0.4",
+    "happy-dom": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

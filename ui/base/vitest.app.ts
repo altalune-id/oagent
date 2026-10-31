@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import node from '@oagent/vitest-config/node';
+import vue from '@oagent/vitest-config/vue';
 import { defineConfig, mergeConfig } from 'vitest/config';
 import { baseAliases } from './aliases.ts';
 
@@ -7,7 +7,7 @@ const globals = fileURLToPath(new URL('./test/nuxt-globals.ts', import.meta.url)
 
 export function appVitestConfig(appUrl: string) {
   const at = (path: string) => fileURLToPath(new URL(path, appUrl));
-  return mergeConfig(node, defineConfig({
+  return mergeConfig(vue, defineConfig({
     define: { 'import.meta.client': 'true' },
     resolve: {
       alias: { '~~': at('.'), '~': at('./app'), ...baseAliases },

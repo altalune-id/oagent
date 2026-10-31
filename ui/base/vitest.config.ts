@@ -1,8 +1,8 @@
-import node from '@oagent/vitest-config/node';
+import vue from '@oagent/vitest-config/vue';
 import { defineConfig, mergeConfig } from 'vitest/config';
 import { baseAliases } from './aliases.ts';
 
-export default mergeConfig(node, defineConfig({
+export default mergeConfig(vue, defineConfig({
   define: { 'import.meta.client': 'true' },
   resolve: {
     alias: baseAliases,
