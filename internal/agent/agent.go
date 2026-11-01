@@ -116,7 +116,7 @@ func (c Config) Validate() error {
 			return invalid("tools.name", apperror.FieldInvalidFormat)
 		}
 		if seen[t.Name] {
-			return invalid("tools", apperror.FieldNotAllowed)
+			return invalid("tools", apperror.FieldInvalid)
 		}
 		seen[t.Name] = true
 	}

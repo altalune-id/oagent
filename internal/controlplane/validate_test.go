@@ -20,6 +20,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"altalune.id/oagent/apperror"
+	agentv1 "altalune.id/oagent/gen/go/agent/v1"
 	apperrorv1 "altalune.id/oagent/gen/go/apperror/v1"
 	authv1 "altalune.id/oagent/gen/go/auth/v1"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
@@ -141,6 +142,17 @@ func TestValidate_RefusesCreateOrgName(t *testing.T) {
 			assert.Equal(t, []apperror.Violation{{Field: "name", Reason: tt.wantReason, Param: tt.wantParam}}, ae.Violations())
 		})
 	}
+}
+
+func TestValidate_RefusesDuplicateAgentToolNames(t *testing.T) {
+	req := &agentv1.UpdateAgentDraftRequest{Id: "abcdefghjkmnpqrstuvwx", Config: &agentv1.AgentConfig{
+		Tools: []*agentv1.AgentTool{{Name: "search"}, {Name: "search", RequireApproval: true}},
+	}}
+	ae, ok := apperror.AsAppError(newTestValidator(t).Validate(req))
+	require.True(t, ok)
+	assert.Equal(t, []apperror.Violation{{Field: "config.tools", Reason: apperror.FieldInvalid}}, ae.Violations())
+	req.Config.Tools[1].Name = "refund"
+	assert.NoError(t, newTestValidator(t).Validate(req))
 }
 
 func TestValidate_AcceptsAPaddedNameTheDomainAccepts(t *testing.T) {
