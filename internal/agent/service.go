@@ -144,8 +144,8 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 // UpdateDraft replaces an agent's draft config; the published version is unchanged.
-// shortcut: concurrent editors overwrite each other's draft; add a draft revision check if two editors become real.
 func (s *Service) UpdateDraft(ctx context.Context, id uuid.UUID, cfg Config) (*Agent, error) {
+	// NOTE: last write wins; add a draft revision check once two people edit one agent at a time.
 	a, err := s.store.ByID(ctx, id)
 	if err != nil {
 		return nil, s.errOrReport(ctx, "agent: update draft", err)
@@ -159,7 +159,7 @@ func (s *Service) UpdateDraft(ctx context.Context, id uuid.UUID, cfg Config) (*A
 	return a, nil
 }
 
-// Publish makes the draft the agent's next version, published by person by (uuid.Nil for a key); an unchanged draft returns the latest version with created false.
+// Publish makes the draft the next version by person by (uuid.Nil for a key); an unchanged draft returns the latest, created false.
 func (s *Service) Publish(ctx context.Context, id, by uuid.UUID) (a *Agent, v *Version, created bool, err error) {
 	err = s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		if a, err = s.store.LockForPublish(ctx, id); err != nil {
