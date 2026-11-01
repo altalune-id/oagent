@@ -29,9 +29,12 @@ CREATE TABLE {{.Schema}}.{{.TablePrefix}}agent_versions (
 
 ALTER TABLE {{.Schema}}.{{.TablePrefix}}agent_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE {{.Schema}}.{{.TablePrefix}}agent_versions FORCE ROW LEVEL SECURITY;
-CREATE POLICY {{.TablePrefix}}agent_versions_tenant ON {{.Schema}}.{{.TablePrefix}}agent_versions
-  FOR ALL
-  USING (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id())
+-- SECURITY: versions are immutable: the service role may read and insert them, never update or delete one; they go with their agent.
+CREATE POLICY {{.TablePrefix}}agent_versions_read ON {{.Schema}}.{{.TablePrefix}}agent_versions
+  FOR SELECT
+  USING (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id());
+CREATE POLICY {{.TablePrefix}}agent_versions_insert ON {{.Schema}}.{{.TablePrefix}}agent_versions
+  FOR INSERT
   WITH CHECK (org_id = {{.Schema}}.{{.TablePrefix}}current_org_id());
 
 -- +goose StatementEnd
