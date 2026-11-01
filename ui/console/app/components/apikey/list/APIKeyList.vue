@@ -4,6 +4,7 @@ import ConfirmModal from '#base/components/ui/ConfirmModal.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import { useConfirm } from '#base/composables/useConfirm';
 import { useScopeLabel } from '#base/composables/useScopeLabel';
+import { expiryState, keyStatus } from '#base/lib/tokens/keyStatus';
 import { useAPIKeysStore } from '~/stores/apiKeys';
 
 const { orgId, canManage = false } = defineProps<{ orgId: string, canManage?: boolean }>();
@@ -14,6 +15,12 @@ const keys = useAPIKeysStore();
 const { $apiKeyClient: client } = useNuxtApp();
 
 await keys.ensureLoaded(orgId);
+
+const statusBadge = { active: 'badge-success', expired: 'badge-error', revoked: 'badge-ghost' } as const;
+const rows = computed(() => {
+  const now = new Date();
+  return keys.items.map(k => ({ ...k, status: keyStatus(!!k.revokedAt, expiryState(k.expiresAt, now)) }));
+});
 
 function kindLabel(kind: string): string {
   if (kind === 'org') {
@@ -49,7 +56,7 @@ const revoking = useConfirm<APIKey>(async (key) => {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="k in keys.items" :key="k.rowKey" class="hover:bg-base-200">
+        <tr v-for="k in rows" :key="k.rowKey" class="hover:bg-base-200">
           <td>{{ k.name }}</td>
           <td>{{ kindLabel(k.kind) }}</td>
           <td class="text-base-content/60">
@@ -59,12 +66,12 @@ const revoking = useConfirm<APIKey>(async (key) => {
             …{{ k.secretHint }}
           </td>
           <td>
-            <span class="badge badge-sm" :class="k.revokedAt ? 'badge-error' : 'badge-success'">
-              {{ k.revokedAt ? t('apikeys.revoked') : t('apikeys.active') }}
+            <span class="badge badge-sm" :class="statusBadge[k.status]">
+              {{ t(`tokens.status_${k.status}`) }}
             </span>
           </td>
           <td class="whitespace-nowrap text-right">
-            <button v-if="canManage && !k.revokedAt" type="button" class="btn btn-ghost btn-xs" @click="revoking.ask(k)">
+            <button v-if="canManage && k.status === 'active'" type="button" class="btn btn-ghost btn-xs" @click="revoking.ask(k)">
               <Icon name="lucide:ban" size="14" class="text-error" />
               {{ t('common.revoke') }}
             </button>
