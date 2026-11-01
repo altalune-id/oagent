@@ -143,7 +143,11 @@ func (h *Web) callback(w http.ResponseWriter, r *http.Request) {
 	var rpErr *oidcrp.Error
 	switch {
 	case errors.As(err, &rpErr) && rpErr.Reason == oidcrp.ReasonCancelled:
-		http.Redirect(w, r, h.kit.Path("/login"), http.StatusSeeOther)
+		to := h.kit.Path("/login")
+		if st.ReturnTo != "" {
+			to += "?" + url.Values{"return_to": {st.ReturnTo}}.Encode()
+		}
+		http.Redirect(w, r, to, http.StatusSeeOther) //nolint:gosec // G710: return_to was sanitized when the sign-in started.
 		return
 	case errors.As(err, &rpErr) && (expiredReason(rpErr.Reason) || refusedCode(rpErr)):
 		h.signInFailed(w, r, &SignInExpiredError{}, "", st.ReturnTo)
