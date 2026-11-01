@@ -35,7 +35,8 @@ export function useMembers(orgId: string) {
     const userId = auth.me?.userId ?? '';
     return { userId, role: (userId && members.byUser(userId)?.role) || '' };
   });
-  const canLeave = computed(() => viewer.value.role !== '');
+  const lastOwner = computed(() => viewer.value.role === 'owner' && members.items.filter(m => m.role === 'owner').length === 1);
+  const canLeave = computed(() => viewer.value.role !== '' && !lastOwner.value);
   const rows = computed<MemberRow[]>(() => members.items.map(m => ({
     ...m,
     initials: initials(m.name, m.email),

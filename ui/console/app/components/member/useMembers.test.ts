@@ -52,6 +52,16 @@ describe('useMembers', () => {
     ]);
   });
 
+  it('does not offer Leave to the last owner, only while another owner stays', async () => {
+    whoami.mockResolvedValue({ userId: 'FtGrdYskgDVDf8apKsMdn', source: 'local' });
+    const m = await loaded();
+    expect(m.viewer.value.role).toBe('owner');
+    expect(m.canLeave.value).toBe(false);
+    client.listMembers!.mockResolvedValue({ members: [owner, create(MemberSchema, { ...admin, role: 'owner' }), member] });
+    await m.load();
+    expect(m.canLeave.value).toBe(true);
+  });
+
   it('gives a signed-out viewer no actions', async () => {
     whoami.mockRejectedValue(new Error('anonymous'));
     const m = await loaded();
