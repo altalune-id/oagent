@@ -31,9 +31,18 @@ const AgentUpdateToolName = "agent_update"
 // AgentDeleteToolName is the MCP tool name for AgentService.DeleteAgent.
 const AgentDeleteToolName = "agent_delete"
 
+// AgentUpdateDraftToolName is the MCP tool name for AgentService.UpdateAgentDraft.
+const AgentUpdateDraftToolName = "agent_update_draft"
+
+// AgentPublishToolName is the MCP tool name for AgentService.PublishAgent.
+const AgentPublishToolName = "agent_publish"
+
+// AgentVersionListToolName is the MCP tool name for AgentService.ListAgentVersions.
+const AgentVersionListToolName = "agent_version_list"
+
 // AgentServiceToolNames returns every MCP tool name generated for AgentService.
 func AgentServiceToolNames() []string {
-	return []string{AgentCreateToolName, AgentGetToolName, AgentListToolName, AgentUpdateToolName, AgentDeleteToolName}
+	return []string{AgentCreateToolName, AgentGetToolName, AgentListToolName, AgentUpdateToolName, AgentDeleteToolName, AgentUpdateDraftToolName, AgentPublishToolName, AgentVersionListToolName}
 }
 
 // RegisterAgentServiceTools registers every MCP-annotated AgentService method on reg, against h, under the permissions permissionsFor resolves for each RPC procedure; validate checks each decoded request.
@@ -185,6 +194,96 @@ func RegisterAgentServiceTools(reg *mcp.Registry, h agentv1connect.AgentServiceH
 			body, err := protojson.Marshal(resp.Msg)
 			if err != nil {
 				return nil, fmt.Errorf("mcp: %s: encode result: %w", AgentDeleteToolName, err)
+			}
+			return json.RawMessage(body), nil
+		},
+	}, h)
+	reg.Register(mcp.ToolSpec{
+		Name:        AgentUpdateDraftToolName,
+		Description: "Replace an agent's draft configuration: instructions, model, temperature, tools, max steps and budget. The published version is unchanged until agent_publish.",
+		Scopes:      permissionsFor(agentv1connect.AgentServiceUpdateAgentDraftProcedure),
+		Mutation:    true,
+		Destructive: false,
+		UI:          "ui://oagent/app",
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"},"config":{"type":"object","properties":{"instructions":{"type":"string","maxLength":32000},"model":{"type":"string","pattern":"^[A-Za-z0-9._:/-]*$","maxLength":128},"temperature":{"type":"number"},"maxSteps":{"type":"integer"},"maxCostCents":{"type":"integer"},"tools":{"type":"array","items":{"type":"object","properties":{"name":{"type":"string","pattern":"^[a-z0-9_.-]{1,64}$"},"requireApproval":{"type":"boolean"}},"additionalProperties":false},"maxItems":64,"description":"Tool names are unique within a config."}},"additionalProperties":false}},"required":["id","config"],"additionalProperties":false}`),
+		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
+			if len(input) == 0 {
+				input = json.RawMessage(`{}`)
+			}
+			var req v1.UpdateAgentDraftRequest
+			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
+				return nil, mcp.NewInvalidArgumentsError(AgentUpdateDraftToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
+			}
+			resp, err := h.UpdateAgentDraft(ctx, connect.NewRequest(&req))
+			if err != nil {
+				return nil, err
+			}
+			body, err := protojson.Marshal(resp.Msg)
+			if err != nil {
+				return nil, fmt.Errorf("mcp: %s: encode result: %w", AgentUpdateDraftToolName, err)
+			}
+			return json.RawMessage(body), nil
+		},
+	}, h)
+	reg.Register(mcp.ToolSpec{
+		Name:        AgentPublishToolName,
+		Description: "Publish an agent's draft as its next immutable version; an unchanged draft returns the latest version and creates none.",
+		Scopes:      permissionsFor(agentv1connect.AgentServicePublishAgentProcedure),
+		Mutation:    true,
+		Destructive: false,
+		UI:          "ui://oagent/app",
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"}},"required":["id"],"additionalProperties":false}`),
+		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
+			if len(input) == 0 {
+				input = json.RawMessage(`{}`)
+			}
+			var req v1.PublishAgentRequest
+			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
+				return nil, mcp.NewInvalidArgumentsError(AgentPublishToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
+			}
+			resp, err := h.PublishAgent(ctx, connect.NewRequest(&req))
+			if err != nil {
+				return nil, err
+			}
+			body, err := protojson.Marshal(resp.Msg)
+			if err != nil {
+				return nil, fmt.Errorf("mcp: %s: encode result: %w", AgentPublishToolName, err)
+			}
+			return json.RawMessage(body), nil
+		},
+	}, h)
+	reg.Register(mcp.ToolSpec{
+		Name:        AgentVersionListToolName,
+		Description: "List an agent's published versions, newest first.",
+		Scopes:      permissionsFor(agentv1connect.AgentServiceListAgentVersionsProcedure),
+		Mutation:    false,
+		Destructive: false,
+		UI:          "ui://oagent/app",
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"agentId":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"}},"required":["agentId"],"additionalProperties":false}`),
+		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
+			if len(input) == 0 {
+				input = json.RawMessage(`{}`)
+			}
+			var req v1.ListAgentVersionsRequest
+			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
+				return nil, mcp.NewInvalidArgumentsError(AgentVersionListToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
+			}
+			resp, err := h.ListAgentVersions(ctx, connect.NewRequest(&req))
+			if err != nil {
+				return nil, err
+			}
+			body, err := protojson.Marshal(resp.Msg)
+			if err != nil {
+				return nil, fmt.Errorf("mcp: %s: encode result: %w", AgentVersionListToolName, err)
 			}
 			return json.RawMessage(body), nil
 		},

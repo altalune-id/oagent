@@ -56,6 +56,34 @@ service AgentService {
       ui: "app"
     };
   }
+  rpc UpdateAgentDraft(UpdateAgentDraftRequest) returns (UpdateAgentDraftResponse) {
+    option (mcp.v1.tool) = {
+      name: "agent_update_draft"
+      description: "Replace an agent's draft configuration: instructions, model, temperature, tools, max steps and budget. The published version is unchanged until agent_publish."
+      required: ["id", "config"]
+      mutation: true
+      destructive: false
+      ui: "app"
+    };
+  }
+  rpc PublishAgent(PublishAgentRequest) returns (PublishAgentResponse) {
+    option (mcp.v1.tool) = {
+      name: "agent_publish"
+      description: "Publish an agent's draft as its next immutable version; an unchanged draft returns the latest version and creates none."
+      required: ["id"]
+      mutation: true
+      destructive: false
+      ui: "app"
+    };
+  }
+  rpc ListAgentVersions(ListAgentVersionsRequest) returns (ListAgentVersionsResponse) {
+    option (mcp.v1.tool) = {
+      name: "agent_version_list"
+      description: "List an agent's published versions, newest first."
+      required: ["agent_id"]
+      ui: "app"
+    };
+  }
 }
 
 message Agent {
@@ -69,6 +97,54 @@ message Agent {
   string description = 7;
   google.protobuf.Timestamp created_at = 8;
   google.protobuf.Timestamp updated_at = 9;
+  AgentConfig draft = 10;
+  // published_version is the latest version's number, 0 when the agent was never published.
+  int32 published_version = 11;
+  google.protobuf.Timestamp draft_updated_at = 12;
+  // unpublished_changes is true when the draft was edited after the last publish.
+  bool unpublished_changes = 13;
+}
+
+// AgentTool is a tool the agent may call; require_approval makes a person approve each call.
+message AgentTool {
+  string name = 1 [(buf.validate.field).string.pattern = "^[a-z0-9_.-]{1,64}$"];
+  bool require_approval = 2;
+}
+
+// AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents).
+message AgentConfig {
+  string instructions = 1 [
+    (buf.validate.field).cel = {id: "agent.instructions.max_len.32000", expression: "this.size() <= 32000 ? '' : 'must be at most 32000 characters'"}
+  ];
+  string model = 2 [
+    (buf.validate.field).cel = {id: "agent.model.max_len.128", expression: "this.size() <= 128 ? '' : 'must be at most 128 characters'"},
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9._:/-]*$"
+  ];
+  double temperature = 3 [
+    (buf.validate.field).double.gte = 0,
+    (buf.validate.field).double.lte = 2
+  ];
+  int32 max_steps = 4 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 100
+  ];
+  int32 max_cost_cents = 5 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 1000000
+  ];
+  // Tool names are unique within a config.
+  repeated AgentTool tools = 6 [(buf.validate.field).repeated.max_items = 64];
+}
+
+// AgentVersion is an immutable published configuration; version is a display label, id the public id.
+message AgentVersion {
+  string id = 1;
+  string agent_id = 2;
+  int32 version = 3;
+  AgentConfig config = 4;
+  google.protobuf.Timestamp created_at = 5;
+  // created_by is the publishing person's user public id, empty for an API key.
+  string created_by = 6;
 }
 
 message CreateAgentRequest {
@@ -144,3 +220,40 @@ message DeleteAgentRequest {
 }
 
 message DeleteAgentResponse {}
+
+message UpdateAgentDraftRequest {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  AgentConfig config = 2 [(buf.validate.field).required = true];
+}
+
+message UpdateAgentDraftResponse {
+  Agent agent = 1;
+}
+
+message PublishAgentRequest {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+}
+
+message PublishAgentResponse {
+  Agent agent = 1;
+  AgentVersion version = 2;
+  // created is false when the draft matched the latest version, which is returned instead.
+  bool created = 3;
+}
+
+message ListAgentVersionsRequest {
+  string agent_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+}
+
+message ListAgentVersionsResponse {
+  repeated AgentVersion versions = 1;
+}

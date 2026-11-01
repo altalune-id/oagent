@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file agent/v1/agent.proto.
  */
 export const file_agent_v1_agent: GenFile = /*@__PURE__*/
-  fileDesc("ChRhZ2VudC92MS9hZ2VudC5wcm90bxIIYWdlbnQudjEi2QEKBUFnZW50EgoKAmlkGAEgASgJEg4KBm9yZ19pZBgDIAEoCRISCgpwcm9qZWN0X2lkGAQgASgJEgwKBHNsdWcYBSABKAkSDAoEbmFtZRgGIAEoCRITCgtkZXNjcmlwdGlvbhgHIAEoCRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEoECAIQA1IJcHVibGljX2lkIowCChJDcmVhdGVBZ2VudFJlcXVlc3QSHAoGb3JnX2lkGAEgASgJQgy6SAnIAQFyBIjkMgESIAoKcHJvamVjdF9pZBgCIAEoCUIMukgJyAEBcgSI5DIBEhcKBHNsdWcYAyABKAlCCbpIBnIEoOQyARIaCgRuYW1lGAQgASgJQgy6SAnIAQFyBJDkMgESgAEKC2Rlc2NyaXB0aW9uGAUgASgJQmu6SGi6AWUKHmFnZW50LmRlc2NyaXB0aW9uLm1heF9sZW4uMjAwMBpDdGhpcy50cmltKCkuc2l6ZSgpIDw9IDIwMDAgPyAnJyA6ICdtdXN0IGJlIGF0IG1vc3QgMjAwMCBjaGFyYWN0ZXJzJyI1ChNDcmVhdGVBZ2VudFJlc3BvbnNlEh4KBWFnZW50GAEgASgLMg8uYWdlbnQudjEuQWdlbnQiKwoPR2V0QWdlbnRSZXF1ZXN0EhgKAmlkGAEgASgJQgy6SAnIAQFyBIjkMgEiMgoQR2V0QWdlbnRSZXNwb25zZRIeCgVhZ2VudBgBIAEoCzIPLmFnZW50LnYxLkFnZW50IjUKEUxpc3RBZ2VudHNSZXF1ZXN0EiAKCnByb2plY3RfaWQYASABKAlCDLpICcgBAXIEiOQyASI1ChJMaXN0QWdlbnRzUmVzcG9uc2USHwoGYWdlbnRzGAEgAygLMg8uYWdlbnQudjEuQWdlbnQizQEKElVwZGF0ZUFnZW50UmVxdWVzdBIYCgJpZBgBIAEoCUIMukgJyAEBcgSI5DIBEhoKBG5hbWUYAiABKAlCDLpICcgBAXIEkOQyARKAAQoLZGVzY3JpcHRpb24YAyABKAlCa7pIaLoBZQoeYWdlbnQuZGVzY3JpcHRpb24ubWF4X2xlbi4yMDAwGkN0aGlzLnRyaW0oKS5zaXplKCkgPD0gMjAwMCA/ICcnIDogJ211c3QgYmUgYXQgbW9zdCAyMDAwIGNoYXJhY3RlcnMnIjUKE1VwZGF0ZUFnZW50UmVzcG9uc2USHgoFYWdlbnQYASABKAsyDy5hZ2VudC52MS5BZ2VudCIuChJEZWxldGVBZ2VudFJlcXVlc3QSGAoCaWQYASABKAlCDLpICcgBAXIEiOQyASIVChNEZWxldGVBZ2VudFJlc3BvbnNlMt0FCgxBZ2VudFNlcnZpY2USsQEKC0NyZWF0ZUFnZW50EhwuYWdlbnQudjEuQ3JlYXRlQWdlbnRSZXF1ZXN0Gh0uYWdlbnQudjEuQ3JlYXRlQWdlbnRSZXNwb25zZSJlyvMYYQoMYWdlbnRfY3JlYXRlEkpDcmVhdGUgYW4gYWdlbnQgd2l0aGluIGEgcHJvamVjdCwgbWludGluZyBhIHNsdWcgd2hlbiBvbmUgaXMgbm90IHN1cHBsaWVkLiABKgNhcHAScAoIR2V0QWdlbnQSGS5hZ2VudC52MS5HZXRBZ2VudFJlcXVlc3QaGi5hZ2VudC52MS5HZXRBZ2VudFJlc3BvbnNlIi3K8xgpCglhZ2VudF9nZXQSE0dldCBhbiBhZ2VudCBieSBpZC4aAmlkKgNhcHAShQEKCkxpc3RBZ2VudHMSGy5hZ2VudC52MS5MaXN0QWdlbnRzUmVxdWVzdBocLmFnZW50LnYxLkxpc3RBZ2VudHNSZXNwb25zZSI8yvMYOAoKYWdlbnRfbGlzdBIZTGlzdCBhZ2VudHMgaW4gYSBwcm9qZWN0LhoKcHJvamVjdF9pZCoDYXBwEpgBCgtVcGRhdGVBZ2VudBIcLmFnZW50LnYxLlVwZGF0ZUFnZW50UmVxdWVzdBodLmFnZW50LnYxLlVwZGF0ZUFnZW50UmVzcG9uc2UiTMrzGEgKDGFnZW50X3VwZGF0ZRInVXBkYXRlIGFuIGFnZW50J3MgbmFtZSBhbmQgZGVzY3JpcHRpb24uGgJpZBoEbmFtZSABKgNhcHASgwEKC0RlbGV0ZUFnZW50EhwuYWdlbnQudjEuRGVsZXRlQWdlbnRSZXF1ZXN0Gh0uYWdlbnQudjEuRGVsZXRlQWdlbnRSZXNwb25zZSI3yvMYMwoMYWdlbnRfZGVsZXRlEhZEZWxldGUgYW4gYWdlbnQgYnkgaWQuGgJpZCABKgNhcHAwAUKHAQoMY29tLmFnZW50LnYxQgpBZ2VudFByb3RvUAFaKmFsdGFsdW5lLmlkL29hZ2VudC9nZW4vZ28vYWdlbnQvdjE7YWdlbnR2MaICA0FYWKoCCEFnZW50LlYxygIIQWdlbnRcVjHiAhRBZ2VudFxWMVxHUEJNZXRhZGF0YeoCCUFnZW50OjpWMWIGcHJvdG8z", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mcp_v1_annotations, file_oagent_v1_rules]);
+  fileDesc("ChRhZ2VudC92MS9hZ2VudC5wcm90bxIIYWdlbnQudjEi7QIKBUFnZW50EgoKAmlkGAEgASgJEg4KBm9yZ19pZBgDIAEoCRISCgpwcm9qZWN0X2lkGAQgASgJEgwKBHNsdWcYBSABKAkSDAoEbmFtZRgGIAEoCRITCgtkZXNjcmlwdGlvbhgHIAEoCRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIkCgVkcmFmdBgKIAEoCzIVLmFnZW50LnYxLkFnZW50Q29uZmlnEhkKEXB1Ymxpc2hlZF92ZXJzaW9uGAsgASgFEjQKEGRyYWZ0X3VwZGF0ZWRfYXQYDCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhsKE3VucHVibGlzaGVkX2NoYW5nZXMYDSABKAhKBAgCEANSCXB1YmxpY19pZCJPCglBZ2VudFRvb2wSKAoEbmFtZRgBIAEoCUIaukgXchUyE15bYS16MC05Xy4tXXsxLDY0fSQSGAoQcmVxdWlyZV9hcHByb3ZhbBgCIAEoCCKwAwoLQWdlbnRDb25maWcSfgoMaW5zdHJ1Y3Rpb25zGAEgASgJQmi6SGW6AWIKIGFnZW50Lmluc3RydWN0aW9ucy5tYXhfbGVuLjMyMDAwGj50aGlzLnNpemUoKSA8PSAzMjAwMCA/ICcnIDogJ211c3QgYmUgYXQgbW9zdCAzMjAwMCBjaGFyYWN0ZXJzJxKBAQoFbW9kZWwYAiABKAlCcrpIb7oBVQoXYWdlbnQubW9kZWwubWF4X2xlbi4xMjgaOnRoaXMuc2l6ZSgpIDw9IDEyOCA/ICcnIDogJ211c3QgYmUgYXQgbW9zdCAxMjggY2hhcmFjdGVycydyFTITXltBLVphLXowLTkuXzovLV0qJBIsCgt0ZW1wZXJhdHVyZRgDIAEoAUIXukgUEhIZAAAAAAAAAEApAAAAAAAAAAASHAoJbWF4X3N0ZXBzGAQgASgFQgm6SAYaBBhkKAASIwoObWF4X2Nvc3RfY2VudHMYBSABKAVCC7pICBoGGMCEPSgAEiwKBXRvb2xzGAYgAygLMhMuYWdlbnQudjEuQWdlbnRUb29sQgi6SAWSAQIQQCKoAQoMQWdlbnRWZXJzaW9uEgoKAmlkGAEgASgJEhAKCGFnZW50X2lkGAIgASgJEg8KB3ZlcnNpb24YAyABKAUSJQoGY29uZmlnGAQgASgLMhUuYWdlbnQudjEuQWdlbnRDb25maWcSLgoKY3JlYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKY3JlYXRlZF9ieRgGIAEoCSKMAgoSQ3JlYXRlQWdlbnRSZXF1ZXN0EhwKBm9yZ19pZBgBIAEoCUIMukgJyAEBcgSI5DIBEiAKCnByb2plY3RfaWQYAiABKAlCDLpICcgBAXIEiOQyARIXCgRzbHVnGAMgASgJQgm6SAZyBKDkMgESGgoEbmFtZRgEIAEoCUIMukgJyAEBcgSQ5DIBEoABCgtkZXNjcmlwdGlvbhgFIAEoCUJrukhougFlCh5hZ2VudC5kZXNjcmlwdGlvbi5tYXhfbGVuLjIwMDAaQ3RoaXMudHJpbSgpLnNpemUoKSA8PSAyMDAwID8gJycgOiAnbXVzdCBiZSBhdCBtb3N0IDIwMDAgY2hhcmFjdGVycyciNQoTQ3JlYXRlQWdlbnRSZXNwb25zZRIeCgVhZ2VudBgBIAEoCzIPLmFnZW50LnYxLkFnZW50IisKD0dldEFnZW50UmVxdWVzdBIYCgJpZBgBIAEoCUIMukgJyAEBcgSI5DIBIjIKEEdldEFnZW50UmVzcG9uc2USHgoFYWdlbnQYASABKAsyDy5hZ2VudC52MS5BZ2VudCI1ChFMaXN0QWdlbnRzUmVxdWVzdBIgCgpwcm9qZWN0X2lkGAEgASgJQgy6SAnIAQFyBIjkMgEiNQoSTGlzdEFnZW50c1Jlc3BvbnNlEh8KBmFnZW50cxgBIAMoCzIPLmFnZW50LnYxLkFnZW50Is0BChJVcGRhdGVBZ2VudFJlcXVlc3QSGAoCaWQYASABKAlCDLpICcgBAXIEiOQyARIaCgRuYW1lGAIgASgJQgy6SAnIAQFyBJDkMgESgAEKC2Rlc2NyaXB0aW9uGAMgASgJQmu6SGi6AWUKHmFnZW50LmRlc2NyaXB0aW9uLm1heF9sZW4uMjAwMBpDdGhpcy50cmltKCkuc2l6ZSgpIDw9IDIwMDAgPyAnJyA6ICdtdXN0IGJlIGF0IG1vc3QgMjAwMCBjaGFyYWN0ZXJzJyI1ChNVcGRhdGVBZ2VudFJlc3BvbnNlEh4KBWFnZW50GAEgASgLMg8uYWdlbnQudjEuQWdlbnQiLgoSRGVsZXRlQWdlbnRSZXF1ZXN0EhgKAmlkGAEgASgJQgy6SAnIAQFyBIjkMgEiFQoTRGVsZXRlQWdlbnRSZXNwb25zZSJiChdVcGRhdGVBZ2VudERyYWZ0UmVxdWVzdBIYCgJpZBgBIAEoCUIMukgJyAEBcgSI5DIBEi0KBmNvbmZpZxgCIAEoCzIVLmFnZW50LnYxLkFnZW50Q29uZmlnQga6SAPIAQEiOgoYVXBkYXRlQWdlbnREcmFmdFJlc3BvbnNlEh4KBWFnZW50GAEgASgLMg8uYWdlbnQudjEuQWdlbnQiLwoTUHVibGlzaEFnZW50UmVxdWVzdBIYCgJpZBgBIAEoCUIMukgJyAEBcgSI5DIBInAKFFB1Ymxpc2hBZ2VudFJlc3BvbnNlEh4KBWFnZW50GAEgASgLMg8uYWdlbnQudjEuQWdlbnQSJwoHdmVyc2lvbhgCIAEoCzIWLmFnZW50LnYxLkFnZW50VmVyc2lvbhIPCgdjcmVhdGVkGAMgASgIIjoKGExpc3RBZ2VudFZlcnNpb25zUmVxdWVzdBIeCghhZ2VudF9pZBgBIAEoCUIMukgJyAEBcgSI5DIBIkUKGUxpc3RBZ2VudFZlcnNpb25zUmVzcG9uc2USKAoIdmVyc2lvbnMYASADKAsyFi5hZ2VudC52MS5BZ2VudFZlcnNpb24yrwsKDEFnZW50U2VydmljZRKxAQoLQ3JlYXRlQWdlbnQSHC5hZ2VudC52MS5DcmVhdGVBZ2VudFJlcXVlc3QaHS5hZ2VudC52MS5DcmVhdGVBZ2VudFJlc3BvbnNlImXK8xhhCgxhZ2VudF9jcmVhdGUSSkNyZWF0ZSBhbiBhZ2VudCB3aXRoaW4gYSBwcm9qZWN0LCBtaW50aW5nIGEgc2x1ZyB3aGVuIG9uZSBpcyBub3Qgc3VwcGxpZWQuIAEqA2FwcBJwCghHZXRBZ2VudBIZLmFnZW50LnYxLkdldEFnZW50UmVxdWVzdBoaLmFnZW50LnYxLkdldEFnZW50UmVzcG9uc2UiLcrzGCkKCWFnZW50X2dldBITR2V0IGFuIGFnZW50IGJ5IGlkLhoCaWQqA2FwcBKFAQoKTGlzdEFnZW50cxIbLmFnZW50LnYxLkxpc3RBZ2VudHNSZXF1ZXN0GhwuYWdlbnQudjEuTGlzdEFnZW50c1Jlc3BvbnNlIjzK8xg4CgphZ2VudF9saXN0EhlMaXN0IGFnZW50cyBpbiBhIHByb2plY3QuGgpwcm9qZWN0X2lkKgNhcHASmAEKC1VwZGF0ZUFnZW50EhwuYWdlbnQudjEuVXBkYXRlQWdlbnRSZXF1ZXN0Gh0uYWdlbnQudjEuVXBkYXRlQWdlbnRSZXNwb25zZSJMyvMYSAoMYWdlbnRfdXBkYXRlEidVcGRhdGUgYW4gYWdlbnQncyBuYW1lIGFuZCBkZXNjcmlwdGlvbi4aAmlkGgRuYW1lIAEqA2FwcBKDAQoLRGVsZXRlQWdlbnQSHC5hZ2VudC52MS5EZWxldGVBZ2VudFJlcXVlc3QaHS5hZ2VudC52MS5EZWxldGVBZ2VudFJlc3BvbnNlIjfK8xgzCgxhZ2VudF9kZWxldGUSFkRlbGV0ZSBhbiBhZ2VudCBieSBpZC4aAmlkIAEqA2FwcDABEqkCChBVcGRhdGVBZ2VudERyYWZ0EiEuYWdlbnQudjEuVXBkYXRlQWdlbnREcmFmdFJlcXVlc3QaIi5hZ2VudC52MS5VcGRhdGVBZ2VudERyYWZ0UmVzcG9uc2UizQHK8xjIAQoSYWdlbnRfdXBkYXRlX2RyYWZ0Ep4BUmVwbGFjZSBhbiBhZ2VudCdzIGRyYWZ0IGNvbmZpZ3VyYXRpb246IGluc3RydWN0aW9ucywgbW9kZWwsIHRlbXBlcmF0dXJlLCB0b29scywgbWF4IHN0ZXBzIGFuZCBidWRnZXQuIFRoZSBwdWJsaXNoZWQgdmVyc2lvbiBpcyB1bmNoYW5nZWQgdW50aWwgYWdlbnRfcHVibGlzaC4aAmlkGgZjb25maWcgASoDYXBwEugBCgxQdWJsaXNoQWdlbnQSHS5hZ2VudC52MS5QdWJsaXNoQWdlbnRSZXF1ZXN0Gh4uYWdlbnQudjEuUHVibGlzaEFnZW50UmVzcG9uc2UimAHK8xiTAQoNYWdlbnRfcHVibGlzaBJ3UHVibGlzaCBhbiBhZ2VudCdzIGRyYWZ0IGFzIGl0cyBuZXh0IGltbXV0YWJsZSB2ZXJzaW9uOyBhbiB1bmNoYW5nZWQgZHJhZnQgcmV0dXJucyB0aGUgbGF0ZXN0IHZlcnNpb24gYW5kIGNyZWF0ZXMgbm9uZS4aAmlkIAEqA2FwcBK4AQoRTGlzdEFnZW50VmVyc2lvbnMSIi5hZ2VudC52MS5MaXN0QWdlbnRWZXJzaW9uc1JlcXVlc3QaIy5hZ2VudC52MS5MaXN0QWdlbnRWZXJzaW9uc1Jlc3BvbnNlIlrK8xhWChJhZ2VudF92ZXJzaW9uX2xpc3QSMUxpc3QgYW4gYWdlbnQncyBwdWJsaXNoZWQgdmVyc2lvbnMsIG5ld2VzdCBmaXJzdC4aCGFnZW50X2lkKgNhcHBChwEKDGNvbS5hZ2VudC52MUIKQWdlbnRQcm90b1ABWiphbHRhbHVuZS5pZC9vYWdlbnQvZ2VuL2dvL2FnZW50L3YxO2FnZW50djGiAgNBWFiqAghBZ2VudC5WMcoCCEFnZW50XFYx4gIUQWdlbnRcVjFcR1BCTWV0YWRhdGHqAglBZ2VudDo6VjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mcp_v1_annotations, file_oagent_v1_rules]);
 
 /**
  * @generated from message agent.v1.Agent
@@ -60,6 +60,30 @@ export type Agent = Message<"agent.v1.Agent"> & {
    * @generated from field: google.protobuf.Timestamp updated_at = 9;
    */
   updatedAt?: Timestamp;
+
+  /**
+   * @generated from field: agent.v1.AgentConfig draft = 10;
+   */
+  draft?: AgentConfig;
+
+  /**
+   * published_version is the latest version's number, 0 when the agent was never published.
+   *
+   * @generated from field: int32 published_version = 11;
+   */
+  publishedVersion: number;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp draft_updated_at = 12;
+   */
+  draftUpdatedAt?: Timestamp;
+
+  /**
+   * unpublished_changes is true when the draft was edited after the last publish.
+   *
+   * @generated from field: bool unpublished_changes = 13;
+   */
+  unpublishedChanges: boolean;
 };
 
 /**
@@ -68,6 +92,122 @@ export type Agent = Message<"agent.v1.Agent"> & {
  */
 export const AgentSchema: GenMessage<Agent> = /*@__PURE__*/
   messageDesc(file_agent_v1_agent, 0);
+
+/**
+ * AgentTool is a tool the agent may call; require_approval makes a person approve each call.
+ *
+ * @generated from message agent.v1.AgentTool
+ */
+export type AgentTool = Message<"agent.v1.AgentTool"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: bool require_approval = 2;
+   */
+  requireApproval: boolean;
+};
+
+/**
+ * Describes the message agent.v1.AgentTool.
+ * Use `create(AgentToolSchema)` to create a new message.
+ */
+export const AgentToolSchema: GenMessage<AgentTool> = /*@__PURE__*/
+  messageDesc(file_agent_v1_agent, 1);
+
+/**
+ * AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents).
+ *
+ * @generated from message agent.v1.AgentConfig
+ */
+export type AgentConfig = Message<"agent.v1.AgentConfig"> & {
+  /**
+   * @generated from field: string instructions = 1;
+   */
+  instructions: string;
+
+  /**
+   * @generated from field: string model = 2;
+   */
+  model: string;
+
+  /**
+   * @generated from field: double temperature = 3;
+   */
+  temperature: number;
+
+  /**
+   * @generated from field: int32 max_steps = 4;
+   */
+  maxSteps: number;
+
+  /**
+   * @generated from field: int32 max_cost_cents = 5;
+   */
+  maxCostCents: number;
+
+  /**
+   * Tool names are unique within a config.
+   *
+   * @generated from field: repeated agent.v1.AgentTool tools = 6;
+   */
+  tools: AgentTool[];
+};
+
+/**
+ * Describes the message agent.v1.AgentConfig.
+ * Use `create(AgentConfigSchema)` to create a new message.
+ */
+export const AgentConfigSchema: GenMessage<AgentConfig> = /*@__PURE__*/
+  messageDesc(file_agent_v1_agent, 2);
+
+/**
+ * AgentVersion is an immutable published configuration; version is a display label, id the public id.
+ *
+ * @generated from message agent.v1.AgentVersion
+ */
+export type AgentVersion = Message<"agent.v1.AgentVersion"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string agent_id = 2;
+   */
+  agentId: string;
+
+  /**
+   * @generated from field: int32 version = 3;
+   */
+  version: number;
+
+  /**
+   * @generated from field: agent.v1.AgentConfig config = 4;
+   */
+  config?: AgentConfig;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 5;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * created_by is the publishing person's user public id, empty for an API key.
+   *
+   * @generated from field: string created_by = 6;
+   */
+  createdBy: string;
+};
+
+/**
+ * Describes the message agent.v1.AgentVersion.
+ * Use `create(AgentVersionSchema)` to create a new message.
+ */
+export const AgentVersionSchema: GenMessage<AgentVersion> = /*@__PURE__*/
+  messageDesc(file_agent_v1_agent, 3);
 
 /**
  * @generated from message agent.v1.CreateAgentRequest
@@ -104,7 +244,7 @@ export type CreateAgentRequest = Message<"agent.v1.CreateAgentRequest"> & {
  * Use `create(CreateAgentRequestSchema)` to create a new message.
  */
 export const CreateAgentRequestSchema: GenMessage<CreateAgentRequest> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 1);
+  messageDesc(file_agent_v1_agent, 4);
 
 /**
  * @generated from message agent.v1.CreateAgentResponse
@@ -121,7 +261,7 @@ export type CreateAgentResponse = Message<"agent.v1.CreateAgentResponse"> & {
  * Use `create(CreateAgentResponseSchema)` to create a new message.
  */
 export const CreateAgentResponseSchema: GenMessage<CreateAgentResponse> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 2);
+  messageDesc(file_agent_v1_agent, 5);
 
 /**
  * @generated from message agent.v1.GetAgentRequest
@@ -138,7 +278,7 @@ export type GetAgentRequest = Message<"agent.v1.GetAgentRequest"> & {
  * Use `create(GetAgentRequestSchema)` to create a new message.
  */
 export const GetAgentRequestSchema: GenMessage<GetAgentRequest> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 3);
+  messageDesc(file_agent_v1_agent, 6);
 
 /**
  * @generated from message agent.v1.GetAgentResponse
@@ -155,7 +295,7 @@ export type GetAgentResponse = Message<"agent.v1.GetAgentResponse"> & {
  * Use `create(GetAgentResponseSchema)` to create a new message.
  */
 export const GetAgentResponseSchema: GenMessage<GetAgentResponse> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 4);
+  messageDesc(file_agent_v1_agent, 7);
 
 /**
  * @generated from message agent.v1.ListAgentsRequest
@@ -172,7 +312,7 @@ export type ListAgentsRequest = Message<"agent.v1.ListAgentsRequest"> & {
  * Use `create(ListAgentsRequestSchema)` to create a new message.
  */
 export const ListAgentsRequestSchema: GenMessage<ListAgentsRequest> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 5);
+  messageDesc(file_agent_v1_agent, 8);
 
 /**
  * @generated from message agent.v1.ListAgentsResponse
@@ -189,7 +329,7 @@ export type ListAgentsResponse = Message<"agent.v1.ListAgentsResponse"> & {
  * Use `create(ListAgentsResponseSchema)` to create a new message.
  */
 export const ListAgentsResponseSchema: GenMessage<ListAgentsResponse> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 6);
+  messageDesc(file_agent_v1_agent, 9);
 
 /**
  * @generated from message agent.v1.UpdateAgentRequest
@@ -216,7 +356,7 @@ export type UpdateAgentRequest = Message<"agent.v1.UpdateAgentRequest"> & {
  * Use `create(UpdateAgentRequestSchema)` to create a new message.
  */
 export const UpdateAgentRequestSchema: GenMessage<UpdateAgentRequest> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 7);
+  messageDesc(file_agent_v1_agent, 10);
 
 /**
  * @generated from message agent.v1.UpdateAgentResponse
@@ -233,7 +373,7 @@ export type UpdateAgentResponse = Message<"agent.v1.UpdateAgentResponse"> & {
  * Use `create(UpdateAgentResponseSchema)` to create a new message.
  */
 export const UpdateAgentResponseSchema: GenMessage<UpdateAgentResponse> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 8);
+  messageDesc(file_agent_v1_agent, 11);
 
 /**
  * @generated from message agent.v1.DeleteAgentRequest
@@ -250,7 +390,7 @@ export type DeleteAgentRequest = Message<"agent.v1.DeleteAgentRequest"> & {
  * Use `create(DeleteAgentRequestSchema)` to create a new message.
  */
 export const DeleteAgentRequestSchema: GenMessage<DeleteAgentRequest> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 9);
+  messageDesc(file_agent_v1_agent, 12);
 
 /**
  * @generated from message agent.v1.DeleteAgentResponse
@@ -263,7 +403,126 @@ export type DeleteAgentResponse = Message<"agent.v1.DeleteAgentResponse"> & {
  * Use `create(DeleteAgentResponseSchema)` to create a new message.
  */
 export const DeleteAgentResponseSchema: GenMessage<DeleteAgentResponse> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 10);
+  messageDesc(file_agent_v1_agent, 13);
+
+/**
+ * @generated from message agent.v1.UpdateAgentDraftRequest
+ */
+export type UpdateAgentDraftRequest = Message<"agent.v1.UpdateAgentDraftRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: agent.v1.AgentConfig config = 2;
+   */
+  config?: AgentConfig;
+};
+
+/**
+ * Describes the message agent.v1.UpdateAgentDraftRequest.
+ * Use `create(UpdateAgentDraftRequestSchema)` to create a new message.
+ */
+export const UpdateAgentDraftRequestSchema: GenMessage<UpdateAgentDraftRequest> = /*@__PURE__*/
+  messageDesc(file_agent_v1_agent, 14);
+
+/**
+ * @generated from message agent.v1.UpdateAgentDraftResponse
+ */
+export type UpdateAgentDraftResponse = Message<"agent.v1.UpdateAgentDraftResponse"> & {
+  /**
+   * @generated from field: agent.v1.Agent agent = 1;
+   */
+  agent?: Agent;
+};
+
+/**
+ * Describes the message agent.v1.UpdateAgentDraftResponse.
+ * Use `create(UpdateAgentDraftResponseSchema)` to create a new message.
+ */
+export const UpdateAgentDraftResponseSchema: GenMessage<UpdateAgentDraftResponse> = /*@__PURE__*/
+  messageDesc(file_agent_v1_agent, 15);
+
+/**
+ * @generated from message agent.v1.PublishAgentRequest
+ */
+export type PublishAgentRequest = Message<"agent.v1.PublishAgentRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message agent.v1.PublishAgentRequest.
+ * Use `create(PublishAgentRequestSchema)` to create a new message.
+ */
+export const PublishAgentRequestSchema: GenMessage<PublishAgentRequest> = /*@__PURE__*/
+  messageDesc(file_agent_v1_agent, 16);
+
+/**
+ * @generated from message agent.v1.PublishAgentResponse
+ */
+export type PublishAgentResponse = Message<"agent.v1.PublishAgentResponse"> & {
+  /**
+   * @generated from field: agent.v1.Agent agent = 1;
+   */
+  agent?: Agent;
+
+  /**
+   * @generated from field: agent.v1.AgentVersion version = 2;
+   */
+  version?: AgentVersion;
+
+  /**
+   * created is false when the draft matched the latest version, which is returned instead.
+   *
+   * @generated from field: bool created = 3;
+   */
+  created: boolean;
+};
+
+/**
+ * Describes the message agent.v1.PublishAgentResponse.
+ * Use `create(PublishAgentResponseSchema)` to create a new message.
+ */
+export const PublishAgentResponseSchema: GenMessage<PublishAgentResponse> = /*@__PURE__*/
+  messageDesc(file_agent_v1_agent, 17);
+
+/**
+ * @generated from message agent.v1.ListAgentVersionsRequest
+ */
+export type ListAgentVersionsRequest = Message<"agent.v1.ListAgentVersionsRequest"> & {
+  /**
+   * @generated from field: string agent_id = 1;
+   */
+  agentId: string;
+};
+
+/**
+ * Describes the message agent.v1.ListAgentVersionsRequest.
+ * Use `create(ListAgentVersionsRequestSchema)` to create a new message.
+ */
+export const ListAgentVersionsRequestSchema: GenMessage<ListAgentVersionsRequest> = /*@__PURE__*/
+  messageDesc(file_agent_v1_agent, 18);
+
+/**
+ * @generated from message agent.v1.ListAgentVersionsResponse
+ */
+export type ListAgentVersionsResponse = Message<"agent.v1.ListAgentVersionsResponse"> & {
+  /**
+   * @generated from field: repeated agent.v1.AgentVersion versions = 1;
+   */
+  versions: AgentVersion[];
+};
+
+/**
+ * Describes the message agent.v1.ListAgentVersionsResponse.
+ * Use `create(ListAgentVersionsResponseSchema)` to create a new message.
+ */
+export const ListAgentVersionsResponseSchema: GenMessage<ListAgentVersionsResponse> = /*@__PURE__*/
+  messageDesc(file_agent_v1_agent, 19);
 
 /**
  * AgentService manages agents. Every id is a public id.
@@ -310,6 +569,30 @@ export const AgentService: GenService<{
     methodKind: "unary";
     input: typeof DeleteAgentRequestSchema;
     output: typeof DeleteAgentResponseSchema;
+  },
+  /**
+   * @generated from rpc agent.v1.AgentService.UpdateAgentDraft
+   */
+  updateAgentDraft: {
+    methodKind: "unary";
+    input: typeof UpdateAgentDraftRequestSchema;
+    output: typeof UpdateAgentDraftResponseSchema;
+  },
+  /**
+   * @generated from rpc agent.v1.AgentService.PublishAgent
+   */
+  publishAgent: {
+    methodKind: "unary";
+    input: typeof PublishAgentRequestSchema;
+    output: typeof PublishAgentResponseSchema;
+  },
+  /**
+   * @generated from rpc agent.v1.AgentService.ListAgentVersions
+   */
+  listAgentVersions: {
+    methodKind: "unary";
+    input: typeof ListAgentVersionsRequestSchema;
+    output: typeof ListAgentVersionsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_agent_v1_agent, 0);
