@@ -13,6 +13,7 @@ export function useAgentCreate(orgId: string, projectId: string) {
   const busy = ref(false);
   const error = ref<ShownError | null>(null);
 
+  const route = useRoute();
   const agents = useAgentsStore();
   const validation = useValidation(CreateAgentRequestSchema, {
     fields: ['name', 'slug', 'description'],
@@ -55,6 +56,7 @@ export function useAgentCreate(orgId: string, projectId: string) {
         name.value = '';
         slug.value = '';
         description.value = '';
+        await navigateTo(`/o/${route.params.org}/projects/${route.params.project}/agents/${agent.slug}`);
       }
     } catch (e) {
       error.value = validation.fromServer(e, 'error.create_agent');

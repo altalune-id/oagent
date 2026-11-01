@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { connectError, deferred, setClient, setKnownKeys } from '#test/nuxt-globals';
+import { connectError, deferred, navigateTo, setClient, setKnownKeys, setRoute } from '#test/nuxt-globals';
 import { useAgentsStore } from '~/stores/agents';
 import { useAgentCreate } from './useAgentCreate';
 
@@ -16,7 +16,8 @@ describe('useAgentCreate', () => {
     setClient('$agentClient', { createAgent });
   });
 
-  it('creates an agent, adds it to the store and resets the form', async () => {
+  it('creates an agent, adds it to the store, resets the form and opens Configure', async () => {
+    setRoute({ params: { org: 'acme', project: 'web' } });
     const form = useAgentCreate('V3StGXR8Z5jdHj6BmyT2a', 'x6MH9WPWjktMwCBKHy4pF');
     form.show();
     form.name.value = '  Bot  ';
@@ -28,6 +29,7 @@ describe('useAgentCreate', () => {
     expect(form.open.value).toBe(false);
     expect([form.name.value, form.slug.value, form.description.value]).toEqual(['', '', '']);
     expect(form.busy.value).toBe(false);
+    expect(navigateTo).toHaveBeenCalledWith('/o/acme/projects/web/agents/bot');
   });
 
   it('keeps the form open when the response has no agent', async () => {

@@ -1,0 +1,101 @@
+// @vitest-environment happy-dom
+import { create } from '@bufbuild/protobuf';
+import { createPinia, setActivePinia } from 'pinia';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
+import { mountPage } from '#test/mount-page';
+import { setClient, setRoute } from '#test/nuxt-globals';
+import ConfigurePage from '~/pages/o/[org]/projects/[project]/agents/[agent]/index.vue';
+import AgentsPage from '~/pages/o/[org]/projects/[project]/agents/index.vue';
+import { sampleAgents } from '~/preview/samples';
+import { useOrgsStore } from '~/stores/orgs';
+import { useProjectsStore } from '~/stores/projects';
+
+const orgId = 'B6rTn1YkM8wQz3XpL5vGd';
+const projectId = 'x6MH9WPWjktMwCBKHy4pF';
+const support = { id: 'A7kPq2WxN4mLt8VcR3bZs', projectId, slug: 'support', name: 'Support', description: 'Answers tickets' };
+
+function inProject(path: string, agents: unknown[], ...permissions: string[]) {
+  useOrgsStore().items = [{ id: orgId, slug: 'acme', name: 'Acme', role: 'owner' }];
+  useProjectsStore().items = [{ id: projectId, orgId, slug: 'web', name: 'Web' }];
+  setRoute({ path: `/o/acme/projects/web${path}`, params: { org: 'acme', project: 'web', agent: 'support' } });
+  setClient('$authClient', { whoami: vi.fn().mockResolvedValue(create(WhoamiResponseSchema, { source: 'local', userId: 'F5pLm2XwQ8kRt3VnZ7bYc', permissions })) });
+  setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents }) });
+}
+
+beforeEach(() => {
+  setActivePinia(createPinia());
+});
+
+describe('agents page', () => {
+  it('lists real agents in a captioned table with their description and no sample badge', async () => {
+    inProject('/agents', [support], 'agent:read');
+    const w = await mountPage(AgentsPage);
+    expect(w.get('h1').text()).toBe('nav.agents');
+    expect(w.get('caption').text()).toBe('nav.agents');
+    expect(w.text()).toContain('Answers tickets');
+    expect(w.find('.badge').exists()).toBe(false);
+  });
+
+  it('starts empty with New agent, and shows sample agents only on request, marked Preview', async () => {
+    inProject('/agents', [], 'agent:read', 'agent:write');
+    const w = await mountPage(AgentsPage);
+    expect(w.get('h2').text()).toContain('agent.empty_title');
+    const texts = () => w.findAll('button').map(b => b.text());
+    expect(texts().filter(t => t.includes('agent.new'))).toHaveLength(1);
+    expect(w.text()).not.toContain(sampleAgents()[0]!.name);
+    await w.findAll('button').find(b => b.text() === 'agent.show_samples')!.trigger('click');
+    expect(w.get('h1 + .badge').text()).toBe('preview.badge');
+    expect(w.get('[role="note"]').text()).toBe('agent.samples_note');
+    expect(w.get('caption').text()).toBe('agent.samples_caption');
+    expect(w.text()).toContain(sampleAgents()[0]!.name);
+    expect(w.text()).toContain('$3.86');
+    await w.findAll('button').find(b => b.text() === 'agent.hide_samples')!.trigger('click');
+    expect(w.text()).not.toContain(sampleAgents()[0]!.name);
+  });
+
+  it('offers no sample button to change agents without agent:write, but still offers samples', async () => {
+    inProject('/agents', [], 'agent:read');
+    const w = await mountPage(AgentsPage);
+    expect(w.findAll('button').map(b => b.text())).toEqual(['agent.show_samples']);
+  });
+});
+
+describe('configure page', () => {
+  it('shows the agent under a Preview badge, with Publish disabled and the reason linked', async () => {
+    inProject('/agents/support', [support], 'agent:read', 'agent:write');
+    const w = await mountPage(ConfigurePage);
+    expect(w.get('h1').text()).toBe('Support');
+    expect(w.get('.badge').text()).toBe('preview.badge');
+    const publish = w.findAll('button').find(b => b.text() === 'configure.publish')!;
+    expect(publish.attributes('disabled')).toBeDefined();
+    expect(w.get(`#${publish.attributes('aria-describedby')}`).text()).toBe('configure.not_saved');
+    expect(w.findAll('nav[aria-label="common.breadcrumb"] li').map(li => li.text())).toEqual(['nav.agents', 'Support']);
+  });
+
+  it('edits the draft locally and keeps the API example in step with the form', async () => {
+    inProject('/agents/support', [support], 'agent:read', 'agent:write');
+    const w = await mountPage(ConfigurePage);
+    await w.get('select').setValue('small-3');
+    expect(w.get('pre').text()).toContain('"model":"small-3"');
+    const toggles = w.findAll('input.toggle');
+    await toggles[3]!.setValue(true);
+    expect(w.get('pre').text()).toContain('knowledge.search');
+    await w.findAll('input.checkbox')[3]!.setValue(true);
+    expect(w.get('pre').text()).toContain('"name":"knowledge.search","requireApproval":true');
+    await toggles[0]!.setValue(false);
+    expect(w.get('pre').text()).not.toContain('orders.lookup');
+    await w.get('input[step="0.01"]').setValue('0.5');
+    expect(w.get('pre').text()).toContain('"maxCostCents":50');
+    await w.get('input[value="mcp"]').setValue(true);
+    expect(w.get('pre').text()).toContain('"tool": "agent_update_draft"');
+  });
+
+  it('is a 404 for an unknown agent', async () => {
+    inProject('/agents/support', [], 'agent:read');
+    const errorHandler = vi.fn();
+    await mountPage(ConfigurePage, { global: { config: { errorHandler } } });
+    expect(errorHandler.mock.calls[0]![0]).toMatchObject({ statusCode: 404, statusMessage: 'error.agent_not_found' });
+  });
+});
