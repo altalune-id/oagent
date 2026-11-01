@@ -2,6 +2,7 @@
 import type { StatItem } from '#base/components/ui/types';
 import AppStats from '#base/components/ui/AppStats.vue';
 import CopyButton from '#base/components/ui/CopyButton.vue';
+import { useMembersStore } from '~/stores/members';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 
@@ -11,11 +12,14 @@ const orgs = useOrgsStore();
 const projects = useProjectsStore();
 const org = computed(() => orgs.bySlug(route.params.org as string));
 const items = computed(() => (org.value ? projects.forOrg(org.value.id) : []));
+const members = useMembersStore();
+if (org.value) {
+  void members.load(org.value.id);
+}
 
 const stats = computed<StatItem[]>(() => [
   { label: t('nav.projects'), value: items.value.length },
-  { label: t('stat.agents'), value: 0 },
-  { label: t('stat.members'), value: 1 },
+  { label: t('stat.members'), value: members.loading || members.error ? '—' : members.items.length },
 ]);
 
 useHead({ title: () => `${org.value?.name ?? t('org.title')} · OAgent` });
