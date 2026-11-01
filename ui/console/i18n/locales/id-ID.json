@@ -336,5 +336,7 @@
   "environment.production": "Produksi",
   "environment.staging": "Staging",
   "environment.title": "Lingkungan",
-  "error.save_environment": "Gagal menyimpan lingkungan"
+  "error.save_environment": "Gagal menyimpan lingkungan",
+  "configure.tool_approval": "{tool} perlu persetujuan",
+  "configure.choose_model": "Pilih model"
 }

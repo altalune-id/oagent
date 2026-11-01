@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { NavGroup } from '#base/components/ui/types';
 import SidebarNav from '#base/components/ui/SidebarNav.vue';
+import OrgRoleBadge from '~/components/org/OrgRoleBadge.vue';
 import OrgSelector from '~/components/org/OrgSelector.vue';
 import { useOrgsStore } from '~/stores/orgs';
 
@@ -34,7 +35,10 @@ const groups = computed<NavGroup[]>(() => [
 <template>
   <SidebarNav :label="label" :groups="groups">
     <template #top>
-      <OrgSelector />
+      <div class="flex flex-wrap items-center gap-1">
+        <OrgSelector />
+        <OrgRoleBadge />
+      </div>
     </template>
     <template v-if="appVersion" #footer>
       OAgent v{{ appVersion }}

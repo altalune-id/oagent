@@ -336,5 +336,7 @@
   "environment.production": "Production",
   "environment.staging": "Staging",
   "environment.title": "Environment",
-  "error.save_environment": "Failed to save the environment"
+  "error.save_environment": "Failed to save the environment",
+  "configure.tool_approval": "{tool} needs approval",
+  "configure.choose_model": "Choose a model"
 }

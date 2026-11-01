@@ -154,6 +154,22 @@ describe('configure page', () => {
     expect(w.text()).toContain('custom.tool');
   });
 
+  it('opens a new agent with an empty config, never sample values, and names each approval box by its tool', async () => {
+    inProject('/agents/support', [support], 'agent:read', 'agent:write');
+    withDraft(0, { draft: undefined, unpublishedChanges: false });
+    const w = await mountPage(ConfigurePage);
+    expect(w.get('textarea').element.value).toBe('');
+    expect((w.get('select').element as HTMLSelectElement).value).toBe('');
+    expect(w.get('select option').text()).toBe('configure.choose_model');
+    expect(w.findAll('input.toggle').map(i => (i.element as HTMLInputElement).checked)).toEqual([false, false, false, false]);
+    expect(w.findAll('input.checkbox').map(i => i.attributes('aria-label'))).toEqual([
+      'configure.tool_approval|{"tool":"orders.lookup"}',
+      'configure.tool_approval|{"tool":"billing.charges.list"}',
+      'configure.tool_approval|{"tool":"billing.refunds.create"}',
+      'configure.tool_approval|{"tool":"knowledge.search"}',
+    ]);
+  });
+
   it('is a 404 for an unknown agent', async () => {
     inProject('/agents/support', [], 'agent:read');
     const errorHandler = vi.fn();

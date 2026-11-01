@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { NavGroup } from '#base/components/ui/types';
 import SidebarNav from '#base/components/ui/SidebarNav.vue';
+import OrgRoleBadge from '~/components/org/OrgRoleBadge.vue';
 import OrgSelector from '~/components/org/OrgSelector.vue';
 import ProjectSelector from '~/components/project/ProjectSelector.vue';
 import { useOrgsStore } from '~/stores/orgs';
@@ -32,7 +33,10 @@ const groups = computed<NavGroup[]>(() => [
   <SidebarNav :label="project?.name ?? ''" :groups="groups">
     <template #top>
       <div class="flex flex-col items-start gap-1">
-        <OrgSelector />
+        <div class="flex flex-wrap items-center gap-1">
+          <OrgSelector />
+          <OrgRoleBadge />
+        </div>
         <ProjectSelector />
       </div>
     </template>

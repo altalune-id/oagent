@@ -50,6 +50,9 @@ const budget = computed({
       <div class="grid gap-4 sm:grid-cols-2">
         <FormField v-slot="{ id }" :label="t('configure.model')">
           <select :id="id" v-model="config.model" class="select w-full font-mono" :disabled="disabled">
+            <option value="" disabled>
+              {{ t('configure.choose_model') }}
+            </option>
             <option v-for="m in models" :key="m" :value="m">
               {{ m }}
             </option>
@@ -89,6 +92,7 @@ const budget = computed({
           <label class="label gap-2 text-sm text-base-content">
             <input
               type="checkbox" class="checkbox checkbox-sm rounded-sm" :checked="!!toolOf(tool.name)?.requireApproval" :disabled="disabled || !toolOf(tool.name)"
+              :aria-label="t('configure.tool_approval', { tool: tool.name })"
               @change="setApproval(tool.name, ($event.target as HTMLInputElement).checked)"
             >
             {{ t('configure.needs_approval') }}

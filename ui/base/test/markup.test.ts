@@ -115,6 +115,10 @@ describe('guard: theme contrast', () => {
     colors: Object.fromEntries([...body!.matchAll(/--color-([\w-]+):\s*(oklch\([^)]*\))/g)].map(([, k, v]) => [k!, oklchToSRGB(v!)])),
   }));
 
+  it('lifts daisyUI table headers from base-content/60 to the AA muted /70', () => {
+    expect(theme).toMatch(/\.table :where\(thead, tfoot\) \{\s+color: color-mix\(in oklab, var\(--color-base-content\) 70%, transparent\);/);
+  });
+
   it('reads every theme', () => {
     expect(themes.length).toBe(14);
     expect(contrast([0, 0, 0], [1, 1, 1])).toBeCloseTo(21);

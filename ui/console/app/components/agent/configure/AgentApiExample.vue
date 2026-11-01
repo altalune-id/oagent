@@ -23,7 +23,7 @@ const snippets = computed(() => ({
       <input v-model="tab" type="radio" :name="name" value="mcp" role="tab" class="tab" :aria-label="t('configure.mcp_tab')">
     </div>
     <div class="relative">
-      <pre class="max-h-72 overflow-auto rounded-box bg-neutral p-4 font-mono text-xs whitespace-pre-wrap break-all text-neutral-content"><code>{{ snippets[tab] }}</code></pre>
+      <pre class="max-h-72 overflow-auto rounded-box bg-neutral p-4 pr-12 font-mono text-xs whitespace-pre-wrap break-words text-neutral-content"><code>{{ snippets[tab] }}</code></pre>
       <CopyButton :value="snippets[tab]" :label="t('common.copy')" class="absolute top-2 right-2 text-neutral-content" />
     </div>
   </Section>
