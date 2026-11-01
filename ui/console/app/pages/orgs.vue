@@ -38,11 +38,11 @@ useHead({ title: () => `${t('org.all')} · OAgent` });
         <h1 class="text-2xl font-bold">
           {{ t('org.title') }}
         </h1>
-        <p v-if="!isEmpty" class="mt-1 text-sm text-base-content/60">
+        <p v-if="!isEmpty" class="mt-1 text-sm text-base-content/70">
           {{ t('org.subtitle') }}
         </p>
       </div>
-      <p v-if="allowed && ownsOne" class="max-w-56 text-right text-xs text-base-content/60" data-testid="org-create-owned">
+      <p v-if="allowed && ownsOne" class="max-w-56 text-right text-xs text-base-content/70" data-testid="org-create-owned">
         {{ t('org.create_owned') }}
       </p>
       <AppButton v-else-if="canCreate && !isEmpty" size="sm" @click="ui.openOrgCreate()">
@@ -68,7 +68,7 @@ useHead({ title: () => `${t('org.all')} · OAgent` });
           <h2 class="card-title text-base">
             {{ org.name }}
           </h2>
-          <p class="text-sm text-base-content/60">
+          <p class="text-sm text-base-content/70">
             /{{ org.slug }}
           </p>
         </div>

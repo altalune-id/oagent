@@ -10,7 +10,7 @@ const { title, count } = defineProps<{ title: string, count?: number }>();
         <h1 class="card-title text-base">
           {{ title }}
         </h1>
-        <span v-if="count !== undefined" class="text-sm text-base-content/60">· {{ count }}</span>
+        <span v-if="count !== undefined" class="text-sm text-base-content/70">· {{ count }}</span>
         <slot name="badges" />
       </header>
       <slot />

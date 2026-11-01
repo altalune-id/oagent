@@ -30,7 +30,7 @@ const emit = defineEmits<{
   <AppDropdown class="min-w-0" :open="open" trigger-class="max-w-full min-w-0 flex-nowrap gap-1 sm:gap-2">
     <template #trigger>
       <Icon v-if="icon" :name="icon" size="16" class="shrink-0 max-sm:hidden" />
-      <span class="min-w-0 truncate sm:max-w-32" :class="{ 'text-base-content/50': placeholder }">{{ label }}</span>
+      <span class="min-w-0 truncate sm:max-w-32" :class="{ 'text-base-content/70': placeholder }">{{ label }}</span>
       <Icon name="lucide:chevron-down" size="14" class="shrink-0" />
     </template>
     <ul tabindex="0" class="dropdown-content menu z-50 mt-1 w-60 rounded-box max-sm:fixed max-sm:inset-x-2 max-sm:top-full max-sm:w-auto border border-base-300 bg-base-100 p-2 shadow">
@@ -46,7 +46,7 @@ const emit = defineEmits<{
             :title="item.pinned ? unpinLabel : pinLabel"
             @click="emit('pin', item.key)"
           >
-            <Icon name="lucide:star" size="14" :class="item.pinned ? 'text-amber-400 [&_path]:fill-amber-400' : 'text-base-content/50'" />
+            <Icon name="lucide:star" size="14" :class="item.pinned ? 'text-amber-400 [&_path]:fill-amber-400' : 'text-base-content/70'" />
           </button>
         </div>
       </li>

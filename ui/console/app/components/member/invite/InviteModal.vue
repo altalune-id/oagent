@@ -63,7 +63,7 @@ function roleLabel(r: string): string {
       <p class="text-sm">
         {{ sentMessage }}
       </p>
-      <p class="text-xs text-base-content/60">
+      <p class="text-xs text-base-content/70">
         {{ labels.linkHint }}
       </p>
       <SecretField :value="sentLink" :label="labels.copy" />

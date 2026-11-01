@@ -29,7 +29,7 @@ const badges = computed(() => permissionBadges(who.value.permissions));
       </div>
       <dl v-if="rows.length" class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
         <template v-for="row in rows" :key="row.label">
-          <dt class="text-base-content/60">
+          <dt class="text-base-content/70">
             {{ row.label }}
           </dt>
           <dd class="font-mono break-all">

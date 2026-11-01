@@ -30,6 +30,10 @@ describe('guard: markup in every app', () => {
     expect(offenders(/\b(?:input|select|textarea|file-input)-(?:bordered|sm|xs)\b/)).toEqual([]);
   });
 
+  it('keeps muted text at /70, the lowest opacity that passes AA in every theme', () => {
+    expect(offenders(/\btext-base-content\/[1-6]\d\b/)).toEqual([]);
+  });
+
   it('uses the daisyUI 5 row-hover, not the removed table hover class', () => {
     expect(offenders(/<tr\s(?:[^>]*\s)?class="(?:[^"]*\s)?hover(?:\s[^"]*)?"/)).toEqual([]);
   });
@@ -73,10 +77,67 @@ describe('guard: forms that show field errors', () => {
   });
 });
 
+type RGB = [number, number, number];
+
+function oklchToSRGB(value: string): RGB {
+  const [l, c, h] = value.match(/oklch\(\s*([\d.]+)%\s+([\d.]+)\s+([\d.]+)/)!.slice(1).map(Number) as [number, number, number];
+  const L = l / 100;
+  const a = c * Math.cos((h * Math.PI) / 180);
+  const b = c * Math.sin((h * Math.PI) / 180);
+  const lms = [
+    (L + 0.3963377774 * a + 0.2158037573 * b) ** 3,
+    (L - 0.1055613458 * a - 0.0638541728 * b) ** 3,
+    (L - 0.0894841775 * a - 1.291485548 * b) ** 3,
+  ] as const;
+  const linear = [
+    4.0767416621 * lms[0] - 3.3077115913 * lms[1] + 0.2309699292 * lms[2],
+    -1.2684380046 * lms[0] + 2.6097574011 * lms[1] - 0.3413193965 * lms[2],
+    -0.0041960863 * lms[0] - 0.7034186147 * lms[1] + 1.707614701 * lms[2],
+  ];
+  return linear.map(x => Math.min(1, Math.max(0, x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055))) as RGB;
+}
+
+function luminance(rgb: RGB): number {
+  const [r, g, b] = rgb.map(c => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)) as RGB;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(fg: RGB, bg: RGB, alpha = 1): number {
+  const mixed = fg.map((f, i) => alpha * f + (1 - alpha) * bg[i]!) as RGB;
+  const [x, y] = [luminance(mixed), luminance(bg)];
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
 describe('guard: theme contrast', () => {
-  it('darkens the oagent-dark primary for button text contrast', () => {
-    const theme = readFileSync(join(ui, 'theme.css'), 'utf8');
-    const dark = theme.slice(theme.indexOf('name: \'oagent-dark\''));
-    expect(dark.slice(0, dark.indexOf('}'))).toContain('--color-primary: oklch(55% 0.233 277.117);');
+  const theme = readFileSync(join(ui, 'theme.css'), 'utf8');
+  const themes = [...theme.matchAll(/name: '([\w-]+)';([\s\S]*?)\n\}/g)].map(([, name, body]) => ({
+    name: name!,
+    colors: Object.fromEntries([...body!.matchAll(/--color-([\w-]+):\s*(oklch\([^)]*\))/g)].map(([, k, v]) => [k!, oklchToSRGB(v!)])),
+  }));
+
+  it('reads every theme', () => {
+    expect(themes.length).toBe(14);
+    expect(contrast([0, 0, 0], [1, 1, 1])).toBeCloseTo(21);
+  });
+
+  it('keeps muted text, *-content and status text at WCAG AA (4.5:1)', () => {
+    const failures: string[] = [];
+    for (const { name, colors: c } of themes) {
+      const check = (label: string, ratio: number) => {
+        if (ratio < 4.5) {
+          failures.push(`${name}: ${label} ${ratio.toFixed(2)}`);
+        }
+      };
+      for (const bg of ['base-100', 'base-200', 'base-300']) {
+        check(`base-content/70 on ${bg}`, contrast(c['base-content']!, c[bg]!, 0.7));
+      }
+      for (const k of ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error']) {
+        check(`${k}-content on ${k}`, contrast(c[`${k}-content`]!, c[k]!));
+      }
+      for (const k of ['info', 'success', 'warning', 'error']) {
+        check(`text-${k} on base-100`, contrast(c[k]!, c['base-100']!));
+      }
+    }
+    expect(failures).toEqual([]);
   });
 });

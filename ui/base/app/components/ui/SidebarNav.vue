@@ -20,7 +20,7 @@ const slots = useSlots();
     <div v-if="slots.back" class="px-4 pt-4">
       <slot name="back" />
     </div>
-    <div v-if="label" class="truncate px-4 pb-2 text-xs font-semibold tracking-widest text-base-content/50 uppercase" :class="slots.back ? 'pt-2' : 'pt-5'">
+    <div v-if="label" class="truncate px-4 pb-2 text-xs font-semibold tracking-widest text-base-content/70 uppercase" :class="slots.back ? 'pt-2' : 'pt-5'">
       {{ label }}
     </div>
     <nav :aria-label="label || undefined">
@@ -33,7 +33,7 @@ const slots = useSlots();
         </li>
       </ul>
     </nav>
-    <div v-if="slots.footer || version" data-sidebar-footer class="mt-auto px-4 py-3 text-xs text-base-content/40">
+    <div v-if="slots.footer || version" data-sidebar-footer class="mt-auto px-4 py-3 text-xs text-base-content/70">
       <slot name="footer">
         <span v-if="version">OAgent v{{ version }}</span>
       </slot>

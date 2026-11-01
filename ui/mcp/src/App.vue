@@ -54,11 +54,11 @@ onMounted(async () => {
 <template>
   <component :is="view.component" v-if="state === 'ready'" :data="data" v-bind="view.descriptor ? { descriptor: view.descriptor } : {}" />
   <ViewShell v-else title="OAgent">
-    <p v-if="state === 'connecting'" class="text-sm text-base-content/60">
+    <p v-if="state === 'connecting'" class="text-sm text-base-content/70">
       {{ t('mcp.connecting') }}
     </p>
     <ErrorText v-else-if="state === 'error'" :error="{ message }" />
-    <p v-else class="text-sm text-base-content/60">
+    <p v-else class="text-sm text-base-content/70">
       {{ t('mcp.waiting') }}
     </p>
   </ViewShell>

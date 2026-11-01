@@ -33,13 +33,13 @@ useHead({ title: () => `${agent.value?.name ?? route.params.agent} · ${t('nav.g
       <h1 class="text-2xl font-bold">
         {{ t('nav.general') }}
       </h1>
-      <div v-if="agent" class="mt-1 flex items-center gap-1 text-xs text-base-content/60">
+      <div v-if="agent" class="mt-1 flex items-center gap-1 text-xs text-base-content/70">
         <span class="font-mono">{{ agent.id }}</span>
         <CopyButton :value="agent.id" :label="t('common.copy')" />
       </div>
     </div>
     <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-6">
-      <p class="text-sm text-base-content/50">
+      <p class="text-sm text-base-content/70">
         {{ t('agent.placeholder') }}
       </p>
     </div>

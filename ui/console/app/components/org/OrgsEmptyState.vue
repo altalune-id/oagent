@@ -11,11 +11,11 @@ const { logoutUrl, labels } = defineProps<{ logoutUrl: string, labels: OrgsEmpty
 <template>
   <div class="card mt-6 border border-base-300 bg-base-100">
     <div class="card-body items-center text-center">
-      <Icon name="lucide:building-2" size="32" class="text-base-content/40" />
+      <Icon name="lucide:building-2" size="32" class="text-base-content/70" />
       <h2 class="card-title text-base">
         {{ labels.title }}
       </h2>
-      <p class="text-sm text-base-content/60">
+      <p class="text-sm text-base-content/70">
         {{ labels.body }}
       </p>
       <div class="card-actions mt-2 justify-center">

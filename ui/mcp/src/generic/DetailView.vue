@@ -13,7 +13,7 @@ const note = computed(() => (object.value && d.note ? d.note(object.value) : '')
 
 <template>
   <ViewShell :title="d.title">
-    <p v-if="!object" class="text-sm text-base-content/60">
+    <p v-if="!object" class="text-sm text-base-content/70">
       {{ t('mcp.nothing') }}
     </p>
     <template v-else>

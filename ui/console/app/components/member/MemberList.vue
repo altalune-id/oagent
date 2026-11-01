@@ -123,7 +123,7 @@ function onRole(m: MemberListRow, event: Event) {
   <div class="space-y-4">
     <ErrorText :error="error" />
 
-    <p v-if="rows.length === 0" class="text-sm text-base-content/60">
+    <p v-if="rows.length === 0" class="text-sm text-base-content/70">
       {{ labels.empty }}
     </p>
     <div v-else class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
@@ -149,7 +149,7 @@ function onRole(m: MemberListRow, event: Event) {
                     {{ displayName(m) }}
                     <span v-if="m.self" class="badge badge-ghost badge-sm ml-1">{{ labels.you }}</span>
                   </div>
-                  <div v-if="m.name.trim()" class="truncate text-xs text-base-content/60">
+                  <div v-if="m.name.trim()" class="truncate text-xs text-base-content/70">
                     {{ m.email }}
                   </div>
                 </div>

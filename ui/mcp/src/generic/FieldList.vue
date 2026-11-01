@@ -10,7 +10,7 @@ const shown = computed(() => fields.filter(f => !(f.hideEmpty && isEmpty(valueAt
 <template>
   <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2 text-sm">
     <template v-for="f in shown" :key="f.key">
-      <dt class="text-base-content/60">
+      <dt class="text-base-content/70">
         {{ f.label }}
       </dt>
       <dd class="min-w-0">

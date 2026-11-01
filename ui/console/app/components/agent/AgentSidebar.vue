@@ -39,7 +39,7 @@ function onSelect(key: string) {
 <template>
   <SidebarNav :label="agent?.name ?? agentSlug" :items="items" :version="appVersion" @select="onSelect">
     <template #back>
-      <NuxtLink :to="`/o/${route.params.org}/projects/${route.params.project}/agents`" class="inline-flex items-center gap-1 text-xs text-base-content/60 transition-colors hover:text-base-content">
+      <NuxtLink :to="`/o/${route.params.org}/projects/${route.params.project}/agents`" class="inline-flex items-center gap-1 text-xs text-base-content/70 transition-colors hover:text-base-content">
         <Icon name="lucide:chevron-left" size="14" />
         {{ t('agent.all') }}
       </NuxtLink>

@@ -31,10 +31,10 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · OAgent` });
       <h1 class="text-2xl font-bold">
         {{ org.name }}
       </h1>
-      <p class="text-sm text-base-content/60">
+      <p class="text-sm text-base-content/70">
         {{ t('nav.overview') }}
       </p>
-      <div class="mt-1 flex items-center gap-1 text-xs text-base-content/60">
+      <div class="mt-1 flex items-center gap-1 text-xs text-base-content/70">
         <span class="font-mono">{{ org.id }}</span>
         <CopyButton :value="org.id" :label="t('common.copy')" />
       </div>
@@ -57,13 +57,13 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · OAgent` });
             <h3 class="card-title text-base">
               {{ project.name }}
             </h3>
-            <p class="text-sm text-base-content/60">
+            <p class="text-sm text-base-content/70">
               {{ project.slug }}
             </p>
           </div>
         </NuxtLink>
       </div>
-      <p v-else class="text-sm text-base-content/60">
+      <p v-else class="text-sm text-base-content/70">
         {{ t('project.empty') }}
       </p>
     </section>

@@ -10,7 +10,7 @@ useHead({ title: () => `${route.params.agent} · ${t('nav.model')} · OAgent` })
       {{ t('nav.model') }}
     </h1>
     <div class="rounded-box border border-dashed border-base-300 bg-base-100 p-6">
-      <p class="text-sm text-base-content/50">
+      <p class="text-sm text-base-content/70">
         {{ t('agent.placeholder') }}
       </p>
     </div>

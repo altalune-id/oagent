@@ -22,7 +22,7 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('apikeys.tit
         <h1 class="text-2xl font-bold">
           {{ t('apikeys.title') }}
         </h1>
-        <p class="text-sm text-base-content/60">
+        <p class="text-sm text-base-content/70">
           {{ t('apikeys.subtitle') }}
         </p>
       </div>

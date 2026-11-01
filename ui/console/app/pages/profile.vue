@@ -56,7 +56,7 @@ useHead({ title: () => `${t('profile.title')} · OAgent` });
         <h1 class="text-2xl font-bold">
           {{ t('profile.title') }}
         </h1>
-        <p v-if="person" class="truncate text-sm text-base-content/60">
+        <p v-if="person" class="truncate text-sm text-base-content/70">
           {{ person.email }}
         </p>
       </div>

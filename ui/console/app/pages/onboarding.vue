@@ -37,7 +37,7 @@ useHead({ title: () => `${t('onboarding.title')} · OAgent` });
           {{ t('onboarding.body') }}
         </p>
         <OrgFields v-model:name="name" v-model:slug="slug" :field-errors="fieldErrors" :busy="busy" />
-        <p class="text-sm text-base-content/60">
+        <p class="text-sm text-base-content/70">
           {{ t('onboarding.project_note') }}
         </p>
         <ErrorText :error="error" />

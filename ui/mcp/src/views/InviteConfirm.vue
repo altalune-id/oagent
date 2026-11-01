@@ -45,19 +45,19 @@ const consoleLink = { key: 'consoleUrl', label: t('mcp.invite_console'), kind: '
     <template v-else>
       <p>{{ t('mcp.invite_intro') }}</p>
       <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-        <dt class="text-base-content/60">
+        <dt class="text-base-content/70">
           {{ t('field.email') }}
         </dt>
         <dd class="font-mono break-all">
           {{ draft.email }}
         </dd>
-        <dt class="text-base-content/60">
+        <dt class="text-base-content/70">
           {{ t('mcp.title_org') }}
         </dt>
         <dd class="break-all">
           {{ draft.orgName }}
         </dd>
-        <dt class="text-base-content/60">
+        <dt class="text-base-content/70">
           {{ t('field.role') }}
         </dt>
         <dd>{{ draft.role }}</dd>
@@ -80,7 +80,7 @@ const consoleLink = { key: 'consoleUrl', label: t('mcp.invite_console'), kind: '
       <p v-if="outcome?.state === 'sent'" role="status">
         {{ t('mcp.invite_sent_to', { email: outcome.email }) }}
       </p>
-      <p v-else-if="outcome?.state === 'discarded'" role="status" class="text-sm text-base-content/60">
+      <p v-else-if="outcome?.state === 'discarded'" role="status" class="text-sm text-base-content/70">
         {{ t('mcp.invite_discarded_body') }}
       </p>
       <ErrorText v-else-if="outcome?.state === 'expired' || outcome?.state === 'error'" :error="{ message: outcome.message }" />

@@ -81,7 +81,7 @@ const expiryOptions = computed(() => [
       </div>
 
       <div>
-        <span class="mb-1 block text-xs text-base-content/60">{{ t('apikeys.scopes') }}</span>
+        <span class="mb-1 block text-xs text-base-content/70">{{ t('apikeys.scopes') }}</span>
         <div class="grid grid-cols-2 gap-1">
           <label v-for="s in availableScopes" :key="s.name" class="flex items-center gap-2 text-sm">
             <input v-model="selectedScopes" type="checkbox" :value="s.name" class="checkbox checkbox-xs rounded-sm" :disabled="busy">{{ scopeLabel(s.name) }}

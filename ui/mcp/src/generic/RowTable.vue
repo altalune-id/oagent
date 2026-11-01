@@ -12,7 +12,7 @@ const { rows, columns, rowId, empty } = defineProps<{
 </script>
 
 <template>
-  <p v-if="rows.length === 0" class="text-sm text-base-content/60">
+  <p v-if="rows.length === 0" class="text-sm text-base-content/70">
     {{ empty }}
   </p>
   <div v-else class="overflow-x-auto">

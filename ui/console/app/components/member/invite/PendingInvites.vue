@@ -100,7 +100,7 @@ function statusLabel(s: string): string {
       <h2 class="text-lg font-semibold">
         {{ labels.draftsTitle }}
       </h2>
-      <p class="text-sm text-base-content/60">
+      <p class="text-sm text-base-content/70">
         {{ labels.draftsHint }}
       </p>
       <ul class="space-y-2">
@@ -109,7 +109,7 @@ function statusLabel(s: string): string {
             <div class="truncate font-medium">
               {{ d.email }}
             </div>
-            <div class="text-xs text-base-content/60">
+            <div class="text-xs text-base-content/70">
               {{ roleLabel(d.role) }} · {{ d.invitedByName }}
             </div>
           </div>
@@ -170,7 +170,7 @@ function statusLabel(s: string): string {
               </tr>
               <tr v-if="rowLink?.id === i.id">
                 <td colspan="6" class="space-y-2">
-                  <p class="text-xs text-base-content/60">
+                  <p class="text-xs text-base-content/70">
                     {{ labels.newLink }}
                   </p>
                   <SecretField :value="rowLink.link" :label="labels.copy" />

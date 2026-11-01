@@ -96,7 +96,7 @@ function revoke(k: PersonalKeyView) {
 <template>
   <div v-if="!signedIn" class="rounded-box border border-base-300 p-4 text-sm">
     {{ labels.signIn }}
-    <a :href="loginUrl" class="link link-primary">{{ labels.signInLink }}</a>
+    <a :href="loginUrl" class="link">{{ labels.signInLink }}</a>
   </div>
 
   <div v-else class="space-y-4">
@@ -123,7 +123,7 @@ function revoke(k: PersonalKeyView) {
 
     <ErrorText :error="error" />
 
-    <p v-if="keys.length === 0" class="text-sm text-base-content/60">
+    <p v-if="keys.length === 0" class="text-sm text-base-content/70">
       {{ labels.empty }}
     </p>
     <div v-else class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
@@ -142,18 +142,18 @@ function revoke(k: PersonalKeyView) {
           <tr v-for="k in keys" :key="k.rowKey" class="hover:bg-base-200">
             <td class="whitespace-nowrap">
               <span class="font-medium">{{ k.name }}</span>
-              <span class="ml-2 font-mono text-xs text-base-content/60">…{{ k.secretHint }}</span>
+              <span class="ml-2 font-mono text-xs text-base-content/70">…{{ k.secretHint }}</span>
             </td>
-            <td class="text-base-content/60">
+            <td class="text-base-content/70">
               {{ k.scopes.join(', ') }}
             </td>
-            <td class="whitespace-nowrap text-base-content/60">
+            <td class="whitespace-nowrap text-base-content/70">
               {{ k.lastUsed || labels.neverUsed }}
             </td>
             <td class="whitespace-nowrap">
-              <span v-if="k.revoked || k.expiry.kind === 'none'" class="text-base-content/60">—</span>
+              <span v-if="k.revoked || k.expiry.kind === 'none'" class="text-base-content/70">—</span>
               <span v-else-if="k.expiry.kind === 'soon'" class="badge badge-sm badge-warning">{{ labels.expiresSoon(k.expiry.days) }}</span>
-              <span v-else class="text-base-content/60">{{ k.expires }}</span>
+              <span v-else class="text-base-content/70">{{ k.expires }}</span>
             </td>
             <td>
               <span class="badge badge-sm" :class="statusBadge[keyStatus(k.revoked, k.expiry)]">

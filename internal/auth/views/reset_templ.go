@@ -128,7 +128,7 @@ func Reset(d layout.LayoutData, v ResetData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<button class=\"btn btn-primary mt-2\" type=\"submit\">Set the new password</button></form><p class=\"text-xs text-base-content/60\">You will be signed out everywhere and asked to sign in again.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<button class=\"btn btn-primary mt-2\" type=\"submit\">Set the new password</button></form><p class=\"text-xs text-base-content/70\">You will be signed out everywhere and asked to sign in again.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

@@ -36,7 +36,7 @@ const name = defineModel<string>('name', { required: true });
         >
         <FieldError id="profile-name-error" :message="fieldError" />
       </label>
-      <p class="text-xs text-base-content/60">
+      <p class="text-xs text-base-content/70">
         {{ labels.hint }}
       </p>
       <ErrorText :error="error" />

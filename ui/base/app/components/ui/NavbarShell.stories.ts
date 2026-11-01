@@ -17,7 +17,7 @@ export const Default: Story = {
         <template #brand>
           <span class="btn btn-ghost px-2 font-bold">OAgent</span>
         </template>
-        <span class="text-sm text-base-content/60">acme / support-bot</span>
+        <span class="text-sm text-base-content/70">acme / support-bot</span>
         <template #end>
           <button class="btn btn-ghost btn-sm">Dark</button>
         </template>

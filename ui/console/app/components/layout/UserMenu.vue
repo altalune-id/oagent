@@ -52,7 +52,7 @@ const sourceBadge = computed(() => {
       <span class="max-w-40 truncate max-sm:sr-only">{{ display }}</span>
     </template>
     <div tabindex="0" class="dropdown-content z-30 mt-2 w-64 rounded-box border border-base-300 bg-base-100 p-3 shadow-lg">
-      <p class="text-xs text-base-content/60">
+      <p class="text-xs text-base-content/70">
         {{ labels.signedInAs }}
       </p>
       <p class="truncate font-medium">

@@ -179,7 +179,7 @@ await Promise.all([load(), useAuthStore().load()]);
   <div class="space-y-6">
     <div class="flex items-start justify-between gap-4">
       <div>
-        <NuxtLink :to="`/o/${route.params.org}/projects/${route.params.project}/webhooks`" class="link text-sm text-base-content/60">
+        <NuxtLink :to="`/o/${route.params.org}/projects/${route.params.project}/webhooks`" class="link text-sm text-base-content/70">
           {{ t('webhooks.title') }}
         </NuxtLink>
         <h1 class="text-2xl font-bold">
@@ -202,7 +202,7 @@ await Promise.all([load(), useAuthStore().load()]);
     <SavedNote v-if="requeued" :label="requeued" />
 
     <ErrorText v-if="error" :error="error" />
-    <p v-else-if="deliveries.length === 0" class="text-sm text-base-content/60">
+    <p v-else-if="deliveries.length === 0" class="text-sm text-base-content/70">
       {{ t('webhooks.no_deliveries') }}
     </p>
     <div v-else class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
@@ -227,10 +227,10 @@ await Promise.all([load(), useAuthStore().load()]);
               </span>
             </td>
             <td>{{ delivery.attempt }}</td>
-            <td class="text-base-content/60">
+            <td class="text-base-content/70">
               {{ moment(delivery.createdAt) }}
             </td>
-            <td class="text-right text-base-content/40">
+            <td class="text-right text-base-content/70">
               <Icon name="lucide:chevron-right" size="16" />
             </td>
           </tr>
@@ -240,11 +240,11 @@ await Promise.all([load(), useAuthStore().load()]);
 
     <AppModal :open="!!selected" :title="t('webhooks.delivery_attempts')" @close="closeAttempts()">
       <div v-if="selected && selected.payload" class="mb-4 space-y-1">
-        <span class="block text-xs text-base-content/60">{{ t('webhooks.payload') }}</span>
+        <span class="block text-xs text-base-content/70">{{ t('webhooks.payload') }}</span>
         <pre class="max-h-64 overflow-auto rounded-box bg-base-200 p-3 text-xs">{{ prettyPayload }}</pre>
       </div>
       <ErrorText v-if="attemptsError" :error="attemptsError" />
-      <p v-else-if="attempts.length === 0" class="text-sm text-base-content/60">
+      <p v-else-if="attempts.length === 0" class="text-sm text-base-content/70">
         {{ t('webhooks.no_attempts') }}
       </p>
       <div v-else class="space-y-3">
@@ -253,20 +253,20 @@ await Promise.all([load(), useAuthStore().load()]);
             <span class="badge badge-sm" :class="attempt.statusCode >= 200 && attempt.statusCode < 300 ? 'badge-success' : 'badge-error'">
               {{ attempt.statusCode }}
             </span>
-            <span class="text-base-content/60">#{{ attempt.attempt }}</span>
-            <span class="text-base-content/60">{{ attempt.durationMs }}ms</span>
+            <span class="text-base-content/70">#{{ attempt.attempt }}</span>
+            <span class="text-base-content/70">{{ attempt.durationMs }}ms</span>
           </div>
           <p v-if="attempt.error" class="mt-1 flex items-start gap-1 text-sm text-base-content">
             <Icon name="lucide:circle-alert" size="14" class="mt-0.5 shrink-0 text-error" />
             {{ attempt.error }}
           </p>
           <div v-if="attempt.responseBody" class="mt-2 space-y-1">
-            <span class="block text-xs text-base-content/60">
+            <span class="block text-xs text-base-content/70">
               {{ t('webhooks.response') }}<template v-if="attempt.responseTruncated"> ({{ t('webhooks.response_truncated') }})</template>
             </span>
             <pre class="max-h-40 overflow-auto rounded-box bg-base-200 p-2 text-xs">{{ attempt.responseBody }}</pre>
           </div>
-          <dl v-if="attempt.responseHeaders.length" class="mt-2 grid grid-cols-[auto_1fr] gap-x-3 text-xs text-base-content/60">
+          <dl v-if="attempt.responseHeaders.length" class="mt-2 grid grid-cols-[auto_1fr] gap-x-3 text-xs text-base-content/70">
             <template v-for="header in attempt.responseHeaders" :key="header.name">
               <dt class="font-mono">
                 {{ header.name }}

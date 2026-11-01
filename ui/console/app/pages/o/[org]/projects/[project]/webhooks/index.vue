@@ -32,7 +32,7 @@ await useAuthStore().load();
         <h1 class="text-2xl font-bold">
           {{ t('webhooks.title') }}
         </h1>
-        <p class="text-sm text-base-content/60">
+        <p class="text-sm text-base-content/70">
           {{ t('webhooks.subtitle') }}
         </p>
       </div>

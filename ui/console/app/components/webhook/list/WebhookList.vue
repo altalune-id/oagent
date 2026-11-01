@@ -89,7 +89,7 @@ function closeRotate() {
 
 <template>
   <ErrorText v-if="webhooks.error" :error="webhooks.error" />
-  <p v-else-if="items.length === 0" class="text-sm text-base-content/60">
+  <p v-else-if="items.length === 0" class="text-sm text-base-content/70">
     {{ t('webhooks.empty') }}
   </p>
   <div v-else class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
@@ -107,7 +107,7 @@ function closeRotate() {
           <td>
             <span class="font-mono text-xs">{{ webhook.url }}</span>
           </td>
-          <td class="text-base-content/60">
+          <td class="text-base-content/70">
             {{ events(webhook) }}
           </td>
           <td>

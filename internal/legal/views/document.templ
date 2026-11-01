@@ -19,7 +19,7 @@ templ Document(d layout.LayoutData, doc DocumentData) {
 			<div class="card-body">
 				<h1 class="card-title text-2xl">{ doc.Title }</h1>
 				if !doc.UpdatedAt.IsZero() {
-					<p class="text-sm text-base-content/60">Last updated { doc.UpdatedAt.Format("2006-01-02") }</p>
+					<p class="text-sm text-base-content/70">Last updated { doc.UpdatedAt.Format("2006-01-02") }</p>
 				}
 				<div class="mt-2 leading-relaxed [&_h2]:mt-6 [&_h2]:text-lg [&_h2]:font-semibold [&_p]:mt-2 [&_ul]:mt-2 [&_ul]:list-disc [&_ul]:pl-6">
 					@templ.Raw(doc.HTML)

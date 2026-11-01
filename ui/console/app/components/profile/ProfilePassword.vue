@@ -50,13 +50,13 @@ const next = defineModel<string>('next', { required: true });
         >
         <FieldError id="new-password-error" :message="fieldErrors.new_password" />
       </label>
-      <p id="new-password-rules" class="text-xs text-base-content/60">
+      <p id="new-password-rules" class="text-xs text-base-content/70">
         {{ labels.rules }}
       </p>
       <ErrorText :error="error" />
       <SavedNote v-if="notice" :label="notice" />
       <div class="card-actions items-center justify-between">
-        <p class="text-xs text-base-content/60">
+        <p class="text-xs text-base-content/70">
           {{ labels.hint }}
         </p>
         <button type="submit" class="btn btn-primary btn-sm" :disabled="busy">
