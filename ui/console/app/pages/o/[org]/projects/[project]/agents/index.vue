@@ -7,6 +7,7 @@ import DataTable from '#base/components/ui/DataTable.vue';
 import EmptyState from '#base/components/ui/EmptyState.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import PageHeader from '#base/components/ui/PageHeader.vue';
+import { useToast } from '#base/components/ui/toast';
 import { useConfirm } from '#base/composables/useConfirm';
 import { useDates } from '#base/composables/useDates';
 import AgentCreateModal from '~/components/agent/create/AgentCreateModal.vue';
@@ -26,6 +27,7 @@ const projects = useProjectsStore();
 const agents = useAgentsStore();
 const { $agentClient: client } = useNuxtApp();
 const canEdit = useCan('agent:write');
+const toast = useToast();
 const { when } = useDates();
 const { money, seconds, count } = useUnits();
 
@@ -68,6 +70,7 @@ function edit(agent: Agent) {
 const deleting = useConfirm<Agent>(async (agent) => {
   await client.deleteAgent({ id: agent.id });
   agents.remove(agent.id);
+  toast.push('success', t('agent.deleted', { name: agent.name }));
 }, 'error.delete_agent');
 
 useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav.agents')} · OAgent` });

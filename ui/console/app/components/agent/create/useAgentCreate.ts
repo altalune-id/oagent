@@ -1,6 +1,7 @@
 import type { ShownError } from '#base/lib/apperror/message';
 
 import { create } from '@bufbuild/protobuf';
+import { useToast } from '#base/components/ui/toast';
 import { useValidation } from '#base/composables/useValidation';
 import { CreateAgentRequestSchema } from '#gen/agent/v1/agent_pb';
 import { useAgentsStore } from '~/stores/agents';
@@ -14,6 +15,8 @@ export function useAgentCreate(orgId: string, projectId: string) {
   const error = ref<ShownError | null>(null);
 
   const route = useRoute();
+  const { t } = useI18n();
+  const toast = useToast();
   const agents = useAgentsStore();
   const validation = useValidation(CreateAgentRequestSchema, {
     fields: ['name', 'slug', 'description'],
@@ -56,6 +59,7 @@ export function useAgentCreate(orgId: string, projectId: string) {
         name.value = '';
         slug.value = '';
         description.value = '';
+        toast.push('success', t('agent.created', { name: agent.name }));
         await navigateTo(`/o/${route.params.org}/projects/${route.params.project}/agents/${agent.slug}`);
       }
     } catch (e) {

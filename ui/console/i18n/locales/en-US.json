@@ -306,5 +306,7 @@
   "run.col_run": "Run",
   "run.col_started": "Started",
   "run.list_hint": "Each run is one conversation with the agent: its steps, tool calls, approvals and cost.",
-  "run.samples_caption": "Sample runs"
+  "run.samples_caption": "Sample runs",
+  "agent.created": "Created {name}",
+  "agent.deleted": "Deleted {name}"
 }

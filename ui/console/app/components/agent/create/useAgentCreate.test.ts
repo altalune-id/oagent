@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useToast } from '#base/components/ui/toast';
 import { connectError, deferred, navigateTo, setClient, setKnownKeys, setRoute } from '#test/nuxt-globals';
 import { useAgentsStore } from '~/stores/agents';
 import { useAgentCreate } from './useAgentCreate';
@@ -30,6 +31,7 @@ describe('useAgentCreate', () => {
     expect([form.name.value, form.slug.value, form.description.value]).toEqual(['', '', '']);
     expect(form.busy.value).toBe(false);
     expect(navigateTo).toHaveBeenCalledWith('/o/acme/projects/web/agents/bot');
+    expect(useToast().toasts.at(-1)).toMatchObject({ kind: 'success', text: 'agent.created|{"name":"Bot"}' });
   });
 
   it('keeps the form open when the response has no agent', async () => {

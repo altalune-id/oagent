@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import { create } from '@bufbuild/protobuf';
+import { flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useToast } from '#base/components/ui/toast';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { mountPage } from '#test/mount-page';
 import { setClient, setRoute } from '#test/nuxt-globals';
@@ -59,6 +61,22 @@ describe('agents page', () => {
     inProject('/agents', [], 'agent:read');
     const w = await mountPage(AgentsPage);
     expect(w.findAll('button').map(b => b.text())).toEqual(['agent.show_samples']);
+  });
+});
+
+describe('deleting an agent', () => {
+  it('confirms, removes the row and says so in a toast', async () => {
+    inProject('/agents', [support], 'agent:read', 'agent:write');
+    const deleteAgent = vi.fn().mockResolvedValue({});
+    setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [support] }), deleteAgent });
+    const w = await mountPage(AgentsPage, { attachTo: document.body });
+    await w.findAll('button').find(b => b.text().includes('common.delete'))!.trigger('click');
+    const dialog = [...document.querySelectorAll('dialog')].find(d => d.open)!;
+    [...dialog.querySelectorAll('button')].find(b => b.textContent?.includes('common.delete'))!.click();
+    await flushPromises();
+    expect(deleteAgent).toHaveBeenCalledWith({ id: support.id });
+    expect(useToast().toasts.at(-1)).toMatchObject({ kind: 'success', text: 'agent.deleted|{"name":"Support"}' });
+    w.unmount();
   });
 });
 

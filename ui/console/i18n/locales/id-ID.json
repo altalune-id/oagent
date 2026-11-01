@@ -306,5 +306,7 @@
   "run.col_run": "Eksekusi",
   "run.col_started": "Dimulai",
   "run.list_hint": "Setiap eksekusi adalah satu percakapan dengan agen: langkah, panggilan alat, persetujuan, dan biayanya.",
-  "run.samples_caption": "Contoh eksekusi"
+  "run.samples_caption": "Contoh eksekusi",
+  "agent.created": "{name} dibuat",
+  "agent.deleted": "{name} dihapus"
 }
