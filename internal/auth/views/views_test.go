@@ -25,6 +25,8 @@ func TestLogin_PasswordOnly(t *testing.T) {
 	assert.Contains(t, out, `name="password"`)
 	assert.Contains(t, out, "Forgot password?")
 	assert.Contains(t, out, "required autofocus>", "the email field takes focus when it is the only way in")
+	assert.Contains(t, out, `<h1 class="card-title text-2xl">Sign in to OAgent</h1>`, "the page names the product, not just the tab")
+	assert.Contains(t, out, "<title>Sign in · OAgent</title>")
 }
 
 func TestLogin_PasswordOff(t *testing.T) {
