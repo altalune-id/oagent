@@ -8,11 +8,10 @@ const icons = { success: 'lucide:circle-check', info: 'lucide:info', error: 'luc
 </script>
 
 <template>
-  <div class="toast toast-end toast-bottom z-50" aria-live="polite">
+  <div class="toast toast-end toast-bottom z-50" role="status" aria-live="polite">
     <div
       v-for="item in toasts"
       :key="item.id"
-      :role="item.kind === 'error' ? 'alert' : 'status'"
       class="alert"
       :class="`alert-${item.kind}`"
       @mouseenter="pause(item.id)"

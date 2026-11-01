@@ -119,7 +119,8 @@ describe('configure page', () => {
     const w = await mountPage(ConfigurePage);
     expect(w.get('h1').text()).toBe('Support');
     expect(w.get('textarea').element.value).toBe('Help more.');
-    expect(w.get('[role="status"]').text()).toContain('configure.live_version|{"n":12}');
+    expect(w.get('[role="status"]').element.parentElement!.textContent).toContain('configure.live_version|{"n":12}');
+    expect(w.get('[role="status"]').text()).not.toContain('configure.live_version');
     const publish = w.findAll('button').find(b => b.text() === 'configure.publish')!;
     expect(publish.attributes('disabled')).toBeUndefined();
     expect(w.findAll('nav[aria-label="common.breadcrumb"] li').map(li => li.text())).toEqual(['nav.agents', 'Support']);
@@ -153,7 +154,7 @@ describe('configure page', () => {
     inProject('/agents/support', [support], 'agent:read', 'agent:write');
     withDraft(0);
     const w = await mountPage(ConfigurePage);
-    expect(w.get('[role="status"]').text()).toContain('configure.never_published');
+    expect(w.get('[role="status"]').element.parentElement!.textContent).toContain('configure.never_published');
     await w.get('select').setValue('small-3');
     expect(w.get('pre').text()).toContain('"model":"small-3"');
     expect(w.get('[role="status"]').text()).toContain('configure.unsaved');

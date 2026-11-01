@@ -91,10 +91,8 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
       :crumbs-label="t('common.breadcrumb')"
     >
       <template #status>
-        <p :id="reasonId" role="status" class="text-sm text-base-content/70">
-          <template v-if="status">
-            {{ status }}
-          </template>
+        <p :id="reasonId" class="text-sm text-base-content/70">
+          <span role="status">{{ status }}</span>
           {{ liveLine }}
         </p>
         <p class="flex items-center gap-1 text-xs text-base-content/70">

@@ -94,15 +94,16 @@ describe('toast', () => {
     vi.useRealTimers();
   });
 
-  it('announces status politely and errors as alerts, and hides after its lifetime', async () => {
+  it('announces every toast through one polite live region on the host, and hides it after its lifetime', async () => {
     vi.useFakeTimers();
     const { push } = useToast();
     const w = mount(ToastHost, { props: { closeLabel: 'Close' } });
     push('success', 'Saved');
     push('error', 'Failed');
     await w.vm.$nextTick();
-    expect(w.attributes('aria-live')).toBe('polite');
-    expect(w.findAll('.alert').map(a => [a.attributes('role'), a.text()])).toEqual([['status', 'Saved'], ['alert', 'Failed']]);
+    expect([w.attributes('role'), w.attributes('aria-live')]).toEqual(['status', 'polite']);
+    expect(w.findAll('.alert').map(a => [a.attributes('role'), a.attributes('aria-live')])).toEqual([[undefined, undefined], [undefined, undefined]]);
+    expect(w.findAll('.alert').map(a => [a.classes().find(c => c.startsWith('alert-')), a.text()])).toEqual([['alert-success', 'Saved'], ['alert-error', 'Failed']]);
     vi.advanceTimersByTime(toastLifetimeMs);
     await w.vm.$nextTick();
     expect(w.findAll('.alert')).toHaveLength(0);
