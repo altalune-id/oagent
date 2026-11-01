@@ -262,7 +262,7 @@ func (s *Service) ConfirmDraft(ctx context.Context, r member.Requester, orgID, i
 	return out, nil
 }
 
-// Lookup returns the usable invite the raw token from a link names.
+// Lookup returns the usable invite the raw token from a link names; a known but unusable one comes back with its *NotUsableError.
 func (s *Service) Lookup(ctx context.Context, rawToken string) (*Invite, error) {
 	if rawToken == "" {
 		return nil, &NotUsableError{Reason: ReasonNotFound}
@@ -275,7 +275,7 @@ func (s *Service) Lookup(ctx context.Context, rawToken string) (*Invite, error) 
 		return nil, s.errOrReport(ctx, "invite: lookup", err)
 	}
 	if err := inv.Usable(s.now()); err != nil {
-		return nil, err
+		return inv, err
 	}
 	return inv, nil
 }
