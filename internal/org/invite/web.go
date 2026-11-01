@@ -293,6 +293,9 @@ func (h *Web) failed(w http.ResponseWriter, r *http.Request, inv *Invite, err er
 	v := views.GoneData{Message: goneMessage(reason)}
 	p := session.PrincipalFrom(r.Context())
 	v.SignIn = (reason == ReasonUsed || reason == ReasonExpired) && !p.IsPerson()
+	if reason == ReasonExpired && p.IsPerson() {
+		v.OpenURL, v.OpenOrg = h.o.Kit.Path("/console/"), "the console"
+	}
 	if inv != nil && reason == ReasonExpired {
 		if org, oerr := h.o.Orgs.Name(r.Context(), inv.OrgID); oerr == nil {
 			v.Message = "Your invite to join " + strings.Join(strings.Fields(org), " ") + " has expired. Ask " +

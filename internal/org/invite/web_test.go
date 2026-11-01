@@ -446,6 +446,18 @@ func TestWeb_ExpiredWhileTheCookieLives(t *testing.T) {
 	assert.Negative(t, gone.MaxAge, "a definitive failure clears the cookie")
 }
 
+func TestWeb_ExpiredWhileSignedInOffersTheConsole(t *testing.T) {
+	f := newWebFixture(t, false)
+	ck := f.open(t, f.create("bob@x.io", member.RoleMember))
+	f.account(t, "bob@x.io")
+	s := f.sessionFor(t, "bob@x.io")
+	f.clock = f.clock.Add(invite.TTL)
+	rec := f.get("/invite", ck, s)
+	assert.Equal(t, http.StatusGone, rec.Code)
+	assert.Contains(t, rec.Body.String(), `href="/console/"`, "signed in: a way back into the console")
+	assert.NotContains(t, rec.Body.String(), `href="/login"`, "already signed in")
+}
+
 func TestWeb_GetsNeverWrite(t *testing.T) {
 	f := newWebFixture(t, false)
 	c := f.create("bob@x.io", member.RoleMember)
