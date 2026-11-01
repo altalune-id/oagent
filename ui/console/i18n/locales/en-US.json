@@ -327,5 +327,14 @@
   "configure.change_tool_needs_approval": "{tool} now needs approval",
   "configure.change_tool_no_approval": "{tool} no longer needs approval",
   "configure.change_tool_removed": "{tool} can no longer be called",
-  "agent.not_published": "Not published"
+  "agent.not_published": "Not published",
+  "environment.banner": "{env} project. It has its own agents, keys and usage, and nothing here affects production.",
+  "environment.development": "Development",
+  "environment.help": "An optional tag for what this project is used for. Agents, keys and usage stay inside the project either way.",
+  "environment.labs": "Labs",
+  "environment.none": "No tag",
+  "environment.production": "Production",
+  "environment.staging": "Staging",
+  "environment.title": "Environment",
+  "error.save_environment": "Failed to save the environment"
 }

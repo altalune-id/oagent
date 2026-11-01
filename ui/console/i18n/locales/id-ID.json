@@ -327,5 +327,14 @@
   "configure.change_tool_needs_approval": "{tool} kini perlu persetujuan",
   "configure.change_tool_no_approval": "{tool} tidak lagi perlu persetujuan",
   "configure.change_tool_removed": "{tool} tidak lagi dapat dipanggil",
-  "agent.not_published": "Belum dipublikasikan"
+  "agent.not_published": "Belum dipublikasikan",
+  "environment.banner": "Proyek {env}. Proyek ini punya agen, kunci, dan pemakaiannya sendiri, dan tidak ada yang di sini memengaruhi produksi.",
+  "environment.development": "Pengembangan",
+  "environment.help": "Tag opsional untuk kegunaan proyek ini. Agen, kunci, dan pemakaian tetap berada di dalam proyek.",
+  "environment.labs": "Labs",
+  "environment.none": "Tanpa tag",
+  "environment.production": "Produksi",
+  "environment.staging": "Staging",
+  "environment.title": "Lingkungan",
+  "error.save_environment": "Gagal menyimpan lingkungan"
 }

@@ -5,6 +5,7 @@ import CopyButton from '#base/components/ui/CopyButton.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import SavedNote from '#base/components/ui/SavedNote.vue';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
+import ProjectEnvironmentCard from '~/components/project/ProjectEnvironmentCard.vue';
 import ProjectReadOnlyNote from '~/components/project/ProjectReadOnlyNote.vue';
 import { useCan } from '~/composables/useCan';
 import { useAuthStore } from '~/stores/auth';
@@ -113,5 +114,7 @@ await useAuthStore().load();
         </dd>
       </div>
     </dl>
+
+    <ProjectEnvironmentCard :project-id="project.id" :environment="project.environment" :can-edit="canEdit" />
   </div>
 </template>
