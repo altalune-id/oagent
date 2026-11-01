@@ -188,3 +188,55 @@ func TestService_Create_ProjectMustBelongToOrg(t *testing.T) {
 	_, err := svc.Create(context.Background(), agent.CreateRequest{OrgID: orgB, ProjectID: prjB, Slug: "bot", Name: "Bot"})
 	require.NoError(t, err)
 }
+
+func TestService_DraftPublishAndVersions(t *testing.T) {
+	a, err := agent.New(uuid.New(), uuid.New(), "acme", "Acme", "", uuid.New())
+	require.NoError(t, err)
+	store := &fakes.AgentStore{Agent: a}
+	svc := agent.NewService(store, fakes.Transactor{}, testUnexpected())
+	ctx := context.Background()
+	cfg := agent.Config{Instructions: "Be brief.", Model: "m-1", Tools: []agent.Tool{{Name: "search"}}}
+
+	_, err = svc.UpdateDraft(ctx, a.ID, agent.Config{Temperature: 5})
+	assert.Equal(t, apperror.CodeValidation, codeOf(err), "an invalid draft is GEN004")
+	got, err := svc.UpdateDraft(ctx, a.ID, cfg)
+	require.NoError(t, err)
+	assert.Equal(t, cfg, got.Draft)
+	assert.Equal(t, got, store.Saved)
+	assert.True(t, got.Unpublished())
+
+	by := uuid.New()
+	_, v1, created, err := svc.Publish(ctx, a.ID, by)
+	require.NoError(t, err)
+	assert.True(t, created)
+	assert.Equal(t, int32(1), v1.Version)
+	_, same, created, err := svc.Publish(ctx, a.ID, by)
+	require.NoError(t, err)
+	assert.False(t, created, "nothing changed")
+	assert.Equal(t, v1, same)
+
+	cfg.Model = "m-2"
+	_, err = svc.UpdateDraft(ctx, a.ID, cfg)
+	require.NoError(t, err)
+	_, v2, created, err := svc.Publish(ctx, a.ID, uuid.Nil)
+	require.NoError(t, err)
+	assert.True(t, created)
+	assert.Equal(t, int32(2), v2.Version)
+
+	vs, err := svc.Versions(ctx, a.ID)
+	require.NoError(t, err)
+	assert.Equal(t, []*agent.Version{v2, v1}, vs, "newest first")
+
+	store.Err = errors.New("db down")
+	_, _, _, err = svc.Publish(ctx, a.ID, by)
+	assert.Equal(t, apperror.CodeUnexpected, codeOf(err))
+	_, err = svc.Versions(ctx, a.ID)
+	assert.Equal(t, apperror.CodeUnexpected, codeOf(err))
+}
+
+func codeOf(err error) apperror.Code {
+	if ae, ok := apperror.AsAppError(err); ok {
+		return ae.Code()
+	}
+	return ""
+}

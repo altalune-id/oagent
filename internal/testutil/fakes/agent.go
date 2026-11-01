@@ -17,6 +17,35 @@ type AgentStore struct {
 	Saved    *agent.Agent
 	DeleteFn func(uuid.UUID) error
 	Deleted  uuid.UUID
+	// Published holds the inserted versions, newest first.
+	Published []*agent.Version
+}
+
+// LockForPublish implements agent.Store like ByID.
+func (f *AgentStore) LockForPublish(ctx context.Context, id uuid.UUID) (*agent.Agent, error) {
+	return f.ByID(ctx, id)
+}
+
+// InsertVersion implements agent.Store.
+func (f *AgentStore) InsertVersion(_ context.Context, v *agent.Version) error {
+	if f.Err != nil {
+		return f.Err
+	}
+	f.Published = append([]*agent.Version{v}, f.Published...)
+	return nil
+}
+
+// Versions implements agent.Store.
+func (f *AgentStore) Versions(context.Context, uuid.UUID) ([]*agent.Version, error) {
+	return f.Published, f.Err
+}
+
+// LatestVersion implements agent.Store.
+func (f *AgentStore) LatestVersion(context.Context, uuid.UUID) (*agent.Version, error) {
+	if f.Err != nil || len(f.Published) == 0 {
+		return nil, f.Err
+	}
+	return f.Published[0], nil
 }
 
 var _ agent.Store = (*AgentStore)(nil)

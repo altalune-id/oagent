@@ -16,6 +16,11 @@ type Agents struct {
 	CreatedBy   postgres.ColumnString
 	CreatedAt   postgres.ColumnTimestampz
 	UpdatedAt   postgres.ColumnTimestampz
+	// DraftConfig is JSONB, bound as a string.
+	DraftConfig      postgres.ColumnString
+	DraftUpdatedAt   postgres.ColumnTimestampz
+	PublishedVersion postgres.ColumnInteger
+	PublishedAt      postgres.ColumnTimestampz
 
 	AllColumns postgres.ColumnList
 }
@@ -36,20 +41,31 @@ func NewAgents(schema, tablePrefix string) *Agents {
 		createdBy   = postgres.StringColumn("created_by")
 		createdAt   = postgres.TimestampzColumn("created_at")
 		updatedAt   = postgres.TimestampzColumn("updated_at")
-		all         = postgres.ColumnList{id, publicID, orgID, projectID, slug, name, description, createdBy, createdAt, updatedAt}
+		draftConfig = postgres.StringColumn("draft_config")
+		draftAt     = postgres.TimestampzColumn("draft_updated_at")
+		published   = postgres.IntegerColumn("published_version")
+		publishedAt = postgres.TimestampzColumn("published_at")
+		all         = postgres.ColumnList{
+			id, publicID, orgID, projectID, slug, name, description, createdBy, createdAt, updatedAt,
+			draftConfig, draftAt, published, publishedAt,
+		}
 	)
 	return &Agents{
-		Table:       postgres.NewTable(schema, tablePrefix+"agents", "agents", all...),
-		ID:          id,
-		PublicID:    publicID,
-		OrgID:       orgID,
-		ProjectID:   projectID,
-		Slug:        slug,
-		Name:        name,
-		Description: description,
-		CreatedBy:   createdBy,
-		CreatedAt:   createdAt,
-		UpdatedAt:   updatedAt,
-		AllColumns:  all,
+		Table:            postgres.NewTable(schema, tablePrefix+"agents", "agents", all...),
+		ID:               id,
+		PublicID:         publicID,
+		OrgID:            orgID,
+		ProjectID:        projectID,
+		Slug:             slug,
+		Name:             name,
+		Description:      description,
+		CreatedBy:        createdBy,
+		CreatedAt:        createdAt,
+		UpdatedAt:        updatedAt,
+		DraftConfig:      draftConfig,
+		DraftUpdatedAt:   draftAt,
+		PublishedVersion: published,
+		PublishedAt:      publishedAt,
+		AllColumns:       all,
 	}
 }

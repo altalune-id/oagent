@@ -130,6 +130,7 @@ func (s reachOrg) snapshot(t *testing.T, f *apiFixture) string {
 		(SELECT slug || name || updated_at FROM orgs WHERE id = $1),
 		(SELECT count(*) || max(updated_at)::text FROM projects WHERE org_id = $1),
 		(SELECT count(*) || max(updated_at)::text FROM agents WHERE org_id = $1),
+		(SELECT count(*) FROM agent_versions WHERE org_id = $1),
 		(SELECT count(*) || md5(string_agg(url || active || updated_at || secret_primary::text, ',' ORDER BY id)) FROM webhook_endpoints WHERE org_id = $1),
 		(SELECT count(*) FROM webhook_deliveries WHERE org_id = $1),
 		(SELECT count(*) FROM api_keys WHERE org_id = $1 AND revoked_at IS NULL),
@@ -155,7 +156,7 @@ func (ids reachIDs) request(t *testing.T, procedure string) (protoreflect.Method
 	msg := dynamicpb.NewMessage(method.Input())
 	tenantIDs := map[protoreflect.Name]string{
 		"org_id": ids.org, "project_id": ids.project, "user_id": ids.member, "invite_id": ids.invite,
-		"delivery_id": ids.delivery, "hint": ids.keyHint, "id": ids.serviceID(method.Parent().FullName()),
+		"delivery_id": ids.delivery, "hint": ids.keyHint, "agent_id": ids.agent, "id": ids.serviceID(method.Parent().FullName()),
 	}
 	aimed := false
 	fields := method.Input().Fields()

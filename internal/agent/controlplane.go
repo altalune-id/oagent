@@ -9,6 +9,7 @@ import (
 	agentv1 "altalune.id/oagent/gen/go/agent/v1"
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	"altalune.id/oagent/internal/kernel/authz"
+	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/kernel/tenant"
 )
 
@@ -134,6 +135,85 @@ func (s *AgentService) DeleteAgent(
 		return nil, err
 	}
 	return connect.NewResponse(&agentv1.DeleteAgentResponse{}), nil
+}
+
+// UpdateAgentDraft replaces an agent's draft configuration.
+func (s *AgentService) UpdateAgentDraft(
+	ctx context.Context,
+	req *connect.Request[agentv1.UpdateAgentDraftRequest],
+) (*connect.Response[agentv1.UpdateAgentDraftResponse], error) {
+	ctx, a, err := s.reachable(ctx, req.Msg.GetId())
+	if err != nil {
+		return nil, err
+	}
+	a, err = s.agents.UpdateDraft(ctx, a.ID, configFromProto(req.Msg.GetConfig()))
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.toProto(ctx, a)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&agentv1.UpdateAgentDraftResponse{Agent: out}), nil
+}
+
+// PublishAgent publishes an agent's draft as its next version, as the calling person.
+func (s *AgentService) PublishAgent(
+	ctx context.Context,
+	req *connect.Request[agentv1.PublishAgentRequest],
+) (*connect.Response[agentv1.PublishAgentResponse], error) {
+	ctx, a, err := s.reachable(ctx, req.Msg.GetId())
+	if err != nil {
+		return nil, err
+	}
+	a, v, created, err := s.agents.Publish(ctx, a.ID, session.PrincipalFrom(ctx).UserID)
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.toProto(ctx, a)
+	if err != nil {
+		return nil, err
+	}
+	by, err := s.userPublicID(ctx, v.CreatedBy)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&agentv1.PublishAgentResponse{Agent: out, Version: versionToProto(v, a.PublicID, by), Created: created}), nil
+}
+
+// ListAgentVersions lists an agent's published versions, newest first.
+func (s *AgentService) ListAgentVersions(
+	ctx context.Context,
+	req *connect.Request[agentv1.ListAgentVersionsRequest],
+) (*connect.Response[agentv1.ListAgentVersionsResponse], error) {
+	ctx, a, err := s.reachable(ctx, req.Msg.GetAgentId())
+	if err != nil {
+		return nil, err
+	}
+	vs, err := s.agents.Versions(ctx, a.ID)
+	if err != nil {
+		return nil, err
+	}
+	people := map[uuid.UUID]string{}
+	out := make([]*agentv1.AgentVersion, 0, len(vs))
+	for _, v := range vs {
+		by, ok := people[v.CreatedBy.UUID]
+		if !ok {
+			if by, err = s.userPublicID(ctx, v.CreatedBy); err != nil {
+				return nil, err
+			}
+			people[v.CreatedBy.UUID] = by
+		}
+		out = append(out, versionToProto(v, a.PublicID, by))
+	}
+	return connect.NewResponse(&agentv1.ListAgentVersionsResponse{Versions: out}), nil
+}
+
+func (s *AgentService) userPublicID(ctx context.Context, id uuid.NullUUID) (string, error) {
+	if !id.Valid {
+		return "", nil
+	}
+	return s.refs.UserPublicID(ctx, id.UUID)
 }
 
 // SECURITY: an unknown agent and an agent outside the caller's reach answer the same not-found; a reached agent scopes the call to its org.

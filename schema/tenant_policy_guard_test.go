@@ -62,8 +62,8 @@ func TestMigrations_EveryOrgOwnedTableForcesItsPolicy(t *testing.T) {
 			t.Errorf("%s: missing a FOR ALL policy %s_tenant with USING and a WITH CHECK on current_org_id()", table, table)
 		}
 	}
-	if tables != 10 {
-		t.Fatalf("found %d org-owned tables, want 10; add the new table to the tenant list in schema/README.md and to this guard", tables)
+	if tables != 11 {
+		t.Fatalf("found %d org-owned tables, want 11; add the new table to the tenant list in schema/README.md and to this guard", tables)
 	}
 }
 

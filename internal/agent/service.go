@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -140,6 +141,57 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 		return s.errOrReport(ctx, "agent: delete", err)
 	}
 	return nil
+}
+
+// UpdateDraft replaces an agent's draft config; the published version is unchanged.
+// shortcut: concurrent editors overwrite each other's draft; add a draft revision check if two editors become real.
+func (s *Service) UpdateDraft(ctx context.Context, id uuid.UUID, cfg Config) (*Agent, error) {
+	a, err := s.store.ByID(ctx, id)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "agent: update draft", err)
+	}
+	if err := a.SetDraft(cfg, time.Now().UTC()); err != nil {
+		return nil, err
+	}
+	if err := s.store.Save(ctx, a); err != nil {
+		return nil, s.errOrReport(ctx, "agent: update draft", err)
+	}
+	return a, nil
+}
+
+// Publish makes the draft the agent's next version, published by person by (uuid.Nil for a key); an unchanged draft returns the latest version with created false.
+func (s *Service) Publish(ctx context.Context, id, by uuid.UUID) (a *Agent, v *Version, created bool, err error) {
+	err = s.uow.RunInTx(ctx, func(ctx context.Context) error {
+		if a, err = s.store.LockForPublish(ctx, id); err != nil {
+			return err
+		}
+		latest, err := s.store.LatestVersion(ctx, id)
+		if err != nil {
+			return err
+		}
+		if v, created, err = a.Publish(latest, by, time.Now().UTC()); err != nil {
+			return err
+		}
+		if created {
+			if err := s.store.InsertVersion(ctx, v); err != nil {
+				return err
+			}
+		}
+		return s.store.Save(ctx, a)
+	})
+	if err != nil {
+		return nil, nil, false, s.errOrReport(ctx, "agent: publish", err)
+	}
+	return a, v, created, nil
+}
+
+// Versions returns an agent's published versions, newest first.
+func (s *Service) Versions(ctx context.Context, id uuid.UUID) ([]*Version, error) {
+	vs, err := s.store.Versions(ctx, id)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "agent: versions", err)
+	}
+	return vs, nil
 }
 
 // NOTE: one unit of work, so the save and its event commit together or not at all.
