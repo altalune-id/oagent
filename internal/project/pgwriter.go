@@ -16,11 +16,12 @@ import (
 func (s *postgresStore) Save(ctx context.Context, p *Project) error {
 	now := time.Now().UTC()
 	stmt := s.projects.INSERT(s.projects.AllColumns).
-		VALUES(p.ID, p.PublicID, p.OrgID, p.Slug, p.Name, createdByExpr(p), p.CreatedAt.UTC(), now).
+		VALUES(p.ID, p.PublicID, p.OrgID, p.Slug, p.Name, createdByExpr(p), p.CreatedAt.UTC(), now, p.Environment).
 		ON_CONFLICT(s.projects.ID).
 		DO_UPDATE(postgres.SET(
 			s.projects.Slug.SET(postgres.String(p.Slug)),
 			s.projects.Name.SET(postgres.String(p.Name)),
+			s.projects.Environment.SET(postgres.String(p.Environment)),
 			s.projects.UpdatedAt.SET(postgres.TimestampzT(now)),
 		))
 	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { _, err := stmt.ExecContext(ctx, q); return err }); err != nil {

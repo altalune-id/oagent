@@ -68,6 +68,24 @@ func TestProjectService_GetProject(t *testing.T) {
 	assert.Equal(t, orgPub, resp.Msg.GetProject().GetOrgId())
 }
 
+func TestProjectService_UpdateProjectEnvironment(t *testing.T) {
+	refs := fakes.NewPublicIDs()
+	orgID := uuid.New()
+	refs.Org(orgID)
+	p, err := project.NewProject(orgID, "acme", "Acme", uuid.New())
+	require.NoError(t, err)
+	c := newProjectServiceClient(t, &fakes.ProjectStore{Project: p}, refs)
+
+	tagged, err := c.UpdateProjectEnvironment(context.Background(), connect.NewRequest(&projectv1.UpdateProjectEnvironmentRequest{
+		Id: p.PublicID, Environment: projectv1.ProjectEnvironment_PROJECT_ENVIRONMENT_PRODUCTION,
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, projectv1.ProjectEnvironment_PROJECT_ENVIRONMENT_PRODUCTION, tagged.Msg.GetProject().GetEnvironment())
+	cleared, err := c.UpdateProjectEnvironment(context.Background(), connect.NewRequest(&projectv1.UpdateProjectEnvironmentRequest{Id: p.PublicID}))
+	require.NoError(t, err)
+	assert.Equal(t, projectv1.ProjectEnvironment_PROJECT_ENVIRONMENT_UNSPECIFIED, cleared.Msg.GetProject().GetEnvironment(), "unspecified clears the tag")
+}
+
 func TestProjectService_GetProject_UnknownID(t *testing.T) {
 	p, err := project.NewProject(uuid.New(), "acme", "Acme", uuid.New())
 	require.NoError(t, err)

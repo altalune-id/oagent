@@ -6,14 +6,15 @@ import "github.com/go-jet/jet/v2/postgres"
 type Projects struct {
 	postgres.Table
 
-	ID        postgres.ColumnString
-	PublicID  postgres.ColumnString
-	OrgID     postgres.ColumnString
-	Slug      postgres.ColumnString
-	Name      postgres.ColumnString
-	CreatedBy postgres.ColumnString
-	CreatedAt postgres.ColumnTimestampz
-	UpdatedAt postgres.ColumnTimestampz
+	ID          postgres.ColumnString
+	PublicID    postgres.ColumnString
+	OrgID       postgres.ColumnString
+	Slug        postgres.ColumnString
+	Name        postgres.ColumnString
+	CreatedBy   postgres.ColumnString
+	CreatedAt   postgres.ColumnTimestampz
+	UpdatedAt   postgres.ColumnTimestampz
+	Environment postgres.ColumnString
 
 	AllColumns postgres.ColumnList
 }
@@ -24,26 +25,28 @@ func NewProjects(schema, tablePrefix string) *Projects {
 		schema = "public"
 	}
 	var (
-		id        = postgres.StringColumn("id")
-		publicID  = postgres.StringColumn("public_id")
-		orgID     = postgres.StringColumn("org_id")
-		slug      = postgres.StringColumn("slug")
-		name      = postgres.StringColumn("name")
-		createdBy = postgres.StringColumn("created_by")
-		createdAt = postgres.TimestampzColumn("created_at")
-		updatedAt = postgres.TimestampzColumn("updated_at")
-		all       = postgres.ColumnList{id, publicID, orgID, slug, name, createdBy, createdAt, updatedAt}
+		id          = postgres.StringColumn("id")
+		publicID    = postgres.StringColumn("public_id")
+		orgID       = postgres.StringColumn("org_id")
+		slug        = postgres.StringColumn("slug")
+		name        = postgres.StringColumn("name")
+		createdBy   = postgres.StringColumn("created_by")
+		createdAt   = postgres.TimestampzColumn("created_at")
+		updatedAt   = postgres.TimestampzColumn("updated_at")
+		environment = postgres.StringColumn("environment")
+		all         = postgres.ColumnList{id, publicID, orgID, slug, name, createdBy, createdAt, updatedAt, environment}
 	)
 	return &Projects{
-		Table:      postgres.NewTable(schema, tablePrefix+"projects", "projects", all...),
-		ID:         id,
-		PublicID:   publicID,
-		OrgID:      orgID,
-		Slug:       slug,
-		Name:       name,
-		CreatedBy:  createdBy,
-		CreatedAt:  createdAt,
-		UpdatedAt:  updatedAt,
-		AllColumns: all,
+		Table:       postgres.NewTable(schema, tablePrefix+"projects", "projects", all...),
+		ID:          id,
+		PublicID:    publicID,
+		OrgID:       orgID,
+		Slug:        slug,
+		Name:        name,
+		CreatedBy:   createdBy,
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
+		Environment: environment,
+		AllColumns:  all,
 	}
 }

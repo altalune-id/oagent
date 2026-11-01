@@ -143,6 +143,22 @@ func TestProjectStore_SaveUpdatesMutableColumnsOnly(t *testing.T) {
 	assert.Equal(t, []string{"web-renamed"}, slugsOf(inA), "upsert by id must not insert a second row")
 }
 
+func TestProjectStore_Environment(t *testing.T) {
+	f := newProjectFixture(t)
+	orgA := f.seedOrg(t, "acme")
+	scope := tenant.Into(t.Context(), tenant.Context{OrgID: orgA})
+	p := newProject(t, orgA, "web", uuid.New())
+	require.NoError(t, f.projects.Save(scope, p))
+	require.NoError(t, p.SetEnvironment(project.EnvironmentStaging))
+	require.NoError(t, f.projects.Save(scope, p))
+	got, err := f.projects.ByID(scope, p.ID)
+	require.NoError(t, err)
+	assert.Equal(t, project.EnvironmentStaging, got.Environment)
+
+	p.Environment = "qa"
+	assert.Equal(t, "23514", pgCode(f.projects.Save(scope, p)), "the check constraint refuses an unknown tag")
+}
+
 func TestProjectStore_UniqueConstraints(t *testing.T) {
 	t.Run("slug unique within an org", func(t *testing.T) {
 		f := newProjectFixture(t)

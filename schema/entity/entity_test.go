@@ -78,7 +78,7 @@ func TestBindings(t *testing.T) {
 		{
 			"projects",
 			func(s, p string) binding { b := entity.NewProjects(s, p); return binding{b, b.AllColumns} },
-			[]string{"id", "public_id", "org_id", "slug", "name", "created_by", "created_at", "updated_at"},
+			[]string{"id", "public_id", "org_id", "slug", "name", "created_by", "created_at", "updated_at", "environment"},
 		},
 		{
 			"password_resets",

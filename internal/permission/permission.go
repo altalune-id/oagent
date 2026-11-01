@@ -22,10 +22,11 @@ func Table() map[string][]string {
 		orgv1connect.OrgServiceListOrgsProcedure:  {scope.OrgRead},
 		orgv1connect.OrgServiceUpdateOrgProcedure: {scope.OrgWrite},
 
-		projectv1connect.ProjectServiceCreateProjectProcedure: {scope.ProjectWrite},
-		projectv1connect.ProjectServiceGetProjectProcedure:    {scope.ProjectRead},
-		projectv1connect.ProjectServiceListProjectsProcedure:  {scope.ProjectRead},
-		projectv1connect.ProjectServiceUpdateProjectProcedure: {scope.ProjectWrite},
+		projectv1connect.ProjectServiceCreateProjectProcedure:            {scope.ProjectWrite},
+		projectv1connect.ProjectServiceGetProjectProcedure:               {scope.ProjectRead},
+		projectv1connect.ProjectServiceListProjectsProcedure:             {scope.ProjectRead},
+		projectv1connect.ProjectServiceUpdateProjectProcedure:            {scope.ProjectWrite},
+		projectv1connect.ProjectServiceUpdateProjectEnvironmentProcedure: {scope.ProjectWrite},
 
 		agentv1connect.AgentServiceCreateAgentProcedure: {scope.AgentWrite},
 		agentv1connect.AgentServiceGetAgentProcedure:    {scope.AgentRead},

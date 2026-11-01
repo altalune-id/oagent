@@ -135,6 +135,20 @@ func TestService_Update(t *testing.T) {
 	assert.Equal(t, got, store.Saved)
 }
 
+func TestService_UpdateEnvironment(t *testing.T) {
+	p, err := project.NewProject(uuid.New(), "acme", "Acme", uuid.New())
+	require.NoError(t, err)
+	store := &fakes.ProjectStore{Project: p}
+	svc := project.NewService(store, testUnexpected())
+
+	got, err := svc.UpdateEnvironment(context.Background(), p.ID, project.EnvironmentLabs)
+	require.NoError(t, err)
+	assert.Equal(t, project.EnvironmentLabs, got.Environment)
+	assert.Equal(t, got, store.Saved)
+	_, err = svc.UpdateEnvironment(context.Background(), p.ID, "qa")
+	assert.Error(t, err)
+}
+
 func TestService_Update_NotFound(t *testing.T) {
 	store := &fakes.ProjectStore{Err: &project.NotFoundError{ID: "x"}}
 

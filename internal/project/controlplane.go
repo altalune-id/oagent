@@ -99,6 +99,26 @@ func (s *ProjectService) UpdateProject(
 	return connect.NewResponse(&projectv1.UpdateProjectResponse{Project: out}), nil
 }
 
+// UpdateProjectEnvironment tags a project as production, staging, development or labs; unspecified clears the tag.
+func (s *ProjectService) UpdateProjectEnvironment(
+	ctx context.Context,
+	req *connect.Request[projectv1.UpdateProjectEnvironmentRequest],
+) (*connect.Response[projectv1.UpdateProjectEnvironmentResponse], error) {
+	ctx, p, err := s.reachable(ctx, req.Msg.GetId(), authz.ReachWholeProject)
+	if err != nil {
+		return nil, err
+	}
+	p, err = s.projects.UpdateEnvironment(ctx, p.ID, environmentFromProto(req.Msg.GetEnvironment()))
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.toProto(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&projectv1.UpdateProjectEnvironmentResponse{Project: out}), nil
+}
+
 // SECURITY: an unknown org and an org out of reach answer the same not-found; a reached org scopes the rest of the call to itself.
 func (s *ProjectService) org(
 	ctx context.Context, publicID string, reach func(context.Context, uuid.UUID) bool,
