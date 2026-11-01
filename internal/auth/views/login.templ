@@ -28,6 +28,7 @@ type LoginData struct {
 templ Login(d layout.LayoutData, v LoginData) {
 	@layout.Layout(d) {
 		@layout.Card("Sign in to OAgent") {
+			<p class="text-sm text-base-content/70">See what your agents did and why.</p>
 			if v.Notice != "" {
 				<div role="status" class="alert alert-success alert-soft">{ v.Notice }</div>
 			}
