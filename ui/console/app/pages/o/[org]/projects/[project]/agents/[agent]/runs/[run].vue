@@ -112,7 +112,7 @@ useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
       <RunMinimap :events="events" :selected="selected.id" @select="select" />
     </Section>
 
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    <div class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <Section :title="t('run.transcript')">
         <template #actions>
           <div class="flex flex-wrap gap-1" role="group" :aria-label="t('run.show_types')">

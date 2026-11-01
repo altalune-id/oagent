@@ -9,7 +9,7 @@ const { items, copyLabel = 'Copy {label}' } = defineProps<{
 </script>
 
 <template>
-  <dl class="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[minmax(9rem,auto)_1fr]">
+  <dl class="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-2 text-sm sm:grid-cols-[minmax(9rem,auto)_minmax(0,1fr)]">
     <template v-for="(item, i) in items" :key="item.label">
       <dt class="text-base-content/70">
         {{ item.label }}

@@ -110,7 +110,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
     <LoadError :error="draft.loadError.value" :busy="false" :retry-label="t('common.retry')" @retry="draft.load()" />
     <ErrorText :error="draft.saveError.value" />
 
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
+    <div class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
       <AgentConfigForm v-model="config" :models="models" :tools="tools" :disabled="!canEdit" />
       <div class="space-y-6 lg:sticky lg:top-20 lg:self-start">
         <Section :title="t('configure.test_title')" :description="t('configure.test_hint')">
