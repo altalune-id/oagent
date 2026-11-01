@@ -139,7 +139,7 @@ nats:
 
 oidc:
   # env: OAGENT_OIDC_BUTTON_LABEL
-  buttonLabel: Continue with your Altalune account
+  buttonLabel: Continue with SSO
   # env: OAGENT_OIDC_CLIENT_ID
   clientID: ""
   # [secret] env: OAGENT_OIDC_CLIENT_SECRET

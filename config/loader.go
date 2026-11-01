@@ -132,7 +132,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.sessionTTL", "24h")
 	v.SetDefault("auth.rememberLastUser", true)
 	v.SetDefault("oidc.scopes", []string{"openid", "profile", "email"})
-	v.SetDefault("oidc.buttonLabel", "Continue with your Altalune account")
+	v.SetDefault("oidc.buttonLabel", "Continue with SSO")
 	v.SetDefault("cli.sessionFile", "~/.oagent/session.json")
 	v.SetDefault("mail.driver", string(MailDriverConsole))
 	v.SetDefault("mail.smtp.port", 587)

@@ -125,7 +125,7 @@ OAGENT_HTTP_BASE_URL=https://oagent.example.com
 OAGENT_OIDC_ISSUER=https://idp.example.com          # exactly as the provider names itself, trailing "/" included
 OAGENT_OIDC_CLIENT_ID=...
 OAGENT_OIDC_CLIENT_SECRET=...
-OAGENT_OIDC_BUTTON_LABEL="Continue with Acme ID"   # default "Continue with your Altalune account"
+OAGENT_OIDC_BUTTON_LABEL="Continue with Acme ID"   # default "Continue with SSO"
 ```
 
 At the provider, register a web client with:

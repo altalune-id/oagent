@@ -16,7 +16,7 @@ func TestLoad_OIDCDefaults(t *testing.T) {
 	c := validConfig(t)
 	assert.False(t, c.OIDC.Enabled())
 	assert.Equal(t, []string{"openid", "profile", "email"}, c.OIDC.Scopes)
-	assert.Equal(t, "Continue with your Altalune account", c.OIDC.ButtonLabel)
+	assert.Equal(t, "Continue with SSO", c.OIDC.ButtonLabel)
 }
 
 func TestLoad_OIDCFromEnv(t *testing.T) {
