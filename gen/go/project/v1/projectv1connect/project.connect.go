@@ -45,6 +45,9 @@ const (
 	// ProjectServiceUpdateProjectProcedure is the fully-qualified name of the ProjectService's
 	// UpdateProject RPC.
 	ProjectServiceUpdateProjectProcedure = "/project.v1.ProjectService/UpdateProject"
+	// ProjectServiceUpdateProjectEnvironmentProcedure is the fully-qualified name of the
+	// ProjectService's UpdateProjectEnvironment RPC.
+	ProjectServiceUpdateProjectEnvironmentProcedure = "/project.v1.ProjectService/UpdateProjectEnvironment"
 )
 
 // ProjectServiceClient is a client for the project.v1.ProjectService service.
@@ -53,6 +56,7 @@ type ProjectServiceClient interface {
 	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
 	UpdateProject(context.Context, *connect.Request[v1.UpdateProjectRequest]) (*connect.Response[v1.UpdateProjectResponse], error)
+	UpdateProjectEnvironment(context.Context, *connect.Request[v1.UpdateProjectEnvironmentRequest]) (*connect.Response[v1.UpdateProjectEnvironmentResponse], error)
 }
 
 // NewProjectServiceClient constructs a client for the project.v1.ProjectService service. By
@@ -90,15 +94,22 @@ func NewProjectServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(projectServiceMethods.ByName("UpdateProject")),
 			connect.WithClientOptions(opts...),
 		),
+		updateProjectEnvironment: connect.NewClient[v1.UpdateProjectEnvironmentRequest, v1.UpdateProjectEnvironmentResponse](
+			httpClient,
+			baseURL+ProjectServiceUpdateProjectEnvironmentProcedure,
+			connect.WithSchema(projectServiceMethods.ByName("UpdateProjectEnvironment")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // projectServiceClient implements ProjectServiceClient.
 type projectServiceClient struct {
-	createProject *connect.Client[v1.CreateProjectRequest, v1.CreateProjectResponse]
-	getProject    *connect.Client[v1.GetProjectRequest, v1.GetProjectResponse]
-	listProjects  *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
-	updateProject *connect.Client[v1.UpdateProjectRequest, v1.UpdateProjectResponse]
+	createProject            *connect.Client[v1.CreateProjectRequest, v1.CreateProjectResponse]
+	getProject               *connect.Client[v1.GetProjectRequest, v1.GetProjectResponse]
+	listProjects             *connect.Client[v1.ListProjectsRequest, v1.ListProjectsResponse]
+	updateProject            *connect.Client[v1.UpdateProjectRequest, v1.UpdateProjectResponse]
+	updateProjectEnvironment *connect.Client[v1.UpdateProjectEnvironmentRequest, v1.UpdateProjectEnvironmentResponse]
 }
 
 // CreateProject calls project.v1.ProjectService.CreateProject.
@@ -121,12 +132,18 @@ func (c *projectServiceClient) UpdateProject(ctx context.Context, req *connect.R
 	return c.updateProject.CallUnary(ctx, req)
 }
 
+// UpdateProjectEnvironment calls project.v1.ProjectService.UpdateProjectEnvironment.
+func (c *projectServiceClient) UpdateProjectEnvironment(ctx context.Context, req *connect.Request[v1.UpdateProjectEnvironmentRequest]) (*connect.Response[v1.UpdateProjectEnvironmentResponse], error) {
+	return c.updateProjectEnvironment.CallUnary(ctx, req)
+}
+
 // ProjectServiceHandler is an implementation of the project.v1.ProjectService service.
 type ProjectServiceHandler interface {
 	CreateProject(context.Context, *connect.Request[v1.CreateProjectRequest]) (*connect.Response[v1.CreateProjectResponse], error)
 	GetProject(context.Context, *connect.Request[v1.GetProjectRequest]) (*connect.Response[v1.GetProjectResponse], error)
 	ListProjects(context.Context, *connect.Request[v1.ListProjectsRequest]) (*connect.Response[v1.ListProjectsResponse], error)
 	UpdateProject(context.Context, *connect.Request[v1.UpdateProjectRequest]) (*connect.Response[v1.UpdateProjectResponse], error)
+	UpdateProjectEnvironment(context.Context, *connect.Request[v1.UpdateProjectEnvironmentRequest]) (*connect.Response[v1.UpdateProjectEnvironmentResponse], error)
 }
 
 // NewProjectServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -160,6 +177,12 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 		connect.WithSchema(projectServiceMethods.ByName("UpdateProject")),
 		connect.WithHandlerOptions(opts...),
 	)
+	projectServiceUpdateProjectEnvironmentHandler := connect.NewUnaryHandler(
+		ProjectServiceUpdateProjectEnvironmentProcedure,
+		svc.UpdateProjectEnvironment,
+		connect.WithSchema(projectServiceMethods.ByName("UpdateProjectEnvironment")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/project.v1.ProjectService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProjectServiceCreateProjectProcedure:
@@ -170,6 +193,8 @@ func NewProjectServiceHandler(svc ProjectServiceHandler, opts ...connect.Handler
 			projectServiceListProjectsHandler.ServeHTTP(w, r)
 		case ProjectServiceUpdateProjectProcedure:
 			projectServiceUpdateProjectHandler.ServeHTTP(w, r)
+		case ProjectServiceUpdateProjectEnvironmentProcedure:
+			projectServiceUpdateProjectEnvironmentHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -193,4 +218,8 @@ func (UnimplementedProjectServiceHandler) ListProjects(context.Context, *connect
 
 func (UnimplementedProjectServiceHandler) UpdateProject(context.Context, *connect.Request[v1.UpdateProjectRequest]) (*connect.Response[v1.UpdateProjectResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("project.v1.ProjectService.UpdateProject is not implemented"))
+}
+
+func (UnimplementedProjectServiceHandler) UpdateProjectEnvironment(context.Context, *connect.Request[v1.UpdateProjectEnvironmentRequest]) (*connect.Response[v1.UpdateProjectEnvironmentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("project.v1.ProjectService.UpdateProjectEnvironment is not implemented"))
 }

@@ -142,6 +142,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/project.v1.UpdateProjectResponse'
+  /project.v1.ProjectService/UpdateProjectEnvironment:
+    post:
+      tags:
+        - project.v1.ProjectService
+      summary: UpdateProjectEnvironment
+      operationId: project.v1.ProjectService.UpdateProjectEnvironment
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/project.v1.UpdateProjectEnvironmentRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/project.v1.UpdateProjectEnvironmentResponse'
 components:
   schemas:
     connect-protocol-version:
@@ -406,7 +441,44 @@ components:
         updatedAt:
           title: updated_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
+        environment:
+          title: environment
+          $ref: '#/components/schemas/project.v1.ProjectEnvironment'
       title: Project
+      additionalProperties: false
+    project.v1.ProjectEnvironment:
+      type: string
+      title: ProjectEnvironment
+      enum:
+        - PROJECT_ENVIRONMENT_UNSPECIFIED
+        - PROJECT_ENVIRONMENT_PRODUCTION
+        - PROJECT_ENVIRONMENT_STAGING
+        - PROJECT_ENVIRONMENT_DEVELOPMENT
+        - PROJECT_ENVIRONMENT_LABS
+      description: ProjectEnvironment is an optional tag for what a project is used for; UNSPECIFIED is no tag.
+    project.v1.UpdateProjectEnvironmentRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: |
+            oagent.public_id = true
+        environment:
+          title: environment
+          description: UNSPECIFIED clears the tag.
+          $ref: '#/components/schemas/project.v1.ProjectEnvironment'
+      title: UpdateProjectEnvironmentRequest
+      required:
+        - id
+      additionalProperties: false
+    project.v1.UpdateProjectEnvironmentResponse:
+      type: object
+      properties:
+        project:
+          title: project
+          $ref: '#/components/schemas/project.v1.Project'
+      title: UpdateProjectEnvironmentResponse
       additionalProperties: false
     project.v1.UpdateProjectRequest:
       type: object
