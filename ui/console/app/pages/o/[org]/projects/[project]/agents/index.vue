@@ -98,7 +98,10 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
       </div>
       <DataTable :columns="sampleColumns" :rows="samples" row-key="slug" :caption="t('agent.samples_caption')">
         <template #cell-name="{ row }">
-          <span class="font-medium">{{ row.name }}</span>
+          <span class="inline-flex flex-wrap items-center gap-2">
+            <span class="font-medium">{{ row.name }}</span>
+            <span class="badge badge-info badge-soft badge-sm">{{ t('agent.sample') }}</span>
+          </span>
           <span class="block text-xs text-base-content/70">{{ row.description }}</span>
         </template>
         <template #cell-version="{ row }">
@@ -124,8 +127,9 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
         </template>
         <template #row-sm="{ row }">
           <div class="list-col-grow">
-            <p class="font-medium">
+            <p class="flex flex-wrap items-center gap-2 font-medium">
               {{ row.name }}
+              <span class="badge badge-info badge-soft badge-sm">{{ t('agent.sample') }}</span>
             </p>
             <p class="text-xs text-base-content/70">
               v{{ row.version }} · {{ row.model }} · {{ count(row.runs7d) }} · {{ money(row.costCents7d) }}

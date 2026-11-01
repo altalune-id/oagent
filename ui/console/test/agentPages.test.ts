@@ -54,6 +54,8 @@ describe('agents page', () => {
     expect(w.get('caption').text()).toBe('agent.samples_caption');
     expect(w.text()).toContain(sampleAgents()[0]!.name);
     expect(w.text()).toContain('$3.86');
+    expect(w.findAll('tbody .badge').filter(b => b.text() === 'agent.sample')).toHaveLength(sampleAgents().length);
+    expect(w.findAll('li.list-row .badge').filter(b => b.text() === 'agent.sample')).toHaveLength(sampleAgents().length);
     await w.findAll('button').find(b => b.text() === 'agent.hide_samples')!.trigger('click');
     expect(w.text()).not.toContain(sampleAgents()[0]!.name);
   });

@@ -339,5 +339,6 @@
   "error.save_environment": "Gagal menyimpan lingkungan",
   "configure.tool_approval": "{tool} perlu persetujuan",
   "configure.choose_model": "Pilih model",
-  "configure.publishing": "Memublikasikan…"
+  "configure.publishing": "Memublikasikan…",
+  "agent.sample": "Contoh"
 }
