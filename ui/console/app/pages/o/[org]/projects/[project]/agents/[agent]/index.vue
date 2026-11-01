@@ -148,8 +148,9 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
         <button type="button" class="btn btn-ghost btn-sm" :disabled="draft.publishing.value" @click="publishOpen = false">
           {{ t('configure.keep_editing') }}
         </button>
-        <button type="button" class="btn btn-primary btn-sm" :disabled="draft.publishing.value" @click="publish()">
-          {{ t('configure.publish_n', { n: current + 1 }) }}
+        <button type="button" class="btn btn-primary btn-sm" :disabled="draft.publishing.value" :aria-busy="draft.publishing.value || undefined" @click="publish()">
+          <span v-if="draft.publishing.value" class="loading loading-spinner loading-xs" aria-hidden="true" />
+          {{ draft.publishing.value ? t('configure.publishing') : t('configure.publish_n', { n: current + 1 }) }}
         </button>
       </template>
     </AppModal>

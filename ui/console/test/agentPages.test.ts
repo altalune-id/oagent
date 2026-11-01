@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useToast } from '#base/components/ui/toast';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { mountPage } from '#test/mount-page';
-import { setClient, setRoute } from '#test/nuxt-globals';
+import { deferred, setClient, setRoute } from '#test/nuxt-globals';
 import ConfigurePage from '~/pages/o/[org]/projects/[project]/agents/[agent]/index.vue';
 import AgentsPage from '~/pages/o/[org]/projects/[project]/agents/index.vue';
 import { sampleAgents } from '~/preview/samples';
@@ -131,7 +131,16 @@ describe('configure page', () => {
     const dialog = [...document.querySelectorAll('dialog')].find(d => d.open)!;
     expect(dialog.textContent).toContain('configure.publish_body|{"n":13,"current":12}');
     expect(dialog.textContent).toContain('configure.change_instructions');
+    const pending = deferred<unknown>();
+    const done = client.publishAgent.getMockImplementation()!;
+    client.publishAgent.mockImplementationOnce(async (req: unknown) => {
+      await pending.promise;
+      return done(req);
+    });
     [...dialog.querySelectorAll('button')].find(b => b.textContent?.includes('configure.publish_n'))!.click();
+    await flushPromises();
+    expect(dialog.textContent).toContain('configure.publishing');
+    pending.resolve(undefined);
     await flushPromises();
     expect(client.publishAgent).toHaveBeenCalledWith({ id: support.id });
     expect(useToast().toasts.at(-1)).toMatchObject({ kind: 'success', text: 'configure.published|{"n":13}' });

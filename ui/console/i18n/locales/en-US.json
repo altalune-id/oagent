@@ -338,5 +338,6 @@
   "environment.title": "Environment",
   "error.save_environment": "Failed to save the environment",
   "configure.tool_approval": "{tool} needs approval",
-  "configure.choose_model": "Choose a model"
+  "configure.choose_model": "Choose a model",
+  "configure.publishing": "Publishing…"
 }
