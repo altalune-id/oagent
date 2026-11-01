@@ -3,6 +3,7 @@ import type { Outcome, ToolCaller } from './invite';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import ViewShell from '../components/ViewShell.vue';
 import { t } from '../copy';
+import FieldValue from '../generic/FieldValue.vue';
 import { confirmDraft, discardDraft, EXPIRED_MESSAGE, isExpired, parseDraft } from './invite';
 
 const props = defineProps<{ data: Record<string, unknown> }>();
@@ -33,7 +34,9 @@ async function run(action: (app: ToolCaller) => Promise<Outcome>) {
 const confirm = () => draft.value && run(a => confirmDraft(a, draft.value!, new Date()));
 const discard = () => draft.value && run(a => discardDraft(a, draft.value!));
 
+const elsewhere = computed(() => draft.value?.canConfirm === false || outcome.value?.state === 'console');
 const done = computed(() => outcome.value?.state === 'sent' || outcome.value?.state === 'discarded' || outcome.value?.state === 'expired');
+const consoleLink = { key: 'consoleUrl', label: t('mcp.invite_console'), kind: 'url' } as const;
 </script>
 
 <template>
@@ -61,7 +64,7 @@ const done = computed(() => outcome.value?.state === 'sent' || outcome.value?.st
       </dl>
 
       <div v-if="!done" class="flex gap-2">
-        <button type="button" class="btn btn-primary btn-sm" :disabled="busy" @click="confirm">
+        <button v-if="!elsewhere" type="button" class="btn btn-primary btn-sm" :disabled="busy" @click="confirm">
           <span v-if="busy" class="loading loading-spinner loading-xs" aria-hidden="true" />
           {{ t('mcp.invite_send') }}
         </button>
@@ -70,6 +73,10 @@ const done = computed(() => outcome.value?.state === 'sent' || outcome.value?.st
         </button>
       </div>
 
+      <div v-if="elsewhere && !done" role="status" class="space-y-1 text-sm">
+        <p>{{ t('mcp.invite_console') }}</p>
+        <FieldValue :field="consoleLink" :value="draft.consoleUrl" />
+      </div>
       <p v-if="outcome?.state === 'sent'" role="status">
         {{ t('mcp.invite_sent_to', { email: outcome.email }) }}
       </p>

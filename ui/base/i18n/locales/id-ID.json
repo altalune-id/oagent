@@ -230,6 +230,7 @@
   "mcp.empty_orgs": "Tidak ada organisasi.",
   "mcp.empty_projects": "Tidak ada proyek.",
   "mcp.empty_webhooks": "Tidak ada webhook.",
+  "mcp.invite_console": "Asisten dapat menyusun undangan tetapi tidak dapat mengirimnya. Kirim undangan ini dari Anggota di konsol.",
   "mcp.invite_discard": "Buang",
   "mcp.invite_discarded": "Undangan dibuang",
   "mcp.invite_discarded_body": "Draf dibuang. Tidak ada undangan yang dikirim.",

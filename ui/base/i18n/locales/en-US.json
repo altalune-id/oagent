@@ -230,6 +230,7 @@
   "mcp.empty_orgs": "No organizations.",
   "mcp.empty_projects": "No projects.",
   "mcp.empty_webhooks": "No webhooks.",
+  "mcp.invite_console": "Assistants can draft invites but not send them. Send this one from Members in the console.",
   "mcp.invite_discard": "Discard",
   "mcp.invite_discarded": "Invite discarded",
   "mcp.invite_discarded_body": "Draft discarded. No invite was sent.",
