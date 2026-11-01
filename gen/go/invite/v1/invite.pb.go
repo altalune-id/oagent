@@ -582,8 +582,12 @@ type DraftInviteResponse struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Invite *Invite                `protobuf:"bytes,1,opt,name=invite,proto3" json:"invite,omitempty"`
 	// The organization's public id and name, for the confirmation view.
-	OrgId         string `protobuf:"bytes,2,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
-	OrgName       string `protobuf:"bytes,3,opt,name=org_name,json=orgName,proto3" json:"org_name,omitempty"`
+	OrgId   string `protobuf:"bytes,2,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	OrgName string `protobuf:"bytes,3,opt,name=org_name,json=orgName,proto3" json:"org_name,omitempty"`
+	// The organization's members page in the console, where a person confirms the draft.
+	ConsoleUrl string `protobuf:"bytes,4,opt,name=console_url,json=consoleUrl,proto3" json:"console_url,omitempty"`
+	// False when the caller can't confirm the draft itself (an OAuth token): send it from console_url instead.
+	CanConfirm    bool `protobuf:"varint,5,opt,name=can_confirm,json=canConfirm,proto3" json:"can_confirm,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -637,6 +641,20 @@ func (x *DraftInviteResponse) GetOrgName() string {
 		return x.OrgName
 	}
 	return ""
+}
+
+func (x *DraftInviteResponse) GetConsoleUrl() string {
+	if x != nil {
+		return x.ConsoleUrl
+	}
+	return ""
+}
+
+func (x *DraftInviteResponse) GetCanConfirm() bool {
+	if x != nil {
+		return x.CanConfirm
+	}
+	return false
 }
 
 type ConfirmDraftInviteRequest struct {
@@ -862,11 +880,15 @@ const file_invite_v1_invite_proto_rawDesc = "" +
 	"\x06drafts\x18\x02 \x03(\v2\x11.invite.v1.InviteR\x06drafts\"]\n" +
 	"\x12DraftInviteRequest\x12#\n" +
 	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12\"\n" +
-	"\x05email\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x98\xe42\x01R\x05email\"r\n" +
+	"\x05email\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x98\xe42\x01R\x05email\"\xb4\x01\n" +
 	"\x13DraftInviteResponse\x12)\n" +
 	"\x06invite\x18\x01 \x01(\v2\x11.invite.v1.InviteR\x06invite\x12\x15\n" +
 	"\x06org_id\x18\x02 \x01(\tR\x05orgId\x12\x19\n" +
-	"\borg_name\x18\x03 \x01(\tR\aorgName\"k\n" +
+	"\borg_name\x18\x03 \x01(\tR\aorgName\x12\x1f\n" +
+	"\vconsole_url\x18\x04 \x01(\tR\n" +
+	"consoleUrl\x12\x1f\n" +
+	"\vcan_confirm\x18\x05 \x01(\bR\n" +
+	"canConfirm\"k\n" +
 	"\x19ConfirmDraftInviteRequest\x12#\n" +
 	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12)\n" +
 	"\tinvite_id\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\binviteId\"S\n" +

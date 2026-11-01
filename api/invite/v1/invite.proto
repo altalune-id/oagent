@@ -148,6 +148,10 @@ message DraftInviteResponse {
   // The organization's public id and name, for the confirmation view.
   string org_id = 2;
   string org_name = 3;
+  // The organization's members page in the console, where a person confirms the draft.
+  string console_url = 4;
+  // False when the caller can't confirm the draft itself (an OAuth token): send it from console_url instead.
+  bool can_confirm = 5;
 }
 
 message ConfirmDraftInviteRequest {
