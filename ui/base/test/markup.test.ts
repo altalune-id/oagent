@@ -47,8 +47,8 @@ describe('guard: markup in every app', () => {
     expect(offenders(/<(?:button|NuxtLink|label|a)\s[^>]*\bclass="(?:[^"]*\s)?btn\s(?:[^"]*\s)?text-(?:error|warning|success|info)\b/)).toEqual([]);
   });
 
-  it('opens every focus dropdown from a focusable trigger, never a <button> Safari will not focus', () => {
-    expect(offenders(/class="dropdown\b[^"]*"[^>]*>\s*<button\b/)).toEqual([]);
+  it('builds every dropdown through AppDropdown (popover API), never the CSS-focus dropdown-content pattern', () => {
+    expect(offenders(/\bdropdown-content\b/)).toEqual([]);
     const own = files.filter(f => /class="dropdown[\s"]/.test(f.text)).map(f => f.path);
     expect(own).toEqual(['base/app/components/ui/AppDropdown.vue']);
   });

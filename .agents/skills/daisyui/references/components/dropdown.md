@@ -26,6 +26,7 @@ The `details` and `summary` elements open and close only when the user clicks th
 ```
 
 #### Rules
+- In oagent: the console uses only the popover method, through `AppDropdown`; templ pages use only `details`. Do not use the CSS-focus method (`tabindex` + `dropdown-content`).
 - `{MODIFIER}` is optional. It can include one modifier class name and one placement class name.
 - Replace `{id}` and `{anchor}` with the same name. Do not use this name for another element.
 - The content is not limited to `<ul>`. It can be a different HTML element.

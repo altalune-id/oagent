@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import ToastHost from '#base/components/ui/ToastHost.vue';
 import AppNavbar from '~/components/layout/AppNavbar.vue';
 import OrgCreateModal from '~/components/org/create/OrgCreateModal.vue';
 import ProjectCreateModal from '~/components/project/create/ProjectCreateModal.vue';
 import { useOrgsStore } from '~/stores/orgs';
 
 const route = useRoute();
+const { t } = useI18n();
 const orgs = useOrgsStore();
 
 const orgId = computed(() => {
@@ -17,6 +19,7 @@ const orgId = computed(() => {
   <div class="flex min-h-dvh flex-col bg-base-100 text-base-content">
     <AppNavbar />
     <slot />
+    <ToastHost :close-label="t('common.close')" />
     <OrgCreateModal />
     <ProjectCreateModal v-if="orgId" :org-id="orgId" />
   </div>

@@ -1,25 +1,70 @@
 <script setup lang="ts">
-const { label = '', open = false, disabled = false, triggerClass = '' } = defineProps<{
+import { onMounted, ref, useId } from 'vue';
+
+const { label = '', open = false, disabled = false, placement = 'start', triggerClass = '', contentClass = 'w-56' } = defineProps<{
   label?: string,
   open?: boolean,
   disabled?: boolean,
+  placement?: 'start' | 'end',
   triggerClass?: string,
+  contentClass?: string,
 }>();
+
+const id = `dd-${useId()}`;
+const anchor = `--${id}`;
+const panel = ref<HTMLElement>();
+const expanded = ref(false);
+
+function close() {
+  panel.value?.hidePopover?.();
+}
+
+function onToggle(event: Event) {
+  expanded.value = (event as ToggleEvent).newState === 'open';
+}
+
+function onClick(event: MouseEvent) {
+  const picked = (event.target as HTMLElement).closest('a, button');
+  if (picked && !picked.hasAttribute('data-keep-open')) {
+    close();
+  }
+}
+
+onMounted(() => {
+  if (open) {
+    panel.value?.showPopover?.();
+  }
+});
+
+defineExpose({ close });
 </script>
 
 <template>
-  <div class="dropdown" :class="{ 'dropdown-open': open }">
-    <div
-      :tabindex="disabled ? -1 : 0"
-      role="button"
-      aria-haspopup="true"
+  <div class="inline-flex">
+    <button
+      type="button"
       class="btn btn-ghost btn-sm"
-      :class="[triggerClass, { 'btn-disabled': disabled }]"
-      :aria-disabled="disabled || undefined"
+      :class="triggerClass"
+      :disabled="disabled"
+      :popovertarget="id"
+      aria-haspopup="true"
+      :aria-expanded="expanded"
+      :style="{ anchorName: anchor }"
     >
       <span v-if="label" class="sr-only">{{ label }}</span>
       <slot name="trigger" />
+    </button>
+    <div
+      :id="id"
+      ref="panel"
+      popover="auto"
+      class="dropdown mt-1 rounded-box border border-base-300 bg-base-100 p-2 shadow-sm"
+      :class="[placement === 'end' ? 'dropdown-end' : 'dropdown-start', contentClass]"
+      :style="{ positionAnchor: anchor }"
+      @toggle="onToggle"
+      @click="onClick"
+    >
+      <slot />
     </div>
-    <slot />
   </div>
 </template>

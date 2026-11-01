@@ -27,13 +27,13 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <AppDropdown class="min-w-0" :open="open" trigger-class="max-w-full min-w-0 flex-nowrap gap-1 sm:gap-2">
+  <AppDropdown class="min-w-0" :open="open" content-class="w-60" trigger-class="max-w-full min-w-0 flex-nowrap gap-1 sm:gap-2">
     <template #trigger>
       <Icon v-if="icon" :name="icon" size="16" class="shrink-0 max-sm:hidden" />
       <span class="min-w-0 truncate sm:max-w-32" :class="{ 'text-base-content/70': placeholder }">{{ label }}</span>
       <Icon name="lucide:chevron-down" size="14" class="shrink-0" />
     </template>
-    <ul tabindex="0" class="dropdown-content menu z-50 mt-1 w-60 rounded-box max-sm:fixed max-sm:inset-x-2 max-sm:top-full max-sm:w-auto border border-base-300 bg-base-100 p-2 shadow">
+    <ul class="menu w-full p-0">
       <li v-for="item in items" :key="item.key">
         <div class="flex items-center gap-1 rounded-box" :class="{ 'menu-active': item.active }">
           <button type="button" class="min-w-0 flex-1 truncate text-left" @click="emit('select', item.key)">
@@ -42,11 +42,12 @@ const emit = defineEmits<{
           <button
             type="button"
             class="shrink-0 rounded p-0.5 hover:bg-base-200"
+            data-keep-open
             :aria-label="item.pinned ? unpinLabel : pinLabel"
             :title="item.pinned ? unpinLabel : pinLabel"
             @click="emit('pin', item.key)"
           >
-            <Icon name="lucide:star" size="14" :class="item.pinned ? 'text-amber-400 [&_path]:fill-amber-400' : 'text-base-content/70'" />
+            <Icon name="lucide:star" size="14" :class="item.pinned ? 'text-warning [&_path]:fill-current' : 'text-base-content/70'" />
           </button>
         </div>
       </li>

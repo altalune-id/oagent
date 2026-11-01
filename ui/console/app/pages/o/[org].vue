@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import AppShell from '#base/components/ui/AppShell.vue';
 import AgentSidebar from '~/components/agent/AgentSidebar.vue';
 import AppSidebar from '~/components/layout/AppSidebar.vue';
-import SettingsSidebar from '~/components/org/SettingsSidebar.vue';
 import ProjectSidebar from '~/components/project/ProjectSidebar.vue';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
@@ -14,7 +14,6 @@ const { t } = useI18n();
 const orgs = useOrgsStore();
 const projects = useProjectsStore();
 const ui = useUIStore();
-const { appVersion } = useRuntimeConfig().public;
 await orgs.ensureLoaded();
 
 if (orgs.error) {
@@ -29,7 +28,6 @@ if (!org.value) {
 
 const projectSlug = computed(() => route.params.project as string | undefined);
 const agentSlug = computed(() => route.params.agent as string | undefined);
-const inSettings = computed(() => route.path.startsWith(`/o/${route.params.org}/settings`));
 
 watch(() => route.fullPath, () => {
   ui.navOpen = false;
@@ -39,26 +37,14 @@ await projects.ensureLoaded(org.value.id);
 </script>
 
 <template>
-  <div class="flex flex-1">
-    <div v-if="ui.navOpen" class="fixed inset-x-0 top-14 bottom-0 z-40 bg-black/40 md:hidden" @click="ui.navOpen = false" />
-    <div
-      class="z-40"
-      :class="ui.navOpen
-        ? 'fixed top-14 bottom-0 left-0 flex flex-col overflow-y-auto bg-base-100 max-md:[&_[data-sidebar-footer]]:hidden shadow-xl md:static md:z-auto md:flex-row md:overflow-visible md:bg-transparent md:shadow-none'
-        : 'hidden md:flex md:flex-row'"
-    >
-      <AgentSidebar v-if="agentSlug" />
-      <ProjectSidebar v-else-if="projectSlug" />
-      <template v-else>
-        <AppSidebar />
-        <SettingsSidebar v-if="inSettings" />
-      </template>
-      <div v-if="appVersion" class="flex flex-1 items-end border-r border-base-300 bg-base-200/40 px-4 py-3 text-xs text-base-content/70 md:hidden">
-        OAgent v{{ appVersion }}
-      </div>
-    </div>
+  <AppShell v-model:open="ui.navOpen" :close-label="t('nav.close_menu')">
     <main class="min-w-0 flex-1 p-4 sm:p-6">
       <NuxtPage />
     </main>
-  </div>
+    <template #sidebar>
+      <AgentSidebar v-if="agentSlug" />
+      <ProjectSidebar v-else-if="projectSlug" />
+      <AppSidebar v-else />
+    </template>
+  </AppShell>
 </template>

@@ -4,8 +4,41 @@ import type { ShownError } from '../../lib/apperror/message';
 export interface NavItem {
   key: string;
   label: string;
+  to: string;
   icon?: string;
   active?: boolean;
+  badge?: string | number;
+}
+
+export interface Crumb {
+  label: string;
+  to?: string;
+}
+
+export interface Column {
+  key: string;
+  label: string;
+  align?: 'start' | 'end';
+}
+
+export interface KeyValueItem {
+  label: string;
+  value?: string;
+  mono?: boolean;
+  copy?: boolean;
+}
+
+export interface SecretRevealLabels {
+  once: string;
+  copy: string;
+  copyEnv: string;
+  confirm: string;
+  missing: string;
+}
+
+export interface NavGroup {
+  label?: string;
+  items: NavItem[];
 }
 
 export interface EntityItem {

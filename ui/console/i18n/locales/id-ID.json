@@ -215,5 +215,15 @@
   "apikeys.select_projects": "Hanya proyek tertentu",
   "apikeys.scopes_help": "Pilih hanya yang dibutuhkan skrip atau klien. Anda hanya dapat memberikan akses yang diizinkan peran Anda.",
   "settings.read_only": "Hanya pemilik organisasi yang dapat mengubah pengaturan ini.",
-  "project.read_only": "Hanya pemilik dan admin organisasi yang dapat mengubah pengaturan ini."
+  "project.read_only": "Hanya pemilik dan admin organisasi yang dapat mengubah pengaturan ini.",
+  "nav.close_menu": "Tutup menu",
+  "agent.configure": "Konfigurasi",
+  "agent.runs": "Eksekusi",
+  "error.page_not_found": "Halaman tidak ditemukan",
+  "error.page_not_found_body": "Tautan mungkin sudah lama, atau halaman telah dipindahkan.",
+  "error.page_forbidden": "Anda tidak punya akses",
+  "error.page_forbidden_body": "Minta akses kepada pemilik organisasi ini.",
+  "error.page_failed": "Halaman ini tidak dapat dimuat",
+  "error.page_failed_body": "Coba lagi sebentar lagi.",
+  "error.go_orgs": "Ke organisasi Anda"
 }

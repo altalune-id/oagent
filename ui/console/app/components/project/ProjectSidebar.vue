@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import type { NavItem } from '#base/components/ui/types';
+import type { NavGroup } from '#base/components/ui/types';
 import SidebarNav from '#base/components/ui/SidebarNav.vue';
+import OrgSelector from '~/components/org/OrgSelector.vue';
+import ProjectSelector from '~/components/project/ProjectSelector.vue';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 
@@ -11,36 +13,31 @@ const orgs = useOrgsStore();
 const projects = useProjectsStore();
 
 const org = computed(() => orgs.bySlug(route.params.org as string));
-const projectSlug = computed(() => route.params.project as string);
-const project = computed(() => projects.items.find(p => p.orgId === org.value?.id && p.slug === projectSlug.value));
-const base = computed(() => `/o/${route.params.org}/projects/${projectSlug.value}`);
+const project = computed(() => projects.items.find(p => p.orgId === org.value?.id && p.slug === route.params.project));
+const base = computed(() => `/o/${route.params.org}/projects/${route.params.project}`);
 
-const items = computed<NavItem[]>(() => [
-  { key: 'overview', label: t('nav.overview'), icon: 'lucide:layout-dashboard', active: route.path === base.value },
-  { key: 'agents', label: t('nav.agents'), icon: 'lucide:bot', active: route.path === `${base.value}/agents` },
-  { key: 'webhooks', label: t('webhooks.title'), icon: 'lucide:webhook', active: route.path.startsWith(`${base.value}/webhooks`) },
-  { key: 'settings', label: t('nav.settings'), icon: 'lucide:settings', active: route.path.startsWith(`${base.value}/settings`) },
+const groups = computed<NavGroup[]>(() => [
+  {
+    items: [
+      { key: 'overview', label: t('nav.overview'), to: base.value, icon: 'lucide:layout-dashboard', active: route.path === base.value },
+      { key: 'agents', label: t('nav.agents'), to: `${base.value}/agents`, icon: 'lucide:bot', active: route.path.startsWith(`${base.value}/agents`) },
+      { key: 'webhooks', label: t('webhooks.title'), to: `${base.value}/webhooks`, icon: 'lucide:webhook', active: route.path.startsWith(`${base.value}/webhooks`) },
+      { key: 'settings', label: t('nav.settings'), to: `${base.value}/settings`, icon: 'lucide:settings', active: route.path.startsWith(`${base.value}/settings`) },
+    ],
+  },
 ]);
-
-const targets: Record<string, string> = {
-  overview: '',
-  agents: '/agents',
-  webhooks: '/webhooks',
-  settings: '/settings',
-};
-
-function onSelect(key: string) {
-  return navigateTo(`${base.value}${targets[key] ?? ''}`);
-}
 </script>
 
 <template>
-  <SidebarNav :label="project?.name ?? ''" :items="items" :version="appVersion" @select="onSelect">
-    <template #back>
-      <NuxtLink :to="`/o/${route.params.org}/projects`" class="inline-flex items-center gap-1 text-xs text-base-content/70 transition-colors hover:text-base-content">
-        <Icon name="lucide:chevron-left" size="14" />
-        {{ t('project.all') }}
-      </NuxtLink>
+  <SidebarNav :label="project?.name ?? ''" :groups="groups">
+    <template #top>
+      <div class="flex flex-col items-start gap-1">
+        <OrgSelector />
+        <ProjectSelector />
+      </div>
+    </template>
+    <template v-if="appVersion" #footer>
+      OAgent v{{ appVersion }}
     </template>
   </SidebarNav>
 </template>

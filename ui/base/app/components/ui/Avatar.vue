@@ -15,12 +15,14 @@ const box = computed(() => ({ sm: 'size-7 text-xs', md: 'size-10 text-sm', lg: '
 </script>
 
 <template>
-  <img v-if="view.kind === 'image'" :src="view.src" :alt="view.alt" class="shrink-0 rounded-full object-cover" :class="box">
-  <span
-    v-else
-    role="img"
-    :aria-label="view.label"
-    class="grid shrink-0 place-items-center rounded-full font-semibold"
-    :class="[box, view.color]"
-  >{{ view.text }}</span>
+  <div v-if="view.kind === 'image'" class="avatar shrink-0">
+    <div class="rounded-full" :class="box">
+      <img :src="view.src" :alt="view.alt">
+    </div>
+  </div>
+  <div v-else class="avatar avatar-placeholder shrink-0">
+    <div role="img" :aria-label="view.label" class="rounded-full font-semibold" :class="[box, view.color]">
+      <span aria-hidden="true">{{ view.text }}</span>
+    </div>
+  </div>
 </template>

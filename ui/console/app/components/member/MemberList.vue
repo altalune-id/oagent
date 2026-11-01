@@ -184,11 +184,11 @@ function onRole(m: MemberListRow, event: Event) {
                     {{ labels.leave }}
                   </button>
                 </div>
-                <AppDropdown class="dropdown-left sm:hidden" :label="labels.actions.replace('{name}', displayName(m))" :disabled="busy" trigger-class="btn-square">
+                <AppDropdown class="sm:hidden" placement="end" content-class="w-52 p-1" :label="labels.actions.replace('{name}', displayName(m))" :disabled="busy" trigger-class="btn-square">
                   <template #trigger>
                     <Icon name="lucide:ellipsis" size="16" />
                   </template>
-                  <ul tabindex="-1" class="dropdown-content menu z-10 w-52 rounded-box border border-base-300 bg-base-100 p-1 shadow">
+                  <ul class="menu w-full p-0">
                     <li v-if="m.removable">
                       <button type="button" @click="emit('remove', m.userId)">
                         <Icon name="lucide:user-minus" size="14" class="text-error" />

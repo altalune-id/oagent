@@ -14,7 +14,7 @@ function accessibleText(el: Element): string {
 
 describe('userMenu', () => {
   it('names its trigger "Signed in as" plus the visible name, without the avatar initials', () => {
-    const trigger = mount(UserMenu, { props: { me, logoutUrl: '/logout' } }).get('[role="button"]');
+    const trigger = mount(UserMenu, { props: { me, logoutUrl: '/logout' } }).get('button[popovertarget]');
     expect(trigger.attributes('aria-haspopup')).toBe('true');
     expect(trigger.attributes('aria-label')).toBeUndefined();
     expect(accessibleText(trigger.element).replace(/\s+/g, ' ').trim()).toBe('Signed in as Rina Admin');
@@ -32,6 +32,6 @@ describe('userMenu', () => {
   });
 
   it('shows nothing without a signed-in person', () => {
-    expect(mount(UserMenu, { props: { me: null, logoutUrl: '/logout' } }).find('[role="button"]').exists()).toBe(false);
+    expect(mount(UserMenu, { props: { me: null, logoutUrl: '/logout' } }).find('button[popovertarget]').exists()).toBe(false);
   });
 });

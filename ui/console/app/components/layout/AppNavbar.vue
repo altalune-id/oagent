@@ -4,8 +4,6 @@ import ThemeSwitcher from '#base/components/layout/ThemeSwitcher.vue';
 import NavbarShell from '#base/components/ui/NavbarShell.vue';
 import ThemeFamilySwitcher from '~/components/layout/ThemeFamilySwitcher.vue';
 import UserMenu from '~/components/layout/UserMenu.vue';
-import OrgSelector from '~/components/org/OrgSelector.vue';
-import ProjectSelector from '~/components/project/ProjectSelector.vue';
 import { siblingURL, staticURL } from '~/lib/auth/urls';
 import { useAuthStore } from '~/stores/auth';
 import { useUIStore } from '~/stores/ui';
@@ -39,6 +37,8 @@ onMounted(() => auth.load());
         type="button"
         class="btn btn-ghost btn-sm btn-square md:hidden"
         :aria-label="t('nav.menu')"
+        aria-controls="app-sidebar"
+        :aria-expanded="ui.navOpen"
         @click="ui.navOpen = !ui.navOpen"
       >
         <Icon name="lucide:menu" size="18" />
@@ -48,13 +48,11 @@ onMounted(() => auth.load());
         OAgent
       </NuxtLink>
     </template>
-    <OrgSelector @focusin="ui.navOpen = false" />
-    <ProjectSelector @focusin="ui.navOpen = false" />
     <template #end>
-      <LanguageSwitcher @focusin="ui.navOpen = false" />
-      <ThemeFamilySwitcher @focusin="ui.navOpen = false" />
-      <ThemeSwitcher @focusin="ui.navOpen = false" />
-      <UserMenu :me="auth.me" :logout-url="logoutUrl" :labels="userLabels" @focusin="ui.navOpen = false" />
+      <LanguageSwitcher />
+      <ThemeFamilySwitcher />
+      <ThemeSwitcher />
+      <UserMenu :me="auth.me" :logout-url="logoutUrl" :labels="userLabels" />
     </template>
   </NavbarShell>
 </template>

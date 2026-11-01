@@ -215,5 +215,15 @@
   "apikeys.select_projects": "Only select projects",
   "apikeys.scopes_help": "Pick only what the script or client needs. You can grant only what your role allows.",
   "settings.read_only": "Only org owners can change these settings.",
-  "project.read_only": "Only org owners and admins can change these settings."
+  "project.read_only": "Only org owners and admins can change these settings.",
+  "nav.close_menu": "Close menu",
+  "agent.configure": "Configure",
+  "agent.runs": "Runs",
+  "error.page_not_found": "Page not found",
+  "error.page_not_found_body": "The link may be old, or the page was moved.",
+  "error.page_forbidden": "You do not have access",
+  "error.page_forbidden_body": "Ask an owner of this organization for access.",
+  "error.page_failed": "Could not load this page",
+  "error.page_failed_body": "Try again in a moment.",
+  "error.go_orgs": "Go to your organizations"
 }

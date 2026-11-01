@@ -1,39 +1,43 @@
 <script setup lang="ts">
-import type { NavItem } from '#base/components/ui/types';
+import type { NavGroup } from '#base/components/ui/types';
 import SidebarNav from '#base/components/ui/SidebarNav.vue';
+import OrgSelector from '~/components/org/OrgSelector.vue';
 import { useOrgsStore } from '~/stores/orgs';
 
 const route = useRoute();
 const { t } = useI18n();
 const { appVersion } = useRuntimeConfig().public;
 const orgs = useOrgsStore();
-const org = computed(() => route.params.org as string);
-const label = computed(() => orgs.bySlug(org.value)?.name ?? '');
+const base = computed(() => `/o/${route.params.org}`);
+const settings = computed(() => `${base.value}/settings`);
+const label = computed(() => orgs.bySlug(route.params.org as string)?.name ?? '');
 
-const targets: Record<string, string> = {
-  overview: '',
-  projects: '/projects',
-  settings: '/settings',
-};
-
-const items = computed<NavItem[]>(() => [
-  { key: 'overview', label: t('nav.overview'), icon: 'lucide:layout-dashboard', active: route.path === `/o/${org.value}` },
-  { key: 'projects', label: t('nav.projects'), icon: 'lucide:folder', active: route.path.startsWith(`/o/${org.value}/projects`) },
-  { key: 'settings', label: t('nav.settings'), icon: 'lucide:settings', active: route.path.startsWith(`/o/${org.value}/settings`) },
+const groups = computed<NavGroup[]>(() => [
+  {
+    items: [
+      { key: 'overview', label: t('nav.overview'), to: base.value, icon: 'lucide:layout-dashboard', active: route.path === base.value },
+      { key: 'projects', label: t('nav.projects'), to: `${base.value}/projects`, icon: 'lucide:folder', active: route.path.startsWith(`${base.value}/projects`) },
+    ],
+  },
+  {
+    label: t('settings.title'),
+    items: [
+      { key: 'general', label: t('nav.general'), to: settings.value, icon: 'lucide:sliders-horizontal', active: route.path === settings.value },
+      { key: 'members', label: t('members.title'), to: `${settings.value}/members`, icon: 'lucide:users', active: route.path.startsWith(`${settings.value}/members`) },
+      { key: 'api-keys', label: t('apikeys.title'), to: `${settings.value}/api-keys`, icon: 'lucide:key-round', active: route.path.startsWith(`${settings.value}/api-keys`) },
+      { key: 'personal-keys', label: t('apikeys.personal_title'), to: `${settings.value}/personal-keys`, icon: 'lucide:user-round-key', active: route.path.startsWith(`${settings.value}/personal-keys`) },
+    ],
+  },
 ]);
-
-function onSelect(key: string) {
-  return navigateTo(`/o/${org.value}${targets[key] ?? ''}`);
-}
 </script>
 
 <template>
-  <SidebarNav :label="label" :items="items" :version="appVersion" @select="onSelect">
-    <template #back>
-      <NuxtLink to="/orgs" class="inline-flex items-center gap-1 text-xs text-base-content/70 transition-colors hover:text-base-content">
-        <Icon name="lucide:chevron-left" size="14" />
-        {{ t('org.all') }}
-      </NuxtLink>
+  <SidebarNav :label="label" :groups="groups">
+    <template #top>
+      <OrgSelector />
+    </template>
+    <template v-if="appVersion" #footer>
+      OAgent v{{ appVersion }}
     </template>
   </SidebarNav>
 </template>

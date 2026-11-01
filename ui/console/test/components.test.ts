@@ -65,9 +65,9 @@ describe('org fields', () => {
 describe('member list', () => {
   it('collapses row actions into a menu below sm, named for the member', () => {
     const w = mount(MemberList, { props: { rows: [{ userId: 'F5pLm2XwQ8kRt3VnZ7bYc', email: 'budi@acme.test', name: 'Budi', role: 'member', initials: 'B', self: false, roles: ['member'], removable: true }] } });
-    const menu = w.get('.dropdown');
-    expect(menu.classes()).toEqual(expect.arrayContaining(['dropdown-left', 'sm:hidden']));
-    expect(menu.get('[role="button"] .sr-only').text()).toBe('Actions for Budi');
+    const menu = w.get('.sm\\:hidden:has(button[popovertarget])');
+    expect(menu.get('[popover]').classes()).toContain('dropdown-end');
+    expect(menu.get('button[popovertarget] .sr-only').text()).toBe('Actions for Budi');
     expect(menu.find('[data-icon="lucide:ellipsis"]').exists()).toBe(true);
     expect(w.findAll('.max-sm\\:hidden button').map(b => b.text())).toContain('Remove');
   });

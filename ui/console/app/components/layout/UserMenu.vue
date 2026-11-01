@@ -44,14 +44,14 @@ const sourceBadge = computed(() => {
 </script>
 
 <template>
-  <AppDropdown v-if="me" class="dropdown-end" :label="labels.signedInAs" trigger-class="gap-2 px-1.5">
+  <AppDropdown v-if="me" placement="end" content-class="w-64 p-3" :label="labels.signedInAs" trigger-class="gap-2 px-1.5">
     <template #trigger>
       <span aria-hidden="true">
         <Avatar :id="me.userId ?? ''" :name="me.name || display" :email="me.email" :avatar-url="me.avatarUrl" size="sm" />
       </span>
       <span class="max-w-40 truncate max-sm:sr-only">{{ display }}</span>
     </template>
-    <div tabindex="0" class="dropdown-content z-30 mt-2 w-64 rounded-box border border-base-300 bg-base-100 p-3 shadow-lg">
+    <div>
       <p class="text-xs text-base-content/70">
         {{ labels.signedInAs }}
       </p>
