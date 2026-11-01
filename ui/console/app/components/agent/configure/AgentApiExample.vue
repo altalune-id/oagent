@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentConfig } from '~/preview/samples';
+import type { AgentConfig } from './agentConfig';
 import CopyButton from '#base/components/ui/CopyButton.vue';
 import Section from '#base/components/ui/Section.vue';
 

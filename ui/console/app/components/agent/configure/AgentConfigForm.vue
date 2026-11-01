@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { AgentConfig, ToolInfo } from '~/preview/samples';
+import type { AgentConfig } from './agentConfig';
+import type { ToolInfo } from '~/preview/samples';
 import FormField from '#base/components/ui/FormField.vue';
 import Section from '#base/components/ui/Section.vue';
 

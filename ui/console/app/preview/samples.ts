@@ -1,18 +1,4 @@
-// NOTE: the only home of sample data; replace each export with the agent.v1 and runtime RPCs as they land.
-
-export interface AgentToolConfig {
-  name: string;
-  requireApproval: boolean;
-}
-
-export interface AgentConfig {
-  instructions: string;
-  model: string;
-  temperature: number;
-  maxSteps: number;
-  maxCostCents: number;
-  tools: AgentToolConfig[];
-}
+// NOTE: the only home of sample data; replace each export with the runtime and tool registry RPCs as they land.
 
 export interface ToolInfo {
   name: string;
@@ -69,21 +55,6 @@ export const sampleTools: ToolInfo[] = [
   { name: 'billing.refunds.create', description: 'Create a refund' },
   { name: 'knowledge.search', description: 'Search support articles' },
 ];
-
-export function sampleConfig(): AgentConfig {
-  return {
-    instructions: 'You triage refund requests for Acme support.\nLook up the order and its charges first. Refund duplicate charges up to the order total.\nAsk for approval before you create a refund. Never promise a date.',
-    model: 'large-2',
-    temperature: 0.2,
-    maxSteps: 12,
-    maxCostCents: 25,
-    tools: [
-      { name: 'orders.lookup', requireApproval: false },
-      { name: 'billing.charges.list', requireApproval: false },
-      { name: 'billing.refunds.create', requireApproval: true },
-    ],
-  };
-}
 
 function daysAgo(days: number): Date {
   return new Date(Date.now() - days * 86_400_000);

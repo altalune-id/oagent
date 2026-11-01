@@ -31,13 +31,14 @@ beforeEach(() => {
 });
 
 describe('agents page', () => {
-  it('lists real agents in a captioned table with their description and no sample badge', async () => {
+  it('lists real agents in a captioned table with their description and version, and no Preview badge', async () => {
     inProject('/agents', [support], 'agent:read');
     const w = await mountPage(AgentsPage);
     expect(w.get('h1').text()).toBe('nav.agents');
     expect(w.get('caption').text()).toBe('nav.agents');
     expect(w.text()).toContain('Answers tickets');
-    expect(w.find('.badge').exists()).toBe(false);
+    expect(w.find('h1 + .badge').exists()).toBe(false);
+    expect(w.get('tbody .badge').text()).toBe('agent.not_published');
   });
 
   it('starts empty with New agent, and shows sample agents only on request, marked Preview', async () => {
@@ -80,23 +81,57 @@ describe('deleting an agent', () => {
   });
 });
 
+const live = { instructions: 'Help.', model: 'large-2', temperature: 0.2, maxSteps: 12, maxCostCents: 10, tools: [{ name: 'orders.lookup', requireApproval: false }] };
+
+function withDraft(publishedVersion = 12, extra: Record<string, unknown> = {}) {
+  const agent = { ...support, draft: { ...live, instructions: 'Help more.' }, publishedVersion, unpublishedChanges: true, ...extra };
+  const client = {
+    listAgents: vi.fn().mockResolvedValue({ agents: [support] }),
+    getAgent: vi.fn().mockResolvedValue({ agent }),
+    listAgentVersions: vi.fn().mockResolvedValue({ versions: publishedVersion ? [{ version: publishedVersion, config: live }] : [] }),
+    updateAgentDraft: vi.fn().mockImplementation(async ({ config }) => ({ agent: { ...agent, draft: config } })),
+    publishAgent: vi.fn().mockResolvedValue({ agent: { ...agent, publishedVersion: publishedVersion + 1, unpublishedChanges: false }, version: { version: publishedVersion + 1, config: agent.draft }, created: true }),
+  };
+  setClient('$agentClient', client);
+  return client;
+}
+
 describe('configure page', () => {
-  it('shows the agent under a Preview badge, with Publish disabled and the reason linked', async () => {
+  it('loads the draft, says which version is live and offers Publish', async () => {
     inProject('/agents/support', [support], 'agent:read', 'agent:write');
+    withDraft();
     const w = await mountPage(ConfigurePage);
     expect(w.get('h1').text()).toBe('Support');
-    expect(w.get('.badge').text()).toBe('preview.badge');
+    expect(w.get('textarea').element.value).toBe('Help more.');
+    expect(w.get('[role="status"]').text()).toContain('configure.live_version|{"n":12}');
     const publish = w.findAll('button').find(b => b.text() === 'configure.publish')!;
-    expect(publish.attributes('disabled')).toBeDefined();
-    expect(w.get(`#${publish.attributes('aria-describedby')}`).text()).toBe('configure.not_saved');
+    expect(publish.attributes('disabled')).toBeUndefined();
     expect(w.findAll('nav[aria-label="common.breadcrumb"] li').map(li => li.text())).toEqual(['nav.agents', 'Support']);
   });
 
-  it('edits the draft locally and keeps the API example in step with the form', async () => {
+  it('shows the diff before publishing and publishes the next version with a toast', async () => {
     inProject('/agents/support', [support], 'agent:read', 'agent:write');
+    const client = withDraft();
+    const w = await mountPage(ConfigurePage, { attachTo: document.body });
+    await w.findAll('button').find(b => b.text() === 'configure.publish')!.trigger('click');
+    const dialog = [...document.querySelectorAll('dialog')].find(d => d.open)!;
+    expect(dialog.textContent).toContain('configure.publish_body|{"n":13,"current":12}');
+    expect(dialog.textContent).toContain('configure.change_instructions');
+    [...dialog.querySelectorAll('button')].find(b => b.textContent?.includes('configure.publish_n'))!.click();
+    await flushPromises();
+    expect(client.publishAgent).toHaveBeenCalledWith({ id: support.id });
+    expect(useToast().toasts.at(-1)).toMatchObject({ kind: 'success', text: 'configure.published|{"n":13}' });
+    w.unmount();
+  });
+
+  it('edits the draft and keeps the API example in step with the form', async () => {
+    inProject('/agents/support', [support], 'agent:read', 'agent:write');
+    withDraft(0);
     const w = await mountPage(ConfigurePage);
+    expect(w.get('[role="status"]').text()).toContain('configure.never_published');
     await w.get('select').setValue('small-3');
     expect(w.get('pre').text()).toContain('"model":"small-3"');
+    expect(w.get('[role="status"]').text()).toContain('configure.unsaved');
     const toggles = w.findAll('input.toggle');
     await toggles[3]!.setValue(true);
     expect(w.get('pre').text()).toContain('knowledge.search');
@@ -108,6 +143,15 @@ describe('configure page', () => {
     expect(w.get('pre').text()).toContain('"maxCostCents":50');
     await w.get('input[value="mcp"]').setValue(true);
     expect(w.get('pre').text()).toContain('"tool": "agent_update_draft"');
+  });
+
+  it('is read-only without agent:write, and lists a draft tool missing from the catalogue', async () => {
+    inProject('/agents/support', [support], 'agent:read');
+    withDraft(12, { draft: { ...live, tools: [{ name: 'custom.tool', requireApproval: true }] } });
+    const w = await mountPage(ConfigurePage);
+    expect(w.findAll('button').some(b => b.text() === 'configure.publish')).toBe(false);
+    expect(w.get('textarea').attributes('disabled')).toBeDefined();
+    expect(w.text()).toContain('custom.tool');
   });
 
   it('is a 404 for an unknown agent', async () => {

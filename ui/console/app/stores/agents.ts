@@ -1,4 +1,5 @@
 import type { ShownError } from '#base/lib/apperror/message';
+import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
 
 export interface Agent {
@@ -7,6 +8,9 @@ export interface Agent {
   slug: string;
   name: string;
   description: string;
+  publishedVersion?: number;
+  unpublishedChanges?: boolean;
+  updatedAt?: Date;
 }
 
 export const useAgentsStore = defineStore('agents', () => {
@@ -48,7 +52,16 @@ export const useAgentsStore = defineStore('agents', () => {
       if (mine !== latest) {
         return;
       }
-      items.value = (res.agents ?? []).map(a => ({ id: a.id, projectId: a.projectId, slug: a.slug, name: a.name, description: a.description }));
+      items.value = (res.agents ?? []).map(a => ({
+        id: a.id,
+        projectId: a.projectId,
+        slug: a.slug,
+        name: a.name,
+        description: a.description,
+        publishedVersion: a.publishedVersion,
+        unpublishedChanges: a.unpublishedChanges,
+        updatedAt: a.draftUpdatedAt ? timestampDate(a.draftUpdatedAt) : a.updatedAt ? timestampDate(a.updatedAt) : undefined,
+      }));
       loadedFor = projectId;
     } catch (e) {
       if (mine === latest) {

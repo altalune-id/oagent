@@ -49,6 +49,8 @@ const samples = sampleAgents();
 
 const columns = computed<Column[]>(() => [
   { key: 'name', label: t('agent.col_agent') },
+  { key: 'publishedVersion', label: t('agent.col_version') },
+  { key: 'updatedAt', label: t('agent.col_updated') },
   { key: 'id', label: t('common.id') },
   { key: 'actions', label: t('agent.col_actions') },
 ]);
@@ -139,6 +141,17 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
           {{ row.name }}
         </NuxtLink>
         <span v-if="row.description" class="block text-xs text-base-content/70">{{ row.description }}</span>
+      </template>
+      <template #cell-publishedVersion="{ row }">
+        <span class="inline-flex items-center gap-2 whitespace-nowrap">
+          <template v-if="row.publishedVersion">v{{ row.publishedVersion }}</template>
+          <span v-if="!row.publishedVersion" class="badge badge-ghost badge-sm">{{ t('agent.not_published') }}</span>
+          <span v-else-if="row.unpublishedChanges" class="badge badge-warning badge-soft badge-sm">{{ t('agent.draft_changes') }}</span>
+          <span v-else class="badge badge-success badge-soft badge-sm">{{ t('agent.live') }}</span>
+        </span>
+      </template>
+      <template #cell-updatedAt="{ row }">
+        <time v-if="row.updatedAt" :datetime="row.updatedAt.toISOString()" class="whitespace-nowrap">{{ when(row.updatedAt) }}</time>
       </template>
       <template #cell-id="{ row }">
         <span class="inline-flex items-center gap-1">
