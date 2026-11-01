@@ -153,7 +153,7 @@ func (s *Service) UpdateDraft(ctx context.Context, id uuid.UUID, cfg Config) (*A
 	if err := a.SetDraft(cfg, time.Now().UTC()); err != nil {
 		return nil, err
 	}
-	if err := s.store.Save(ctx, a); err != nil {
+	if err := s.store.SaveDraft(ctx, a); err != nil {
 		return nil, s.errOrReport(ctx, "agent: update draft", err)
 	}
 	return a, nil
@@ -177,7 +177,7 @@ func (s *Service) Publish(ctx context.Context, id, by uuid.UUID) (a *Agent, v *V
 				return err
 			}
 		}
-		return s.store.Save(ctx, a)
+		return s.store.MarkPublished(ctx, a)
 	})
 	if err != nil {
 		return nil, nil, false, s.errOrReport(ctx, "agent: publish", err)

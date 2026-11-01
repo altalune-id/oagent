@@ -21,6 +21,12 @@ type AgentStore struct {
 	Published []*agent.Version
 }
 
+// SaveDraft implements agent.Store like Save.
+func (f *AgentStore) SaveDraft(ctx context.Context, a *agent.Agent) error { return f.Save(ctx, a) }
+
+// MarkPublished implements agent.Store like Save.
+func (f *AgentStore) MarkPublished(ctx context.Context, a *agent.Agent) error { return f.Save(ctx, a) }
+
 // LockForPublish implements agent.Store like ByID.
 func (f *AgentStore) LockForPublish(ctx context.Context, id uuid.UUID) (*agent.Agent, error) {
 	return f.ByID(ctx, id)

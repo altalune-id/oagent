@@ -101,7 +101,7 @@ func (c Config) Validate() error {
 		return invalid("model", apperror.FieldTooLong)
 	case !modelRe.MatchString(c.Model):
 		return invalid("model", apperror.FieldInvalidFormat)
-	case c.Temperature < 0 || c.Temperature > maxTemperature:
+	case !(c.Temperature >= 0 && c.Temperature <= maxTemperature):
 		return invalid("temperature", apperror.FieldInvalid)
 	case c.MaxSteps < 0 || c.MaxSteps > maxSteps:
 		return invalid("max_steps", apperror.FieldInvalid)
@@ -143,7 +143,7 @@ func (a *Agent) Unpublished() bool {
 	return a.DraftUpdatedAt != nil && (a.PublishedAt == nil || a.DraftUpdatedAt.After(*a.PublishedAt))
 }
 
-// Publish makes the draft the next version at now; a draft equal to latest returns latest and created false.
+// Publish makes the draft the version after latest at now; a draft equal to latest returns latest and created false.
 func (a *Agent) Publish(latest *Version, by uuid.UUID, now time.Time) (v *Version, created bool, err error) {
 	if latest != nil && latest.Config.Equal(a.Draft) {
 		a.PublishedAt = &now
@@ -153,9 +153,13 @@ func (a *Agent) Publish(latest *Version, by uuid.UUID, now time.Time) (v *Versio
 	if err != nil {
 		return nil, false, err
 	}
+	next := int32(1)
+	if latest != nil {
+		next = latest.Version + 1
+	}
 	v = &Version{
 		ID: uuid.New(), PublicID: publicID, OrgID: a.OrgID, ProjectID: a.ProjectID, AgentID: a.ID,
-		Version: a.PublishedVersion + 1, Config: a.Draft, CreatedAt: now,
+		Version: next, Config: a.Draft, CreatedAt: now,
 	}
 	if by != uuid.Nil {
 		v.CreatedBy = uuid.NullUUID{UUID: by, Valid: true}

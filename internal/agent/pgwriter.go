@@ -15,7 +15,7 @@ import (
 	"altalune.id/oagent/schema/entity"
 )
 
-// Save upserts an agent by id with its draft and publish state, bumping updated_at.
+// Save inserts an agent or updates its slug, name and description, bumping updated_at; draft and publish state have their own writes.
 func (s *postgresStore) Save(ctx context.Context, a *Agent) error {
 	now := time.Now().UTC()
 	draft, err := jsonb(a.Draft)
@@ -33,10 +33,6 @@ func (s *postgresStore) Save(ctx context.Context, a *Agent) error {
 			s.agents.Name.SET(postgres.String(a.Name)),
 			s.agents.Description.SET(postgres.String(a.Description)),
 			s.agents.UpdatedAt.SET(postgres.TimestampzT(now)),
-			s.agents.DraftConfig.SET(draft),
-			s.agents.DraftUpdatedAt.SET(timeExpr(a.DraftUpdatedAt)),
-			s.agents.PublishedVersion.SET(postgres.Int32(a.PublishedVersion)),
-			s.agents.PublishedAt.SET(timeExpr(a.PublishedAt)),
 		))
 	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { _, err := stmt.ExecContext(ctx, q); return err }); err != nil {
 		if db.IsUniqueViolation(err) {
@@ -98,6 +94,39 @@ func (s *postgresStore) InsertVersion(ctx context.Context, v *Version) error {
 	return nil
 }
 
+// SaveDraft writes the draft config and its edit time only, so a concurrent publish keeps its version.
+func (s *postgresStore) SaveDraft(ctx context.Context, a *Agent) error {
+	draft, err := jsonb(a.Draft)
+	if err != nil {
+		return fmt.Errorf("agent.postgres: SaveDraft: %w", err)
+	}
+	t := s.agents
+	return s.update(ctx, "SaveDraft", a.ID, t.UPDATE(t.DraftConfig, t.DraftUpdatedAt, t.UpdatedAt).
+		SET(draft, timeExpr(a.DraftUpdatedAt), postgres.TimestampzT(time.Now().UTC())))
+}
+
+// MarkPublished writes the published version and time only.
+func (s *postgresStore) MarkPublished(ctx context.Context, a *Agent) error {
+	t := s.agents
+	return s.update(ctx, "MarkPublished", a.ID, t.UPDATE(t.PublishedVersion, t.PublishedAt, t.UpdatedAt).
+		SET(postgres.Int32(a.PublishedVersion), timeExpr(a.PublishedAt), postgres.TimestampzT(time.Now().UTC())))
+}
+
+func (s *postgresStore) update(ctx context.Context, op string, id uuid.UUID, stmt postgres.UpdateStatement) error {
+	var res sql.Result
+	err := db.Write(ctx, s.pool, func(q qrm.DB) (err error) {
+		res, err = stmt.WHERE(s.agents.ID.EQ(postgres.UUID(id))).ExecContext(ctx, q)
+		return err
+	})
+	if err != nil {
+		return fmt.Errorf("agent.postgres: %s: %w", op, err)
+	}
+	if n, rowsErr := res.RowsAffected(); rowsErr == nil && n == 0 {
+		return &NotFoundError{ID: id.String()}
+	}
+	return nil
+}
+
 func jsonb(c Config) (postgres.StringExpression, error) {
 	raw, err := json.Marshal(c)
 	if err != nil {
@@ -108,7 +137,7 @@ func jsonb(c Config) (postgres.StringExpression, error) {
 
 func timeExpr(t *time.Time) postgres.TimestampzExpression {
 	if t == nil {
-		return postgres.TimestampzExp(postgres.NULL)
+		return entity.NullTimestampz()
 	}
 	return postgres.TimestampzT(t.UTC())
 }

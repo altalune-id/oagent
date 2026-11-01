@@ -27,6 +27,10 @@ type Reader interface {
 type Writer interface {
 	Save(ctx context.Context, a *Agent) error
 	Delete(ctx context.Context, id uuid.UUID) error
+	// SaveDraft writes only the agent's draft config and its edit time.
+	SaveDraft(ctx context.Context, a *Agent) error
+	// MarkPublished writes only the agent's published version and time.
+	MarkPublished(ctx context.Context, a *Agent) error
 	// LockForPublish loads the agent and locks its row until the unit of work on ctx ends.
 	LockForPublish(ctx context.Context, id uuid.UUID) (*Agent, error)
 	InsertVersion(ctx context.Context, v *Version) error

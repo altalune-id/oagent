@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -85,13 +86,14 @@ func TestConfig_Validate(t *testing.T) {
 		manyTools[i] = Tool{Name: "t" + strings.Repeat("x", i%10) + string(rune('a'+i%26))}
 	}
 	for field, mutate := range map[string]func(*Config){
-		"config.instructions":   func(c *Config) { c.Instructions = strings.Repeat("a", maxInstructions+1) },
-		"config.model":          func(c *Config) { c.Model = "has space" },
-		"config.temperature":    func(c *Config) { c.Temperature = 2.1 },
-		"config.max_steps":      func(c *Config) { c.MaxSteps = -1 },
-		"config.max_cost_cents": func(c *Config) { c.MaxCostCents = maxCostCents + 1 },
-		"config.tools":          func(c *Config) { c.Tools = manyTools },
-		"config.tools.name":     func(c *Config) { c.Tools = []Tool{{Name: "Bad Name"}} },
+		"config.instructions":    func(c *Config) { c.Instructions = strings.Repeat("a", maxInstructions+1) },
+		"config.model":           func(c *Config) { c.Model = "has space" },
+		"config.temperature":     func(c *Config) { c.Temperature = 2.1 },
+		"config.temperature.nan": func(c *Config) { c.Temperature = math.NaN() },
+		"config.max_steps":       func(c *Config) { c.MaxSteps = -1 },
+		"config.max_cost_cents":  func(c *Config) { c.MaxCostCents = maxCostCents + 1 },
+		"config.tools":           func(c *Config) { c.Tools = manyTools },
+		"config.tools.name":      func(c *Config) { c.Tools = []Tool{{Name: "Bad Name"}} },
 	} {
 		c := validConfig()
 		mutate(&c)
@@ -99,7 +101,7 @@ func TestConfig_Validate(t *testing.T) {
 		ae, ok := apperror.AsAppError(err)
 		require.True(t, ok, field)
 		require.Len(t, ae.Violations(), 1, field)
-		assert.Equal(t, field, ae.Violations()[0].Field)
+		assert.Equal(t, strings.TrimSuffix(field, ".nan"), ae.Violations()[0].Field)
 	}
 
 	dup := validConfig()
@@ -162,4 +164,16 @@ func TestAgent_DraftAndPublish(t *testing.T) {
 	assert.Equal(t, int32(2), v2.Version)
 	assert.False(t, v2.CreatedBy.Valid, "a key publishes as nobody")
 	assert.Equal(t, edited, v2.Config)
+}
+
+func TestAgent_PublishNumbersFromTheLatestVersion(t *testing.T) {
+	a, err := New(uuid.New(), uuid.New(), "support", "Support", "", uuid.Nil)
+	require.NoError(t, err)
+	require.NoError(t, a.SetDraft(validConfig(), time.Now()))
+	a.PublishedVersion = 1
+	latest := &Version{Version: 4, Config: Config{Model: "older"}}
+	v, created, err := a.Publish(latest, uuid.Nil, time.Now())
+	require.NoError(t, err)
+	assert.True(t, created)
+	assert.Equal(t, int32(5), v.Version, "a stale agent row never reuses a version number")
 }
