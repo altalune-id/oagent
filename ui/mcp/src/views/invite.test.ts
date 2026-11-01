@@ -33,13 +33,14 @@ describe('parseDraft', () => {
       invitedBy: 'Olga',
       expiresAt: new Date('2026-10-13T09:15:00Z'),
       consoleUrl: '',
-      canConfirm: true,
+      canConfirm: false,
     });
   });
 
-  it('reads where to send it when this caller cannot', () => {
-    const d = parseDraft({ ...result, consoleUrl: 'https://console.example.com/o/acme/members', canConfirm: false })!;
+  it('reads where to send it, and lets only a caller the server allows send here', () => {
+    const d = parseDraft({ ...result, consoleUrl: 'https://console.example.com/o/acme/members' })!;
     expect([d.consoleUrl, d.canConfirm]).toEqual(['https://console.example.com/o/acme/members', false]);
+    expect(parseDraft({ ...result, canConfirm: true })!.canConfirm).toBe(true);
   });
 
   it('reads a malformed result as no draft', () => {

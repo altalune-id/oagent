@@ -75,7 +75,7 @@ const consoleLink = { key: 'consoleUrl', label: t('mcp.invite_console'), kind: '
 
       <div v-if="elsewhere && !done" role="status" class="space-y-1 text-sm">
         <p>{{ t('mcp.invite_console') }}</p>
-        <FieldValue :field="consoleLink" :value="draft.consoleUrl" />
+        <FieldValue v-if="draft.consoleUrl" :field="consoleLink" :value="draft.consoleUrl" />
       </div>
       <p v-if="outcome?.state === 'sent'" role="status">
         {{ t('mcp.invite_sent_to', { email: outcome.email }) }}

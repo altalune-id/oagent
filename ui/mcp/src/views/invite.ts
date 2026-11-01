@@ -43,7 +43,7 @@ export function parseDraft(data: Record<string, unknown> | undefined): Draft | n
     invitedBy: String(invite?.invitedByName ?? ''),
     expiresAt: expires && !Number.isNaN(expires.getTime()) ? expires : null,
     consoleUrl: typeof data?.consoleUrl === 'string' ? data.consoleUrl : '',
-    canConfirm: data?.canConfirm !== false,
+    canConfirm: data?.canConfirm === true,
   };
 }
 
