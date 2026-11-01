@@ -118,7 +118,7 @@ export const AgentToolSchema: GenMessage<AgentTool> = /*@__PURE__*/
   messageDesc(file_agent_v1_agent, 1);
 
 /**
- * AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents).
+ * AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique.
  *
  * @generated from message agent.v1.AgentConfig
  */
@@ -149,8 +149,6 @@ export type AgentConfig = Message<"agent.v1.AgentConfig"> & {
   maxCostCents: number;
 
   /**
-   * Tool names are unique within a config.
-   *
    * @generated from field: repeated agent.v1.AgentTool tools = 6;
    */
   tools: AgentTool[];

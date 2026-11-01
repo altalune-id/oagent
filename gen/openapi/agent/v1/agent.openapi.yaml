@@ -366,10 +366,9 @@ components:
             $ref: '#/components/schemas/agent.v1.AgentTool'
           title: tools
           maxItems: 64
-          description: Tool names are unique within a config.
       title: AgentConfig
       additionalProperties: false
-      description: AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents).
+      description: AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique.
     agent.v1.AgentTool:
       type: object
       properties:

@@ -212,16 +212,15 @@ func (x *AgentTool) GetRequireApproval() bool {
 	return false
 }
 
-// AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents).
+// AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique.
 type AgentConfig struct {
-	state        protoimpl.MessageState `protogen:"open.v1"`
-	Instructions string                 `protobuf:"bytes,1,opt,name=instructions,proto3" json:"instructions,omitempty"`
-	Model        string                 `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`
-	Temperature  float64                `protobuf:"fixed64,3,opt,name=temperature,proto3" json:"temperature,omitempty"`
-	MaxSteps     int32                  `protobuf:"varint,4,opt,name=max_steps,json=maxSteps,proto3" json:"max_steps,omitempty"`
-	MaxCostCents int32                  `protobuf:"varint,5,opt,name=max_cost_cents,json=maxCostCents,proto3" json:"max_cost_cents,omitempty"`
-	// Tool names are unique within a config.
-	Tools         []*AgentTool `protobuf:"bytes,6,rep,name=tools,proto3" json:"tools,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Instructions  string                 `protobuf:"bytes,1,opt,name=instructions,proto3" json:"instructions,omitempty"`
+	Model         string                 `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`
+	Temperature   float64                `protobuf:"fixed64,3,opt,name=temperature,proto3" json:"temperature,omitempty"`
+	MaxSteps      int32                  `protobuf:"varint,4,opt,name=max_steps,json=maxSteps,proto3" json:"max_steps,omitempty"`
+	MaxCostCents  int32                  `protobuf:"varint,5,opt,name=max_cost_cents,json=maxCostCents,proto3" json:"max_cost_cents,omitempty"`
+	Tools         []*AgentTool           `protobuf:"bytes,6,rep,name=tools,proto3" json:"tools,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

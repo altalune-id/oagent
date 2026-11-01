@@ -111,7 +111,7 @@ message AgentTool {
   bool require_approval = 2;
 }
 
-// AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents).
+// AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique.
 message AgentConfig {
   string instructions = 1 [
     (buf.validate.field).cel = {id: "agent.instructions.max_len.32000", expression: "this.size() <= 32000 ? '' : 'must be at most 32000 characters'"}
@@ -132,7 +132,6 @@ message AgentConfig {
     (buf.validate.field).int32.gte = 0,
     (buf.validate.field).int32.lte = 1000000
   ];
-  // Tool names are unique within a config.
   repeated AgentTool tools = 6 [(buf.validate.field).repeated.max_items = 64];
 }
 
