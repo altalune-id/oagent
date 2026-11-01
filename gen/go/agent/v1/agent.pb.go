@@ -1176,7 +1176,7 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x13unpublished_changes\x18\r \x01(\bR\x12unpublishedChangesJ\x04\b\x02\x10\x03R\tpublic_id\"f\n" +
 	"\tAgentTool\x12.\n" +
 	"\x04name\x18\x01 \x01(\tB\x1a\xbaH\x17r\x152\x13^[a-z0-9_.-]{1,64}$R\x04name\x12)\n" +
-	"\x10require_approval\x18\x02 \x01(\bR\x0frequireApproval\"\xf2\x03\n" +
+	"\x10require_approval\x18\x02 \x01(\bR\x0frequireApproval\"\xcb\x04\n" +
 	"\vAgentConfig\x12\x8c\x01\n" +
 	"\finstructions\x18\x01 \x01(\tBh\xbaHe\xba\x01b\n" +
 	" agent.instructions.max_len.32000\x1a>this.size() <= 32000 ? '' : 'must be at most 32000 characters'R\finstructions\x12\x88\x01\n" +
@@ -1184,8 +1184,9 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x17agent.model.max_len.128\x1a:this.size() <= 128 ? '' : 'must be at most 128 characters'r\x152\x13^[A-Za-z0-9._:/-]*$R\x05model\x129\n" +
 	"\vtemperature\x18\x03 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00\x00@)\x00\x00\x00\x00\x00\x00\x00\x00R\vtemperature\x12&\n" +
 	"\tmax_steps\x18\x04 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\bmaxSteps\x121\n" +
-	"\x0emax_cost_cents\x18\x05 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xc0\x84=(\x00R\fmaxCostCents\x123\n" +
-	"\x05tools\x18\x06 \x03(\v2\x13.agent.v1.AgentToolB\b\xbaH\x05\x92\x01\x02\x10@R\x05tools\"\xdc\x01\n" +
+	"\x0emax_cost_cents\x18\x05 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xc0\x84=(\x00R\fmaxCostCents\x12\x8b\x01\n" +
+	"\x05tools\x18\x06 \x03(\v2\x13.agent.v1.AgentToolB`\xbaH]\xba\x01U\n" +
+	"\x12agent.tools.unique\x1a?this.map(t, t.name).unique() ? '' : 'tool names must be unique'\x92\x01\x02\x10@R\x05tools\"\xdc\x01\n" +
 	"\fAgentVersion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bagent_id\x18\x02 \x01(\tR\aagentId\x12\x18\n" +

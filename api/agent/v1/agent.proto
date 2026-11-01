@@ -132,7 +132,10 @@ message AgentConfig {
     (buf.validate.field).int32.gte = 0,
     (buf.validate.field).int32.lte = 1000000
   ];
-  repeated AgentTool tools = 6 [(buf.validate.field).repeated.max_items = 64];
+  repeated AgentTool tools = 6 [
+    (buf.validate.field).repeated.max_items = 64,
+    (buf.validate.field).cel = {id: "agent.tools.unique", expression: "this.map(t, t.name).unique() ? '' : 'tool names must be unique'"}
+  ];
 }
 
 // AgentVersion is an immutable published configuration; version is a display label, id the public id.
