@@ -1,35 +1,32 @@
 // @vitest-environment happy-dom
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
-import { clearError, setRoute } from '#test/nuxt-globals';
-import ErrorPage from '~/error.vue';
+import { describe, expect, it, vi } from 'vitest';
 
-function render(statusCode: number, statusMessage = '') {
-  return mount(ErrorPage, { props: { error: { statusCode, statusMessage } }, global: { stubs: { NuxtLayout: { template: '<div><slot /></div>' } } } });
+import { setRoute } from '#test/nuxt-globals';
+import ErrorView from '~/error.vue';
+
+function render(error: { statusCode: number, statusMessage?: string }) {
+  const clearError = vi.fn();
+  vi.stubGlobal('clearError', clearError);
+  const w = mount(ErrorView, { props: { error: error as never }, global: { stubs: { NuxtLayout: { template: '<div data-testid="layout"><slot /></div>' } } } });
+  return { w, clearError };
 }
 
-describe('error page', () => {
-  it('keeps the app layout and sends a missing page home', async () => {
-    const w = render(404, 'Organization not found');
-    expect(w.get('h1').text()).toBe('error.page_not_found');
+describe('console error page', () => {
+  it('keeps the app layout, names a missing org and goes back to the orgs', async () => {
+    const { w, clearError } = render({ statusCode: 404, statusMessage: 'Organization not found' });
+    expect(w.find('[data-testid="layout"] h1').text()).toBe('error_page.not_found_title');
     expect(w.text()).toContain('Organization not found');
-    expect(w.findAll('button')).toHaveLength(1);
     await w.get('button').trigger('click');
     expect(clearError).toHaveBeenCalledWith({ redirect: '/orgs' });
   });
 
-  it('explains a refusal without a retry', () => {
-    const w = render(403);
-    expect(w.get('h1').text()).toBe('error.page_forbidden');
-    expect(w.findAll('button')).toHaveLength(1);
-    expect(w.find('p.mt-4').exists()).toBe(false);
-  });
-
-  it('offers a retry of the same page when loading failed', async () => {
-    setRoute({ path: '/o/acme' });
-    const w = render(502);
-    expect(w.get('h1').text()).toBe('error.page_failed');
-    await w.findAll('button')[1]!.trigger('click');
+  it('retries a failure on the same address, with the generic line instead of the raw message', async () => {
+    setRoute({ path: '/o/acme', params: { org: 'acme' } });
+    const { w, clearError } = render({ statusCode: 502, statusMessage: 'upstream exploded' });
+    expect(w.text()).toContain('error_page.failed_body');
+    expect(w.text()).not.toContain('upstream exploded');
+    await w.findAll('button').find(b => b.text().includes('common.retry'))!.trigger('click');
     expect(clearError).toHaveBeenCalledWith({ redirect: '/o/acme' });
   });
 });

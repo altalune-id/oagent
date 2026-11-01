@@ -268,5 +268,11 @@
   "mcp.agent_updated": "Agen diperbarui",
   "mcp.agent_deleted": "Agen dihapus",
   "mcp.empty_agents": "Tidak ada agen.",
-  "mcp.title_agent": "Agen"
+  "mcp.title_agent": "Agen",
+  "error_page.not_found_title": "Halaman tidak ditemukan",
+  "error_page.not_found_body": "Halaman ini tidak ada, atau sudah dipindahkan.",
+  "error_page.forbidden_title": "Anda tidak punya akses",
+  "error_page.forbidden_body": "Minta akses kepada pemilik atau admin organisasi ini.",
+  "error_page.failed_title": "Halaman ini gagal dimuat",
+  "error_page.failed_body": "Terjadi kesalahan di pihak kami. Coba lagi sebentar lagi."
 }

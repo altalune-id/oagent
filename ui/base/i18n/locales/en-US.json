@@ -268,5 +268,11 @@
   "mcp.agent_updated": "Agent updated",
   "mcp.agent_deleted": "Agent deleted",
   "mcp.empty_agents": "No agents.",
-  "mcp.title_agent": "Agent"
+  "mcp.title_agent": "Agent",
+  "error_page.not_found_title": "Page not found",
+  "error_page.not_found_body": "This page doesn't exist, or it moved.",
+  "error_page.forbidden_title": "You don't have access",
+  "error_page.forbidden_body": "Ask an owner or admin of this organization for access.",
+  "error_page.failed_title": "Couldn't load this page",
+  "error_page.failed_body": "Something went wrong on our side. Try again in a moment."
 }
