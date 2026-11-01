@@ -2,6 +2,7 @@ package boot
 
 import (
 	"context"
+	"net/url"
 
 	"github.com/google/uuid"
 
@@ -20,6 +21,7 @@ type publicIDs struct {
 	agents   *agent.Service
 	users    *user.Service
 	webhooks webhook.Store
+	console  string
 }
 
 func newPublicIDs(s *Services) publicIDs {
@@ -29,6 +31,7 @@ func newPublicIDs(s *Services) publicIDs {
 		agents:   s.Agents,
 		users:    s.Users,
 		webhooks: s.WebhookStore,
+		console:  s.ConsoleURL,
 	}
 }
 
@@ -38,6 +41,15 @@ func (p publicIDs) OrgID(ctx context.Context, publicID string) (uuid.UUID, bool,
 		return uuid.Nil, false, notFoundIsAbsent(err)
 	}
 	return o.ID, true, nil
+}
+
+// MembersURL serves invite.OrgIDs.
+func (p publicIDs) MembersURL(ctx context.Context, orgID uuid.UUID) (string, error) {
+	o, err := p.orgs.Get(ctx, orgID)
+	if err != nil {
+		return "", err
+	}
+	return p.console + "/o/" + url.PathEscape(o.Slug) + "/settings/members", nil
 }
 
 // IDByPublicID serves invite.OrgIDs; an unknown public id is an *org.NotFoundError.

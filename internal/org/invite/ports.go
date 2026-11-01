@@ -51,6 +51,8 @@ type SignIn interface {
 // OrgIDs resolves an org's public id to its id; an unknown public id is an *org.NotFoundError.
 type OrgIDs interface {
 	IDByPublicID(ctx context.Context, publicID string) (uuid.UUID, error)
+	// MembersURL is the org's members page in the console, where a person confirms a draft.
+	MembersURL(ctx context.Context, orgID uuid.UUID) (string, error)
 }
 
 // Sessions starts, reads and ends browser sessions.
