@@ -65,6 +65,20 @@ describe('agents page', () => {
   });
 });
 
+describe('agents page load error', () => {
+  it('shows the error with a Retry that loads again', async () => {
+    inProject('/agents', [], 'agent:read');
+    const listAgents = vi.fn().mockRejectedValueOnce(new Error('down')).mockResolvedValue({ agents: [support] });
+    setClient('$agentClient', { listAgents });
+    const w = await mountPage(AgentsPage);
+    const retry = w.findAll('button').find(b => b.text().includes('common.retry'))!;
+    await retry.trigger('click');
+    await flushPromises();
+    expect(listAgents).toHaveBeenCalledTimes(2);
+    expect(w.text()).toContain('Support');
+  });
+});
+
 describe('deleting an agent', () => {
   it('confirms, removes the row and says so in a toast', async () => {
     inProject('/agents', [support], 'agent:read', 'agent:write');

@@ -5,7 +5,7 @@ import ConfirmModal from '#base/components/ui/ConfirmModal.vue';
 import CopyButton from '#base/components/ui/CopyButton.vue';
 import DataTable from '#base/components/ui/DataTable.vue';
 import EmptyState from '#base/components/ui/EmptyState.vue';
-import ErrorText from '#base/components/ui/ErrorText.vue';
+import LoadError from '#base/components/ui/LoadError.vue';
 import PageHeader from '#base/components/ui/PageHeader.vue';
 import { useToast } from '#base/components/ui/toast';
 import { useConfirm } from '#base/composables/useConfirm';
@@ -89,7 +89,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
       </template>
     </PageHeader>
 
-    <ErrorText v-if="agents.error" :error="agents.error" />
+    <LoadError v-if="agents.error" :error="agents.error" :busy="agents.loading" :retry-label="t('common.retry')" @retry="agents.load(project.id)" />
 
     <template v-else-if="showSamples">
       <div role="note" class="alert alert-info alert-soft">
