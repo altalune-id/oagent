@@ -44,6 +44,13 @@ describe('sidebarNav', () => {
     expect(mount(SidebarNav, { props: { groups } }).get('nav').element.children).toHaveLength(1);
   });
 
+  it('outlines a link on keyboard focus, open and as a rail, since the menu tint alone is not a visible focus', () => {
+    for (const rail of [false, true]) {
+      const link = mount(SidebarNav, { props: { groups, rail } }).get('a');
+      expect(link.classes()).toEqual(expect.arrayContaining(['focus-visible:outline-2', 'focus-visible:outline-solid!', 'focus-visible:-outline-offset-2']));
+    }
+  });
+
   it('collapses to an icon rail at lg that keeps every name: tooltips, visually hidden labels, no header strip', () => {
     const w = mount(SidebarNav, { props: { groups, rail: true }, slots: { between: 'Refund Triage' } });
     expect(w.get('aside').classes()).toContain('lg:w-16');
