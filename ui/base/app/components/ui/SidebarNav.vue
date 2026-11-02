@@ -21,7 +21,7 @@ const slots = useSlots();
     <div v-if="slots.back" class="px-4 pt-4">
       <slot name="back" />
     </div>
-    <nav :aria-label="label || undefined" class="min-h-0 flex-1 overflow-y-auto">
+    <nav :aria-label="label || undefined" class="min-h-0 flex-1 overflow-y-auto" :class="{ 'lg:overflow-visible': rail }">
       <template v-for="(list, l) in [lead, groups]" :key="l">
         <div v-if="l === 1 && slots.between" class="border-y border-base-300" :class="[dense ? 'my-1 p-2' : 'px-4 py-2', { 'lg:hidden': rail }]">
           <slot name="between" />
@@ -31,11 +31,8 @@ const slots = useSlots();
             <li v-if="group.label" class="menu-title pt-3 text-xs text-base-content/70" :class="{ 'lg:sr-only': rail }">
               {{ group.label }}
             </li>
-            <li v-for="item in group.items" :key="item.key">
-              <NuxtLink
-                :to="item.to" :class="[{ 'menu-active': item.active }, rail ? 'lg:tooltip lg:tooltip-right lg:justify-center' : '']"
-                :data-tip="rail ? item.label : undefined" :aria-current="item.active ? 'page' : undefined"
-              >
+            <li v-for="item in group.items" :key="item.key" :class="{ 'lg:tooltip lg:tooltip-right': rail }" :data-tip="rail ? item.label : undefined">
+              <NuxtLink :to="item.to" :class="{ 'menu-active': item.active, 'lg:justify-center': rail }" :aria-current="item.active ? 'page' : undefined">
                 <Icon v-if="item.icon" :name="item.icon" size="16" class="shrink-0" aria-hidden="true" />
                 <span class="flex-1" :class="{ 'lg:sr-only': rail }">{{ item.label }}</span>
                 <span v-if="item.badge" class="badge badge-sm" :class="{ 'lg:hidden': rail }">{{ item.badge }}</span>

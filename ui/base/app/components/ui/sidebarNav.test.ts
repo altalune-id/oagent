@@ -48,13 +48,17 @@ describe('sidebarNav', () => {
     const w = mount(SidebarNav, { props: { groups, rail: true }, slots: { between: 'Refund Triage' } });
     expect(w.get('aside').classes()).toContain('lg:w-16');
     const link = w.get('a');
-    expect(link.classes()).toEqual(expect.arrayContaining(['lg:tooltip', 'lg:tooltip-right', 'lg:justify-center']));
-    expect(link.attributes('data-tip')).toBe(link.text());
+    const item = link.element.parentElement!;
+    expect([...item.classList]).toEqual(['lg:tooltip', 'lg:tooltip-right']);
+    expect(item.getAttribute('data-tip')).toBe(link.text());
+    expect(link.classes()).toContain('lg:justify-center');
     expect(link.get('span').classes()).toContain('lg:sr-only');
+    expect(w.get('nav').classes()).toContain('lg:overflow-visible');
     expect(w.get('nav > div').classes()).toContain('lg:hidden');
     const open = mount(SidebarNav, { props: { groups } });
     expect(open.get('aside').classes()).not.toContain('lg:w-16');
-    expect(open.get('a').attributes('data-tip')).toBeUndefined();
+    expect(open.get('li').attributes('data-tip')).toBeUndefined();
+    expect(open.get('nav').classes()).not.toContain('lg:overflow-visible');
   });
 
   it('keeps the menu padding and a plain header strip when not dense, as the agent sidebar does', () => {

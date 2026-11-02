@@ -357,5 +357,6 @@
   "search.empty": "Tidak ada halaman yang cocok.",
   "search.jump": "Cari dan lompat",
   "search.label": "Cari",
-  "search.shortcut": "Command K"
+  "search.shortcut": "Command K",
+  "nav.toggle": "Buka atau tutup navigasi"
 }

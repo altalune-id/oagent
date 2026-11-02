@@ -357,5 +357,6 @@
   "search.empty": "No page matches.",
   "search.jump": "Search and jump",
   "search.label": "Search",
-  "search.shortcut": "Command K"
+  "search.shortcut": "Command K",
+  "nav.toggle": "Toggle navigation"
 }

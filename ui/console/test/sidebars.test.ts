@@ -58,7 +58,7 @@ describe('agent sidebar', () => {
     const w = await mountPage(AgentSidebar);
     expect(useUIStore().rail).toBe(true);
     expect(w.get('aside').classes()).toContain('lg:w-16');
-    expect(w.get('nav > ul:last-child a').attributes('data-tip')).toBe('agent.configure');
+    expect(w.get('nav > ul:last-child li').attributes('data-tip')).toBe('agent.configure');
   });
 
   it('shows the org switcher as the plain full-width row, with no role marker', async () => {
