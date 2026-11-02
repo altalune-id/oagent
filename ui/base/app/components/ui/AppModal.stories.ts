@@ -18,8 +18,8 @@ export const Default: Story = {
       <AppModal v-bind="args">
         <p class="text-sm">Modal body content.</p>
         <template #footer>
-          <button class="btn btn-ghost btn-sm">Cancel</button>
-          <button class="btn btn-primary btn-sm">Create</button>
+          <button class="btn btn-ghost btn-sm text-ui">Cancel</button>
+          <button class="btn btn-primary btn-sm text-ui">Create</button>
         </template>
       </AppModal>
     `,
@@ -35,7 +35,7 @@ export const NotDismissible: Story = {
       <AppModal v-bind="args">
         <p class="text-sm">Esc and the backdrop do nothing until the footer action runs.</p>
         <template #footer>
-          <button class="btn btn-primary btn-sm">Done</button>
+          <button class="btn btn-primary btn-sm text-ui">Done</button>
         </template>
       </AppModal>
     `,

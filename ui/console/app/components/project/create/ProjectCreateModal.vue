@@ -36,10 +36,10 @@ const { open, name, slug, busy, error, fieldErrors, hide, submit } = useProjectC
       <ErrorText :error="error" />
     </form>
     <template #footer>
-      <button class="btn btn-ghost btn-sm" type="button" :disabled="busy" @click="hide()">
+      <button class="btn btn-ghost btn-sm text-ui" type="button" :disabled="busy" @click="hide()">
         {{ t('common.cancel') }}
       </button>
-      <button class="btn btn-primary btn-sm" type="button" :disabled="busy || !name.trim()" @click="submit()">
+      <button class="btn btn-primary btn-sm text-ui" type="button" :disabled="busy || !name.trim()" @click="submit()">
         {{ busy ? t('common.creating') : t('common.create') }}
       </button>
     </template>

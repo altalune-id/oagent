@@ -187,11 +187,11 @@ await Promise.all([load(), useAuthStore().load()]);
         </h1>
       </div>
       <div class="flex items-center gap-2">
-        <button v-if="canRetry" type="button" class="btn btn-ghost btn-sm" :disabled="retrying" @click="retryFailed">
+        <button v-if="canRetry" type="button" class="btn btn-ghost btn-sm text-ui" :disabled="retrying" @click="retryFailed">
           <Icon name="lucide:rotate-cw" size="14" />
           {{ t('webhooks.retry_failed') }}
         </button>
-        <button class="btn btn-ghost btn-sm" :disabled="busy" @click="load">
+        <button class="btn btn-ghost btn-sm text-ui" :disabled="busy" @click="load">
           <Icon name="lucide:refresh-cw" size="14" />
           {{ t('common.refresh') }}
         </button>
@@ -282,13 +282,13 @@ await Promise.all([load(), useAuthStore().load()]);
         <ErrorText :error="retryOneError" class="mr-auto" />
         <button
           v-if="canRetry && selected?.status === 'failed'"
-          class="btn btn-primary btn-sm"
+          class="btn btn-primary btn-sm text-ui"
           :disabled="retrying"
           @click="retryOne"
         >
           {{ t('webhooks.retry') }}
         </button>
-        <button class="btn btn-ghost btn-sm" @click="closeAttempts()">
+        <button class="btn btn-ghost btn-sm text-ui" @click="closeAttempts()">
           {{ t('common.close') }}
         </button>
       </template>

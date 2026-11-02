@@ -14,6 +14,6 @@ export const Default: Story = {
   render: args => ({
     components: { EmptyState },
     setup: () => ({ args }),
-    template: `<EmptyState v-bind="args"><template #actions><button type="button" class="btn btn-primary btn-sm">New agent</button></template></EmptyState>`,
+    template: `<EmptyState v-bind="args"><template #actions><button type="button" class="btn btn-primary btn-sm text-ui">New agent</button></template></EmptyState>`,
   }),
 };

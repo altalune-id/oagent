@@ -105,7 +105,7 @@ function revoke(k: PersonalKeyView) {
         <p class="text-sm font-medium">
           {{ labels.secretWarning }}
         </p>
-        <button type="button" class="btn btn-sm shrink-0" @click="emit('dismiss')">
+        <button type="button" class="btn btn-sm shrink-0 text-ui" @click="emit('dismiss')">
           {{ labels.done }}
         </button>
       </div>

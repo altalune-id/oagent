@@ -19,7 +19,7 @@ export const Default: Story = {
         </template>
         <span class="text-sm text-base-content/70">acme / support-bot</span>
         <template #end>
-          <button class="btn btn-ghost btn-sm">Dark</button>
+          <button class="btn btn-ghost btn-sm text-ui">Dark</button>
         </template>
       </NavbarShell>
     `,

@@ -24,11 +24,11 @@ const icons: Record<ErrorKind, string> = { not_found: 'lucide:compass', forbidde
       {{ body }}
     </p>
     <div class="flex flex-wrap justify-center gap-2">
-      <button v-if="kind === 'failed'" type="button" class="btn btn-primary btn-sm" @click="emit('retry')">
+      <button v-if="kind === 'failed'" type="button" class="btn btn-primary btn-sm text-ui" @click="emit('retry')">
         <Icon name="lucide:rotate-ccw" size="16" />
         {{ retryLabel }}
       </button>
-      <button type="button" class="btn btn-sm" :class="kind === 'failed' ? 'btn-ghost' : 'btn-primary'" @click="emit('home')">
+      <button type="button" class="btn btn-sm text-ui" :class="kind === 'failed' ? 'btn-ghost' : 'btn-primary'" @click="emit('home')">
         {{ homeLabel }}
       </button>
     </div>

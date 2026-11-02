@@ -19,6 +19,7 @@ import MemberList from '~/components/member/MemberList.vue';
 import OrgCreateModal from '~/components/org/create/OrgCreateModal.vue';
 import OrgFields from '~/components/org/create/OrgFields.vue';
 import ProfilePassword from '~/components/profile/ProfilePassword.vue';
+import ProfileSessions from '~/components/profile/ProfileSessions.vue';
 import WebhookCreateModal from '~/components/webhook/create/WebhookCreateModal.vue';
 import WebhookList from '~/components/webhook/list/WebhookList.vue';
 import AgentsPage from '~/pages/o/[org]/projects/[project]/agents/index.vue';
@@ -95,6 +96,19 @@ describe('labels above compact fields', () => {
     expect(hidden.element.closest('label')!.classList.contains('hidden')).toBe(true);
     expect(hidden.element.closest('label')!.textContent).toContain('Email');
     expect(w.findAll('input[type="password"]').every(i => i.element.closest('label')?.querySelector('span.label'))).toBe(true);
+  });
+});
+
+describe('destructive buttons in three tiers', () => {
+  it('opens sign-out-everywhere from a soft error button and confirms with a solid one', () => {
+    const labels = { title: 'Sessions', body: 'b', signOut: 'Sign out everywhere', confirmTitle: 'Sure?', confirmBody: 'c', cancel: 'Cancel' };
+    const w = mount(ProfileSessions, { props: { labels, confirming: true }, attachTo: document.body });
+    const [ask, cancel, confirm] = w.findAll('button');
+    expect(ask!.classes()).toEqual(expect.arrayContaining(['btn-error', 'btn-soft', 'btn-sm', 'text-ui']));
+    expect(cancel!.text()).toBe('Cancel');
+    expect(confirm!.classes()).toEqual(expect.arrayContaining(['btn-error', 'btn-sm']));
+    expect(confirm!.classes()).not.toContain('btn-soft');
+    w.unmount();
   });
 });
 

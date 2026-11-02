@@ -14,7 +14,7 @@ export const NextToSave: Story = {
   render: args => ({
     components: { SavedNote },
     setup: () => ({ args }),
-    template: '<div class="flex items-center gap-3 p-8"><button class="btn btn-primary btn-sm">Save</button><SavedNote v-bind="args" /></div>',
+    template: '<div class="flex items-center gap-3 p-8"><button class="btn btn-primary btn-sm text-ui">Save</button><SavedNote v-bind="args" /></div>',
   }),
 };
 

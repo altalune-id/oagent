@@ -14,6 +14,6 @@ export const Default: Story = {
   render: args => ({
     components: { PageHeader },
     setup: () => ({ args }),
-    template: `<PageHeader v-bind="args"><template #actions><button type="button" class="btn btn-primary btn-sm">Publish</button></template></PageHeader>`,
+    template: `<PageHeader v-bind="args"><template #actions><button type="button" class="btn btn-primary btn-sm text-ui">Publish</button></template></PageHeader>`,
   }),
 };

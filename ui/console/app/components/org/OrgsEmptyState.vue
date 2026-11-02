@@ -20,7 +20,7 @@ const { logoutUrl, labels } = defineProps<{ logoutUrl: string, labels: OrgsEmpty
       </p>
       <div class="card-actions mt-2 justify-center">
         <form method="post" :action="logoutUrl">
-          <button type="submit" class="btn btn-sm btn-ghost gap-2">
+          <button type="submit" class="btn btn-sm btn-ghost gap-2 text-ui">
             <Icon name="lucide:log-out" size="16" />
             {{ labels.signOut }}
           </button>

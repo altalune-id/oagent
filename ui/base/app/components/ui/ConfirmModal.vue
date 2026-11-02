@@ -20,10 +20,10 @@ const { handle, title, body = '', confirmLabel, cancelLabel = 'Cancel' } = defin
     <slot />
     <ErrorText :error="handle.error.value" />
     <template #footer>
-      <button type="button" class="btn btn-ghost btn-sm" :disabled="handle.busy.value" @click="handle.cancel()">
+      <button type="button" class="btn btn-ghost btn-sm text-ui" :disabled="handle.busy.value" @click="handle.cancel()">
         {{ cancelLabel }}
       </button>
-      <button type="button" class="btn btn-error btn-sm" :disabled="handle.busy.value" @click="handle.confirm()">
+      <button type="button" class="btn btn-error btn-sm text-ui" :disabled="handle.busy.value" @click="handle.confirm()">
         <span v-if="handle.busy.value" class="loading loading-spinner loading-xs" aria-hidden="true" />
         {{ confirmLabel }}
       </button>

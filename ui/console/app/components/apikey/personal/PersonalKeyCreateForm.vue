@@ -115,7 +115,7 @@ const ids = {
 
     <ErrorText :error="error" />
     <div class="flex justify-end pt-2">
-      <button type="submit" class="btn btn-primary btn-sm" :disabled="!canSubmit">
+      <button type="submit" class="btn btn-primary btn-sm text-ui" :disabled="!canSubmit">
         <Icon name="lucide:plus" size="16" />
         {{ busy ? labels.creating : labels.create }}
       </button>

@@ -73,6 +73,16 @@ describe('guard: markup in every app', () => {
     expect(files.filter(f => f.text.includes('floating-label')).map(f => f.path)).toEqual([]);
   });
 
+  it('sets every small button in the dense text-ui size', () => {
+    const loose = files.flatMap(f => [...f.text.matchAll(/(?<![:\w-])class="([^"]*)"/g)].filter(m => m[1]!.split(' ').includes('btn-sm') && !m[1]!.split(' ').includes('text-ui')).map(m => `${f.path}: ${m[0]}`));
+    expect(loose).toEqual([]);
+  });
+
+  it('sets every textarea in the dense text-ui size', () => {
+    const loose = files.flatMap(f => (f.text.match(/class="textarea(?: [^"]*)?"/g) ?? []).filter(c => !c.split(/[ "]/).includes('text-ui')).map(c => `${f.path}: ${c}`));
+    expect(loose).toEqual([]);
+  });
+
   it('gives small checkboxes square corners so they do not look like radios', () => {
     const round = files.flatMap(f => (f.text.match(/class="checkbox checkbox-(?:xs|sm)\b[^"]*"/g) ?? []).filter(c => !c.includes('rounded-sm')).map(c => `${f.path}: ${c}`));
     expect(round).toEqual([]);

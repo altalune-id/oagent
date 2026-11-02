@@ -1,5 +1,9 @@
+import type { InjectionKey, MaybeRefOrGetter } from 'vue';
 import { ref } from 'vue';
 import { useToast } from './toast';
+
+// copiedLabelKey lets the app give every CopyButton its translated Copied toast.
+export const copiedLabelKey: InjectionKey<MaybeRefOrGetter<string>> = Symbol('copiedLabel');
 
 // useCopy writes a value to the clipboard, flags it as copied for a moment, and announces copiedLabel as a toast when given.
 export function useCopy() {

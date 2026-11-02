@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { copiedLabelKey } from '#base/components/ui/copy';
 import ToastHost from '#base/components/ui/ToastHost.vue';
 import AppNavbar from '~/components/layout/AppNavbar.vue';
 import OrgCreateModal from '~/components/org/create/OrgCreateModal.vue';
@@ -8,6 +9,7 @@ import { useOrgsStore } from '~/stores/orgs';
 const route = useRoute();
 const { t } = useI18n();
 const orgs = useOrgsStore();
+provide(copiedLabelKey, () => t('common.copied'));
 
 const orgId = computed(() => {
   const slug = route.params.org as string | undefined;

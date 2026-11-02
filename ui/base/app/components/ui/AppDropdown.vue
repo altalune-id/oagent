@@ -47,7 +47,7 @@ defineExpose({ close });
     <button
       type="button"
       class="btn btn-ghost"
-      :class="[size === 'xs' ? 'btn-xs' : 'btn-sm', triggerClass]"
+      :class="[size === 'xs' ? 'btn-xs' : 'btn-sm text-ui', triggerClass]"
       :disabled="disabled"
       :popovertarget="id"
       aria-haspopup="true"

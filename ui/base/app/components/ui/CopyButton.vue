@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { useCopy } from './copy';
+import { inject, toValue } from 'vue';
+import { copiedLabelKey, useCopy } from './copy';
 
 const { value, label = 'Copy', text = '', copiedLabel = '' } = defineProps<{ value: string, label?: string, text?: string, copiedLabel?: string }>();
 const { copied, copy: write } = useCopy();
-const copy = () => write(value, copiedLabel);
+const fallback = inject(copiedLabelKey, 'Copied');
+const copy = () => write(value, copiedLabel || toValue(fallback));
 </script>
 
 <template>

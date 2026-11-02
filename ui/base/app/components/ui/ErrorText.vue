@@ -5,7 +5,7 @@ defineProps<{ error: ShownError | null }>();
 </script>
 
 <template>
-  <p v-if="error" role="alert" class="flex items-start gap-1.5 text-sm text-base-content">
+  <p v-if="error" role="alert" class="flex items-start gap-1.5 text-ui text-base-content">
     <Icon name="lucide:circle-alert" size="16" class="mt-0.5 shrink-0 text-error" />
     <span>
       {{ error.message }}
