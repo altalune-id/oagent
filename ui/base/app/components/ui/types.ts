@@ -72,3 +72,5 @@ export interface StatItem {
   label: string;
   value: string | number;
 }
+
+export type StatusTone = 'success' | 'warning' | 'error' | 'info' | 'neutral';
