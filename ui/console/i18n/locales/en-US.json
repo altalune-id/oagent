@@ -358,5 +358,9 @@
   "run.tool_calls_failed": "{calls} calls, {failed} failed",
   "run.heading": "Run",
   "run.approval_prefix": "Approval:",
-  "org.overview_subtitle": "Projects, members and API keys in this organization."
+  "org.overview_subtitle": "Projects, members and API keys in this organization.",
+  "project.col_actions": "Actions",
+  "project.copy_id": "Copy project ID",
+  "project.list_subtitle": "Each project is one product or use case, with its own agents, tools, secrets, usage and access.",
+  "project.more_for": "More actions for {name}"
 }

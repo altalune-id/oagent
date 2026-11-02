@@ -358,5 +358,9 @@
   "run.tool_calls_failed": "{calls} panggilan, {failed} gagal",
   "run.heading": "Run",
   "run.approval_prefix": "Persetujuan:",
-  "org.overview_subtitle": "Proyek, anggota, dan kunci API di organisasi ini."
+  "org.overview_subtitle": "Proyek, anggota, dan kunci API di organisasi ini.",
+  "project.col_actions": "Aksi",
+  "project.copy_id": "Salin ID proyek",
+  "project.list_subtitle": "Setiap proyek adalah satu produk atau kasus penggunaan, dengan agen, alat, rahasia, penggunaan, dan aksesnya sendiri.",
+  "project.more_for": "Aksi lainnya untuk {name}"
 }
