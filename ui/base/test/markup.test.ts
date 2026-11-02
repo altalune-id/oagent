@@ -113,6 +113,25 @@ function contrast(fg: RGB, bg: RGB, alpha = 1): number {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }
 
+describe('guard: foundations', () => {
+  const css = readFileSync(join(ui, 'base/app/assets/css/main.css'), 'utf8');
+  const tokens = readFileSync(join(ui, 'theme.css'), 'utf8');
+
+  it('self-hosts Instrument Sans and JetBrains Mono from @fontsource and never loads fonts from a CDN', () => {
+    for (const family of ['instrument-sans', 'jetbrains-mono']) {
+      expect(css).toContain(`@import '@fontsource-variable/${family}';`);
+    }
+    expect(tokens).toMatch(/--font-sans: 'Instrument Sans Variable'/);
+    expect(tokens).toMatch(/--font-mono: 'JetBrains Mono Variable'/);
+    expect(offenders(/fonts\.(?:googleapis|gstatic)\.com/)).toEqual([]);
+  });
+
+  it('defines the dense text-ui size in the shared theme, so the MCP view and sign-in pages get it too', () => {
+    expect(tokens).toContain('--text-ui: 0.8125rem;');
+    expect(tokens).toContain('--text-ui--line-height: 1.25rem;');
+  });
+});
+
 describe('guard: theme contrast', () => {
   const theme = readFileSync(join(ui, 'theme.css'), 'utf8');
   const themes = [...theme.matchAll(/name: '([\w-]+)';([\s\S]*?)\n\}/g)].map(([, name, body]) => ({

@@ -22,7 +22,26 @@ setup((app: App) => {
 });
 
 const preview: Preview = {
+  globalTypes: {
+    theme: {
+      description: 'Theme',
+      toolbar: { title: 'Theme', icon: 'mirror', items: ['oagent-light', 'oagent-dark'], dynamicTitle: true },
+    },
+  },
+  initialGlobals: { theme: 'oagent-light' },
+  loaders: [async () => {
+    await Promise.all(['400 1em "Instrument Sans Variable"', '600 1em "Instrument Sans Variable"', '400 1em "JetBrains Mono Variable"']
+      .map(font => document.fonts.load(font)));
+    return {};
+  }],
+  decorators: [
+    (story, context) => {
+      document.documentElement.dataset.theme = context.globals.theme as string;
+      return { components: { story }, template: '<div class="bg-base-100 p-4 text-base-content"><story /></div>' };
+    },
+  ],
   parameters: {
+    backgrounds: { disable: true },
     controls: {
       matchers: {
         color: /(background|color)$/i,
