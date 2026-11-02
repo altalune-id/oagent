@@ -8,7 +8,6 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -187,12 +186,12 @@ type brokenFS struct{}
 
 func (brokenFS) Open(string) (fs.File, error) { return nil, errors.New("broken") }
 
-// NOTE: make ui builds the embedded console (not committed); missing, the test skips locally and fails when CI is set.
+// NOTE: make ui builds the embedded console (not committed); the CI ui job runs this test after it.
 func TestBuiltIndex_KeepsThePlaceholdersRebaseSwaps(t *testing.T) {
 	sub, err := fs.Sub(files, "public")
 	require.NoError(t, err)
 	b, err := fs.ReadFile(sub, indexName)
-	if errors.Is(err, fs.ErrNotExist) && os.Getenv("CI") == "" {
+	if errors.Is(err, fs.ErrNotExist) {
 		t.Skip("internal/web/console/public is not built; run make ui")
 	}
 	require.NoError(t, err)
