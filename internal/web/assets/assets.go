@@ -116,7 +116,16 @@ func (f Files) Sibling(name string) bool {
 	return ok
 }
 
-// Handler serves f by URL path with cacheControl, answering 404 for anything that is not a file in f.
+// Version is the content hash of name for a cache-busting ?v= query; empty for a file not in f.
+func (f Files) Version(name string) string {
+	a, ok := f[name]
+	if !ok {
+		return ""
+	}
+	return a.version()
+}
+
+// Handler serves f by URL path with cacheControl (immutable when ?v= is the file's version), else 404.
 func (f Files) Handler(cacheControl string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a, ok := f[strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")]
@@ -124,9 +133,15 @@ func (f Files) Handler(cacheControl string) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		a.Serve(w, r, cacheControl)
+		cc := cacheControl
+		if v := r.URL.Query().Get("v"); v != "" && v == a.version() {
+			cc = "public, max-age=31536000, immutable"
+		}
+		a.Serve(w, r, cc)
 	})
 }
+
+func (a *Asset) version() string { return strings.Trim(a.plain.etag, `"`) }
 
 // Serve writes a with cacheControl and its ETag, as brotli or gzip when the request accepts it.
 func (a *Asset) Serve(w http.ResponseWriter, r *http.Request, cacheControl string) {

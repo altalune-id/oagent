@@ -164,7 +164,7 @@ func warnSampleLegal(cfg config.Config, log *slog.Logger, serving bool) {
 }
 
 func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected apperror.UnexpectedFunc) []web.Registrar {
-	kit := layout.Kit{BasePath: cfg.HTTP.BasePath, Log: log, Unexpected: unexpected}
+	kit := layout.Kit{BasePath: cfg.HTTP.BasePath, Log: log, Unexpected: unexpected, Version: web.StaticVersion}
 	legalOpts := legal.WebOpts{Kit: kit, TermsURL: cfg.Compliance.TermsURL, PrivacyURL: cfg.Compliance.PrivacyURL}
 	if svcs == nil || !svcs.Caps.LocalLogin {
 		return []web.Registrar{legal.NewWeb(legalOpts)}

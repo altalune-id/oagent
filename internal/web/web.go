@@ -69,7 +69,7 @@ func NewServer(opts ServerOpts) http.Handler {
 		outer.Handle(console+"/", withSession(spa))
 	}
 	static := layout.Path(opts.BasePath, "/static") + "/"
-	outer.Handle("GET "+static, staticHandler(static, StaticFS()))
+	outer.Handle("GET "+static, staticHandler(static, loadStatic))
 	toConsole := http.RedirectHandler(layout.Path(opts.BasePath, "/console")+"/", http.StatusFound)
 	outer.Handle("GET "+strings.TrimRight(opts.BasePath, "/")+"/{$}", toConsole)
 	if bp := strings.TrimRight(opts.BasePath, "/"); bp != "" {

@@ -95,7 +95,7 @@ func TestStaticAssets(t *testing.T) {
 		rec := get(t, srv, base+"/static/app.css")
 		assert.Equal(t, http.StatusOK, rec.Code, base)
 		assert.Equal(t, "text/css; charset=utf-8", rec.Header().Get("Content-Type"))
-		assert.Equal(t, "public, max-age=3600", rec.Header().Get("Cache-Control"))
+		assert.Equal(t, "no-cache", rec.Header().Get("Cache-Control"))
 		assert.NotEmpty(t, rec.Body.String())
 
 		rec = get(t, srv, base+"/static/favicon.ico")

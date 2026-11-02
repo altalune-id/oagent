@@ -40,6 +40,11 @@ func TestLayoutDataHref(t *testing.T) {
 func TestLayoutDataStatic(t *testing.T) {
 	assert.Equal(t, "/app/static/app.css", LayoutData{BasePath: "/app/"}.Static("/app.css"))
 	assert.Equal(t, "/static/favicon.ico", LayoutData{}.Static("/favicon.ico"))
+
+	known := func(name string) string { return map[string]string{"app.css": "abc123"}[name] }
+	d := Kit{BasePath: "/app", Version: known}.Layout("Sign in")
+	assert.Equal(t, "/app/static/app.css?v=abc123", d.Static("/app.css"), "the kit carries the version into every page")
+	assert.Equal(t, "/app/static/favicon.ico", d.Static("/favicon.ico"), "an unknown file stays unversioned")
 }
 
 func TestLayoutDataLang(t *testing.T) {
