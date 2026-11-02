@@ -159,7 +159,7 @@
   "project.select": "Select project",
   "settings.title": "Settings",
   "webhooks.activate": "Enable",
-  "webhooks.active": "active",
+  "webhooks.active": "Active",
   "webhooks.col_created": "Created",
   "webhooks.col_duration": "Duration",
   "webhooks.col_error": "Error",
@@ -173,7 +173,7 @@
   "webhooks.event_invite_created": "Invite sent",
   "webhooks.event_member_added": "Member added",
   "webhooks.events": "Events",
-  "webhooks.inactive": "inactive",
+  "webhooks.inactive": "Inactive",
   "webhooks.logs": "Logs",
   "webhooks.new": "New webhook",
   "webhooks.no_attempts": "No attempts recorded.",
@@ -369,5 +369,7 @@
   "apikeys.actions_for": "Actions for {name}",
   "apikeys.col_actions": "Actions",
   "settings.subtitle": "The organization's name and URL.",
-  "stat.members": "Members"
+  "stat.members": "Members",
+  "webhooks.col_actions": "Actions",
+  "webhooks.actions_for": "Actions for {url}"
 }

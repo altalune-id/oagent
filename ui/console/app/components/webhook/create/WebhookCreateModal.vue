@@ -23,8 +23,8 @@ const { open, url, description, eventTypes, busy, error, fieldErrors, secret, pi
 
   <AppModal :open="open" :title="t('webhooks.new')" :dismissible="!secret" @close="create.hide()">
     <div v-if="secret" class="space-y-3">
-      <p class="flex items-start gap-1 text-sm text-base-content">
-        <Icon name="lucide:triangle-alert" size="14" class="mt-0.5 shrink-0 text-warning" />
+      <p class="flex items-start gap-1.5 text-ui text-base-content">
+        <Icon name="lucide:triangle-alert" size="16" class="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
         {{ t('webhooks.secret_warning') }}
       </p>
       <SecretField :value="secret" :label="t('common.copy')" />
@@ -59,7 +59,7 @@ const { open, url, description, eventTypes, busy, error, fieldErrors, secret, pi
           {{ t('webhooks.events') }}
         </legend>
         <div class="space-y-1">
-          <label v-for="event in webhookEvents" :key="event.name" class="flex items-center gap-2 text-sm">
+          <label v-for="event in webhookEvents" :key="event.name" class="flex items-center gap-2 text-ui">
             <input v-model="eventTypes" type="checkbox" :value="event.name" class="checkbox checkbox-xs rounded-sm" :disabled="busy">
             {{ t(event.labelKey) }}
           </label>

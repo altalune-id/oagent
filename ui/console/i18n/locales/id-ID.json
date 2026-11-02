@@ -159,7 +159,7 @@
   "project.select": "Pilih proyek",
   "settings.title": "Pengaturan",
   "webhooks.activate": "Aktifkan",
-  "webhooks.active": "aktif",
+  "webhooks.active": "Aktif",
   "webhooks.col_created": "Dibuat",
   "webhooks.col_duration": "Durasi",
   "webhooks.col_error": "Error",
@@ -173,7 +173,7 @@
   "webhooks.event_invite_created": "Undangan dikirim",
   "webhooks.event_member_added": "Anggota ditambahkan",
   "webhooks.events": "Event",
-  "webhooks.inactive": "nonaktif",
+  "webhooks.inactive": "Nonaktif",
   "webhooks.logs": "Log",
   "webhooks.new": "Webhook baru",
   "webhooks.no_attempts": "Belum ada percobaan.",
@@ -369,5 +369,7 @@
   "apikeys.actions_for": "Tindakan untuk {name}",
   "apikeys.col_actions": "Tindakan",
   "settings.subtitle": "Nama dan URL organisasi.",
-  "stat.members": "Anggota"
+  "stat.members": "Anggota",
+  "webhooks.col_actions": "Tindakan",
+  "webhooks.actions_for": "Tindakan untuk {url}"
 }

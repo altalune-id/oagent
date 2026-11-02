@@ -37,3 +37,28 @@ describe('webhooks list', () => {
     expect(w.get('h2').text()).toBe('webhooks.empty');
   });
 });
+
+describe('webhooks table', () => {
+  const hook = { id: 'H3nVb8XqT1wLp6RkZ2mJc', projectId, url: 'https://hooks.acme.test/oagent', active: true, eventTypes: [] };
+
+  it('shows a mono url, a status dot with a word, and every action in a named row menu', async () => {
+    setClient('$webhookClient', { listWebhooks: vi.fn().mockResolvedValue({ webhooks: [hook] }) });
+    const w = await mountPage(WebhookList, { pageProps: { orgId, projectId, canManage: true } });
+    await flushPromises();
+    const cells = w.findAll('tbody td');
+    expect(cells[0]!.classes()).toEqual(['font-mono', 'text-xs']);
+    expect(cells[0]!.get('span').attributes('title')).toBe(hook.url);
+    expect(cells[2]!.text()).toBe('webhooks.active');
+    expect(w.get('tbody button[popovertarget] .sr-only').text()).toBe(`webhooks.actions_for|{"url":"${hook.url}"}`);
+    expect(w.findAll('tbody [popover] li').map(li => li.text())).toEqual(['webhooks.logs', 'webhooks.ping', 'webhooks.deactivate', 'webhooks.rotate', 'common.delete']);
+    expect(w.get('tbody [popover] [data-icon="lucide:trash-2"]').classes()).toContain('text-error');
+  });
+
+  it('offers only Logs in the menu without webhook:write', async () => {
+    setClient('$webhookClient', { listWebhooks: vi.fn().mockResolvedValue({ webhooks: [{ ...hook, active: false }] }) });
+    const w = await mountPage(WebhookList, { pageProps: { orgId, projectId } });
+    await flushPromises();
+    expect(w.findAll('tbody td')[2]!.text()).toBe('webhooks.inactive');
+    expect(w.findAll('tbody [popover] li').map(li => li.text())).toEqual(['webhooks.logs']);
+  });
+});
