@@ -365,5 +365,7 @@
   "project.more_for": "Aksi lainnya untuk {name}",
   "project.overview_subtitle": "Agen di proyek ini, beserta alat, rahasia, penggunaan, dan aksesnya.",
   "invites.col_actions": "Tindakan",
-  "members.col_actions": "Tindakan"
+  "members.col_actions": "Tindakan",
+  "apikeys.actions_for": "Tindakan untuk {name}",
+  "apikeys.col_actions": "Tindakan"
 }

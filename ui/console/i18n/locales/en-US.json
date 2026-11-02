@@ -365,5 +365,7 @@
   "project.more_for": "More actions for {name}",
   "project.overview_subtitle": "Agents in this project, with their tools, secrets, usage and access.",
   "invites.col_actions": "Actions",
-  "members.col_actions": "Actions"
+  "members.col_actions": "Actions",
+  "apikeys.actions_for": "Actions for {name}",
+  "apikeys.col_actions": "Actions"
 }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from '#base/components/ui/PageHeader.vue';
 import APIKeyCreateModal from '~/components/apikey/create/APIKeyCreateModal.vue';
 import APIKeyList from '~/components/apikey/list/APIKeyList.vue';
 import { useCan } from '~/composables/useCan';
@@ -16,18 +17,12 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('apikeys.tit
 </script>
 
 <template>
-  <div v-if="org" class="space-y-6">
-    <div class="flex items-start justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold">
-          {{ t('apikeys.title') }}
-        </h1>
-        <p class="text-sm text-base-content/70">
-          {{ t('apikeys.subtitle') }}
-        </p>
-      </div>
-      <APIKeyCreateModal v-if="canManage" :org-id="org.id" />
-    </div>
+  <div v-if="org" class="flex flex-col gap-4">
+    <PageHeader :title="t('apikeys.title')" :description="t('apikeys.subtitle')">
+      <template v-if="canManage" #actions>
+        <APIKeyCreateModal :org-id="org.id" />
+      </template>
+    </PageHeader>
     <APIKeyList :org-id="org.id" :can-manage="canManage" />
   </div>
 </template>

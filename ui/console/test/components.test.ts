@@ -95,7 +95,8 @@ describe('destructive actions ask first', () => {
     const revokeAPIKey = vi.fn().mockResolvedValue({});
     setClient('$apiKeyClient', { listAPIKeys: vi.fn().mockResolvedValue({ keys: [create(APIKeySchema, { id: 'K9tWq4ZbN2xLm7VcR5pHs', name: 'deploy-bot', kind: 'org', secretHint: 'ab12' })] }), revokeAPIKey });
     const w = await mountPage(APIKeyList, { pageProps: { orgId, canManage: true }, attachTo: document.body });
-    await w.get('tbody button').trigger('click');
+    expect(w.get('tbody button[popovertarget] .sr-only').text()).toContain('deploy-bot');
+    await w.get('tbody [popover] button').trigger('click');
     expect(revokeAPIKey).not.toHaveBeenCalled();
     expect(openDialog()!.textContent).toContain('apikeys.revoke_confirm');
     expect(openDialog()!.textContent).toContain('apikeys.revoke_body|{"name":"deploy-bot","hint":"ab12"}');

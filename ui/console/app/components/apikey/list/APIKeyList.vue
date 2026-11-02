@@ -1,7 +1,13 @@
 <script setup lang="ts">
+import type { Column, StatusTone } from '#base/components/ui/types';
 import type { APIKey } from '~/stores/apiKeys';
+import AppBadge from '#base/components/ui/AppBadge.vue';
+import AppDropdown from '#base/components/ui/AppDropdown.vue';
 import ConfirmModal from '#base/components/ui/ConfirmModal.vue';
-import ErrorText from '#base/components/ui/ErrorText.vue';
+import DataTable from '#base/components/ui/DataTable.vue';
+import EmptyState from '#base/components/ui/EmptyState.vue';
+import LoadError from '#base/components/ui/LoadError.vue';
+import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { useConfirm } from '#base/composables/useConfirm';
 import { useScopeLabel } from '#base/composables/useScopeLabel';
 import { expiryState, keyStatus } from '#base/lib/tokens/keyStatus';
@@ -16,11 +22,20 @@ const { $apiKeyClient: client } = useNuxtApp();
 
 await keys.ensureLoaded(orgId);
 
-const statusBadge = { active: 'badge-success', expired: 'badge-error', revoked: 'badge-ghost' } as const;
+const statusTone: Record<string, StatusTone> = { active: 'success', expired: 'error', revoked: 'neutral' };
 const rows = computed(() => {
   const now = new Date();
   return keys.items.map(k => ({ ...k, status: keyStatus(!!k.revokedAt, expiryState(k.expiresAt, now)) }));
 });
+
+const columns = computed<Column[]>(() => [
+  { key: 'name', label: t('common.name') },
+  { key: 'kind', label: t('apikeys.col_kind') },
+  { key: 'scopes', label: t('apikeys.col_scopes') },
+  { key: 'secretHint', label: t('apikeys.col_hint'), mono: true },
+  { key: 'status', label: t('apikeys.col_status') },
+  ...(canManage ? [{ key: 'menu', label: t('apikeys.col_actions'), hideLabel: true, align: 'end' as const }] : []),
+]);
 
 function kindLabel(kind: string): string {
   if (kind === 'org') {
@@ -39,47 +54,40 @@ const revoking = useConfirm<APIKey>(async (key) => {
 </script>
 
 <template>
-  <ErrorText v-if="keys.error" :error="keys.error" />
-  <p v-else-if="keys.items.length === 0" class="text-sm text-base-content/70">
-    {{ t('apikeys.empty') }}
-  </p>
-  <div v-else class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
-    <table class="table table-sm">
-      <thead class="text-base-content/70">
-        <tr>
-          <th>{{ t('common.name') }}</th>
-          <th>{{ t('apikeys.col_kind') }}</th>
-          <th>{{ t('apikeys.col_scopes') }}</th>
-          <th>{{ t('apikeys.col_hint') }}</th>
-          <th>{{ t('apikeys.col_status') }}</th>
-          <th />
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="k in rows" :key="k.rowKey" class="hover:bg-base-200">
-          <td>{{ k.name }}</td>
-          <td>{{ kindLabel(k.kind) }}</td>
-          <td class="text-base-content/70">
-            {{ k.scopes.map(scopeLabel).join(', ') }}
-          </td>
-          <td class="text-base-content/70">
-            …{{ k.secretHint }}
-          </td>
-          <td>
-            <span class="badge badge-sm" :class="statusBadge[k.status]">
-              {{ t(`tokens.status_${k.status}`) }}
-            </span>
-          </td>
-          <td class="whitespace-nowrap text-right">
-            <button v-if="canManage && k.status === 'active'" type="button" class="btn btn-ghost btn-xs" @click="revoking.ask(k)">
-              <Icon name="lucide:ban" size="14" class="text-error" />
+  <LoadError v-if="keys.error" :error="keys.error" :busy="keys.loading" :retry-label="t('common.retry')" @retry="keys.load(orgId)" />
+  <EmptyState v-else-if="keys.items.length === 0" icon="lucide:key-round" :title="t('apikeys.empty')" />
+  <DataTable v-else :caption="t('apikeys.title')" row-key="rowKey" :columns="columns" :rows="rows">
+    <template #cell-name="{ row }">
+      <span class="font-medium">{{ row.name }}</span>
+    </template>
+    <template #cell-kind="{ row }">
+      <AppBadge :label="kindLabel(row.kind)" />
+    </template>
+    <template #cell-scopes="{ row }">
+      <span class="text-base-content/70">{{ row.scopes.map(scopeLabel).join(', ') }}</span>
+    </template>
+    <template #cell-secretHint="{ row }">
+      <span class="text-base-content/70">…{{ row.secretHint }}</span>
+    </template>
+    <template #cell-status="{ row }">
+      <StatusLabel :tone="statusTone[row.status] ?? 'neutral'" :label="t(`tokens.status_${row.status}`)" />
+    </template>
+    <template #cell-menu="{ row }">
+      <AppDropdown v-if="row.status === 'active'" placement="end" size="xs" trigger-class="btn-square" content-class="w-44" :label="t('apikeys.actions_for', { name: row.name })">
+        <template #trigger>
+          <Icon name="lucide:ellipsis" size="14" class="shrink-0" aria-hidden="true" />
+        </template>
+        <ul class="menu menu-sm w-full p-0 text-ui">
+          <li>
+            <button type="button" @click="revoking.ask(row as APIKey)">
+              <Icon name="lucide:ban" size="16" class="shrink-0 text-error" aria-hidden="true" />
               {{ t('common.revoke') }}
             </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+          </li>
+        </ul>
+      </AppDropdown>
+    </template>
+  </DataTable>
 
   <ConfirmModal
     v-if="canManage"
