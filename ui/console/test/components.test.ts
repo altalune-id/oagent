@@ -11,6 +11,7 @@ import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { WebhookSchema } from '#gen/webhook/v1/webhook_pb';
 import { mountPage } from '#test/mount-page';
 import { setClient, setRoute } from '#test/nuxt-globals';
+import AgentCreateModal from '~/components/agent/create/AgentCreateModal.vue';
 import APIKeyCreateModal from '~/components/apikey/create/APIKeyCreateModal.vue';
 import APIKeyList from '~/components/apikey/list/APIKeyList.vue';
 import MemberList from '~/components/member/MemberList.vue';
@@ -42,6 +43,18 @@ describe('org create modal copy', () => {
     expect(slug!.attributes('placeholder')).toBe('org.slug_placeholder');
     expect(w.text()).toContain('org.slug_random_help');
     expect(w.text()).not.toContain('generated when empty');
+  });
+});
+
+describe('agent create modal', () => {
+  it('labels every field through FormField and ends in Create and configure', async () => {
+    const w = mount(AgentCreateModal, { props: { orgId, projectId }, attachTo: document.body });
+    await w.get('button').trigger('click');
+    const dialog = openDialog()!;
+    const named = [...dialog.querySelectorAll('input, textarea')].map(c => dialog.querySelector(`label[for="${c.id}"]`)?.textContent?.trim());
+    expect(named).toEqual(['common.name', 'common.slug', 'agent.description_label']);
+    expect([...dialog.querySelectorAll('button')].map(b => b.textContent?.trim())).toContain('agent.create_and_configure');
+    w.unmount();
   });
 });
 
@@ -114,7 +127,7 @@ describe('destructive actions ask first', () => {
     const deleteAgent = vi.fn().mockResolvedValue({});
     setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ id: 'A7kPq2WxN4mLt8VcR3bZs', projectId, slug: 'support', name: 'Support', description: '' }] }), deleteAgent });
     const w = await mountPage(AgentsPage, { attachTo: document.body });
-    await w.findAll('button').find(b => b.text().includes('common.delete'))!.trigger('click');
+    await w.findAll('button').find(b => b.attributes('aria-label') === 'agent.delete_named|{"name":"Support"}')!.trigger('click');
     expect(deleteAgent).not.toHaveBeenCalled();
     expect(openDialog()!.textContent).toContain('agent.delete_title');
     expect(openDialog()!.textContent).toContain('agent.delete_body|{"name":"Support"}');

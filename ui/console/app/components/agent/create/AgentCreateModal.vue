@@ -2,13 +2,12 @@
 import AppButton from '#base/components/ui/AppButton.vue';
 import AppModal from '#base/components/ui/AppModal.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
-import FieldError from '#base/components/ui/FieldError.vue';
+import FormField from '#base/components/ui/FormField.vue';
 import { useAgentCreate } from './useAgentCreate';
 
 const { orgId, projectId, label } = defineProps<{ orgId: string, projectId: string, label?: string }>();
 
 const { t } = useI18n();
-const ids = { name: useId(), nameErr: useId(), slug: useId(), slugErr: useId(), slugHelp: useId(), description: useId(), descriptionErr: useId() };
 const { open, name, slug, description, busy, error, fieldErrors, show, hide, submit } = useAgentCreate(orgId, projectId);
 </script>
 
@@ -19,43 +18,34 @@ const { open, name, slug, description, busy, error, fieldErrors, show, hide, sub
   </AppButton>
 
   <AppModal :open="open" :title="t('agent.new')" @close="hide()">
-    <form novalidate class="space-y-1" @submit.prevent="submit()">
-      <div class="fieldset">
-        <label :for="ids.name" class="fieldset-legend">{{ t('common.name') }}</label>
+    <form novalidate class="flex flex-col gap-3" @submit.prevent="submit()">
+      <FormField v-slot="{ id, describedBy, invalid }" :label="t('common.name')" :error="fieldErrors.name">
         <input
-          :id="ids.name" v-model="name" type="text" class="input w-full" :class="{ 'input-error': fieldErrors.name }"
-          :placeholder="t('agent.name_placeholder')" :disabled="busy" :aria-invalid="!!fieldErrors.name" :aria-describedby="ids.nameErr"
+          :id="id" v-model="name" type="text" class="input input-sm text-ui w-full" :class="{ 'input-error': invalid }"
+          :placeholder="t('agent.name_placeholder')" :disabled="busy" :aria-invalid="invalid" :aria-describedby="describedBy"
         >
-        <FieldError :id="ids.nameErr" :message="fieldErrors.name" />
-      </div>
-      <div class="fieldset">
-        <label :for="ids.slug" class="fieldset-legend">{{ t('common.slug') }}</label>
+      </FormField>
+      <FormField v-slot="{ id, describedBy, invalid }" :label="t('common.slug')" :hint="t('agent.slug_random_help')" :error="fieldErrors.slug">
         <input
-          :id="ids.slug" v-model="slug" type="text" class="input w-full font-mono" :class="{ 'input-error': fieldErrors.slug }"
-          :placeholder="t('agent.slug_placeholder')" :disabled="busy" :aria-invalid="!!fieldErrors.slug" :aria-describedby="`${ids.slugHelp} ${ids.slugErr}`"
+          :id="id" v-model="slug" type="text" class="input input-sm text-ui w-full font-mono" :class="{ 'input-error': invalid }"
+          :placeholder="t('agent.slug_placeholder')" :disabled="busy" :aria-invalid="invalid" :aria-describedby="describedBy"
         >
-        <FieldError :id="ids.slugErr" :message="fieldErrors.slug" />
-        <p :id="ids.slugHelp" class="label whitespace-normal">
-          {{ t('agent.slug_random_help') }}
-        </p>
-      </div>
-      <div class="fieldset">
-        <label :for="ids.description" class="fieldset-legend">{{ t('common.description') }}</label>
+      </FormField>
+      <FormField v-slot="{ id, describedBy, invalid }" :label="t('agent.description_label')" :error="fieldErrors.description">
         <textarea
-          :id="ids.description" v-model="description" rows="3" class="textarea w-full" :class="{ 'textarea-error': fieldErrors.description }"
-          :placeholder="t('agent.description_placeholder')" :disabled="busy" :aria-invalid="!!fieldErrors.description" :aria-describedby="ids.descriptionErr"
+          :id="id" v-model="description" rows="3" class="textarea text-ui w-full" :class="{ 'textarea-error': invalid }"
+          :placeholder="t('agent.description_placeholder')" :disabled="busy" :aria-invalid="invalid" :aria-describedby="describedBy"
         />
-        <FieldError :id="ids.descriptionErr" :message="fieldErrors.description" />
-      </div>
+      </FormField>
       <ErrorText :error="error" />
     </form>
     <template #footer>
-      <button class="btn btn-ghost btn-sm" type="button" :disabled="busy" @click="hide()">
+      <AppButton variant="plain" size="sm" :disabled="busy" @click="hide()">
         {{ t('common.cancel') }}
-      </button>
-      <button class="btn btn-primary btn-sm" type="button" :disabled="busy || !name.trim()" @click="submit()">
-        {{ busy ? t('common.creating') : t('common.create') }}
-      </button>
+      </AppButton>
+      <AppButton size="sm" :busy="busy" :disabled="!name.trim()" @click="submit()">
+        {{ busy ? t('common.creating') : t('agent.create_and_configure') }}
+      </AppButton>
     </template>
   </AppModal>
 </template>

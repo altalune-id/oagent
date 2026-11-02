@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { create } from '@bufbuild/protobuf';
+import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import { flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -53,7 +54,8 @@ describe('agents page', () => {
     expect(w.get('[role="note"]').text()).toBe('agent.samples_note');
     expect(w.get('caption').text()).toBe('agent.samples_caption');
     expect(w.text()).toContain(sampleAgents()[0]!.name);
-    expect(w.text()).toContain('$3.86');
+    expect(w.text()).not.toContain('$3.86', 'runs, median and cost wait for the runtime');
+    expect(w.findAll('tbody td.font-mono').map(td => td.text())).toEqual(sampleAgents().toSorted((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).map(a => a.model));
     expect(w.findAll('tbody .badge').filter(b => b.text() === 'agent.sample')).toHaveLength(sampleAgents().length);
     expect(w.findAll('li.list-row .badge').filter(b => b.text() === 'agent.sample')).toHaveLength(sampleAgents().length);
     await w.findAll('button').find(b => b.text() === 'agent.hide_samples')!.trigger('click');
@@ -64,6 +66,42 @@ describe('agents page', () => {
     inProject('/agents', [], 'agent:read');
     const w = await mountPage(AgentsPage);
     expect(w.findAll('button').map(b => b.text())).toEqual(['agent.show_samples']);
+  });
+});
+
+describe('agents table', () => {
+  const triage = { ...support, id: 'Q9vLm3XpT7kRw2NcY5bZd', slug: 'refund-triage', name: 'Refund Triage', description: 'Prepares refunds', updatedAt: timestampFromDate(new Date('2026-11-01T09:00:00Z')) };
+  const older = { ...support, updatedAt: timestampFromDate(new Date('2026-10-01T09:00:00Z')) };
+
+  it('filters by name or description, and says when nothing matches', async () => {
+    inProject('/agents', [older, triage], 'agent:read');
+    const w = await mountPage(AgentsPage);
+    const names = () => w.findAll('tbody td:first-child').map(td => td.text());
+    expect(names()).toEqual(['Refund Triage', 'Support'], 'newest first');
+    await w.get('input[type="search"]').setValue('tickets');
+    expect(names()).toEqual(['Support']);
+    await w.get('input[type="search"]').setValue('nothing here');
+    expect(w.text()).toContain('agent.no_match|{"query":"nothing here"}');
+    expect(w.text()).not.toContain('agent.empty_title');
+  });
+
+  it('sorts by name through the header button, flipping on a second press', async () => {
+    inProject('/agents', [triage, older], 'agent:read');
+    const w = await mountPage(AgentsPage);
+    const names = () => w.findAll('tbody td:first-child').map(td => td.text());
+    const byName = w.findAll('th button').find(b => b.text() === 'agent.col_agent')!;
+    await byName.trigger('click');
+    expect(names()).toEqual(['Refund Triage', 'Support']);
+    expect(w.findAll('th')[0]!.attributes('aria-sort')).toBe('ascending');
+    await byName.trigger('click');
+    expect(names()).toEqual(['Support', 'Refund Triage']);
+  });
+
+  it('shows the version in mono with a Live or Draft changes badge', async () => {
+    inProject('/agents', [{ ...support, publishedVersion: 12, unpublishedChanges: true }], 'agent:read');
+    const w = await mountPage(AgentsPage);
+    expect(w.get('tbody td:nth-child(2) .font-mono').text()).toBe('v12');
+    expect(w.get('tbody td:nth-child(2) .badge').classes()).toEqual(['badge', 'badge-sm', 'badge-outline']);
   });
 });
 
@@ -87,7 +125,7 @@ describe('deleting an agent', () => {
     const deleteAgent = vi.fn().mockResolvedValue({});
     setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [support] }), deleteAgent });
     const w = await mountPage(AgentsPage, { attachTo: document.body });
-    await w.findAll('button').find(b => b.text().includes('common.delete'))!.trigger('click');
+    await w.findAll('button').find(b => b.attributes('aria-label') === 'agent.delete_named|{"name":"Support"}')!.trigger('click');
     const dialog = [...document.querySelectorAll('dialog')].find(d => d.open)!;
     [...dialog.querySelectorAll('button')].find(b => b.textContent?.includes('common.delete'))!.click();
     await flushPromises();

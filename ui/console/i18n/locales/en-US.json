@@ -340,5 +340,11 @@
   "configure.tool_approval": "{tool} needs approval",
   "configure.choose_model": "Choose a model",
   "configure.publishing": "Publishing…",
-  "agent.sample": "Sample"
+  "agent.sample": "Sample",
+  "agent.filter": "Filter agents",
+  "agent.no_match": "No agents match “{query}”.",
+  "agent.edit_named": "Edit {name}",
+  "agent.delete_named": "Delete {name}",
+  "agent.create_and_configure": "Create and configure",
+  "agent.description_label": "What does it do?"
 }

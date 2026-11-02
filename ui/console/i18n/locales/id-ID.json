@@ -340,5 +340,11 @@
   "configure.tool_approval": "{tool} perlu persetujuan",
   "configure.choose_model": "Pilih model",
   "configure.publishing": "Memublikasikan…",
-  "agent.sample": "Contoh"
+  "agent.sample": "Contoh",
+  "agent.filter": "Saring agen",
+  "agent.no_match": "Tidak ada agen yang cocok dengan “{query}”.",
+  "agent.edit_named": "Ubah {name}",
+  "agent.delete_named": "Hapus {name}",
+  "agent.create_and_configure": "Buat dan atur",
+  "agent.description_label": "Apa fungsinya?"
 }
