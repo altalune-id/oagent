@@ -362,5 +362,6 @@
   "project.col_actions": "Aksi",
   "project.copy_id": "Salin ID proyek",
   "project.list_subtitle": "Setiap proyek adalah satu produk atau kasus penggunaan, dengan agen, alat, rahasia, penggunaan, dan aksesnya sendiri.",
-  "project.more_for": "Aksi lainnya untuk {name}"
+  "project.more_for": "Aksi lainnya untuk {name}",
+  "project.overview_subtitle": "Agen di proyek ini, beserta alat, rahasia, penggunaan, dan aksesnya."
 }
