@@ -38,7 +38,9 @@ describe('org switcher', () => {
     const w = mount(OrgSelector);
     const trigger = w.get('button[popovertarget]');
     expect(trigger.text().replace(/\s+/g, '')).toContain('OAgent/Acme');
-    expect(trigger.get('[data-icon="lucide:route"]').attributes('aria-hidden')).toBe('true');
+    const logo = trigger.get('img');
+    expect(logo.attributes('src')).toMatch(/\/static\/oagent-mark\.svg$/);
+    expect(logo.attributes('alt')).toBe('');
     expect(trigger.classes()).toEqual(expect.arrayContaining(['btn', 'btn-ghost', 'btn-sm', 'w-full', 'justify-between', 'text-ui']));
     expect(w.get('[popover]').classes()).toEqual(expect.arrayContaining(['dropdown', 'card', 'card-sm', 'z-1', 'w-64', 'border', 'border-base-300', 'bg-base-100', 'shadow-sm']));
     expect(w.find('input[type="search"]').exists()).toBe(false);

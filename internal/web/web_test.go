@@ -106,6 +106,10 @@ func TestStaticAssets(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "image/png", rec.Header().Get("Content-Type"))
 
+		rec = get(t, srv, base+"/static/oagent-mark.svg")
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "image/svg+xml", rec.Header().Get("Content-Type"))
+
 		rec = get(t, srv, base+"/static/password.js")
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "text/javascript; charset=utf-8", rec.Header().Get("Content-Type"))

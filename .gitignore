@@ -23,6 +23,7 @@ internal/web/static/*
 !internal/web/static/apple-touch-icon.png
 !internal/web/static/favicon-32x32.png
 !internal/web/static/favicon.ico
+!internal/web/static/oagent-mark.svg
 
 # SDD workspace (scratch, not shipped)
 /.superpowers/

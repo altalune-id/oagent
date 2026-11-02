@@ -26,7 +26,7 @@ export const Organization: Story = {
       <div class="h-80 w-60 bg-base-200 p-2">
         <EntitySelect v-bind="args">
           <template #trigger>
-            <span class="inline-flex min-w-0 items-center gap-2"><Icon name="lucide:route" size="16" class="shrink-0" aria-hidden="true" /><span class="font-semibold">OAgent</span><span class="text-base-content/70">/</span><span class="truncate">Acme</span></span>
+            <span class="inline-flex min-w-0 items-center gap-2"><img src="/static/oagent-mark.svg" alt="" width="16" height="16" class="size-4 shrink-0 object-contain"><span class="font-semibold">OAgent</span><span class="text-base-content/70">/</span><span class="truncate">Acme</span></span>
           </template>
           <template #actions>
             <li><button type="button"><Icon name="lucide:plus" size="16" class="shrink-0" />New organization</button></li>

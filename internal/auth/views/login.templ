@@ -33,7 +33,7 @@ templ Login(d layout.LayoutData, v LoginData) {
 	@layout.Column(d) {
 		<div class="flex flex-col gap-3">
 			<span class="inline-flex items-center gap-2 text-base font-semibold">
-				@iconRoute()
+				<img src={ d.Static("/oagent-mark.svg") } alt="" width="20" height="20" class="size-5 shrink-0"/>
 				OAgent
 			</span>
 			<h1 class="text-2xl font-semibold text-balance">Sign in to OAgent</h1>
@@ -80,13 +80,6 @@ templ Login(d layout.LayoutData, v LoginData) {
 	}
 }
 
-templ iconRoute() {
-	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="size-5 shrink-0">
-		<circle cx="6" cy="19" r="3"></circle>
-		<path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"></path>
-		<circle cx="18" cy="5" r="3"></circle>
-	</svg>
-}
 
 templ passwordForm(d layout.LayoutData, v LoginData) {
 	<form method="post" action={ d.Href("/login") } class="flex flex-col gap-3">
