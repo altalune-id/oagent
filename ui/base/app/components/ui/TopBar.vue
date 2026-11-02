@@ -27,14 +27,11 @@ const emit = defineEmits<{ menu: [], search: [] }>();
     </AppButton>
     <Breadcrumbs class="flex-1 max-md:hidden" :crumbs="crumbs" :label="crumbsLabel" />
     <div class="min-w-0 flex-1 text-ui md:hidden">
-      <div v-if="place" class="truncate font-medium" :class="{ 'font-mono text-xs': place.mono }">
+      <div v-if="place" class="truncate font-medium">
         {{ place.label }}
       </div>
     </div>
     <span v-if="place?.badge" class="badge badge-sm md:hidden">{{ place.badge }}</span>
-    <AppButton variant="ghost" size="sm" square class="md:hidden" :aria-label="jumpLabel" @click="emit('search')">
-      <Icon name="lucide:search" size="16" class="shrink-0" aria-hidden="true" />
-    </AppButton>
     <AppButton variant="ghost" size="sm" class="hidden text-base-content/70 md:inline-flex" :aria-label="`${jumpLabel}, ${shortcutLabel}`" @click="emit('search')">
       <Icon name="lucide:search" size="16" class="shrink-0" aria-hidden="true" />
       <span>{{ searchLabel }}</span>

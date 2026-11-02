@@ -4,8 +4,10 @@ import { staticURL } from '~/lib/auth/urls';
 
 const { init } = useTheme();
 const { apiUrl } = useRuntimeConfig().public;
+const { locale } = useI18n();
 
 useHead({
+  htmlAttrs: { lang: locale },
   bodyAttrs: { class: 'text-sm leading-[normal]' },
   link: [
     { key: 'icon', rel: 'icon', href: staticURL(apiUrl, 'favicon.ico'), sizes: 'any' },
