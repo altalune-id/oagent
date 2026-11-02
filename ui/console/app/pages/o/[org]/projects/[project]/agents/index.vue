@@ -64,15 +64,14 @@ const sampleColumns = computed<Column[]>(() => [
 ]);
 
 const query = ref('');
-const sort = ref<TableSort>({ key: 'updatedAt', dir: 'ascending' });
+const sort = ref<TableSort>({ key: 'updatedAt', dir: 'descending' });
 
-// NOTE: Updated ascending puts the newest first, as the design's table does.
 function shown<T extends { name: string, description: string, updatedAt?: Date }>(rows: T[]): T[] {
   const q = query.value.trim().toLowerCase();
   const hits = q ? rows.filter(r => `${r.name} ${r.description}`.toLowerCase().includes(q)) : rows;
   const out = hits.toSorted(sort.value.key === 'name'
     ? (a, b) => a.name.localeCompare(b.name)
-    : (a, b) => (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0));
+    : (a, b) => (a.updatedAt?.getTime() ?? 0) - (b.updatedAt?.getTime() ?? 0));
   return sort.value.dir === 'ascending' ? out : out.toReversed();
 }
 const rows = computed(() => shown(items.value));

@@ -78,6 +78,7 @@ describe('agents table', () => {
     const w = await mountPage(AgentsPage);
     const names = () => w.findAll('tbody td:first-child').map(td => td.text());
     expect(names()).toEqual(['Refund Triage', 'Support'], 'newest first');
+    expect(w.findAll('th').find(th => th.text() === 'agent.col_updated')!.attributes('aria-sort')).toBe('descending', 'newest first is descending by time');
     await w.get('input[type="search"]').setValue('tickets');
     expect(names()).toEqual(['Support']);
     await w.get('input[type="search"]').setValue('nothing here');

@@ -25,14 +25,14 @@ const rows = [
   { id: 'escalation-drafts', name: 'Escalation Drafts', version: 2, draft: true, model: 'large-2', updated: 'Oct 22', age: 5 },
 ];
 type Row = (typeof rows)[number];
-const keys: Record<string, (r: Row) => string | number> = { name: r => r.name, updated: r => r.age };
+const keys: Record<string, (r: Row) => string | number> = { name: r => r.name, updated: r => -r.age };
 
 export const Agents: Story = {
   name: 'Agents (artifact)',
   render: () => ({
     components: { AppBadge, DataTable },
     setup: () => {
-      const sort = ref<TableSort>({ key: 'updated', dir: 'ascending' });
+      const sort = ref<TableSort>({ key: 'updated', dir: 'descending' });
       const sorted = computed(() => {
         const by = keys[sort.value.key]!;
         const out = rows.toSorted((a, b) => (by(a) < by(b) ? -1 : by(a) > by(b) ? 1 : 0));
