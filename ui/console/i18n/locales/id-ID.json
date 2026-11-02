@@ -353,5 +353,9 @@
   "org.switch": "Ganti organisasi",
   "project.switch": "Ganti proyek",
   "project.group_title": "Produk dan kasus penggunaan",
-  "auth.your_account": "Akun Anda"
+  "auth.your_account": "Akun Anda",
+  "search.empty": "Tidak ada halaman yang cocok.",
+  "search.jump": "Cari dan lompat",
+  "search.label": "Cari",
+  "search.shortcut": "Command K"
 }

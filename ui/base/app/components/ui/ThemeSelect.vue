@@ -1,41 +1,22 @@
 <script setup lang="ts">
 import type { ThemeFamilyOption } from './types';
-import { computed } from 'vue';
-import AppDropdown from './AppDropdown.vue';
 
-const props = withDefaults(defineProps<{
+const { families, modelValue, label = 'Theme family' } = defineProps<{
   families: ThemeFamilyOption[],
   modelValue: string,
   label?: string,
-  open?: boolean,
-}>(), {
-  label: 'Theme',
-  open: false,
-});
+}>();
 
 const emit = defineEmits<{ select: [id: string] }>();
-
-const current = computed(() => props.families.find(family => family.id === props.modelValue));
 </script>
 
 <template>
-  <AppDropdown placement="end" content-class="w-56" :label="label" :open="open" trigger-class="gap-2 max-sm:px-2">
-    <template #trigger>
-      <Icon name="lucide:palette" size="16" />
-      <span v-if="current" class="hidden sm:inline">{{ current.label }}</span>
-      <Icon name="lucide:chevron-down" size="14" class="max-sm:hidden" />
-    </template>
-    <ul class="menu w-full p-0">
-      <li v-for="family in families" :key="family.id">
-        <button type="button" :class="{ 'menu-active': family.id === modelValue }" @click="emit('select', family.id)">
-          <span :data-theme="family.theme" class="flex items-center gap-0.5" aria-hidden="true">
-            <span class="size-3 rounded-full bg-primary ring-1 ring-base-content/10" />
-            <span class="size-3 rounded-full bg-secondary ring-1 ring-base-content/10" />
-            <span class="size-3 rounded-full bg-accent ring-1 ring-base-content/10" />
-          </span>
-          {{ family.label }}
-        </button>
-      </li>
-    </ul>
-  </AppDropdown>
+  <label class="inline-flex items-center">
+    <span class="sr-only">{{ label }}</span>
+    <select class="select select-xs select-ghost w-28 text-xs" :value="modelValue" @change="emit('select', ($event.target as HTMLSelectElement).value)">
+      <option v-for="family in families" :key="family.id" :value="family.id">
+        {{ family.label }}
+      </option>
+    </select>
+  </label>
 </template>

@@ -33,7 +33,7 @@ const shown = computed(() => {
       </span>
     </template>
     <div class="card-body gap-2 p-2">
-      <SearchInput v-if="searchLabel" v-model="query" :label="searchLabel" />
+      <SearchInput v-if="searchLabel" v-model="query" :label="searchLabel" class="w-full" />
       <ul class="menu menu-sm w-full p-0 text-ui">
         <li v-if="title" class="menu-title text-base-content/70">
           {{ title }}

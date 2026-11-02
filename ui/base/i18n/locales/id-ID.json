@@ -274,5 +274,7 @@
   "error_page.forbidden_title": "Anda tidak punya akses",
   "error_page.forbidden_body": "Minta akses kepada pemilik atau admin organisasi ini.",
   "error_page.failed_title": "Halaman ini gagal dimuat",
-  "error_page.failed_body": "Terjadi kesalahan di pihak kami. Coba lagi sebentar lagi."
+  "error_page.failed_body": "Terjadi kesalahan di pihak kami. Coba lagi sebentar lagi.",
+  "theme.family": "Keluarga tema",
+  "theme.switch_mode": "Beralih antara terang dan gelap"
 }

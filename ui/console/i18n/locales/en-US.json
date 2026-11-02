@@ -353,5 +353,9 @@
   "org.switch": "Switch organization",
   "project.switch": "Switch project",
   "project.group_title": "Products and use cases",
-  "auth.your_account": "Your account"
+  "auth.your_account": "Your account",
+  "search.empty": "No page matches.",
+  "search.jump": "Search and jump",
+  "search.label": "Search",
+  "search.shortcut": "Command K"
 }

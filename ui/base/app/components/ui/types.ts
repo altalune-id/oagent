@@ -85,3 +85,9 @@ export interface StatItem {
 }
 
 export type StatusTone = 'success' | 'warning' | 'error' | 'info' | 'neutral';
+
+export interface PaletteItem {
+  key: string;
+  label: string;
+  to: string;
+}

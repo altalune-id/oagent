@@ -274,5 +274,7 @@
   "error_page.forbidden_title": "You don't have access",
   "error_page.forbidden_body": "Ask an owner or admin of this organization for access.",
   "error_page.failed_title": "Couldn't load this page",
-  "error_page.failed_body": "Something went wrong on our side. Try again in a moment."
+  "error_page.failed_body": "Something went wrong on our side. Try again in a moment.",
+  "theme.family": "Theme family",
+  "theme.switch_mode": "Switch between light and dark"
 }
