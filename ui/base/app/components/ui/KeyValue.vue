@@ -9,17 +9,17 @@ const { items, copyLabel = 'Copy {label}' } = defineProps<{
 </script>
 
 <template>
-  <dl class="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-2 text-sm sm:grid-cols-[minmax(9rem,auto)_minmax(0,1fr)]">
-    <template v-for="(item, i) in items" :key="item.label">
-      <dt class="text-base-content/70">
+  <dl class="divide-y divide-base-300">
+    <div v-for="(item, i) in items" :key="item.label" class="grid grid-cols-[9.5rem_minmax(0,1fr)] gap-3 px-4 py-2 max-sm:grid-cols-1 max-sm:gap-0">
+      <dt class="text-ui text-base-content/70">
         {{ item.label }}
       </dt>
-      <dd class="flex min-w-0 items-center gap-1 break-words max-sm:mb-2">
+      <dd class="flex min-w-0 flex-wrap items-center gap-x-2 text-ui">
         <slot :name="`value-${i}`" :item="item">
           <span :class="{ 'font-mono text-xs break-all': item.mono }">{{ item.value }}</span>
           <CopyButton v-if="item.copy && item.value" :value="item.value" :label="copyLabel.replace('{label}', item.label)" />
         </slot>
       </dd>
-    </template>
+    </div>
   </dl>
 </template>

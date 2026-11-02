@@ -40,7 +40,18 @@ describe('section', () => {
   });
 
   it('marks a danger zone', () => {
-    expect(mount(Section, { props: { title: 'Delete', tone: 'danger' } }).classes()).toContain('border-error');
+    const w = mount(Section, { props: { title: 'Delete', tone: 'danger' } });
+    expect(w.classes()).toContain('border-error');
+    expect(w.classes()).not.toContain('border-base-300');
+  });
+
+  it('pads the body, or draws the design header bar over a flush body for rows', () => {
+    const padded = mount(Section, { props: { title: 'Limits' }, slots: { default: '<p>body</p>' } });
+    expect(padded.get('h2').classes()).toEqual(['text-ui', 'font-semibold']);
+    expect(padded.get('p').element.parentElement!.className).toBe('flex flex-col gap-4 px-4 pb-4');
+    const flush = mount(Section, { props: { title: 'Run stats', flush: true }, slots: { default: '<p>body</p>' } });
+    expect(flush.get('h2').element.parentElement!.parentElement!.classList).toContain('border-b');
+    expect(flush.get('p').element.parentElement!.className).toBe('');
   });
 });
 
@@ -65,6 +76,13 @@ describe('keyValue', () => {
     expect(w.findAll('dt').map(d => d.text())).toEqual(['Model', 'ID']);
     expect(w.findAll('dd')[1]!.get('span').classes()).toContain('font-mono');
     expect(w.get('button').attributes('aria-label')).toBe('Copy ID');
+  });
+
+  it('draws divided status rows with a fixed label column that stacks on phones', () => {
+    const w = mount(KeyValue, { props: { items: [{ label: 'Status', value: 'Waiting for approval' }] } });
+    expect(w.classes()).toEqual(['divide-y', 'divide-base-300']);
+    expect(w.get('dl > div').classes()).toEqual(['grid', 'grid-cols-[9.5rem_minmax(0,1fr)]', 'gap-3', 'px-4', 'py-2', 'max-sm:grid-cols-1', 'max-sm:gap-0']);
+    expect(w.get('dt').classes()).toEqual(['text-ui', 'text-base-content/70']);
   });
 
   it('lets a slot replace one value', () => {

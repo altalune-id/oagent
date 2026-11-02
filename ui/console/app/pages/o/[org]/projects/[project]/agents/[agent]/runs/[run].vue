@@ -180,7 +180,7 @@ useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
       </Section>
 
       <div class="space-y-6 lg:sticky lg:top-20 lg:self-start">
-        <Section :title="t('run.inspector')" :description="selected.name">
+        <Section :title="t('run.inspector')" :description="selected.name" flush>
           <KeyValue
             :items="[
               { label: t('run.started_at'), value: `${selected.at} s` },
@@ -189,17 +189,19 @@ useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
               { label: t('run.tokens'), value: selected.tokens ? count(selected.tokens) : '—' },
             ]"
           />
-          <div v-if="selected.input" class="space-y-1">
-            <h3 class="text-sm font-semibold">
-              {{ t('run.input') }}
-            </h3>
-            <pre class="overflow-auto rounded-box bg-base-200 p-3 font-mono text-xs whitespace-pre-wrap break-all">{{ selected.input }}</pre>
-          </div>
-          <div v-if="selected.output" class="space-y-1">
-            <h3 class="text-sm font-semibold">
-              {{ t('run.output') }}
-            </h3>
-            <pre class="overflow-auto rounded-box bg-base-200 p-3 font-mono text-xs whitespace-pre-wrap break-all">{{ selected.output }}</pre>
+          <div v-if="selected.input || selected.output" class="flex flex-col gap-4 border-t border-base-300 px-4 py-3">
+            <div v-if="selected.input" class="space-y-1">
+              <h3 class="text-sm font-semibold">
+                {{ t('run.input') }}
+              </h3>
+              <pre class="overflow-auto rounded-box bg-base-200 p-3 font-mono text-xs whitespace-pre-wrap break-all">{{ selected.input }}</pre>
+            </div>
+            <div v-if="selected.output" class="space-y-1">
+              <h3 class="text-sm font-semibold">
+                {{ t('run.output') }}
+              </h3>
+              <pre class="overflow-auto rounded-box bg-base-200 p-3 font-mono text-xs whitespace-pre-wrap break-all">{{ selected.output }}</pre>
+            </div>
           </div>
         </Section>
         <Section :title="t('run.tools_in_run')">
