@@ -276,5 +276,6 @@
   "error_page.failed_title": "Halaman ini gagal dimuat",
   "error_page.failed_body": "Terjadi kesalahan di pihak kami. Coba lagi sebentar lagi.",
   "theme.family": "Keluarga tema",
-  "theme.switch_mode": "Beralih antara terang dan gelap"
+  "theme.switch_mode": "Beralih antara terang dan gelap",
+  "common.copied": "Disalin"
 }

@@ -32,6 +32,12 @@ describe('appDropdown', () => {
     expect(render({ label: '' }).find('.sr-only').exists()).toBe(false);
   });
 
+  it('draws an xs trigger when asked, for row menus', () => {
+    const w = mount(AppDropdown, { props: { label: 'More', size: 'xs', triggerClass: 'btn-square' } });
+    expect(w.get('button').classes()).toEqual(expect.arrayContaining(['btn', 'btn-ghost', 'btn-xs', 'btn-square']));
+    expect(w.get('button').classes()).not.toContain('btn-sm');
+  });
+
   it('places the panel at the end and disables the trigger', () => {
     const w = render({ disabled: true, placement: 'end', contentClass: 'w-48' });
     expect(w.get('button[popovertarget]').attributes('disabled')).toBeDefined();

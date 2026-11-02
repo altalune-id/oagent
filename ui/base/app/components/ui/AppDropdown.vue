@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref, useId } from 'vue';
 
-const { label = '', open = false, disabled = false, placement = 'start', triggerClass = '', contentClass = 'w-56', bare = false } = defineProps<{
+const { label = '', open = false, disabled = false, placement = 'start', triggerClass = '', contentClass = 'w-56', bare = false, size = 'sm' } = defineProps<{
   label?: string,
   open?: boolean,
   disabled?: boolean,
   placement?: 'start' | 'end' | 'top',
   triggerClass?: string,
+  size?: 'xs' | 'sm',
   bare?: boolean,
   contentClass?: string,
 }>();
@@ -45,8 +46,8 @@ defineExpose({ close });
   <div class="inline-flex">
     <button
       type="button"
-      class="btn btn-ghost btn-sm"
-      :class="triggerClass"
+      class="btn btn-ghost"
+      :class="[size === 'xs' ? 'btn-xs' : 'btn-sm', triggerClass]"
       :disabled="disabled"
       :popovertarget="id"
       aria-haspopup="true"

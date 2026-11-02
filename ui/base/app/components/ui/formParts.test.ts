@@ -1,8 +1,9 @@
 import type { Component } from 'vue';
 // @vitest-environment happy-dom
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h } from 'vue';
+import CopyButton from './CopyButton.vue';
 import AppDataTable from './DataTable.vue';
 import FormField from './FormField.vue';
 import SearchInput from './SearchInput.vue';
@@ -180,5 +181,21 @@ describe('searchInput', () => {
     expect(input.attributes('placeholder')).toBe('Filter agents');
     await input.setValue('refund');
     expect(w.props('modelValue')).toBe('refund');
+  });
+});
+
+describe('copyButton', () => {
+  it('shows a Copied toast after a copy when given the label, and none without it', async () => {
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
+    const { toasts } = useToast();
+    toasts.splice(0);
+    await mount(CopyButton, { props: { value: 'x', text: 'Copy issuer', copiedLabel: 'Copied' } }).get('button').trigger('click');
+    await flushPromises();
+    expect(toasts.map(t => [t.kind, t.text])).toEqual([['success', 'Copied']]);
+    toasts.splice(0);
+    await mount(CopyButton, { props: { value: 'x' } }).get('button').trigger('click');
+    await flushPromises();
+    expect(toasts).toEqual([]);
+    vi.unstubAllGlobals();
   });
 });
