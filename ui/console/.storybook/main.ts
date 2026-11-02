@@ -1,4 +1,5 @@
 import type { StorybookConfig } from '@storybook/vue3-vite';
+import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 import { baseAliases } from '../../base/aliases.ts';
@@ -15,6 +16,8 @@ const config: StorybookConfig = {
         ...viteConfig.resolve,
         alias: {
           ...(viteConfig.resolve?.alias as Record<string, string> | undefined),
+          '~~': fileURLToPath(new URL('..', import.meta.url)),
+          '~': fileURLToPath(new URL('../app', import.meta.url)),
           ...baseAliases,
         },
       },
