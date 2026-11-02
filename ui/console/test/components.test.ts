@@ -76,13 +76,17 @@ describe('org fields', () => {
 });
 
 describe('member list', () => {
-  it('collapses row actions into a menu below sm, named for the member', () => {
+  it('puts row actions in a menu named for the member', () => {
     const w = mount(MemberList, { props: { rows: [{ userId: 'F5pLm2XwQ8kRt3VnZ7bYc', email: 'budi@acme.test', name: 'Budi', role: 'member', initials: 'B', self: false, roles: ['member'], removable: true }] } });
-    const menu = w.get('.sm\\:hidden:has(button[popovertarget])');
-    expect(menu.get('[popover]').classes()).toContain('dropdown-end');
-    expect(menu.get('button[popovertarget] .sr-only').text()).toBe('Actions for Budi');
-    expect(menu.find('[data-icon="lucide:ellipsis"]').exists()).toBe(true);
-    expect(w.findAll('.max-sm\\:hidden button').map(b => b.text())).toContain('Remove');
+    const menu = w.get('table [popover]');
+    expect(menu.classes()).toContain('dropdown-end');
+    expect(w.get('table button[popovertarget] .sr-only').text()).toBe('Actions for Budi');
+    expect(menu.findAll('button').map(b => b.text())).toEqual(['Remove']);
+  });
+
+  it('shows no menu for a member the viewer cannot act on', () => {
+    const w = mount(MemberList, { props: { rows: [{ userId: 'F5pLm2XwQ8kRt3VnZ7bYc', email: 'budi@acme.test', name: 'Budi', role: 'owner', initials: 'B', self: false, roles: [], removable: false }] } });
+    expect(w.find('button[popovertarget]').exists()).toBe(false);
   });
 });
 

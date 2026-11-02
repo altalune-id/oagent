@@ -1,13 +1,23 @@
 <script setup lang="ts">
+import type { Column, StatusTone } from '#base/components/ui/types';
 import type { ShownError } from '#base/lib/apperror/message';
 import type { Invite } from '../../../stores/invites';
+import { computed } from 'vue';
+import AppBadge from '#base/components/ui/AppBadge.vue';
+import AppButton from '#base/components/ui/AppButton.vue';
+import AppDropdown from '#base/components/ui/AppDropdown.vue';
 import AppModal from '#base/components/ui/AppModal.vue';
+import DataTable from '#base/components/ui/DataTable.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import SecretField from '#base/components/ui/SecretField.vue';
+import Section from '#base/components/ui/Section.vue';
+import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { formatDate } from '#base/lib/format/date';
 
 export interface PendingInvitesLabels {
   title: string;
+  actionsColumn: string;
+  actionsFor: string;
   draftsTitle: string;
   draftsHint: string;
   email: string;
@@ -42,15 +52,17 @@ const props = withDefaults(defineProps<{
   labels?: PendingInvitesLabels,
   moment?: (d?: Date) => string,
 }>(), {
-  moment: (d?: Date) => formatDate(d, 'en-US', { style: 'moment' }),
   canManage: false,
   busy: false,
   error: null,
   rowLink: null,
   confirming: null,
   confirmMessage: '',
+  moment: (d?: Date) => formatDate(d, 'en-US', { style: 'moment' }),
   labels: () => ({
     title: 'Pending invites',
+    actionsColumn: 'Actions',
+    actionsFor: 'Actions for {name}',
     draftsTitle: 'Suggested by an assistant',
     draftsHint: 'An assistant drafted these invites. Nothing is sent until you confirm.',
     email: 'Email',
@@ -90,109 +102,104 @@ function roleLabel(r: string): string {
 function statusLabel(s: string): string {
   return s === 'expired' ? props.labels.expired : props.labels.pending;
 }
+
+function statusTone(s: string): StatusTone {
+  return s === 'expired' ? 'warning' : 'neutral';
+}
+
+const columns = computed<Column[]>(() => [
+  { key: 'email', label: props.labels.email },
+  { key: 'role', label: props.labels.role },
+  { key: 'status', label: props.labels.status },
+  { key: 'invitedByName', label: props.labels.invitedBy },
+  { key: 'expires', label: props.labels.expires },
+  ...(props.canManage ? [{ key: 'menu', label: props.labels.actionsColumn, hideLabel: true, align: 'end' as const }] : []),
+]);
+
+const linkFor = computed(() => props.pending.find(i => i.id === props.rowLink?.id));
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="flex flex-col gap-5">
     <ErrorText :error="error" />
 
-    <section v-if="drafts.length > 0" class="space-y-2">
-      <h2 class="text-lg font-semibold">
-        {{ labels.draftsTitle }}
-      </h2>
-      <p class="text-sm text-base-content/70">
-        {{ labels.draftsHint }}
-      </p>
-      <ul class="space-y-2">
-        <li v-for="d in drafts" :key="d.id" class="flex flex-wrap items-center gap-3 rounded-box border border-base-content/5 bg-base-100 p-3">
-          <div class="min-w-0 flex-1">
-            <div class="truncate font-medium">
-              {{ d.email }}
-            </div>
-            <div class="text-xs text-base-content/70">
-              {{ roleLabel(d.role) }} · {{ d.invitedByName }}
-            </div>
+    <Section v-if="drafts.length > 0" :title="labels.draftsTitle" :description="labels.draftsHint" flush>
+      <ul class="divide-y divide-base-300">
+        <li v-for="d in drafts" :key="d.id" class="flex flex-wrap items-center gap-3 px-4 py-2 text-ui">
+          <div class="flex min-w-0 flex-1 flex-col">
+            <span class="truncate font-medium">{{ d.email }}</span>
+            <span class="text-xs text-base-content/70">{{ roleLabel(d.role) }} · {{ d.invitedByName }}</span>
           </div>
           <template v-if="canManage">
-            <button type="button" class="btn btn-primary btn-xs" :disabled="busy" @click="emit('confirmDraft', d.id)">
+            <AppButton size="xs" :disabled="busy" @click="emit('confirmDraft', d.id)">
               {{ labels.confirmDraft }}
-            </button>
-            <button type="button" class="btn btn-ghost btn-xs" :disabled="busy" @click="emit('discard', d.id)">
+            </AppButton>
+            <AppButton variant="ghost" size="xs" :disabled="busy" @click="emit('discard', d.id)">
               {{ labels.discard }}
-            </button>
+            </AppButton>
           </template>
         </li>
       </ul>
-    </section>
+    </Section>
 
-    <section v-if="pending.length > 0" class="space-y-2">
-      <h2 class="text-lg font-semibold">
+    <section v-if="pending.length > 0" class="flex flex-col gap-2">
+      <h2 class="text-ui font-semibold">
         {{ labels.title }}
       </h2>
-      <div class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
-        <table class="table table-sm">
-          <thead class="text-base-content/70">
-            <tr>
-              <th>{{ labels.email }}</th>
-              <th>{{ labels.role }}</th>
-              <th>{{ labels.status }}</th>
-              <th>{{ labels.invitedBy }}</th>
-              <th>{{ labels.expires }}</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            <template v-for="i in pending" :key="i.id">
-              <tr class="hover:bg-base-200">
-                <td class="font-medium">
-                  {{ i.email }}
-                </td>
-                <td>{{ roleLabel(i.role) }}</td>
-                <td>
-                  <span class="badge badge-sm" :class="i.status === 'expired' ? 'badge-warning' : 'badge-ghost'">{{ statusLabel(i.status) }}</span>
-                </td>
-                <td>{{ i.invitedByName }}</td>
-                <td class="whitespace-nowrap text-xs">
-                  {{ moment(i.expiresAt) }}
-                </td>
-                <td class="whitespace-nowrap text-right">
-                  <template v-if="canManage">
-                    <button type="button" class="btn btn-ghost btn-xs" :disabled="busy" @click="emit('resend', i.id)">
-                      <Icon name="lucide:send" size="14" />
-                      {{ labels.resend }}
-                    </button>
-                    <button type="button" class="btn btn-ghost btn-xs" :disabled="busy" @click="emit('revoke', i.id)">
-                      <Icon name="lucide:x" size="14" class="text-error" />
-                      {{ labels.revoke }}
-                    </button>
-                  </template>
-                </td>
-              </tr>
-              <tr v-if="rowLink?.id === i.id">
-                <td colspan="6" class="space-y-2">
-                  <p class="text-xs text-base-content/70">
-                    {{ labels.newLink }}
-                  </p>
-                  <SecretField :value="rowLink.link" :label="labels.copy" />
-                </td>
-              </tr>
+      <DataTable :caption="labels.title" row-key="id" :columns="columns" :rows="pending">
+        <template #cell-email="{ row }">
+          <span class="font-medium">{{ row.email }}</span>
+        </template>
+        <template #cell-role="{ row }">
+          <AppBadge :label="roleLabel(row.role)" />
+        </template>
+        <template #cell-status="{ row }">
+          <StatusLabel :tone="statusTone(row.status)" :label="statusLabel(row.status)" />
+        </template>
+        <template #cell-expires="{ row }">
+          <span class="whitespace-nowrap tabular-nums text-base-content/70">{{ moment(row.expiresAt) }}</span>
+        </template>
+        <template #cell-menu="{ row }">
+          <AppDropdown placement="end" size="xs" trigger-class="btn-square" content-class="w-44" :label="labels.actionsFor.replace('{name}', row.email)" :disabled="busy">
+            <template #trigger>
+              <Icon name="lucide:ellipsis" size="14" class="shrink-0" aria-hidden="true" />
             </template>
-          </tbody>
-        </table>
+            <ul class="menu menu-sm w-full p-0 text-ui">
+              <li>
+                <button type="button" @click="emit('resend', row.id)">
+                  <Icon name="lucide:send" size="16" class="shrink-0" aria-hidden="true" />
+                  {{ labels.resend }}
+                </button>
+              </li>
+              <li>
+                <button type="button" @click="emit('revoke', row.id)">
+                  <Icon name="lucide:x" size="16" class="shrink-0 text-error" aria-hidden="true" />
+                  {{ labels.revoke }}
+                </button>
+              </li>
+            </ul>
+          </AppDropdown>
+        </template>
+      </DataTable>
+      <div v-if="rowLink && linkFor" class="flex flex-col gap-2 rounded-box border border-base-300 bg-base-100 p-4">
+        <p class="text-xs text-base-content/70">
+          {{ labels.newLink }}
+        </p>
+        <SecretField :value="rowLink.link" :label="labels.copy" />
       </div>
     </section>
 
     <AppModal :open="confirming !== null" :title="labels.revokeTitle" @close="emit('cancel')">
-      <p class="text-sm">
+      <p class="text-ui">
         {{ confirmMessage }}
       </p>
       <template #footer>
-        <button type="button" class="btn btn-ghost btn-sm" @click="emit('cancel')">
+        <AppButton variant="ghost" size="sm" @click="emit('cancel')">
           {{ labels.cancel }}
-        </button>
-        <button type="button" class="btn btn-error btn-sm" :disabled="busy" @click="emit('confirm')">
+        </AppButton>
+        <AppButton variant="error" size="sm" :disabled="busy" @click="emit('confirm')">
           {{ labels.revoke }}
-        </button>
+        </AppButton>
       </template>
     </AppModal>
   </div>

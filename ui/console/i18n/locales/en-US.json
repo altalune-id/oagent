@@ -363,5 +363,7 @@
   "project.copy_id": "Copy project ID",
   "project.list_subtitle": "Each project is one product or use case, with its own agents, tools, secrets, usage and access.",
   "project.more_for": "More actions for {name}",
-  "project.overview_subtitle": "Agents in this project, with their tools, secrets, usage and access."
+  "project.overview_subtitle": "Agents in this project, with their tools, secrets, usage and access.",
+  "invites.col_actions": "Actions",
+  "members.col_actions": "Actions"
 }
