@@ -71,6 +71,13 @@ describe('project switcher', () => {
     expect(rows(w)).toEqual(['Invoice Review', 'Support Copilot']);
   });
 
+  it('shows no badge for a project without a tag', () => {
+    setRoute({ path: '/o/acme/projects/invoices', params: { org: 'acme', project: 'invoices' } });
+    const trigger = mount(ProjectSelector).get('button[popovertarget]');
+    expect(trigger.get('.font-medium').text()).toBe('Invoice Review');
+    expect(trigger.find('.badge').exists()).toBe(false);
+  });
+
   it('offers New project only with project:write', () => {
     setRoute({ path: '/o/acme/projects/support', params: { org: 'acme', project: 'support' } });
     useAuthStore().me = { permissions: ['project:read', 'project:write'] } as never;
