@@ -20,10 +20,10 @@ const base = computed(() => `/o/${route.params.org}/projects/${route.params.proj
 const groups = computed<NavGroup[]>(() => [
   {
     items: [
-      { key: 'overview', label: t('nav.overview'), to: base.value, icon: 'lucide:layout-dashboard', active: route.path === base.value },
+      { key: 'overview', label: t('nav.overview'), to: base.value, icon: 'lucide:activity', active: route.path === base.value },
       { key: 'agents', label: t('nav.agents'), to: `${base.value}/agents`, icon: 'lucide:bot', active: route.path.startsWith(`${base.value}/agents`) },
       { key: 'webhooks', label: t('webhooks.title'), to: `${base.value}/webhooks`, icon: 'lucide:webhook', active: route.path.startsWith(`${base.value}/webhooks`) },
-      { key: 'settings', label: t('nav.settings'), to: `${base.value}/settings`, icon: 'lucide:settings', active: route.path.startsWith(`${base.value}/settings`) },
+      { key: 'settings', label: t('nav.settings'), to: `${base.value}/settings`, icon: 'lucide:settings-2', active: route.path.startsWith(`${base.value}/settings`) },
     ],
   },
 ]);
@@ -41,7 +41,7 @@ const groups = computed<NavGroup[]>(() => [
       </div>
     </template>
     <template v-if="appVersion" #footer>
-      OAgent v{{ appVersion }}
+      <span class="px-2 text-xs text-base-content/70">OAgent v{{ appVersion }}</span>
     </template>
   </SidebarNav>
 </template>

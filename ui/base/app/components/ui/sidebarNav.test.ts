@@ -18,6 +18,14 @@ describe('sidebarNav', () => {
     expect(links[0]!.classes()).toContain('menu-active');
   });
 
+  it('draws the design menu: dense small menu, muted group titles, a bordered footer', () => {
+    const w = mount(SidebarNav, { props: { groups }, slots: { footer: 'Sam Rivera' } });
+    expect(w.get('aside').classes()).toEqual(['flex', 'h-full', 'min-h-full', 'w-60', 'shrink-0', 'flex-col', 'border-e', 'border-base-300', 'bg-base-200']);
+    expect(w.get('ul').classes()).toEqual(['menu', 'menu-sm', 'w-full', 'py-0', 'text-ui']);
+    expect(w.get('.menu-title').classes()).toEqual(['menu-title', 'pt-3', 'text-xs', 'text-base-content/70']);
+    expect(w.get('[data-sidebar-footer]').classes()).toEqual(['flex', 'flex-col', 'gap-1', 'border-t', 'border-base-300', 'p-2']);
+  });
+
   it('titles a group only when it has a label, and shows item badges', () => {
     const w = mount(SidebarNav, { props: { groups } });
     expect(w.get('nav').attributes('aria-label')).toBeUndefined();
