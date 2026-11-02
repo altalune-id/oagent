@@ -45,11 +45,18 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · OAgent` 
     <Section v-else :title="t('nav.agents')" flush class="max-w-2xl" data-testid="project-agents">
       <ul v-if="items.length" class="divide-y divide-base-300">
         <li v-for="agent in items" :key="agent.id" class="flex items-center gap-2 px-4 py-2 text-ui">
-          <NuxtLink :to="`/o/${org?.slug}/projects/${project.slug}/agents/${agent.slug}`" class="link link-hover min-w-0 truncate font-medium">
-            {{ agent.name }}
-          </NuxtLink>
-          <span class="min-w-0 truncate font-mono text-xs text-base-content/70">{{ agent.slug }}</span>
-          <AppBadge v-if="agent.unpublishedChanges" :label="t('agent.draft_changes')" class="ms-auto shrink-0" />
+          <div class="min-w-0 flex-1">
+            <div class="flex min-w-0 items-center gap-2">
+              <NuxtLink :to="`/o/${org?.slug}/projects/${project.slug}/agents/${agent.slug}`" class="link link-hover min-w-0 truncate font-medium">
+                {{ agent.name }}
+              </NuxtLink>
+              <span class="min-w-0 truncate font-mono text-xs text-base-content/70">{{ agent.slug }}</span>
+            </div>
+            <p v-if="agent.description" class="truncate text-xs text-base-content/70">
+              {{ agent.description }}
+            </p>
+          </div>
+          <AppBadge v-if="agent.unpublishedChanges" :label="t('agent.draft_changes')" outline class="shrink-0" />
         </li>
       </ul>
       <p v-else class="px-4 py-3 text-ui text-base-content/70">

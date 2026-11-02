@@ -22,7 +22,7 @@ beforeEach(() => {
 describe('project overview', () => {
   it('heads the page with the project and its mono id, and lists agents as dense rows with a draft badge', async () => {
     setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [
-      { id: 'A1', projectId, slug: 'support', name: 'Support', publishedVersion: 3, unpublishedChanges: true },
+      { id: 'A1', projectId, slug: 'support', name: 'Support', description: 'Answers tickets', publishedVersion: 3, unpublishedChanges: true },
       { id: 'A2', projectId, slug: 'triage', name: 'Triage', publishedVersion: 1 },
     ] }) });
     const w = await mountPage(Overview);
@@ -31,6 +31,10 @@ describe('project overview', () => {
     const rows = w.findAll('[data-testid="project-agents"] li');
     expect(rows.map(r => r.get('.font-mono').text())).toEqual(['support', 'triage']);
     expect(rows[0]!.get('.badge').text()).toBe('agent.draft_changes');
+    expect(rows[0]!.get('.badge').classes()).toEqual(expect.arrayContaining(['badge', 'badge-sm', 'badge-outline']));
+    expect(rows[0]!.get('p').text()).toBe('Answers tickets');
+    expect(rows[0]!.get('p').classes()).toEqual(['truncate', 'text-xs', 'text-base-content/70']);
+    expect(rows[1]!.find('p').exists()).toBe(false);
     expect(rows[1]!.find('.badge').exists()).toBe(false);
   });
 
