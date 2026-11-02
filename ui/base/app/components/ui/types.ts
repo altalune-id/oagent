@@ -13,6 +13,7 @@ export interface NavItem {
 export interface Crumb {
   label: string;
   to?: string;
+  mono?: boolean;
 }
 
 export interface Column {

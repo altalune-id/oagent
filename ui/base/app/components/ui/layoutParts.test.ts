@@ -1,10 +1,23 @@
 // @vitest-environment happy-dom
 import { mount, RouterLinkStub } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
+import Breadcrumbs from './Breadcrumbs.vue';
 import EmptyState from './EmptyState.vue';
 import KeyValue from './KeyValue.vue';
 import PageHeader from './PageHeader.vue';
 import Section from './Section.vue';
+
+describe('breadcrumbs', () => {
+  it('is a named dense trail: links, optional mono slugs and the current page as plain text', () => {
+    const w = mount(Breadcrumbs, { props: { crumbs: [{ label: 'Acme', to: '/o/acme' }, { label: 'refund-triage', to: '/o/acme/p', mono: true }, { label: 'Agents' }] } });
+    expect(w.get('nav').classes()).toEqual(['breadcrumbs', 'min-w-0', 'text-ui']);
+    expect(w.get('nav').attributes('aria-label')).toBe('Breadcrumb');
+    expect(w.findAllComponents(RouterLinkStub).map(l => l.props('to'))).toEqual(['/o/acme', '/o/acme/p']);
+    expect(w.findAll('li')[1]!.get('span').classes()).toEqual(['font-mono', 'text-xs']);
+    expect(w.get('[aria-current="page"]').text()).toBe('Agents');
+    expect(w.get('[aria-current="page"]').element.tagName).toBe('SPAN');
+  });
+});
 
 describe('pageHeader', () => {
   it('has one h1, a description and an actions area', () => {

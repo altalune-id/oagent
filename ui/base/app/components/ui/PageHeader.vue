@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Crumb } from './types';
 import { useSlots } from 'vue';
+import Breadcrumbs from './Breadcrumbs.vue';
 
 const { title, description = '', mono = false, crumbs = [], preview = '', crumbsLabel = 'Breadcrumb' } = defineProps<{
   title: string,
@@ -16,16 +17,7 @@ const slots = useSlots();
 
 <template>
   <header class="flex flex-col gap-2">
-    <nav v-if="crumbs.length" :aria-label="crumbsLabel" class="breadcrumbs py-0 text-sm text-base-content/70">
-      <ul>
-        <li v-for="(crumb, i) in crumbs" :key="i">
-          <NuxtLink v-if="crumb.to" :to="crumb.to" class="link link-hover">
-            {{ crumb.label }}
-          </NuxtLink>
-          <span v-else aria-current="page">{{ crumb.label }}</span>
-        </li>
-      </ul>
-    </nav>
+    <Breadcrumbs v-if="crumbs.length" :crumbs="crumbs" :label="crumbsLabel" />
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="min-w-0 flex-1 space-y-1">
         <div class="flex flex-wrap items-center gap-2">
