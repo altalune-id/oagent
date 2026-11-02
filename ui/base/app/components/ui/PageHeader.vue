@@ -19,7 +19,7 @@ const slots = useSlots();
   <header class="flex flex-col gap-2">
     <Breadcrumbs v-if="crumbs.length" :crumbs="crumbs" :label="crumbsLabel" />
     <div class="flex flex-wrap items-start justify-between gap-3">
-      <div class="min-w-0 flex-1 space-y-1">
+      <div class="min-w-0 space-y-1">
         <div class="flex flex-wrap items-center gap-2">
           <h1 :class="mono ? 'font-mono text-xl font-semibold break-all' : 'text-2xl font-semibold break-words'">
             {{ title }}

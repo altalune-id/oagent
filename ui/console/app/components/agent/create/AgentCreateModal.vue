@@ -32,10 +32,10 @@ const { open, name, slug, description, busy, error, fieldErrors, show, hide, sub
         >
       </FormField>
       <FormField v-slot="{ id, describedBy, invalid }" :label="t('agent.description_label')" :error="fieldErrors.description">
-        <textarea
-          :id="id" v-model="description" rows="3" class="textarea text-ui w-full" :class="{ 'textarea-error': invalid }"
+        <input
+          :id="id" v-model="description" type="text" maxlength="2000" class="input input-sm text-ui w-full" :class="{ 'input-error': invalid }"
           :placeholder="t('agent.description_placeholder')" :disabled="busy" :aria-invalid="invalid" :aria-describedby="describedBy"
-        />
+        >
       </FormField>
       <ErrorText :error="error" />
     </form>

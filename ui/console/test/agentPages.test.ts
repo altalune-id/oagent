@@ -32,12 +32,12 @@ beforeEach(() => {
 });
 
 describe('agents page', () => {
-  it('lists real agents in a captioned table with their description and version, and no Preview badge', async () => {
+  it('lists real agents in a captioned table with their version and no Preview badge, leaving the description to the filter', async () => {
     inProject('/agents', [support], 'agent:read');
     const w = await mountPage(AgentsPage);
     expect(w.get('h1').text()).toBe('nav.agents');
     expect(w.get('caption').text()).toBe('nav.agents');
-    expect(w.text()).toContain('Answers tickets');
+    expect(w.text()).not.toContain('Answers tickets', 'the design table has no description column');
     expect(w.find('h1 + .badge').exists()).toBe(false);
     expect(w.get('tbody .badge').text()).toBe('agent.not_published');
   });
@@ -57,7 +57,9 @@ describe('agents page', () => {
     expect(w.text()).not.toContain('$3.86', 'runs, median and cost wait for the runtime');
     expect(w.findAll('tbody td.font-mono').map(td => td.text())).toEqual(sampleAgents().toSorted((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).map(a => a.model));
     expect(w.findAll('tbody .badge').filter(b => b.text() === 'agent.sample')).toHaveLength(sampleAgents().length);
-    expect(w.findAll('li.list-row .badge').filter(b => b.text() === 'agent.sample')).toHaveLength(sampleAgents().length);
+    expect(w.find('li.list-row').exists()).toBe(false, 'phones scroll the table instead of a card list, so the version badges stay');
+    expect(w.get('.overflow-x-auto').classes()).not.toContain('max-sm:hidden');
+    expect(w.findAll('tbody td:last-child').every(td => td.classes().includes('text-base-content/70'))).toBe(true, 'Updated is muted');
     await w.findAll('button').find(b => b.text() === 'agent.hide_samples')!.trigger('click');
     expect(w.text()).not.toContain(sampleAgents()[0]!.name);
   });

@@ -59,7 +59,7 @@ function cell(row: T, key: string): unknown {
           </tbody>
           <tbody v-else>
             <tr v-for="row in rows" :key="String(cell(row, rowKey))">
-              <td v-for="col in columns" :key="col.key" :class="{ 'text-end tabular-nums': col.align === 'end', 'font-mono text-xs': col.mono }">
+              <td v-for="col in columns" :key="col.key" :class="{ 'text-end tabular-nums': col.align === 'end', 'font-mono text-xs': col.mono, 'text-base-content/70': col.muted }">
                 <slot :name="`cell-${col.key}`" :row="row">
                   {{ cell(row, col.key) }}
                 </slot>

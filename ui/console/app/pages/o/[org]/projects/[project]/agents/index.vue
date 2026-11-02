@@ -52,7 +52,7 @@ const samples = sampleAgents();
 const columns = computed<Column[]>(() => [
   { key: 'name', label: t('agent.col_agent'), sortable: true },
   { key: 'publishedVersion', label: t('agent.col_version') },
-  { key: 'updatedAt', label: t('agent.col_updated'), sortable: true },
+  { key: 'updatedAt', label: t('agent.col_updated'), sortable: true, muted: true },
   { key: 'id', label: t('common.id') },
   { key: 'actions', label: t('agent.col_actions'), hideLabel: true, align: 'end' },
 ]);
@@ -60,7 +60,7 @@ const sampleColumns = computed<Column[]>(() => [
   { key: 'name', label: t('agent.col_agent'), sortable: true },
   { key: 'version', label: t('agent.col_version') },
   { key: 'model', label: t('agent.col_model'), mono: true },
-  { key: 'updatedAt', label: t('agent.col_updated'), sortable: true },
+  { key: 'updatedAt', label: t('agent.col_updated'), sortable: true, muted: true },
 ]);
 
 const query = ref('');
@@ -95,9 +95,6 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
   <div v-if="project" class="space-y-6">
     <PageHeader :title="t('nav.agents')" :description="t('agent.subtitle', { project: project.name })" :preview="showSamples ? t('preview.badge') : ''">
       <template #actions>
-        <AppButton v-if="showSamples" variant="ghost" size="sm" @click="showSamples = false">
-          {{ t('agent.hide_samples') }}
-        </AppButton>
         <AgentCreateModal v-if="canEdit && (items.length || showSamples)" :org-id="org?.id ?? ''" :project-id="project.id" />
       </template>
     </PageHeader>
@@ -107,6 +104,9 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
     <template v-else>
       <div v-if="showSamples || items.length" class="flex flex-wrap items-center justify-between gap-2">
         <SearchInput v-model="query" :label="t('agent.filter')" />
+        <AppButton v-if="showSamples" variant="ghost" size="sm" @click="showSamples = false">
+          {{ t('agent.hide_samples') }}
+        </AppButton>
       </div>
 
       <template v-if="showSamples">
@@ -125,18 +125,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
             <span class="whitespace-nowrap"><span class="font-mono text-xs">v{{ row.version }}</span> <AppBadge :label="row.draft ? t('agent.draft_changes') : t('agent.live')" :outline="row.draft" /></span>
           </template>
           <template #cell-updatedAt="{ row }">
-            <time :datetime="row.updatedAt.toISOString()" class="whitespace-nowrap text-base-content/70">{{ when(row.updatedAt) }}</time>
-          </template>
-          <template #row-sm="{ row }">
-            <div class="list-col-grow">
-              <p class="flex flex-wrap items-center gap-2 font-medium">
-                {{ row.name }}
-                <AppBadge :label="t('agent.sample')" />
-              </p>
-              <p class="text-xs text-base-content/70">
-                <span class="font-mono">v{{ row.version }}</span> · <span class="font-mono">{{ row.model }}</span>
-              </p>
-            </div>
+            <time :datetime="row.updatedAt.toISOString()" class="whitespace-nowrap">{{ when(row.updatedAt) }}</time>
           </template>
           <template #empty>
             <p class="text-ui text-base-content/70">
@@ -161,7 +150,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
           </span>
         </template>
         <template #cell-updatedAt="{ row }">
-          <time v-if="row.updatedAt" :datetime="row.updatedAt.toISOString()" class="whitespace-nowrap text-base-content/70">{{ when(row.updatedAt) }}</time>
+          <time v-if="row.updatedAt" :datetime="row.updatedAt.toISOString()" class="whitespace-nowrap">{{ when(row.updatedAt) }}</time>
         </template>
         <template #cell-id="{ row }">
           <span class="inline-flex items-center gap-1">
@@ -171,24 +160,6 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
         </template>
         <template #cell-actions="{ row }">
           <span v-if="canEdit" class="flex justify-end gap-1 whitespace-nowrap">
-            <AppButton variant="ghost" size="xs" square :aria-label="t('agent.edit_named', { name: row.name })" @click="edit(row)">
-              <Icon name="lucide:pencil" size="14" aria-hidden="true" />
-            </AppButton>
-            <AppButton variant="ghost" size="xs" square :aria-label="t('agent.delete_named', { name: row.name })" @click="deleting.ask(row)">
-              <Icon name="lucide:trash-2" size="14" class="text-error" aria-hidden="true" />
-            </AppButton>
-          </span>
-        </template>
-        <template #row-sm="{ row }">
-          <div class="list-col-grow min-w-0">
-            <NuxtLink :to="`${base}/${row.slug}`" class="link link-hover font-medium">
-              {{ row.name }}
-            </NuxtLink>
-            <p v-if="row.description" class="text-xs text-base-content/70">
-              {{ row.description }}
-            </p>
-          </div>
-          <span v-if="canEdit" class="flex gap-1">
             <AppButton variant="ghost" size="xs" square :aria-label="t('agent.edit_named', { name: row.name })" @click="edit(row)">
               <Icon name="lucide:pencil" size="14" aria-hidden="true" />
             </AppButton>

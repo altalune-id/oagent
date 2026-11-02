@@ -21,6 +21,7 @@ export interface Column {
   label: string;
   align?: 'start' | 'end';
   mono?: boolean;
+  muted?: boolean;
   hideLabel?: boolean;
   sortable?: boolean;
 }
