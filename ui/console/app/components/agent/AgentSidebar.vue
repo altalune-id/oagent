@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { NavGroup } from '#base/components/ui/types';
 import SidebarNav from '#base/components/ui/SidebarNav.vue';
+import SidebarUser from '~/components/layout/SidebarUser.vue';
 import { useAgentsStore } from '~/stores/agents';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
@@ -24,6 +25,15 @@ watch(project, (value) => {
   }
 }, { immediate: true });
 
+const back = computed<NavGroup[]>(() => [{ items: [{ key: 'agents', label: t('nav.agents'), to: list.value, icon: 'lucide:arrow-left' }] }]);
+const version = computed(() => {
+  const v = agent.value?.publishedVersion;
+  if (!v) {
+    return t('agent.not_published');
+  }
+  return agent.value?.unpublishedChanges ? t('agent.version_draft', { n: v }) : `v${v}`;
+});
+
 const groups = computed<NavGroup[]>(() => [
   {
     items: [
@@ -35,15 +45,19 @@ const groups = computed<NavGroup[]>(() => [
 </script>
 
 <template>
-  <SidebarNav :label="agent?.name ?? agentSlug" :groups="groups">
-    <template #back>
-      <NuxtLink :to="list" class="inline-flex items-center gap-1 text-sm text-base-content/70 hover:text-base-content">
-        <Icon name="lucide:chevron-left" size="14" />
-        {{ t('agent.all') }}
-      </NuxtLink>
-      <p class="mt-3 truncate font-semibold">
-        {{ agent?.name ?? agentSlug }}
-      </p>
+  <SidebarNav :label="agent?.name ?? agentSlug" :lead="back" :groups="groups">
+    <template #between>
+      <div class="px-2">
+        <p class="truncate text-sm font-semibold">
+          {{ agent?.name ?? agentSlug }}
+        </p>
+        <p class="text-xs text-base-content/70">
+          {{ version }}
+        </p>
+      </div>
+    </template>
+    <template #footer>
+      <SidebarUser />
     </template>
   </SidebarNav>
 </template>

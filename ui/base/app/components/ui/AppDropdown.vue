@@ -5,11 +5,12 @@ const { label = '', open = false, disabled = false, placement = 'start', trigger
   label?: string,
   open?: boolean,
   disabled?: boolean,
-  placement?: 'start' | 'end',
+  placement?: 'start' | 'end' | 'top',
   triggerClass?: string,
   contentClass?: string,
 }>();
 
+const placements = { start: 'dropdown-start mt-1', end: 'dropdown-end mt-1', top: 'dropdown-top mb-1' } as const;
 const id = `dd-${useId()}`;
 const anchor = `--${id}`;
 const panel = ref<HTMLElement>();
@@ -58,8 +59,8 @@ defineExpose({ close });
       :id="id"
       ref="panel"
       popover="auto"
-      class="dropdown mt-1 rounded-box border border-base-300 bg-base-100 p-2 shadow-sm"
-      :class="[placement === 'end' ? 'dropdown-end' : 'dropdown-start', contentClass]"
+      class="dropdown rounded-box border border-base-300 bg-base-100 p-2 shadow-sm"
+      :class="[placements[placement], contentClass]"
       :style="{ positionAnchor: anchor }"
       @toggle="onToggle"
       @click="onClick"

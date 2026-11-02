@@ -7,11 +7,11 @@ const { id, name = '', email = '', avatarUrl = '', size = 'md' } = defineProps<{
   name?: string,
   email?: string,
   avatarUrl?: string,
-  size?: 'sm' | 'md' | 'lg',
+  size?: 'xs' | 'sm' | 'md' | 'lg',
 }>();
 
 const view = computed(() => avatarView({ id, name, email, avatarUrl }));
-const box = computed(() => ({ sm: 'size-7 text-xs', md: 'size-10 text-sm', lg: 'size-16 text-xl' })[size]);
+const box = computed(() => ({ xs: 'size-6 text-[10px]', sm: 'size-7 text-xs', md: 'size-10 text-sm', lg: 'size-16 text-xl' })[size]);
 </script>
 
 <template>

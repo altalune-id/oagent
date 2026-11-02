@@ -53,3 +53,13 @@ export const PersonWithPicture: Story = {
   },
   render,
 };
+
+export const SidebarRow: Story = {
+  name: 'Sidebar row (artifact)',
+  args: { me: { source: 'oidc', userId: 'Hw4nQ8sLp2KdTz6YxBv3M', name: 'Sam Rivera', email: 'sam.rivera@acme.example' }, placement: 'top', version: '0.1.0' },
+  render: args => ({
+    components: { UserMenu },
+    setup: () => ({ args }),
+    template: '<div class="flex h-72 w-60 flex-col justify-end border-e border-base-300 bg-base-200"><div class="border-t border-base-300 p-2"><UserMenu v-bind="args" /></div></div>',
+  }),
+};

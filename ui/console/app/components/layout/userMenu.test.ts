@@ -26,6 +26,17 @@ describe('userMenu', () => {
     expect(w.find('form[action="/logout"]').exists()).toBe(true);
   });
 
+  it('opens upward from the sidebar row as a dense menu titled by the email, with the version and a sign-out button', () => {
+    const w = mount(UserMenu, { props: { me, logoutUrl: '/logout', placement: 'top', version: '1.2.3' } });
+    expect(w.get('[popover]').classes()).toContain('dropdown-top');
+    expect(w.get('button[popovertarget]').classes()).toEqual(expect.arrayContaining(['w-full', 'justify-start', 'text-ui']));
+    expect(w.get('ul').classes()).toEqual(['menu', 'menu-sm', 'w-full', 'p-0', 'text-ui']);
+    expect(w.get('.menu-title').text()).toContain('rina@acme.test');
+    expect(w.get('.menu-title').text()).toContain('OAgent v1.2.3');
+    const out = w.get('button[type="submit"]');
+    expect(w.get(`form#${out.attributes('form')}`).attributes('action')).toBe('/logout');
+  });
+
   it('gives an API key none of them', () => {
     const w = mount(UserMenu, { props: { me: { ...me, source: 'apikey', userId: '' }, logoutUrl: '/logout' } });
     expect(w.find('form[action="/logout"]').exists()).toBe(false);

@@ -33,6 +33,17 @@ describe('sidebarNav', () => {
     expect(w.get('.badge').text()).toBe('3');
   });
 
+  it('puts the lead groups, then the between row in a bordered strip, then the groups', () => {
+    const lead = [{ items: [{ key: 'projects', label: 'Projects', to: '/o/acme/projects' }] }];
+    const w = mount(SidebarNav, { props: { groups, lead }, slots: { between: '<b>Support Copilot</b>' } });
+    const nav = w.get('nav').element;
+    expect([...nav.children].map(c => c.tagName)).toEqual(['UL', 'DIV', 'UL']);
+    expect(nav.children[1]!.className).toBe('my-1 border-y border-base-300 p-2');
+    expect(nav.children[1]!.textContent).toBe('Support Copilot');
+    expect(nav.children[0]!.textContent).toContain('Projects');
+    expect(mount(SidebarNav, { props: { groups } }).get('nav').element.children).toHaveLength(1);
+  });
+
   it('renders the top, back and footer slots only when given', () => {
     expect(mount(SidebarNav, { props: { groups } }).find('[data-sidebar-footer]').exists()).toBe(false);
     const w = mount(SidebarNav, { props: { groups }, slots: { top: 'Switcher', back: 'Back', footer: 'OAgent v1.2.3' } });

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { NavGroup } from '#base/components/ui/types';
 import SidebarNav from '#base/components/ui/SidebarNav.vue';
+import SidebarUser from '~/components/layout/SidebarUser.vue';
+import { useOrgNav } from '~/components/layout/useOrgNav';
 import OrgRoleBadge from '~/components/org/OrgRoleBadge.vue';
 import OrgSelector from '~/components/org/OrgSelector.vue';
 import ProjectSelector from '~/components/project/ProjectSelector.vue';
@@ -9,13 +11,13 @@ import { useProjectsStore } from '~/stores/projects';
 
 const route = useRoute();
 const { t } = useI18n();
-const { appVersion } = useRuntimeConfig().public;
 const orgs = useOrgsStore();
 const projects = useProjectsStore();
 
 const org = computed(() => orgs.bySlug(route.params.org as string));
 const project = computed(() => projects.items.find(p => p.orgId === org.value?.id && p.slug === route.params.project));
 const base = computed(() => `/o/${route.params.org}/projects/${route.params.project}`);
+const orgNav = useOrgNav();
 
 const groups = computed<NavGroup[]>(() => [
   {
@@ -30,18 +32,18 @@ const groups = computed<NavGroup[]>(() => [
 </script>
 
 <template>
-  <SidebarNav :label="project?.name ?? ''" :groups="groups">
+  <SidebarNav :label="project?.name ?? ''" :lead="[orgNav]" :groups="groups">
     <template #top>
-      <div class="flex flex-col items-start gap-1">
-        <div class="flex flex-wrap items-center gap-1">
-          <OrgSelector />
-          <OrgRoleBadge />
-        </div>
-        <ProjectSelector />
+      <div class="flex flex-wrap items-center gap-1">
+        <OrgSelector />
+        <OrgRoleBadge />
       </div>
     </template>
-    <template v-if="appVersion" #footer>
-      <span class="px-2 text-xs text-base-content/70">OAgent v{{ appVersion }}</span>
+    <template #between>
+      <ProjectSelector />
+    </template>
+    <template #footer>
+      <SidebarUser />
     </template>
   </SidebarNav>
 </template>
