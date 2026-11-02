@@ -87,6 +87,8 @@ func TestOIDCSignIn_EndToEnd(t *testing.T) {
 	login := serve(a.h, httptest.NewRequest(http.MethodGet, "/login", nil))
 	assert.Contains(t, login.Body.String(), "Continue with SSO")
 	assert.Contains(t, login.Body.String(), `name="password"`)
+	assert.Contains(t, login.Body.String(), "OAgent uses your account on "+oidcConfig(a.idp).OIDC.IssuerHost()+".", "the help line names the configured issuer's host")
+	assert.Contains(t, login.Body.String(), ">oagent.example.com/login</p>", "the page shows its public address")
 
 	rec := a.signIn(t, oidcrptest.User{Subject: "sub-root", Email: "Root@Example.com", EmailVerified: true, Name: "Root"})
 	require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())

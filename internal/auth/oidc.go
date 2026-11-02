@@ -33,10 +33,12 @@ type OIDCProvider interface {
 	EndSessionURL(ctx context.Context, idTokenHint, postLogoutRedirectURI, state string) (string, error)
 }
 
-// OIDCSignIn is sign-in through the OIDC provider: its relying party, button, sign-out landing, signup and last user.
+// OIDCSignIn is sign-in through the OIDC provider: its relying party, button, issuer host, sign-out landing, signup and last user.
 type OIDCSignIn struct {
-	Provider         OIDCProvider
-	ButtonLabel      string
+	Provider    OIDCProvider
+	ButtonLabel string
+	IssuerHost  string
+	// SignedOut is the login page's public URL, where sign-out lands and which the page shows.
 	SignedOut        string
 	OpenSignup       bool
 	RememberLastUser bool

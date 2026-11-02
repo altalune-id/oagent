@@ -21,6 +21,15 @@ func (c OIDCConfig) Enabled() bool { return c.Issuer != "" }
 // NormalizedIssuer is Issuer without a trailing slash, the key every account link is stored under.
 func (c OIDCConfig) NormalizedIssuer() string { return strings.TrimSuffix(c.Issuer, "/") }
 
+// IssuerHost is the issuer's host, as the sign-in page names it; empty when Issuer is unset or unparsable.
+func (c OIDCConfig) IssuerHost() string {
+	u, err := url.Parse(c.Issuer)
+	if err != nil {
+		return ""
+	}
+	return u.Host
+}
+
 // NormalizeScopes trims each scope, as an env list like "openid, email" leaves spaces.
 func NormalizeScopes(scopes []string) []string {
 	out := make([]string, 0, len(scopes))

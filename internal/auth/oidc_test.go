@@ -67,7 +67,7 @@ func newOIDCWebFixture(t *testing.T, passwordOff bool) *oidcWebFixture {
 	sessions := testSessions(f.store)
 	sessions.Cookie.Path = "/"
 	f.web = NewWeb(layout.Kit{Unexpected: f.report}, f.auth, sessions, f.ids).WithOIDC(OIDCSignIn{
-		Provider: f.rp, ButtonLabel: "Continue with Acme ID", SignedOut: "http://oagent.test/login", RememberLastUser: true,
+		Provider: f.rp, ButtonLabel: "Continue with Acme ID", IssuerHost: "idp.test", SignedOut: "http://oagent.test/login", RememberLastUser: true,
 	})
 	if passwordOff {
 		f.web.WithoutPasswords()
@@ -265,6 +265,8 @@ func TestOIDCSignIn_LoginPage(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), `/login/oidc?return_to=%2Fconsole%2Fx`)
 	assert.Contains(t, rec.Body.String(), "Continue with Acme ID")
 	assert.Contains(t, rec.Body.String(), `name="password"`)
+	assert.Contains(t, rec.Body.String(), "OAgent uses your account on idp.test.")
+	assert.Contains(t, rec.Body.String(), ">oagent.test/login</p>", "the page shows its own public address without the scheme")
 	rec = f.do(httptest.NewRequest(http.MethodGet, "/login?email=Ada%40Example.com", nil))
 	assert.Contains(t, rec.Body.String(), `/login/oidc?login_hint=ada%40example.com`)
 

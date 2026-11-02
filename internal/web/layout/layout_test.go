@@ -104,6 +104,19 @@ func TestLayoutTemplateDefaultsLang(t *testing.T) {
 	assert.Contains(t, out, `<html lang="en"`)
 }
 
+func TestColumnTemplate(t *testing.T) {
+	ctx := templ.WithChildren(context.Background(), templ.Raw("<p>inner</p>"))
+	var buf bytes.Buffer
+	require.NoError(t, Column(LayoutData{BasePath: "/app", Title: "Sign in"}).Render(ctx, &buf))
+	out := buf.String()
+
+	assert.Contains(t, out, "<title>Sign in · OAgent</title>")
+	assert.Contains(t, out, `href="/app/static/app.css"`, "the column shares the layout's head")
+	assert.Contains(t, out, `<body class="min-h-dvh bg-base-100 text-base-content">`)
+	assert.Contains(t, out, `<div class="flex w-full max-w-[25rem] flex-col gap-5"><p>inner</p></div>`)
+	assert.NotContains(t, out, "card")
+}
+
 func TestCardTemplate(t *testing.T) {
 	ctx := templ.WithChildren(context.Background(), templ.Raw("<p>body</p>"))
 	var buf bytes.Buffer
@@ -241,6 +254,7 @@ func TestTemplatesReturnWriteErrors(t *testing.T) {
 		c    templ.Component
 	}{
 		{"Layout", Layout(d)},
+		{"Column", Column(d)},
 		{"Card", Card("Title")},
 		{"Error", Error(d, "message")},
 		{"PasswordField", PasswordField(d, PasswordFieldData{Name: "password", Label: "Password"})},
@@ -267,7 +281,7 @@ func TestTemplatesStopOnCancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	d := LayoutData{Title: "Oops"}
-	for _, c := range []templ.Component{Layout(d), Card("Title"), Error(d, "message"), PasswordField(d, PasswordFieldData{})} {
+	for _, c := range []templ.Component{Layout(d), Column(d), Card("Title"), Error(d, "message"), PasswordField(d, PasswordFieldData{})} {
 		var buf bytes.Buffer
 		require.ErrorIs(t, c.Render(ctx, &buf), context.Canceled)
 		assert.Empty(t, buf.String())
@@ -276,7 +290,7 @@ func TestTemplatesStopOnCancelledContext(t *testing.T) {
 
 func TestTemplatesReturnChildErrors(t *testing.T) {
 	ctx := templ.WithChildren(context.Background(), failing(errWriteLimit))
-	for _, c := range []templ.Component{Layout(LayoutData{}), Card("Title")} {
+	for _, c := range []templ.Component{Layout(LayoutData{}), Column(LayoutData{}), Card("Title")} {
 		var buf bytes.Buffer
 		assert.ErrorIs(t, c.Render(ctx, &buf), errWriteLimit)
 	}

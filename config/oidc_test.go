@@ -30,6 +30,7 @@ func TestLoad_OIDCFromEnv(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, c.OIDC.Enabled())
 	assert.Equal(t, "https://idp.example.com", c.OIDC.NormalizedIssuer())
+	assert.Equal(t, "idp.example.com", c.OIDC.IssuerHost())
 	assert.Equal(t, "oagent", c.OIDC.ClientID)
 	assert.Equal(t, "shh", c.OIDC.ClientSecret)
 	assert.Equal(t, []string{"openid", "email"}, c.OIDC.Scopes)

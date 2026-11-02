@@ -287,8 +287,8 @@ func consoleWeb(cfg config.Config, svcs *Services, kit layout.Kit, sessions auth
 	w := auth.NewWeb(kit, svcs.Auth, sessions, newPublicIDs(svcs)).WithLimits(limits)
 	if svcs.OIDC != nil {
 		w.WithOIDC(auth.OIDCSignIn{
-			Provider: svcs.OIDC, ButtonLabel: cfg.OIDC.ButtonLabel, SignedOut: publicBase(cfg.HTTP) + "/login", OpenSignup: cfg.OpenSignup(),
-			RememberLastUser: cfg.Auth.RememberLastUser,
+			Provider: svcs.OIDC, ButtonLabel: cfg.OIDC.ButtonLabel, IssuerHost: cfg.OIDC.IssuerHost(),
+			SignedOut: publicBase(cfg.HTTP) + "/login", OpenSignup: cfg.OpenSignup(), RememberLastUser: cfg.Auth.RememberLastUser,
 		})
 	}
 	if !svcs.Caps.Passwords {

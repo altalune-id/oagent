@@ -20,45 +20,72 @@ type LoginData struct {
 	ButtonLabel string
 	// NewHere tells a newcomer the button also creates their account, in cloud.
 	NewHere bool
+	// IssuerHost names where the OIDC account lives, in the help line under the button.
+	IssuerHost string
+	// PageURL is this page's public address without the scheme, shown in mono at the bottom; empty hides it.
+	PageURL string
 	// LastUser is the email last signed in on this browser; the button then reads "Continue as …" and SwitchURL picks another.
 	LastUser  string
 	SwitchURL string
 }
 
 templ Login(d layout.LayoutData, v LoginData) {
-	@layout.Layout(d) {
-		@layout.Card("Sign in to OAgent") {
-			<p class="text-sm text-base-content/70">See what your agents did and why.</p>
-			if v.Notice != "" {
-				<div role="status" class="alert alert-success alert-soft">{ v.Notice }</div>
+	@layout.Column(d) {
+		<div class="flex flex-col gap-3">
+			<span class="inline-flex items-center gap-2 text-base font-semibold">
+				@iconRoute()
+				OAgent
+			</span>
+			<h1 class="text-2xl font-semibold text-balance">Sign in to OAgent</h1>
+			<p class="text-base-content/70">See what your agents did and why.</p>
+		</div>
+		if v.Notice != "" {
+			<div role="status" class="alert alert-success alert-soft">{ v.Notice }</div>
+		}
+		if v.Error != "" {
+			<div role="alert" class="alert alert-error alert-soft">{ v.Error }</div>
+		}
+		if v.OIDCURL != "" {
+			if v.LastUser != "" {
+				<a class="btn btn-primary btn-block" href={ templ.SafeURL(v.OIDCURL) }>
+					Continue as <span class="truncate">{ v.LastUser }</span>
+				</a>
+				<p class="text-ui"><a class="link" href={ templ.SafeURL(v.SwitchURL) }>Use another account</a></p>
+			} else {
+				<a class="btn btn-primary btn-block" href={ templ.SafeURL(v.OIDCURL) }>{ v.ButtonLabel }</a>
 			}
-			if v.Error != "" {
-				<div role="alert" class="alert alert-error alert-soft">{ v.Error }</div>
-			}
-			if v.OIDCURL != "" {
-				if v.LastUser != "" {
-					<a class="btn btn-primary btn-block" href={ templ.SafeURL(v.OIDCURL) }>
-						Continue as <span class="truncate">{ v.LastUser }</span>
-					</a>
-					<p class="text-sm"><a class="link" href={ templ.SafeURL(v.SwitchURL) }>Use another account</a></p>
-				} else {
-					<a class="btn btn-primary btn-block" href={ templ.SafeURL(v.OIDCURL) }>{ v.ButtonLabel }</a>
-				}
-				if v.NewHere {
-					<p class="text-sm text-base-content/70">New here? Signing in creates your account.</p>
-				}
-				if !v.PasswordOff {
-					@layout.Divider("or sign in with a password")
-				}
+			if v.IssuerHost != "" || v.NewHere {
+				<p class="text-ui text-base-content/70">
+					if v.IssuerHost != "" {
+						OAgent uses your account on { v.IssuerHost }.
+					}
+					if v.NewHere {
+						New here? Signing in creates your account.
+					}
+				</p>
 			}
 			if !v.PasswordOff {
-				@passwordForm(d, v)
+				@layout.Divider("or sign in with a password")
 			}
+		}
+		if !v.PasswordOff {
+			@passwordForm(d, v)
 			<p class="text-xs text-base-content/70">
 				<a class="link" href={ d.Href("/terms") }>Terms</a> · <a class="link" href={ d.Href("/privacy") }>Privacy</a>
 			</p>
 		}
+		if v.PageURL != "" {
+			<p class="font-mono text-xs text-base-content/70">{ v.PageURL }</p>
+		}
 	}
+}
+
+templ iconRoute() {
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="size-5 shrink-0">
+		<circle cx="6" cy="19" r="3"></circle>
+		<path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"></path>
+		<circle cx="18" cy="5" r="3"></circle>
+	</svg>
 }
 
 templ passwordForm(d layout.LayoutData, v LoginData) {

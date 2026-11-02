@@ -43,6 +43,19 @@ func TestPasswordBundle_IsBuiltFromTheCurrentRules(t *testing.T) {
 	assert.Positive(t, n)
 }
 
+func TestAppCSS_LoadsBundledFonts(t *testing.T) {
+	css := string(builtAsset(t, "app.css"))
+	urls := regexp.MustCompile(`url\((fonts/[^)]+\.woff2)\)`).FindAllStringSubmatch(css, -1)
+	require.Len(t, urls, 4, "Instrument Sans and JetBrains Mono, latin and latin-ext; no font CDN")
+	for _, m := range urls {
+		_, err := fs.Stat(StaticFS(), m[1])
+		assert.NoError(t, err, "app.css loads %s; run make web", m[1])
+	}
+	for _, family := range []string{"Instrument Sans Variable", "JetBrains Mono Variable"} {
+		assert.Contains(t, css, family)
+	}
+}
+
 // NOTE: make web builds these files (not committed); missing, the test skips locally and fails when CI is set.
 func builtAsset(t *testing.T, name string) []byte {
 	t.Helper()
