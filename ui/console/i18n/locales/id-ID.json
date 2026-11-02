@@ -158,7 +158,6 @@
   "project.new": "Proyek baru",
   "project.select": "Pilih proyek",
   "settings.title": "Pengaturan",
-  "stat.members": "Anggota",
   "webhooks.activate": "Aktifkan",
   "webhooks.active": "aktif",
   "webhooks.col_created": "Dibuat",
@@ -358,5 +357,6 @@
   "run.copy_link": "Salin tautan ke peristiwa ini",
   "run.tool_calls_failed": "{calls} panggilan, {failed} gagal",
   "run.heading": "Run",
-  "run.approval_prefix": "Persetujuan:"
+  "run.approval_prefix": "Persetujuan:",
+  "org.overview_subtitle": "Proyek, anggota, dan kunci API di organisasi ini."
 }

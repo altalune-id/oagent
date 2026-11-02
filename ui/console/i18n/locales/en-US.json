@@ -158,7 +158,6 @@
   "project.new": "New project",
   "project.select": "Select project",
   "settings.title": "Settings",
-  "stat.members": "Members",
   "webhooks.activate": "Enable",
   "webhooks.active": "active",
   "webhooks.col_created": "Created",
@@ -358,5 +357,6 @@
   "run.copy_link": "Copy link to this event",
   "run.tool_calls_failed": "{calls} calls, {failed} failed",
   "run.heading": "Run",
-  "run.approval_prefix": "Approval:"
+  "run.approval_prefix": "Approval:",
+  "org.overview_subtitle": "Projects, members and API keys in this organization."
 }
