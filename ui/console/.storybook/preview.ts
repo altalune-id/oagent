@@ -5,6 +5,7 @@ import lucide from '@iconify-json/lucide/icons.json';
 import { addCollection, Icon as IconifyIcon } from '@iconify/vue';
 import { setup } from '@storybook/vue3';
 import { defineComponent } from 'vue';
+import { themeFamilies } from '#base/components/layout/useTheme';
 import '#base/assets/css/main.css';
 
 addCollection(lucide);
@@ -25,7 +26,7 @@ const preview: Preview = {
   globalTypes: {
     theme: {
       description: 'Theme',
-      toolbar: { title: 'Theme', icon: 'mirror', items: ['oagent-light', 'oagent-dark'], dynamicTitle: true },
+      toolbar: { title: 'Theme', icon: 'mirror', items: themeFamilies.flatMap(f => Object.values(f.themes)), dynamicTitle: true },
     },
   },
   initialGlobals: { theme: 'oagent-light' },
