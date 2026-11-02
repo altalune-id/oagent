@@ -1,6 +1,14 @@
+import type { IconifyJSON } from '@iconify/vue/offline';
 import type { App } from 'vue';
-import { Icon as IconifyIcon } from '@iconify/vue/offline';
+import { addCollection, Icon as IconifyIcon } from '@iconify/vue/offline';
 import { defineComponent, h } from 'vue';
+import { iconStroke } from './iconStroke';
+
+// addIcons registers an icon collection for the standalone Icon, drawn at the design's stroke width.
+export function addIcons(collection: IconifyJSON) {
+  const icons = Object.fromEntries(Object.entries(collection.icons).map(([name, icon]) => [name, { ...icon, body: iconStroke(icon.body) }]));
+  addCollection({ ...collection, icons });
+}
 
 // installStandalone registers the two Nuxt globals the ui components use, Icon and NuxtLink, for an app built without Nuxt.
 export function installStandalone(app: App) {

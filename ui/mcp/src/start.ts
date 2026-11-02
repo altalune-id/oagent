@@ -1,10 +1,9 @@
-import { addCollection } from '@iconify/vue/offline';
 import icons from 'virtual:icons';
-import { installStandalone } from '#base/components/ui/standalone';
+import { addIcons, installStandalone } from '#base/components/ui/standalone';
 import App from './App.vue';
 import './style.css';
 
-addCollection(icons);
+addIcons(icons);
 const app = createApp(App);
 installStandalone(app);
 app.mount('#app');
