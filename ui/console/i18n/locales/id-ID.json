@@ -372,5 +372,7 @@
   "stat.members": "Anggota",
   "webhooks.col_actions": "Tindakan",
   "webhooks.actions_for": "Tindakan untuk {url}",
-  "configure.sample_options": "Pratinjau: contoh pilihan sampai katalog tersedia."
+  "configure.sample_options": "Pratinjau: contoh pilihan sampai katalog tersedia.",
+  "stat.loading": "Memuat",
+  "stat.unavailable": "Tidak tersedia"
 }

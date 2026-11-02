@@ -82,6 +82,7 @@ export interface ConfirmHandle {
 export interface StatItem {
   label: string;
   value: string | number;
+  unknown?: string;
 }
 
 export type StatusTone = 'success' | 'warning' | 'error' | 'info' | 'neutral';

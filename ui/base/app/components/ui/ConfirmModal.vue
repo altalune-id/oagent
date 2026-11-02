@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ConfirmHandle } from './types';
+import AppButton from './AppButton.vue';
 import AppModal from './AppModal.vue';
 import ErrorText from './ErrorText.vue';
 
@@ -14,19 +15,18 @@ const { handle, title, body = '', confirmLabel, cancelLabel = 'Cancel' } = defin
 
 <template>
   <AppModal :open="handle.target.value !== null" :title="title" @close="handle.cancel()">
-    <p v-if="body" class="text-sm">
+    <p v-if="body" class="text-ui">
       {{ body }}
     </p>
     <slot />
     <ErrorText :error="handle.error.value" />
     <template #footer>
-      <button type="button" class="btn btn-ghost btn-sm text-ui" :disabled="handle.busy.value" @click="handle.cancel()">
+      <AppButton variant="ghost" size="sm" :disabled="handle.busy.value" @click="handle.cancel()">
         {{ cancelLabel }}
-      </button>
-      <button type="button" class="btn btn-error btn-sm text-ui" :disabled="handle.busy.value" @click="handle.confirm()">
-        <span v-if="handle.busy.value" class="loading loading-spinner loading-xs" aria-hidden="true" />
+      </AppButton>
+      <AppButton variant="error" size="sm" :busy="handle.busy.value" @click="handle.confirm()">
         {{ confirmLabel }}
-      </button>
+      </AppButton>
     </template>
   </AppModal>
 </template>

@@ -29,7 +29,7 @@ const { open, url, description, eventTypes, busy, error, fieldErrors, secret, pi
       </p>
       <SecretField :value="secret" :label="t('common.copy')" />
       <div class="flex items-center gap-2">
-        <AppButton variant="outline" size="sm" :disabled="pingBusy" @click="create.ping()">
+        <AppButton variant="plain" size="sm" :disabled="pingBusy" @click="create.ping()">
           <Icon name="lucide:send" size="16" aria-hidden="true" />
           {{ pinged ? t('webhooks.tested') : t('webhooks.test') }}
         </AppButton>

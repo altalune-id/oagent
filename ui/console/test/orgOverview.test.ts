@@ -48,7 +48,9 @@ describe('org overview stats', () => {
     const listMembers = vi.fn().mockReturnValue(pending.promise);
     setClient('$memberClient', { listMembers });
     const w = await mountPage(OrgOverview);
-    expect(w.findAll('.stat').map(s => s.text())).toEqual(['nav.projects0', 'stat.members—']);
+    expect(w.findAll('.stat').map(s => s.text())).toEqual(['nav.projects0', 'stat.members—stat.loading']);
+    expect(w.findAll('.stat')[1]!.get('[aria-hidden="true"]').text()).toBe('—');
+    expect(w.findAll('.stat')[1]!.get('.sr-only').text()).toBe('stat.loading');
     pending.resolve({ members });
     await flushPromises();
     expect(listMembers).toHaveBeenCalledWith({ orgId });
@@ -62,6 +64,11 @@ describe('org overview stats', () => {
     useProjectsStore().error = { message: 'down' } as never;
     const w = await mountPage(OrgOverview);
     await flushPromises();
-    expect(w.findAll('.stat').map(s => s.text())).toEqual(['nav.projects—', 'stat.members—']);
+    expect(w.findAll('.stat').map(s => s.get('.sr-only').text())).toEqual(['stat.unavailable', 'stat.unavailable']);
+    expect(w.findAll('.stat').every(s => s.get('[aria-hidden="true"]').text() === '—')).toBe(true);
+    expect(w.text()).not.toContain('project.empty');
+    const load = vi.spyOn(useProjectsStore(), 'load').mockResolvedValue(undefined as never);
+    await w.findAll('button').find(b => b.text() === 'common.retry')!.trigger('click');
+    expect(load).toHaveBeenCalledWith(orgId);
   });
 });

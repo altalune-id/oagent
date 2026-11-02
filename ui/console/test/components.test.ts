@@ -10,7 +10,7 @@ import { APIKeySchema } from '#gen/apikey/v1/apikey_pb';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { WebhookSchema } from '#gen/webhook/v1/webhook_pb';
 import { mountPage } from '#test/mount-page';
-import { setClient, setRoute } from '#test/nuxt-globals';
+import { deferred, setClient, setRoute } from '#test/nuxt-globals';
 import AgentCreateModal from '~/components/agent/create/AgentCreateModal.vue';
 import APIKeyCreateModal from '~/components/apikey/create/APIKeyCreateModal.vue';
 import APIKeyList from '~/components/apikey/list/APIKeyList.vue';
@@ -142,6 +142,17 @@ describe('destructive actions ask first', () => {
     await vi.waitFor(() => expect(revokeAPIKey).toHaveBeenCalledWith({ orgId, hint: 'ab12' }));
   });
 
+  it('shows a loading status, not a blank page, while API keys load', async () => {
+    const pending = deferred<{ keys: never[] }>();
+    setClient('$apiKeyClient', { listAPIKeys: vi.fn().mockReturnValue(pending.promise) });
+    const w = await mountPage(APIKeyList, { pageProps: { orgId, canManage: true } });
+    expect(w.get('[role="status"]').text()).toContain('common.loading');
+    expect(w.get('[role="status"]').classes()).toContain('text-ui');
+    pending.resolve({ keys: [] });
+    await flushPromises();
+    expect(w.get('h2').text()).toBe('apikeys.empty');
+  });
+
   it('shows an expired API key as Expired, with no Revoke', async () => {
     const expired = create(APIKeySchema, { id: 'M4pXc7RtV2nKw9BsL6yQd', name: 'old-bot', kind: 'org', secretHint: 'cd34', expiresAt: { seconds: 1n, nanos: 0 } });
     setClient('$apiKeyClient', { listAPIKeys: vi.fn().mockResolvedValue({ keys: [expired] }) });
@@ -209,6 +220,9 @@ describe('a one-time secret stays until Done', () => {
     await w.get('dialog input[type="checkbox"]').setValue(true);
     await w.findAll('dialog button').find(b => b.text() === 'common.create')!.trigger('click');
     await flushPromises();
+    const sendTest = w.findAll('dialog button').find(b => b.text().includes('webhooks.test'))!;
+    expect(sendTest.classes()).not.toContain('btn-outline');
+    expect(sendTest.classes()).toEqual(expect.arrayContaining(['btn', 'btn-sm', 'text-ui']));
     await escapeKeepsIt(w, 'whsec_once');
   });
 

@@ -3,6 +3,7 @@ import type { StatItem } from '#base/components/ui/types';
 import AppBadge from '#base/components/ui/AppBadge.vue';
 import AppStats from '#base/components/ui/AppStats.vue';
 import CopyButton from '#base/components/ui/CopyButton.vue';
+import LoadError from '#base/components/ui/LoadError.vue';
 import PageHeader from '#base/components/ui/PageHeader.vue';
 import Section from '#base/components/ui/Section.vue';
 import { environmentLabelKey } from '~/components/project/environment';
@@ -25,9 +26,16 @@ if (org.value) {
   void members.load(org.value.id);
 }
 
+function count(loading: boolean, failed: boolean, n: number): Pick<StatItem, 'value' | 'unknown'> {
+  if (failed) {
+    return { value: '', unknown: t('stat.unavailable') };
+  }
+  return loading ? { value: '', unknown: t('stat.loading') } : { value: n };
+}
+
 const stats = computed<StatItem[]>(() => [
-  { label: t('nav.projects'), value: projects.loading || projects.error ? '—' : items.value.length },
-  { label: t('stat.members'), value: members.loading || members.error ? '—' : members.items.length },
+  { label: t('nav.projects'), ...count(projects.loading, !!projects.error, items.value.length) },
+  { label: t('stat.members'), ...count(members.loading, !!members.error, members.items.length) },
 ]);
 
 useHead({ title: () => `${org.value?.name ?? t('org.title')} · OAgent` });
@@ -46,7 +54,8 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · OAgent` });
 
     <AppStats :items="stats" class="max-w-2xl" />
 
-    <Section :title="t('project.title')" flush class="max-w-2xl" data-testid="org-projects">
+    <LoadError v-if="projects.error" :error="projects.error" :busy="projects.loading" :retry-label="t('common.retry')" @retry="projects.load(org.id)" />
+    <Section v-else :title="t('project.title')" flush class="max-w-2xl" data-testid="org-projects">
       <ul v-if="items.length" class="divide-y divide-base-300">
         <li v-for="project in items" :key="project.id" class="flex items-center gap-2 px-4 py-2 text-ui">
           <NuxtLink :to="`/o/${org.slug}/projects/${project.slug}`" class="link link-hover min-w-0 truncate font-medium">

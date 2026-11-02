@@ -7,6 +7,7 @@ import ConfirmModal from '#base/components/ui/ConfirmModal.vue';
 import DataTable from '#base/components/ui/DataTable.vue';
 import EmptyState from '#base/components/ui/EmptyState.vue';
 import LoadError from '#base/components/ui/LoadError.vue';
+import LoadingStatus from '#base/components/ui/LoadingStatus.vue';
 import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { useConfirm } from '#base/composables/useConfirm';
 import { useScopeLabel } from '#base/composables/useScopeLabel';
@@ -20,7 +21,7 @@ const scopeLabel = useScopeLabel();
 const keys = useAPIKeysStore();
 const { $apiKeyClient: client } = useNuxtApp();
 
-await keys.ensureLoaded(orgId);
+void keys.ensureLoaded(orgId);
 
 const statusTone: Record<string, StatusTone> = { active: 'success', expired: 'error', revoked: 'neutral' };
 const rows = computed(() => {
@@ -55,6 +56,7 @@ const revoking = useConfirm<APIKey>(async (key) => {
 
 <template>
   <LoadError v-if="keys.error" :error="keys.error" :busy="keys.loading" :retry-label="t('common.retry')" @retry="keys.load(orgId)" />
+  <LoadingStatus v-else-if="keys.loading && keys.items.length === 0" :label="t('common.loading')" />
   <EmptyState v-else-if="keys.items.length === 0" icon="lucide:key-round" :title="t('apikeys.empty')" />
   <DataTable v-else :caption="t('apikeys.title')" row-key="rowKey" :columns="columns" :rows="rows">
     <template #cell-name="{ row }">
