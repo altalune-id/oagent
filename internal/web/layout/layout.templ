@@ -4,7 +4,7 @@ templ Layout(d LayoutData) {
 	<!DOCTYPE html>
 	<html lang={ d.lang() } data-theme="oagent-light">
 		@head(d)
-		<body class="min-h-screen bg-base-200 text-base-content">
+		<body class="min-h-screen bg-base-200 text-sm leading-[normal] text-base-content">
 			<main class="flex min-h-screen items-center justify-center p-4">
 				{ children... }
 			</main>
@@ -17,7 +17,7 @@ templ Column(d LayoutData) {
 	<!DOCTYPE html>
 	<html lang={ d.lang() } data-theme="oagent-light">
 		@head(d)
-		<body class="min-h-dvh bg-base-100 text-base-content">
+		<body class="min-h-dvh bg-base-100 text-sm leading-[normal] text-base-content">
 			<main class="flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-10">
 				<div class="flex w-full max-w-[25rem] flex-col gap-5">
 					{ children... }

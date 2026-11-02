@@ -50,7 +50,7 @@ func Layout(d LayoutData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<body class=\"min-h-screen bg-base-200 text-base-content\"><main class=\"flex min-h-screen items-center justify-center p-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<body class=\"min-h-screen bg-base-200 text-sm leading-[normal] text-base-content\"><main class=\"flex min-h-screen items-center justify-center p-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -109,7 +109,7 @@ func Column(d LayoutData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<body class=\"min-h-dvh bg-base-100 text-base-content\"><main class=\"flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-10\"><div class=\"flex w-full max-w-[25rem] flex-col gap-5\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<body class=\"min-h-dvh bg-base-100 text-sm leading-[normal] text-base-content\"><main class=\"flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-10\"><div class=\"flex w-full max-w-[25rem] flex-col gap-5\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

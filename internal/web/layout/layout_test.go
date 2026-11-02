@@ -97,6 +97,7 @@ func TestLayoutTemplate(t *testing.T) {
 	assert.Contains(t, out, `href="/app/static/apple-touch-icon.png"`)
 	assert.Contains(t, out, `href="/app/static/app.css"`)
 	assert.Contains(t, out, "<p>inner</p>")
+	assert.Contains(t, out, `<body class="min-h-screen bg-base-200 text-sm leading-[normal] text-base-content">`, "the design's 14px base text")
 }
 
 func TestLayoutTemplateDefaultsLang(t *testing.T) {
@@ -112,7 +113,7 @@ func TestColumnTemplate(t *testing.T) {
 
 	assert.Contains(t, out, "<title>Sign in · OAgent</title>")
 	assert.Contains(t, out, `href="/app/static/app.css"`, "the column shares the layout's head")
-	assert.Contains(t, out, `<body class="min-h-dvh bg-base-100 text-base-content">`)
+	assert.Contains(t, out, `<body class="min-h-dvh bg-base-100 text-sm leading-[normal] text-base-content">`, "the design's 14px base text")
 	assert.Contains(t, out, `<div class="flex w-full max-w-[25rem] flex-col gap-5"><p>inner</p></div>`)
 	assert.NotContains(t, out, "card")
 }

@@ -6,6 +6,7 @@ const { init } = useTheme();
 const { apiUrl } = useRuntimeConfig().public;
 
 useHead({
+  bodyAttrs: { class: 'text-sm leading-[normal]' },
   link: [
     { key: 'icon', rel: 'icon', href: staticURL(apiUrl, 'favicon.ico'), sizes: 'any' },
     { rel: 'icon', type: 'image/png', sizes: '32x32', href: staticURL(apiUrl, 'favicon-32x32.png') },

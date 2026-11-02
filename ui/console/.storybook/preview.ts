@@ -30,7 +30,7 @@ const preview: Preview = {
   decorators: [
     (story, context) => {
       document.documentElement.dataset.theme = context.globals.theme as string;
-      return { components: { story }, template: '<div class="bg-base-100 p-4 text-base-content"><story /></div>' };
+      return { components: { story }, template: '<div class="bg-base-100 p-4 text-sm leading-[normal] text-base-content"><story /></div>' };
     },
   ],
   parameters: {
