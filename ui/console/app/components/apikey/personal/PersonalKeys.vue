@@ -128,7 +128,7 @@ function revoke(k: PersonalKeyView) {
     </p>
     <div v-else class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
       <table class="table table-sm">
-        <thead>
+        <thead class="text-base-content/70">
           <tr>
             <th>{{ labels.name }}</th>
             <th>{{ labels.scopes }}</th>

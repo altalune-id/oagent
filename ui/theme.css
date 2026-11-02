@@ -505,10 +505,6 @@
   --noise: 0;
 }
 
-.table :where(thead, tfoot) {
-  color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
-}
-
 @theme {
   --font-sans: 'Instrument Sans Variable', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;

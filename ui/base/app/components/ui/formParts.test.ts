@@ -22,8 +22,37 @@ describe('dataTable', () => {
     expect(w.get('caption').text()).toBe('Agents');
     expect(w.findAll('th').map(t => [t.text(), t.attributes('scope')])).toEqual([['Agent', 'col'], ['Runs', 'col']]);
     expect(w.findAll('tbody b').map(b => b.text())).toEqual(['Refund Triage', 'Order Status']);
-    expect(w.findAll('tbody td')[1]!.classes()).toContain('tabular-nums');
+    expect(w.findAll('tbody td')[1]!.classes()).toEqual(['text-end', 'tabular-nums']);
     expect(w.find('ul.list').exists()).toBe(false);
+  });
+
+  it('draws the design table: dense text, muted shaded headers, mono cells and a hidden label for the menu column', () => {
+    const cols = [{ key: 'model', label: 'Model', mono: true }, { key: 'menu', label: 'Actions', hideLabel: true }];
+    const w = mount(DataTable, { props: { columns: cols, rows, rowKey: 'id', caption: 'Agents' } });
+    expect(w.get('table').classes()).toEqual(['table', 'table-sm', 'text-ui']);
+    expect(w.get('thead').classes()).toEqual(['text-base-content/70']);
+    expect(w.get('th').classes()).toEqual(['bg-base-200', 'text-xs', 'font-medium']);
+    expect(w.findAll('th span').map(s => s.classes())).toEqual([[], ['sr-only']]);
+    expect(w.get('tbody td').classes()).toEqual(['font-mono', 'text-xs']);
+    expect(w.get('tbody tr').classes()).toEqual([]);
+    expect(w.find('th[aria-sort]').exists()).toBe(false);
+  });
+
+  it('sorts through a header button that announces its order, flipping on a second press', async () => {
+    const cols = [{ key: 'name', label: 'Agent', sortable: true }, { key: 'runs', label: 'Runs' }];
+    const w = mount(DataTable, { props: { 'columns': cols, rows, 'rowKey': 'id', 'caption': 'Agents', 'sort': undefined, 'onUpdate:sort': (v: unknown) => w.setProps({ sort: v }) } });
+    const [name, runs] = w.findAll('th');
+    expect(name!.attributes('aria-sort')).toBe('none');
+    expect(runs!.attributes('aria-sort')).toBeUndefined();
+    const button = name!.get('button');
+    expect(button.attributes('type')).toBe('button');
+    expect(button.text()).toBe('Agent');
+    expect(button.get('[data-icon="lucide:arrow-down-up"]').attributes('aria-hidden')).toBe('true');
+    await button.trigger('click');
+    expect(w.emitted('update:sort')![0]).toEqual([{ key: 'name', dir: 'ascending' }]);
+    expect(w.get('th').attributes('aria-sort')).toBe('ascending');
+    await button.trigger('click');
+    expect(w.get('th').attributes('aria-sort')).toBe('descending');
   });
 
   it('shows skeleton rows while loading, busy for assistive tech', () => {

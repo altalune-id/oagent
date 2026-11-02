@@ -17,7 +17,7 @@ const { rows, columns, rowId, empty } = defineProps<{
   </p>
   <div v-else class="overflow-x-auto">
     <table class="table table-sm">
-      <thead>
+      <thead class="text-base-content/70">
         <tr>
           <th v-for="c in columns" :key="c.key">
             {{ c.label }}

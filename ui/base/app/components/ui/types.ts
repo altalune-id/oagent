@@ -19,6 +19,14 @@ export interface Column {
   key: string;
   label: string;
   align?: 'start' | 'end';
+  mono?: boolean;
+  hideLabel?: boolean;
+  sortable?: boolean;
+}
+
+export interface TableSort {
+  key: string;
+  dir: 'ascending' | 'descending';
 }
 
 export interface KeyValueItem {

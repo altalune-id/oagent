@@ -128,7 +128,7 @@ function onRole(m: MemberListRow, event: Event) {
     </p>
     <div v-else class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
       <table class="table table-sm">
-        <thead>
+        <thead class="text-base-content/70">
           <tr>
             <th>{{ labels.member }}</th>
             <th>{{ labels.role }}</th>

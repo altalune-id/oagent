@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends object">
-import type { Column } from './types';
+import type { Column, TableSort } from './types';
 import { useSlots } from 'vue';
 
 const { columns, rows, rowKey, caption, loading = false } = defineProps<{
@@ -11,6 +11,15 @@ const { columns, rows, rowKey, caption, loading = false } = defineProps<{
 }>();
 
 const slots = useSlots();
+const sort = defineModel<TableSort>('sort');
+
+function ariaSort(key: string): TableSort['dir'] | 'none' {
+  return sort.value?.key === key ? sort.value.dir : 'none';
+}
+
+function toggleSort(key: string) {
+  sort.value = { key, dir: sort.value?.key === key && sort.value.dir === 'ascending' ? 'descending' : 'ascending' };
+}
 
 function cell(row: T, key: string): unknown {
   return (row as Record<string, unknown>)[key];
@@ -23,15 +32,21 @@ function cell(row: T, key: string): unknown {
       <slot name="empty" />
     </div>
     <template v-else>
-      <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100" :class="{ 'max-sm:hidden': slots['row-sm'] }">
-        <table class="table table-sm" :aria-busy="loading || undefined">
+      <div class="max-w-full overflow-x-auto rounded-box border border-base-300 bg-base-100" :class="{ 'max-sm:hidden': slots['row-sm'] }">
+        <table class="table table-sm text-ui" :aria-busy="loading || undefined">
           <caption class="sr-only">
             {{ caption }}
           </caption>
-          <thead>
+          <thead class="text-base-content/70">
             <tr>
-              <th v-for="col in columns" :key="col.key" scope="col" :class="{ 'text-right': col.align === 'end' }">
-                {{ col.label }}
+              <th
+                v-for="col in columns" :key="col.key" scope="col" class="bg-base-200 text-xs font-medium"
+                :class="{ 'text-end': col.align === 'end' }" :aria-sort="col.sortable ? ariaSort(col.key) : undefined"
+              >
+                <button v-if="col.sortable" type="button" class="inline-flex items-center gap-1 hover:underline" @click="toggleSort(col.key)">
+                  {{ col.label }}<Icon name="lucide:arrow-down-up" size="12" aria-hidden="true" />
+                </button>
+                <span v-else :class="{ 'sr-only': col.hideLabel }">{{ col.label }}</span>
               </th>
             </tr>
           </thead>
@@ -43,8 +58,8 @@ function cell(row: T, key: string): unknown {
             </tr>
           </tbody>
           <tbody v-else>
-            <tr v-for="row in rows" :key="String(cell(row, rowKey))" class="row-hover">
-              <td v-for="col in columns" :key="col.key" :class="{ 'text-right tabular-nums': col.align === 'end' }">
+            <tr v-for="row in rows" :key="String(cell(row, rowKey))">
+              <td v-for="col in columns" :key="col.key" :class="{ 'text-end tabular-nums': col.align === 'end', 'font-mono text-xs': col.mono }">
                 <slot :name="`cell-${col.key}`" :row="row">
                   {{ cell(row, col.key) }}
                 </slot>
