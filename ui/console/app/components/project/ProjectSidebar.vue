@@ -34,8 +34,10 @@ const groups = computed<NavGroup[]>(() => [
 <template>
   <SidebarNav :label="project?.name ?? ''" :lead="[orgNav]" :groups="groups">
     <template #top>
-      <div class="flex flex-wrap items-center gap-1">
-        <OrgSelector />
+      <div class="flex items-center gap-1">
+        <div class="min-w-0 flex-1">
+          <OrgSelector />
+        </div>
         <OrgRoleBadge />
       </div>
     </template>

@@ -1,60 +1,54 @@
 <script setup lang="ts">
 import type { EntityItem } from './types';
+import { computed, ref } from 'vue';
 import AppDropdown from './AppDropdown.vue';
+import SearchInput from './SearchInput.vue';
 
-withDefaults(defineProps<{
+const { label, items, searchLabel = '', title = '', empty = '', triggerClass = '', open = false } = defineProps<{
   label: string,
   items: EntityItem[],
-  icon?: string,
-  placeholder?: boolean,
+  searchLabel?: string,
+  title?: string,
   empty?: string,
-  pinLabel?: string,
-  unpinLabel?: string,
+  triggerClass?: string,
   open?: boolean,
-}>(), {
-  icon: '',
-  placeholder: false,
-  empty: '',
-  pinLabel: 'Pin',
-  unpinLabel: 'Unpin',
-  open: false,
-});
-
-const emit = defineEmits<{
-  select: [key: string],
-  pin: [key: string],
 }>();
+
+const emit = defineEmits<{ select: [key: string] }>();
+
+const query = ref('');
+const shown = computed(() => {
+  const q = query.value.trim().toLowerCase();
+  return q ? items.filter(item => item.label.toLowerCase().includes(q)) : items;
+});
 </script>
 
 <template>
-  <AppDropdown class="min-w-0" :open="open" content-class="w-60" trigger-class="max-w-full min-w-0 flex-nowrap gap-1 sm:gap-2">
+  <AppDropdown class="w-full" bare :label="label" :open="open" content-class="card card-sm z-1 w-64" :trigger-class="['w-full justify-between text-ui', triggerClass].join(' ')">
     <template #trigger>
-      <Icon v-if="icon" :name="icon" size="16" class="shrink-0 max-sm:hidden" />
-      <span class="min-w-0 truncate sm:max-w-32" :class="{ 'text-base-content/70': placeholder }">{{ label }}</span>
-      <Icon name="lucide:chevron-down" size="14" class="shrink-0" />
+      <slot name="trigger" />
+      <span class="inline-flex shrink-0 items-center gap-1">
+        <slot name="end" />
+        <Icon name="lucide:chevrons-up-down" size="14" class="shrink-0" aria-hidden="true" />
+      </span>
     </template>
-    <ul class="menu w-full p-0">
-      <li v-for="item in items" :key="item.key">
-        <div class="flex items-center gap-1 rounded-box" :class="{ 'menu-active': item.active }">
-          <button type="button" class="min-w-0 flex-1 truncate text-left" @click="emit('select', item.key)">
-            {{ item.label }}
+    <div class="card-body gap-2 p-2">
+      <SearchInput v-if="searchLabel" v-model="query" :label="searchLabel" />
+      <ul class="menu menu-sm w-full p-0 text-ui">
+        <li v-if="title" class="menu-title text-base-content/70">
+          {{ title }}
+        </li>
+        <li v-for="item in shown" :key="item.key">
+          <button type="button" :class="{ 'menu-active': item.active }" :aria-current="item.active ? 'true' : undefined" @click="emit('select', item.key)">
+            <span class="min-w-0 truncate" :class="{ 'font-mono': item.mono }">{{ item.label }}</span>
+            <span v-if="item.badge" class="badge badge-xs">{{ item.badge }}</span>
           </button>
-          <button
-            type="button"
-            class="shrink-0 rounded p-0.5 hover:bg-base-200"
-            data-keep-open
-            :aria-label="item.pinned ? unpinLabel : pinLabel"
-            :title="item.pinned ? unpinLabel : pinLabel"
-            @click="emit('pin', item.key)"
-          >
-            <Icon name="lucide:star" size="14" :class="item.pinned ? 'text-warning [&_path]:fill-current' : 'text-base-content/70'" />
-          </button>
-        </div>
-      </li>
-      <li v-if="!items.length && empty" class="menu-disabled">
-        <span>{{ empty }}</span>
-      </li>
-      <slot name="actions" />
-    </ul>
+        </li>
+        <li v-if="!shown.length && empty" class="menu-disabled">
+          <span>{{ empty }}</span>
+        </li>
+        <slot name="actions" />
+      </ul>
+    </div>
   </AppDropdown>
 </template>

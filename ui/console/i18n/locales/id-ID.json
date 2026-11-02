@@ -349,5 +349,8 @@
   "agent.description_label": "Apa fungsinya?",
   "nav.org_overview": "Ringkasan organisasi",
   "nav.org_settings": "Pengaturan organisasi",
-  "agent.version_draft": "v{n}, draf punya perubahan"
+  "agent.version_draft": "v{n}, draf punya perubahan",
+  "org.switch": "Ganti organisasi",
+  "project.switch": "Ganti proyek",
+  "project.group_title": "Produk dan kasus penggunaan"
 }

@@ -13,6 +13,7 @@ export function useUserMenu() {
     apikey: t('auth.source_apikey'),
     basic: t('auth.source_basic'),
     profile: t('profile.title'),
+    apiKeys: t('apikeys.personal_title'),
   }));
   return { me: computed(() => auth.me), logoutUrl: siblingURL(apiUrl, '/logout'), labels, version: appVersion };
 }

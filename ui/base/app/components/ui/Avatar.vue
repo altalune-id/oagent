@@ -17,11 +17,11 @@ const box = computed(() => ({ xs: 'size-6 text-[10px]', sm: 'size-7 text-xs', md
 <template>
   <div v-if="view.kind === 'image'" class="avatar shrink-0">
     <div class="rounded-full" :class="box">
-      <img :src="view.src" :alt="view.alt">
+      <img :src="view.src" :alt="view.alt" class="object-cover">
     </div>
   </div>
   <div v-else class="avatar avatar-placeholder shrink-0">
-    <div role="img" :aria-label="view.label" class="rounded-full font-semibold" :class="[box, view.color]">
+    <div role="img" :aria-label="view.label" class="rounded-full bg-base-300 text-base-content" :class="box">
       <span aria-hidden="true">{{ view.text }}</span>
     </div>
   </div>

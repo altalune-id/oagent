@@ -2,10 +2,11 @@
 import type { NavGroup } from './types';
 import { useSlots } from 'vue';
 
-const { label = '', groups, lead = [] } = defineProps<{
+const { label = '', groups, lead = [], dense = true } = defineProps<{
   label?: string,
   groups: NavGroup[],
   lead?: NavGroup[],
+  dense?: boolean,
 }>();
 
 const slots = useSlots();
@@ -21,10 +22,10 @@ const slots = useSlots();
     </div>
     <nav :aria-label="label || undefined" class="min-h-0 flex-1 overflow-y-auto">
       <template v-for="(list, l) in [lead, groups]" :key="l">
-        <div v-if="l === 1 && slots.between" class="my-1 border-y border-base-300 p-2">
+        <div v-if="l === 1 && slots.between" class="border-y border-base-300" :class="dense ? 'my-1 p-2' : 'px-4 py-2'">
           <slot name="between" />
         </div>
-        <ul v-if="list.length" class="menu menu-sm w-full py-0 text-ui">
+        <ul v-if="list.length" class="menu menu-sm w-full text-ui" :class="{ 'py-0': dense }">
           <template v-for="(group, g) in list" :key="group.label ?? g">
             <li v-if="group.label" class="menu-title pt-3 text-xs text-base-content/70">
               {{ group.label }}

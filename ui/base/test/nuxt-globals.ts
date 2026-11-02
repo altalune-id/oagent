@@ -77,6 +77,9 @@ export function fakeStorage() {
     setItem: vi.fn((key: string, value: string) => {
       data.set(key, value);
     }),
+    removeItem: vi.fn((key: string) => {
+      data.delete(key);
+    }),
   };
 }
 

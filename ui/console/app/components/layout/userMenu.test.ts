@@ -32,7 +32,9 @@ describe('userMenu', () => {
     expect(w.get('button[popovertarget]').classes()).toEqual(expect.arrayContaining(['w-full', 'justify-start', 'text-ui']));
     expect(w.get('ul').classes()).toEqual(['menu', 'menu-sm', 'w-full', 'p-0', 'text-ui']);
     expect(w.get('.menu-title').text()).toContain('rina@acme.test');
-    expect(w.get('.menu-title').text()).toContain('OAgent v1.2.3');
+    expect(w.get('.menu-title').text()).not.toContain('OAgent v1.2.3');
+    expect(w.get('ul + p').classes()).toEqual(['px-2', 'pt-1', 'text-xs', 'text-base-content/70']);
+    expect(w.get('ul + p').text()).toBe('OAgent v1.2.3');
     const out = w.get('button[type="submit"]');
     expect(w.get(`form#${out.attributes('form')}`).attributes('action')).toBe('/logout');
   });
@@ -44,5 +46,11 @@ describe('userMenu', () => {
 
   it('shows nothing without a signed-in person', () => {
     expect(mount(UserMenu, { props: { me: null, logoutUrl: '/logout' } }).find('button[popovertarget]').exists()).toBe(false);
+  });
+
+  it('links My API keys only when given its org-scoped URL', () => {
+    expect(mount(UserMenu, { props: { me, logoutUrl: '/logout' } }).findAll('a').map(a => a.text())).not.toContain('My API keys');
+    const w = mount(UserMenu, { props: { me, logoutUrl: '/logout', apiKeysUrl: '/o/acme/settings/personal-keys' } });
+    expect(w.findAll('a').map(a => a.text())).toContain('My API keys');
   });
 });

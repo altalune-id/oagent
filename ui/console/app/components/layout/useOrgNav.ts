@@ -13,7 +13,6 @@ export function useOrgNav() {
         { key: 'projects', label: t('nav.projects'), to: `${base}/projects`, icon: 'lucide:folders', active: route.path === `${base}/projects` || route.path === `${base}/projects/` },
         { key: 'members', label: t('members.title'), to: `${settings}/members`, icon: 'lucide:users', active: route.path.startsWith(`${settings}/members`) },
         { key: 'api-keys', label: t('apikeys.title'), to: `${settings}/api-keys`, icon: 'lucide:key-round', active: route.path.startsWith(`${settings}/api-keys`) },
-        { key: 'personal-keys', label: t('apikeys.personal_title'), to: `${settings}/personal-keys`, icon: 'lucide:user-round-key', active: route.path.startsWith(`${settings}/personal-keys`) },
         { key: 'org-settings', label: t('nav.org_settings'), to: settings, icon: 'lucide:settings', active: route.path === settings },
       ],
     };

@@ -45,16 +45,14 @@ const groups = computed<NavGroup[]>(() => [
 </script>
 
 <template>
-  <SidebarNav :label="agent?.name ?? agentSlug" :lead="back" :groups="groups">
+  <SidebarNav :label="agent?.name ?? agentSlug" :lead="back" :groups="groups" :dense="false">
     <template #between>
-      <div class="px-2">
-        <p class="truncate text-sm font-semibold">
-          {{ agent?.name ?? agentSlug }}
-        </p>
-        <p class="text-xs text-base-content/70">
-          {{ version }}
-        </p>
-      </div>
+      <p class="truncate text-sm font-semibold">
+        {{ agent?.name ?? agentSlug }}
+      </p>
+      <p class="text-xs text-base-content/70">
+        {{ version }}
+      </p>
     </template>
     <template #footer>
       <SidebarUser />

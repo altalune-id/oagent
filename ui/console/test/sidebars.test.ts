@@ -31,7 +31,7 @@ describe('project sidebar', () => {
     const w = await mountPage(ProjectSidebar);
     const lists = w.findAll('nav > ul').map(ul => ul.findAll('li').map(li => li.text()));
     expect(lists).toEqual([
-      ['nav.org_overview', 'nav.projects', 'members.title', 'apikeys.title', 'apikeys.personal_title', 'nav.org_settings'],
+      ['nav.org_overview', 'nav.projects', 'members.title', 'apikeys.title', 'nav.org_settings'],
       ['nav.overview', 'nav.agents', 'webhooks.title', 'nav.settings'],
     ]);
     expect(w.get('nav > ul:last-child a.menu-active').text()).toBe('nav.agents');

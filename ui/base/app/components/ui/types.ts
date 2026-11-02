@@ -55,7 +55,8 @@ export interface EntityItem {
   key: string;
   label: string;
   active?: boolean;
-  pinned?: boolean;
+  mono?: boolean;
+  badge?: string;
 }
 
 export interface LanguageOption {

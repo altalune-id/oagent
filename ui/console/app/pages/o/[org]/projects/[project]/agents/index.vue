@@ -103,7 +103,7 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
 
     <template v-else>
       <div v-if="showSamples || items.length" class="flex flex-wrap items-center justify-between gap-2">
-        <SearchInput v-model="query" :label="t('agent.filter')" />
+        <SearchInput v-model="query" :label="t('agent.filter')" class="sm:w-64" />
         <AppButton v-if="showSamples" variant="ghost" size="sm" @click="showSamples = false">
           {{ t('agent.hide_samples') }}
         </AppButton>

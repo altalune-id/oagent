@@ -349,5 +349,8 @@
   "agent.description_label": "What does it do?",
   "nav.org_overview": "Org overview",
   "nav.org_settings": "Org settings",
-  "agent.version_draft": "v{n}, draft has changes"
+  "agent.version_draft": "v{n}, draft has changes",
+  "org.switch": "Switch organization",
+  "project.switch": "Switch project",
+  "project.group_title": "Products and use cases"
 }

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref, useId } from 'vue';
 
-const { label = '', open = false, disabled = false, placement = 'start', triggerClass = '', contentClass = 'w-56' } = defineProps<{
+const { label = '', open = false, disabled = false, placement = 'start', triggerClass = '', contentClass = 'w-56', bare = false } = defineProps<{
   label?: string,
   open?: boolean,
   disabled?: boolean,
   placement?: 'start' | 'end' | 'top',
   triggerClass?: string,
+  bare?: boolean,
   contentClass?: string,
 }>();
 
@@ -59,8 +60,8 @@ defineExpose({ close });
       :id="id"
       ref="panel"
       popover="auto"
-      class="dropdown rounded-box border border-base-300 bg-base-100 p-2 shadow-sm"
-      :class="[placements[placement], contentClass]"
+      class="dropdown border border-base-300 bg-base-100 shadow-sm"
+      :class="[{ 'rounded-box p-2': !bare }, placements[placement], contentClass]"
       :style="{ positionAnchor: anchor }"
       @toggle="onToggle"
       @click="onClick"

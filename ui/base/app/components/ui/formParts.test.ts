@@ -172,7 +172,7 @@ describe('toast', () => {
 describe('searchInput', () => {
   it('wraps a named search field and its hidden icon in the small input, and binds the query', async () => {
     const w = mount(SearchInput, { props: { 'label': 'Filter agents', 'modelValue': '', 'onUpdate:modelValue': (v: string) => w.setProps({ modelValue: v }) } });
-    expect(w.classes()).toEqual(['input', 'input-sm', 'text-ui', 'w-full', 'sm:w-64']);
+    expect(w.classes()).toEqual(['input', 'input-sm', 'text-ui', 'w-full']);
     expect(w.get('.sr-only').text()).toBe('Filter agents');
     expect(w.get('[data-icon="lucide:search"]').attributes('aria-hidden')).toBe('true');
     const input = w.get('input[type="search"]');

@@ -4,11 +4,11 @@ import EntitySelect from '#base/components/ui/EntitySelect.vue';
 import { useLanding } from '~/components/layout/useLanding';
 import { useOrgCreation } from '~/components/org/create/useOrgCreation';
 import { useOrgsStore } from '~/stores/orgs';
-import { usePinnedStore } from '~/stores/pinned';
+import { useRecentStore } from '~/stores/recent';
 import { useUIStore } from '~/stores/ui';
 
 const orgs = useOrgsStore();
-const pinned = usePinnedStore();
+const recent = useRecentStore();
 const ui = useUIStore();
 const { resolve } = useLanding();
 const { canCreate } = useOrgCreation();
@@ -17,64 +17,31 @@ const { t } = useI18n();
 
 const current = computed(() => orgs.bySlug(route.params.org as string));
 const items = computed<EntityItem[]>(() =>
-  orgs.items.map(org => ({ key: org.slug, label: org.name, active: org.slug === current.value?.slug, pinned: pinned.orgSlug === org.slug })),
+  recent.byRecency(orgs.items, o => o.slug, recent.orgs).map(org => ({ key: org.slug, label: org.name, active: org.slug === current.value?.slug })),
 );
 
-function blur() {
-  if (import.meta.client) {
-    (document.activeElement as HTMLElement | null)?.blur();
-  }
-}
-
 async function onSelect(slug: string) {
-  blur();
   if (slug === current.value?.slug) {
     return;
   }
   await navigateTo(await resolve(slug));
 }
-
-function onPin(slug: string) {
-  if (pinned.orgSlug === slug) {
-    pinned.unpinOrg();
-  } else {
-    pinned.setOrg(slug);
-  }
-}
-
-function onAll() {
-  blur();
-  return navigateTo('/orgs');
-}
-
-function onCreate() {
-  blur();
-  ui.openOrgCreate();
-}
 </script>
 
 <template>
-  <EntitySelect
-    :label="current?.name ?? t('org.select')"
-    icon="lucide:building-2"
-    :placeholder="!current"
-    :items="items"
-    :empty="t('org.empty')"
-    :pin-label="t('common.pin')"
-    :unpin-label="t('common.unpin')"
-    @select="onSelect"
-    @pin="onPin"
-  >
-    <template #actions>
+  <EntitySelect :label="t('org.switch')" :items="items" :empty="t('org.empty')" @select="onSelect">
+    <template #trigger>
+      <span class="inline-flex min-w-0 items-center gap-2">
+        <Icon name="lucide:route" size="16" class="shrink-0" aria-hidden="true" />
+        <span class="font-semibold">OAgent</span>
+        <span class="text-base-content/70">/</span>
+        <span class="truncate">{{ current?.name ?? t('org.select') }}</span>
+      </span>
+    </template>
+    <template v-if="canCreate" #actions>
       <li>
-        <button type="button" @click="onAll">
-          <Icon name="lucide:layout-list" size="16" />
-          {{ t('org.all') }}
-        </button>
-      </li>
-      <li v-if="canCreate">
-        <button type="button" @click="onCreate">
-          <Icon name="lucide:plus" size="16" />
+        <button type="button" @click="ui.openOrgCreate()">
+          <Icon name="lucide:plus" size="16" class="shrink-0" />
           {{ t('org.new') }}
         </button>
       </li>

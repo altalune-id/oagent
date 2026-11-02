@@ -21,16 +21,18 @@ export interface UserMenuLabels {
   apikey: string;
   basic: string;
   profile: string;
+  apiKeys: string;
 }
 
-const { me, logoutUrl, profileUrl = '/profile', placement = 'end', version = '', labels = {
+const { me, logoutUrl, profileUrl = '/profile', apiKeysUrl = '', placement = 'end', version = '', labels = {
   signOut: 'Sign out',
   signedInAs: 'Signed in as',
   operator: 'Operator',
   apikey: 'API key',
   basic: 'Basic auth',
   profile: 'Profile',
-} } = defineProps<{ me: UserMenuIdentity | null, logoutUrl: string, profileUrl?: string, placement?: 'end' | 'top', version?: string, labels?: UserMenuLabels }>();
+  apiKeys: 'My API keys',
+} } = defineProps<{ me: UserMenuIdentity | null, logoutUrl: string, profileUrl?: string, apiKeysUrl?: string, placement?: 'end' | 'top', version?: string, labels?: UserMenuLabels }>();
 
 const logoutForm = `logout-${useId()}`;
 
@@ -56,7 +58,6 @@ const sourceBadge = computed(() => {
     <ul class="menu menu-sm w-full p-0 text-ui">
       <li class="menu-title text-base-content/70">
         <span class="truncate">{{ me.email || display }}</span>
-        <span v-if="version" class="font-normal">OAgent v{{ version }}</span>
       </li>
       <li v-if="sourceBadge || me.operator" class="menu-title">
         <span class="flex flex-wrap gap-1">
@@ -71,6 +72,12 @@ const sourceBadge = computed(() => {
             {{ labels.profile }}
           </NuxtLink>
         </li>
+        <li v-if="apiKeysUrl">
+          <NuxtLink :to="apiKeysUrl">
+            <Icon name="lucide:key-round" size="16" class="shrink-0" />
+            {{ labels.apiKeys }}
+          </NuxtLink>
+        </li>
         <li>
           <button type="submit" :form="logoutForm">
             <Icon name="lucide:log-out" size="16" class="shrink-0" />
@@ -79,6 +86,9 @@ const sourceBadge = computed(() => {
         </li>
       </template>
     </ul>
+    <p v-if="version" class="px-2 pt-1 text-xs text-base-content/70">
+      OAgent v{{ version }}
+    </p>
     <form v-if="isPerson" :id="logoutForm" method="post" :action="logoutUrl" hidden />
   </AppDropdown>
 </template>
