@@ -151,6 +151,8 @@ func TestValidate_EveryRule(t *testing.T) {
 		{"oidc.buttonLabel blank", func(c *Config) { oidcOn(c); c.OIDC.ButtonLabel = " " }, missingSetting("oidc.buttonLabel")},
 		{"oidc.accountURL set", func(c *Config) { oidcOn(c); c.OIDC.AccountURL = "https://id.example.com/p/apps/account/" }, valid},
 		{"oidc.accountURL not a url", func(c *Config) { oidcOn(c); c.OIDC.AccountURL = "account page" }, invalidSetting("oidc.accountURL")},
+		{"oidc.accountURL javascript", func(c *Config) { oidcOn(c); c.OIDC.AccountURL = "javascript:alert(1)" }, invalidSetting("oidc.accountURL")},
+		{"oidc.accountURL javascript with host", func(c *Config) { oidcOn(c); c.OIDC.AccountURL = "javascript://x.example/%0Aalert(1)" }, invalidSetting("oidc.accountURL")},
 		{"oidc needs http.baseURL in production", func(c *Config) { oidcOn(c); c.HTTP.BaseURL = "" }, missingSetting("http.baseURL")},
 		{"oidc off ignores its keys", func(c *Config) { c.OIDC.ClientID, c.OIDC.Scopes = "", nil }, valid},
 		{"mcp oauth on", mcpOAuthOn, valid},

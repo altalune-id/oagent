@@ -8,6 +8,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -185,3 +186,17 @@ func TestHandlerReturnsHandler(t *testing.T) {
 type brokenFS struct{}
 
 func (brokenFS) Open(string) (fs.File, error) { return nil, errors.New("broken") }
+
+// NOTE: make ui builds the embedded console (not committed); missing, the test skips locally and fails when CI is set.
+func TestBuiltIndex_KeepsThePlaceholdersRebaseSwaps(t *testing.T) {
+	sub, err := fs.Sub(files, "public")
+	require.NoError(t, err)
+	b, err := fs.ReadFile(sub, indexName)
+	if errors.Is(err, fs.ErrNotExist) && os.Getenv("CI") == "" {
+		t.Skip("internal/web/console/public is not built; run make ui")
+	}
+	require.NoError(t, err)
+	for _, want := range []string{`apiUrl:""`, `appVersion:""`, `accountUrl:""`, `baseURL:"/"`} {
+		assert.Contains(t, string(b), want, "rebase swaps this exact string; if Nuxt changed its output, rebase silently does nothing")
+	}
+}

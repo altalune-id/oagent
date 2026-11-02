@@ -42,7 +42,8 @@ const display = computed(() => me?.name || me?.email || (me?.source === 'apikey'
 const isPerson = computed(() => personOf(me));
 const accountHost = computed(() => {
   try {
-    return accountUrl ? new URL(accountUrl).host : '';
+    const u = accountUrl ? new URL(accountUrl) : null;
+    return u && (u.protocol === 'https:' || u.protocol === 'http:') ? u.host : '';
   } catch {
     return '';
   }

@@ -14,7 +14,7 @@ type OIDCConfig struct {
 	Scopes       []string `yaml:"scopes"       mapstructure:"scopes"`
 	ButtonLabel  string   `yaml:"buttonLabel"  mapstructure:"buttonLabel"`
 	// AccountURL is where a signed-in person manages their account at the provider, linked from the console's user menu.
-	AccountURL string `yaml:"accountURL" mapstructure:"accountURL" validate:"omitempty,url"`
+	AccountURL string `yaml:"accountURL" mapstructure:"accountURL" validate:"omitempty,http_url"`
 }
 
 // Enabled reports whether a provider is configured.

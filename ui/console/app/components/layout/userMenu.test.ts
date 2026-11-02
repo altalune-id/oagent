@@ -62,6 +62,8 @@ describe('userMenu', () => {
     expect(a.attributes('rel')).toBe('noopener');
     expect(a.find('[data-icon="lucide:shield"]').exists()).toBe(true);
     expect(a.text().replace(/\s+/g, ' ')).toBe('Your account othra.example');
-    expect(mount(UserMenu, { props: { me, logoutUrl: '/logout', accountUrl: 'not a url' } }).find('a[target="_blank"]').exists()).toBe(false);
+    for (const bad of ['not a url', 'javascript:alert(1)', 'javascript://x.example/%0Aalert(1)']) {
+      expect(mount(UserMenu, { props: { me, logoutUrl: '/logout', accountUrl: bad } }).find('a[target="_blank"]').exists(), bad).toBe(false);
+    }
   });
 });
