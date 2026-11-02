@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h } from 'vue';
 import AppDataTable from './DataTable.vue';
 import FormField from './FormField.vue';
+import SearchInput from './SearchInput.vue';
 import SecretReveal from './SecretReveal.vue';
 import { toastLifetimeMs, useToast } from './toast';
 import ToastHost from './ToastHost.vue';
@@ -73,6 +74,18 @@ describe('dataTable', () => {
 });
 
 describe('formField', () => {
+  it('puts the design label, semibold, above the control and a muted hint below it', () => {
+    const w = mount(FormField, { props: { label: 'Model', hint: 'About $0.002 per step at this size' }, slots: { default: '<select></select>' } });
+    expect(w.classes()).toEqual(['flex', 'min-w-0', 'flex-col', 'gap-1']);
+    expect(w.get('label').classes()).toEqual(['label', 'text-ui', 'font-semibold', 'text-base-content']);
+    expect(w.get('p').classes()).toEqual(['label', 'whitespace-normal', 'text-xs', 'text-base-content/70']);
+  });
+
+  it('draws the error message in the design error text, 12px with normal line height, 8px below the control', () => {
+    const w = mount(FormField, { props: { label: 'Max steps', error: 'Enter at least 1 step' }, slots: { default: '<input>' } });
+    expect(w.get(`#${w.get('label').attributes('for')}-error`).classes()).toEqual(['mt-2', 'flex', 'items-start', 'gap-1', 'text-xs', 'leading-[normal]', 'text-error']);
+  });
+
   it('labels the control and describes it by the hint and the error', () => {
     const w = mount(FormField, {
       props: { label: 'Name', hint: 'Shown on runs', error: 'Too long', required: true, requiredLabel: 'required' },
@@ -153,5 +166,18 @@ describe('toast', () => {
     await w.get('.alert').trigger('focusout');
     await w.get('button[aria-label="Dismiss"]').trigger('click');
     expect(w.findAll('.alert')).toHaveLength(0);
+  });
+});
+
+describe('searchInput', () => {
+  it('wraps a named search field and its hidden icon in the small input, and binds the query', async () => {
+    const w = mount(SearchInput, { props: { 'label': 'Filter agents', 'modelValue': '', 'onUpdate:modelValue': (v: string) => w.setProps({ modelValue: v }) } });
+    expect(w.classes()).toEqual(['input', 'input-sm', 'text-ui', 'w-full', 'sm:w-64']);
+    expect(w.get('.sr-only').text()).toBe('Filter agents');
+    expect(w.get('[data-icon="lucide:search"]').attributes('aria-hidden')).toBe('true');
+    const input = w.get('input[type="search"]');
+    expect(input.attributes('placeholder')).toBe('Filter agents');
+    await input.setValue('refund');
+    expect(w.props('modelValue')).toBe('refund');
   });
 });

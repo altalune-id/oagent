@@ -17,13 +17,13 @@ const describedBy = computed(() => [hint && hintId, error && errorId].filter(Boo
 </script>
 
 <template>
-  <div class="fieldset">
-    <label :for="id" class="fieldset-legend">
+  <div class="flex min-w-0 flex-col gap-1">
+    <label :for="id" class="label text-ui font-semibold text-base-content">
       {{ label }}
-      <span v-if="required" class="font-normal text-base-content/70">({{ requiredLabel }})</span>
+      <span v-if="required" class="text-base-content/70">({{ requiredLabel }})</span>
     </label>
     <slot :id="id" :described-by="describedBy" :invalid="!!error" />
-    <p v-if="hint" :id="hintId" class="label whitespace-normal text-base-content/70">
+    <p v-if="hint" :id="hintId" class="label whitespace-normal text-xs text-base-content/70">
       {{ hint }}
     </p>
     <FieldError :id="errorId" :message="error" />

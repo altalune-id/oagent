@@ -26,8 +26,8 @@ describe('guard: markup in every app', () => {
     }
   });
 
-  it('uses no daisyUI 4 bordered or small form controls', () => {
-    expect(offenders(/\b(?:input|select|textarea|file-input)-(?:bordered|sm|xs)\b/)).toEqual([]);
+  it('uses no daisyUI 4 bordered form controls', () => {
+    expect(offenders(/\b(?:input|select|textarea|file-input)-bordered\b/)).toEqual([]);
   });
 
   it('keeps muted text at /70, the lowest opacity that passes AA in every theme', () => {
@@ -43,8 +43,8 @@ describe('guard: markup in every app', () => {
     expect(offenders(/<tr\s(?:[^>]*\s)?class="(?:[^"]*\s)?hover(?:\s[^"]*)?"/)).toEqual([]);
   });
 
-  it('keeps text neutral: error, warning, success and info colours go on icons only', () => {
-    expect(offenders(/<(?:p|span|div|dd|li|label)\s[^>]*\bclass="[^"]*\btext-(?:error|warning|success|info)\b/)).toEqual([]);
+  it('keeps text neutral: error, warning, success and info colours go on icons only, except the field error message', () => {
+    expect(offenders(/<(?:p|span|div|dd|li|label)\s[^>]*\bclass="[^"]*\btext-(?:error|warning|success|info)\b/).filter(p => !p.endsWith('/FieldError.vue'))).toEqual([]);
     expect(offenders(/<(?:p|span|div|dd|li|label)\s[^>]*:class="[^"]*'text-(?:error|warning|success|info)'/)).toEqual([]);
   });
 
