@@ -62,6 +62,19 @@ describe('appShell', () => {
     w.unmount();
   });
 
+  it('focuses the first sidebar link only once the drawer side is visible, as it fades in on a phone', async () => {
+    const w = render();
+    const side = w.get('.drawer-side').element as HTMLElement;
+    side.style.visibility = 'hidden';
+    await w.setProps({ open: true });
+    await nextTick();
+    expect(document.activeElement?.textContent).not.toBe('One');
+    side.style.visibility = 'visible';
+    await new Promise(resolve => setTimeout(resolve, 60));
+    expect(document.activeElement?.textContent).toBe('One');
+    w.unmount();
+  });
+
   it('ignores other keys and leaves focus alone when it already moved out of the sidebar', async () => {
     phone = false;
     const w = render();

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
+import { focusWhenShown } from './focusWhenShown';
 
 const { sidebarId = 'app-sidebar', closeLabel = 'Close menu', full = false, breakpoint = 'md', rail = false } = defineProps<{
   sidebarId?: string,
@@ -34,7 +35,7 @@ watch(open, (now) => {
   if (now) {
     returnTo = document.activeElement as HTMLElement | null;
     document.addEventListener('keydown', onKey);
-    side.value?.querySelector<HTMLElement>('a[href], button:not([disabled]), input:not([type="hidden"]), select')?.focus();
+    focusWhenShown(() => side.value, () => side.value?.querySelector<HTMLElement>('a[href], button:not([disabled]), input:not([type="hidden"]), select'), () => open.value);
     return;
   }
   document.removeEventListener('keydown', onKey);
