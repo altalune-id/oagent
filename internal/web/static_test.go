@@ -56,6 +56,13 @@ func TestAppCSS_LoadsBundledFonts(t *testing.T) {
 	}
 }
 
+func TestAppCSS_FollowsADarkSystem(t *testing.T) {
+	css := string(builtAsset(t, "app.css"))
+	i := strings.Index(css, "@media (prefers-color-scheme:dark){:root:not([data-theme]){")
+	require.GreaterOrEqual(t, i, 0, "sign-in pages set no data-theme, so this rule picks oagent-dark")
+	assert.Contains(t, css[i:i+200], "color-scheme:dark")
+}
+
 // NOTE: make web builds these files (not committed); missing, the test skips locally and fails when CI is set.
 func builtAsset(t *testing.T, name string) []byte {
 	t.Helper()

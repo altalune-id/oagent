@@ -151,6 +151,11 @@ describe('guard: theme contrast', () => {
     expect(contrast([0, 0, 0], [1, 1, 1])).toBeCloseTo(21);
   });
 
+  it('lets only oagent-dark follow a dark system, which the sign-in pages rely on', () => {
+    expect([...theme.matchAll(/name: '([\w-]+)';[^}]*?prefersdark: true;/g)].map(([, name]) => name)).toEqual(['oagent-dark']);
+    expect(theme).toMatch(/name: 'oagent-light';\s+default: true;/);
+  });
+
   it('keeps muted text, *-content and status text at WCAG AA (4.5:1)', () => {
     const failures: string[] = [];
     for (const { name, colors: c } of themes) {

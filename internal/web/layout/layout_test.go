@@ -90,7 +90,7 @@ func TestLayoutTemplate(t *testing.T) {
 	out := buf.String()
 
 	assert.Contains(t, out, "<!doctype html>")
-	assert.Contains(t, out, `<html lang="id" data-theme="oagent-light">`)
+	assert.Contains(t, out, `<html lang="id">`, "no data-theme: the page follows the system, oagent-light or its prefersdark oagent-dark")
 	assert.Contains(t, out, "<title>Home &lt;x&gt; · OAgent</title>")
 	assert.Contains(t, out, `href="/app/static/favicon.ico"`)
 	assert.Contains(t, out, `href="/app/static/favicon-32x32.png"`)
@@ -113,6 +113,7 @@ func TestColumnTemplate(t *testing.T) {
 
 	assert.Contains(t, out, "<title>Sign in · OAgent</title>")
 	assert.Contains(t, out, `href="/app/static/app.css"`, "the column shares the layout's head")
+	assert.NotContains(t, out, "data-theme", "the sign-in page follows the system theme")
 	assert.Contains(t, out, `<body class="min-h-dvh bg-base-100 text-sm leading-[normal] text-base-content">`, "the design's 14px base text")
 	assert.Contains(t, out, `<div class="flex w-full max-w-[25rem] flex-col gap-5"><p>inner</p></div>`)
 	assert.NotContains(t, out, "card")
