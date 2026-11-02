@@ -26,11 +26,11 @@ const lines = computed(() => ({
 </script>
 
 <template>
-  <aside class="flex min-w-0 flex-col border-t border-base-300 bg-base-200 xl:sticky xl:top-0 xl:h-dvh xl:border-s xl:border-t-0" :aria-label="t('configure.pane')">
-    <div class="tabs tabs-border tabs-sm min-h-0 flex-1 grid-rows-[auto_1fr] px-2 pt-1">
+  <aside class="min-w-0 border-t border-base-300 bg-base-200 xl:border-s xl:border-t-0" :aria-label="t('configure.pane')">
+    <div class="tabs tabs-border tabs-sm grid-rows-[auto_1fr] px-2 pt-1 xl:sticky xl:top-0 xl:max-h-dvh xl:overflow-y-auto">
       <input v-model="tab" type="radio" :name="name" value="test" class="tab" :aria-label="t('configure.test_tab')">
-      <div class="tab-content min-h-0 min-w-0 overflow-hidden">
-        <div class="flex h-full min-h-96 flex-col gap-2 p-2">
+      <div class="tab-content min-w-0">
+        <div class="flex min-h-96 flex-col gap-2 p-2">
           <div class="flex items-center justify-between text-xs text-base-content/70">
             <span>{{ t('configure.tests_draft') }}</span>
             <span class="badge badge-info badge-soft badge-sm">{{ t('preview.badge') }}</span>
