@@ -17,6 +17,18 @@ describe('appButton', () => {
     expect(mount(AppButton, { props: { variant: 'plain' } }).get('button').classes()).toEqual(['btn']);
   });
 
+  it('sets small buttons in the dense text-ui size, as the artifact does', () => {
+    expect(mount(AppButton, { props: { size: 'sm' } }).get('button').classes()).toEqual(expect.arrayContaining(['btn-sm', 'text-ui']));
+    expect(mount(AppButton, { props: { size: 'xs' } }).get('button').classes()).not.toContain('text-ui');
+    expect(mount(AppButton).get('button').classes()).not.toContain('text-ui');
+  });
+
+  it('passes an aria-label through, so an icon-only button has a name', () => {
+    const b = mount(AppButton, { props: { variant: 'ghost', size: 'xs', square: true }, attrs: { 'aria-label': 'Copy link to this event' }, slots: { default: '<i data-icon="lucide:link" />' } }).get('button');
+    expect(b.attributes('aria-label')).toBe('Copy link to this event');
+    expect(b.classes()).toEqual(expect.arrayContaining(['btn-xs', 'btn-ghost', 'btn-square']));
+  });
+
   it('disables itself and shows a hidden spinner while busy', () => {
     const b = mount(AppButton, { props: { busy: true } }).get('button');
     expect(b.attributes('disabled')).toBeDefined();
