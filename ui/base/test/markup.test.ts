@@ -156,6 +156,22 @@ describe('guard: theme contrast', () => {
     expect(theme).toMatch(/name: 'oagent-light';\s+default: true;/);
   });
 
+  it('keeps the four run event colours at 3:1 (non-text) on base-100 and base-200 in every theme', () => {
+    const failures: string[] = [];
+    for (const { name, colors: c } of themes) {
+      for (const bg of ['base-100', 'base-200']) {
+        const marks: [string, number][] = [
+          ['info', contrast(c.info!, c[bg]!)],
+          ['base-content/70', contrast(c['base-content']!, c[bg]!, 0.7)],
+          ['warning', contrast(c.warning!, c[bg]!)],
+          ['error', contrast(c.error!, c[bg]!)],
+        ];
+        failures.push(...marks.filter(([, r]) => r < 3).map(([k, r]) => `${name}: ${k} on ${bg} ${r.toFixed(2)}`));
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+
   it('keeps muted text, *-content and status text at WCAG AA (4.5:1)', () => {
     const failures: string[] = [];
     for (const { name, colors: c } of themes) {

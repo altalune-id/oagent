@@ -1,20 +1,18 @@
 <script setup lang="ts">
 import type { Lane } from './runView';
+import { laneColor } from './runView';
 
 const { lane } = defineProps<{ lane: Lane | null }>();
+
+const shape: Record<Lane, string> = { model: 'rounded-full', tool: 'rounded-[2px]', approval: 'rotate-45 rounded-[1px]', error: '' };
 </script>
 
 <template>
-  <Icon v-if="lane === 'error'" name="lucide:x" size="12" class="shrink-0 text-error" aria-hidden="true" />
+  <Icon v-if="lane === 'error'" name="lucide:x" size="14" class="shrink-0 stroke-[3] text-error" aria-hidden="true" />
   <span
     v-else
     aria-hidden="true"
     class="inline-block size-2.5 shrink-0"
-    :class="{
-      'rounded-full bg-info': lane === 'model',
-      'rounded-[2px] bg-base-content/70': lane === 'tool',
-      'rotate-45 rounded-[1px] bg-warning': lane === 'approval',
-      'rounded-full border border-base-content/70': lane === null,
-    }"
+    :class="lane ? [shape[lane], laneColor[lane]] : 'rounded-full border border-base-content/70'"
   />
 </template>

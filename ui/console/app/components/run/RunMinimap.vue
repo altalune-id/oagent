@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RunEvent } from '~/preview/samples';
 import EventMark from './EventMark.vue';
-import { lane, lanes, scale, ticks } from './runView';
+import { lane, laneColor, lanes, scale, ticks } from './runView';
 
 const { events, selected = '' } = defineProps<{ events: RunEvent[], selected?: string }>();
 const emit = defineEmits<{ select: [id: string] }>();
@@ -29,7 +29,7 @@ function place(e: RunEvent) {
           type="button"
           class="absolute inset-y-0 rounded-sm outline-offset-2"
           :class="[
-            { model: 'bg-info', tool: 'bg-base-content/70', approval: 'bg-warning', error: 'bg-error' }[row.lane],
+            laneColor[row.lane],
             { 'ring-2 ring-base-content ring-offset-1 ring-offset-base-100': e.id === selected },
           ]"
           :style="place(e)"

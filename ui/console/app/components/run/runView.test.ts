@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { sampleRun } from '~/preview/samples';
-import { eventsFor, lane, scale, ticks, toolCalls, totals } from './runView';
+import { eventsFor, lane, laneColor, scale, ticks, toolCalls, totals } from './runView';
 
 describe('runView', () => {
   const run = sampleRun();
@@ -8,6 +8,10 @@ describe('runView', () => {
   it('puts each event type on one lane, and the input on none', () => {
     expect(run.events.map(lane)).toEqual([null, 'model', 'tool', 'tool', 'model', 'error', 'tool', 'model', 'approval']);
     expect(lane(run.afterApprove[1]!)).toBe('model');
+  });
+
+  it('colours each lane with one of the four tokens the theme contrast guard covers', () => {
+    expect(laneColor).toEqual({ model: 'bg-info', tool: 'bg-base-content/70', approval: 'bg-warning', error: 'bg-error' });
   });
 
   it('adds what happens after an approval or a rejection', () => {

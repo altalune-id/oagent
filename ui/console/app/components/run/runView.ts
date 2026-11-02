@@ -5,6 +5,9 @@ export type RunStatus = 'waiting' | 'approved' | 'rejected';
 
 export const lanes: Lane[] = ['model', 'tool', 'approval', 'error'];
 
+// NOTE: colour is the event type only, and each passes 3:1 on base-100 and base-200 in every theme (ui/base/test/markup.test.ts).
+export const laneColor: Record<Lane, string> = { model: 'bg-info', tool: 'bg-base-content/70', approval: 'bg-warning', error: 'bg-error' };
+
 const laneOf: Record<RunEventType, Lane | null> = { input: null, model: 'model', output: 'model', tool: 'tool', approval: 'approval', error: 'error' };
 
 export function lane(event: RunEvent): Lane | null {
