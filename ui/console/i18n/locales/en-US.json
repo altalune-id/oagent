@@ -367,5 +367,6 @@
   "invites.col_actions": "Actions",
   "members.col_actions": "Actions",
   "apikeys.actions_for": "Actions for {name}",
-  "apikeys.col_actions": "Actions"
+  "apikeys.col_actions": "Actions",
+  "settings.subtitle": "The organization's name and URL."
 }

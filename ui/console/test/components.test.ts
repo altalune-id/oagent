@@ -212,7 +212,8 @@ describe('actions follow the caller\'s permissions', () => {
     signedInWith('org:read');
     const w = await mountPage(OrgSettings);
     expect(w.find('form').exists()).toBe(false);
-    expect(w.get('dl').text()).toContain('Acme');
+    expect(w.get('[data-testid="org-settings-readonly"] dl').text()).toContain('Acme');
+    expect(w.get('[data-testid="org-settings-readonly"] dl').text()).toContain('acme');
     expect(w.text()).toContain('settings.read_only');
   });
 
