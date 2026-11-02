@@ -368,5 +368,6 @@
   "members.col_actions": "Tindakan",
   "apikeys.actions_for": "Tindakan untuk {name}",
   "apikeys.col_actions": "Tindakan",
-  "settings.subtitle": "Nama dan URL organisasi."
+  "settings.subtitle": "Nama dan URL organisasi.",
+  "stat.members": "Anggota"
 }

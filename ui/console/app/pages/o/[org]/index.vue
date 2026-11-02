@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import type { StatItem } from '#base/components/ui/types';
 import AppBadge from '#base/components/ui/AppBadge.vue';
+import AppStats from '#base/components/ui/AppStats.vue';
 import CopyButton from '#base/components/ui/CopyButton.vue';
 import PageHeader from '#base/components/ui/PageHeader.vue';
 import Section from '#base/components/ui/Section.vue';
 import { environmentLabelKey } from '~/components/project/environment';
+import { useMembersStore } from '~/stores/members';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 
@@ -16,6 +19,16 @@ const items = computed(() => (org.value ? projects.forOrg(org.value.id) : []).ma
   const env = environmentLabelKey(p.environment);
   return { ...p, tag: env === 'environment.none' ? '' : t(env) };
 }));
+
+const members = useMembersStore();
+if (org.value) {
+  void members.load(org.value.id);
+}
+
+const stats = computed<StatItem[]>(() => [
+  { label: t('nav.projects'), value: projects.loading || projects.error ? '—' : items.value.length },
+  { label: t('stat.members'), value: members.loading || members.error ? '—' : members.items.length },
+]);
 
 useHead({ title: () => `${org.value?.name ?? t('org.title')} · OAgent` });
 </script>
@@ -30,6 +43,8 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · OAgent` });
         </p>
       </template>
     </PageHeader>
+
+    <AppStats :items="stats" class="max-w-2xl" />
 
     <Section :title="t('project.title')" flush class="max-w-2xl" data-testid="org-projects">
       <ul v-if="items.length" class="divide-y divide-base-300">
