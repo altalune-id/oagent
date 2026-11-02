@@ -5,7 +5,7 @@ import { useAuthStore } from '~/stores/auth';
 export function useUserMenu() {
   const { t } = useI18n();
   const auth = useAuthStore();
-  const { apiUrl, appVersion } = useRuntimeConfig().public;
+  const { apiUrl, appVersion, accountUrl } = useRuntimeConfig().public;
   const labels = computed(() => ({
     signOut: t('auth.sign_out'),
     signedInAs: t('auth.signed_in_as'),
@@ -14,6 +14,7 @@ export function useUserMenu() {
     basic: t('auth.source_basic'),
     profile: t('profile.title'),
     apiKeys: t('apikeys.personal_title'),
+    account: t('auth.your_account'),
   }));
-  return { me: computed(() => auth.me), logoutUrl: siblingURL(apiUrl, '/logout'), labels, version: appVersion };
+  return { me: computed(() => auth.me), logoutUrl: siblingURL(apiUrl, '/logout'), labels, version: appVersion, accountUrl: accountUrl as string };
 }

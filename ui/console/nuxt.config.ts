@@ -17,7 +17,7 @@ export default defineNuxtConfig({
     },
   },
   runtimeConfig: {
-    public: { apiUrl: '', appVersion: '' },
+    public: { apiUrl: '', appVersion: '', accountUrl: '' },
   },
   $development: {
     ssr: false,

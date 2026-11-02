@@ -53,4 +53,15 @@ describe('userMenu', () => {
     const w = mount(UserMenu, { props: { me, logoutUrl: '/logout', apiKeysUrl: '/o/acme/settings/personal-keys' } });
     expect(w.findAll('a').map(a => a.text())).toContain('My API keys');
   });
+
+  it('links the account page at the provider in a new tab, named with its host, only when configured', () => {
+    expect(mount(UserMenu, { props: { me, logoutUrl: '/logout' } }).find('a[target="_blank"]').exists()).toBe(false);
+    const w = mount(UserMenu, { props: { me, logoutUrl: '/logout', accountUrl: 'https://othra.example/p/apps/account/' } });
+    const a = w.get('a[target="_blank"]');
+    expect(a.attributes('href')).toBe('https://othra.example/p/apps/account/');
+    expect(a.attributes('rel')).toBe('noopener');
+    expect(a.find('[data-icon="lucide:shield"]').exists()).toBe(true);
+    expect(a.text().replace(/\s+/g, ' ')).toBe('Your account othra.example');
+    expect(mount(UserMenu, { props: { me, logoutUrl: '/logout', accountUrl: 'not a url' } }).find('a[target="_blank"]').exists()).toBe(false);
+  });
 });

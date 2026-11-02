@@ -129,7 +129,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 	if err != nil {
 		return nil, err
 	}
-	consoleHandler := buildConsoleHandler(cfg.HTTP.BasePath)
+	consoleHandler := buildConsoleHandler(cfg.HTTP.BasePath, cfg.OIDC.AccountURL)
 	mcpServer := buildMCPServer(cfg.MCP, svcs, log, mcpPublicHost(cfg.HTTP)...)
 	mcpResource, mcpDocs, err := buildMCPResource(cfg, mcpServer, log)
 	if err != nil {

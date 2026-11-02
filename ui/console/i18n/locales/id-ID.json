@@ -352,5 +352,6 @@
   "agent.version_draft": "v{n}, draf punya perubahan",
   "org.switch": "Ganti organisasi",
   "project.switch": "Ganti proyek",
-  "project.group_title": "Produk dan kasus penggunaan"
+  "project.group_title": "Produk dan kasus penggunaan",
+  "auth.your_account": "Akun Anda"
 }

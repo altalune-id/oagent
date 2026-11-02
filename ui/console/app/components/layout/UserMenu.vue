@@ -22,9 +22,10 @@ export interface UserMenuLabels {
   basic: string;
   profile: string;
   apiKeys: string;
+  account: string;
 }
 
-const { me, logoutUrl, profileUrl = '/profile', apiKeysUrl = '', placement = 'end', version = '', labels = {
+const { me, logoutUrl, profileUrl = '/profile', apiKeysUrl = '', accountUrl = '', placement = 'end', version = '', labels = {
   signOut: 'Sign out',
   signedInAs: 'Signed in as',
   operator: 'Operator',
@@ -32,12 +33,20 @@ const { me, logoutUrl, profileUrl = '/profile', apiKeysUrl = '', placement = 'en
   basic: 'Basic auth',
   profile: 'Profile',
   apiKeys: 'My API keys',
-} } = defineProps<{ me: UserMenuIdentity | null, logoutUrl: string, profileUrl?: string, apiKeysUrl?: string, placement?: 'end' | 'top', version?: string, labels?: UserMenuLabels }>();
+  account: 'Your account',
+} } = defineProps<{ me: UserMenuIdentity | null, logoutUrl: string, profileUrl?: string, apiKeysUrl?: string, accountUrl?: string, placement?: 'end' | 'top', version?: string, labels?: UserMenuLabels }>();
 
 const logoutForm = `logout-${useId()}`;
 
 const display = computed(() => me?.name || me?.email || (me?.source === 'apikey' ? labels.apikey : ''));
 const isPerson = computed(() => personOf(me));
+const accountHost = computed(() => {
+  try {
+    return accountUrl ? new URL(accountUrl).host : '';
+  } catch {
+    return '';
+  }
+});
 const sourceBadge = computed(() => {
   switch (me?.source) {
     case 'apikey': return labels.apikey;
@@ -77,6 +86,15 @@ const sourceBadge = computed(() => {
             <Icon name="lucide:key-round" size="16" class="shrink-0" />
             {{ labels.apiKeys }}
           </NuxtLink>
+        </li>
+        <li v-if="accountHost">
+          <a :href="accountUrl" target="_blank" rel="noopener">
+            <Icon name="lucide:shield" size="16" class="shrink-0" />
+            <span class="flex min-w-0 flex-col">
+              {{ labels.account }}
+              <span class="truncate text-xs text-base-content/70">{{ accountHost }}</span>
+            </span>
+          </a>
         </li>
         <li>
           <button type="submit" :form="logoutForm">

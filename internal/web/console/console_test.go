@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const indexHTML = `<script>window.__NUXT__.config={public:{apiUrl:"",appVersion:""},app:{baseURL:"/",buildAssetsDir:"/_nuxt/"}}</script><script src="/_nuxt/app.js"></script>`
+const indexHTML = `<script>window.__NUXT__.config={public:{apiUrl:"",appVersion:"",accountUrl:""},app:{baseURL:"/",buildAssetsDir:"/_nuxt/"}}</script><script src="/_nuxt/app.js"></script>`
 
 func testFS() fstest.MapFS {
 	return fstest.MapFS{
@@ -40,7 +40,7 @@ func get(h http.Handler, target string, header http.Header) *httptest.ResponseRe
 
 func TestSPA(t *testing.T) {
 	t.Parallel()
-	h := newSPA(testFS(), "/console/", "/api", "1.2.3")
+	h := newSPA(testFS(), "/console/", "/api", "1.2.3", "")
 
 	t.Run("root serves rebased index", func(t *testing.T) {
 		t.Parallel()
@@ -141,13 +141,13 @@ func TestSPA(t *testing.T) {
 
 	t.Run("missing index returns 404", func(t *testing.T) {
 		t.Parallel()
-		rec := get(newSPA(fstest.MapFS{}, "/console/", "", ""), "/o/acme", nil)
+		rec := get(newSPA(fstest.MapFS{}, "/console/", "", "", ""), "/o/acme", nil)
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
 
 	t.Run("unreadable build returns 404", func(t *testing.T) {
 		t.Parallel()
-		rec := get(newSPA(brokenFS{}, "/console/", "", ""), "/", nil)
+		rec := get(newSPA(brokenFS{}, "/console/", "", "", ""), "/", nil)
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
 }
@@ -155,7 +155,7 @@ func TestSPA(t *testing.T) {
 func TestSPA_IndexETagFollowsConfig(t *testing.T) {
 	t.Parallel()
 	etag := func(apiBase, version string) string {
-		return get(newSPA(testFS(), "/console/", apiBase, version), "/", nil).Header().Get("ETag")
+		return get(newSPA(testFS(), "/console/", apiBase, version, ""), "/", nil).Header().Get("ETag")
 	}
 	base := etag("/api", "1.2.3")
 	assert.Equal(t, base, etag("/api", "1.2.3"))
@@ -165,17 +165,21 @@ func TestSPA_IndexETagFollowsConfig(t *testing.T) {
 
 func TestRebase(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, indexHTML, rebase(indexHTML, "/", "/api", "1.2.3"))
-	got := rebase(indexHTML, "/oa/console/", "/oa/api", "")
+	assert.Equal(t, indexHTML, rebase(indexHTML, "/", "/api", "1.2.3", ""))
+	got := rebase(indexHTML, "/oa/console/", "/oa/api", "", "")
 	assert.Contains(t, got, `src="/oa/console/_nuxt/app.js"`)
 	assert.Contains(t, got, `baseURL:"/oa/console/"`)
 	assert.Contains(t, got, `apiUrl:"/oa/api"`)
 	assert.Contains(t, got, `appVersion:""`)
+	assert.Contains(t, got, `accountUrl:""`, "no account URL leaves the menu link off")
+
+	got = rebase(indexHTML, "/oa/console/", "/oa/api", "", "https://id.example/p/apps/account/?x=</script>")
+	assert.Contains(t, got, `accountUrl:"https://id.example/p/apps/account/?x=\u003c/script\u003e"`, "the URL cannot close the script")
 }
 
 func TestHandlerReturnsHandler(t *testing.T) {
 	t.Parallel()
-	assert.NotNil(t, Handler("/console/", "/api", "1.2.3"))
+	assert.NotNil(t, Handler("/console/", "/api", "1.2.3", ""))
 }
 
 type brokenFS struct{}

@@ -138,6 +138,8 @@ nats:
   user: ""
 
 oidc:
+  # env: OAGENT_OIDC_ACCOUNT_URL
+  accountURL: ""
   # env: OAGENT_OIDC_BUTTON_LABEL
   buttonLabel: Continue with SSO
   # env: OAGENT_OIDC_CLIENT_ID

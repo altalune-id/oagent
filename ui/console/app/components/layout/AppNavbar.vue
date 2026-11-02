@@ -18,7 +18,7 @@ const hasNav = computed(() => !!route.params.org);
 const auth = useAuthStore();
 const { apiUrl } = useRuntimeConfig().public;
 const logoUrl = staticURL(apiUrl, 'altalune-logo.png');
-const { me, logoutUrl, labels } = useUserMenu();
+const { me, logoutUrl, labels, accountUrl } = useUserMenu();
 onMounted(() => auth.load());
 </script>
 
@@ -45,7 +45,7 @@ onMounted(() => auth.load());
       <LanguageSwitcher />
       <ThemeFamilySwitcher />
       <ThemeSwitcher />
-      <UserMenu v-if="!hasNav" :me="me" :logout-url="logoutUrl" :labels="labels" />
+      <UserMenu v-if="!hasNav" :me="me" :logout-url="logoutUrl" :labels="labels" :account-url="accountUrl" />
     </template>
   </NavbarShell>
 </template>
