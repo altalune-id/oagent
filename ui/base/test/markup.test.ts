@@ -121,8 +121,9 @@ describe('guard: foundations', () => {
     for (const family of ['instrument-sans', 'jetbrains-mono']) {
       expect(css).toContain(`@import '@fontsource-variable/${family}';`);
     }
-    expect(tokens).toMatch(/--font-sans: 'Instrument Sans Variable'/);
-    expect(tokens).toMatch(/--font-mono: 'JetBrains Mono Variable'/);
+    expect(css, 'per-subset files lack unicode-range').not.toMatch(/@fontsource[\w-]*\/[\w-]+\/latin/);
+    expect(tokens).toMatch(/--font-sans: 'Instrument Sans Variable', 'Instrument Sans',/);
+    expect(tokens).toMatch(/--font-mono: 'JetBrains Mono Variable', 'JetBrains Mono',/);
     expect(offenders(/fonts\.(?:googleapis|gstatic)\.com/)).toEqual([]);
   });
 
