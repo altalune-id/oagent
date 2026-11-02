@@ -12,15 +12,15 @@ const slots = useSlots();
 </script>
 
 <template>
-  <div class="flex flex-col items-center gap-3 rounded-box border border-dashed border-base-300 p-8 text-center">
-    <Icon :name="icon" size="32" class="text-base-content/70" />
-    <component :is="`h${headingLevel}`" class="text-lg font-semibold">
+  <div class="flex max-w-md flex-col items-start gap-3 py-16">
+    <Icon :name="icon" size="24" class="shrink-0" aria-hidden="true" />
+    <component :is="`h${headingLevel}`" class="text-xl font-semibold">
       {{ title }}
     </component>
-    <p v-if="body" class="max-w-prose text-sm text-base-content/70">
+    <p v-if="body" class="text-base-content/70">
       {{ body }}
     </p>
-    <div v-if="slots.actions" class="flex flex-wrap justify-center gap-2">
+    <div v-if="slots.actions" class="flex flex-wrap gap-2">
       <slot name="actions" />
     </div>
   </div>

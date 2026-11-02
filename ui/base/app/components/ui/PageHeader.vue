@@ -18,16 +18,16 @@ const slots = useSlots();
 <template>
   <header class="flex flex-col gap-2">
     <Breadcrumbs v-if="crumbs.length" :crumbs="crumbs" :label="crumbsLabel" />
-    <div class="flex flex-wrap items-start justify-between gap-3">
-      <div class="min-w-0 space-y-1">
+    <div class="flex flex-wrap justify-between gap-3" :class="mono ? 'items-start' : 'items-center'">
+      <div class="min-w-0">
         <div class="flex flex-wrap items-center gap-2">
-          <h1 :class="mono ? 'font-mono text-xl font-semibold break-all' : 'text-2xl font-semibold break-words'">
+          <h1 :class="mono ? 'font-mono text-lg font-medium break-all sm:text-xl' : 'text-xl font-semibold break-words'">
             {{ title }}
           </h1>
           <span v-if="preview" class="badge badge-info badge-soft badge-sm">{{ preview }}</span>
           <slot name="meta" />
         </div>
-        <p v-if="description" class="text-base-content/70">
+        <p v-if="description" class="text-ui text-base-content/70">
           {{ description }}
         </p>
         <slot name="status" />

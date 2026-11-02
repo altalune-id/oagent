@@ -145,7 +145,8 @@ describe('toast', () => {
     await w.vm.$nextTick();
     expect([w.attributes('role'), w.attributes('aria-live')]).toEqual(['status', 'polite']);
     expect(w.findAll('.alert').map(a => [a.attributes('role'), a.attributes('aria-live')])).toEqual([[undefined, undefined], [undefined, undefined]]);
-    expect(w.findAll('.alert').map(a => [a.classes().find(c => c.startsWith('alert-')), a.text()])).toEqual([['alert-success', 'Saved'], ['alert-error', 'Failed']]);
+    expect(w.findAll('.alert').map(a => a.classes())).toEqual([['alert', 'text-ui', 'shadow-sm'], ['alert', 'text-ui', 'shadow-sm']]);
+    expect(w.findAll('.alert').map(a => [a.get('[data-icon]').attributes('data-icon'), a.text()])).toEqual([['lucide:circle-check', 'Saved'], ['lucide:circle-alert', 'Failed']]);
     vi.advanceTimersByTime(toastLifetimeMs);
     await w.vm.$nextTick();
     expect(w.findAll('.alert')).toHaveLength(0);

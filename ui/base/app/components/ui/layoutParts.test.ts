@@ -43,6 +43,18 @@ describe('pageHeader', () => {
   });
 });
 
+describe('pageHeader design', () => {
+  it('lets actions wrap under the title on a phone and draws the design title sizes', () => {
+    const w = mount(PageHeader, { props: { title: 'Agents', description: 'In Support Copilot' }, slots: { actions: '<button>New</button>' } });
+    const row = w.get('h1').element.closest('.justify-between')!;
+    expect(row.className).toBe('flex flex-wrap justify-between gap-3 items-center');
+    expect(row.firstElementChild!.className).toBe('min-w-0');
+    expect(w.get('h1').classes()).toEqual(['text-xl', 'font-semibold', 'break-words']);
+    expect(w.get('p').classes()).toEqual(['text-ui', 'text-base-content/70']);
+    expect(mount(PageHeader, { props: { title: 'r7Xp2KqLvN9sT4bWzY1cD', mono: true } }).get('h1').classes()).toEqual(['font-mono', 'text-lg', 'font-medium', 'break-all', 'sm:text-xl']);
+  });
+});
+
 describe('section', () => {
   it('is a section named by its h2', () => {
     const w = mount(Section, { props: { title: 'Model', description: 'Which model runs' }, slots: { default: '<p>body</p>', actions: '<button>Edit</button>' } });
@@ -80,6 +92,15 @@ describe('emptyState', () => {
     const w = mount(EmptyState, { props: { title: 'Nothing' } });
     expect(w.get('h2').text()).toBe('Nothing');
     expect(w.find('p').exists()).toBe(false);
+  });
+});
+
+describe('emptyState design', () => {
+  it('is the design empty state: left aligned, 24px icon, xl title, muted body, actions in a row', () => {
+    const w = mount(EmptyState, { props: { icon: 'lucide:bot', title: 'No agents yet', body: 'Create one' }, slots: { actions: '<button>New agent</button>' } });
+    expect(w.classes()).toEqual(['flex', 'max-w-md', 'flex-col', 'items-start', 'gap-3', 'py-16']);
+    expect(w.get('h2').classes()).toEqual(['text-xl', 'font-semibold']);
+    expect(w.get('p').classes()).toEqual(['text-base-content/70']);
   });
 });
 
