@@ -4,6 +4,7 @@ import ThemeFamilySwitcher from '~/components/layout/ThemeFamilySwitcher.vue';
 import UserMenu from '~/components/layout/UserMenu.vue';
 import { useUserMenu } from '~/components/layout/useUserMenu';
 
+const { compact = false } = defineProps<{ compact?: boolean }>();
 const route = useRoute();
 const { me, logoutUrl, labels, version, accountUrl, locale, languages, setLocale } = useUserMenu();
 const apiKeysUrl = computed(() => `/o/${route.params.org}/settings/personal-keys`);
@@ -18,6 +19,6 @@ const apiKeysUrl = computed(() => `/o/${route.params.org}/settings/personal-keys
   </div>
   <UserMenu
     :me="me" :logout-url="logoutUrl" :labels="labels" :version="version" :api-keys-url="apiKeysUrl" :account-url="accountUrl"
-    :locale="locale" :locales="languages" placement="top" @locale="setLocale"
+    :locale="locale" :locales="languages" :compact="compact" placement="top" @locale="setLocale"
   />
 </template>

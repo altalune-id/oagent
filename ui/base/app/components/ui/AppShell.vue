@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
 
-const { sidebarId = 'app-sidebar', closeLabel = 'Close menu', full = false, breakpoint = 'md' } = defineProps<{
+const { sidebarId = 'app-sidebar', closeLabel = 'Close menu', full = false, breakpoint = 'md', rail = false } = defineProps<{
   sidebarId?: string,
   closeLabel?: string,
   full?: boolean,
   breakpoint?: 'md' | 'lg',
+  rail?: boolean,
 }>();
 
 const opens = { md: 'md:drawer-open', lg: 'lg:drawer-open' } as const;
@@ -61,7 +62,7 @@ onBeforeUnmount(() => {
     <div class="drawer-content flex min-w-0 flex-col" :inert="open && !wide">
       <slot />
     </div>
-    <div :id="sidebarId" ref="side" class="drawer-side z-40" :class="{ 'top-14 h-[calc(100dvh-3.5rem)]': !full }">
+    <div :id="sidebarId" ref="side" class="drawer-side z-40" :class="{ 'top-14 h-[calc(100dvh-3.5rem)]': !full, 'lg:overflow-visible': rail }">
       <label :for="toggleId" :aria-label="closeLabel" class="drawer-overlay" />
       <slot name="sidebar" />
     </div>

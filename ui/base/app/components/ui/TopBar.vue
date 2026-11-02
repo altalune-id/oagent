@@ -3,7 +3,7 @@ import type { Crumb, TopBarPlace } from './types';
 import AppButton from './AppButton.vue';
 import Breadcrumbs from './Breadcrumbs.vue';
 
-const { crumbs, place, crumbsLabel = 'Breadcrumb', menuLabel = 'Toggle navigation', searchLabel = 'Search', jumpLabel = 'Search and jump', shortcutLabel = 'Command K', menu = true, menuOpen = false, sidebarId = 'app-sidebar' } = defineProps<{
+const { crumbs, place, crumbsLabel = 'Breadcrumb', menuLabel = 'Toggle navigation', searchLabel = 'Search', jumpLabel = 'Search and jump', shortcutLabel = 'Command K', menu = true, menuOpen = false, sidebarId = 'app-sidebar', rail = false } = defineProps<{
   crumbs: Crumb[],
   place?: TopBarPlace,
   crumbsLabel?: string,
@@ -14,6 +14,7 @@ const { crumbs, place, crumbsLabel = 'Breadcrumb', menuLabel = 'Toggle navigatio
   menu?: boolean,
   menuOpen?: boolean,
   sidebarId?: string,
+  rail?: boolean,
 }>();
 
 const emit = defineEmits<{ menu: [], search: [] }>();
@@ -21,8 +22,8 @@ const emit = defineEmits<{ menu: [], search: [] }>();
 
 <template>
   <div class="navbar min-h-12 gap-2 border-b border-base-300 bg-base-100 px-3 md:px-4">
-    <AppButton v-if="menu" variant="ghost" size="sm" square class="lg:hidden" :aria-label="menuLabel" :aria-controls="sidebarId" :aria-expanded="menuOpen" @click="emit('menu')">
-      <Icon name="lucide:menu" size="16" class="shrink-0" aria-hidden="true" />
+    <AppButton v-if="menu" variant="ghost" size="sm" square :class="{ 'lg:hidden': !rail }" :aria-label="menuLabel" :aria-controls="sidebarId" :aria-expanded="menuOpen" @click="emit('menu')">
+      <Icon :name="rail ? 'lucide:panel-left' : 'lucide:menu'" size="16" class="shrink-0" aria-hidden="true" />
     </AppButton>
     <Breadcrumbs class="flex-1 max-md:hidden" :crumbs="crumbs" :label="crumbsLabel" />
     <div class="min-w-0 flex-1 text-ui md:hidden">

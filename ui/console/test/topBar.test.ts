@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 
 import { ProjectEnvironment } from '#gen/project/v1/project_pb';
@@ -98,5 +98,26 @@ describe('console top bar', () => {
     await w.vm.$nextTick();
     expect(useUIStore().navOpen).toBe(false);
     w.unmount();
+  });
+
+  it('collapses the agent sidebar to its rail at lg, and keeps the phone drawer elsewhere', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: () => {}, removeEventListener: () => {} }));
+    setRoute({ path: '/o/acme/projects/support/agents/refund-triage', params: { org: 'acme', project: 'support', agent: 'refund-triage' } });
+    const w = mount(ConsoleTopBar, { global: { stubs: { ThemeFamilySwitcher: true, ThemeSwitcher: true } } });
+    const toggle = () => w.get('button[aria-controls]');
+    await w.vm.$nextTick();
+    expect(toggle().attributes('aria-expanded')).toBe('true');
+    await toggle().trigger('click');
+    expect(useUIStore().rail).toBe(true);
+    expect(useUIStore().navOpen).toBe(false);
+    expect(toggle().attributes('aria-expanded')).toBe('false');
+    w.unmount();
+
+    setRoute({ path: '/o/acme/projects/support/agents', params: { org: 'acme', project: 'support' } });
+    const p = mount(ConsoleTopBar, { global: { stubs: { ThemeFamilySwitcher: true, ThemeSwitcher: true } } });
+    await p.get('button[aria-controls]').trigger('click');
+    expect(useUIStore().navOpen).toBe(true);
+    p.unmount();
+    vi.unstubAllGlobals();
   });
 });

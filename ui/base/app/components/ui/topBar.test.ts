@@ -65,4 +65,13 @@ describe('commandPalette', () => {
     expect(w.props('open')).toBe(false);
     w.unmount();
   });
+
+  it('keeps the navigation toggle at lg with panel-left when the page has a rail', () => {
+    const w = mount(TopBar, { props: { crumbs: [], rail: true, menuOpen: true } });
+    const toggle = w.get('button[aria-controls]');
+    expect(toggle.classes()).not.toContain('lg:hidden');
+    expect(toggle.attributes('aria-expanded')).toBe('true');
+    expect(toggle.find('[data-icon="lucide:panel-left"]').exists()).toBe(true);
+    expect(mount(TopBar, { props: { crumbs: [] } }).get('button[aria-controls]').classes()).toContain('lg:hidden');
+  });
 });

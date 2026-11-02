@@ -7,7 +7,23 @@ import { useNavCrumbs } from '~/components/layout/useNavCrumbs';
 import { useUIStore } from '~/stores/ui';
 
 const { t } = useI18n();
+const route = useRoute();
 const ui = useUIStore();
+const inAgent = computed(() => !!route.params.agent);
+const wide = ref(false);
+let media: MediaQueryList | undefined;
+
+function onMedia() {
+  wide.value = !!media?.matches;
+}
+
+function toggle() {
+  if (inAgent.value && wide.value) {
+    ui.rail = !ui.rail;
+    return;
+  }
+  ui.navOpen = !ui.navOpen;
+}
 const { crumbs, place, palette } = useNavCrumbs();
 const searching = ref(false);
 
@@ -25,8 +41,16 @@ function onKey(event: KeyboardEvent) {
   }
 }
 
-onMounted(() => document.addEventListener('keydown', onKey));
-onBeforeUnmount(() => document.removeEventListener('keydown', onKey));
+onMounted(() => {
+  document.addEventListener('keydown', onKey);
+  media = window.matchMedia?.('(min-width: 64rem)');
+  media?.addEventListener('change', onMedia);
+  onMedia();
+});
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKey);
+  media?.removeEventListener('change', onMedia);
+});
 </script>
 
 <template>
@@ -38,8 +62,9 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey));
     :search-label="t('search.label')"
     :jump-label="t('search.jump')"
     :shortcut-label="t('search.shortcut')"
-    :menu-open="ui.navOpen"
-    @menu="ui.navOpen = !ui.navOpen"
+    :rail="inAgent"
+    :menu-open="inAgent && wide ? !ui.rail : ui.navOpen"
+    @menu="toggle"
     @search="search(true)"
   >
     <template #controls>

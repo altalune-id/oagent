@@ -11,6 +11,7 @@ import ProjectSidebar from '~/components/project/ProjectSidebar.vue';
 import { useAuthStore } from '~/stores/auth';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
+import { useUIStore } from '~/stores/ui';
 
 const orgId = 'B6rTn1YkM8wQz3XpL5vGd';
 const projectId = 'x6MH9WPWjktMwCBKHy4pF';
@@ -50,5 +51,13 @@ describe('agent sidebar', () => {
     expect(w.get('nav > div').text()).toContain('agent.version_draft|{"n":12}');
     expect(pages!.findAll('li').map(li => li.text())).toEqual(['agent.configure', 'agent.runs']);
     expect(pages!.get('a.menu-active').text()).toBe('agent.configure');
+  });
+
+  it('opens a run as the icon rail and other agent pages in full', async () => {
+    setRoute({ path: '/o/acme/projects/support/agents/refund-triage/runs/r7X', params: { org: 'acme', project: 'support', agent: 'refund-triage', run: 'r7X' } });
+    const w = await mountPage(AgentSidebar);
+    expect(useUIStore().rail).toBe(true);
+    expect(w.get('aside').classes()).toContain('lg:w-16');
+    expect(w.get('nav > ul:last-child a').attributes('data-tip')).toBe('agent.configure');
   });
 });

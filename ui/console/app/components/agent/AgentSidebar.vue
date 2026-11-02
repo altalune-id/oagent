@@ -6,12 +6,18 @@ import SidebarUser from '~/components/layout/SidebarUser.vue';
 import { useAgentsStore } from '~/stores/agents';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
+import { useUIStore } from '~/stores/ui';
 
 const route = useRoute();
 const { t } = useI18n();
 const orgs = useOrgsStore();
 const projects = useProjectsStore();
 const agents = useAgentsStore();
+const ui = useUIStore();
+
+watch(() => route.params.run, (run) => {
+  ui.rail = !!run;
+}, { immediate: true });
 
 const org = computed(() => orgs.bySlug(route.params.org as string));
 const project = computed(() => projects.items.find(p => p.orgId === org.value?.id && p.slug === route.params.project));
@@ -36,7 +42,7 @@ const version = computed(() => {
 </script>
 
 <template>
-  <SidebarNav :label="agent?.name ?? agentSlug" :lead="back" :groups="groups" :dense="false">
+  <SidebarNav :label="agent?.name ?? agentSlug" :lead="back" :groups="groups" :dense="false" :rail="ui.rail">
     <template #between>
       <p class="truncate text-sm font-semibold">
         {{ agent?.name ?? agentSlug }}
@@ -46,7 +52,7 @@ const version = computed(() => {
       </p>
     </template>
     <template #footer>
-      <SidebarUser />
+      <SidebarUser :compact="ui.rail" />
     </template>
   </SidebarNav>
 </template>

@@ -26,7 +26,7 @@ export interface UserMenuLabels {
   language: string;
 }
 
-const { me, logoutUrl, profileUrl = '/profile', apiKeysUrl = '', accountUrl = '', placement = 'end', version = '', locale = '', locales = [], labels = {
+const { me, logoutUrl, profileUrl = '/profile', apiKeysUrl = '', accountUrl = '', placement = 'end', version = '', locale = '', locales = [], compact = false, labels = {
   signOut: 'Sign out',
   signedInAs: 'Signed in as',
   operator: 'Operator',
@@ -36,7 +36,7 @@ const { me, logoutUrl, profileUrl = '/profile', apiKeysUrl = '', accountUrl = ''
   apiKeys: 'My API keys',
   account: 'Your account',
   language: 'Language',
-} } = defineProps<{ me: UserMenuIdentity | null, logoutUrl: string, profileUrl?: string, apiKeysUrl?: string, accountUrl?: string, placement?: 'end' | 'top', version?: string, locale?: string, locales?: { code: string, name: string }[], labels?: UserMenuLabels }>();
+} } = defineProps<{ me: UserMenuIdentity | null, logoutUrl: string, profileUrl?: string, apiKeysUrl?: string, accountUrl?: string, placement?: 'end' | 'top', version?: string, locale?: string, locales?: { code: string, name: string }[], compact?: boolean, labels?: UserMenuLabels }>();
 
 const emit = defineEmits<{ locale: [code: string] }>();
 
@@ -62,12 +62,12 @@ const sourceBadge = computed(() => {
 </script>
 
 <template>
-  <AppDropdown v-if="me" :placement="placement" :class="{ 'w-full': placement === 'top' }" content-class="w-60" :label="labels.signedInAs" :trigger-class="placement === 'top' ? 'w-full justify-start text-ui' : 'gap-2 px-1.5'">
+  <AppDropdown v-if="me" :placement="placement" :class="{ 'w-full': placement === 'top' }" content-class="w-60" :label="labels.signedInAs" :trigger-class="placement === 'top' ? `w-full justify-start text-ui${compact ? ' lg:justify-center' : ''}` : 'gap-2 px-1.5'">
     <template #trigger>
       <span aria-hidden="true">
         <Avatar :id="me.userId ?? ''" :name="me.name || display" :email="me.email" :avatar-url="me.avatarUrl" :size="placement === 'top' ? 'xs' : 'sm'" />
       </span>
-      <span class="truncate" :class="{ 'max-w-40 max-sm:sr-only': placement !== 'top' }">{{ display }}</span>
+      <span class="truncate" :class="{ 'max-w-40 max-sm:sr-only': placement !== 'top', 'lg:sr-only': compact }">{{ display }}</span>
     </template>
     <ul class="menu menu-sm w-full p-0 text-ui">
       <li class="menu-title text-base-content/70">

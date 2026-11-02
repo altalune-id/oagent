@@ -44,6 +44,19 @@ describe('sidebarNav', () => {
     expect(mount(SidebarNav, { props: { groups } }).get('nav').element.children).toHaveLength(1);
   });
 
+  it('collapses to an icon rail at lg that keeps every name: tooltips, visually hidden labels, no header strip', () => {
+    const w = mount(SidebarNav, { props: { groups, rail: true }, slots: { between: 'Refund Triage' } });
+    expect(w.get('aside').classes()).toContain('lg:w-16');
+    const link = w.get('a');
+    expect(link.classes()).toEqual(expect.arrayContaining(['lg:tooltip', 'lg:tooltip-right', 'lg:justify-center']));
+    expect(link.attributes('data-tip')).toBe(link.text());
+    expect(link.get('span').classes()).toContain('lg:sr-only');
+    expect(w.get('nav > div').classes()).toContain('lg:hidden');
+    const open = mount(SidebarNav, { props: { groups } });
+    expect(open.get('aside').classes()).not.toContain('lg:w-16');
+    expect(open.get('a').attributes('data-tip')).toBeUndefined();
+  });
+
   it('keeps the menu padding and a plain header strip when not dense, as the agent sidebar does', () => {
     const lead = [{ items: [{ key: 'agents', label: 'Agents', to: '/agents' }] }];
     const w = mount(SidebarNav, { props: { groups, lead, dense: false }, slots: { between: 'Refund Triage' } });
