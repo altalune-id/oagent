@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { ShownError } from '#base/lib/apperror/message';
+import AppButton from '#base/components/ui/AppButton.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import FieldError from '#base/components/ui/FieldError.vue';
 import SavedNote from '#base/components/ui/SavedNote.vue';
 
 export interface ProfilePasswordLabels {
   title: string;
+  email: string;
   current: string;
   next: string;
   rules: string;
@@ -33,23 +35,30 @@ const next = defineModel<string>('next', { required: true });
       <h2 class="card-title text-base">
         {{ labels.title }}
       </h2>
-      <input type="email" name="email" :value="email" autocomplete="username" class="hidden" readonly>
-      <label class="floating-label">
-        <span>{{ labels.current }}</span>
-        <input
-          v-model="current" class="input input-sm w-full text-ui" :class="{ 'input-error': fieldErrors.current_password }" type="password" name="current-password" autocomplete="current-password" required
-          :placeholder="labels.current" :aria-invalid="!!fieldErrors.current_password" aria-describedby="current-password-error"
-        >
+      <label class="hidden">
+        <span>{{ labels.email }}</span>
+        <input type="email" name="email" :value="email" autocomplete="username" readonly>
+      </label>
+      <div class="flex flex-col gap-1">
+        <label class="flex flex-col gap-1">
+          <span class="label text-ui text-base-content">{{ labels.current }}</span>
+          <input
+            v-model="current" class="input input-sm w-full text-ui" :class="{ 'input-error': fieldErrors.current_password }" type="password" name="current-password" autocomplete="current-password" required
+            :aria-invalid="!!fieldErrors.current_password" aria-describedby="current-password-error"
+          >
+        </label>
         <FieldError id="current-password-error" :message="fieldErrors.current_password" />
-      </label>
-      <label class="floating-label">
-        <span>{{ labels.next }}</span>
-        <input
-          v-model="next" class="input input-sm w-full text-ui" :class="{ 'input-error': fieldErrors.new_password }" type="password" name="new-password" autocomplete="new-password" minlength="12" required
-          :placeholder="labels.next" :aria-invalid="!!fieldErrors.new_password" aria-describedby="new-password-error new-password-rules"
-        >
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="flex flex-col gap-1">
+          <span class="label text-ui text-base-content">{{ labels.next }}</span>
+          <input
+            v-model="next" class="input input-sm w-full text-ui" :class="{ 'input-error': fieldErrors.new_password }" type="password" name="new-password" autocomplete="new-password" minlength="12" required
+            :aria-invalid="!!fieldErrors.new_password" aria-describedby="new-password-error new-password-rules"
+          >
+        </label>
         <FieldError id="new-password-error" :message="fieldErrors.new_password" />
-      </label>
+      </div>
       <p id="new-password-rules" class="text-xs text-base-content/70">
         {{ labels.rules }}
       </p>
@@ -59,9 +68,9 @@ const next = defineModel<string>('next', { required: true });
         <p class="text-xs text-base-content/70">
           {{ labels.hint }}
         </p>
-        <button type="submit" class="btn btn-primary btn-sm" :disabled="busy">
+        <AppButton type="submit" size="sm" :disabled="busy">
           {{ labels.change }}
-        </button>
+        </AppButton>
       </div>
     </div>
   </form>

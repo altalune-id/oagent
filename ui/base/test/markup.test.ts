@@ -69,6 +69,10 @@ describe('guard: markup in every app', () => {
     expect(full).toEqual([]);
   });
 
+  it('puts field labels above their control, never daisyUI floating labels', () => {
+    expect(files.filter(f => f.text.includes('floating-label')).map(f => f.path)).toEqual([]);
+  });
+
   it('gives small checkboxes square corners so they do not look like radios', () => {
     const round = files.flatMap(f => (f.text.match(/class="checkbox checkbox-(?:xs|sm)\b[^"]*"/g) ?? []).filter(c => !c.includes('rounded-sm')).map(c => `${f.path}: ${c}`));
     expect(round).toEqual([]);

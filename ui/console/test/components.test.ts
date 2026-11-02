@@ -14,9 +14,11 @@ import { setClient, setRoute } from '#test/nuxt-globals';
 import AgentCreateModal from '~/components/agent/create/AgentCreateModal.vue';
 import APIKeyCreateModal from '~/components/apikey/create/APIKeyCreateModal.vue';
 import APIKeyList from '~/components/apikey/list/APIKeyList.vue';
+import InviteModal from '~/components/member/invite/InviteModal.vue';
 import MemberList from '~/components/member/MemberList.vue';
 import OrgCreateModal from '~/components/org/create/OrgCreateModal.vue';
 import OrgFields from '~/components/org/create/OrgFields.vue';
+import ProfilePassword from '~/components/profile/ProfilePassword.vue';
 import WebhookCreateModal from '~/components/webhook/create/WebhookCreateModal.vue';
 import WebhookList from '~/components/webhook/list/WebhookList.vue';
 import AgentsPage from '~/pages/o/[org]/projects/[project]/agents/index.vue';
@@ -59,19 +61,40 @@ describe('agent create modal', () => {
 });
 
 describe('org fields', () => {
-  it('names each input by its fieldset legend and shows its error', () => {
+  it('names each input by its label and shows its error', () => {
     const w = mount(OrgFields, { props: { name: '', slug: '', fieldErrors: { slug: 'taken' } } });
-    const legends = w.findAll('fieldset > legend.fieldset-legend');
-    expect(legends.map(l => l.text())).toEqual(['common.name', 'common.slug']);
+    expect(w.find('legend').exists()).toBe(false);
     const [name, slug] = w.findAll('input');
-    expect(name!.attributes('aria-labelledby')).toBe(legends[0]!.attributes('id'));
-    expect(slug!.attributes('aria-labelledby')).toBe(legends[1]!.attributes('id'));
+    const label = (id?: string) => w.get(`label[for="${id}"]`);
+    expect(label(name!.attributes('id')).text()).toBe('common.name');
+    expect(label(slug!.attributes('id')).text()).toBe('common.slug');
+    expect(label(slug!.attributes('id')).classes()).toEqual(['label', 'text-ui', 'text-base-content']);
     expect(slug!.attributes('aria-invalid')).toBe('true');
     expect(w.text()).toContain('taken');
   });
 
   it('is the same block in the modal and on onboarding', () => {
     expect(mount(OrgCreateModal).findComponent(OrgFields).exists()).toBe(true);
+  });
+});
+
+describe('labels above compact fields', () => {
+  it('labels the invite fields above input-sm and select-sm', () => {
+    const form = mount(InviteModal, { props: { open: true }, attachTo: document.body });
+    const email = form.get('input[type="email"]');
+    expect(email.classes()).toEqual(expect.arrayContaining(['input', 'input-sm', 'text-ui']));
+    expect(email.element.closest('label')!.querySelector('span.label')!.textContent).toBe('Email');
+    expect(form.get('select').classes()).toEqual(expect.arrayContaining(['select', 'select-sm', 'text-ui']));
+    form.unmount();
+  });
+
+  it('keeps the hidden username field labelled for password managers', () => {
+    const labels = { title: 'Password', email: 'Email', current: 'Current', next: 'New', rules: 'r', hint: 'h', change: 'Change' };
+    const w = mount(ProfilePassword, { props: { current: '', next: '', email: 'ana@example.com', labels } });
+    const hidden = w.get('input[autocomplete="username"]');
+    expect(hidden.element.closest('label')!.classList.contains('hidden')).toBe(true);
+    expect(hidden.element.closest('label')!.textContent).toContain('Email');
+    expect(w.findAll('input[type="password"]').every(i => i.element.closest('label')?.querySelector('span.label'))).toBe(true);
   });
 });
 

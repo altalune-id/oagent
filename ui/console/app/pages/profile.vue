@@ -28,6 +28,7 @@ const {
 const nameLabels = computed(() => ({ title: t('profile.name_title'), name: t('common.name'), hint: t('profile.name_hint'), save: t('common.save') }));
 const passwordLabels = computed(() => ({
   title: t('profile.password_title'),
+  email: t('field.email'),
   current: t('profile.current_password'),
   next: t('profile.new_password'),
   rules: t('profile.password_rules'),
