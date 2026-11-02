@@ -3,6 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useToast } from '#base/components/ui/toast';
 import { mountPage } from '#test/mount-page';
 import { setRoute } from '#test/nuxt-globals';
 import RunPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/runs/[run].vue';
@@ -37,6 +38,7 @@ describe('run viewer', () => {
   it('shows status, duration, cost and steps inline, and every event as a labelled minimap block', async () => {
     const w = await mountPage(RunPage);
     expect(w.get('h1').text()).toContain(run.id);
+    expect(w.get('header p span.font-mono.text-xs').text()).toBe(run.model);
     expect(w.get('[role="note"]').text()).toBe('run.preview_note');
     expect(w.findAll('header dl dt').map(d => d.text())).toEqual(['run.status', 'run.duration', 'run.cost', 'run.steps']);
     expect(stats(w)).toEqual(['run.status_waiting', '19.7s', '$0.016', 'run.steps_of|{"n":8,"max":12}']);
@@ -65,7 +67,16 @@ describe('run viewer', () => {
     expect(inspector.get('h2').text()).toBe('orders.lookup');
     expect(inspector.findAll('dd').map(d => d.text())).toEqual(['3.1s', '0.8s', '—', '—']);
     expect(inspector.text()).toContain('{ "order": "2291" }');
-    expect(inspector.get('button[aria-label="run.copy_link"]').exists()).toBe(true);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    window.history.replaceState(null, '', '/console/o/acme/projects/web/agents/refund-triage/runs/r7Xp2KqLvN9sT4bWzY1cD');
+    const linkButton = inspector.get('button[aria-label="run.copy_link"]');
+    expect(linkButton.find('[data-icon="lucide:link"]').exists()).toBe(true);
+    await linkButton.trigger('click');
+    await flushPromises();
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/console/o/acme/projects/web/agents/refund-triage/runs/r7Xp2KqLvN9sT4bWzY1cD#event-e3`);
+    expect(useToast().toasts.at(-1)).toMatchObject({ kind: 'success', text: 'common.copied' });
+    vi.unstubAllGlobals();
     expect(inspector.findAll('tbody tr').map(r => r.findAll('td').map(d => d.text()).join(' '))).toEqual([
       'orders.lookup run.tool_calls|{"calls":1,"seconds":0.8}',
       'billing.charges.list run.tool_calls|{"calls":1,"seconds":1.2}',

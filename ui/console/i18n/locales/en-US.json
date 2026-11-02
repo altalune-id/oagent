@@ -371,5 +371,6 @@
   "settings.subtitle": "The organization's name and URL.",
   "stat.members": "Members",
   "webhooks.col_actions": "Actions",
-  "webhooks.actions_for": "Actions for {url}"
+  "webhooks.actions_for": "Actions for {url}",
+  "configure.sample_options": "Preview: example options until a catalogue exists."
 }

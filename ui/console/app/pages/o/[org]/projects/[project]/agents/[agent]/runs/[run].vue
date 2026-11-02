@@ -2,7 +2,7 @@
 import type { Lane, RunStatus } from '~/components/run/runView';
 import type { RunEvent } from '~/preview/samples';
 import AppButton from '#base/components/ui/AppButton.vue';
-import CopyButton from '#base/components/ui/CopyButton.vue';
+import { useCopy } from '#base/components/ui/copy';
 import { useDates } from '#base/composables/useDates';
 import EventMark from '~/components/run/EventMark.vue';
 import RunMinimap from '~/components/run/RunMinimap.vue';
@@ -35,7 +35,13 @@ const visible = computed(() => events.value.filter((e) => {
 const selected = computed<RunEvent>(() => events.value.find(e => e.id === selectedId.value) ?? events.value[0]!);
 const selectedLane = computed(() => lane(selected.value));
 const tools = computed(() => toolCalls(events.value));
-const link = computed(() => `${window.location.origin}${route.path}#event-${selected.value.id}`);
+const { copy } = useCopy();
+const modelMark = '\u0001';
+const started = computed(() => t('run.started', { agent: run.agentName, version: run.version, model: modelMark, by: run.startedBy, at: moment(run.startedAt) }).split(modelMark));
+
+function copyLink() {
+  void copy(`${window.location.origin}${window.location.pathname}${window.location.search}#event-${selected.value.id}`, t('common.copied'));
+}
 
 function select(id: string) {
   selectedId.value = id;
@@ -65,7 +71,7 @@ useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
           <span class="badge badge-info badge-soft badge-sm ms-2 align-middle">{{ t('preview.badge') }}</span>
         </h1>
         <p class="text-ui text-base-content/70">
-          {{ t('run.started', { agent: run.agentName, version: run.version, model: run.model, by: run.startedBy, at: moment(run.startedAt) }) }}
+          {{ started[0] }}<span class="font-mono text-xs">{{ run.model }}</span>{{ started[1] }}
         </p>
       </div>
       <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
@@ -211,7 +217,9 @@ useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
                 {{ selected.name }}
               </h2>
             </div>
-            <CopyButton :value="link" :label="t('run.copy_link')" />
+            <AppButton variant="ghost" size="xs" square :aria-label="t('run.copy_link')" :title="t('run.copy_link')" @click="copyLink()">
+              <Icon name="lucide:link" size="14" aria-hidden="true" />
+            </AppButton>
           </div>
           <p>{{ selected.summary }}</p>
           <dl class="grid grid-cols-[4rem_1fr] gap-x-3 gap-y-1 tabular-nums">

@@ -244,6 +244,11 @@ describe('configure page', () => {
     expect(w.get('textarea').element.value).toBe('');
     expect((w.get('select').element as HTMLSelectElement).value).toBe('');
     expect(w.get('select option').text()).toBe('configure.choose_model');
+    const select = w.get('select');
+    expect(w.get(`#${select.attributes('aria-describedby')}`).text()).toBe('configure.sample_options');
+    const tools = w.get('ul[aria-labelledby]');
+    expect(w.get(`#${tools.attributes('aria-describedby')}`).text()).toBe('configure.sample_options');
+    expect(w.get(`#${tools.attributes('aria-describedby')}`).classes()).toEqual(['text-xs', 'text-base-content/70']);
     expect(w.findAll('input[aria-label^="configure.tool_enable"]').map(i => (i.element as HTMLInputElement).checked)).toEqual([false, false, false, false]);
     expect(w.findAll('input[aria-label^="configure.tool_approval"]').map(i => i.attributes('aria-label'))).toEqual([
       'configure.tool_approval|{"tool":"orders.lookup"}',

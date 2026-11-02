@@ -48,8 +48,8 @@ const budget = computed({
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2">
-      <FormField v-slot="{ id }" :label="t('configure.model')">
-        <select :id="id" v-model="config.model" class="select select-sm text-ui w-full font-mono" :disabled="disabled">
+      <FormField v-slot="{ id, describedBy }" :label="t('configure.model')" :hint="t('configure.sample_options')">
+        <select :id="id" v-model="config.model" class="select select-sm text-ui w-full font-mono" :aria-describedby="describedBy" :disabled="disabled">
           <option value="" disabled>
             {{ t('configure.choose_model') }}
           </option>
@@ -77,7 +77,10 @@ const budget = computed({
       <h2 :id="ids.tools" class="text-ui font-semibold">
         {{ t('configure.tools') }}
       </h2>
-      <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-100" :aria-labelledby="ids.tools">
+      <p :id="`${ids.tools}-note`" class="text-xs text-base-content/70">
+        {{ t('configure.sample_options') }}
+      </p>
+      <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-100" :aria-labelledby="ids.tools" :aria-describedby="`${ids.tools}-note`">
         <li v-for="tool in tools" :key="tool.name" class="flex flex-wrap items-start gap-2 px-3 py-2 text-ui">
           <label class="flex min-w-0 flex-1 items-start gap-2 max-sm:basis-[calc(100%-2rem)]">
             <input
@@ -89,7 +92,7 @@ const budget = computed({
               <span class="block text-base-content/70">{{ tool.description }}</span>
             </span>
           </label>
-          <label class="badge badge-sm shrink-0 cursor-pointer gap-1 max-sm:ms-8" :class="{ 'badge-outline': !toolOf(tool.name)?.requireApproval }">
+          <label class="badge badge-sm shrink-0 cursor-pointer gap-1 max-sm:ms-7" :class="{ 'badge-outline': !toolOf(tool.name)?.requireApproval }">
             <input
               type="checkbox" class="checkbox checkbox-xs rounded-sm" :checked="!!toolOf(tool.name)?.requireApproval" :disabled="disabled || !toolOf(tool.name)"
               :aria-label="t('configure.tool_approval', { tool: tool.name })" @change="setApproval(tool.name, ($event.target as HTMLInputElement).checked)"
