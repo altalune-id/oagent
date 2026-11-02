@@ -9,10 +9,6 @@ const shape: Record<Lane, string> = { model: 'rounded-full', tool: 'rounded-[2px
 
 <template>
   <Icon v-if="lane === 'error'" name="lucide:x" size="14" class="shrink-0 text-error *:stroke-[3]" aria-hidden="true" />
-  <span
-    v-else
-    aria-hidden="true"
-    class="inline-block size-2.5 shrink-0"
-    :class="lane ? [shape[lane], laneColor[lane]] : 'rounded-full border border-base-content/70'"
-  />
+  <Icon v-else-if="!lane" name="lucide:message-square" size="12" class="shrink-0 text-base-content/70" aria-hidden="true" />
+  <span v-else aria-hidden="true" class="inline-block size-2.5 shrink-0" :class="[shape[lane], laneColor[lane]]" />
 </template>

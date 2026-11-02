@@ -274,7 +274,6 @@
   "run.lane_error": "Galat",
   "run.block_label": "{name} pada {at} d, butuh {took} d",
   "run.event_time": "{at} d, butuh {took} d",
-  "run.approval_for": "Persetujuan: {tool}",
   "run.approval_why": "Agen menunggu seseorang. Alasannya: {why}",
   "run.amount": "Jumlah",
   "run.approve": "Setujui",
@@ -288,7 +287,7 @@
   "run.input": "Masukan",
   "run.output": "Keluaran",
   "run.tools_in_run": "Alat dalam eksekusi ini",
-  "run.tool_calls": "Panggilan {calls}, gagal {failed}, {seconds} d",
+  "run.tool_calls": "{calls} panggilan, {seconds} d | {calls} panggilan, {seconds} d",
   "run.col_run": "Eksekusi",
   "run.col_started": "Dimulai",
   "run.list_hint": "Setiap eksekusi adalah satu percakapan dengan agen: langkah, panggilan alat, persetujuan, dan biayanya.",
@@ -360,5 +359,11 @@
   "configure.open_run": "Buka run",
   "configure.view_changes": "Lihat perubahan",
   "configure.mcp_title": "Perubahan yang sama, sebagai panggilan alat MCP",
-  "configure.pane": "Uji dan kode"
+  "configure.pane": "Uji dan kode",
+  "run.event_at": "{at} d",
+  "run.edit_amount": "Ubah jumlah",
+  "run.copy_link": "Salin tautan ke peristiwa ini",
+  "run.tool_calls_failed": "{calls} panggilan, {failed} gagal",
+  "run.heading": "Run",
+  "run.approval_prefix": "Persetujuan:"
 }

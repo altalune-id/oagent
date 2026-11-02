@@ -274,7 +274,6 @@
   "run.lane_error": "Error",
   "run.block_label": "{name} at {at} s, took {took} s",
   "run.event_time": "{at} s, took {took} s",
-  "run.approval_for": "Approval: {tool}",
   "run.approval_why": "The agent is waiting for a person. Why: {why}",
   "run.amount": "Amount",
   "run.approve": "Approve",
@@ -288,7 +287,7 @@
   "run.input": "Input",
   "run.output": "Output",
   "run.tools_in_run": "Tools in this run",
-  "run.tool_calls": "Calls {calls}, failed {failed}, {seconds} s",
+  "run.tool_calls": "{calls} call, {seconds} s | {calls} calls, {seconds} s",
   "run.col_run": "Run",
   "run.col_started": "Started",
   "run.list_hint": "Each run is one conversation with the agent: its steps, tool calls, approvals and cost.",
@@ -360,5 +359,11 @@
   "configure.open_run": "Open run",
   "configure.view_changes": "View changes",
   "configure.mcp_title": "The same change, as an MCP tool call",
-  "configure.pane": "Test and code"
+  "configure.pane": "Test and code",
+  "run.event_at": "{at} s",
+  "run.edit_amount": "Edit amount",
+  "run.copy_link": "Copy link to this event",
+  "run.tool_calls_failed": "{calls} calls, {failed} failed",
+  "run.heading": "Run",
+  "run.approval_prefix": "Approval:"
 }

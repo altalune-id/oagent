@@ -9,40 +9,48 @@ const { t } = useI18n();
 
 const max = computed(() => scale(events));
 const rows = computed(() => lanes.map(l => ({ lane: l, events: events.filter(e => lane(e) === l) })));
+const marks = computed(() => ticks(max.value));
 
-function place(e: RunEvent) {
-  return { left: `${(e.at / max.value) * 100}%`, width: `max(0.5rem, ${(e.took / max.value) * 100}%)` };
+function pct(s: number) {
+  return `${(s / max.value) * 100}%`;
 }
 </script>
 
 <template>
-  <div class="space-y-1.5">
-    <div v-for="row in rows" :key="row.lane" class="grid grid-cols-[6rem_1fr] items-center gap-2">
-      <span class="flex items-center gap-1.5 text-xs text-base-content/70">
+  <div class="flex flex-col gap-1">
+    <div v-for="row in rows" :key="row.lane" class="grid grid-cols-[4.5rem_1fr] items-center gap-2">
+      <span class="inline-flex items-center gap-1.5 text-xs">
         <EventMark :lane="row.lane" />
         {{ t(`run.lane_${row.lane}`) }}
       </span>
-      <div class="relative h-4 rounded-sm bg-base-200">
+      <div class="relative h-5 rounded-[2px] bg-base-200">
         <button
           v-for="e in row.events"
           :key="e.id"
           type="button"
-          class="absolute inset-y-0 rounded-sm outline-offset-2"
+          class="absolute top-0.5 bottom-0.5 min-w-1 rounded-[2px] hover:opacity-80"
           :class="[
             laneColor[row.lane],
-            { 'ring-2 ring-base-content ring-offset-1 ring-offset-base-100': e.id === selected },
+            { 'border border-base-content': row.lane === 'approval', 'ring-2 ring-base-content ring-offset-1 ring-offset-base-100': e.id === selected },
           ]"
-          :style="place(e)"
+          :style="{ left: pct(e.at), width: pct(e.took) }"
+          :title="t('run.block_label', { name: e.name, at: e.at, took: e.took })"
           :aria-label="t('run.block_label', { name: e.name, at: e.at, took: e.took })"
           :aria-pressed="e.id === selected"
           @click="emit('select', e.id)"
         />
       </div>
     </div>
-    <div class="grid grid-cols-[6rem_1fr] gap-2" aria-hidden="true">
+    <div class="grid grid-cols-[4.5rem_1fr] gap-2 text-xs tabular-nums text-base-content/70" aria-hidden="true">
       <span />
-      <div class="flex justify-between text-xs text-base-content/70">
-        <span v-for="s in ticks(max)" :key="s">{{ s }} s</span>
+      <div class="relative h-4">
+        <span
+          v-for="(s, i) in marks"
+          :key="s"
+          class="absolute whitespace-nowrap"
+          :class="i === 0 ? '' : i === marks.length - 1 ? '-translate-x-full' : '-translate-x-1/2'"
+          :style="{ left: pct(s) }"
+        >{{ s }} s</span>
       </div>
     </div>
   </div>
