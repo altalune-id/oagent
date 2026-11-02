@@ -8,7 +8,7 @@ const shape: Record<Lane, string> = { model: 'rounded-full', tool: 'rounded-[2px
 </script>
 
 <template>
-  <Icon v-if="lane === 'error'" name="lucide:x" size="14" class="shrink-0 stroke-[3] text-error" aria-hidden="true" />
+  <Icon v-if="lane === 'error'" name="lucide:x" size="14" class="shrink-0 text-error *:stroke-[3]" aria-hidden="true" />
   <span
     v-else
     aria-hidden="true"

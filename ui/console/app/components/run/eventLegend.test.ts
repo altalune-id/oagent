@@ -16,6 +16,6 @@ describe('eventLegend', () => {
     ]);
     const x = w.get('[data-icon="lucide:x"]');
     expect(x.attributes('aria-hidden')).toBe('true');
-    expect(x.classes()).toEqual(expect.arrayContaining(['stroke-[3]', 'text-error']));
+    expect(x.classes(), 'the class reaches the path, whose own stroke-width attribute beats an inherited one').toEqual(expect.arrayContaining(['*:stroke-[3]', 'text-error']));
   });
 });
