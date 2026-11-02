@@ -64,6 +64,11 @@ describe('guard: markup in every app', () => {
     expect([...legends, ...hints]).toEqual([]);
   });
 
+  it('sizes console inputs and selects compactly', () => {
+    const full = files.flatMap(f => [...f.text.matchAll(/class="((input|select)(?: [^"]*)?)"/g)].filter(m => !m[1]!.split(' ').some(c => /^(?:input|select)-(?:xs|sm)$/.test(c))).map(m => `${f.path}: ${m[0]}`));
+    expect(full).toEqual([]);
+  });
+
   it('gives small checkboxes square corners so they do not look like radios', () => {
     const round = files.flatMap(f => (f.text.match(/class="checkbox checkbox-(?:xs|sm)\b[^"]*"/g) ?? []).filter(c => !c.includes('rounded-sm')).map(c => `${f.path}: ${c}`));
     expect(round).toEqual([]);

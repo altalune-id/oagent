@@ -17,7 +17,7 @@ const { open, name, slug, busy, error, fieldErrors, hide, submit } = useProjectC
       <div class="fieldset">
         <label :for="ids.name" class="label text-ui text-base-content">{{ t('common.name') }}</label>
         <input
-          :id="ids.name" v-model="name" type="text" class="input w-full" :class="{ 'input-error': fieldErrors.name }"
+          :id="ids.name" v-model="name" type="text" class="input input-sm w-full text-ui" :class="{ 'input-error': fieldErrors.name }"
           :placeholder="t('project.name_placeholder')" :disabled="busy" :aria-invalid="!!fieldErrors.name" :aria-describedby="ids.nameErr"
         >
         <FieldError :id="ids.nameErr" :message="fieldErrors.name" />
@@ -25,7 +25,7 @@ const { open, name, slug, busy, error, fieldErrors, hide, submit } = useProjectC
       <div class="fieldset">
         <label :for="ids.slug" class="label text-ui text-base-content">{{ t('common.slug') }}</label>
         <input
-          :id="ids.slug" v-model="slug" type="text" class="input w-full font-mono" :class="{ 'input-error': fieldErrors.slug }"
+          :id="ids.slug" v-model="slug" type="text" class="input input-sm w-full font-mono text-ui" :class="{ 'input-error': fieldErrors.slug }"
           :placeholder="t('project.slug_placeholder')" :disabled="busy" :aria-invalid="!!fieldErrors.slug" :aria-describedby="`${ids.slugHelp} ${ids.slugErr}`"
         >
         <FieldError :id="ids.slugErr" :message="fieldErrors.slug" />

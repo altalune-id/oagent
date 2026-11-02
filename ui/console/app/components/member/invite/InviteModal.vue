@@ -73,7 +73,7 @@ function roleLabel(r: string): string {
       <label class="floating-label block">
         <span>{{ labels.email }}</span>
         <input
-          v-model="email" class="input w-full" :class="{ 'input-error': fieldErrors.email }" type="email" :placeholder="labels.email"
+          v-model="email" class="input input-sm w-full text-ui" :class="{ 'input-error': fieldErrors.email }" type="email" :placeholder="labels.email"
           autocomplete="off" required :disabled="busy" :aria-invalid="!!fieldErrors.email" aria-describedby="invite-email-error"
         >
         <FieldError id="invite-email-error" :message="fieldErrors.email" />
@@ -81,7 +81,7 @@ function roleLabel(r: string): string {
       <label class="floating-label block">
         <span>{{ labels.role }}</span>
         <select
-          v-model="role" class="select w-full" :class="{ 'select-error': fieldErrors.role }" :disabled="busy" :aria-label="labels.role"
+          v-model="role" class="select select-sm w-full text-ui" :class="{ 'select-error': fieldErrors.role }" :disabled="busy" :aria-label="labels.role"
           :aria-invalid="!!fieldErrors.role" aria-describedby="invite-role-error"
         >
           <option v-for="r in roles" :key="r" :value="r">

@@ -31,7 +31,7 @@ const name = defineModel<string>('name', { required: true });
       <label class="floating-label">
         <span>{{ labels.name }}</span>
         <input
-          v-model="name" class="input w-full" :class="{ 'input-error': fieldError }" type="text" name="name" maxlength="200" autocomplete="name"
+          v-model="name" class="input input-sm w-full text-ui" :class="{ 'input-error': fieldError }" type="text" name="name" maxlength="200" autocomplete="name"
           :placeholder="labels.name" :aria-invalid="!!fieldError" aria-describedby="profile-name-error"
         >
         <FieldError id="profile-name-error" :message="fieldError" />

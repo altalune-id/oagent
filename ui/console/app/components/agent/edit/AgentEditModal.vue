@@ -17,7 +17,7 @@ defineExpose({ show });
       <div class="fieldset">
         <label :for="ids.name" class="label text-ui text-base-content">{{ t('common.name') }}</label>
         <input
-          :id="ids.name" v-model="name" type="text" class="input w-full" :class="{ 'input-error': fieldErrors.name }"
+          :id="ids.name" v-model="name" type="text" class="input input-sm w-full text-ui" :class="{ 'input-error': fieldErrors.name }"
           :disabled="busy" :aria-invalid="!!fieldErrors.name" :aria-describedby="ids.nameErr"
         >
         <FieldError :id="ids.nameErr" :message="fieldErrors.name" />

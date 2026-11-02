@@ -14,7 +14,7 @@ export const UnderAnInput: Story = {
   render: args => ({
     components: { FieldError },
     setup: () => ({ args }),
-    template: '<div class="fieldset w-72"><label for="name" class="label text-ui text-base-content">Name</label><input id="name" class="input input-error w-full" aria-invalid="true" :aria-describedby="args.id" value="A very long name"><FieldError v-bind="args" /></div>',
+    template: '<div class="fieldset w-72"><label for="name" class="label text-ui text-base-content">Name</label><input id="name" class="input input-sm input-error w-full text-ui" aria-invalid="true" :aria-describedby="args.id" value="A very long name"><FieldError v-bind="args" /></div>',
   }),
 };
 

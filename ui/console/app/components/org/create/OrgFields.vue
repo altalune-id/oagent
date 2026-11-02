@@ -14,7 +14,7 @@ const ids = { name: useId(), nameLegend: useId(), nameErr: useId(), slug: useId(
       {{ t('common.name') }}
     </legend>
     <input
-      :id="ids.name" v-model="name" type="text" class="input w-full" :class="{ 'input-error': fieldErrors.name }"
+      :id="ids.name" v-model="name" type="text" class="input input-sm w-full text-ui" :class="{ 'input-error': fieldErrors.name }"
       :placeholder="t('org.name_placeholder')" :disabled="busy" autocomplete="organization"
       :aria-labelledby="ids.nameLegend" :aria-invalid="!!fieldErrors.name" :aria-describedby="ids.nameErr"
     >
@@ -25,7 +25,7 @@ const ids = { name: useId(), nameLegend: useId(), nameErr: useId(), slug: useId(
       {{ t('common.slug') }}
     </legend>
     <input
-      :id="ids.slug" v-model="slug" type="text" class="input w-full font-mono" :class="{ 'input-error': fieldErrors.slug }"
+      :id="ids.slug" v-model="slug" type="text" class="input input-sm w-full font-mono text-ui" :class="{ 'input-error': fieldErrors.slug }"
       :placeholder="t('org.slug_placeholder')" :disabled="busy"
       :aria-labelledby="ids.slugLegend" :aria-invalid="!!fieldErrors.slug" :aria-describedby="`${ids.slugHelp} ${ids.slugErr}`"
     >

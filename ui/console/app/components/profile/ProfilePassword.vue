@@ -37,7 +37,7 @@ const next = defineModel<string>('next', { required: true });
       <label class="floating-label">
         <span>{{ labels.current }}</span>
         <input
-          v-model="current" class="input w-full" :class="{ 'input-error': fieldErrors.current_password }" type="password" name="current-password" autocomplete="current-password" required
+          v-model="current" class="input input-sm w-full text-ui" :class="{ 'input-error': fieldErrors.current_password }" type="password" name="current-password" autocomplete="current-password" required
           :placeholder="labels.current" :aria-invalid="!!fieldErrors.current_password" aria-describedby="current-password-error"
         >
         <FieldError id="current-password-error" :message="fieldErrors.current_password" />
@@ -45,7 +45,7 @@ const next = defineModel<string>('next', { required: true });
       <label class="floating-label">
         <span>{{ labels.next }}</span>
         <input
-          v-model="next" class="input w-full" :class="{ 'input-error': fieldErrors.new_password }" type="password" name="new-password" autocomplete="new-password" minlength="12" required
+          v-model="next" class="input input-sm w-full text-ui" :class="{ 'input-error': fieldErrors.new_password }" type="password" name="new-password" autocomplete="new-password" minlength="12" required
           :placeholder="labels.next" :aria-invalid="!!fieldErrors.new_password" aria-describedby="new-password-error new-password-rules"
         >
         <FieldError id="new-password-error" :message="fieldErrors.new_password" />

@@ -83,11 +83,11 @@ await useAuthStore().load();
     <form v-if="canEdit" novalidate class="space-y-2" @submit.prevent="save()">
       <div class="fieldset">
         <label :for="ids.name" class="label text-ui text-base-content">{{ t('common.name') }}</label>
-        <input :id="ids.name" v-model="name" type="text" class="input w-full" :disabled="busy">
+        <input :id="ids.name" v-model="name" type="text" class="input input-sm w-full text-ui" :disabled="busy">
       </div>
       <div class="fieldset">
         <label :for="ids.slug" class="label text-ui text-base-content">{{ t('common.slug') }}</label>
-        <input :id="ids.slug" v-model="slug" type="text" class="input w-full font-mono" :disabled="busy">
+        <input :id="ids.slug" v-model="slug" type="text" class="input input-sm w-full font-mono text-ui" :disabled="busy">
       </div>
       <ErrorText :error="error" />
       <div class="flex items-center gap-3">
