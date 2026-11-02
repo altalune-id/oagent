@@ -15,7 +15,7 @@ defineExpose({ show });
   <AppModal :open="open" :title="t('agent.edit')" @close="hide()">
     <form novalidate class="space-y-1" @submit.prevent="submit()">
       <div class="fieldset">
-        <label :for="ids.name" class="fieldset-legend">{{ t('common.name') }}</label>
+        <label :for="ids.name" class="label text-ui text-base-content">{{ t('common.name') }}</label>
         <input
           :id="ids.name" v-model="name" type="text" class="input w-full" :class="{ 'input-error': fieldErrors.name }"
           :disabled="busy" :aria-invalid="!!fieldErrors.name" :aria-describedby="ids.nameErr"
@@ -23,7 +23,7 @@ defineExpose({ show });
         <FieldError :id="ids.nameErr" :message="fieldErrors.name" />
       </div>
       <div class="fieldset">
-        <label :for="ids.description" class="fieldset-legend">{{ t('common.description') }}</label>
+        <label :for="ids.description" class="label text-ui text-base-content">{{ t('common.description') }}</label>
         <textarea
           :id="ids.description" v-model="description" rows="3" class="textarea w-full" :class="{ 'textarea-error': fieldErrors.description }"
           :disabled="busy" :aria-invalid="!!fieldErrors.description" :aria-describedby="ids.descriptionErr"

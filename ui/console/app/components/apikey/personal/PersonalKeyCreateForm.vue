@@ -62,24 +62,24 @@ const ids = {
 <template>
   <form class="space-y-2 rounded-box border border-base-300 bg-base-100 p-4" @submit.prevent="emit('submit')">
     <div class="fieldset">
-      <label :for="ids.name" class="fieldset-legend">{{ labels.name }}</label>
+      <label :for="ids.name" class="label text-ui text-base-content">{{ labels.name }}</label>
       <input :id="ids.name" v-model="name" type="text" class="input w-full" placeholder="laptop" maxlength="100" autocomplete="off" :disabled="busy">
     </div>
 
     <div class="fieldset">
-      <label :for="ids.expires" class="fieldset-legend">{{ labels.expires }}</label>
+      <label :for="ids.expires" class="label text-ui text-base-content">{{ labels.expires }}</label>
       <select :id="ids.expires" v-model.number="expiresInDays" class="select w-full" :aria-describedby="ids.expiresHelp" :disabled="busy">
         <option v-for="o in expiryOptions" :key="o.days" :value="o.days">
           {{ o.label }}
         </option>
       </select>
-      <p :id="ids.expiresHelp" class="label whitespace-normal">
+      <p :id="ids.expiresHelp" class="label whitespace-normal text-xs text-base-content/70">
         {{ labels.expiresHelp }}
       </p>
     </div>
 
     <fieldset class="fieldset">
-      <legend class="fieldset-legend">
+      <legend class="fieldset-legend text-ui">
         {{ labels.projects }}
       </legend>
       <label class="flex items-center gap-2 text-sm">
@@ -99,7 +99,7 @@ const ids = {
     </fieldset>
 
     <fieldset class="fieldset" :aria-describedby="ids.scopesHelp">
-      <legend class="fieldset-legend">
+      <legend class="fieldset-legend text-ui">
         {{ labels.scopes }}
       </legend>
       <div class="grid gap-1 sm:grid-cols-2">
@@ -108,7 +108,7 @@ const ids = {
           {{ s.label }}
         </label>
       </div>
-      <p :id="ids.scopesHelp" class="label whitespace-normal">
+      <p :id="ids.scopesHelp" class="label whitespace-normal text-xs text-base-content/70">
         {{ labels.scopesHelp }}
       </p>
     </fieldset>

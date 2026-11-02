@@ -58,6 +58,12 @@ describe('guard: markup in every app', () => {
     expect(own).toEqual(['base/app/components/ui/AppDropdown.vue']);
   });
 
+  it('keeps fieldset-legend for group legends only and mutes every hint at text-xs /70', () => {
+    const legends = files.flatMap(f => (f.text.match(/<[a-z][a-z0-9]*\s[^<>]*fieldset-legend[^<>]*>/g) ?? []).filter(t => !/^<legend\s[^<>]*class="fieldset-legend text-ui"/.test(t)).map(t => `${f.path}: ${t}`));
+    const hints = files.flatMap(f => (f.text.match(/class="label whitespace-normal[^"]*"/g) ?? []).filter(c => !c.includes('text-xs text-base-content/70')).map(c => `${f.path}: ${c}`));
+    expect([...legends, ...hints]).toEqual([]);
+  });
+
   it('gives small checkboxes square corners so they do not look like radios', () => {
     const round = files.flatMap(f => (f.text.match(/class="checkbox checkbox-(?:xs|sm)\b[^"]*"/g) ?? []).filter(c => !c.includes('rounded-sm')).map(c => `${f.path}: ${c}`));
     expect(round).toEqual([]);

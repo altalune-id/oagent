@@ -46,7 +46,7 @@ const expiryOptions = computed(() => [
 
     <form v-else novalidate class="space-y-3" @submit.prevent="create.submit()">
       <div class="fieldset">
-        <label :for="ids.name" class="fieldset-legend">{{ t('common.name') }}</label>
+        <label :for="ids.name" class="label text-ui text-base-content">{{ t('common.name') }}</label>
         <input
           :id="ids.name" v-model="name" type="text" class="input w-full" :class="{ 'input-error': fieldErrors.name }"
           placeholder="deploy" :disabled="busy" :aria-invalid="!!fieldErrors.name" :aria-describedby="ids.nameErr"
@@ -60,7 +60,7 @@ const expiryOptions = computed(() => [
       </div>
 
       <div v-if="kind === 'project'" class="fieldset">
-        <label :for="ids.project" class="fieldset-legend">{{ t('apikeys.project') }}</label>
+        <label :for="ids.project" class="label text-ui text-base-content">{{ t('apikeys.project') }}</label>
         <select :id="ids.project" v-model="projectId" class="select w-full" :disabled="busy">
           <option value="" disabled>
             {{ t('apikeys.select_project') }}
@@ -90,7 +90,7 @@ const expiryOptions = computed(() => [
       </div>
 
       <div class="fieldset">
-        <label :for="ids.expires" class="fieldset-legend">{{ t('apikeys.expires') }}</label>
+        <label :for="ids.expires" class="label text-ui text-base-content">{{ t('apikeys.expires') }}</label>
         <select :id="ids.expires" v-model.number="expiresInHours" class="select w-full" :disabled="busy">
           <option v-for="e in expiryOptions" :key="e.value" :value="e.value">
             {{ e.label }}

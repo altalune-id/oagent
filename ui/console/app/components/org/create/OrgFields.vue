@@ -10,7 +10,7 @@ const ids = { name: useId(), nameLegend: useId(), nameErr: useId(), slug: useId(
 
 <template>
   <fieldset class="fieldset">
-    <legend :id="ids.nameLegend" class="fieldset-legend">
+    <legend :id="ids.nameLegend" class="fieldset-legend text-ui">
       {{ t('common.name') }}
     </legend>
     <input
@@ -21,7 +21,7 @@ const ids = { name: useId(), nameLegend: useId(), nameErr: useId(), slug: useId(
     <FieldError :id="ids.nameErr" :message="fieldErrors.name" />
   </fieldset>
   <fieldset class="fieldset">
-    <legend :id="ids.slugLegend" class="fieldset-legend">
+    <legend :id="ids.slugLegend" class="fieldset-legend text-ui">
       {{ t('common.slug') }}
     </legend>
     <input
@@ -30,7 +30,7 @@ const ids = { name: useId(), nameLegend: useId(), nameErr: useId(), slug: useId(
       :aria-labelledby="ids.slugLegend" :aria-invalid="!!fieldErrors.slug" :aria-describedby="`${ids.slugHelp} ${ids.slugErr}`"
     >
     <FieldError :id="ids.slugErr" :message="fieldErrors.slug" />
-    <p :id="ids.slugHelp" class="label whitespace-normal">
+    <p :id="ids.slugHelp" class="label whitespace-normal text-xs text-base-content/70">
       {{ t('org.slug_random_help') }}
     </p>
   </fieldset>
