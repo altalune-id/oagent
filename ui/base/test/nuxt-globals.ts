@@ -24,7 +24,7 @@ export const setLocale = vi.fn(async (code: string) => {
 
 export const runtimeConfig: { public: Record<string, string> } = { public: { apiUrl: '', appVersion: '' } };
 
-export const route = reactive({ path: '/', fullPath: '/', params: {} as Record<string, string>, query: {} as Record<string, string> });
+export const route = reactive({ path: '/', fullPath: '/', params: {} as Record<string, string>, query: {} as Record<string, string>, meta: {} as Record<string, unknown> });
 
 export const router = {
   replace: vi.fn(async (_to: unknown) => undefined),
@@ -34,11 +34,12 @@ export const router = {
 
 export const useHead = vi.fn((_input: unknown) => undefined);
 
-export function setRoute(next: { path?: string, params?: Record<string, string>, query?: Record<string, string> }) {
+export function setRoute(next: { path?: string, params?: Record<string, string>, query?: Record<string, string>, meta?: Record<string, unknown> }) {
   route.path = next.path ?? '/';
   route.fullPath = route.path;
   route.params = next.params ?? {};
   route.query = next.query ?? {};
+  route.meta = next.meta ?? {};
 }
 
 export function setClient(name: ClientName, client: Record<string, unknown>) {

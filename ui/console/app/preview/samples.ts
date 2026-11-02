@@ -47,7 +47,27 @@ export interface SampleRun {
   afterReject: RunEvent[];
 }
 
+export interface SampleTest {
+  message: string;
+  reply: string;
+  lanes: ('model' | 'tool' | 'approval')[];
+  steps: number;
+  seconds: number;
+  costCents: number;
+}
+
 export const sampleModels = ['large-2', 'small-3'];
+
+export function sampleTest(): SampleTest {
+  return {
+    message: 'Order 2291 was charged twice for $48.00.',
+    reply: 'I found two identical charges on order 2291 and prepared a $48.00 refund. It is waiting for approval.',
+    lanes: ['model', 'tool', 'tool', 'approval'],
+    steps: 4,
+    seconds: 21.1,
+    costCents: 1.6,
+  };
+}
 
 export const sampleTools: ToolInfo[] = [
   { name: 'orders.lookup', description: 'Read an order by number' },

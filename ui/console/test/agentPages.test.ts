@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { create } from '@bufbuild/protobuf';
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
-import { flushPromises } from '@vue/test-utils';
+import { flushPromises, RouterLinkStub } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -154,6 +154,10 @@ function withDraft(publishedVersion = 12, extra: Record<string, unknown> = {}) {
 }
 
 describe('configure page', () => {
+  beforeEach(() => {
+    vi.stubGlobal('definePageMeta', vi.fn());
+  });
+
   it('loads the draft, says which version is live and offers Publish', async () => {
     inProject('/agents/support', [support], 'agent:read', 'agent:write');
     withDraft();
@@ -164,7 +168,14 @@ describe('configure page', () => {
     expect(w.get('[role="status"]').text()).not.toContain('configure.live_version');
     const publish = w.findAll('button').find(b => b.text() === 'configure.publish')!;
     expect(publish.attributes('disabled')).toBeUndefined();
-    expect(w.findAll('nav[aria-label="common.breadcrumb"] li').map(li => li.text())).toEqual(['nav.agents', 'Support']);
+    expect(w.find('nav[aria-label="common.breadcrumb"]').exists()).toBe(false);
+    for (const control of w.findAll('textarea, select, input:not([type="radio"]):not([type="checkbox"])')) {
+      const id = control.attributes('id')!;
+      expect(id, control.html()).toBeTruthy();
+      expect(w.find(`label[for="${id}"]`).exists(), id).toBe(true);
+    }
+    const openRun = w.findAllComponents(RouterLinkStub).find(l => l.text() === 'configure.open_run')!;
+    expect(openRun.props('to')).toBe('/o/acme/projects/web/agents/support/runs/r7Xp2KqLvN9sT4bWzY1cD');
   });
 
   it('shows the diff before publishing and publishes the next version with a toast', async () => {
@@ -175,6 +186,7 @@ describe('configure page', () => {
     const dialog = [...document.querySelectorAll('dialog')].find(d => d.open)!;
     expect(dialog.textContent).toContain('configure.publish_body|{"n":13,"current":12}');
     expect(dialog.textContent).toContain('configure.change_instructions');
+    expect(w.findAll('button').find(b => b.text() === 'configure.view_changes')!.attributes('disabled')).toBeUndefined();
     const pending = deferred<unknown>();
     const done = client.publishAgent.getMockImplementation()!;
     client.publishAgent.mockImplementationOnce(async (req: unknown) => {
@@ -196,20 +208,24 @@ describe('configure page', () => {
     withDraft(0);
     const w = await mountPage(ConfigurePage);
     expect(w.get('[role="status"]').element.parentElement!.textContent).toContain('configure.never_published');
+    const api = () => w.get('.mockup-code').text();
+    const box = (kind: string, tool: string) => w.findAll(`input[aria-label^="configure.tool_${kind}"]`).find(i => i.attributes('aria-label')!.includes(`"${tool}"`))!;
+    expect(w.get('.mockup-code pre').attributes('data-prefix')).toBe('$');
     await w.get('select').setValue('small-3');
-    expect(w.get('pre').text()).toContain('"model":"small-3"');
+    expect(api()).toContain('"model":"small-3"');
     expect(w.get('[role="status"]').text()).toContain('configure.unsaved');
-    const toggles = w.findAll('input.toggle');
-    await toggles[3]!.setValue(true);
-    expect(w.get('pre').text()).toContain('knowledge.search');
-    await w.findAll('input.checkbox')[3]!.setValue(true);
-    expect(w.get('pre').text()).toContain('"name":"knowledge.search","requireApproval":true');
-    await toggles[0]!.setValue(false);
-    expect(w.get('pre').text()).not.toContain('orders.lookup');
+    await box('enable', 'knowledge.search').setValue(true);
+    expect(api()).toContain('knowledge.search');
+    await box('approval', 'knowledge.search').setValue(true);
+    expect(api()).toContain('"name":"knowledge.search","requireApproval":true');
+    await box('enable', 'orders.lookup').setValue(false);
+    expect(api()).not.toContain('orders.lookup');
     await w.get('input[step="0.01"]').setValue('0.5');
-    expect(w.get('pre').text()).toContain('"maxCostCents":50');
+    expect(api()).toContain('"maxCostCents":50');
+    expect(w.findAll('input.tab').map(i => i.attributes('aria-label'))).toEqual(['configure.test_tab', 'configure.api_tab', 'configure.mcp_tab']);
     await w.get('input[value="mcp"]').setValue(true);
-    expect(w.get('pre').text()).toContain('"tool": "agent_update_draft"');
+    expect(w.findAll('.mockup-code')[1]!.text()).toContain('"tool": "agent_update_draft"');
+    expect(w.findAll('.mockup-code')[1]!.find('pre').attributes('data-prefix')).toBe('1');
   });
 
   it('is read-only without agent:write, and lists a draft tool missing from the catalogue', async () => {
@@ -228,8 +244,8 @@ describe('configure page', () => {
     expect(w.get('textarea').element.value).toBe('');
     expect((w.get('select').element as HTMLSelectElement).value).toBe('');
     expect(w.get('select option').text()).toBe('configure.choose_model');
-    expect(w.findAll('input.toggle').map(i => (i.element as HTMLInputElement).checked)).toEqual([false, false, false, false]);
-    expect(w.findAll('input.checkbox').map(i => i.attributes('aria-label'))).toEqual([
+    expect(w.findAll('input[aria-label^="configure.tool_enable"]').map(i => (i.element as HTMLInputElement).checked)).toEqual([false, false, false, false]);
+    expect(w.findAll('input[aria-label^="configure.tool_approval"]').map(i => i.attributes('aria-label'))).toEqual([
       'configure.tool_approval|{"tool":"orders.lookup"}',
       'configure.tool_approval|{"tool":"billing.charges.list"}',
       'configure.tool_approval|{"tool":"billing.refunds.create"}',

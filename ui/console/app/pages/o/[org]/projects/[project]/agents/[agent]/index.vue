@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import type { ToolInfo } from '~/preview/samples';
+import AppButton from '#base/components/ui/AppButton.vue';
 import AppModal from '#base/components/ui/AppModal.vue';
-import CopyButton from '#base/components/ui/CopyButton.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import LoadError from '#base/components/ui/LoadError.vue';
-import PageHeader from '#base/components/ui/PageHeader.vue';
-import Section from '#base/components/ui/Section.vue';
 import { useToast } from '#base/components/ui/toast';
 import { useDates } from '#base/composables/useDates';
-import AgentApiExample from '~/components/agent/configure/AgentApiExample.vue';
 import AgentConfigForm from '~/components/agent/configure/AgentConfigForm.vue';
+import ConfigurePane from '~/components/agent/configure/ConfigurePane.vue';
 import { useAgentDraft } from '~/components/agent/configure/useAgentDraft';
 import { useCan } from '~/composables/useCan';
-import { sampleModels, sampleTools } from '~/preview/samples';
+import { sampleModels, sampleRun, sampleTools } from '~/preview/samples';
 import { useAgentsStore } from '~/stores/agents';
 import { useAuthStore } from '~/stores/auth';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
+
+definePageMeta({ bleed: true });
 
 const { t } = useI18n();
 const route = useRoute();
@@ -50,7 +50,7 @@ await draft.load();
 const { config, state, diff } = draft;
 const reasonId = useId();
 const publishOpen = ref(false);
-const list = computed(() => `/o/${route.params.org}/projects/${route.params.project}/agents`);
+const runUrl = computed(() => `/o/${route.params.org}/projects/${route.params.project}/agents/${route.params.agent}/runs/${sampleRun().id}`);
 const current = computed(() => state.value?.publishedVersion ?? 0);
 const models = computed(() => [...new Set([...sampleModels, config.value.model].filter(Boolean))]);
 const tools = computed<ToolInfo[]>(() => [
@@ -70,6 +70,13 @@ const status = computed(() => {
 });
 const liveLine = computed(() => (current.value ? t('configure.live_version', { n: current.value }) : t('configure.never_published')));
 
+function changeIcon(key: string) {
+  if (key.endsWith('_removed')) {
+    return 'lucide:minus';
+  }
+  return key === 'configure.change_first' || key.includes('_added') ? 'lucide:plus' : 'lucide:pencil';
+}
+
 async function publish() {
   const res = await draft.publish();
   if (!res) {
@@ -83,73 +90,60 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
 </script>
 
 <template>
-  <div v-if="agent" class="space-y-6">
-    <PageHeader
-      :title="agent.name"
-      :description="agent.description"
-      :crumbs="[{ label: t('nav.agents'), to: list }, { label: agent.name }]"
-      :crumbs-label="t('common.breadcrumb')"
-    >
-      <template #status>
-        <p :id="reasonId" class="text-sm text-base-content/70">
+  <div v-if="agent" class="flex min-w-0 flex-col">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-base-300 px-4 py-3 lg:px-6">
+      <div class="min-w-0">
+        <h1 class="truncate text-xl font-semibold">
+          {{ agent.name }}
+        </h1>
+        <p :id="reasonId" class="text-ui text-base-content/70">
           <span role="status">{{ status }}</span>
           {{ liveLine }}
         </p>
-        <p class="flex items-center gap-1 text-xs text-base-content/70">
-          <span class="font-mono">{{ agent.id }}</span>
-          <CopyButton :value="agent.id" :label="t('common.copy')" />
-        </p>
-      </template>
-      <template v-if="canEdit" #actions>
-        <button type="button" class="btn btn-primary btn-sm" :disabled="!canPublish" :aria-describedby="reasonId" @click="publishOpen = true">
+      </div>
+      <div v-if="canEdit" class="flex items-center gap-2">
+        <AppButton variant="plain" size="sm" :disabled="!canPublish" @click="publishOpen = true">
+          <Icon name="lucide:git-compare" size="16" aria-hidden="true" />
+          {{ t('configure.view_changes') }}
+        </AppButton>
+        <AppButton size="sm" :disabled="!canPublish" :aria-describedby="reasonId" @click="publishOpen = true">
+          <Icon name="lucide:upload" size="16" aria-hidden="true" />
           {{ t('configure.publish') }}
-        </button>
-      </template>
-    </PageHeader>
-
-    <LoadError :error="draft.loadError.value" :busy="false" :retry-label="t('common.retry')" @retry="draft.load()" />
-    <ErrorText :error="draft.saveError.value" />
-
-    <div class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
-      <AgentConfigForm v-model="config" :models="models" :tools="tools" :disabled="!canEdit" />
-      <div class="space-y-6 lg:sticky lg:top-20 lg:self-start">
-        <Section :title="t('configure.test_title')" :description="t('configure.test_hint')">
-          <template #actions>
-            <span class="badge badge-info badge-soft badge-sm">{{ t('preview.badge') }}</span>
-          </template>
-          <form class="join w-full" @submit.prevent>
-            <label class="sr-only" :for="`${reasonId}-msg`">{{ t('configure.test_message') }}</label>
-            <input :id="`${reasonId}-msg`" type="text" class="input join-item w-full" :placeholder="t('configure.test_message')" disabled>
-            <button type="submit" class="btn join-item" disabled>
-              {{ t('configure.send') }}
-            </button>
-          </form>
-        </Section>
-        <AgentApiExample :agent-id="agent.id" :config="config" />
+        </AppButton>
       </div>
     </div>
 
+    <div class="px-4 lg:px-6">
+      <LoadError :error="draft.loadError.value" :busy="false" :retry-label="t('common.retry')" @retry="draft.load()" />
+      <ErrorText :error="draft.saveError.value" />
+    </div>
+
+    <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(22rem,26rem)]">
+      <AgentConfigForm v-model="config" :models="models" :tools="tools" :disabled="!canEdit" />
+      <ConfigurePane :agent-id="agent.id" :config="config" :run-url="runUrl" />
+    </div>
+
     <AppModal :open="publishOpen" :title="t('configure.publish_title', { name: agent.name, n: current + 1 })" :dismissible="!draft.publishing.value" @close="publishOpen = false">
-      <p class="text-sm">
+      <p class="text-ui text-base-content/70">
         {{ current ? t('configure.publish_body', { n: current + 1, current }) : t('configure.publish_first') }}
       </p>
-      <ul v-if="diff.length" class="mt-3 list-disc space-y-1 pl-5 text-sm">
-        <li v-for="(change, i) in diff" :key="i">
-          {{ t(change.key, change.params ?? {}) }}
+      <ul v-if="diff.length" class="flex flex-col gap-2 py-3 text-ui">
+        <li v-for="(change, i) in diff" :key="i" class="flex gap-2">
+          <Icon :name="changeIcon(change.key)" size="16" class="mt-0.5 shrink-0 text-base-content/70" aria-hidden="true" />
+          <span>{{ t(change.key, change.params ?? {}) }}</span>
         </li>
       </ul>
-      <p v-else class="mt-3 text-sm text-base-content/70">
+      <p v-else class="py-3 text-ui text-base-content/70">
         {{ t('configure.no_changes') }}
       </p>
-      <ErrorText class="mt-3" :error="draft.publishError.value" />
+      <ErrorText :error="draft.publishError.value" />
       <template #footer>
-        <button type="button" class="btn btn-ghost btn-sm" :disabled="draft.publishing.value" @click="publishOpen = false">
+        <AppButton variant="plain" size="sm" :disabled="draft.publishing.value" @click="publishOpen = false">
           {{ t('configure.keep_editing') }}
-        </button>
-        <button type="button" class="btn btn-primary btn-sm" :disabled="draft.publishing.value" :aria-busy="draft.publishing.value || undefined" @click="publish()">
-          <span v-if="draft.publishing.value" class="loading loading-spinner loading-xs" aria-hidden="true" />
+        </AppButton>
+        <AppButton size="sm" :busy="draft.publishing.value" :aria-busy="draft.publishing.value || undefined" @click="publish()">
           {{ draft.publishing.value ? t('configure.publishing') : t('configure.publish_n', { n: current + 1 }) }}
-        </button>
+        </AppButton>
       </template>
     </AppModal>
   </div>

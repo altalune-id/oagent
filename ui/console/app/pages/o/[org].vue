@@ -50,7 +50,7 @@ await projects.ensureLoaded(org.value.id);
       <span>{{ t('environment.banner', { env: t(environmentLabelKey(project?.environment)) }) }}</span>
     </div>
     <ConsoleTopBar />
-    <main class="min-w-0 flex-1 p-4 lg:p-6">
+    <main class="min-w-0 flex-1" :class="route.meta.bleed ? '' : 'p-4 lg:p-6'">
       <NuxtPage />
     </main>
     <template #sidebar>

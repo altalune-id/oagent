@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { ProjectEnvironment, ProjectSchema } from '#gen/project/v1/project_pb';
 import { mountPage } from '#test/mount-page';
-import { connectError, setClient, setKnownKeys, setRoute } from '#test/nuxt-globals';
+import { connectError, route, setClient, setKnownKeys, setRoute } from '#test/nuxt-globals';
 import OrgShell from '~/pages/o/[org].vue';
 import SettingsGeneral from '~/pages/o/[org]/projects/[project]/settings.vue';
 import { useOrgsStore } from '~/stores/orgs';
@@ -81,5 +81,16 @@ describe('project environment tag', () => {
       expect(banner.attributes('role')).toBe('note');
       expect(banner.classes()).toEqual(expect.arrayContaining(['bg-warning', 'text-warning-content', 'text-ui', 'px-4', 'py-1']));
     }
+  });
+
+  it.each([[false, true], [true, false]])('pads the page unless it asks to bleed (bleed %s, padded %s)', async (bleed, padded) => {
+    setClient('$projectClient', { listProjects: vi.fn().mockResolvedValue({ projects: [] }) });
+    seed(ProjectEnvironment.UNSPECIFIED);
+    useOrgsStore().loaded = true;
+    vi.stubGlobal('definePageMeta', vi.fn());
+    route.meta = bleed ? { bleed } : {};
+    const stubs = { NuxtPage: true, ProjectSidebar: true, AppSidebar: true, ConsoleTopBar: true };
+    const w = await mountPage(OrgShell, { global: { stubs } });
+    expect(w.get('main').classes().includes('p-4')).toBe(padded);
   });
 });
