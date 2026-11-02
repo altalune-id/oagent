@@ -160,6 +160,9 @@ describe('a one-time secret stays until Done', () => {
     setClient('$webhookClient', { createWebhook: vi.fn().mockResolvedValue({ secret: 'whsec_once' }) });
     const w = mount(WebhookCreateModal, { props: { orgId: keyOrgId, projectId }, attachTo: document.body });
     await w.get('button').trigger('click');
+    for (const input of w.findAll('dialog input[type="url"], dialog input[type="text"]')) {
+      expect(w.find(`label[for="${input.attributes('id')}"]`).classes()).toEqual(['label', 'text-ui', 'text-base-content']);
+    }
     await w.get('dialog input[type="url"]').setValue('https://hooks.acme.test/oagent');
     await w.get('dialog input[type="checkbox"]').setValue(true);
     await w.findAll('dialog button').find(b => b.text() === 'common.create')!.trigger('click');

@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import type { Webhook } from '~/stores/webhooks';
+import AppButton from '#base/components/ui/AppButton.vue';
 import AppModal from '#base/components/ui/AppModal.vue';
 import ConfirmModal from '#base/components/ui/ConfirmModal.vue';
-import ErrorText from '#base/components/ui/ErrorText.vue';
+import EmptyState from '#base/components/ui/EmptyState.vue';
+import LoadError from '#base/components/ui/LoadError.vue';
+import LoadingStatus from '#base/components/ui/LoadingStatus.vue';
 import SecretField from '#base/components/ui/SecretField.vue';
 import { useConfirm } from '#base/composables/useConfirm';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
@@ -17,7 +20,7 @@ const errorMessage = useErrorMessage();
 const webhooks = useWebhooksStore();
 const { $webhookClient: client } = useNuxtApp();
 
-await webhooks.ensureLoaded(orgId, projectId);
+void webhooks.ensureLoaded(orgId, projectId);
 
 const items = computed(() => webhooks.forProject(projectId));
 const labelByName = new Map(webhookEvents.map(e => [e.name, e.labelKey]));
@@ -88,10 +91,9 @@ function closeRotate() {
 </script>
 
 <template>
-  <ErrorText v-if="webhooks.error" :error="webhooks.error" />
-  <p v-else-if="items.length === 0" class="text-sm text-base-content/70">
-    {{ t('webhooks.empty') }}
-  </p>
+  <LoadError v-if="webhooks.error" :error="webhooks.error" :busy="webhooks.loading" :retry-label="t('common.retry')" @retry="webhooks.load(orgId, projectId)" />
+  <LoadingStatus v-else-if="webhooks.loading && items.length === 0" :label="t('common.loading')" />
+  <EmptyState v-else-if="items.length === 0" icon="lucide:webhook" :title="t('webhooks.empty')" />
   <div v-else class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
     <table class="table table-sm">
       <thead class="text-base-content/70">
@@ -116,26 +118,26 @@ function closeRotate() {
             </span>
           </td>
           <td class="whitespace-nowrap text-right">
-            <NuxtLink :to="`/o/${route.params.org}/projects/${route.params.project}/webhooks/${webhook.id}`" class="btn btn-ghost btn-xs">
-              <Icon name="lucide:scroll-text" size="14" />
+            <AppButton variant="ghost" size="xs" :to="`/o/${route.params.org}/projects/${route.params.project}/webhooks/${webhook.id}`">
+              <Icon name="lucide:scroll-text" size="14" aria-hidden="true" />
               {{ t('webhooks.logs') }}
-            </NuxtLink>
-            <button v-if="canManage" type="button" class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="ping(webhook)">
+            </AppButton>
+            <AppButton v-if="canManage" variant="ghost" size="xs" :disabled="busyId === webhook.id" @click="ping(webhook)">
               <Icon name="lucide:send" size="14" />
               {{ t('webhooks.ping') }}
-            </button>
-            <button v-if="canManage" type="button" class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="toggle(webhook)">
+            </AppButton>
+            <AppButton v-if="canManage" variant="ghost" size="xs" :disabled="busyId === webhook.id" @click="toggle(webhook)">
               <Icon :name="webhook.active ? 'lucide:pause' : 'lucide:play'" size="14" />
               {{ webhook.active ? t('webhooks.deactivate') : t('webhooks.activate') }}
-            </button>
-            <button v-if="canManage" type="button" class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="rotate(webhook)">
+            </AppButton>
+            <AppButton v-if="canManage" variant="ghost" size="xs" :disabled="busyId === webhook.id" @click="rotate(webhook)">
               <Icon name="lucide:key-round" size="14" />
               {{ t('webhooks.rotate') }}
-            </button>
-            <button v-if="canManage" type="button" class="btn btn-ghost btn-xs" :disabled="busyId === webhook.id" @click="deleting.ask(webhook)">
+            </AppButton>
+            <AppButton v-if="canManage" variant="ghost" size="xs" :disabled="busyId === webhook.id" @click="deleting.ask(webhook)">
               <Icon name="lucide:trash-2" size="14" class="text-error" />
               {{ t('common.delete') }}
-            </button>
+            </AppButton>
           </td>
         </tr>
       </tbody>
@@ -149,9 +151,9 @@ function closeRotate() {
         {{ t('webhooks.secret_warning') }}
       </p>
       <SecretField :value="rotatedSecret" :label="t('common.copy')" />
-      <button class="btn btn-ghost btn-sm" type="button" @click="closeRotate()">
+      <AppButton variant="ghost" size="sm" @click="closeRotate()">
         {{ t('common.done') }}
-      </button>
+      </AppButton>
     </div>
   </AppModal>
 
