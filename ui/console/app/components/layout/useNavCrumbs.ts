@@ -1,6 +1,7 @@
-import type { Crumb, NavGroup, PaletteItem } from '#base/components/ui/types';
+import type { Crumb, NavGroup, PaletteItem, TopBarPlace } from '#base/components/ui/types';
 import { useAgentNav } from '~/components/agent/useAgentNav';
 import { useOrgNav } from '~/components/layout/useOrgNav';
+import { environmentLabelKey } from '~/components/project/environment';
 import { useProjectNav } from '~/components/project/useProjectNav';
 import { useAgentsStore } from '~/stores/agents';
 import { useOrgsStore } from '~/stores/orgs';
@@ -55,15 +56,26 @@ export function useNavCrumbs() {
   });
 
   const palette = computed<PaletteItem[]>(() => {
-    const items: PaletteItem[] = orgNav.value.items.map(i => ({ key: `org-${i.key}`, label: `${org.value?.name ?? ''} / ${i.label}`, to: i.to }));
+    const items: PaletteItem[] = orgNav.value.items.map(i => ({ key: `org-${i.key}`, group: org.value?.name ?? '', label: i.label, to: i.to }));
     if (project.value) {
-      items.push(...projectNav.value.flatMap(g => g.items).map(i => ({ key: `project-${i.key}`, label: `${project.value!.name} / ${i.label}`, to: i.to })));
+      items.push(...projectNav.value.flatMap(g => g.items).map(i => ({ key: `project-${i.key}`, group: project.value!.name, label: i.label, to: i.to })));
     }
     if (agent.value) {
-      items.push(...agentNav.groups.value.flatMap(g => g.items).map(i => ({ key: `agent-${i.key}`, label: `${agent.value!.name} / ${i.label}`, to: i.to })));
+      items.push(...agentNav.groups.value.flatMap(g => g.items).map(i => ({ key: `agent-${i.key}`, group: agent.value!.name, label: i.label, to: i.to })));
     }
     return items;
   });
 
-  return { crumbs, palette };
+  const place = computed<TopBarPlace | undefined>(() => {
+    if (!org.value) {
+      return undefined;
+    }
+    if (!project.value) {
+      return { label: org.value.name };
+    }
+    const key = environmentLabelKey('environment' in project.value ? project.value.environment : undefined);
+    return { label: agent.value?.name ?? project.value.name, badge: key === 'environment.none' ? undefined : t(key) };
+  });
+
+  return { crumbs, place, palette };
 }

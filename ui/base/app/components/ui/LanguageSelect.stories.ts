@@ -9,7 +9,7 @@ const meta = {
     label: 'Language',
     open: true,
     options: [
-      { code: 'en-US', name: 'English (US)', icon: 'circle-flags:us' },
+      { code: 'en-US', name: 'English', icon: 'circle-flags:us' },
       { code: 'id-ID', name: 'Bahasa Indonesia', icon: 'circle-flags:id' },
       { code: 'fr-FR', name: 'Français', icon: 'circle-flags:fr' },
     ],

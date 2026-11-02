@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PaletteItem } from './types';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import SearchInput from './SearchInput.vue';
 
 const { items, label, empty = '', closeLabel = 'Close' } = defineProps<{
@@ -17,23 +17,26 @@ const list = ref<HTMLElement>();
 const query = ref('');
 const shown = computed(() => {
   const q = query.value.trim().toLowerCase();
-  return q ? items.filter(item => item.label.toLowerCase().includes(q)) : items;
+  return q ? items.filter(item => `${item.group ?? ''} ${item.label}`.toLowerCase().includes(q)) : items;
 });
 
-watch(open, async (now) => {
+async function sync() {
   const el = dialog.value;
   if (!el) {
     return;
   }
-  if (now && !el.open) {
+  if (open.value && !el.open) {
     query.value = '';
     el.showModal();
     await nextTick();
     el.querySelector<HTMLInputElement>('input[type="search"]')?.focus();
-  } else if (!now && el.open) {
+  } else if (!open.value && el.open) {
     el.close();
   }
-}, { flush: 'post' });
+}
+
+watch(open, sync, { flush: 'post' });
+onMounted(sync);
 
 function first() {
   list.value?.querySelector<HTMLAnchorElement>('a')?.click();
@@ -49,7 +52,8 @@ function first() {
       <ul ref="list" class="menu menu-sm w-full text-ui">
         <li v-for="item in shown" :key="item.key">
           <NuxtLink :to="item.to" @click="open = false">
-            {{ item.label }}
+            <span v-if="item.group"><span :class="{ 'font-mono text-xs': item.mono }">{{ item.group }}</span> / {{ item.label }}</span>
+            <span v-else>{{ item.label }}</span>
           </NuxtLink>
         </li>
         <li v-if="!shown.length && empty" class="menu-disabled">

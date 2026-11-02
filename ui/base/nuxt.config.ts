@@ -22,7 +22,7 @@ export default defineNuxtConfig({
     defaultLocale: 'en-US',
     langDir: 'locales',
     locales: [
-      { code: 'en-US', name: 'English (US)', file: 'en-US.json' },
+      { code: 'en-US', name: 'English', file: 'en-US.json' },
       { code: 'id-ID', name: 'Bahasa Indonesia', file: 'id-ID.json' },
     ],
     detectBrowserLanguage: { useCookie: true, cookieKey: 'oagent_lang', redirectOn: 'root', fallbackLocale: 'en-US' },

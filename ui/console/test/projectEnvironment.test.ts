@@ -71,8 +71,15 @@ describe('project environment tag', () => {
     seed(env);
     useOrgsStore().loaded = true;
     vi.stubGlobal('definePageMeta', vi.fn());
-    const stubs = { NuxtPage: true, ProjectSidebar: true, AppSidebar: true };
+    const stubs = { NuxtPage: true, ProjectSidebar: true, AppSidebar: true, ConsoleTopBar: true };
     const w = await mountPage(OrgShell, { global: { stubs } });
     expect(w.find('[data-testid="environment-banner"]').exists()).toBe(shown);
+    const content = w.get('.drawer-content').element.children;
+    expect([...content].map(c => c.tagName.toLowerCase())).toEqual([...(shown ? ['div'] : []), 'console-top-bar-stub', 'main']);
+    if (shown) {
+      const banner = w.get('[data-testid="environment-banner"]');
+      expect(banner.attributes('role')).toBe('note');
+      expect(banner.classes()).toEqual(expect.arrayContaining(['bg-warning', 'text-warning-content', 'text-ui', 'px-4', 'py-1']));
+    }
   });
 });

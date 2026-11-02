@@ -23,9 +23,10 @@ export interface UserMenuLabels {
   profile: string;
   apiKeys: string;
   account: string;
+  language: string;
 }
 
-const { me, logoutUrl, profileUrl = '/profile', apiKeysUrl = '', accountUrl = '', placement = 'end', version = '', labels = {
+const { me, logoutUrl, profileUrl = '/profile', apiKeysUrl = '', accountUrl = '', placement = 'end', version = '', locale = '', locales = [], labels = {
   signOut: 'Sign out',
   signedInAs: 'Signed in as',
   operator: 'Operator',
@@ -34,7 +35,10 @@ const { me, logoutUrl, profileUrl = '/profile', apiKeysUrl = '', accountUrl = ''
   profile: 'Profile',
   apiKeys: 'My API keys',
   account: 'Your account',
-} } = defineProps<{ me: UserMenuIdentity | null, logoutUrl: string, profileUrl?: string, apiKeysUrl?: string, accountUrl?: string, placement?: 'end' | 'top', version?: string, labels?: UserMenuLabels }>();
+  language: 'Language',
+} } = defineProps<{ me: UserMenuIdentity | null, logoutUrl: string, profileUrl?: string, apiKeysUrl?: string, accountUrl?: string, placement?: 'end' | 'top', version?: string, locale?: string, locales?: { code: string, name: string }[], labels?: UserMenuLabels }>();
+
+const emit = defineEmits<{ locale: [code: string] }>();
 
 const logoutForm = `logout-${useId()}`;
 
@@ -68,6 +72,14 @@ const sourceBadge = computed(() => {
     <ul class="menu menu-sm w-full p-0 text-ui">
       <li class="menu-title text-base-content/70">
         <span class="truncate">{{ me.email || display }}</span>
+      </li>
+      <li v-if="locales.length" class="menu-title">
+        <label class="font-normal">
+          <span class="sr-only">{{ labels.language }}</span>
+          <select class="select select-xs w-28" :value="locale" @change="emit('locale', ($event.target as HTMLSelectElement).value)">
+            <option v-for="l in locales" :key="l.code" :value="l.code">{{ l.name }}</option>
+          </select>
+        </label>
       </li>
       <li v-if="sourceBadge || me.operator" class="menu-title">
         <span class="flex flex-wrap gap-1">

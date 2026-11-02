@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
 
-const { sidebarId = 'app-sidebar', closeLabel = 'Close menu' } = defineProps<{
+const { sidebarId = 'app-sidebar', closeLabel = 'Close menu', full = false, breakpoint = 'md' } = defineProps<{
   sidebarId?: string,
   closeLabel?: string,
+  full?: boolean,
+  breakpoint?: 'md' | 'lg',
 }>();
+
+const opens = { md: 'md:drawer-open', lg: 'lg:drawer-open' } as const;
+const widths = { md: '(min-width: 48rem)', lg: '(min-width: 64rem)' } as const;
 
 const open = defineModel<boolean>('open', { default: false });
 
@@ -39,7 +44,7 @@ watch(open, (now) => {
 }, { flush: 'post' });
 
 onMounted(() => {
-  media = window.matchMedia?.('(min-width: 48rem)');
+  media = window.matchMedia?.(widths[breakpoint]);
   media?.addEventListener('change', onMedia);
   onMedia();
 });
@@ -51,12 +56,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="drawer flex-1 md:drawer-open">
+  <div class="drawer flex-1" :class="opens[breakpoint]">
     <input :id="toggleId" v-model="open" type="checkbox" class="drawer-toggle" tabindex="-1" aria-hidden="true">
     <div class="drawer-content flex min-w-0 flex-col" :inert="open && !wide">
       <slot />
     </div>
-    <div :id="sidebarId" ref="side" class="drawer-side top-14 z-40 h-[calc(100dvh-3.5rem)]">
+    <div :id="sidebarId" ref="side" class="drawer-side z-40" :class="{ 'top-14 h-[calc(100dvh-3.5rem)]': !full }">
       <label :for="toggleId" :aria-label="closeLabel" class="drawer-overlay" />
       <slot name="sidebar" />
     </div>

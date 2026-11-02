@@ -1,27 +1,36 @@
 <script setup lang="ts">
-import type { Crumb } from './types';
+import type { Crumb, TopBarPlace } from './types';
 import AppButton from './AppButton.vue';
 import Breadcrumbs from './Breadcrumbs.vue';
 
-const { crumbs, crumbsLabel = 'Breadcrumb', menuLabel = 'Toggle navigation', searchLabel = 'Search', jumpLabel = 'Search and jump', shortcutLabel = 'Command K', menu = true } = defineProps<{
+const { crumbs, place, crumbsLabel = 'Breadcrumb', menuLabel = 'Toggle navigation', searchLabel = 'Search', jumpLabel = 'Search and jump', shortcutLabel = 'Command K', menu = true, menuOpen = false, sidebarId = 'app-sidebar' } = defineProps<{
   crumbs: Crumb[],
+  place?: TopBarPlace,
   crumbsLabel?: string,
   menuLabel?: string,
   searchLabel?: string,
   jumpLabel?: string,
   shortcutLabel?: string,
   menu?: boolean,
+  menuOpen?: boolean,
+  sidebarId?: string,
 }>();
 
 const emit = defineEmits<{ menu: [], search: [] }>();
 </script>
 
 <template>
-  <div class="navbar min-h-12 gap-2 border-b border-base-300 bg-base-100 px-4">
-    <AppButton v-if="menu" variant="ghost" size="sm" square class="lg:hidden" :aria-label="menuLabel" @click="emit('menu')">
+  <div class="navbar min-h-12 gap-2 border-b border-base-300 bg-base-100 px-3 md:px-4">
+    <AppButton v-if="menu" variant="ghost" size="sm" square class="lg:hidden" :aria-label="menuLabel" :aria-controls="sidebarId" :aria-expanded="menuOpen" @click="emit('menu')">
       <Icon name="lucide:menu" size="16" class="shrink-0" aria-hidden="true" />
     </AppButton>
-    <Breadcrumbs class="flex-1" :crumbs="crumbs" :label="crumbsLabel" />
+    <Breadcrumbs class="flex-1 max-md:hidden" :crumbs="crumbs" :label="crumbsLabel" />
+    <div class="min-w-0 flex-1 text-ui md:hidden">
+      <div v-if="place" class="truncate font-medium" :class="{ 'font-mono text-xs': place.mono }">
+        {{ place.label }}
+      </div>
+    </div>
+    <span v-if="place?.badge" class="badge badge-sm md:hidden">{{ place.badge }}</span>
     <AppButton variant="ghost" size="sm" square class="md:hidden" :aria-label="jumpLabel" @click="emit('search')">
       <Icon name="lucide:search" size="16" class="shrink-0" aria-hidden="true" />
     </AppButton>

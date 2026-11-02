@@ -8,13 +8,20 @@ import { useUIStore } from '~/stores/ui';
 
 const { t } = useI18n();
 const ui = useUIStore();
-const { crumbs, palette } = useNavCrumbs();
+const { crumbs, place, palette } = useNavCrumbs();
 const searching = ref(false);
+
+function search(open: boolean) {
+  if (open) {
+    ui.navOpen = false;
+  }
+  searching.value = open;
+}
 
 function onKey(event: KeyboardEvent) {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault();
-    searching.value = !searching.value;
+    search(!searching.value);
   }
 }
 
@@ -25,13 +32,15 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey));
 <template>
   <TopBar
     :crumbs="crumbs"
+    :place="place"
     :crumbs-label="t('nav.breadcrumbs')"
     :menu-label="t('nav.menu')"
     :search-label="t('search.label')"
     :jump-label="t('search.jump')"
     :shortcut-label="t('search.shortcut')"
+    :menu-open="ui.navOpen"
     @menu="ui.navOpen = !ui.navOpen"
-    @search="searching = true"
+    @search="search(true)"
   >
     <template #controls>
       <ThemeFamilySwitcher />

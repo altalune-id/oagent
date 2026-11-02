@@ -90,4 +90,12 @@ export interface PaletteItem {
   key: string;
   label: string;
   to: string;
+  group?: string;
+  mono?: boolean;
+}
+
+export interface TopBarPlace {
+  label: string;
+  mono?: boolean;
+  badge?: string;
 }

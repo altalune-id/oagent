@@ -34,6 +34,18 @@ describe('appShell', () => {
     w.unmount();
   });
 
+  it('runs full height from lg up when it owns the top bar, and stays under the navbar otherwise', () => {
+    const under = render();
+    expect(under.get('.drawer-side').classes()).toEqual(expect.arrayContaining(['top-14', 'h-[calc(100dvh-3.5rem)]']));
+    under.unmount();
+    const full = mount(AppShell, { props: { full: true, breakpoint: 'lg' }, slots: { default: '<main>Page</main>', sidebar: '<nav>Nav</nav>' } });
+    expect(full.classes()).toEqual(expect.arrayContaining(['drawer', 'lg:drawer-open']));
+    expect(full.classes()).not.toContain('md:drawer-open');
+    expect(full.get('.drawer-side').classes()).toEqual(['drawer-side', 'z-40']);
+    expect(window.matchMedia).toHaveBeenCalledWith('(min-width: 64rem)');
+    full.unmount();
+  });
+
   it('moves focus into the sidebar on open, makes the page inert, and closes on Escape with focus returned', async () => {
     const w = render();
     const page = w.get('#page-button').element as HTMLButtonElement;

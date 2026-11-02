@@ -39,6 +39,18 @@ describe('userMenu', () => {
     expect(w.get(`form#${out.attributes('form')}`).attributes('action')).toBe('/logout');
   });
 
+  it('picks the language from a labelled small select of endonyms under the email', async () => {
+    const locales = [{ code: 'en-US', name: 'English' }, { code: 'id-ID', name: 'Bahasa Indonesia' }];
+    const w = mount(UserMenu, { props: { me, logoutUrl: '/logout', locale: 'en-US', locales, labels: { signOut: 'Sign out', signedInAs: 'Signed in as', operator: 'Operator', apikey: 'API key', basic: 'Basic auth', profile: 'Profile', apiKeys: 'My API keys', account: 'Your account', language: 'Language' } } });
+    const select = w.get('.menu-title select');
+    expect(select.classes()).toEqual(['select', 'select-xs', 'w-28']);
+    expect(w.get('.menu-title label .sr-only').text()).toBe('Language');
+    expect(select.findAll('option').map(o => o.text())).toEqual(['English', 'Bahasa Indonesia']);
+    await select.setValue('id-ID');
+    expect(w.emitted('locale')).toEqual([['id-ID']]);
+    expect(mount(UserMenu, { props: { me, logoutUrl: '/logout' } }).find('select').exists()).toBe(false);
+  });
+
   it('gives an API key none of them', () => {
     const w = mount(UserMenu, { props: { me: { ...me, source: 'apikey', userId: '' }, logoutUrl: '/logout' } });
     expect(w.find('form[action="/logout"]').exists()).toBe(false);

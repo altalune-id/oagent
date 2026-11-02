@@ -16,7 +16,7 @@ let known = new Set<string>();
 let states = new Map<string, Ref<unknown>>();
 
 const locale = ref('en-US');
-const locales = ref([{ code: 'en-US', name: 'English (US)' }, { code: 'id-ID', name: 'Bahasa Indonesia' }]);
+const locales = ref([{ code: 'en-US', name: 'English' }, { code: 'id-ID', name: 'Bahasa Indonesia' }]);
 
 export const setLocale = vi.fn(async (code: string) => {
   locale.value = code;

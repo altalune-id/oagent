@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { defineComponent, h } from 'vue';
 
+import { ProjectEnvironment } from '#gen/project/v1/project_pb';
 import { setRoute } from '#test/nuxt-globals';
 import ConsoleTopBar from '~/components/layout/ConsoleTopBar.vue';
 import { useNavCrumbs } from '~/components/layout/useNavCrumbs';
@@ -11,6 +12,7 @@ import { useAgentsStore } from '~/stores/agents';
 import { useAuthStore } from '~/stores/auth';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
+import { useUIStore } from '~/stores/ui';
 
 beforeEach(() => {
   setActivePinia(createPinia());
@@ -44,8 +46,8 @@ describe('nav crumbs', () => {
       { label: 'Support Copilot', to: p },
       { label: 'nav.agents' },
     ]);
-    expect(palette.value.map(i => i.label)).toContain('Acme / members.title');
-    expect(palette.value.map(i => i.label)).toContain('Support Copilot / nav.agents');
+    expect(palette.value.map(i => `${i.group} / ${i.label}`)).toContain('Acme / members.title');
+    expect(palette.value.map(i => `${i.group} / ${i.label}`)).toContain('Support Copilot / nav.agents');
   });
 
   it('ends at the agent on Configure, then names Runs or the run inside it', () => {
@@ -55,13 +57,20 @@ describe('nav crumbs', () => {
     const named = { label: 'Refund Triage', to: `${p}/agents/refund-triage` };
     expect(crumbsAt(`${p}/agents/refund-triage/runs`, agent).crumbs.value).toEqual([...head, named, { label: 'agent.runs' }]);
     expect(crumbsAt(`${p}/agents/refund-triage/runs/r7X`, { ...agent, run: 'r7X' }).crumbs.value).toEqual([...head, named, { label: 'run.col_run' }]);
-    expect(crumbsAt(`${p}/agents/refund-triage`, agent).palette.value.map(i => i.label)).toContain('Refund Triage / agent.runs');
+    expect(crumbsAt(`${p}/agents/refund-triage`, agent).palette.value.map(i => `${i.group} / ${i.label}`)).toContain('Refund Triage / agent.runs');
+  });
+
+  it('names the place on phones: the agent or project with its environment badge, else the org', () => {
+    useProjectsStore().items = [{ id: 'x6MH9WPWjktMwCBKHy4pF', orgId: 'B6rTn1YkM8wQz3XpL5vGd', slug: 'support', name: 'Support Copilot', environment: ProjectEnvironment.PRODUCTION }] as never;
+    expect(crumbsAt(`${p}/agents/refund-triage`, { ...params, agent: 'refund-triage' }).place.value).toEqual({ label: 'Refund Triage', badge: 'environment.production' });
+    expect(crumbsAt(`${p}/agents`, params).place.value).toEqual({ label: 'Support Copilot', badge: 'environment.production' });
+    expect(crumbsAt('/o/acme', { org: 'acme' }).place.value).toEqual({ label: 'Acme' });
   });
 
   it('trails only the org and its page outside a project', () => {
     const { crumbs, palette } = crumbsAt('/o/acme/settings/members', { org: 'acme' });
     expect(crumbs.value).toEqual([{ label: 'Acme', to: '/o/acme' }, { label: 'members.title' }]);
-    expect(palette.value.every(i => i.label.startsWith('Acme / '))).toBe(true);
+    expect(palette.value.every(i => i.group === 'Acme')).toBe(true);
   });
 });
 
@@ -78,6 +87,16 @@ describe('console top bar', () => {
     await w.vm.$nextTick();
     await w.vm.$nextTick();
     expect(dialog().open).toBe(false);
+    w.unmount();
+  });
+
+  it('closes the phone drawer before it opens search', async () => {
+    setRoute({ path: '/o/acme', params: { org: 'acme' } });
+    useUIStore().navOpen = true;
+    const w = mount(ConsoleTopBar, { attachTo: document.body, global: { stubs: { ThemeFamilySwitcher: true, ThemeSwitcher: true } } });
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+    await w.vm.$nextTick();
+    expect(useUIStore().navOpen).toBe(false);
     w.unmount();
   });
 });
