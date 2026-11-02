@@ -60,4 +60,11 @@ describe('agent sidebar', () => {
     expect(w.get('aside').classes()).toContain('lg:w-16');
     expect(w.get('nav > ul:last-child a').attributes('data-tip')).toBe('agent.configure');
   });
+
+  it('shows the org switcher as the plain full-width row, with no role marker', async () => {
+    setRoute({ path: '/o/acme/projects/support/agents', params: { org: 'acme', project: 'support' } });
+    const w = await mountPage(ProjectSidebar);
+    expect(w.find('[data-testid="org-role"]').exists()).toBe(false);
+    expect(w.get('aside > div').element.children).toHaveLength(1);
+  });
 });

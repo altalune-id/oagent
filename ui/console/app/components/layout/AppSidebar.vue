@@ -2,7 +2,6 @@
 import SidebarNav from '#base/components/ui/SidebarNav.vue';
 import SidebarUser from '~/components/layout/SidebarUser.vue';
 import { useOrgNav } from '~/components/layout/useOrgNav';
-import OrgRoleBadge from '~/components/org/OrgRoleBadge.vue';
 import OrgSelector from '~/components/org/OrgSelector.vue';
 import { useOrgsStore } from '~/stores/orgs';
 
@@ -15,12 +14,7 @@ const orgNav = useOrgNav();
 <template>
   <SidebarNav :label="label" :groups="[orgNav]">
     <template #top>
-      <div class="flex items-center gap-1">
-        <div class="min-w-0 flex-1">
-          <OrgSelector />
-        </div>
-        <OrgRoleBadge />
-      </div>
+      <OrgSelector />
     </template>
     <template #footer>
       <SidebarUser />
