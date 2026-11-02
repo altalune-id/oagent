@@ -79,7 +79,7 @@ const budget = computed({
       </h2>
       <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-100" :aria-labelledby="ids.tools">
         <li v-for="tool in tools" :key="tool.name" class="flex flex-wrap items-start gap-2 px-3 py-2 text-ui">
-          <label class="flex min-w-0 flex-1 items-start gap-2">
+          <label class="flex min-w-0 flex-1 items-start gap-2 max-sm:basis-[calc(100%-2rem)]">
             <input
               type="checkbox" class="checkbox checkbox-sm mt-0.5 rounded-sm" :checked="!!toolOf(tool.name)" :disabled="disabled"
               :aria-label="t('configure.tool_enable', { tool: tool.name })" @change="setEnabled(tool.name, ($event.target as HTMLInputElement).checked)"
@@ -89,7 +89,7 @@ const budget = computed({
               <span class="block text-base-content/70">{{ tool.description }}</span>
             </span>
           </label>
-          <label class="badge badge-sm shrink-0 cursor-pointer gap-1 max-sm:ms-6" :class="{ 'badge-outline': !toolOf(tool.name)?.requireApproval }">
+          <label class="badge badge-sm shrink-0 cursor-pointer gap-1 max-sm:ms-8" :class="{ 'badge-outline': !toolOf(tool.name)?.requireApproval }">
             <input
               type="checkbox" class="checkbox checkbox-xs rounded-sm" :checked="!!toolOf(tool.name)?.requireApproval" :disabled="disabled || !toolOf(tool.name)"
               :aria-label="t('configure.tool_approval', { tool: tool.name })" @change="setApproval(tool.name, ($event.target as HTMLInputElement).checked)"

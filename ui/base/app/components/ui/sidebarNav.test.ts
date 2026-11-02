@@ -47,7 +47,7 @@ describe('sidebarNav', () => {
   it('outlines a link on keyboard focus, open and as a rail, since the menu tint alone is not a visible focus', () => {
     for (const rail of [false, true]) {
       const link = mount(SidebarNav, { props: { groups, rail } }).get('a');
-      expect(link.classes()).toEqual(expect.arrayContaining(['focus-visible:outline-2', 'focus-visible:outline-solid!', 'focus-visible:-outline-offset-2']));
+      expect(link.classes()).toEqual(expect.arrayContaining(['focus-visible:outline-2', 'focus-visible:outline-solid!', 'focus-visible:-outline-offset-2', 'focus-visible:outline-base-content']));
     }
   });
 

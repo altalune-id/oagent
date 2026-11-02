@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { create } from '@bufbuild/protobuf';
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
-import { flushPromises, RouterLinkStub } from '@vue/test-utils';
+import { flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -174,8 +174,7 @@ describe('configure page', () => {
       expect(id, control.html()).toBeTruthy();
       expect(w.find(`label[for="${id}"]`).exists(), id).toBe(true);
     }
-    const openRun = w.findAllComponents(RouterLinkStub).find(l => l.text() === 'configure.open_run')!;
-    expect(openRun.props('to')).toBe('/o/acme/projects/web/agents/support/runs/r7Xp2KqLvN9sT4bWzY1cD');
+    expect(w.text()).not.toContain('configure.send');
   });
 
   it('shows the diff before publishing and publishes the next version with a toast', async () => {
@@ -222,7 +221,8 @@ describe('configure page', () => {
     expect(api()).not.toContain('orders.lookup');
     await w.get('input[step="0.01"]').setValue('0.5');
     expect(api()).toContain('"maxCostCents":50');
-    expect(w.findAll('input.tab').map(i => i.attributes('aria-label'))).toEqual(['configure.test_tab', 'configure.api_tab', 'configure.mcp_tab']);
+    expect(w.findAll('input.tab').map(i => i.attributes('aria-label'))).toEqual(['configure.api_tab', 'configure.mcp_tab']);
+    expect((w.get('input.tab[value="api"]').element as HTMLInputElement).checked).toBe(true);
     await w.get('input[value="mcp"]').setValue(true);
     expect(w.findAll('.mockup-code')[1]!.text()).toContain('"tool": "agent_update_draft"');
     expect(w.findAll('.mockup-code')[1]!.find('pre').attributes('data-prefix')).toBe('1');

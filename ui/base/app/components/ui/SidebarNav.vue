@@ -33,7 +33,7 @@ const slots = useSlots();
             </li>
             <li v-for="item in group.items" :key="item.key" :class="{ 'lg:tooltip lg:tooltip-right': rail }" :data-tip="rail ? item.label : undefined">
               <NuxtLink
-                :to="item.to" class="focus-visible:outline-2 focus-visible:outline-solid! focus-visible:-outline-offset-2"
+                :to="item.to" class="focus-visible:outline-2 focus-visible:outline-solid! focus-visible:-outline-offset-2 focus-visible:outline-base-content"
                 :class="{ 'menu-active': item.active, 'lg:justify-center': rail }" :aria-current="item.active ? 'page' : undefined"
               >
                 <Icon v-if="item.icon" :name="item.icon" size="16" class="shrink-0" aria-hidden="true" />

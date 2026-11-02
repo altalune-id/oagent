@@ -10,7 +10,7 @@ import AgentConfigForm from '~/components/agent/configure/AgentConfigForm.vue';
 import ConfigurePane from '~/components/agent/configure/ConfigurePane.vue';
 import { useAgentDraft } from '~/components/agent/configure/useAgentDraft';
 import { useCan } from '~/composables/useCan';
-import { sampleModels, sampleRun, sampleTools } from '~/preview/samples';
+import { sampleModels, sampleTools } from '~/preview/samples';
 import { useAgentsStore } from '~/stores/agents';
 import { useAuthStore } from '~/stores/auth';
 import { useOrgsStore } from '~/stores/orgs';
@@ -50,7 +50,6 @@ await draft.load();
 const { config, state, diff } = draft;
 const reasonId = useId();
 const publishOpen = ref(false);
-const runUrl = computed(() => `/o/${route.params.org}/projects/${route.params.project}/agents/${route.params.agent}/runs/${sampleRun().id}`);
 const current = computed(() => state.value?.publishedVersion ?? 0);
 const models = computed(() => [...new Set([...sampleModels, config.value.model].filter(Boolean))]);
 const tools = computed<ToolInfo[]>(() => [
@@ -120,7 +119,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
 
     <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(22rem,26rem)]">
       <AgentConfigForm v-model="config" :models="models" :tools="tools" :disabled="!canEdit" />
-      <ConfigurePane :agent-id="agent.id" :config="config" :run-url="runUrl" />
+      <ConfigurePane :agent-id="agent.id" :config="config" />
     </div>
 
     <AppModal :open="publishOpen" :title="t('configure.publish_title', { name: agent.name, n: current + 1 })" :dismissible="!draft.publishing.value" @close="publishOpen = false">
@@ -129,7 +128,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
       </p>
       <ul v-if="diff.length" class="flex flex-col gap-2 py-3 text-ui">
         <li v-for="(change, i) in diff" :key="i" class="flex gap-2">
-          <Icon :name="changeIcon(change.key)" size="16" class="mt-0.5 shrink-0 text-base-content/70" aria-hidden="true" />
+          <Icon :name="changeIcon(change.key)" size="16" class="mt-0.5 shrink-0" aria-hidden="true" />
           <span>{{ t(change.key, change.params ?? {}) }}</span>
         </li>
       </ul>
