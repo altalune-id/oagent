@@ -32,7 +32,7 @@ const emit = defineEmits<{ ask: [], confirm: [], cancel: [] }>();
       <ErrorText :error="error" />
       <div class="flex justify-end">
         <AppButton variant="error" soft size="sm" :disabled="busy" @click="emit('ask')">
-          <Icon name="lucide:log-out" size="16" aria-hidden="true" />
+          <Icon name="lucide:log-out" size="16" class="shrink-0 text-error" aria-hidden="true" />
           {{ labels.signOut }}
         </AppButton>
       </div>

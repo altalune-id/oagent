@@ -203,6 +203,23 @@ describe('guard: theme contrast', () => {
     expect(failures).toEqual([]);
   });
 
+  it('sets soft alerts, badges and buttons in base-content, because status text on their 8% tint falls below AA', () => {
+    const failing: string[] = [];
+    for (const { name, colors: c } of themes) {
+      for (const k of ['info', 'success', 'warning', 'error']) {
+        const tint = c[k]!.map((f, i) => 0.08 * f + 0.92 * c['base-100']![i]!) as RGB;
+        if (contrast(c[k]!, tint) < 4.5) {
+          failing.push(`${name}: ${k}`);
+        }
+        expect(contrast(c['base-content']!, tint), `${name}: base-content on the ${k} tint`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+    expect(failing.length, 'the rule is still needed').toBeGreaterThan(0);
+    for (const sheet of ['base/app/assets/css/main.css', 'mcp/src/style.css', 'web/app.css']) {
+      expect(readFileSync(join(ui, sheet), 'utf8'), sheet).toMatch(/\.alert-soft,\s*\.badge-soft,\s*\.btn-soft:not\(:hover, :active\) \{\s*color: var\(--color-base-content\);\s*\}/);
+    }
+  });
+
   it('keeps muted text, *-content and status text at WCAG AA (4.5:1)', () => {
     const failures: string[] = [];
     for (const { name, colors: c } of themes) {
