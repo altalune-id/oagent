@@ -43,7 +43,7 @@ async function load() {
   <ViewShell :title="d.title" :count="rows.length">
     <RowTable :rows="rows" :columns="d.columns" :row-id="d.key" :empty="d.empty" />
     <div v-if="d.refresh" class="flex gap-2">
-      <button class="btn btn-ghost btn-sm" type="button" :disabled="busy" @click="load()">
+      <button class="btn btn-ghost btn-sm text-ui" type="button" :disabled="busy" @click="load()">
         <span v-if="busy" class="loading loading-spinner loading-xs" aria-hidden="true" />
         {{ busy ? t('mcp.refreshing') : t('common.refresh') }}
       </button>

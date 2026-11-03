@@ -54,15 +54,15 @@ useHead({ title: () => `${t('profile.title')} · OAgent` });
     <div class="flex items-center gap-4">
       <Avatar v-if="person" :id="person.id" :name="person.name" :email="person.email" :avatar-url="person.avatarUrl" size="lg" />
       <div class="min-w-0">
-        <h1 class="text-2xl font-bold">
+        <h1 class="text-xl font-semibold">
           {{ t('profile.title') }}
         </h1>
-        <p v-if="person" class="truncate text-sm text-base-content/70">
+        <p v-if="person" class="truncate text-ui text-base-content/70">
           {{ person.email }}
         </p>
       </div>
     </div>
-    <p v-if="!isPerson" class="text-sm text-base-content/70">
+    <p v-if="!isPerson" class="text-ui text-base-content/70">
       {{ t('profile.not_a_person') }}
     </p>
     <template v-else>

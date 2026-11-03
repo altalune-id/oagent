@@ -64,11 +64,11 @@ const consoleLink = { key: 'consoleUrl', label: t('mcp.invite_console'), kind: '
       </dl>
 
       <div v-if="!done" class="flex gap-2">
-        <button v-if="!elsewhere" type="button" class="btn btn-primary btn-sm" :disabled="busy" @click="confirm">
+        <button v-if="!elsewhere" type="button" class="btn btn-primary btn-sm text-ui" :disabled="busy" @click="confirm">
           <span v-if="busy" class="loading loading-spinner loading-xs" aria-hidden="true" />
           {{ t('mcp.invite_send') }}
         </button>
-        <button type="button" class="btn btn-ghost btn-sm" :disabled="busy" @click="discard">
+        <button type="button" class="btn btn-ghost btn-sm text-ui" :disabled="busy" @click="discard">
           {{ t('mcp.invite_discard') }}
         </button>
       </div>

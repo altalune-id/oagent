@@ -82,16 +82,16 @@ const ids = {
       <legend class="fieldset-legend text-ui">
         {{ labels.projects }}
       </legend>
-      <label class="flex items-center gap-2 text-sm">
+      <label class="flex items-center gap-2 text-ui">
         <input v-model="allProjects" type="radio" :value="true" class="radio radio-sm" :disabled="busy">
         {{ labels.allProjects }}
       </label>
-      <label class="flex items-center gap-2 text-sm">
+      <label class="flex items-center gap-2 text-ui">
         <input v-model="allProjects" type="radio" :value="false" class="radio radio-sm" :disabled="busy">
         {{ labels.selectProjects }}
       </label>
       <div v-if="!allProjects" class="max-h-40 space-y-1 overflow-auto rounded-box border border-base-300 p-2">
-        <label v-for="p in projects" :key="p.id" class="flex items-center gap-2 text-sm">
+        <label v-for="p in projects" :key="p.id" class="flex items-center gap-2 text-ui">
           <input v-model="projectIds" type="checkbox" :value="p.id" class="checkbox checkbox-sm rounded-sm" :disabled="busy">
           {{ p.name }}
         </label>
@@ -103,7 +103,7 @@ const ids = {
         {{ labels.scopes }}
       </legend>
       <div class="grid gap-1 sm:grid-cols-2">
-        <label v-for="s in scopeOptions" :key="s.name" class="flex items-center gap-2 text-sm">
+        <label v-for="s in scopeOptions" :key="s.name" class="flex items-center gap-2 text-ui">
           <input v-model="scopes" type="checkbox" :value="s.name" class="checkbox checkbox-sm rounded-sm" :disabled="busy">
           {{ s.label }}
         </label>

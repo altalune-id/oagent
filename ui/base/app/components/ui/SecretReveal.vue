@@ -30,7 +30,7 @@ const dotenv = computed(() => Object.entries(env).map(([k, v]) => `${k}=${v}`).j
         <span>{{ labels.once }}</span>
       </div>
       <SecretField :value="value" :label="labels.copy" />
-      <div v-if="dotenv" class="flex items-center gap-2 text-sm">
+      <div v-if="dotenv" class="flex items-center gap-2 text-ui">
         <CopyButton :value="dotenv" :label="labels.copyEnv" />
         <span aria-hidden="true">{{ labels.copyEnv }}</span>
       </div>
