@@ -10,7 +10,7 @@ const name = useId();
 
 const body = computed(() => ({ id: agentId, config }));
 const snippets = computed(() => ({
-  api: `curl -X POST "$OAGENT_URL/agent.v1.AgentService/UpdateAgentDraft" \\\n  -H "Authorization: Bearer $OAGENT_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(body.value).replaceAll('\'', '\'\\\'\'')}'`,
+  api: `curl -X POST "$OAGENT_URL/api/agent.v1.AgentService/UpdateAgentDraft" \\\n  -H "Authorization: Bearer $OAGENT_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(body.value).replaceAll('\'', '\'\\\'\'')}'`,
   mcp: JSON.stringify({ tool: 'agent_update_draft', arguments: body.value }, null, 2),
 }));
 const lines = computed(() => ({

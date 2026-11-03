@@ -205,6 +205,7 @@
   "members.role_owner": "Pemilik",
   "members.title": "Anggota",
   "nav.agents": "Agen",
+  "nav.breadcrumbs": "Jejak navigasi",
   "org.title": "Organisasi",
   "project.title": "Proyek",
   "tokens.status_active": "Aktif",

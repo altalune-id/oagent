@@ -235,6 +235,7 @@ describe('configure page', () => {
     const api = () => w.get('.mockup-code').text();
     const box = (kind: string, tool: string) => w.findAll(`input[aria-label^="configure.tool_${kind}"]`).find(i => i.attributes('aria-label')!.includes(`"${tool}"`))!;
     expect(w.get('.mockup-code pre').attributes('data-prefix')).toBe('$');
+    expect(api()).toContain('"$OAGENT_URL/api/agent.v1.AgentService/UpdateAgentDraft"');
     await w.get('select').setValue('small-3');
     expect(api()).toContain('"model":"small-3"');
     expect(w.get('[role="status"]').text()).toContain('configure.unsaved');
