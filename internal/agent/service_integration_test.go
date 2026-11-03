@@ -217,6 +217,34 @@ func TestService_DraftEditDuringAPublishKeepsTheVersion(t *testing.T) {
 	assert.Equal(t, []int32{1, 2}, []int32{v1.Version, v2.Version})
 }
 
+func TestService_DraftEditDuringAPublishStaysUnpublished(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
+	svc := f.service(nil)
+	a, err := svc.Create(ctx, agent.CreateRequest{OrgID: orgID, ProjectID: projectID, Slug: "late-edit", Name: "Late edit"})
+	require.NoError(t, err)
+	_, err = svc.UpdateDraft(ctx, a.ID, agent.Config{Model: "m-1"})
+	require.NoError(t, err)
+
+	var edit sync.WaitGroup
+	var editErr error
+	paused := &pausedPublish{Store: f.store, during: func() {
+		edit.Go(func() { _, editErr = svc.UpdateDraft(ctx, a.ID, agent.Config{Model: "m-2"}) })
+		time.Sleep(200 * time.Millisecond)
+	}}
+	publisher := agent.NewService(paused, db.NewTransactor(f.pool), apperror.NewReporter(nil, false).Unexpected)
+	_, _, _, err = publisher.Publish(ctx, a.ID, uuid.Nil)
+	require.NoError(t, err)
+	edit.Wait()
+	require.NoError(t, editErr)
+
+	got, err := f.store.ByID(ctx, a.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "m-2", got.Draft.Model)
+	assert.True(t, got.Unpublished(), "an edit that waited on a publish lands after it, so it is not yet live")
+}
+
 // Run with -race: saving never-published agents at once shares no SQL expression.
 func TestService_ConcurrentCreatesShareNoExpression(t *testing.T) {
 	f := newPgFixture(t)

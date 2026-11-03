@@ -146,14 +146,21 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 // UpdateDraft replaces an agent's draft config; the published version is unchanged.
 func (s *Service) UpdateDraft(ctx context.Context, id uuid.UUID, cfg Config) (*Agent, error) {
 	// NOTE: last write wins; add a draft revision check once two people edit one agent at a time.
-	a, err := s.store.ByID(ctx, id)
-	if err != nil {
-		return nil, s.errOrReport(ctx, "agent: update draft", err)
-	}
-	if err := a.SetDraft(cfg, time.Now().UTC()); err != nil {
+	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
-	if err := s.store.SaveDraft(ctx, a); err != nil {
+	var a *Agent
+	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
+		var err error
+		if a, err = s.store.LockForPublish(ctx, id); err != nil {
+			return err
+		}
+		if err := a.SetDraft(cfg, time.Now().UTC()); err != nil {
+			return err
+		}
+		return s.store.SaveDraft(ctx, a)
+	})
+	if err != nil {
 		return nil, s.errOrReport(ctx, "agent: update draft", err)
 	}
 	return a, nil

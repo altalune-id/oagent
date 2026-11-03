@@ -166,6 +166,20 @@ func TestAgent_DraftAndPublish(t *testing.T) {
 	assert.Equal(t, edited, v2.Config)
 }
 
+func TestAgent_SetDraftAfterAPublishIsAlwaysUnpublished(t *testing.T) {
+	a, err := New(uuid.New(), uuid.New(), "support", "Support", "", uuid.Nil)
+	require.NoError(t, err)
+	t0 := time.Date(2026, 11, 3, 9, 0, 0, 0, time.UTC)
+	require.NoError(t, a.SetDraft(validConfig(), t0))
+	_, _, err = a.Publish(nil, uuid.Nil, t0.Add(time.Second))
+	require.NoError(t, err)
+	require.NoError(t, a.SetDraft(validConfig(), t0), "a clock behind the publish still marks the edit as later")
+	assert.True(t, a.Unpublished())
+	assert.Equal(t, a.PublishedAt.Add(time.Microsecond), *a.DraftUpdatedAt)
+	require.NoError(t, a.SetDraft(validConfig(), t0.Add(2*time.Second+123)))
+	assert.Equal(t, t0.Add(2*time.Second), *a.DraftUpdatedAt, "stamps keep the microseconds Postgres stores")
+}
+
 func TestAgent_PublishNumbersFromTheLatestVersion(t *testing.T) {
 	a, err := New(uuid.New(), uuid.New(), "support", "Support", "", uuid.Nil)
 	require.NoError(t, err)

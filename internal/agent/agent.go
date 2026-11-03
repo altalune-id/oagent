@@ -134,6 +134,10 @@ func (a *Agent) SetDraft(cfg Config, now time.Time) error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
+	now = now.Truncate(time.Microsecond)
+	if a.PublishedAt != nil && !now.After(*a.PublishedAt) {
+		now = a.PublishedAt.Add(time.Microsecond)
+	}
 	a.Draft, a.DraftUpdatedAt = cfg, &now
 	return nil
 }
