@@ -294,7 +294,7 @@
   "error.save_draft": "Draf tidak dapat disimpan",
   "error.publish_agent": "Agen tidak dapat dipublikasikan",
   "configure.saving": "Menyimpan draf…",
-  "configure.leave_first": "Perubahan terakhir Anda belum tersimpan. Tinggalkan halaman sekali lagi untuk membuangnya.",
+  "configure.leave_first": "Perubahan terakhir Anda belum tersimpan. Buka halaman itu sekali lagi untuk keluar tanpa perubahan tersebut.",
   "configure.samples_block": "Pilih model dan alat sungguhan untuk menerbitkan. Contoh tidak bisa ditayangkan.",
   "configure.unsaved": "Ada perubahan yang belum disimpan.",
   "configure.saved_at": "Draf disimpan {when}.",

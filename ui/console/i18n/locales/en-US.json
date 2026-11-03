@@ -294,7 +294,7 @@
   "error.save_draft": "Could not save the draft",
   "error.publish_agent": "Could not publish the agent",
   "configure.saving": "Saving the draft…",
-  "configure.leave_first": "Your latest edit isn't saved. Leave again to discard it.",
+  "configure.leave_first": "Your last changes aren't saved. Go there again to leave without them.",
   "configure.samples_block": "Pick a real model and tools to publish. Sample ones can't go live.",
   "configure.unsaved": "Unsaved changes.",
   "configure.saved_at": "Draft saved {when}.",
