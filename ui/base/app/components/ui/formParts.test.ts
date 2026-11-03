@@ -59,19 +59,17 @@ describe('dataTable', () => {
   });
 
   it('shows skeleton rows while loading, busy for assistive tech', () => {
-    const w = mount(DataTable, { props: { columns, rows: [], rowKey: 'id', caption: 'Agents', loading: true }, slots: { 'empty': '<p>none</p>', 'row-sm': '<span>row</span>' } });
+    const w = mount(DataTable, { props: { columns, rows: [], rowKey: 'id', caption: 'Agents', loading: true }, slots: { empty: '<p>none</p>' } });
     expect(w.get('table').attributes('aria-busy')).toBe('true');
     expect(w.findAll('table .skeleton')).toHaveLength(6);
-    expect(w.findAll('ul.list .skeleton')).toHaveLength(3);
     expect(w.text()).not.toContain('none');
   });
 
-  it('shows the empty slot when done with no rows, and a stacked list on phones', () => {
+  it('shows the empty slot when done with no rows, and keeps the table in its scroll box on phones', () => {
     expect(mount(DataTable, { props: { columns, rows: [], rowKey: 'id', caption: 'Agents' }, slots: { empty: '<p>none</p>' } }).text()).toBe('none');
-    const w = mount(DataTable, { props: { columns, rows, rowKey: 'id', caption: 'Agents' }, slots: { 'row-sm': ({ row }: { row: { name: string } }) => h('span', row.name) } });
-    expect(w.get('ul.list').attributes('aria-label')).toBe('Agents');
-    expect(w.findAll('li.list-row').map(li => li.text())).toEqual(['Refund Triage', 'Order Status']);
-    expect(w.get('.overflow-x-auto').classes()).toContain('max-sm:hidden');
+    const w = mount(DataTable, { props: { columns, rows, rowKey: 'id', caption: 'Agents' } });
+    expect(w.get('.overflow-x-auto').classes()).not.toContain('max-sm:hidden');
+    expect(w.find('ul').exists()).toBe(false);
   });
 });
 

@@ -32,7 +32,7 @@ function cell(row: T, key: string): unknown {
       <slot name="empty" />
     </div>
     <template v-else>
-      <div class="max-w-full overflow-x-auto rounded-box border border-base-300 bg-base-100" :class="{ 'max-sm:hidden': slots['row-sm'] }">
+      <div class="max-w-full overflow-x-auto rounded-box border border-base-300 bg-base-100">
         <table class="table table-sm text-ui" :aria-busy="loading || undefined">
           <caption class="sr-only">
             {{ caption }}
@@ -68,18 +68,6 @@ function cell(row: T, key: string): unknown {
           </tbody>
         </table>
       </div>
-      <ul v-if="slots['row-sm']" class="list rounded-box border border-base-300 bg-base-100 sm:hidden" :aria-label="caption" :aria-busy="loading || undefined">
-        <template v-if="loading">
-          <li v-for="n in 3" :key="n" class="list-row">
-            <div class="skeleton h-4 w-32" />
-          </li>
-        </template>
-        <template v-else>
-          <li v-for="row in rows" :key="String(cell(row, rowKey))" class="list-row">
-            <slot name="row-sm" :row="row" />
-          </li>
-        </template>
-      </ul>
     </template>
   </div>
 </template>

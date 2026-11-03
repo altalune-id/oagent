@@ -24,6 +24,12 @@ describe('runs page', () => {
     expect(w.get('[role="note"]').text()).toBe('run.preview_note');
     expect(w.get('caption').text()).toBe('run.samples_caption');
     expect(w.text()).toContain(run.id);
+    const cells = w.findAll('tbody td');
+    expect(cells[0]!.classes()).toEqual(['font-mono', 'text-xs']);
+    expect(cells[1]!.text()).toBe('run.status_waiting');
+    expect(cells[1]!.find('.badge').exists()).toBe(false);
+    expect(w.find('li.list-row').exists()).toBe(false);
+    expect(w.find('.alert').exists()).toBe(false);
   });
 });
 
