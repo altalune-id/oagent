@@ -278,6 +278,7 @@ describe('actions follow the caller\'s permissions', () => {
     signedInWith('org:read', 'org:write');
     const w = await mountPage(OrgSettings);
     expect(w.find('form').exists()).toBe(true);
+    expect(w.get('form').classes()).toEqual(expect.arrayContaining(['rounded-box', 'border', 'border-base-300', 'bg-base-100', 'p-4']));
     expect(w.text()).not.toContain('settings.read_only');
   });
 
@@ -290,6 +291,13 @@ describe('actions follow the caller\'s permissions', () => {
     expect(w.get('h1').classes()).toEqual(['text-xl', 'font-semibold', 'break-words']);
     expect(w.get('[data-testid="project-settings-readonly"] dl').text()).toContain('Web');
     expect(w.get('[data-testid="project-settings-readonly"] dl').text()).toContain('web');
+  });
+
+  it('boxes the project settings form like the org one, with project:write', async () => {
+    inProject('/settings');
+    signedInWith('project:read', 'project:write');
+    const w = await mountPage(ProjectSettings);
+    expect(w.get('form').classes()).toEqual(expect.arrayContaining(['rounded-box', 'border', 'border-base-300', 'bg-base-100', 'p-4']));
   });
 
   it('offers New project and Edit only with project:write', async () => {

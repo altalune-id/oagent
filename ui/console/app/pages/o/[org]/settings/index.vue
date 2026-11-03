@@ -78,7 +78,7 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('settings.ti
       <KeyValue :items="facts" :copy-label="t('common.copy_label', { label: '{label}' })" />
     </div>
 
-    <form v-if="canEdit" novalidate class="flex flex-col gap-4" @submit.prevent="save()">
+    <form v-if="canEdit" novalidate class="flex flex-col gap-4 rounded-box border border-base-300 bg-base-100 p-4" @submit.prevent="save()">
       <label class="flex flex-col gap-1">
         <span class="label text-ui text-base-content">{{ t('common.name') }}</span>
         <input v-model="name" type="text" class="input input-sm w-full text-ui" :disabled="busy">

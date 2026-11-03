@@ -47,8 +47,6 @@ const listLabels = computed(() => ({
   revoked: t('tokens.status_revoked'),
   revoke: t('common.revoke'),
   revokeConfirm: t('apikeys.revoke_confirm'),
-  actionsFor: (name: string) => t('apikeys.actions_for', { name }),
-  actionsColumn: t('apikeys.col_actions'),
   cancel: t('common.cancel'),
   empty: t('apikeys.personal_empty'),
   secretWarning: t('apikeys.secret_warning'),
@@ -86,6 +84,9 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('apikeys.per
     />
     <PersonalKeys
       :keys="rows"
+      :caption="t('apikeys.personal_title')"
+      :actions-for="(name: string) => t('apikeys.actions_for', { name })"
+      :actions-column="t('apikeys.col_actions')"
       :created="created"
       :error="error"
       :signed-in="signedIn"

@@ -38,8 +38,6 @@ export interface PersonalKeysLabels {
   revoked: string;
   revoke: string;
   revokeConfirm: string;
-  actionsFor: (name: string) => string;
-  actionsColumn: string;
   cancel: string;
   empty: string;
   secretWarning: string;
@@ -53,6 +51,9 @@ export interface PersonalKeysLabels {
 
 const props = withDefaults(defineProps<{
   keys: PersonalKeyView[],
+  caption: string,
+  actionsFor: (name: string) => string,
+  actionsColumn: string,
   created?: { plaintext: string, snippet: string } | null,
   error?: ShownError | null,
   signedIn?: boolean,
@@ -76,8 +77,6 @@ const props = withDefaults(defineProps<{
     revoked: 'Revoked',
     revoke: 'Revoke',
     revokeConfirm: 'Revoke this key?',
-    actionsFor: (name: string) => `Actions for ${name}`,
-    actionsColumn: 'Actions',
     cancel: 'Cancel',
     empty: 'You have no personal API keys in this organization yet.',
     secretWarning: 'Copy this secret now — it will not be shown again.',
@@ -104,7 +103,7 @@ const columns = computed<Column[]>(() => [
   { key: 'lastUsed', label: props.labels.lastUsed, muted: true },
   { key: 'expires', label: props.labels.expires },
   { key: 'status', label: props.labels.status },
-  { key: 'menu', label: props.labels.actionsColumn, hideLabel: true, align: 'end' },
+  { key: 'menu', label: props.actionsColumn, hideLabel: true, align: 'end' },
 ]);
 
 function revoke() {
@@ -147,7 +146,7 @@ function revoke() {
     <ErrorText :error="error" />
 
     <EmptyState v-if="keys.length === 0" icon="lucide:key-round" :title="labels.empty" />
-    <DataTable v-else :caption="labels.name" row-key="rowKey" :columns="columns" :rows="keys">
+    <DataTable v-else :caption="caption" row-key="rowKey" :columns="columns" :rows="keys">
       <template #cell-name="{ row }">
         <span class="whitespace-nowrap">
           <span class="font-medium">{{ row.name }}</span>
@@ -169,7 +168,7 @@ function revoke() {
         <StatusLabel :tone="statusTone[keyStatus(row.revoked, row.expiry)] ?? 'neutral'" :label="labels[keyStatus(row.revoked, row.expiry)]" />
       </template>
       <template #cell-menu="{ row }">
-        <AppDropdown v-if="keyStatus(row.revoked, row.expiry) === 'active'" placement="end" size="xs" trigger-class="btn-square" content-class="w-44" :label="labels.actionsFor(row.name)">
+        <AppDropdown v-if="keyStatus(row.revoked, row.expiry) === 'active'" placement="end" size="xs" trigger-class="btn-square" content-class="w-44" :label="actionsFor(row.name)">
           <template #trigger>
             <Icon name="lucide:ellipsis" size="14" class="shrink-0" aria-hidden="true" />
           </template>

@@ -13,7 +13,7 @@ const keys: PersonalKeyView[] = [
 const meta = {
   title: 'API keys/PersonalKeys',
   component: PersonalKeys,
-  args: { keys },
+  args: { keys, caption: 'Personal API keys', actionsFor: (name: string) => `Actions for ${name}`, actionsColumn: 'Actions' },
 } satisfies Meta<typeof PersonalKeys>;
 
 export default meta;
