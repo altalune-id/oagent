@@ -165,7 +165,12 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Built console keeps every placeholder the server rewrites
-        run: go test ./internal/web/console/ -run TestBuiltIndex -v
+        env:
+          REQUIRE_BUILT_UI: "1"
+        run: |
+          set -o pipefail
+          go test ./internal/web/console/ -run TestBuiltIndex -v -count=1 | tee built-index.out
+          test "$(grep -c -- '--- PASS: TestBuiltIndex' built-index.out)" -eq 1
       - name: Storybook
         run: pnpm --filter @oagent/console build-storybook --quiet
 

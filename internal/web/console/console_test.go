@@ -8,6 +8,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -192,10 +193,13 @@ func TestBuiltIndex_KeepsThePlaceholdersRebaseSwaps(t *testing.T) {
 	require.NoError(t, err)
 	b, err := fs.ReadFile(sub, indexName)
 	if errors.Is(err, fs.ErrNotExist) {
+		if os.Getenv("REQUIRE_BUILT_UI") != "" {
+			t.Fatal("internal/web/console/public/index.html is missing but REQUIRE_BUILT_UI is set; make ui must build it")
+		}
 		t.Skip("internal/web/console/public is not built; run make ui")
 	}
 	require.NoError(t, err)
-	for _, want := range []string{`apiUrl:""`, `appVersion:""`, `accountUrl:""`, `baseURL:"/"`} {
-		assert.Contains(t, string(b), want, "rebase swaps this exact string; if Nuxt changed its output, rebase silently does nothing")
+	for _, p := range placeholders("/", "", "", "") {
+		assert.Contains(t, string(b), p.old, "rebase swaps this exact string; if Nuxt changed its output, rebase silently does nothing")
 	}
 }

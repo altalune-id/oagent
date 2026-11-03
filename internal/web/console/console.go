@@ -84,22 +84,39 @@ func cacheControl(name string) string {
 	}
 }
 
-func rebase(html, base, apiBase, appVersion, accountURL string) string {
-	if base == "" || base == "/" {
-		return html
+type swap struct{ old, new string }
+
+// NOTE: every string rebase rewrites lives here; the built-index test checks each old one still appears in Nuxt's output.
+func placeholders(base, apiBase, appVersion, accountURL string) []swap {
+	out := []swap{
+		{`"/_nuxt/`, `"` + base + `_nuxt/`},
+		{`baseURL:"/"`, `baseURL:"` + base + `"`},
+		{`apiUrl:""`, ""},
+		{`appVersion:""`, ""},
+		{`accountUrl:""`, ""},
 	}
-	html = strings.ReplaceAll(html, `"/_nuxt/`, `"`+base+`_nuxt/`)
-	html = strings.ReplaceAll(html, `baseURL:"/"`, `baseURL:"`+base+`"`)
 	if apiBase != "" {
-		html = strings.ReplaceAll(html, `apiUrl:""`, `apiUrl:"`+apiBase+`"`)
+		out[2].new = `apiUrl:"` + apiBase + `"`
 	}
 	if appVersion != "" {
-		html = strings.ReplaceAll(html, `appVersion:""`, `appVersion:`+strconv.Quote(appVersion))
+		out[3].new = `appVersion:` + strconv.Quote(appVersion)
 	}
 	if accountURL != "" {
 		// SECURITY: JSON escapes <, > and & so the operator's URL cannot close the inline script.
 		quoted, _ := json.Marshal(accountURL)
-		html = strings.ReplaceAll(html, `accountUrl:""`, `accountUrl:`+string(quoted))
+		out[4].new = `accountUrl:` + string(quoted)
+	}
+	return out
+}
+
+func rebase(html, base, apiBase, appVersion, accountURL string) string {
+	if base == "" || base == "/" {
+		return html
+	}
+	for _, p := range placeholders(base, apiBase, appVersion, accountURL) {
+		if p.new != "" {
+			html = strings.ReplaceAll(html, p.old, p.new)
+		}
 	}
 	return html
 }
