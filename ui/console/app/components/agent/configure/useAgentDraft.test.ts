@@ -198,6 +198,16 @@ describe('useAgentDraft', () => {
     expect(await d.leaveGuard()).toBe(true);
   });
 
+  it('lets the second leave through while the save keeps failing', async () => {
+    const d = useAgentDraft(id);
+    await d.load();
+    d.config.value = { ...d.config.value, model: 'small-3' };
+    await vi.advanceTimersByTimeAsync(0);
+    client.updateAgentDraft!.mockRejectedValue(connectError('GEN900'));
+    expect(await d.leaveGuard()).toBe(false);
+    expect(await d.leaveGuard()).toBe(true);
+  });
+
   it('keeps edits typed while a publish is in flight, and saves them after', async () => {
     const d = useAgentDraft(id);
     await d.load();

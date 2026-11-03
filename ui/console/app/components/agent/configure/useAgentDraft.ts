@@ -155,13 +155,16 @@ export function useAgentDraft(agentId: string) {
     }
   }
 
+  let leaveBlocked = false;
+
   async function leaveGuard() {
     if (!dirty.value && !saving.value) {
       return true;
     }
-    if (await save()) {
+    if (leaveBlocked || await save()) {
       return true;
     }
+    leaveBlocked = true;
     toast.push('info', t('configure.leave_first'));
     return false;
   }
