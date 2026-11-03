@@ -24,7 +24,7 @@ const slots = useSlots();
           <h1 :class="mono ? 'font-mono text-lg font-medium break-all sm:text-xl' : 'text-xl font-semibold break-words'">
             {{ title }}
           </h1>
-          <span v-if="preview" class="badge badge-info badge-soft badge-sm">{{ preview }}</span>
+          <span v-if="preview" class="badge badge-info badge-soft text-base-content badge-sm">{{ preview }}</span>
           <slot name="meta" />
         </div>
         <p v-if="description" class="text-ui text-base-content/70">

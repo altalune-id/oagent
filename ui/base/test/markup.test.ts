@@ -203,15 +203,27 @@ describe('guard: theme contrast', () => {
     expect(failures).toEqual([]);
   });
 
-  it.each(['base/app/assets/css/main.css', 'mcp/src/style.css', 'web/app.css'])('drops a colored icon to the fill text on a hovered or pressed soft button in %s', (sheet) => {
-    expect(readFileSync(join(ui, sheet), 'utf8')).toMatch(/\.btn-soft:is\(:hover, :active\) \*\s*\{\s*color: inherit;\s*\}/);
+  const softMarkup = [...files, ...mcpFiles, ...sources(join(ui, '..', 'internal'), /\.templ$/).map(path => ({ app: 'web', path: path.slice(ui.length), text: readFileSync(path, 'utf8') }))];
+  const softUses = (part: string) => softMarkup.flatMap(f => [...f.text.matchAll(new RegExp(`[^"'\`]*\\b${part}-soft\\b[^"'\`]*`, 'g'))].map(m => ({ path: f.path, cls: m[0].trim() })));
+  const neutralText = (cls: string) => cls.split(/\s+/).includes('text-base-content');
+  const appButton = readFileSync(join(ui, 'base/app/components/ui/AppButton.vue'), 'utf8');
+  const softButtonNeutral = appButton.includes('[--btn-rest-fg:var(--color-base-content)]');
+
+  it('sets every soft alert and badge in base-content in the markup', () => {
+    const uses = ['alert', 'badge'].flatMap(softUses);
+    expect(uses.length).toBeGreaterThan(0);
+    expect(uses.filter(u => !neutralText(u.cls)).map(u => `${u.path}: ${u.cls}`)).toEqual([]);
   });
 
-  it.each(['base/app/assets/css/main.css', 'mcp/src/style.css', 'web/app.css'])('keeps soft alert, badge and button text at AA on their soft tint in %s', (sheet) => {
-    const rules = [...readFileSync(join(ui, sheet), 'utf8').matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+  it('rests AppButton soft text on base-content and lets its icon take the hover and press fill text', () => {
+    expect(softButtonNeutral).toBe(true);
+    expect(appButton).toContain('hover:*:text-current active:*:text-current');
+  });
+
+  it('keeps soft alert, badge and button text at AA on their soft tint', () => {
     const failures: string[] = [];
     for (const part of ['alert', 'badge', 'btn']) {
-      const neutral = rules.some(([, sel, body]) => sel!.includes(`.${part}-soft`) && /color:\s*var\(--color-base-content\)/.test(body!));
+      const neutral = part === 'btn' ? softButtonNeutral : softUses(part).every(u => neutralText(u.cls));
       for (const { name, colors: c } of themes) {
         for (const k of ['info', 'success', 'warning', 'error']) {
           const tint = c[k]!.map((v, i) => 0.08 * v + 0.92 * c['base-100']![i]!) as RGB;

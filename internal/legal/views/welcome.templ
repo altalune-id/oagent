@@ -15,7 +15,7 @@ templ Welcome(d layout.LayoutData, v WelcomeData) {
 		@layout.Card(d.Title) {
 			<p>Before you continue, please read and accept the terms of this instance.</p>
 			if v.Error != "" {
-				<div role="alert" class="alert alert-error alert-soft">{ v.Error }</div>
+				<div role="alert" class="alert alert-error alert-soft text-base-content">{ v.Error }</div>
 			}
 			<form method="post" action={ d.Href("/welcome") } class="flex flex-col gap-4">
 				if v.ReturnTo != "" {

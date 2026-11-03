@@ -31,7 +31,7 @@ const classes = computed(() => [
   props.variant === 'plain' ? '' : `btn-${props.variant}`,
   props.size === 'md' ? '' : `btn-${props.size}`,
   props.size === 'sm' ? 'text-ui' : '',
-  { 'btn-soft': props.soft, 'btn-square': props.square },
+  { 'btn-soft [--btn-rest-fg:var(--color-base-content)] hover:*:text-current active:*:text-current': props.soft, 'btn-square': props.square },
 ]);
 </script>
 

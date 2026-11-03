@@ -101,7 +101,7 @@ func SignInError(d layout.LayoutData, v SignInErrorData) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div role=\"alert\" class=\"alert alert-error alert-soft\"><span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div role=\"alert\" class=\"alert alert-error alert-soft text-base-content\"><span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

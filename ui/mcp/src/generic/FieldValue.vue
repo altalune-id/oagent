@@ -8,10 +8,10 @@ import { badgeFor, formatValue, isEmpty } from './descriptor';
 const { field, value } = defineProps<{ field: Field, value: unknown }>();
 
 const tones: Record<BadgeTone, string> = {
-  success: 'badge-soft badge-success',
-  warning: 'badge-soft badge-warning',
-  error: 'badge-soft badge-error',
-  info: 'badge-soft badge-info',
+  success: 'badge-soft text-base-content badge-success',
+  warning: 'badge-soft text-base-content badge-warning',
+  error: 'badge-soft text-base-content badge-error',
+  info: 'badge-soft text-base-content badge-info',
   neutral: 'badge-outline',
   ghost: 'badge-ghost',
 };

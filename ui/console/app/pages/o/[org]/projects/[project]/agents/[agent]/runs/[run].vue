@@ -68,7 +68,7 @@ useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
       <div class="min-w-0">
         <h1 class="text-xl font-semibold">
           {{ t('run.heading') }} <span class="font-mono text-base font-medium break-all">{{ run.id }}</span>
-          <span class="badge badge-info badge-soft badge-sm ms-2 align-middle">{{ t('preview.badge') }}</span>
+          <span class="badge badge-info badge-soft text-base-content badge-sm ms-2 align-middle">{{ t('preview.badge') }}</span>
         </h1>
         <p class="text-ui text-base-content/70">
           {{ started[0] }}<span class="font-mono text-xs">{{ run.model }}</span>{{ started[1] }}

@@ -45,7 +45,7 @@ templ Landing(d layout.LayoutData, v LandingData) {
 	@layout.Layout(d) {
 		@layout.Card(d.Title) {
 			if v.Error != "" {
-				<div role="alert" class="alert alert-error alert-soft">{ v.Error }</div>
+				<div role="alert" class="alert alert-error alert-soft text-base-content">{ v.Error }</div>
 			}
 			switch v.State {
 				case StateJoin:

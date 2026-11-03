@@ -122,7 +122,7 @@ function revoke() {
   </div>
 
   <div v-else class="flex flex-col gap-4">
-    <div v-if="created" role="alert" class="alert alert-success alert-soft flex flex-col items-stretch gap-3 text-ui">
+    <div v-if="created" role="alert" class="alert alert-success alert-soft text-base-content flex flex-col items-stretch gap-3 text-ui">
       <div class="flex w-full items-center justify-between gap-3">
         <p class="font-medium">
           {{ labels.secretWarning }}
