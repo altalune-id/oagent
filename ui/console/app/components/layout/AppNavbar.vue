@@ -9,7 +9,8 @@ import { useAuthStore } from '~/stores/auth';
 
 const route = useRoute();
 
-const hasNav = computed(() => !!route.params.org);
+const pageError = useError();
+const hasNav = computed(() => !!route.params.org && !pageError.value);
 
 const auth = useAuthStore();
 const { apiUrl } = useRuntimeConfig().public;

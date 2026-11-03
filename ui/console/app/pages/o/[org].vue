@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import AppShell from '#base/components/ui/AppShell.vue';
+import { errorKind } from '#base/components/ui/errorPage';
+import ErrorPage from '#base/components/ui/ErrorPage.vue';
 import AgentSidebar from '~/components/agent/AgentSidebar.vue';
 import AppSidebar from '~/components/layout/AppSidebar.vue';
 import ConsoleTopBar from '~/components/layout/ConsoleTopBar.vue';
@@ -41,6 +43,19 @@ watch(() => route.fullPath, () => {
 });
 
 await projects.ensureLoaded(org.value.id);
+
+if (projects.error) {
+  throw createError({ statusCode: 502, statusMessage: t('error.load_projects'), fatal: true });
+}
+
+const pageError = ref<{ clearError: () => void }>();
+watch(() => route.fullPath, () => pageError.value?.clearError());
+
+function shown(error: unknown) {
+  const { statusCode, statusMessage } = error as { statusCode?: number, statusMessage?: string };
+  const kind = errorKind(statusCode);
+  return { kind, title: t(`error_page.${kind}_title`), body: (kind !== 'failed' && statusMessage) || t(`error_page.${kind}_body`) };
+}
 </script>
 
 <template>
@@ -50,9 +65,20 @@ await projects.ensureLoaded(org.value.id);
       <span>{{ t('environment.banner', { env: t(environmentLabelKey(project?.environment)) }) }}</span>
     </div>
     <ConsoleTopBar />
-    <main class="min-w-0 flex-1" :class="route.meta.bleed ? '' : 'p-4 lg:p-6'">
-      <NuxtPage />
-    </main>
+    <NuxtErrorBoundary ref="pageError">
+      <main class="min-w-0 flex-1" :class="route.meta.bleed ? '' : 'p-4 lg:p-6'">
+        <NuxtPage />
+      </main>
+      <template #error="{ error, clearError }">
+        <ErrorPage
+          v-bind="shown(error)"
+          :home-label="t('org.all')"
+          :retry-label="t('common.retry')"
+          @home="navigateTo('/orgs')"
+          @retry="clearError()"
+        />
+      </template>
+    </NuxtErrorBoundary>
     <template #sidebar>
       <AgentSidebar v-if="agentSlug" />
       <ProjectSidebar v-else-if="projectSlug" />

@@ -38,6 +38,10 @@ if (!project.value) {
 
 await Promise.all([agents.ensureLoaded(project.value.id), useAuthStore().load()]);
 
+if (agents.error) {
+  throw createError({ statusCode: 502, statusMessage: t('error.load_agents'), fatal: true });
+}
+
 const agent = computed(() => agents.items.find(a => a.projectId === project.value?.id && a.slug === route.params.agent));
 
 if (!agent.value) {
