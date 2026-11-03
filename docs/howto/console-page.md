@@ -91,7 +91,7 @@ A page in the web console (`ui/console`): the Nuxt 4 single-page app served at `
    - `ConfirmModal` with a `useConfirm` handle for every destructive action; `AppModal` for anything else.
    - `LoadError` (the error plus Retry) for a failed load, and `LoadingStatus` for a page spinner.
    - `AppDropdown` for every menu: a popover anchored to its trigger button (Escape and outside clicks close it), and its `label` is added to the visible text.
-   - `PageHeader` (title, description, actions, breadcrumbs, a Preview badge), `Section` for each card, `DataTable` for lists (skeleton rows, a stacked list on phones, an `empty` slot with `EmptyState`), `FormField` and `KeyValue`, `SecretReveal` for a one-time secret, and `useToast().push()` to confirm a change.
+   - `PageHeader` (title, description, actions, breadcrumbs, a Preview badge), `Section` for each card, `DataTable` for lists (skeleton rows, a stacked list on phones, an `empty` slot with `EmptyState`), `FormField` and `KeyValue`, `SecretField` for a one-time secret, and `useToast().push()` to confirm a change.
    - Muted text is `text-base-content/70`; a guard refuses anything lower.
    - `useDates()` (`date`, `moment`, `when`) and `formatDate` for every date; never a new `Intl.DateTimeFormat` or `toLocaleString()`.
 5. **Page.** `app/pages/o/[org]/.../<name>.vue`. Resolve the slugs from the route through the stores, throw a 404 when not found, set the title, and pass public ids down.
