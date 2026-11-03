@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ShownError } from '#base/lib/apperror/message';
 import { useId } from 'vue';
+import AppButton from '#base/components/ui/AppButton.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 
 export interface PersonalKeyCreateLabels {
@@ -115,10 +116,10 @@ const ids = {
 
     <ErrorText :error="error" />
     <div class="flex justify-end pt-2">
-      <button type="submit" class="btn btn-primary btn-sm text-ui" :disabled="!canSubmit">
-        <Icon name="lucide:plus" size="16" />
+      <AppButton type="submit" size="sm" :disabled="!canSubmit">
+        <Icon name="lucide:plus" size="16" class="shrink-0" aria-hidden="true" />
         {{ busy ? labels.creating : labels.create }}
-      </button>
+      </AppButton>
     </div>
   </form>
 </template>
