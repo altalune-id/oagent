@@ -52,6 +52,7 @@ describe('agents page', () => {
     await w.findAll('button').find(b => b.text() === 'agent.show_samples')!.trigger('click');
     expect(w.get('h1 + .badge').text()).toBe('preview.badge');
     expect(w.get('[role="note"]').text()).toBe('agent.samples_note');
+    expect(w.get('[role="note"]').classes()).toEqual(['flex', 'items-center', 'gap-1.5', 'text-xs', 'text-base-content/70']);
     expect(w.get('caption').text()).toBe('agent.samples_caption');
     expect(w.text()).toContain(sampleAgents()[0]!.name);
     expect(w.text()).not.toContain('$3.86', 'runs, median and cost wait for the runtime');

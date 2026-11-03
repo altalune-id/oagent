@@ -110,10 +110,10 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
       </div>
 
       <template v-if="showSamples">
-        <div role="note" class="alert alert-info alert-soft">
-          <Icon name="lucide:flask-conical" size="18" />
-          <span>{{ t('agent.samples_note') }}</span>
-        </div>
+        <p role="note" class="flex items-center gap-1.5 text-xs text-base-content/70">
+          <Icon name="lucide:flask-conical" size="14" class="shrink-0" aria-hidden="true" />
+          {{ t('agent.samples_note') }}
+        </p>
         <DataTable v-model:sort="sort" :columns="sampleColumns" :rows="sampleRows" row-key="slug" :caption="t('agent.samples_caption')">
           <template #cell-name="{ row }">
             <span class="inline-flex items-center gap-2 font-medium whitespace-nowrap">
