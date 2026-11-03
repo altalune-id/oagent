@@ -1,20 +1,30 @@
 <script setup lang="ts">
-import ErrorText from '#base/components/ui/ErrorText.vue';
+import LoadError from '#base/components/ui/LoadError.vue';
 import { useLanding } from '~/components/layout/useLanding';
 import { useOrgsStore } from '~/stores/orgs';
 
+const { t } = useI18n();
 const orgs = useOrgsStore();
 const { resolve } = useLanding();
 
 await orgs.ensureLoaded();
 
-if (!orgs.error) {
-  await navigateTo(await resolve(), { replace: true });
+async function land() {
+  if (!orgs.error) {
+    await navigateTo(await resolve(), { replace: true });
+  }
 }
+
+async function retry() {
+  await orgs.load();
+  await land();
+}
+
+await land();
 </script>
 
 <template>
   <div class="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
-    <ErrorText v-if="orgs.error" :error="orgs.error" />
+    <LoadError v-if="orgs.error" :error="orgs.error" :busy="orgs.loading" :retry-label="t('common.retry')" @retry="retry" />
   </div>
 </template>

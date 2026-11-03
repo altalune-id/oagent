@@ -16,6 +16,9 @@ describe('errorPage', () => {
   it('has one h1 and only a way home when nothing can be retried', async () => {
     const w = mount(ErrorPage, { props: { kind: 'not_found', ...labels } });
     expect(w.findAll('h1')).toHaveLength(1);
+    expect(w.get('h1').classes()).toEqual(['text-xl', 'font-semibold']);
+    expect(w.get('p').classes()).toEqual(['text-ui', 'text-base-content/70']);
+    expect(w.get('button').classes()).toEqual(expect.arrayContaining(['btn', 'btn-primary', 'btn-sm', 'text-ui']));
     expect(w.findAll('button').map(b => b.text())).toEqual(['Go to your organizations']);
     await w.get('button').trigger('click');
     expect(w.emitted('home')).toHaveLength(1);
