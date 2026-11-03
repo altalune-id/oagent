@@ -93,7 +93,7 @@ const ids = {
       </label>
       <div v-if="!allProjects" class="max-h-40 space-y-1 overflow-auto rounded-box border border-base-300 p-2">
         <label v-for="p in projects" :key="p.id" class="flex items-center gap-2 text-ui">
-          <input v-model="projectIds" type="checkbox" :value="p.id" class="checkbox checkbox-sm rounded-sm" :disabled="busy">
+          <input v-model="projectIds" type="checkbox" :value="p.id" class="checkbox checkbox-xs rounded-sm" :disabled="busy">
           {{ p.name }}
         </label>
       </div>
@@ -105,7 +105,7 @@ const ids = {
       </legend>
       <div class="grid gap-1 sm:grid-cols-2">
         <label v-for="s in scopeOptions" :key="s.name" class="flex items-center gap-2 text-ui">
-          <input v-model="scopes" type="checkbox" :value="s.name" class="checkbox checkbox-sm rounded-sm" :disabled="busy">
+          <input v-model="scopes" type="checkbox" :value="s.name" class="checkbox checkbox-xs rounded-sm" :disabled="busy">
           {{ s.label }}
         </label>
       </div>

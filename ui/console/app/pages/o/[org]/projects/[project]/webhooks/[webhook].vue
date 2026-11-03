@@ -195,6 +195,20 @@ function deliveryTone(status: string): StatusTone {
   return status === 'failed' ? 'error' : 'neutral';
 }
 
+const statusLabels: Record<string, string> = {
+  pending: t('webhooks.status_pending'),
+  delivered: t('webhooks.status_delivered'),
+  failed: t('webhooks.status_failed'),
+};
+
+function statusLabel(status: string): string {
+  return statusLabels[status] ?? status;
+}
+
+function codeLabel(code: number): string {
+  return code ? String(code) : t('webhooks.no_response');
+}
+
 function codeTone(code: number): StatusTone {
   return code >= 200 && code < 300 ? 'success' : 'error';
 }
@@ -233,7 +247,7 @@ await useAuthStore().load();
         {{ row.eventType || '—' }}
       </template>
       <template #cell-status="{ row }">
-        <StatusLabel :tone="deliveryTone(row.status)" :label="row.status" />
+        <StatusLabel :tone="deliveryTone(row.status)" :label="statusLabel(row.status)" />
       </template>
       <template #cell-createdAt="{ row }">
         <span class="tabular-nums">{{ moment(row.createdAt) }}</span>
@@ -258,7 +272,7 @@ await useAuthStore().load();
       <ul v-else class="flex flex-col gap-3">
         <li v-for="attempt in attempts" :key="attempt.attempt" class="rounded-box border border-base-300 p-3">
           <div class="flex flex-wrap items-center gap-3 text-ui">
-            <StatusLabel :tone="codeTone(attempt.statusCode)" :label="String(attempt.statusCode)" />
+            <StatusLabel :tone="codeTone(attempt.statusCode)" :label="codeLabel(attempt.statusCode)" />
             <span class="tabular-nums text-base-content/70">#{{ attempt.attempt }}</span>
             <span class="tabular-nums text-base-content/70">{{ attempt.durationMs }}ms</span>
           </div>

@@ -26,7 +26,7 @@ beforeEach(() => {
 describe('webhook logs', () => {
   it('heads the page, shows loading, then lists deliveries with a status dot and an Attempts button', async () => {
     const pending = deferred<{ deliveries: typeof delivery[] }>();
-    const listWebhookDeliveryAttempts = vi.fn().mockResolvedValue({ attempts: [{ attempt: 1, statusCode: 502, error: 'bad gateway', durationMs: 40, responseBody: '', responseTruncated: false, responseHeaders: [] }] });
+    const listWebhookDeliveryAttempts = vi.fn().mockResolvedValue({ attempts: [{ attempt: 1, statusCode: 0, error: 'no such host', durationMs: 40, responseBody: '', responseTruncated: false, responseHeaders: [] }] });
     setClient('$webhookClient', { listWebhookDeliveries: vi.fn().mockReturnValue(pending.promise), listWebhookDeliveryAttempts });
     const w = await mountPage(Logs, { attachTo: document.body });
     expect(w.get('h1').text()).toBe('webhooks.deliveries');
@@ -35,13 +35,15 @@ describe('webhook logs', () => {
     await flushPromises();
     const cells = w.findAll('tbody td');
     expect(cells[0]!.classes()).toEqual(['font-mono', 'text-xs']);
-    expect(cells[1]!.text()).toBe('failed');
+    expect(cells[1]!.text()).toBe('webhooks.status_failed');
     expect(cells[1]!.find('.badge').exists()).toBe(false);
     await cells[4]!.get('button').trigger('click');
     await flushPromises();
     expect(listWebhookDeliveryAttempts).toHaveBeenCalled();
     const dialog = [...document.querySelectorAll('dialog')].find(d => d.open)!;
-    expect(dialog.textContent).toContain('bad gateway');
+    expect(dialog.textContent).toContain('no such host');
+    expect(dialog.textContent).toContain('webhooks.no_response');
+    expect(dialog.textContent).not.toMatch(/(^|\s)0(\s|$)/);
     expect([...dialog.querySelectorAll('button')].map(b => b.textContent!.trim())).toContain('webhooks.retry');
     w.unmount();
   });

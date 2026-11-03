@@ -38,14 +38,6 @@ export interface KeyValueItem {
   copy?: boolean;
 }
 
-export interface SecretRevealLabels {
-  once: string;
-  copy: string;
-  copyEnv: string;
-  confirm: string;
-  missing: string;
-}
-
 export interface NavGroup {
   label?: string;
   items: NavItem[];

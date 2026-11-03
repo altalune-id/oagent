@@ -41,7 +41,7 @@ useHead({ title: () => `${t('onboarding.title')} · OAgent` });
         {{ t('onboarding.project_note') }}
       </p>
       <ErrorText :error="error" />
-      <AppButton type="submit" class="w-full" :busy="busy" :disabled="!name.trim()">
+      <AppButton type="submit" size="sm" class="w-full" :busy="busy" :disabled="!name.trim()">
         {{ busy ? t('common.creating') : t('onboarding.submit') }}
       </AppButton>
     </form>

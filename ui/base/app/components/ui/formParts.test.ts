@@ -8,7 +8,6 @@ import CopyButton from './CopyButton.vue';
 import AppDataTable from './DataTable.vue';
 import FormField from './FormField.vue';
 import SearchInput from './SearchInput.vue';
-import SecretReveal from './SecretReveal.vue';
 import { toastLifetimeMs, useToast } from './toast';
 import ToastHost from './ToastHost.vue';
 
@@ -102,30 +101,6 @@ describe('formField', () => {
   it('describes nothing without hint or error', () => {
     const w = mount(FormField, { props: { label: 'Name' }, slots: { default: ({ describedBy }: { describedBy?: string }) => h('input', { 'aria-describedby': describedBy }) } });
     expect(w.get('input').attributes('aria-describedby')).toBeUndefined();
-  });
-});
-
-const labels = { once: 'Shown once', copy: 'Copy secret', copyEnv: 'Copy as .env', confirm: 'I stored it', missing: 'Could not load' };
-
-describe('secretReveal', () => {
-  it('warns it is shown once, offers copy and .env copy, and reports the stored tick', async () => {
-    const w = mount(SecretReveal, { props: { value: 's3cret', labels, env: { A: '1', B: 's3cret' } } });
-    expect(w.get('[role="note"]').text()).toBe('Shown once');
-    expect(w.get('code').text()).toBe('s3cret');
-    expect(w.findAll('button').map(b => b.attributes('aria-label'))).toEqual(['Copy secret', 'Copy as .env']);
-    await w.get('input[type="checkbox"]').setValue(true);
-    expect(w.emitted('update:confirmed')).toEqual([[true]]);
-  });
-
-  it('shows an error with a retry slot when the secret is missing', () => {
-    const w = mount(SecretReveal, { props: { value: '', labels }, slots: { retry: '<button>Rotate</button>' } });
-    expect(w.get('[role="alert"]').text()).toContain('Could not load');
-    expect(w.text()).toContain('Rotate');
-    expect(w.find('code').exists()).toBe(false);
-  });
-
-  it('skips the .env copy without env values', () => {
-    expect(mount(SecretReveal, { props: { value: 'x', labels } }).findAll('button')).toHaveLength(1);
   });
 });
 

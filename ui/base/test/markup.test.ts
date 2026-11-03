@@ -84,6 +84,11 @@ describe('guard: markup in every app', () => {
     expect(loose).toEqual([]);
   });
 
+  it('sets mono values at text-xs, never text-sm', () => {
+    const loose = files.flatMap(f => [...f.text.matchAll(/(?<![:\w-])class="([^"]*)"/g)].filter(m => m[1]!.split(' ').includes('font-mono') && m[1]!.split(' ').includes('text-sm')).map(m => `${f.path}: ${m[0]}`));
+    expect(loose).toEqual([]);
+  });
+
   it('gives small checkboxes square corners so they do not look like radios', () => {
     const round = files.flatMap(f => (f.text.match(/class="checkbox checkbox-(?:xs|sm)\b[^"]*"/g) ?? []).filter(c => !c.includes('rounded-sm')).map(c => `${f.path}: ${c}`));
     expect(round).toEqual([]);

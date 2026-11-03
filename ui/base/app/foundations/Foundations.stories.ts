@@ -44,7 +44,7 @@ export const Families: Story = {
         </section>
         <section class="flex flex-col gap-1">
           <p class="text-xs text-base-content/70">Mono: JetBrains Mono, for ids, hosts, models and code</p>
-          <p class="font-mono text-sm">acme-prod · agt_9f2c3d4e5f6g7h8j9k0m · anthropic/claude-sonnet-5-5</p>
+          <p class="font-mono text-xs">acme-prod · agt_9f2c3d4e5f6g7h8j9k0m · anthropic/claude-sonnet-5-5</p>
           <pre class="rounded-box bg-base-200 p-4 font-mono text-xs">oagent agent publish --id agt_9f2c3d4e5f6g7h8j9k0m</pre>
         </section>
       </div>`,

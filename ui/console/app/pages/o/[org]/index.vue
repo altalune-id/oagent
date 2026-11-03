@@ -54,7 +54,7 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · OAgent` });
 
     <AppStats :items="stats" class="max-w-2xl" />
 
-    <LoadError v-if="projects.error" :error="projects.error" :busy="projects.loading" :retry-label="t('common.retry')" @retry="projects.load(org.id)" />
+    <LoadError v-if="projects.error" class="max-w-2xl" :error="projects.error" :busy="projects.loading" :retry-label="t('common.retry')" @retry="projects.load(org.id)" />
     <Section v-else :title="t('project.title')" flush class="max-w-2xl" data-testid="org-projects">
       <ul v-if="items.length" class="divide-y divide-base-300">
         <li v-for="project in items" :key="project.id" class="flex items-center gap-2 px-4 py-2 text-ui">
