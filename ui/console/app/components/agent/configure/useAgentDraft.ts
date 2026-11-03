@@ -1,6 +1,7 @@
 import type { ShownError } from '#base/lib/apperror/message';
 import type { AgentConfig, AgentState } from './agentConfig';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { useAgentsStore } from '~/stores/agents';
 import { changes, fromWire, stateOf } from './agentConfig';
 
 export const autosaveDelayMs = 1000;
@@ -9,6 +10,7 @@ export const autosaveDelayMs = 1000;
 export function useAgentDraft(agentId: string) {
   const { $agentClient: client } = useNuxtApp();
   const errorMessage = useErrorMessage();
+  const agents = useAgentsStore();
 
   const config = ref<AgentConfig>(fromWire());
   const state = ref<AgentState | null>(null);
@@ -21,11 +23,17 @@ export function useAgentDraft(agentId: string) {
   const dirty = ref(false);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let saved = '';
+  let inflight: Promise<boolean> | null = null;
 
   const diff = computed(() => changes(config.value, live.value));
 
-  function apply(next: AgentState) {
+  function track(next: AgentState) {
     state.value = next;
+    agents.setPublishState(agentId, { publishedVersion: next.publishedVersion, unpublishedChanges: next.unpublishedChanges });
+  }
+
+  function apply(next: AgentState) {
+    track(next);
     config.value = next.draft;
     saved = JSON.stringify(next.draft);
   }
@@ -46,30 +54,51 @@ export function useAgentDraft(agentId: string) {
     }
   }
 
-  async function save() {
+  function schedule() {
     clearTimeout(timer);
-    timer = undefined;
-    const body = JSON.stringify(config.value);
-    if (body === saved) {
-      dirty.value = false;
-      return true;
-    }
+    timer = setTimeout(save, autosaveDelayMs);
+  }
+
+  async function send(body: string) {
     saving.value = true;
     saveError.value = null;
     try {
-      const res = await client.updateAgentDraft({ id: agentId, config: config.value });
+      const res = await client.updateAgentDraft({ id: agentId, config: JSON.parse(body) });
       if (res.agent) {
-        state.value = stateOf(res.agent);
-        saved = body;
+        track(stateOf(res.agent));
       }
-      dirty.value = JSON.stringify(config.value) !== saved;
+      saved = body;
       return true;
     } catch (e) {
       saveError.value = errorMessage(e, 'error.save_draft');
       return false;
     } finally {
       saving.value = false;
+      dirty.value = JSON.stringify(config.value) !== saved;
+      if (dirty.value && !saveError.value && !timer) {
+        schedule();
+      }
     }
+  }
+
+  async function save(): Promise<boolean> {
+    clearTimeout(timer);
+    timer = undefined;
+    let busy = inflight;
+    while (busy) {
+      await busy;
+      busy = inflight;
+    }
+    const body = JSON.stringify(config.value);
+    if (body === saved) {
+      dirty.value = false;
+      return true;
+    }
+    const run = send(body).finally(() => {
+      inflight = null;
+    });
+    inflight = run;
+    return run;
   }
 
   watch(config, () => {
@@ -77,8 +106,7 @@ export function useAgentDraft(agentId: string) {
       return;
     }
     dirty.value = true;
-    clearTimeout(timer);
-    timer = setTimeout(save, autosaveDelayMs);
+    schedule();
   }, { deep: true });
 
   async function publish() {
@@ -90,7 +118,13 @@ export function useAgentDraft(agentId: string) {
     try {
       const res = await client.publishAgent({ id: agentId });
       if (res.agent) {
-        apply(stateOf(res.agent));
+        const next = stateOf(res.agent);
+        track(next);
+        saved = JSON.stringify(next.draft);
+        dirty.value = JSON.stringify(config.value) !== saved;
+        if (dirty.value) {
+          schedule();
+        }
       }
       if (res.version?.config) {
         live.value = fromWire(res.version.config);

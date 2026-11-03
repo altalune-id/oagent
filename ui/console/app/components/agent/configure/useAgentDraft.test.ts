@@ -1,6 +1,8 @@
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
+import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { connectError, setClient, setKnownKeys } from '#test/nuxt-globals';
+import { connectError, deferred, setClient, setKnownKeys } from '#test/nuxt-globals';
+import { useAgentsStore } from '~/stores/agents';
 import { changes, emptyConfig, fromWire, stateOf } from './agentConfig';
 import { autosaveDelayMs, useAgentDraft } from './useAgentDraft';
 
@@ -53,6 +55,7 @@ describe('useAgentDraft', () => {
   let client: Record<string, ReturnType<typeof vi.fn>>;
 
   beforeEach(() => {
+    setActivePinia(createPinia());
     vi.useFakeTimers();
     client = {
       getAgent: vi.fn().mockResolvedValue({ agent: wireAgent() }),
@@ -120,6 +123,8 @@ describe('useAgentDraft', () => {
   });
 
   it('saves pending edits before publishing, then takes the new live version', async () => {
+    const next = { ...draft, model: 'small-3' };
+    client.publishAgent!.mockResolvedValue({ agent: wireAgent(next, { publishedVersion: 13, unpublishedChanges: false }), version: { version: 13, config: next }, created: true });
     const d = useAgentDraft(id);
     await d.load();
     d.config.value = { ...d.config.value, model: 'small-3' };
@@ -128,8 +133,9 @@ describe('useAgentDraft', () => {
     expect(client.publishAgent).toHaveBeenCalledWith({ id });
     expect(result).toEqual({ created: true, version: 13 });
     expect(d.state.value?.publishedVersion).toBe(13);
-    expect(d.live.value).toEqual(draft);
+    expect(d.live.value).toEqual(next);
     expect(d.diff.value).toEqual([]);
+    expect(d.dirty.value).toBe(false);
   });
 
   it('reports a failed load and a failed publish', async () => {
@@ -141,6 +147,59 @@ describe('useAgentDraft', () => {
     expect(await d.publish()).toBeNull();
     expect(d.publishError.value).not.toBeNull();
     expect(d.publishing.value).toBe(false);
+  });
+
+  it('keeps edits typed while a publish is in flight, and saves them after', async () => {
+    const d = useAgentDraft(id);
+    await d.load();
+    const pending = deferred<unknown>();
+    client.publishAgent!.mockImplementationOnce(async () => {
+      await pending.promise;
+      return { agent: wireAgent(draft, { publishedVersion: 13, unpublishedChanges: false }), version: { version: 13, config: draft }, created: true };
+    });
+    const run = d.publish();
+    await vi.advanceTimersByTimeAsync(0);
+    d.config.value = { ...d.config.value, model: 'small-3' };
+    pending.resolve(undefined);
+    await run;
+    expect(d.config.value.model).toBe('small-3');
+    expect(d.live.value).toEqual(draft);
+    expect(d.dirty.value).toBe(true);
+    await vi.advanceTimersByTimeAsync(autosaveDelayMs);
+    expect(client.updateAgentDraft!.mock.calls.at(-1)![0]).toEqual({ id, config: { ...draft, model: 'small-3' } });
+  });
+
+  it('runs one save at a time and saves the newest edit after the one in flight', async () => {
+    const d = useAgentDraft(id);
+    await d.load();
+    const first = deferred<unknown>();
+    client.updateAgentDraft!.mockImplementationOnce(async ({ config }: { config: typeof draft }) => {
+      await first.promise;
+      return { agent: wireAgent(config) };
+    });
+    d.config.value = { ...d.config.value, model: 'small-3' };
+    await vi.advanceTimersByTimeAsync(autosaveDelayMs);
+    expect(client.updateAgentDraft).toHaveBeenCalledOnce();
+    d.config.value = { ...d.config.value, temperature: 0.9 };
+    await vi.advanceTimersByTimeAsync(autosaveDelayMs);
+    expect(client.updateAgentDraft).toHaveBeenCalledOnce();
+    first.resolve(undefined);
+    await vi.advanceTimersByTimeAsync(autosaveDelayMs);
+    expect(client.updateAgentDraft).toHaveBeenCalledTimes(2);
+    expect(client.updateAgentDraft!.mock.calls[1]![0]).toEqual({ id, config: { ...draft, model: 'small-3', temperature: 0.9 } });
+    expect(d.dirty.value).toBe(false);
+  });
+
+  it('updates the agents list after a save and a publish, without a reload', async () => {
+    const agents = useAgentsStore();
+    agents.items = [{ id, projectId: 'P1', slug: 'support', name: 'Support', description: '', publishedVersion: 12, unpublishedChanges: false }];
+    const d = useAgentDraft(id);
+    await d.load();
+    d.config.value = { ...d.config.value, model: 'small-3' };
+    await vi.advanceTimersByTimeAsync(autosaveDelayMs);
+    expect(agents.items[0]).toMatchObject({ publishedVersion: 12, unpublishedChanges: true });
+    await d.publish();
+    expect(agents.items[0]).toMatchObject({ publishedVersion: 13, unpublishedChanges: false });
   });
 
   it('copes with empty responses', async () => {

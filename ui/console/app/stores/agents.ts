@@ -39,6 +39,10 @@ export const useAgentsStore = defineStore('agents', () => {
     items.value = items.value.filter(a => a.id !== id);
   }
 
+  function setPublishState(id: string, state: Pick<Agent, 'publishedVersion' | 'unpublishedChanges'>) {
+    items.value = items.value.map(a => (a.id === id ? { ...a, ...state } : a));
+  }
+
   function update(patch: Pick<Agent, 'id' | 'name' | 'description'>) {
     items.value = items.value.map(a => (a.id === patch.id ? { ...a, name: patch.name, description: patch.description } : a));
   }
@@ -91,5 +95,5 @@ export const useAgentsStore = defineStore('agents', () => {
     return run;
   }
 
-  return { items, loading, error, forProject, add, remove, update, load, ensureLoaded };
+  return { items, loading, error, forProject, add, remove, update, setPublishState, load, ensureLoaded };
 });

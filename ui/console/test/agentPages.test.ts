@@ -222,6 +222,9 @@ describe('configure page', () => {
     expect(api()).not.toContain('orders.lookup');
     await w.get('input[step="0.01"]').setValue('0.5');
     expect(api()).toContain('"maxCostCents":50');
+    await w.get('textarea').setValue('Don\'t promise a date.');
+    expect(api()).toContain('Don\'\\\'\'t promise a date.');
+    expect(api()).not.toContain('Don\'t');
     expect(w.findAll('input.tab').map(i => i.attributes('aria-label'))).toEqual(['configure.api_tab', 'configure.mcp_tab']);
     expect((w.get('input.tab[value="api"]').element as HTMLInputElement).checked).toBe(true);
     await w.get('input[value="mcp"]').setValue(true);
