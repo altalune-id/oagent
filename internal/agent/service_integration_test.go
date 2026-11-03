@@ -107,7 +107,7 @@ func TestService_DraftPublishAndVersionsInPostgres(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, created)
 
-	vs, err := svc.Versions(ctx, a.ID)
+	vs, err := svc.Versions(ctx, a.ID, 0)
 	require.NoError(t, err)
 	require.Len(t, vs, 2)
 	assert.Equal(t, []int32{2, 1}, []int32{vs[0].Version, vs[1].Version}, "newest first")
@@ -141,6 +141,28 @@ func TestService_DraftPublishAndVersionsInPostgres(t *testing.T) {
 	assert.Zero(t, left, "versions go with their agent")
 }
 
+func TestService_VersionsHonoursTheLimitInSQL(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
+	svc := f.service(nil)
+	a, err := svc.Create(ctx, agent.CreateRequest{OrgID: orgID, ProjectID: projectID, Slug: "versions", Name: "Versions"})
+	require.NoError(t, err)
+	for _, model := range []string{"m-1", "m-2", "m-3"} {
+		_, err = svc.UpdateDraft(ctx, a.ID, agent.Config{Model: model})
+		require.NoError(t, err)
+		_, _, _, err = svc.Publish(ctx, a.ID, uuid.Nil)
+		require.NoError(t, err)
+	}
+	vs, err := svc.Versions(ctx, a.ID, 1)
+	require.NoError(t, err)
+	require.Len(t, vs, 1, "the console asks for the live version only")
+	assert.Equal(t, int32(3), vs[0].Version)
+	vs, err = svc.Versions(ctx, a.ID, 0)
+	require.NoError(t, err)
+	assert.Equal(t, []int32{3, 2, 1}, []int32{vs[0].Version, vs[1].Version, vs[2].Version})
+}
+
 func TestService_ConcurrentPublishesCreateOneVersion(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
@@ -167,7 +189,7 @@ func TestService_ConcurrentPublishesCreateOneVersion(t *testing.T) {
 		}
 	}
 	assert.Equal(t, 1, created)
-	vs, err := svc.Versions(ctx, a.ID)
+	vs, err := svc.Versions(ctx, a.ID, 0)
 	require.NoError(t, err)
 	assert.Len(t, vs, 1)
 }

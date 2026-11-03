@@ -1064,9 +1064,11 @@ func (x *PublishAgentResponse) GetCreated() bool {
 	return false
 }
 
+// ListAgentVersionsRequest lists an agent's versions newest first; limit 0 means the server default of 50, and the most is 100.
 type ListAgentVersionsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AgentId       string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1106,6 +1108,13 @@ func (x *ListAgentVersionsRequest) GetAgentId() string {
 		return x.AgentId
 	}
 	return ""
+}
+
+func (x *ListAgentVersionsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
 }
 
 type ListAgentVersionsResponse struct {
@@ -1235,9 +1244,10 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x14PublishAgentResponse\x12%\n" +
 	"\x05agent\x18\x01 \x01(\v2\x0f.agent.v1.AgentR\x05agent\x120\n" +
 	"\aversion\x18\x02 \x01(\v2\x16.agent.v1.AgentVersionR\aversion\x12\x18\n" +
-	"\acreated\x18\x03 \x01(\bR\acreated\"C\n" +
+	"\acreated\x18\x03 \x01(\bR\acreated\"d\n" +
 	"\x18ListAgentVersionsRequest\x12'\n" +
-	"\bagent_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\aagentId\"O\n" +
+	"\bagent_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\aagentId\x12\x1f\n" +
+	"\x05limit\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\x05limit\"O\n" +
 	"\x19ListAgentVersionsResponse\x122\n" +
 	"\bversions\x18\x01 \x03(\v2\x16.agent.v1.AgentVersionR\bversions2\xaf\v\n" +
 	"\fAgentService\x12\xb1\x01\n" +

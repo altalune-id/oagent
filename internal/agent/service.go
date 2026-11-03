@@ -192,9 +192,18 @@ func (s *Service) Publish(ctx context.Context, id, by uuid.UUID) (a *Agent, v *V
 	return a, v, created, nil
 }
 
-// Versions returns an agent's published versions, newest first.
-func (s *Service) Versions(ctx context.Context, id uuid.UUID) ([]*Version, error) {
-	vs, err := s.store.Versions(ctx, id)
+// DefaultVersionsListed is how many versions Versions returns when asked for none in particular.
+const DefaultVersionsListed = 50
+
+// MaxVersionsListed caps how many versions one Versions call returns.
+const MaxVersionsListed = 100
+
+// Versions returns up to limit of an agent's published versions, newest first; limit 0 means DefaultVersionsListed.
+func (s *Service) Versions(ctx context.Context, id uuid.UUID, limit int) ([]*Version, error) {
+	if limit <= 0 {
+		limit = DefaultVersionsListed
+	}
+	vs, err := s.store.Versions(ctx, id, min(limit, MaxVersionsListed))
 	if err != nil {
 		return nil, s.errOrReport(ctx, "agent: versions", err)
 	}

@@ -223,14 +223,17 @@ func TestService_DraftPublishAndVersions(t *testing.T) {
 	assert.True(t, created)
 	assert.Equal(t, int32(2), v2.Version)
 
-	vs, err := svc.Versions(ctx, a.ID)
+	vs, err := svc.Versions(ctx, a.ID, 0)
 	require.NoError(t, err)
-	assert.Equal(t, []*agent.Version{v2, v1}, vs, "newest first")
+	assert.Equal(t, []*agent.Version{v2, v1}, vs, "newest first, all of them under the default")
+	vs, err = svc.Versions(ctx, a.ID, 1)
+	require.NoError(t, err)
+	assert.Equal(t, []*agent.Version{v2}, vs, "a limit keeps the newest")
 
 	store.Err = errors.New("db down")
 	_, _, _, err = svc.Publish(ctx, a.ID, by)
 	assert.Equal(t, apperror.CodeUnexpected, codeOf(err))
-	_, err = svc.Versions(ctx, a.ID)
+	_, err = svc.Versions(ctx, a.ID, 0)
 	assert.Equal(t, apperror.CodeUnexpected, codeOf(err))
 }
 

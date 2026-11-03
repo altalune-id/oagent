@@ -46,7 +46,7 @@ export function useAgentDraft(agentId: string) {
     try {
       const [got, versions] = await Promise.all([
         client.getAgent({ id: agentId }),
-        client.listAgentVersions({ agentId }),
+        client.listAgentVersions({ agentId, limit: 1 }),
       ]);
       if (got.agent) {
         apply(stateOf(got.agent));

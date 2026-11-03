@@ -155,6 +155,16 @@ func TestValidate_RefusesDuplicateAgentToolNames(t *testing.T) {
 	assert.NoError(t, newTestValidator(t).Validate(req))
 }
 
+func TestValidate_BoundsTheVersionsLimit(t *testing.T) {
+	v := newTestValidator(t)
+	for _, limit := range []int32{0, 1, 100} {
+		assert.NoError(t, v.Validate(&agentv1.ListAgentVersionsRequest{AgentId: "abcdefghjkmnpqrstuvwx", Limit: limit}), limit)
+	}
+	for _, limit := range []int32{-1, 101} {
+		assert.Error(t, v.Validate(&agentv1.ListAgentVersionsRequest{AgentId: "abcdefghjkmnpqrstuvwx", Limit: limit}), limit)
+	}
+}
+
 func TestValidate_AcceptsAPaddedNameTheDomainAccepts(t *testing.T) {
 	assert.NoError(t, newTestValidator(t).Validate(&orgv1.CreateOrgRequest{Name: "  " + strings.Repeat("a", 200) + "  "}))
 }

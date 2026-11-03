@@ -193,7 +193,7 @@ func TestAgentService_DraftPublishAndVersions(t *testing.T) {
 	assert.False(t, again.Msg.GetCreated())
 	assert.Equal(t, published.Msg.GetVersion().GetId(), again.Msg.GetVersion().GetId())
 
-	list, err := c.ListAgentVersions(ctx, connect.NewRequest(&agentv1.ListAgentVersionsRequest{AgentId: a.PublicID}))
+	list, err := c.ListAgentVersions(ctx, connect.NewRequest(&agentv1.ListAgentVersionsRequest{AgentId: a.PublicID, Limit: 1}))
 	require.NoError(t, err)
 	require.Len(t, list.Msg.GetVersions(), 1)
 	assert.Equal(t, "anthropic/claude-sonnet-5-5", list.Msg.GetVersions()[0].GetConfig().GetModel())
@@ -221,4 +221,12 @@ func TestAgentService_PublishRecordsThePerson(t *testing.T) {
 	list, err := cp.ListAgentVersions(ctx, connect.NewRequest(&agentv1.ListAgentVersionsRequest{AgentId: a.PublicID}))
 	require.NoError(t, err)
 	assert.Equal(t, userPub, list.Msg.GetVersions()[0].GetCreatedBy())
+
+	a.Draft.Model = "m-2"
+	_, err = cp.PublishAgent(ctx, connect.NewRequest(&agentv1.PublishAgentRequest{Id: a.PublicID}))
+	require.NoError(t, err)
+	one, err := cp.ListAgentVersions(ctx, connect.NewRequest(&agentv1.ListAgentVersionsRequest{AgentId: a.PublicID, Limit: 1}))
+	require.NoError(t, err)
+	require.Len(t, one.Msg.GetVersions(), 1, "the request's limit reaches the store")
+	assert.Equal(t, int32(2), one.Msg.GetVersions()[0].GetVersion())
 }

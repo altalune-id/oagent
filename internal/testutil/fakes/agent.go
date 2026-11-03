@@ -42,8 +42,8 @@ func (f *AgentStore) InsertVersion(_ context.Context, v *agent.Version) error {
 }
 
 // Versions implements agent.Store.
-func (f *AgentStore) Versions(context.Context, uuid.UUID) ([]*agent.Version, error) {
-	return f.Published, f.Err
+func (f *AgentStore) Versions(_ context.Context, _ uuid.UUID, limit int) ([]*agent.Version, error) {
+	return f.Published[:min(limit, len(f.Published))], f.Err
 }
 
 // LatestVersion implements agent.Store.

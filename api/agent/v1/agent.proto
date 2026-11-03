@@ -249,10 +249,15 @@ message PublishAgentResponse {
   bool created = 3;
 }
 
+// ListAgentVersionsRequest lists an agent's versions newest first; limit 0 means the server default of 50, and the most is 100.
 message ListAgentVersionsRequest {
   string agent_id = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  int32 limit = 2 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 100
   ];
 }
 

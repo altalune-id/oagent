@@ -499,10 +499,17 @@ components:
           title: agent_id
           description: |
             oagent.public_id = true
+        limit:
+          type: integer
+          title: limit
+          maximum: 100
+          minimum: 0
+          format: int32
       title: ListAgentVersionsRequest
       required:
         - agentId
       additionalProperties: false
+      description: ListAgentVersionsRequest lists an agent's versions newest first; limit 0 means the server default of 50, and the most is 100.
     agent.v1.ListAgentVersionsResponse:
       type: object
       properties:

@@ -75,7 +75,7 @@ describe('useAgentDraft', () => {
     await d.load();
     await vi.advanceTimersByTimeAsync(autosaveDelayMs);
     expect(client.getAgent).toHaveBeenCalledWith({ id });
-    expect(client.listAgentVersions).toHaveBeenCalledWith({ agentId: id });
+    expect(client.listAgentVersions).toHaveBeenCalledWith({ agentId: id, limit: 1 });
     expect(d.config.value).toEqual(draft);
     expect(d.live.value).toEqual(live);
     expect(d.diff.value).toEqual([{ key: 'configure.change_instructions' }]);

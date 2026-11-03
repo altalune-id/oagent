@@ -27,9 +27,9 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*Agent, error) 
 	return row.toAgent()
 }
 
-// Versions returns the agent's versions, newest first.
-func (s *postgresStore) Versions(ctx context.Context, agentID uuid.UUID) ([]*Version, error) {
-	return s.selectVersions(ctx, "Versions", agentID, 0)
+// Versions returns up to limit of the agent's versions, newest first.
+func (s *postgresStore) Versions(ctx context.Context, agentID uuid.UUID, limit int) ([]*Version, error) {
+	return s.selectVersions(ctx, "Versions", agentID, int64(max(limit, 1)))
 }
 
 // LatestVersion returns the agent's newest version, or nil before the first publish.

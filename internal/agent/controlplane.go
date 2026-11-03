@@ -190,7 +190,7 @@ func (s *AgentService) ListAgentVersions(
 	if err != nil {
 		return nil, err
 	}
-	vs, err := s.agents.Versions(ctx, a.ID)
+	vs, err := s.agents.Versions(ctx, a.ID, int(req.Msg.GetLimit()))
 	if err != nil {
 		return nil, err
 	}

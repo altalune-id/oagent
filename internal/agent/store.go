@@ -17,8 +17,8 @@ type Reader interface {
 	ByID(ctx context.Context, id uuid.UUID) (*Agent, error)
 	Resolve(ctx context.Context, publicID string) (Ref, error)
 	List(ctx context.Context, projectID uuid.UUID) ([]*Agent, error)
-	// Versions returns the agent's versions, newest first.
-	Versions(ctx context.Context, agentID uuid.UUID) ([]*Version, error)
+	// Versions returns up to limit of the agent's versions, newest first.
+	Versions(ctx context.Context, agentID uuid.UUID, limit int) ([]*Version, error)
 	// LatestVersion returns the agent's newest version, or nil before the first publish.
 	LatestVersion(ctx context.Context, agentID uuid.UUID) (*Version, error)
 }
