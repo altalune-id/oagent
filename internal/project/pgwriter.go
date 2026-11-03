@@ -13,7 +13,7 @@ import (
 	"altalune.id/oagent/schema/entity"
 )
 
-// Save upserts a project by id, bumping updated_at.
+// Save upserts a project by id, bumping updated_at; the environment changes only through SetEnvironment.
 func (s *postgresStore) Save(ctx context.Context, p *Project) error {
 	now := time.Now().UTC()
 	stmt := s.projects.INSERT(s.projects.AllColumns).
