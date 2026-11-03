@@ -203,6 +203,10 @@ describe('guard: theme contrast', () => {
     expect(failures).toEqual([]);
   });
 
+  it.each(['base/app/assets/css/main.css', 'mcp/src/style.css', 'web/app.css'])('drops a colored icon to the fill text on a hovered or pressed soft button in %s', (sheet) => {
+    expect(readFileSync(join(ui, sheet), 'utf8')).toMatch(/\.btn-soft:is\(:hover, :active\) \*\s*\{\s*color: inherit;\s*\}/);
+  });
+
   it.each(['base/app/assets/css/main.css', 'mcp/src/style.css', 'web/app.css'])('keeps soft alert, badge and button text at AA on their soft tint in %s', (sheet) => {
     const rules = [...readFileSync(join(ui, sheet), 'utf8').matchAll(/([^{}]+)\{([^{}]*)\}/g)];
     const failures: string[] = [];

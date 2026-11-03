@@ -14,3 +14,7 @@
 .btn-soft:not(:hover, :active) {
   color: var(--color-base-content);
 }
+
+.btn-soft:is(:hover, :active) * {
+  color: inherit;
+}
