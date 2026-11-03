@@ -144,7 +144,7 @@ func TestService_UpdateEnvironment(t *testing.T) {
 	got, err := svc.UpdateEnvironment(context.Background(), p.ID, project.EnvironmentLabs)
 	require.NoError(t, err)
 	assert.Equal(t, project.EnvironmentLabs, got.Environment)
-	assert.Equal(t, got, store.Saved)
+	assert.Nil(t, store.Saved, "the tag is written alone, never through a whole-project save")
 	_, err = svc.UpdateEnvironment(context.Background(), p.ID, "qa")
 	assert.Error(t, err)
 }

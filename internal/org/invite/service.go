@@ -539,17 +539,24 @@ func (s *Service) send(ctx context.Context, inv *Invite, link string) error {
 }
 
 func (s *Service) inviterName(ctx context.Context, userID uuid.UUID) string {
+	if name, ok := s.knownInviter(ctx, userID); ok {
+		return name
+	}
+	return "Someone"
+}
+
+func (s *Service) knownInviter(ctx context.Context, userID uuid.UUID) (string, bool) {
 	if userID == uuid.Nil {
-		return "Someone"
+		return "", false
 	}
 	email, name, err := s.people.Contact(ctx, userID)
 	switch {
 	case err != nil:
-		return "Someone"
+		return "", false
 	case strings.TrimSpace(name) != "":
-		return strings.Join(strings.Fields(name), " ")
+		return strings.Join(strings.Fields(name), " "), true
 	}
-	return email
+	return email, email != ""
 }
 
 func (s *Service) list(ctx context.Context, orgID uuid.UUID, keep func(*Invite) bool) ([]*Invite, error) {

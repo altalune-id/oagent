@@ -146,7 +146,10 @@ func (h *Web) callback(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case errors.As(err, &rpErr) && rpErr.Reason == oidcrp.ReasonCancelled:
 		to := h.kit.Path("/login")
-		if st.ReturnTo != "" {
+		switch {
+		case st.Invite != "":
+			to = h.kit.Path("/invite")
+		case st.ReturnTo != "":
 			to += "?" + url.Values{"return_to": {st.ReturnTo}}.Encode()
 		}
 		http.Redirect(w, r, to, http.StatusSeeOther) //nolint:gosec // G710: return_to was sanitized when the sign-in started.

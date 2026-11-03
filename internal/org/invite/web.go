@@ -298,8 +298,11 @@ func (h *Web) failed(w http.ResponseWriter, r *http.Request, inv *Invite, err er
 	}
 	if inv != nil && reason == ReasonExpired {
 		if org, oerr := h.o.Orgs.Name(r.Context(), inv.OrgID); oerr == nil {
-			v.Message = "Your invite to join " + strings.Join(strings.Fields(org), " ") + " has expired. Ask " +
-				h.o.Invites.inviterName(r.Context(), inv.InvitedBy) + " to send you a new one."
+			who, ok := h.o.Invites.knownInviter(r.Context(), inv.InvitedBy)
+			if !ok {
+				who = "the person who invited you"
+			}
+			v.Message = "Your invite to join " + strings.Join(strings.Fields(org), " ") + " has expired. Ask " + who + " to send you a new one."
 		}
 	}
 	if inv != nil && reason == ReasonUsed && p.IsPerson() && inv.AcceptedBy == p.UserID {

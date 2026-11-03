@@ -125,7 +125,7 @@ func (s *Service) UpdateEnvironment(ctx context.Context, id uuid.UUID, env strin
 	if err := p.SetEnvironment(env); err != nil {
 		return nil, err
 	}
-	if err := s.store.Save(ctx, p); err != nil {
+	if err := s.store.SetEnvironment(ctx, p.ID, p.Environment); err != nil {
 		return nil, s.errOrReport(ctx, "project: update environment", err)
 	}
 	return p, nil

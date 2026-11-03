@@ -28,6 +28,14 @@ func (f *ProjectStore) Save(_ context.Context, p *project.Project) error {
 	return f.Err
 }
 
+// SetEnvironment implements project.Store; it sets Project's tag or returns Err.
+func (f *ProjectStore) SetEnvironment(_ context.Context, _ uuid.UUID, env string) error {
+	if f.Project != nil && f.Err == nil {
+		f.Project.Environment = env
+	}
+	return f.Err
+}
+
 // ByID implements project.Store.
 func (f *ProjectStore) ByID(context.Context, uuid.UUID) (*project.Project, error) {
 	if f.Err != nil {

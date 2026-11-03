@@ -81,6 +81,28 @@ export const descriptors: Record<string, Descriptor> = {
   agent_create: { kind: 'result', title: t('mcp.agent_created'), object: 'agent', fields: agentFields },
   agent_update: { kind: 'result', title: t('mcp.agent_updated'), object: 'agent', fields: agentFields },
   agent_delete: { kind: 'result', title: t('mcp.agent_deleted'), fields: [] },
+  agent_update_draft: { kind: 'result', title: t('mcp.agent_draft_saved'), object: 'agent', fields: agentFields },
+  agent_publish: {
+    kind: 'result',
+    title: t('mcp.agent_published'),
+    object: 'version',
+    fields: [
+      { key: 'version', label: t('mcp.col_version') },
+      { key: 'createdAt', label: t('mcp.created'), kind: 'date' },
+    ],
+  },
+  agent_version_list: {
+    kind: 'list',
+    title: t('mcp.title_versions'),
+    rows: 'versions',
+    key: 'id',
+    empty: t('mcp.empty_versions'),
+    columns: [
+      { key: 'version', label: t('mcp.col_version') },
+      { key: 'createdAt', label: t('mcp.created'), kind: 'date' },
+    ],
+    refresh: { tool: 'agent_version_list', args: ['agentId'] },
+  },
   member_list: {
     kind: 'list',
     title: t('members.title'),

@@ -268,6 +268,7 @@ func buildHTTPHandler(s httpSurfaces) http.Handler {
 		MCPHandler: s.mcp,
 		Console:    s.console,
 		Routes:     s.routes,
+		NotFound:   notFoundPage(layout.Kit{BasePath: s.basePath, Log: s.log, Unexpected: s.unexpected, Version: web.StaticVersion}),
 		BasePath:   s.basePath,
 		Log:        s.log,
 		Unexpected: s.unexpected,
@@ -280,6 +281,12 @@ func buildHTTPHandler(s httpSurfaces) http.Handler {
 		SessionGate: legal.WelcomeGate(s.basePath, s.requireAcceptance, s.termsUpdated),
 		ConsoleGate: s.consoleGate,
 		CrossOrigin: s.crossOrigin,
+	})
+}
+
+func notFoundPage(kit layout.Kit) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		kit.Render(w, r, http.StatusNotFound, layout.Error(kit.Layout("Page not found"), "There is no page at this address."))
 	})
 }
 

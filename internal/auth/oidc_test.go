@@ -179,6 +179,10 @@ func TestOIDCSignIn_CallbackRefusals(t *testing.T) {
 	rec = f.callback("error=access_denied&state="+state, c)
 	assert.Equal(t, "/login?return_to=%2Fconsole%2Fo%2Facme", rec.Header().Get("Location"), "a cancel keeps where the person was going")
 
+	c, state = f.start(t, "return_to=/console/x&invite=inv-1")
+	rec = f.callback("error=access_denied&state="+state, c)
+	assert.Equal(t, "/invite", rec.Header().Get("Location"), "a cancel from an invite goes back to that invite")
+
 	for _, code := range []string{"invalid_grant", "invalid_request"} {
 		c, state = f.start(t, "")
 		f.rp.err = &oidcrp.Error{Reason: oidcrp.ReasonTokenExchange, OAuthError: code, Err: errors.New("status 400")}

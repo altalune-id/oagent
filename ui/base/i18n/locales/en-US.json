@@ -278,5 +278,10 @@
   "error_page.failed_body": "Something went wrong on our side. Try again in a moment.",
   "theme.family": "Theme family",
   "theme.switch_mode": "Switch between light and dark",
-  "common.copied": "Copied"
+  "common.copied": "Copied",
+  "mcp.agent_draft_saved": "Draft saved",
+  "mcp.agent_published": "Agent published",
+  "mcp.col_version": "Version",
+  "mcp.title_versions": "Versions",
+  "mcp.empty_versions": "No published versions yet."
 }

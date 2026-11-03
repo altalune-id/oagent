@@ -278,5 +278,10 @@
   "error_page.failed_body": "Terjadi kesalahan di pihak kami. Coba lagi sebentar lagi.",
   "theme.family": "Keluarga tema",
   "theme.switch_mode": "Beralih antara terang dan gelap",
-  "common.copied": "Disalin"
+  "common.copied": "Disalin",
+  "mcp.agent_draft_saved": "Draf disimpan",
+  "mcp.agent_published": "Agen diterbitkan",
+  "mcp.col_version": "Versi",
+  "mcp.title_versions": "Versi",
+  "mcp.empty_versions": "Belum ada versi yang diterbitkan."
 }

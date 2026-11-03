@@ -212,6 +212,17 @@ func TestWeb_DeadLinks(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), `href="/login"`, "signed out: an existing account may already have access")
 }
 
+func TestWeb_ExpiredWithAnUnknownInviterAsksTheInviter(t *testing.T) {
+	f := newWebFixture(t, false)
+	expired := f.create("late@x.io", member.RoleMember)
+	delete(f.people, f.owner.UserID)
+	f.clock = f.clock.Add(invite.TTL)
+	rec := f.get(strings.TrimPrefix(expired.Link, "https://oagent.example.com"))
+	assert.Equal(t, http.StatusGone, rec.Code)
+	assert.Contains(t, rec.Body.String(), "Your invite to join Acme has expired. Ask the person who invited you to send you a new one.")
+	assert.NotContains(t, rec.Body.String(), "Ask Someone")
+}
+
 func TestWeb_NoCookie(t *testing.T) {
 	f := newWebFixture(t, false)
 	for _, ck := range []*http.Cookie{nil, {Name: "oagent_invite", Value: "forged"}} {
