@@ -3,6 +3,7 @@ import type { ShownError } from '#base/lib/apperror/message';
 import AppButton from '#base/components/ui/AppButton.vue';
 import AppModal from '#base/components/ui/AppModal.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
+import Section from '#base/components/ui/Section.vue';
 
 export interface ProfileSessionsLabels {
   title: string;
@@ -23,16 +24,13 @@ const emit = defineEmits<{ ask: [], confirm: [], cancel: [] }>();
 </script>
 
 <template>
-  <section class="card border border-base-300 bg-base-100">
-    <div class="card-body gap-3">
-      <h2 class="card-title text-base">
-        {{ labels.title }}
-      </h2>
-      <p class="text-sm text-base-content/70">
+  <Section :title="labels.title">
+    <div class="flex flex-col gap-3">
+      <p class="text-ui text-base-content/70">
         {{ labels.body }}
       </p>
       <ErrorText :error="error" />
-      <div class="card-actions justify-end">
+      <div class="flex justify-end">
         <AppButton variant="error" soft size="sm" :disabled="busy" @click="emit('ask')">
           <Icon name="lucide:log-out" size="16" aria-hidden="true" />
           {{ labels.signOut }}
@@ -52,5 +50,5 @@ const emit = defineEmits<{ ask: [], confirm: [], cancel: [] }>();
         </AppButton>
       </template>
     </AppModal>
-  </section>
+  </Section>
 </template>

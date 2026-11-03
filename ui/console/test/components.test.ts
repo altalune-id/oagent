@@ -92,6 +92,8 @@ describe('labels above compact fields', () => {
   it('keeps the hidden username field labelled for password managers', () => {
     const labels = { title: 'Password', email: 'Email', current: 'Current', next: 'New', rules: 'r', hint: 'h', change: 'Change' };
     const w = mount(ProfilePassword, { props: { current: '', next: '', email: 'ana@example.com', labels } });
+    expect(w.get('section h2').text()).toBe('Password');
+    expect(w.find('.card').exists()).toBe(false);
     const hidden = w.get('input[autocomplete="username"]');
     expect(hidden.element.closest('label')!.classList.contains('hidden')).toBe(true);
     expect(hidden.element.closest('label')!.textContent).toContain('Email');
@@ -103,6 +105,8 @@ describe('destructive buttons in three tiers', () => {
   it('opens sign-out-everywhere from a soft error button and confirms with a solid one', () => {
     const labels = { title: 'Sessions', body: 'b', signOut: 'Sign out everywhere', confirmTitle: 'Sure?', confirmBody: 'c', cancel: 'Cancel' };
     const w = mount(ProfileSessions, { props: { labels, confirming: true }, attachTo: document.body });
+    expect(w.get('section h2').classes()).toEqual(['text-ui', 'font-semibold']);
+    expect(w.get('section p').classes()).toEqual(['text-ui', 'text-base-content/70']);
     const [ask, cancel, confirm] = w.findAll('button');
     expect(ask!.classes()).toEqual(expect.arrayContaining(['btn-error', 'btn-soft', 'btn-sm', 'text-ui']));
     expect(cancel!.text()).toBe('Cancel');

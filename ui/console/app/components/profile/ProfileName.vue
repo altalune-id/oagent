@@ -4,6 +4,7 @@ import AppButton from '#base/components/ui/AppButton.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import FieldError from '#base/components/ui/FieldError.vue';
 import SavedNote from '#base/components/ui/SavedNote.vue';
+import Section from '#base/components/ui/Section.vue';
 
 export interface ProfileNameLabels {
   title: string;
@@ -24,11 +25,8 @@ const name = defineModel<string>('name', { required: true });
 </script>
 
 <template>
-  <form class="card border border-base-300 bg-base-100" @submit.prevent="emit('save')">
-    <div class="card-body gap-3">
-      <h2 class="card-title text-base">
-        {{ labels.title }}
-      </h2>
+  <Section :title="labels.title">
+    <form class="flex flex-col gap-3" @submit.prevent="emit('save')">
       <div class="flex flex-col gap-1">
         <label class="flex flex-col gap-1">
           <span class="label text-ui text-base-content">{{ labels.name }}</span>
@@ -44,11 +42,11 @@ const name = defineModel<string>('name', { required: true });
       </p>
       <ErrorText :error="error" />
       <SavedNote v-if="notice" :label="notice" />
-      <div class="card-actions justify-end">
+      <div class="flex justify-end">
         <AppButton type="submit" size="sm" :disabled="busy">
           {{ labels.save }}
         </AppButton>
       </div>
-    </div>
-  </form>
+    </form>
+  </Section>
 </template>

@@ -50,7 +50,7 @@ useHead({ title: () => `${t('profile.title')} · OAgent` });
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-2xl space-y-6 px-4 py-8 sm:px-6 sm:py-10">
+  <div class="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 py-8 sm:px-6 sm:py-10">
     <div class="flex items-center gap-4">
       <Avatar v-if="person" :id="person.id" :name="person.name" :email="person.email" :avatar-url="person.avatarUrl" size="lg" />
       <div class="min-w-0">
