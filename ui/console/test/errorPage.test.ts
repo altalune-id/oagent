@@ -1,9 +1,11 @@
 // @vitest-environment happy-dom
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
+import { createPinia, setActivePinia } from 'pinia';
 import { describe, expect, it, vi } from 'vitest';
 
 import { setRoute } from '#test/nuxt-globals';
 import ErrorView from '~/error.vue';
+import DefaultLayout from '~/layouts/default.vue';
 
 function render(error: { statusCode: number, statusMessage?: string }) {
   const clearError = vi.fn();
@@ -28,5 +30,15 @@ describe('console error page', () => {
     expect(w.text()).not.toContain('upstream exploded');
     await w.findAll('button').find(b => b.text().includes('common.retry'))!.trigger('click');
     expect(clearError).toHaveBeenCalledWith({ redirect: '/o/acme' });
+  });
+
+  it('paints the theme the viewer picked, since Nuxt renders it instead of app.vue', async () => {
+    setActivePinia(createPinia());
+    localStorage.setItem('oagent_theme', JSON.stringify({ family: 'retro', mode: 'light' }));
+    document.documentElement.removeAttribute('data-theme');
+    const stubs = { AppNavbar: true, ToastHost: true, OrgCreateModal: true, ProjectCreateModal: true };
+    mount(ErrorView, { props: { error: { statusCode: 502 } as never }, global: { stubs: { ...stubs, NuxtLayout: DefaultLayout } } });
+    await flushPromises();
+    expect(document.documentElement.getAttribute('data-theme')).toBe('retro-light');
   });
 });
