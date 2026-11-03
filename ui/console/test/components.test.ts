@@ -283,6 +283,9 @@ describe('actions follow the caller\'s permissions', () => {
     const w = await mountPage(ProjectSettings);
     expect(w.find('form').exists()).toBe(false);
     expect(w.text()).toContain('project.read_only');
+    expect(w.get('h1').classes()).toEqual(['text-xl', 'font-semibold', 'break-words']);
+    expect(w.get('[data-testid="project-settings-readonly"] dl').text()).toContain('Web');
+    expect(w.get('[data-testid="project-settings-readonly"] dl').text()).toContain('web');
   });
 
   it('offers New project and Edit only with project:write', async () => {

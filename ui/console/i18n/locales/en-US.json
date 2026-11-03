@@ -374,5 +374,6 @@
   "webhooks.actions_for": "Actions for {url}",
   "configure.sample_options": "Preview: example options until a catalogue exists.",
   "stat.loading": "Loading",
-  "stat.unavailable": "Not available"
+  "stat.unavailable": "Not available",
+  "project.settings_subtitle": "The project's name, URL and environment tag."
 }

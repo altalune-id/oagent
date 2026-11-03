@@ -47,7 +47,7 @@ async function change(e: Event) {
       </select>
       <SavedNote v-if="saved" :label="t('common.saved')" />
     </div>
-    <p v-else class="text-sm">
+    <p v-else class="text-ui">
       {{ t(environmentLabelKey(environment)) }}
     </p>
     <ErrorText :error="error" />

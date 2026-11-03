@@ -374,5 +374,6 @@
   "webhooks.actions_for": "Tindakan untuk {url}",
   "configure.sample_options": "Pratinjau: contoh pilihan sampai katalog tersedia.",
   "stat.loading": "Memuat",
-  "stat.unavailable": "Tidak tersedia"
+  "stat.unavailable": "Tidak tersedia",
+  "project.settings_subtitle": "Nama, URL, dan tag lingkungan proyek."
 }
