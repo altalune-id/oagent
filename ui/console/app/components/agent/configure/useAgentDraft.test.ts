@@ -138,15 +138,64 @@ describe('useAgentDraft', () => {
     expect(d.dirty.value).toBe(false);
   });
 
-  it('reports a failed load and a failed publish', async () => {
+  it('reports a failed load and never publishes after it', async () => {
     client.getAgent!.mockRejectedValue(connectError('NOT_FOUND'));
     const d = useAgentDraft(id);
     await d.load();
     expect(d.loadError.value).not.toBeNull();
+    expect(await d.publish()).toBeNull();
+    expect(client.publishAgent).not.toHaveBeenCalled();
+    expect(d.publishing.value).toBe(false);
+  });
+
+  it('never autosaves after a failed load, so an empty config never overwrites the draft', async () => {
+    client.listAgentVersions!.mockRejectedValue(connectError('GEN900'));
+    const d = useAgentDraft(id);
+    await d.load();
+    d.config.value = { ...d.config.value, model: 'small-3' };
+    await vi.advanceTimersByTimeAsync(autosaveDelayMs);
+    expect(await d.save()).toBe(false);
+    expect(client.updateAgentDraft).not.toHaveBeenCalled();
+  });
+
+  it('reports a failed publish', async () => {
+    const d = useAgentDraft(id);
+    await d.load();
     client.publishAgent!.mockRejectedValue(connectError('GEN004'));
     expect(await d.publish()).toBeNull();
     expect(d.publishError.value).not.toBeNull();
     expect(d.publishing.value).toBe(false);
+  });
+
+  it('publishes once when Publish is pressed twice, and shows a failed pre-publish save in the publish error', async () => {
+    const d = useAgentDraft(id);
+    await d.load();
+    d.config.value = { ...d.config.value, model: 'small-3' };
+    const both = await Promise.all([d.publish(), d.publish()]);
+    expect(client.publishAgent).toHaveBeenCalledOnce();
+    expect(both[1]).toBeNull();
+    d.config.value = { ...d.config.value, model: 'tiny-1' };
+    client.updateAgentDraft!.mockRejectedValueOnce(connectError('GEN900'));
+    expect(await d.publish()).toBeNull();
+    expect(d.publishError.value).not.toBeNull();
+    expect(d.publishError.value).toBe(d.saveError.value);
+  });
+
+  it('warns before closing the tab with unsaved edits, and blocks leaving when the save fails', async () => {
+    const d = useAgentDraft(id);
+    await d.load();
+    const quiet = new Event('beforeunload', { cancelable: true }) as BeforeUnloadEvent;
+    d.warnUnload(quiet);
+    expect(quiet.defaultPrevented).toBe(false);
+    expect(await d.leaveGuard()).toBe(true);
+    d.config.value = { ...d.config.value, model: 'small-3' };
+    await vi.advanceTimersByTimeAsync(0);
+    const closing = new Event('beforeunload', { cancelable: true }) as BeforeUnloadEvent;
+    d.warnUnload(closing);
+    expect(closing.defaultPrevented).toBe(true);
+    client.updateAgentDraft!.mockRejectedValueOnce(connectError('GEN900'));
+    expect(await d.leaveGuard()).toBe(false);
+    expect(await d.leaveGuard()).toBe(true);
   });
 
   it('keeps edits typed while a publish is in flight, and saves them after', async () => {
@@ -211,7 +260,8 @@ describe('useAgentDraft', () => {
     await d.load();
     expect(d.state.value).toBeNull();
     d.config.value = { ...d.config.value, model: 'x' };
-    expect(await d.save()).toBe(true);
-    expect(await d.publish()).toEqual({ created: false, version: 0 });
+    expect(await d.save()).toBe(false);
+    expect(await d.publish()).toBeNull();
+    expect(client.updateAgentDraft).not.toHaveBeenCalled();
   });
 });

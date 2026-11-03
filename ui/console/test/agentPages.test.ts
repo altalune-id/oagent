@@ -139,7 +139,7 @@ describe('deleting an agent', () => {
   });
 });
 
-const live = { instructions: 'Help.', model: 'large-2', temperature: 0.2, maxSteps: 12, maxCostCents: 10, tools: [{ name: 'orders.lookup', requireApproval: false }] };
+const live = { instructions: 'Help.', model: 'acme-pro', temperature: 0.2, maxSteps: 12, maxCostCents: 10, tools: [{ name: 'acme.orders.read', requireApproval: false }] };
 
 function withDraft(publishedVersion = 12, extra: Record<string, unknown> = {}) {
   const agent = { ...support, draft: { ...live, instructions: 'Help more.' }, publishedVersion, unpublishedChanges: true, ...extra };
@@ -157,6 +157,30 @@ function withDraft(publishedVersion = 12, extra: Record<string, unknown> = {}) {
 describe('configure page', () => {
   beforeEach(() => {
     vi.stubGlobal('definePageMeta', vi.fn());
+    vi.stubGlobal('onBeforeRouteLeave', vi.fn());
+  });
+
+  it('locks the form and Publish after a failed load', async () => {
+    inProject('/agents/support', [support], 'agent:read', 'agent:write');
+    const client = withDraft();
+    client.listAgentVersions.mockRejectedValue(new Error('offline'));
+    const w = await mountPage(ConfigurePage);
+    expect(w.get('textarea').attributes('disabled')).toBeDefined();
+    expect(w.findAll('button').find(b => b.text() === 'configure.publish')!.attributes('disabled')).toBeDefined();
+    expect(client.updateAgentDraft).not.toHaveBeenCalled();
+  });
+
+  it('blocks Publish while the draft uses a sample model, and says why', async () => {
+    inProject('/agents/support', [support], 'agent:read', 'agent:write');
+    const client = withDraft();
+    const w = await mountPage(ConfigurePage, { attachTo: document.body });
+    await w.get('select').setValue('small-3');
+    const publish = w.findAll('button').find(b => b.text() === 'configure.publish')!;
+    expect(publish.attributes('disabled')).toBeDefined();
+    expect(w.get('[role="status"]').element.parentElement!.textContent).toContain('configure.samples_block');
+    await publish.trigger('click');
+    expect(client.publishAgent).not.toHaveBeenCalled();
+    w.unmount();
   });
 
   it('loads the draft, says which version is live and offers Publish', async () => {

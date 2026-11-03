@@ -56,7 +56,13 @@ const tools = computed<ToolInfo[]>(() => [
   ...sampleTools,
   ...config.value.tools.filter(tool => !sampleTools.some(s => s.name === tool.name)).map(tool => ({ name: tool.name, description: '' })),
 ]);
-const canPublish = computed(() => canEdit.value && !draft.publishing.value && (current.value === 0 || !!state.value?.unpublishedChanges || draft.dirty.value));
+const usesSamples = computed(() => sampleModels.includes(config.value.model) || config.value.tools.some(tool => sampleTools.some(s => s.name === tool.name)));
+const loaded = computed(() => !!state.value && !draft.loadError.value);
+const canPublish = computed(() => canEdit.value && loaded.value && !usesSamples.value && !draft.publishing.value && (current.value === 0 || !!state.value?.unpublishedChanges || draft.dirty.value));
+
+onBeforeRouteLeave(() => draft.leaveGuard());
+onMounted(() => window.addEventListener('beforeunload', draft.warnUnload));
+onBeforeUnmount(() => window.removeEventListener('beforeunload', draft.warnUnload));
 
 const status = computed(() => {
   if (draft.saving.value) {
@@ -98,6 +104,9 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
         <p :id="reasonId" class="text-ui text-base-content/70">
           <span role="status">{{ status }}</span>
           {{ liveLine }}
+          <template v-if="canEdit && loaded && usesSamples">
+            {{ t('configure.samples_block') }}
+          </template>
         </p>
       </div>
       <div v-if="canEdit" class="flex items-center gap-2">
@@ -118,7 +127,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
     </div>
 
     <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(22rem,26rem)]">
-      <AgentConfigForm v-model="config" :models="models" :tools="tools" :disabled="!canEdit" />
+      <AgentConfigForm v-model="config" :models="models" :tools="tools" :disabled="!canEdit || !loaded" />
       <ConfigurePane :agent-id="agent.id" :config="config" />
     </div>
 

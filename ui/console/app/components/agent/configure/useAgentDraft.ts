@@ -1,5 +1,6 @@
 import type { ShownError } from '#base/lib/apperror/message';
 import type { AgentConfig, AgentState } from './agentConfig';
+import { useToast } from '#base/components/ui/toast';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { useAgentsStore } from '~/stores/agents';
 import { changes, fromWire, stateOf } from './agentConfig';
@@ -11,6 +12,8 @@ export function useAgentDraft(agentId: string) {
   const { $agentClient: client } = useNuxtApp();
   const errorMessage = useErrorMessage();
   const agents = useAgentsStore();
+  const toast = useToast();
+  const { t } = useI18n();
 
   const config = ref<AgentConfig>(fromWire());
   const state = ref<AgentState | null>(null);
@@ -82,6 +85,9 @@ export function useAgentDraft(agentId: string) {
   }
 
   async function save(): Promise<boolean> {
+    if (!state.value) {
+      return false;
+    }
     clearTimeout(timer);
     timer = undefined;
     let busy = inflight;
@@ -110,11 +116,16 @@ export function useAgentDraft(agentId: string) {
   }, { deep: true });
 
   async function publish() {
-    if (!(await save())) {
+    if (!state.value || publishing.value) {
       return null;
     }
     publishing.value = true;
     publishError.value = null;
+    if (!(await save())) {
+      publishError.value = saveError.value;
+      publishing.value = false;
+      return null;
+    }
     try {
       const res = await client.publishAgent({ id: agentId });
       if (res.agent) {
@@ -138,11 +149,33 @@ export function useAgentDraft(agentId: string) {
     }
   }
 
-  onBeforeUnmount(() => {
-    if (timer) {
-      save();
+  function warnUnload(event: BeforeUnloadEvent) {
+    if (dirty.value || saving.value) {
+      event.preventDefault();
     }
+  }
+
+  async function leaveGuard() {
+    if (!dirty.value && !saving.value) {
+      return true;
+    }
+    if (await save()) {
+      return true;
+    }
+    toast.push('info', t('configure.leave_first'));
+    return false;
+  }
+
+  onBeforeUnmount(() => {
+    if (!dirty.value) {
+      return;
+    }
+    void save().then((ok) => {
+      if (!ok && saveError.value) {
+        toast.push('error', saveError.value.message);
+      }
+    });
   });
 
-  return { config, state, live, diff, dirty, saving, publishing, loadError, saveError, publishError, load, save, publish };
+  return { config, state, live, diff, dirty, saving, publishing, loadError, saveError, publishError, load, save, publish, warnUnload, leaveGuard };
 }
