@@ -27,7 +27,10 @@ export default defineNuxtConfig({
     },
     devServer: { port: 8280, host: '0.0.0.0' },
     nitro: {
-      devProxy: { '/api': { target: 'http://localhost:5150/api', changeOrigin: true } },
+      devProxy: {
+        '/api': { target: 'http://localhost:5150/api', changeOrigin: true },
+        '/static': { target: 'http://localhost:5150/static', changeOrigin: true },
+      },
     },
   },
   $production: {

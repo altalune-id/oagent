@@ -1,0 +1,227 @@
+<script setup lang="ts">
+import AppButton from '#base/components/ui/AppButton.vue';
+import LoadError from '#base/components/ui/LoadError.vue';
+import StatusLabel from '#base/components/ui/StatusLabel.vue';
+import { chosenModel, publishBlockers } from '~/components/agent/configure/runtime';
+import { useAgentDraft } from '~/components/agent/configure/useAgentDraft';
+import { useAgentPage } from '~/components/agent/useAgentPage';
+import ChatTranscript from '~/components/try/ChatTranscript.vue';
+import { phaseLabel } from '~/components/try/phase';
+import TryRunPane from '~/components/try/TryRunPane.vue';
+import { useTryChat } from '~/components/try/useTryChat';
+import { useUnits } from '~/composables/useUnits';
+import { useAuthStore } from '~/stores/auth';
+import { useTryItStore } from '~/stores/tryIt';
+
+definePageMeta({ bleed: true });
+
+const { t } = useI18n();
+const { count, money } = useUnits();
+const { agent, runtime, providers, servers, base } = await useAgentPage();
+const draft = useAgentDraft(agent.value.id);
+await draft.load();
+
+const uid = useId();
+const tab = ref<'draft' | 'live'>('draft');
+const text = ref('');
+const fileInput = ref<HTMLInputElement>();
+const current = computed(() => draft.state.value?.publishedVersion ?? 0);
+const blockers = computed(() => publishBlockers(runtime.value, { providers: providers.items, servers: servers.items, maxCostCents: draft.config.value.maxCostCents, oldTools: draft.config.value.tools.length }));
+const model = computed(() => chosenModel(runtime.value, providers.items).model);
+const vision = computed(() => !!model.value?.vision);
+
+const auth = useAuthStore();
+const tryIt = useTryItStore();
+const chat = useTryChat({ maxSteps: () => draft.config.value.maxSteps, maxCostCents: () => draft.config.value.maxCostCents, money, decider: () => auth.me?.name ?? '' });
+const { items, phase, scenario, steps, tokens, costCents, photo, photoProblem, busy, toolCalls } = chat;
+const status = computed(() => phaseLabel(phase.value));
+const stepsText = computed(() => (draft.config.value.maxSteps ? t('run.steps_of', { n: steps.value, max: draft.config.value.maxSteps }) : count(steps.value)));
+
+function send() {
+  const message = text.value;
+  text.value = '';
+  if (message.trim()) {
+    tryIt.markTried(agent.value.id);
+  }
+  void chat.send(message);
+}
+
+function onKey(event: KeyboardEvent) {
+  if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    send();
+  }
+}
+
+function onFile(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (file) {
+    chat.attach(file);
+  }
+  input.value = '';
+}
+
+useHead({ title: () => `${agent.value?.name ?? ''} · ${t('try.title')} · OAgent` });
+</script>
+
+<template>
+  <div class="flex min-h-full min-w-0 flex-col">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-base-300 px-4 py-3 lg:px-6">
+      <div class="flex min-w-0 flex-col gap-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <h1 class="text-xl font-semibold">
+            {{ t('try.title') }}
+          </h1>
+          <span class="badge badge-info badge-soft text-base-content badge-sm">{{ t('preview.badge') }}</span>
+        </div>
+        <p class="text-ui text-base-content/70">
+          {{ t('try.subtitle', { name: agent.name }) }}
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-col items-end gap-1">
+          <div class="tabs tabs-box tabs-sm" role="radiogroup" :aria-label="t('try.version')">
+            <label class="tab" :class="{ 'tab-active': tab === 'draft' }">
+              <input v-model="tab" type="radio" :name="`${uid}-tab`" value="draft">
+              {{ t('try.draft') }}
+            </label>
+            <label class="tab tab-disabled">
+              <input v-model="tab" type="radio" :name="`${uid}-tab`" value="live" disabled :aria-describedby="`${uid}-live`">
+              {{ current ? t('try.live_legacy', { n: current }) : t('try.live_none') }}
+            </label>
+          </div>
+          <p :id="`${uid}-live`" class="text-xs text-base-content/70">
+            {{ current ? t('try.live_legacy_hint', { n: current }) : t('try.live_none_hint') }}
+          </p>
+        </div>
+        <AppButton variant="plain" size="sm" :disabled="!items.length" @click="chat.newChat()">
+          <Icon name="lucide:message-square-plus" size="16" aria-hidden="true" />
+          {{ t('try.new_chat') }}
+        </AppButton>
+      </div>
+    </div>
+
+    <div class="px-4 lg:px-6">
+      <LoadError :error="draft.loadError.value" :busy="false" :retry-label="t('common.retry')" @retry="draft.load()" />
+    </div>
+
+    <div v-if="blockers.length" class="p-4 lg:p-6">
+      <div role="alert" class="alert alert-warning alert-soft items-start text-base-content text-ui">
+        <Icon name="lucide:triangle-alert" size="16" class="mt-0.5 shrink-0" aria-hidden="true" />
+        <div class="flex flex-col gap-1">
+          <p class="font-semibold">
+            {{ t('try.cant_run') }}
+          </p>
+          <ul class="flex flex-col gap-0.5">
+            <li v-for="b in blockers" :key="b.key + (b.params?.server ?? '')">
+              {{ t(b.key, b.params ?? {}) }}
+            </li>
+          </ul>
+          <NuxtLink :to="base" class="link">
+            {{ t('try.open_configure') }}
+          </NuxtLink>
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)]">
+      <div class="flex min-h-[calc(100dvh-10rem)] min-w-0 flex-col xl:min-h-0">
+        <details class="collapse-arrow collapse rounded-none border-b border-base-300 bg-base-200 xl:hidden">
+          <summary class="collapse-title flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-ui" role="status">
+            <span class="font-semibold">{{ t('try.this_run') }}</span>
+            <StatusLabel :tone="status.tone" :label="t(status.key)" :detail="`${stepsText} · ${money(costCents)}`" />
+          </summary>
+          <div class="collapse-content">
+            <TryRunPane v-model:scenario="scenario" :steps-text="stepsText" :tokens="count(tokens)" :cost="money(costCents)" :model="runtime.model || '—'" :tool-calls="toolCalls" :busy="busy" />
+          </div>
+        </details>
+        <div class="flex-1 p-4 lg:p-6">
+          <div v-if="!items.length" class="flex flex-col items-start gap-3 py-8">
+            <p class="text-ui text-base-content/70">
+              {{ t('try.empty') }}
+            </p>
+            <ul class="flex flex-wrap gap-2" :aria-label="t('try.suggestions')">
+              <li v-for="p in tryIt.prompts" :key="p">
+                <AppButton variant="outline" size="sm" @click="text = p; send()">
+                  {{ p }}
+                </AppButton>
+              </li>
+            </ul>
+          </div>
+          <ChatTranscript
+            v-else
+            viewer="person" :items="items" :agent-name="agent.name" :you-name="t('try.you')" :busy="busy"
+            @approve="chat.decide(true)" @reject="chat.decide(false, $event)" @retry="chat.retry()" @reload="chat.reload()"
+          />
+        </div>
+
+        <form class="sticky bottom-0 flex flex-col gap-2 border-t border-base-300 bg-base-100 p-4 lg:px-6" @submit.prevent="send()">
+          <div v-if="photo" class="flex items-center gap-2">
+            <span class="badge badge-sm badge-ghost gap-1.5">
+              <img :src="photo.url" :alt="t('try.photo_alt')" class="size-4 rounded-sm object-cover">
+              {{ photo.name }}
+            </span>
+            <AppButton variant="ghost" size="xs" square :aria-label="t('try.remove_photo')" :title="t('try.remove_photo')" @click="chat.detach()">
+              <Icon name="lucide:x" size="14" aria-hidden="true" />
+            </AppButton>
+          </div>
+          <p v-if="photoProblem" role="alert" class="flex items-center gap-1.5 text-xs text-base-content">
+            <Icon name="lucide:circle-alert" size="14" class="shrink-0 text-error" aria-hidden="true" />
+            {{ t(photoProblem) }}
+          </p>
+          <div class="flex items-end gap-2">
+            <label class="min-w-0 flex-1">
+              <span class="sr-only">{{ t('try.message') }}</span>
+              <textarea
+                v-model="text" rows="1" class="textarea textarea-sm field-sizing-content max-h-40 min-h-0 w-full text-ui"
+                :placeholder="busy ? t('try.replying') : t('try.placeholder')" :disabled="busy || phase === 'awaiting'" :aria-describedby="`${uid}-keys`"
+                @keydown="onKey"
+              />
+            </label>
+            <label class="hidden">
+              {{ t('try.attach') }}
+              <input ref="fileInput" type="file" accept="image/jpeg,image/png,image/webp" tabindex="-1" @change="onFile">
+            </label>
+            <AppButton
+              variant="ghost" size="sm" square :disabled="!vision || busy" :aria-label="t('try.attach')" :title="t('try.attach')"
+              :aria-describedby="vision ? undefined : `${uid}-vision`" @click="fileInput?.click()"
+            >
+              <Icon name="lucide:image-plus" size="16" aria-hidden="true" />
+            </AppButton>
+            <AppButton v-if="busy" variant="outline" size="sm" @click="chat.stop()">
+              <Icon name="lucide:square" size="14" aria-hidden="true" />
+              {{ t('try.stop') }}
+            </AppButton>
+            <AppButton v-else type="submit" size="sm" :disabled="!text.trim() || phase === 'awaiting'">
+              <Icon name="lucide:send" size="16" aria-hidden="true" />
+              {{ t('try.send') }}
+            </AppButton>
+          </div>
+          <p :id="`${uid}-keys`" class="flex flex-wrap items-center gap-1 text-xs text-base-content/70">
+            <kbd class="kbd kbd-xs">Enter</kbd> {{ t('try.keys_send') }}
+            <kbd class="kbd kbd-xs">Shift</kbd>+<kbd class="kbd kbd-xs">Enter</kbd> {{ t('try.keys_newline') }}
+          </p>
+          <p v-if="!vision" :id="`${uid}-vision`" role="note" class="text-xs text-base-content/70">
+            {{ t('try.no_vision', { model: runtime.model || '—' }) }}
+            <NuxtLink :to="`${base}#configure-model`" class="link">
+              {{ t('try.pick_vision') }}
+            </NuxtLink>
+          </p>
+        </form>
+      </div>
+
+      <aside class="min-w-0 border-s border-base-300 bg-base-200 p-4 max-xl:hidden" :aria-label="t('try.run_pane')">
+        <div class="flex flex-col gap-4 xl:sticky xl:top-0">
+          <div class="flex flex-col gap-1" role="status">
+            <h2 class="text-ui font-semibold">
+              {{ t('try.this_run') }}
+            </h2>
+            <StatusLabel :tone="status.tone" :label="t(status.key)" />
+          </div>
+          <TryRunPane v-model:scenario="scenario" :steps-text="stepsText" :tokens="count(tokens)" :cost="money(costCents)" :model="runtime.model || '—'" :tool-calls="toolCalls" :busy="busy" />
+        </div>
+      </aside>
+    </div>
+  </div>
+</template>

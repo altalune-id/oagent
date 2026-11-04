@@ -4,12 +4,13 @@ import AppButton from './AppButton.vue';
 import AppModal from './AppModal.vue';
 import ErrorText from './ErrorText.vue';
 
-const { handle, title, body = '', confirmLabel, cancelLabel = 'Cancel' } = defineProps<{
+const { handle, title, body = '', confirmLabel, cancelLabel = 'Cancel', confirmDisabled = false } = defineProps<{
   handle: ConfirmHandle,
   title: string,
   body?: string,
   confirmLabel: string,
   cancelLabel?: string,
+  confirmDisabled?: boolean,
 }>();
 </script>
 
@@ -24,7 +25,7 @@ const { handle, title, body = '', confirmLabel, cancelLabel = 'Cancel' } = defin
       <AppButton variant="ghost" size="sm" :disabled="handle.busy.value" @click="handle.cancel()">
         {{ cancelLabel }}
       </AppButton>
-      <AppButton variant="error" size="sm" :busy="handle.busy.value" @click="handle.confirm()">
+      <AppButton variant="error" size="sm" :busy="handle.busy.value" :disabled="confirmDisabled" @click="handle.confirm()">
         {{ confirmLabel }}
       </AppButton>
     </template>

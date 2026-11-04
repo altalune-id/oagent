@@ -4,6 +4,7 @@ import { useOrgNav } from '~/components/layout/useOrgNav';
 import { environmentLabelKey } from '~/components/project/environment';
 import { useProjectNav } from '~/components/project/useProjectNav';
 import { useAgentsStore } from '~/stores/agents';
+import { useEndUsersStore } from '~/stores/endUsers';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 
@@ -14,6 +15,7 @@ export function useNavCrumbs() {
   const orgs = useOrgsStore();
   const projects = useProjectsStore();
   const agents = useAgentsStore();
+  const endUsers = useEndUsersStore();
   const orgNav = useOrgNav();
   const projectNav = useProjectNav();
   const agentNav = useAgentNav();
@@ -41,6 +43,10 @@ export function useNavCrumbs() {
     trail.push({ label: project.value.name, to: `/o/${org.value.slug}/projects/${project.value.slug}` });
     if (!agent.value) {
       const page = active(projectNav.value);
+      const endUser = route.params.endUser as string | undefined;
+      if (page && endUser) {
+        return [...trail, { label: page.label, to: page.to }, { label: endUsers.byId(endUser)?.name ?? endUser }];
+      }
       return page ? [...trail, { label: page.label }] : trail;
     }
     trail.push({ label: t('nav.agents'), to: agentNav.list.value });
@@ -49,6 +55,9 @@ export function useNavCrumbs() {
       return [...trail, { label: agent.value.name }];
     }
     trail.push({ label: agent.value.name, to: agentNav.base.value });
+    if (route.params.thread) {
+      return [...trail, { label: t('threads.title'), to: `${agentNav.base.value}/threads` }, { label: t('thread.crumb') }];
+    }
     if (route.params.run) {
       return [...trail, { label: t('run.col_run') }];
     }

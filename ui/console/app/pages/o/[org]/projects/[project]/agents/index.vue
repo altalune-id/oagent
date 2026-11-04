@@ -16,7 +16,6 @@ import { useDates } from '#base/composables/useDates';
 import AgentCreateModal from '~/components/agent/create/AgentCreateModal.vue';
 import AgentEditModal from '~/components/agent/edit/AgentEditModal.vue';
 import { useCan } from '~/composables/useCan';
-import { sampleAgents } from '~/preview/samples';
 import { useAgentsStore } from '~/stores/agents';
 import { useAuthStore } from '~/stores/auth';
 import { useOrgsStore } from '~/stores/orgs';
@@ -46,7 +45,7 @@ await Promise.all([agents.ensureLoaded(project.value.id), useAuthStore().load()]
 const items = computed(() => (project.value ? agents.forProject(project.value.id) : []));
 const base = computed(() => `/o/${org.value?.slug}/projects/${project.value?.slug}/agents`);
 const showSamples = ref(false);
-const samples = sampleAgents();
+const samples = agents.previews;
 
 // NOTE: Recent runs, Runs, Median and Cost need the agent runtime; add their columns here when it reports them.
 const columns = computed<Column[]>(() => [
@@ -172,9 +171,12 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · ${t('nav
           <p v-if="items.length" class="text-ui text-base-content/70">
             {{ t('agent.no_match', { query }) }}
           </p>
-          <EmptyState v-else icon="lucide:bot" :title="t('agent.empty_title', { project: project.name })" :body="t('agent.empty_body')">
+          <EmptyState v-else icon="lucide:bot" :title="t('agent.empty_title', { project: project.name })" :body="t('setup.agents_first')">
             <template #actions>
               <AgentCreateModal v-if="canEdit" :org-id="org?.id ?? ''" :project-id="project.id" />
+              <AppButton variant="plain" size="sm" :to="`/o/${route.params.org}/projects/${route.params.project}`">
+                {{ t('setup.see_checklist') }}
+              </AppButton>
               <AppButton variant="plain" size="sm" @click="showSamples = true">
                 {{ t('agent.show_samples') }}
               </AppButton>

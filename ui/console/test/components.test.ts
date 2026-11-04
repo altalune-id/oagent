@@ -23,7 +23,7 @@ import ProfileSessions from '~/components/profile/ProfileSessions.vue';
 import WebhookCreateModal from '~/components/webhook/create/WebhookCreateModal.vue';
 import WebhookList from '~/components/webhook/list/WebhookList.vue';
 import AgentsPage from '~/pages/o/[org]/projects/[project]/agents/index.vue';
-import ProjectSettings from '~/pages/o/[org]/projects/[project]/settings.vue';
+import ProjectSettings from '~/pages/o/[org]/projects/[project]/settings/index.vue';
 import WebhooksPage from '~/pages/o/[org]/projects/[project]/webhooks/index.vue';
 import ProjectsPage from '~/pages/o/[org]/projects/index.vue';
 import OrgSettings from '~/pages/o/[org]/settings/index.vue';

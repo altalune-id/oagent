@@ -71,7 +71,7 @@ export function stateOf(a: WireAgent): AgentState {
 }
 
 // changes lists what publishing the draft changes against the live config, as locale keys under configure.change_*.
-export function changes(draft: AgentConfig, live?: AgentConfig): Change[] {
+export function changes(draft: AgentConfig, live: AgentConfig | undefined, money: (cents: number) => string): Change[] {
   if (!live) {
     return [{ key: 'configure.change_first' }];
   }
@@ -89,7 +89,7 @@ export function changes(draft: AgentConfig, live?: AgentConfig): Change[] {
     out.push({ key: 'configure.change_max_steps', params: { from: live.maxSteps, to: draft.maxSteps } });
   }
   if (draft.maxCostCents !== live.maxCostCents) {
-    out.push({ key: 'configure.change_budget', params: { from: live.maxCostCents / 100, to: draft.maxCostCents / 100 } });
+    out.push({ key: 'configure.change_budget', params: { from: money(live.maxCostCents), to: money(draft.maxCostCents) } });
   }
   const before = new Map(live.tools.map(t => [t.name, t]));
   const after = new Map(draft.tools.map(t => [t.name, t]));

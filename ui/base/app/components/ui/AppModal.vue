@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref, useId, watch } from 'vue';
 
-const { open = false, title = '', dismissible = true } = defineProps<{
+const { open = false, title = '', dismissible = true, wide = false, stickyFooter = false } = defineProps<{
   open?: boolean,
   title?: string,
   dismissible?: boolean,
+  wide?: boolean,
+  stickyFooter?: boolean,
 }>();
 
 const emit = defineEmits<{ close: [] }>();
@@ -36,14 +38,14 @@ onMounted(sync);
 
 <template>
   <dialog ref="dialog" class="modal" :aria-labelledby="title ? titleId : undefined" @cancel.prevent="cancel()" @close="sync()">
-    <div class="modal-box">
+    <div class="modal-box" :class="{ 'w-11/12 max-w-3xl': wide }">
       <h2 v-if="title" :id="titleId" class="text-base font-semibold">
         {{ title }}
       </h2>
       <div class="py-4">
         <slot />
       </div>
-      <div class="modal-action">
+      <div class="modal-action" :class="{ 'sticky bottom-0 -mb-6 bg-base-100 pt-2 pb-6': stickyFooter }">
         <slot name="footer" />
       </div>
     </div>

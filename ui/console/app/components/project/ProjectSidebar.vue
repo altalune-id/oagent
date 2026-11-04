@@ -5,6 +5,7 @@ import { useOrgNav } from '~/components/layout/useOrgNav';
 import OrgSelector from '~/components/org/OrgSelector.vue';
 import ProjectSelector from '~/components/project/ProjectSelector.vue';
 import { useProjectNav } from '~/components/project/useProjectNav';
+import { useApprovalsStore } from '~/stores/approvals';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 
@@ -17,6 +18,13 @@ const project = computed(() => projects.items.find(p => p.orgId === org.value?.i
 const orgNav = useOrgNav();
 
 const groups = useProjectNav();
+const approvals = useApprovalsStore();
+
+watch(project, (value) => {
+  if (value) {
+    void approvals.ensureLoaded(value.id);
+  }
+}, { immediate: true });
 </script>
 
 <template>

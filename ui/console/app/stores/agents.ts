@@ -1,6 +1,20 @@
 import type { ShownError } from '#base/lib/apperror/message';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { sampleAgents } from '~/preview/samples';
+
+export interface SampleAgent {
+  slug: string;
+  name: string;
+  description: string;
+  version: number;
+  draft: boolean;
+  model: string;
+  runs7d: number;
+  medianSeconds: number;
+  costCents7d: number;
+  updatedAt: Date;
+}
 
 export interface Agent {
   id: string;
@@ -17,6 +31,7 @@ export const useAgentsStore = defineStore('agents', () => {
   const items = ref<Agent[]>([]);
   const loading = ref(false);
   const error = ref<ShownError | null>(null);
+  const previews = sampleAgents();
 
   const { $agentClient: client } = useNuxtApp();
   const errorMessage = useErrorMessage();
@@ -95,5 +110,5 @@ export const useAgentsStore = defineStore('agents', () => {
     return run;
   }
 
-  return { items, loading, error, forProject, add, remove, update, setPublishState, load, ensureLoaded };
+  return { items, previews, loading, error, forProject, add, remove, update, setPublishState, load, ensureLoaded };
 });

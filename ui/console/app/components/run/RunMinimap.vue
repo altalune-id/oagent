@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { RunEvent } from '~/preview/samples';
+import type { RunEvent } from '~/stores/threads';
 import EventMark from './EventMark.vue';
-import { lane, laneColor, lanes, scale, ticks } from './runView';
+import { eventName, lane, laneColor, lanes, scale, ticks } from './runView';
 
 const { events, selected = '' } = defineProps<{ events: RunEvent[], selected?: string }>();
 const emit = defineEmits<{ select: [id: string] }>();
@@ -34,8 +34,8 @@ function pct(s: number) {
             { 'border border-base-content': row.lane === 'approval', 'ring-2 ring-base-content ring-offset-1 ring-offset-base-100': e.id === selected },
           ]"
           :style="{ left: pct(e.at), width: pct(e.took) }"
-          :title="t('run.block_label', { name: e.name, at: e.at, took: e.took })"
-          :aria-label="t('run.block_label', { name: e.name, at: e.at, took: e.took })"
+          :title="t('run.block_label', { name: eventName(e, t), at: e.at, took: e.took })"
+          :aria-label="t('run.block_label', { name: eventName(e, t), at: e.at, took: e.took })"
           :aria-pressed="e.id === selected"
           @click="emit('select', e.id)"
         />

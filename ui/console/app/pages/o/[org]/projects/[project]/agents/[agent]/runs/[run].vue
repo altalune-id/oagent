@@ -1,30 +1,41 @@
 <script setup lang="ts">
 import type { Lane, RunStatus } from '~/components/run/runView';
-import type { RunEvent } from '~/preview/samples';
+import type { ApprovalRequest } from '~/stores/approvals';
+import type { RunEvent } from '~/stores/threads';
 import AppButton from '#base/components/ui/AppButton.vue';
 import { useCopy } from '#base/components/ui/copy';
+import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { useDates } from '#base/composables/useDates';
+import ApprovalCard from '~/components/approval/ApprovalCard.vue';
+import { decideApproval } from '~/components/approval/decision';
 import EventMark from '~/components/run/EventMark.vue';
 import RunMinimap from '~/components/run/RunMinimap.vue';
-import { eventsFor, lane, lanes, toolCalls, totals } from '~/components/run/runView';
+import { decisionStatus, eventName, eventsFor, lane, lanes, toolCalls, totals } from '~/components/run/runView';
+import { runStatusTone } from '~/components/thread/conversation';
+import { useCan } from '~/composables/useCan';
 import { useUnits } from '~/composables/useUnits';
-import { sampleRun } from '~/preview/samples';
+import { useAuthStore } from '~/stores/auth';
+import { useThreadsStore } from '~/stores/threads';
 
 definePageMeta({ bleed: true });
 
 const { t } = useI18n();
 const route = useRoute();
+const auth = useAuthStore();
+const canEdit = useCan('agent:write');
+const nameOf = (e: RunEvent) => eventName(e, t);
 const { moment } = useDates();
 const { money, seconds, count } = useUnits();
 
-const run = sampleRun();
+const run = useThreadsStore().runDetail();
 const status = ref<RunStatus>('waiting');
-const amount = ref(run.approval.amountCents / 100);
-const editing = ref(false);
+const approval = ref<ApprovalRequest>({ ...run.approval });
+const runStatus = computed(() => decisionStatus(status.value));
+const threadLink = computed(() => `/o/${route.params.org}/projects/${route.params.project}/agents/${route.params.agent}/threads/${run.threadId}`);
 const shown = ref<Lane[]>([...lanes]);
 const fromHash = route.hash?.startsWith('#event-') ? route.hash.slice('#event-'.length) : '';
 const selectedId = ref(run.events.some(e => e.id === fromHash) ? fromHash : run.events.at(-1)!.id);
-const amountId = useId();
+const uid = useId();
 
 const events = computed(() => eventsFor(run, status.value));
 const sum = computed(() => totals(events.value));
@@ -48,9 +59,13 @@ function select(id: string) {
   nextTick(() => document.getElementById(`event-${id}`)?.focus());
 }
 
-function decide(next: RunStatus) {
+function decide(next: RunStatus, reason = '') {
+  const decided = decideApproval(approval.value, next === 'approved', auth.me?.name ?? '', { channel: 'console' }, reason);
+  if (!decided) {
+    return;
+  }
+  approval.value = decided;
   status.value = next;
-  editing.value = false;
   selectedId.value = events.value.at(-1)!.id;
 }
 
@@ -60,6 +75,8 @@ function eventTime(e: RunEvent) {
 }
 
 useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
+
+await auth.load();
 </script>
 
 <template>
@@ -72,6 +89,9 @@ useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
         </h1>
         <p class="text-ui text-base-content/70">
           {{ started[0] }}<span class="font-mono text-xs">{{ run.model }}</span>{{ started[1] }}
+          <NuxtLink :to="threadLink" class="link">
+            {{ t('run.open_thread') }}
+          </NuxtLink>
         </p>
       </div>
       <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
@@ -80,8 +100,8 @@ useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
             <dt class="text-base-content/70">
               {{ t('run.status') }}
             </dt>
-            <dd class="font-medium" role="status">
-              {{ t(`run.status_${status}`) }}
+            <dd role="status">
+              <StatusLabel :tone="runStatusTone[runStatus]" :label="t(`runstatus.${runStatus}`)" />
             </dd>
           </div>
           <div class="flex items-baseline gap-1.5">
@@ -109,7 +129,7 @@ useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
             </dd>
           </div>
         </dl>
-        <AppButton v-if="status === 'waiting'" size="sm" @click="select('e9')">
+        <AppButton v-if="status === 'waiting'" size="sm" @click="select('e8')">
           <Icon name="lucide:hand" size="16" aria-hidden="true" />
           {{ t('run.review_approval') }}
         </AppButton>
@@ -125,9 +145,9 @@ useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
     </section>
 
     <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)]">
-      <section class="min-w-0" :aria-labelledby="`${amountId}-transcript`">
+      <section class="min-w-0" :aria-labelledby="`${uid}-transcript`">
         <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
-          <h2 :id="`${amountId}-transcript`" class="text-ui font-semibold">
+          <h2 :id="`${uid}-transcript`" class="text-ui font-semibold">
             {{ t('run.transcript') }}
           </h2>
           <fieldset class="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -151,37 +171,12 @@ useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
                     <span class="font-semibold">{{ t('run.approval_prefix') }} <span class="font-mono text-xs">{{ e.name }}</span></span>
                     <span class="text-xs tabular-nums text-base-content/70">{{ t('run.event_at', { at: e.at }) }}</span>
                   </span>
-                  <span class="block text-sm">{{ run.approval.title }}</span>
+                  <span class="block text-sm">{{ approval.title }}</span>
                 </span>
               </button>
-              <div v-if="status === 'waiting'" class="flex flex-col gap-2 ps-[1.125rem] pt-2">
-                <p class="text-ui text-base-content/70">
-                  {{ t('run.approval_why', { why: run.approval.why }) }}
-                </p>
-                <div v-if="editing" class="flex items-center gap-2">
-                  <label class="text-ui" :for="amountId">{{ t('run.amount') }}</label>
-                  <label class="input input-sm text-ui w-28">
-                    $<input :id="amountId" v-model.number="amount" type="number" step="0.01" min="0" :max="run.approval.amountCents / 100" class="tabular-nums">
-                  </label>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                  <AppButton size="sm" @click="decide('approved')">
-                    <Icon name="lucide:check" size="16" aria-hidden="true" />
-                    {{ t('run.approve') }}
-                  </AppButton>
-                  <AppButton v-if="!editing" variant="plain" size="sm" @click="editing = true">
-                    <Icon name="lucide:pencil" size="16" aria-hidden="true" />
-                    {{ t('run.edit_amount') }}
-                  </AppButton>
-                  <AppButton variant="plain" size="sm" @click="decide('rejected')">
-                    <Icon name="lucide:x" size="16" aria-hidden="true" />
-                    {{ t('run.reject') }}
-                  </AppButton>
-                </div>
+              <div class="ps-[1.125rem] pt-2">
+                <ApprovalCard :approval="approval" :read-only="!canEdit" @approve="decide('approved')" @reject="decide('rejected', $event)" />
               </div>
-              <p v-else role="status" class="ps-[1.125rem] pt-1 text-ui">
-                {{ status === 'approved' ? t('run.approved_note', { amount: money(amount * 100) }) : t('run.rejected_note') }}
-              </p>
             </li>
             <li v-else>
               <button
@@ -194,7 +189,7 @@ useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
                 <span class="mt-1 w-2.5 shrink-0"><EventMark :lane="lane(e)" /></span>
                 <span class="min-w-0 flex-1">
                   <span class="flex flex-wrap items-center justify-between gap-x-2">
-                    <span class="font-medium" :class="{ 'font-mono text-xs': e.type === 'tool' || e.type === 'error' }">{{ e.name }}</span>
+                    <span class="font-medium" :class="{ 'font-mono text-xs': e.type === 'tool' || e.type === 'error' }">{{ nameOf(e) }}</span>
                     <span class="text-xs tabular-nums text-base-content/70">{{ eventTime(e) }}</span>
                   </span>
                   <span class="block text-base-content/70">{{ e.summary }}</span>
@@ -214,7 +209,7 @@ useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
                 {{ selectedLane ? t(`run.lane_${selectedLane}`) : t('run.input') }}
               </div>
               <h2 class="font-semibold break-all">
-                {{ selected.name }}
+                {{ nameOf(selected) }}
               </h2>
             </div>
             <AppButton variant="ghost" size="xs" square :aria-label="t('run.copy_link')" :title="t('run.copy_link')" @click="copyLink()">
@@ -222,6 +217,9 @@ useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
             </AppButton>
           </div>
           <p>{{ selected.summary }}</p>
+          <p v-if="selected.type === 'model' || selected.type === 'output'" class="text-xs text-base-content/70">
+            {{ t('run.priced_at', { input: money(run.price.input * 100), output: money(run.price.output * 100) }) }}
+          </p>
           <dl class="grid grid-cols-[4rem_1fr] gap-x-3 gap-y-1 tabular-nums">
             <dt class="text-base-content/70">
               {{ t('run.started_at') }}

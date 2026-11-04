@@ -1,4 +1,4 @@
-import type { RunEvent, RunEventType, SampleRun } from '~/preview/samples';
+import type { RunDetail, RunEvent, RunEventType, RunStatus as RunState } from '~/stores/threads';
 
 export type Lane = 'model' | 'tool' | 'approval' | 'error';
 export type RunStatus = 'waiting' | 'approved' | 'rejected';
@@ -10,11 +10,16 @@ export const laneColor: Record<Lane, string> = { model: 'bg-info', tool: 'bg-bas
 
 const laneOf: Record<RunEventType, Lane | null> = { input: null, model: 'model', output: 'model', tool: 'tool', approval: 'approval', error: 'error' };
 
+// eventName labels a run step in the UI language; tool steps keep their tool name.
+export function eventName(event: RunEvent, t: (key: string) => string): string {
+  return event.labelKey ? t(event.labelKey) : event.name;
+}
+
 export function lane(event: RunEvent): Lane | null {
   return laneOf[event.type];
 }
 
-export function eventsFor(run: SampleRun, status: RunStatus): RunEvent[] {
+export function eventsFor(run: RunDetail, status: RunStatus): RunEvent[] {
   if (status === 'approved') {
     return [...run.events, ...run.afterApprove];
   }
@@ -51,4 +56,9 @@ export function toolCalls(events: RunEvent[]) {
     byName.set(e.name, row);
   }
   return [...byName].map(([name, row]) => ({ name, ...row }));
+}
+
+// decisionStatus maps the sample run's approval decision to the run status every screen shows.
+export function decisionStatus(status: RunStatus): RunState {
+  return status === 'waiting' ? 'awaiting_approval' : 'completed';
 }

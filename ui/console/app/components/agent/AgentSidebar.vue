@@ -37,7 +37,7 @@ const version = computed(() => {
   if (!v) {
     return t('agent.not_published');
   }
-  return agent.value?.unpublishedChanges ? t('agent.version_draft', { n: v }) : `v${v}`;
+  return t('legacy.sidebar_version', { n: v });
 });
 </script>
 

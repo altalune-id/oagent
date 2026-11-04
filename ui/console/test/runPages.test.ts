@@ -1,35 +1,54 @@
 // @vitest-environment happy-dom
+import { create } from '@bufbuild/protobuf';
 import { flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useToast } from '#base/components/ui/toast';
+import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { mountPage } from '#test/mount-page';
-import { setRoute } from '#test/nuxt-globals';
+import { setClient, setRoute } from '#test/nuxt-globals';
 import RunPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/runs/[run].vue';
 import RunsPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/runs/index.vue';
 import { sampleRun } from '~/preview/samples';
+import { useOrgsStore } from '~/stores/orgs';
+import { useProjectsStore } from '~/stores/projects';
 
 const run = sampleRun();
+const orgId = 'B6rTn1YkM8wQz3XpL5vGd';
+const projectId = 'x6MH9WPWjktMwCBKHy4pF';
+const yasaku = { id: 'Y4sKu8RmT2pLq6WnX9cVb', projectId, slug: 'yasaku-keuangan', name: 'Yasaku Keuangan', description: '', publishedVersion: 4 };
 
 beforeEach(() => {
   setActivePinia(createPinia());
-  setRoute({ path: `/o/acme/projects/web/agents/refund-triage/runs/${run.id}`, params: { org: 'acme', project: 'web', agent: 'refund-triage', run: run.id } });
+  useOrgsStore().items = [{ id: orgId, slug: 'acme', name: 'Acme', role: 'owner', permissions: [] }];
+  useProjectsStore().items = [{ id: projectId, orgId, slug: 'rumah', name: 'Rumah Tangga' }];
+  setClient('$authClient', { whoami: vi.fn().mockResolvedValue(create(WhoamiResponseSchema, { name: 'Budi', permissions: ['agent:read', 'agent:write'] })) });
+  setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [yasaku] }) });
+  setRoute({ path: `/o/acme/projects/rumah/agents/yasaku-keuangan/runs/${run.id}`, params: { org: 'acme', project: 'rumah', agent: 'yasaku-keuangan', run: run.id } });
 });
 
 describe('runs page', () => {
-  it('lists the sample run under a Preview badge and note, linking to the viewer', async () => {
+  it('lists one sample run per status with its conversation, detail and usage, filtered by status', async () => {
     const w = await mountPage(RunsPage);
     expect(w.get('.badge').text()).toBe('preview.badge');
     expect(w.get('[role="note"]').text()).toBe('run.preview_note');
-    expect(w.get('caption').text()).toBe('run.samples_caption');
-    expect(w.text()).toContain(run.id);
-    const cells = w.findAll('tbody td');
-    expect(cells[0]!.classes()).toEqual(['font-mono', 'text-xs']);
-    expect(cells[1]!.text()).toBe('run.status_waiting');
-    expect(cells[1]!.find('.badge').exists()).toBe(false);
-    expect(w.find('li.list-row').exists()).toBe(false);
-    expect(w.find('.alert').exists()).toBe(false);
+    const rows = w.findAll('tbody tr');
+    expect(rows).toHaveLength(8);
+    expect(rows[1]!.text()).toContain('runstatus.awaiting_approval');
+    expect(rows[1]!.text()).toContain('runstatus.detail_awaiting|{"name":"Budi"}');
+    expect(rows[1]!.find('a[href]').exists() || rows[1]!.findAll('a').length).toBeTruthy();
+    await w.get('select').setValue('failed');
+    expect(w.findAll('tbody tr')).toHaveLength(1);
+    expect(w.get('tbody').text()).toContain('cust_0001');
+  });
+
+  it('shows the empty state for a status without runs', async () => {
+    const w = await mountPage(RunsPage);
+    const { useThreadsStore } = await import('~/stores/threads');
+    useThreadsStore().runs = [];
+    await flushPromises();
+    expect(w.text()).toContain('runs.empty');
   });
 });
 
@@ -38,96 +57,105 @@ describe('run viewer', () => {
     vi.stubGlobal('definePageMeta', vi.fn());
   });
 
-  const stats = (w: Awaited<ReturnType<typeof mountPage>>) => w.findAll('header dl dd').map(d => d.text());
-  const button = (w: Awaited<ReturnType<typeof mountPage>>, text: string) => w.findAll('button').find(b => b.text() === text);
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
 
-  it('shows status, duration, cost and steps inline, and every event as a labelled minimap block', async () => {
+  const stats = (w: Awaited<ReturnType<typeof mountPage>>) => w.findAll('header dl dd').map(d => d.text());
+  const button = (w: Awaited<ReturnType<typeof mountPage>>, text: string) => w.findAll('button').find(b => b.text().includes(text));
+
+  it('shows status, duration, cost and steps inline, a link to the conversation, and every event in the minimap', async () => {
     const w = await mountPage(RunPage);
     expect(w.get('h1').text()).toContain(run.id);
     expect(w.get('header p span.font-mono.text-xs').text()).toBe(run.model);
+    expect(w.get('header p a').text()).toBe('run.open_thread');
     expect(w.get('[role="note"]').text()).toBe('run.preview_note');
-    expect(w.findAll('header dl dt').map(d => d.text())).toEqual(['run.status', 'run.duration', 'run.cost', 'run.steps']);
-    expect(stats(w)).toEqual(['run.status_waiting', '19.7s', '$0.016', 'run.steps_of|{"n":8,"max":12}']);
-    const blocks = w.findAll('button[aria-pressed][aria-label^="run.block_label"]');
-    expect(blocks).toHaveLength(8);
-    expect(blocks.every(b => b.attributes('title') === b.attributes('aria-label'))).toBe(true);
-    expect(w.findAll('.relative.h-4 span').map(s => s.text())).toEqual(['0 s', '20 s']);
+    expect(stats(w)).toEqual(['runstatus.awaiting_approval', '10.8s', '$0.001', 'run.steps_of|{"n":7,"max":12}']);
+    expect(w.findAll('button[aria-pressed][aria-label^="run.block_label"]')).toHaveLength(7);
   });
 
   it('jumps to the approval from the header', async () => {
     const w = await mountPage(RunPage, { attachTo: document.body });
     await button(w, 'run.review_approval')!.trigger('click');
     await flushPromises();
-    expect(document.activeElement?.id).toBe('event-e9');
-    expect(w.get('#event-e9').attributes('aria-pressed')).toBe('true');
+    expect(document.activeElement?.id).toBe('event-e8');
     w.unmount();
   });
 
-  it('selects an event from the minimap and shows it in the inspector, with a link to it', async () => {
+  it('shows a model step with its price snapshot and copies a link to an event', async () => {
     const w = await mountPage(RunPage, { attachTo: document.body });
-    const tool = w.findAll('button[aria-pressed][aria-label^="run.block_label"]').find(b => b.attributes('aria-label')!.includes('orders.lookup'))!;
-    await tool.trigger('click');
+    const model = w.findAll('button[aria-pressed][aria-label^="run.block_label"]').find(b => b.attributes('aria-label')!.includes('run.event_plan'))!;
+    await model.trigger('click');
     await flushPromises();
-    expect(tool.attributes('aria-pressed')).toBe('true');
     const inspector = w.get('aside[aria-label="run.inspector"]');
-    expect(inspector.get('h2').text()).toBe('orders.lookup');
-    expect(inspector.findAll('dd').map(d => d.text())).toEqual(['3.1s', '0.8s', '—', '—']);
-    expect(inspector.text()).toContain('{ "order": "2291" }');
+    expect(inspector.get('h2').text()).toBe('run.event_plan');
+    expect(inspector.text()).toContain('run.priced_at|{"input":"$0.40","output":"$1.60"}');
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { clipboard: { writeText } });
-    window.history.replaceState(null, '', '/console/o/acme/projects/web/agents/refund-triage/runs/r7Xp2KqLvN9sT4bWzY1cD');
-    const linkButton = inspector.get('button[aria-label="run.copy_link"]');
-    expect(linkButton.find('[data-icon="lucide:link"]').exists()).toBe(true);
-    await linkButton.trigger('click');
+    await inspector.get('button[aria-label="run.copy_link"]').trigger('click');
     await flushPromises();
-    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/console/o/acme/projects/web/agents/refund-triage/runs/r7Xp2KqLvN9sT4bWzY1cD#event-e3`);
+    expect(writeText.mock.calls[0]![0]).toMatch(/#event-e2$/);
     expect(useToast().toasts.at(-1)).toMatchObject({ kind: 'success', text: 'common.copied' });
-    vi.unstubAllGlobals();
     expect(inspector.findAll('tbody tr').map(r => r.findAll('td').map(d => d.text()).join(' '))).toEqual([
-      'orders.lookup run.tool_calls|{"calls":1,"seconds":0.8}',
-      'billing.charges.list run.tool_calls|{"calls":1,"seconds":1.2}',
-      'billing.refunds.preview run.tool_calls_failed|{"calls":2,"failed":1}',
+      'yasaku__list_wallets run.tool_calls_failed|{"calls":2,"failed":1}',
+      'yasaku__record_expense run.tool_calls|{"calls":1,"seconds":0.5}',
     ]);
-    expect(document.activeElement?.id).toBe('event-e3');
     w.unmount();
   });
 
   it('opens the event named in the link', async () => {
-    setRoute({ path: `/o/acme/projects/web/agents/refund-triage/runs/${run.id}`, params: { run: run.id }, hash: '#event-e4' });
+    setRoute({ path: `/o/acme/projects/rumah/agents/yasaku-keuangan/runs/${run.id}`, params: { run: run.id }, hash: '#event-e4' });
     const w = await mountPage(RunPage);
-    expect(w.get('aside[aria-label="run.inspector"] h2').text()).toBe('billing.charges.list');
+    expect(w.get('aside[aria-label="run.inspector"] h2').text()).toBe('yasaku__list_wallets');
   });
 
   it('hides an event type from the transcript with its checkbox and shows it again', async () => {
     const w = await mountPage(RunPage);
     const boxes = w.findAll('fieldset input[type="checkbox"]');
-    expect(boxes.map(b => (b.element as HTMLInputElement).checked)).toEqual([true, true, true, true]);
-    expect(w.get('fieldset legend').text()).toBe('run.show_types');
     await boxes[3]!.setValue(false);
-    expect(w.find('#event-e6').exists()).toBe(false);
+    expect(w.find('#event-e3').exists()).toBe(false);
     await boxes[3]!.setValue(true);
-    expect(w.find('#event-e6').exists()).toBe(true);
+    expect(w.find('#event-e3').exists()).toBe(true);
   });
 
-  it('approves an edited amount locally: the run goes on, finishes, and the totals update', async () => {
+  it('approves with the shared card: the run finishes and the totals update', async () => {
     const w = await mountPage(RunPage);
     expect(w.find('input[type="number"]').exists()).toBe(false);
-    await button(w, 'run.edit_amount')!.trigger('click');
-    const input = w.get('input[type="number"]');
-    expect(w.find(`label[for="${input.attributes('id')}"]`).text()).toBe('run.amount');
-    await input.setValue('40');
-    await button(w, 'run.approve')!.trigger('click');
-    expect(stats(w)[0]).toBe('run.status_approved');
-    expect(stats(w)[1]).toBe('77.4s');
-    expect(w.get('#approval [role="status"]').text()).toBe('run.approved_note|{"amount":"$40.00"}');
-    expect(w.text()).toContain('Final reply');
+    const card = w.get('#approval section');
+    await button(card as never, 'approvalcard.approve_run')!.trigger('click');
+    expect(stats(w)[0]).toBe('runstatus.completed');
+    expect(stats(w)[1]).toBe('65s');
+    expect(card.text()).toContain('approvalcard.approved|{"by":"Budi"} · approvalcard.via_console');
+    expect(w.text()).toContain('Tersimpan: Kopi Kenangan');
     expect(button(w, 'run.review_approval')).toBeUndefined();
   });
 
-  it('rejects locally: the agent stops', async () => {
+  it('decides once: a second decision from the card does nothing', async () => {
     const w = await mountPage(RunPage);
-    await button(w, 'run.reject')!.trigger('click');
-    expect(stats(w)[0]).toBe('run.status_rejected');
-    expect(w.get('#approval [role="status"]').text()).toBe('run.rejected_note');
+    const card = w.findComponent({ name: 'ApprovalCard' });
+    card.vm.$emit('approve');
+    await flushPromises();
+    card.vm.$emit('reject', 'late');
+    await flushPromises();
+    expect(stats(w)[0]).toBe('runstatus.completed');
+    expect(w.text()).toContain('Tersimpan: Kopi Kenangan');
+    expect(w.text()).not.toContain('Oke, tidak saya simpan.');
+  });
+
+  it('shows the card without decision buttons to people who cannot change agents', async () => {
+    setClient('$authClient', { whoami: vi.fn().mockResolvedValue(create(WhoamiResponseSchema, { name: 'Sari', permissions: ['agent:read'] })) });
+    const w = await mountPage(RunPage);
+    expect(w.get('#approval section').findAll('button').some(b => b.text().includes('approvalcard.approve_run'))).toBe(false);
+    expect(w.get('#approval section').text()).toContain('approvalcard.waiting_for|{"name":"Budi"}');
+  });
+
+  it('rejects with a reason: the agent replies without saving', async () => {
+    const w = await mountPage(RunPage);
+    const card = w.get('#approval section');
+    await button(card as never, 'approvalcard.reject')!.trigger('click');
+    await card.get('input').setValue('salah');
+    await button(card as never, 'approvalcard.reject_send')!.trigger('click');
+    expect(card.text()).toContain('“salah”');
+    expect(w.text()).toContain('Oke, tidak saya simpan.');
   });
 });

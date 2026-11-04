@@ -6,6 +6,7 @@ import { h } from 'vue';
 import { copiedLabelKey } from './copy';
 import CopyButton from './CopyButton.vue';
 import AppDataTable from './DataTable.vue';
+import FieldError from './FieldError.vue';
 import FormField from './FormField.vue';
 import SearchInput from './SearchInput.vue';
 import { toastLifetimeMs, useToast } from './toast';
@@ -70,6 +71,21 @@ describe('dataTable', () => {
     expect(w.get('.overflow-x-auto').classes()).not.toContain('max-sm:hidden');
     expect(w.find('ul').exists()).toBe(false);
   });
+
+  it('stacks each row as labelled values on phones when asked, keeping the table from sm up', () => {
+    const cols = [...columns, { key: 'menu', label: 'Actions', hideLabel: true }];
+    const w = mount(DataTable, { props: { columns: cols, rows, rowKey: 'id', caption: 'Agents', stacked: true }, slots: { 'cell-menu': () => h('button', 'More') } });
+    expect(w.get('.overflow-x-auto').classes()).toContain('max-sm:hidden');
+    const list = w.get('ul.list');
+    expect(list.classes()).toContain('sm:hidden');
+    expect(list.attributes('aria-label')).toBe('Agents');
+    expect(list.findAll('li.list-row')).toHaveLength(2);
+    expect(list.get('li').findAll('dt').map(d => d.text())).toEqual(['Agent', 'Runs']);
+    expect(list.get('li').findAll('dd').map(d => d.text())).toEqual(['Refund Triage', '12', 'More']);
+    const loading = mount(DataTable, { props: { columns, rows: [], rowKey: 'id', caption: 'Agents', stacked: true, loading: true } });
+    expect(loading.find('ul').exists()).toBe(false);
+    expect(loading.get('.overflow-x-auto').classes()).not.toContain('max-sm:hidden');
+  });
 });
 
 describe('formField', () => {
@@ -83,6 +99,12 @@ describe('formField', () => {
   it('draws the error message in the design error text, 12px with normal line height, 8px below the control', () => {
     const w = mount(FormField, { props: { label: 'Max steps', error: 'Enter at least 1 step' }, slots: { default: '<input>' } });
     expect(w.get(`#${w.get('label').attributes('for')}-error`).classes()).toEqual(['mt-2', 'flex', 'items-start', 'gap-1', 'text-xs', 'leading-[normal]', 'text-error']);
+  });
+
+  it('shows a field error as text, or as richer markup through its slot, and nothing without a message', () => {
+    expect(mount(FieldError, { props: { id: 'e1', message: 'Required' } }).text()).toBe('Required');
+    expect(mount(FieldError, { props: { id: 'e1', message: 'Use X-Api-Key' }, slots: { default: '<code>X-Api-Key</code>' } }).find('code').text()).toBe('X-Api-Key');
+    expect(mount(FieldError, { props: { id: 'e1' } }).find('span').exists()).toBe(false);
   });
 
   it('labels the control and describes it by the hint and the error', () => {

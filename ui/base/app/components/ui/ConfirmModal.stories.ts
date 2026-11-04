@@ -30,3 +30,4 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 export const Refused: Story = { args: { handle: handle({ message: 'Couldn\'t revoke the token.', reference: 'Ref: req-1' }) } };
 export const Busy: Story = { args: { handle: handle(null, true) } };
+export const ConfirmDisabled: Story = { args: { confirmDisabled: true } };
