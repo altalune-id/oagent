@@ -295,7 +295,7 @@
   "error.publish_agent": "Could not publish the agent",
   "configure.saving": "Saving the draft…",
   "configure.leave_first": "Your last changes aren't saved. Go there again to leave without them.",
-  "configure.samples_block": "Pick a real model and tools to publish. Sample ones can't go live.",
+  "configure.samples_block": "Publishing opens once a real model catalog is connected. These options are examples.",
   "configure.unsaved": "Unsaved changes.",
   "configure.saved_at": "Draft saved {when}.",
   "configure.live_version": "v{n} is live.",

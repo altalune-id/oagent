@@ -295,7 +295,7 @@
   "error.publish_agent": "Agen tidak dapat dipublikasikan",
   "configure.saving": "Menyimpan draf…",
   "configure.leave_first": "Perubahan terakhir Anda belum tersimpan. Buka halaman itu sekali lagi untuk keluar tanpa perubahan tersebut.",
-  "configure.samples_block": "Pilih model dan alat sungguhan untuk menerbitkan. Contoh tidak bisa ditayangkan.",
+  "configure.samples_block": "Penerbitan tersedia setelah katalog model sungguhan terhubung. Pilihan ini hanya contoh.",
   "configure.unsaved": "Ada perubahan yang belum disimpan.",
   "configure.saved_at": "Draf disimpan {when}.",
   "configure.live_version": "v{n} sedang aktif.",
