@@ -258,16 +258,16 @@ describe('guard: theme contrast', () => {
     expect(failures).toEqual([]);
   });
 
-  it('keeps *-content at AA on a hovered solid button, whose fill daisyUI mixes with 7% black in oklab', () => {
+  it('keeps *-content at AA on a hovered solid button as Chromium renders it: fill mixed with 7% black in oklab, channels clipped and rounded to 8 bits', () => {
     const failures: string[] = [];
     for (const [, name, body] of theme.matchAll(/name: '([\w-]+)';([\s\S]*?)\n\}/g)) {
       const raw = Object.fromEntries([...body!.matchAll(/--color-([\w-]+):\s*oklch\(\s*([\d.]+)%\s+([\d.]+)\s+([\d.]+)/g)].map(([, k, l, c, h]) => [k!, [Number(l), Number(c), Number(h)] as const]));
-      const srgb = ([l, c, h]: readonly [number, number, number]) => oklchToSRGB(`oklch(${l}% ${c} ${h})`);
+      const srgb = ([l, c, h]: readonly [number, number, number]) => oklchToSRGB(`oklch(${l}% ${c} ${h})`).map(v => Math.round(v * 255) / 255) as RGB;
       for (const k of ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error']) {
         const [l, c, h] = raw[k]!;
         const ratio = contrast(srgb(raw[`${k}-content`]!), srgb([l * 0.93, c * 0.93, h]));
         if (ratio < 4.5) {
-          failures.push(`${name}: ${k}-content on hovered ${k} ${ratio.toFixed(2)}`);
+          failures.push(`${name}: ${k}-content on hovered ${k} ${ratio.toFixed(3)}`);
         }
       }
     }
