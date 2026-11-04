@@ -171,6 +171,21 @@ describe('configure page', () => {
     expect(client.updateAgentDraft).not.toHaveBeenCalled();
   });
 
+  it('shows Retry after a failed load, hides the state line until it loads, and reloads on Retry', async () => {
+    inProject('/agents/support', [support], 'agent:read', 'agent:write');
+    const client = withDraft();
+    client.listAgentVersions.mockRejectedValueOnce(new Error('offline'));
+    const w = await mountPage(ConfigurePage);
+    const header = () => w.get('[role="status"]').element.parentElement!.textContent!.trim();
+    expect(header()).toBe('');
+    const retry = w.findAll('button').find(b => b.text() === 'common.retry')!;
+    await retry.trigger('click');
+    await flushPromises();
+    expect(client.listAgentVersions).toHaveBeenCalledTimes(2);
+    expect(header()).toContain('configure.live_version|{"n":12}');
+    expect(w.get('textarea').attributes('disabled')).toBeUndefined();
+  });
+
   it('blocks Publish while the draft uses a sample model, and says why', async () => {
     inProject('/agents/support', [support], 'agent:read', 'agent:write');
     const client = withDraft();

@@ -107,8 +107,10 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
           {{ agent.name }}
         </h1>
         <p :id="reasonId" class="text-ui text-base-content/70">
-          <span role="status">{{ status }}</span>
-          {{ liveLine }}
+          <span role="status">{{ draft.loadError.value ? '' : status }}</span>
+          <template v-if="!draft.loadError.value">
+            {{ liveLine }}
+          </template>
           <template v-if="canEdit && loaded && usesSamples">
             {{ t('configure.samples_block') }}
           </template>
