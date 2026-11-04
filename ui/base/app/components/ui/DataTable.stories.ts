@@ -56,3 +56,12 @@ export const Loading: Story = {
     template: '<DataTable caption="Agents" row-key="id" :columns="columns" :rows="[]" loading />',
   }),
 };
+
+// NOTE: stacked renders every cell slot twice (table and phone list), so ids inside a slot repeat.
+export const StackedOnPhones: Story = {
+  render: () => ({
+    components: { DataTable },
+    setup: () => ({ columns, rows }),
+    template: '<DataTable caption="Agents" row-key="id" :columns="columns" :rows="rows" stacked />',
+  }),
+};

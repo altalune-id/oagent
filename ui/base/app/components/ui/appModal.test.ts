@@ -21,6 +21,16 @@ describe('appModal', () => {
     expect(dialog.element.open).toBe(false);
   });
 
+  it('widens the box for a form with a table', () => {
+    expect(render({ open: true, wide: true }).get('.modal-box').classes()).toContain('max-w-3xl');
+    expect(render({ open: true }).get('.modal-box').classes()).not.toContain('max-w-3xl');
+  });
+
+  it('keeps the footer in view while the body scrolls only when asked', () => {
+    expect(render({ open: true, stickyFooter: true }).get('.modal-action').classes()).toEqual(expect.arrayContaining(['sticky', 'bottom-0', 'bg-base-100']));
+    expect(render({ open: true }).get('.modal-action').classes()).not.toContain('sticky');
+  });
+
   it('closes on Esc and on the backdrop while dismissible', async () => {
     const w = render({ open: true, title: 'Rotate' });
     await w.get('dialog').trigger('cancel');

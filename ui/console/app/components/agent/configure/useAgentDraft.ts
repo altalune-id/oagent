@@ -2,6 +2,7 @@ import type { ShownError } from '#base/lib/apperror/message';
 import type { AgentConfig, AgentState } from './agentConfig';
 import { useToast } from '#base/components/ui/toast';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { useUnits } from '~/composables/useUnits';
 import { useAgentsStore } from '~/stores/agents';
 import { changes, fromWire, stateOf } from './agentConfig';
 
@@ -29,7 +30,8 @@ export function useAgentDraft(agentId: string) {
   let leaveBlocked = false;
   let inflight: Promise<boolean> | null = null;
 
-  const diff = computed(() => changes(config.value, live.value));
+  const { money } = useUnits();
+  const diff = computed(() => changes(config.value, live.value, money));
 
   function track(next: AgentState) {
     state.value = next;

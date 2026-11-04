@@ -79,7 +79,7 @@ await useAuthStore().load();
 
 <template>
   <div v-if="project" class="flex max-w-2xl flex-col gap-5">
-    <PageHeader :title="t('settings.title')" :description="t('project.settings_subtitle')" />
+    <PageHeader :title="t('nav.general')" :description="t('project.settings_subtitle')" />
     <ProjectReadOnlyNote v-if="!canEdit" :text="t('project.read_only')" />
 
     <div class="rounded-box border border-base-300 bg-base-100" :data-testid="canEdit ? undefined : 'project-settings-readonly'">

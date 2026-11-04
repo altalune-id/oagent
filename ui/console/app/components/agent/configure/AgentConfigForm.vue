@@ -1,119 +1,318 @@
 <script setup lang="ts">
 import type { AgentConfig } from './agentConfig';
-import type { ToolInfo } from '~/preview/samples';
-import FormField from '#base/components/ui/FormField.vue';
+import type { ConfigureLinks } from './runtime';
+import type { AgentRuntimeConfig } from '~/stores/agentRuntime';
+import type { KnowledgeSource } from '~/stores/knowledge';
+import type { McpServer } from '~/stores/mcpServers';
+import type { ModelProvider } from '~/stores/providers';
+import AppButton from '#base/components/ui/AppButton.vue';
+import FieldError from '#base/components/ui/FieldError.vue';
+import Section from '#base/components/ui/Section.vue';
+import StatusLabel from '#base/components/ui/StatusLabel.vue';
+import { knowledgeTone } from '~/components/knowledge/knowledge';
+import { describedBy } from '~/lib/names/names';
+import McpGrants from './McpGrants.vue';
+import { chosenModel, costCapError, embeddingReady, parseDollars, parseDomains, readsPrivateData } from './runtime';
 
-const { models, tools, disabled = false } = defineProps<{
-  models: string[],
-  tools: ToolInfo[],
+const { providers, servers, sources, searchReady, links, legacyModel = '', disabled = false } = defineProps<{
+  providers: ModelProvider[],
+  servers: McpServer[],
+  sources: KnowledgeSource[],
+  searchReady: boolean,
+  links: ConfigureLinks,
+  legacyModel?: string,
   disabled?: boolean,
 }>();
 
 const config = defineModel<AgentConfig>({ required: true });
+const runtime = defineModel<AgentRuntimeConfig>('runtime', { required: true });
 const { t } = useI18n();
-const ids = { instructions: useId(), temperature: useId(), tools: useId() };
+const uid = useId();
+const ids = { count: `${uid}-count`, temperature: `${uid}-temp`, helper: `${uid}-helper`, domains: `${uid}-domains`, steps: `${uid}-steps`, cost: `${uid}-cost` };
 
-function toolOf(name: string) {
-  return config.value.tools.find(tool => tool.name === name);
-}
+const sections = computed(() => [
+  { id: 'configure-instructions', label: t('configure.instructions') },
+  { id: 'configure-model', label: t('configure.model') },
+  { id: 'configure-tools', label: t('grants.title') },
+  { id: 'configure-web', label: t('webtools.title') },
+  { id: 'configure-memory', label: t('configure.memory_knowledge') },
+  { id: 'configure-limits', label: t('limits.title') },
+]);
 
-function setEnabled(name: string, on: boolean) {
-  const rest = config.value.tools.filter(tool => tool.name !== name);
-  config.value = { ...config.value, tools: on ? [...rest, { name, requireApproval: false }] : rest };
-}
-
-function setApproval(name: string, on: boolean) {
-  config.value = { ...config.value, tools: config.value.tools.map(tool => (tool.name === name ? { ...tool, requireApproval: on } : tool)) };
-}
-
-const budget = computed({
-  get: () => config.value.maxCostCents / 100,
-  set: (dollars: number) => {
-    config.value = { ...config.value, maxCostCents: Math.round((Number(dollars) || 0) * 100) };
-  },
+const chosen = computed(() => chosenModel(runtime.value, providers));
+const chatModels = computed(() => (chosen.value.provider?.models ?? []).filter(m => !m.embedding));
+const embeddings = computed(() => embeddingReady(providers));
+const allowListRequired = computed(() => readsPrivateData(runtime.value));
+const allowListError = computed(() => runtime.value.webFetch && allowListRequired.value && runtime.value.allowedDomains.length === 0 ? t('webtools.allowlist_required') : '');
+const costText = ref(config.value.maxCostCents > 0 ? (config.value.maxCostCents / 100).toFixed(2) : '');
+const costTyped = computed(() => parseDollars(costText.value));
+const costError = computed(() => {
+  if (costTyped.value === null) {
+    return t('limits.not_amount');
+  }
+  const key = costCapError(runtime.value, { providers, maxCostCents: config.value.maxCostCents });
+  return key ? t(key, { provider: chosen.value.provider?.name ?? '' }) : '';
 });
+
+watch(costTyped, (cents) => {
+  if (cents !== null && cents !== config.value.maxCostCents) {
+    config.value = { ...config.value, maxCostCents: cents };
+  }
+});
+
+const domainsText = ref(runtime.value.allowedDomains.join('\n'));
+watch(domainsText, (text) => {
+  runtime.value = { ...runtime.value, allowedDomains: parseDomains(text) };
+});
+watch(() => runtime.value.allowedDomains, (domains) => {
+  if (parseDomains(domainsText.value).join() !== domains.join()) {
+    domainsText.value = domains.join('\n');
+  }
+});
+
+function goTo(id: string) {
+  const section = document.getElementById(id);
+  section?.scrollIntoView({ block: 'start' });
+  section?.querySelector<HTMLElement>('select, input, textarea, button')?.focus({ preventScroll: true });
+}
+
+function setProvider(id: string) {
+  const provider = providers.find(p => p.id === id);
+  const keep = (m: string) => (provider?.models.some(x => x.id === m) ? m : '');
+  runtime.value = { ...runtime.value, providerId: id, model: keep(runtime.value.model), helperModel: keep(runtime.value.helperModel) };
+}
+
+function toggleSource(id: string, on: boolean) {
+  const rest = runtime.value.knowledgeIds.filter(k => k !== id);
+  runtime.value = { ...runtime.value, knowledgeIds: on ? [...rest, id] : rest };
+}
 </script>
 
 <template>
-  <form class="flex min-w-0 flex-col gap-5 p-4 lg:p-6" @submit.prevent>
-    <div class="flex flex-col gap-1">
-      <div class="flex items-center justify-between">
-        <label :for="ids.instructions" class="label text-ui font-semibold text-base-content">{{ t('configure.instructions') }}</label>
-        <span class="text-xs tabular-nums text-base-content/70">{{ config.instructions.length }} / 32000</span>
-      </div>
-      <textarea
-        :id="ids.instructions" v-model="config.instructions" maxlength="32000" class="textarea h-40 w-full text-ui leading-relaxed"
-        :disabled="disabled"
-      />
-    </div>
-
-    <div class="grid gap-4 sm:grid-cols-2">
-      <FormField v-slot="{ id, describedBy }" :label="t('configure.model')" :hint="t('configure.sample_options')">
-        <select :id="id" v-model="config.model" class="select select-sm text-ui w-full font-mono" :aria-describedby="describedBy" :disabled="disabled">
-          <option value="" disabled>
-            {{ t('configure.choose_model') }}
-          </option>
-          <option v-for="m in models" :key="m" :value="m">
-            {{ m }}
+  <div class="flex min-w-0 flex-col">
+    <nav class="sticky top-0 z-10 border-b border-base-300 bg-base-100 px-4 py-2 sm:px-2 sm:py-0 lg:px-4" :aria-label="t('configure.sections')">
+      <label class="flex items-center gap-2 text-ui sm:hidden">
+        <span class="shrink-0 text-base-content/70">{{ t('configure.jump_to') }}</span>
+        <select class="select select-sm w-full text-ui" @change="goTo(($event.target as HTMLSelectElement).value)">
+          <option v-for="s in sections" :key="s.id" :value="s.id">
+            {{ s.label }}
           </option>
         </select>
-      </FormField>
-      <div class="flex flex-col gap-1">
-        <div class="flex items-center justify-between">
-          <label :for="ids.temperature" class="label text-ui font-semibold text-base-content">{{ t('configure.temperature') }}</label>
-          <output :for="ids.temperature" class="text-xs tabular-nums">{{ config.temperature.toFixed(1) }}</output>
-        </div>
-        <input
-          :id="ids.temperature" v-model.number="config.temperature" type="range" min="0" max="2" step="0.1" class="range range-xs w-full"
-          :aria-valuetext="config.temperature.toFixed(1)" :aria-describedby="`${ids.temperature}-hint`" :disabled="disabled"
-        >
-        <p :id="`${ids.temperature}-hint`" class="label whitespace-normal text-xs text-base-content/70">
-          {{ t('configure.temperature_hint') }}
-        </p>
-      </div>
-    </div>
-
-    <div class="flex flex-col gap-1">
-      <h2 :id="ids.tools" class="text-ui font-semibold">
-        {{ t('configure.tools') }}
-      </h2>
-      <p :id="`${ids.tools}-note`" class="text-xs text-base-content/70">
-        {{ t('configure.sample_options') }}
-      </p>
-      <ul class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-100" :aria-labelledby="ids.tools" :aria-describedby="`${ids.tools}-note`">
-        <li v-for="tool in tools" :key="tool.name" class="flex flex-wrap items-start gap-2 px-3 py-2 text-ui">
-          <label class="flex min-w-0 flex-1 items-start gap-2 max-sm:basis-[calc(100%-2rem)]">
-            <input
-              type="checkbox" class="checkbox checkbox-sm mt-0.5 rounded-sm" :checked="!!toolOf(tool.name)" :disabled="disabled"
-              :aria-label="t('configure.tool_enable', { tool: tool.name })" @change="setEnabled(tool.name, ($event.target as HTMLInputElement).checked)"
-            >
-            <span class="min-w-0 flex-1">
-              <span class="font-mono text-xs font-medium break-all">{{ tool.name }}</span>
-              <span class="block text-base-content/70">{{ tool.description }}</span>
-            </span>
-          </label>
-          <label class="badge badge-sm shrink-0 cursor-pointer gap-1 max-sm:ms-7" :class="{ 'badge-outline': !toolOf(tool.name)?.requireApproval }">
-            <input
-              type="checkbox" class="checkbox checkbox-xs rounded-sm" :checked="!!toolOf(tool.name)?.requireApproval" :disabled="disabled || !toolOf(tool.name)"
-              :aria-label="t('configure.tool_approval', { tool: tool.name })" @change="setApproval(tool.name, ($event.target as HTMLInputElement).checked)"
-            >
-            <Icon name="lucide:hand" size="12" class="shrink-0" aria-hidden="true" />
-            {{ t('configure.needs_approval') }}
-          </label>
+      </label>
+      <ul class="menu menu-horizontal menu-sm w-full flex-nowrap overflow-x-auto max-sm:hidden">
+        <li v-for="s in sections" :key="s.id">
+          <a :href="`#${s.id}`" class="whitespace-nowrap">{{ s.label }}</a>
         </li>
       </ul>
-    </div>
+    </nav>
 
-    <div class="grid gap-4 sm:grid-cols-2">
-      <FormField v-slot="{ id, describedBy }" :label="t('configure.max_steps')" :hint="t('configure.max_steps_hint')">
-        <input :id="id" v-model.number="config.maxSteps" type="number" min="0" max="100" class="input input-sm text-ui w-full" :aria-describedby="describedBy" :disabled="disabled">
-      </FormField>
-      <FormField v-slot="{ id, describedBy }" :label="t('configure.budget')" :hint="t('configure.budget_hint')">
-        <label class="input input-sm text-ui w-full">
-          <span aria-hidden="true">$</span>
-          <input :id="id" v-model.number="budget" type="number" min="0" max="10000" step="0.01" class="grow" :aria-describedby="describedBy" :disabled="disabled">
-        </label>
-      </FormField>
-    </div>
-  </form>
+    <form class="flex min-w-0 flex-col gap-4 p-4 lg:p-6" @submit.prevent>
+      <fieldset class="contents" :disabled="disabled">
+        <Section id="configure-instructions" :title="t('configure.instructions')" class="scroll-mt-14">
+          <label class="flex flex-col gap-1">
+            <span class="flex items-center justify-between">
+              <span class="label text-ui text-base-content">{{ t('configure.instructions_label') }}</span>
+              <span :id="ids.count" class="text-xs tabular-nums text-base-content/70">{{ config.instructions.length }} / 32000</span>
+            </span>
+            <textarea v-model="config.instructions" maxlength="32000" class="textarea h-40 w-full text-ui leading-relaxed" :aria-describedby="ids.count" />
+          </label>
+        </Section>
+
+        <Section id="configure-model" :title="t('configure.model')" :description="t('configure.model_hint')" class="scroll-mt-14">
+          <p v-if="legacyModel" class="text-ui text-base-content/70">
+            {{ t('legacy.was_model', { model: legacyModel }) }}
+          </p>
+          <p v-if="!providers.length" class="text-ui text-base-content/70">
+            {{ t('configure.no_providers') }}
+            <NuxtLink :to="links.providers" class="link">
+              {{ t('setup.step_provider') }}
+            </NuxtLink>
+          </p>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="flex flex-col gap-1">
+              <span class="label text-ui text-base-content">{{ t('configure.provider') }}</span>
+              <select class="select select-sm w-full text-ui" data-field="model" :value="runtime.providerId" @change="setProvider(($event.target as HTMLSelectElement).value)">
+                <option value="" disabled>
+                  {{ t('configure.choose_provider') }}
+                </option>
+                <option v-for="p in providers" :key="p.id" :value="p.id">
+                  {{ p.name }}
+                </option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="label text-ui text-base-content">{{ t('configure.model') }}</span>
+              <select v-model="runtime.model" class="select select-sm w-full font-mono text-xs" :disabled="!chosen.provider">
+                <option value="" disabled>
+                  {{ t('configure.choose_model') }}
+                </option>
+                <option v-for="m in chatModels" :key="m.id" :value="m.id">
+                  {{ m.vision ? t('configure.model_vision', { model: m.id }) : m.id }}
+                </option>
+              </select>
+            </label>
+            <div class="flex flex-col gap-1">
+              <label class="flex flex-col gap-1">
+                <span class="label text-ui text-base-content">{{ t('configure.helper_model') }}</span>
+                <select v-model="runtime.helperModel" class="select select-sm w-full font-mono text-xs" :disabled="!chosen.provider" :aria-describedby="`${ids.helper}-hint`">
+                  <option value="">
+                    {{ t('configure.helper_none') }}
+                  </option>
+                  <option v-for="m in chatModels" :key="m.id" :value="m.id">
+                    {{ m.id }}
+                  </option>
+                </select>
+              </label>
+              <p :id="`${ids.helper}-hint`" class="text-xs text-base-content/70">
+                {{ t('configure.helper_hint') }}
+              </p>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="flex flex-col gap-1">
+                <span class="flex items-center justify-between">
+                  <span class="label text-ui text-base-content">{{ t('configure.temperature') }}</span>
+                  <span class="text-xs tabular-nums" aria-hidden="true">{{ config.temperature.toFixed(1) }}</span>
+                </span>
+                <input
+                  v-model.number="config.temperature" type="range" min="0" max="2" step="0.1" class="range range-xs w-full"
+                  :aria-valuetext="config.temperature.toFixed(1)" :aria-describedby="`${ids.temperature}-hint`"
+                >
+              </label>
+              <p :id="`${ids.temperature}-hint`" class="text-xs text-base-content/70">
+                {{ t('configure.temperature_hint') }}
+              </p>
+            </div>
+          </div>
+        </Section>
+
+        <Section id="configure-tools" :title="t('grants.title')" :description="t('grants.hint')" class="scroll-mt-14">
+          <McpGrants v-model="runtime" :servers="servers" :disabled="disabled" :servers-link="links.servers" />
+          <div v-if="config.tools.length" class="flex flex-col gap-2 rounded-box border border-base-300 px-4 py-3">
+            <h3 class="text-ui font-semibold">
+              {{ t('legacy.old_tools') }}
+            </h3>
+            <p class="text-xs text-base-content/70">
+              {{ t('legacy.old_tools_hint') }}
+            </p>
+            <ul class="flex flex-wrap gap-2">
+              <li v-for="tool in config.tools" :key="tool.name" class="badge badge-sm badge-ghost font-mono">
+                {{ tool.name }}
+              </li>
+            </ul>
+            <div>
+              <AppButton variant="plain" size="xs" @click="config = { ...config, tools: [] }">
+                {{ t('legacy.remove_old_tools') }}
+              </AppButton>
+            </div>
+          </div>
+        </Section>
+
+        <Section id="configure-web" :title="t('webtools.title')" class="scroll-mt-14">
+          <div class="flex flex-col gap-2">
+            <label class="label cursor-pointer gap-2 text-ui text-base-content">
+              <input v-model="runtime.webFetch" type="checkbox" class="toggle toggle-sm">
+              <span><span class="font-mono text-xs">web_fetch</span> · {{ t('webtools.fetch') }}</span>
+            </label>
+            <div v-if="runtime.webFetch" class="flex flex-col gap-1 ps-12">
+              <label class="flex flex-col gap-1">
+                <span class="label text-ui text-base-content">{{ t('webtools.allowed_domains') }}<span v-if="allowListRequired" class="text-base-content/70"> ({{ t('validation.required') }})</span></span>
+                <textarea
+                  v-model="domainsText" data-field="web" rows="3" class="textarea textarea-sm w-full font-mono text-ui" :class="{ 'textarea-error': allowListError }" placeholder="bca.co.id"
+                  :aria-invalid="!!allowListError" :aria-describedby="describedBy(`${ids.domains}-hint`, !!allowListError && `${ids.domains}-err`)"
+                />
+              </label>
+              <p :id="`${ids.domains}-hint`" class="text-xs text-base-content/70">
+                {{ allowListRequired ? t('webtools.allowlist_why') : t('webtools.allowlist_hint') }}
+              </p>
+              <FieldError :id="`${ids.domains}-err`" :message="allowListError" />
+            </div>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="label cursor-pointer gap-2 text-ui text-base-content">
+              <input v-model="runtime.webSearch" type="checkbox" class="toggle toggle-sm" :disabled="!searchReady">
+              <span><span class="font-mono text-xs">web_search</span> · {{ t('webtools.search') }}</span>
+            </label>
+            <p v-if="!searchReady" class="ps-12 text-xs text-base-content/70">
+              {{ t('webtools.search_needs_provider') }}
+              <NuxtLink :to="links.webSearch" class="link">
+                {{ t('webtools.search_link') }}
+              </NuxtLink>
+            </p>
+          </div>
+        </Section>
+
+        <Section id="configure-memory" :title="t('configure.memory_knowledge')" class="scroll-mt-14">
+          <div class="flex flex-col gap-1">
+            <label class="label cursor-pointer gap-2 text-ui text-base-content">
+              <input v-model="runtime.memory" type="checkbox" class="toggle toggle-sm">
+              {{ t('configure.memory') }}
+            </label>
+            <p class="ps-12 text-xs text-base-content/70">
+              {{ t('configure.memory_hint') }}
+            </p>
+          </div>
+          <fieldset class="flex flex-col gap-2">
+            <legend class="text-ui font-semibold">
+              {{ t('configure.knowledge') }}
+            </legend>
+            <p v-if="!embeddings" class="text-xs text-base-content/70">
+              {{ t('configure.knowledge_needs_embedding') }}
+              <NuxtLink :to="links.providers" class="link">
+                {{ t('providers.title') }}
+              </NuxtLink>
+            </p>
+            <p v-else-if="!sources.length" class="text-xs text-base-content/70">
+              {{ t('configure.knowledge_empty') }}
+              <NuxtLink :to="links.knowledge" class="link">
+                {{ t('configure.knowledge_link') }}
+              </NuxtLink>
+            </p>
+            <ul v-else class="flex flex-col gap-2">
+              <li v-for="s in sources" :key="s.id" class="flex flex-wrap items-center gap-x-3 gap-y-1 text-ui">
+                <label class="flex items-center gap-2" :class="{ 'text-base-content/70': s.status !== 'ready' }">
+                  <input
+                    type="checkbox" class="checkbox checkbox-sm rounded-sm" :checked="runtime.knowledgeIds.includes(s.id)" :disabled="!embeddings || s.status !== 'ready'"
+                    @change="toggleSource(s.id, ($event.target as HTMLInputElement).checked)"
+                  >
+                  {{ s.name }}
+                </label>
+                <span v-if="s.status === 'ready'" class="text-xs text-base-content/70">{{ t('configure.knowledge_chunks', { n: s.chunks }, s.chunks) }}</span>
+                <StatusLabel v-else :tone="knowledgeTone[s.status]" :label="t(`knowledge.status_${s.status}`)" />
+              </li>
+            </ul>
+          </fieldset>
+        </Section>
+
+        <Section id="configure-limits" :title="t('limits.title')" class="scroll-mt-14">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="flex flex-col gap-1">
+              <label class="flex flex-col gap-1">
+                <span class="label text-ui text-base-content">{{ t('configure.max_steps') }}</span>
+                <input v-model.number="config.maxSteps" type="number" min="0" max="100" class="input input-sm w-full text-ui tabular-nums" :aria-describedby="`${ids.steps}-hint`">
+              </label>
+              <p :id="`${ids.steps}-hint`" class="text-xs text-base-content/70">
+                {{ t('configure.max_steps_hint') }}
+              </p>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="flex flex-col gap-1">
+                <span class="label text-ui text-base-content">{{ t('limits.max_cost') }}</span>
+                <span class="input input-sm w-full text-ui tabular-nums" :class="{ 'input-error': costError }">
+                  <span aria-hidden="true">$</span>
+                  <input
+                    v-model="costText" type="text" inputmode="decimal" data-field="limits" class="grow" placeholder="0.00"
+                    :aria-invalid="!!costError" :aria-describedby="describedBy(`${ids.cost}-hint`, !!costError && `${ids.cost}-err`)"
+                  >
+                </span>
+              </label>
+              <p :id="`${ids.cost}-hint`" class="text-xs text-base-content/70">
+                {{ t('limits.max_cost_hint') }}
+              </p>
+              <FieldError :id="`${ids.cost}-err`" :message="costError" />
+            </div>
+          </div>
+        </Section>
+      </fieldset>
+    </form>
+  </div>
 </template>

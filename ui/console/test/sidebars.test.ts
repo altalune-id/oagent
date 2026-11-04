@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { create } from '@bufbuild/protobuf';
-import { RouterLinkStub } from '@vue/test-utils';
+import { flushPromises, RouterLinkStub } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
@@ -8,6 +8,7 @@ import { mountPage } from '#test/mount-page';
 import { setClient, setRoute } from '#test/nuxt-globals';
 import AgentSidebar from '~/components/agent/AgentSidebar.vue';
 import ProjectSidebar from '~/components/project/ProjectSidebar.vue';
+import { useApprovalsStore } from '~/stores/approvals';
 import { useAuthStore } from '~/stores/auth';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
@@ -33,10 +34,21 @@ describe('project sidebar', () => {
     const lists = w.findAll('nav > ul').map(ul => ul.findAll('li').map(li => li.text()));
     expect(lists).toEqual([
       ['nav.org_overview', 'nav.projects', 'members.title', 'apikeys.title', 'nav.org_settings'],
-      ['nav.overview', 'nav.agents', 'webhooks.title', 'nav.settings'],
+      ['nav.overview', 'nav.agents', 'approvals.title1', 'endusers.title', 'knowledge.title', 'webhooks.title', 'nav.project_settings', 'nav.general', 'providers.title', 'mcpservers.title', 'websearch.title'],
     ]);
     expect(w.get('nav > ul:last-child a.menu-active').text()).toBe('nav.agents');
     expect(w.get('[data-sidebar-footer]').text()).toContain('Sam Rivera');
+  });
+
+  it('shows the pending approvals count only for the project it was loaded for', async () => {
+    setRoute({ path: '/o/acme/projects/support/agents', params: { org: 'acme', project: 'support' } });
+    const w = await mountPage(ProjectSidebar);
+    await flushPromises();
+    const approvalsItem = () => w.findAll('nav > ul:last-child li')[2]!.text();
+    expect(approvalsItem()).toBe('approvals.title1');
+    useApprovalsStore().projectId = 'another-project';
+    await flushPromises();
+    expect(approvalsItem()).toBe('approvals.title');
   });
 });
 
@@ -48,8 +60,8 @@ describe('agent sidebar', () => {
     expect(back!.getComponent(RouterLinkStub).props('to')).toBe('/o/acme/projects/support/agents');
     expect(back!.get('[data-icon="lucide:arrow-left"]').exists()).toBe(true);
     expect(w.get('nav > div').text()).toContain('Refund Triage');
-    expect(w.get('nav > div').text()).toContain('agent.version_draft|{"n":12}');
-    expect(pages!.findAll('li').map(li => li.text())).toEqual(['agent.configure', 'agent.runs']);
+    expect(w.get('nav > div').text()).toContain('legacy.sidebar_version|{"n":12}');
+    expect(pages!.findAll('li').map(li => li.text())).toEqual(['agent.configure', 'try.title', 'channels.title', 'threads.title', 'agent.runs']);
     expect(pages!.get('a.menu-active').text()).toBe('agent.configure');
   });
 

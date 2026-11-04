@@ -9,7 +9,7 @@ import { ProjectEnvironment, ProjectSchema } from '#gen/project/v1/project_pb';
 import { mountPage } from '#test/mount-page';
 import { connectError, route, setClient, setKnownKeys, setRoute } from '#test/nuxt-globals';
 import OrgShell from '~/pages/o/[org].vue';
-import SettingsGeneral from '~/pages/o/[org]/projects/[project]/settings.vue';
+import SettingsGeneral from '~/pages/o/[org]/projects/[project]/settings/index.vue';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 

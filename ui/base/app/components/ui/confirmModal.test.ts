@@ -41,6 +41,16 @@ describe('confirmModal', () => {
     expect(h.confirm).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps confirm disabled until the caller allows it, for typed confirmations', async () => {
+    const h = handle();
+    h.target.value = {};
+    const w = mount(ConfirmModal, { props: { ...props, handle: h, confirmDisabled: true } });
+    const confirm = w.findAll('.modal-action button')[1]!;
+    expect(confirm.attributes('disabled')).toBeDefined();
+    await w.setProps({ confirmDisabled: false });
+    expect(confirm.attributes('disabled')).toBeUndefined();
+  });
+
   it('disables both buttons and shows a hidden spinner while busy, and shows a refusal', async () => {
     const h = handle();
     h.target.value = {};

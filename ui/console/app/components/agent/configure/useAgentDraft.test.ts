@@ -6,6 +6,8 @@ import { useAgentsStore } from '~/stores/agents';
 import { changes, emptyConfig, fromWire, stateOf } from './agentConfig';
 import { autosaveDelayMs, useAgentDraft } from './useAgentDraft';
 
+const usd = (cents: number) => `usd:${cents}`;
+
 const id = 'A7kPq2WxN4mLt8VcR3bZs';
 const live = { instructions: 'Help.', model: 'large-2', temperature: 0.2, maxSteps: 12, maxCostCents: 10, tools: [{ name: 'orders.lookup', requireApproval: false }, { name: 'billing.refunds.create', requireApproval: false }] };
 const draft = { ...live, instructions: 'Help. Never promise a date.' };
@@ -22,8 +24,8 @@ describe('agentConfig', () => {
   });
 
   it('lists every change against the live version, and a first publish when there is none', () => {
-    expect(changes(draft)).toEqual([{ key: 'configure.change_first' }]);
-    expect(changes(live, live)).toEqual([]);
+    expect(changes(draft, undefined, usd)).toEqual([{ key: 'configure.change_first' }]);
+    expect(changes(live, live, usd)).toEqual([]);
     const next = {
       instructions: 'x',
       model: 'small-3',
@@ -32,19 +34,19 @@ describe('agentConfig', () => {
       maxCostCents: 25,
       tools: [{ name: 'billing.refunds.create', requireApproval: true }, { name: 'knowledge.search', requireApproval: false }, { name: 'audit.write', requireApproval: true }],
     };
-    expect(changes(next, live)).toEqual([
+    expect(changes(next, live, usd)).toEqual([
       { key: 'configure.change_instructions' },
       { key: 'configure.change_model', params: { from: 'large-2', to: 'small-3' } },
       { key: 'configure.change_temperature', params: { from: 0.2, to: 0.4 } },
       { key: 'configure.change_max_steps', params: { from: 12, to: 8 } },
-      { key: 'configure.change_budget', params: { from: 0.1, to: 0.25 } },
+      { key: 'configure.change_budget', params: { from: 'usd:10', to: 'usd:25' } },
       { key: 'configure.change_tool_needs_approval', params: { tool: 'billing.refunds.create' } },
       { key: 'configure.change_tool_added', params: { tool: 'knowledge.search' } },
       { key: 'configure.change_tool_added_approval', params: { tool: 'audit.write' } },
       { key: 'configure.change_tool_removed', params: { tool: 'orders.lookup' } },
     ]);
-    expect(changes({ ...live, model: '', tools: [{ name: 'orders.lookup', requireApproval: true }] }, { ...live, tools: [{ name: 'orders.lookup', requireApproval: true }] })[0]).toEqual({ key: 'configure.change_model', params: { from: 'large-2', to: '—' } });
-    expect(changes(live, { ...live, model: '', tools: [{ name: 'orders.lookup', requireApproval: true }, { name: 'billing.refunds.create', requireApproval: false }] })).toEqual([
+    expect(changes({ ...live, model: '', tools: [{ name: 'orders.lookup', requireApproval: true }] }, { ...live, tools: [{ name: 'orders.lookup', requireApproval: true }] }, usd)[0]).toEqual({ key: 'configure.change_model', params: { from: 'large-2', to: '—' } });
+    expect(changes(live, { ...live, model: '', tools: [{ name: 'orders.lookup', requireApproval: true }, { name: 'billing.refunds.create', requireApproval: false }] }, usd)).toEqual([
       { key: 'configure.change_model', params: { from: '—', to: 'large-2' } },
       { key: 'configure.change_tool_no_approval', params: { tool: 'orders.lookup' } },
     ]);

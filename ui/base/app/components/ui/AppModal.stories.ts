@@ -41,3 +41,25 @@ export const NotDismissible: Story = {
     `,
   }),
 };
+
+export const Wide: Story = {
+  args: { title: 'Edit provider', wide: true },
+  render: Default.render,
+};
+
+export const StickyFooter: Story = {
+  args: { title: 'Add MCP server', wide: true, stickyFooter: true },
+  render: args => ({
+    components: { AppModal },
+    setup: () => ({ args }),
+    template: `
+      <AppModal v-bind="args">
+        <p v-for="n in 30" :key="n" class="text-sm">Tool {{ n }}</p>
+        <template #footer>
+          <button class="btn btn-ghost btn-sm text-ui">Cancel</button>
+          <button class="btn btn-primary btn-sm text-ui">Save</button>
+        </template>
+      </AppModal>
+    `,
+  }),
+};

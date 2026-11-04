@@ -6,8 +6,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mountPage } from '#test/mount-page';
 import { setClient, setRoute } from '#test/nuxt-globals';
 import Overview from '~/pages/o/[org]/projects/[project]/index.vue';
+import { useChannelsStore } from '~/stores/channels';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
+import { useTryItStore } from '~/stores/tryIt';
 
 const orgId = 'B6rTn1YkM8wQz3XpL5vGd';
 const projectId = 'x6MH9WPWjktMwCBKHy4pF';
@@ -38,14 +40,46 @@ describe('project overview', () => {
     expect(rows[1]!.find('.badge').exists()).toBe(false);
   });
 
+  it('leads with the set-up checklist, done from the sample providers and servers up to the next step', async () => {
+    setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ id: 'A1', projectId, slug: 'yasaku-keuangan', name: 'Yasaku Keuangan' }] }) });
+    const w = await mountPage(Overview);
+    const steps = w.findAll('[data-testid="setup-checklist"] li');
+    expect(steps).toHaveLength(6);
+    expect(steps.map(s => s.text().includes('setup.done'))).toEqual([true, true, true, false, false, false]);
+    expect(steps[3]!.attributes('aria-current')).toBe('step');
+    expect(steps[3]!.get('a.btn-primary').text()).toContain('setup.start');
+    expect(steps[3]!.get('a.btn-primary').attributes('aria-label')).toBe('setup.start_label|{"step":"setup.step_try"}');
+    const bar = w.get('[data-testid="setup-checklist"] progress');
+    expect([bar.attributes('value'), bar.attributes('max'), bar.attributes('aria-valuetext')]).toEqual(['3', '6', 'setup.progress|{"done":3,"total":6}']);
+    expect(w.findAll('[data-testid="setup-checklist"] a.btn-primary')).toHaveLength(1);
+    expect(steps.map(s => s.find('a.link').exists())).toEqual([true, true, true, true, true, true]);
+    expect(steps[4]!.text()).toContain('setup.not_started');
+  });
+
+  it('marks Try it and the channel done from what happened in this session', async () => {
+    setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ id: 'A1', projectId, slug: 'yasaku-keuangan', name: 'Yasaku Keuangan', publishedVersion: 4 }] }) });
+    useTryItStore().markTried('A1');
+    useChannelsStore().save('A1', { id: 'chn_1', provider: 'openwa', status: 'connected', baseUrl: 'https://openwa.example.id', deviceId: 'dev_1', webhookUrl: '', rejected24h: 0, rejectedLastHour: 0 });
+    const w = await mountPage(Overview);
+    const steps = w.findAll('[data-testid="setup-checklist"] li');
+    expect(steps.map(s => s.text().includes('setup.done'))).toEqual([true, true, true, true, true, true]);
+  });
+
+  it('leaves the agent unconfigured when its runtime has no provider', async () => {
+    setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ id: 'A2', projectId, slug: 'other', name: 'Other' }] }) });
+    const w = await mountPage(Overview);
+    const steps = w.findAll('[data-testid="setup-checklist"] li');
+    expect(steps.map(s => s.text().includes('setup.done'))).toEqual([true, true, false, false, false, false]);
+  });
+
   it('shows a load error with Retry instead of an empty list', async () => {
     const listAgents = vi.fn().mockRejectedValueOnce(new Error('down')).mockResolvedValue({ agents: [] });
     setClient('$agentClient', { listAgents });
     const w = await mountPage(Overview);
-    expect(w.text()).not.toContain('agent.empty');
+    expect(w.text()).not.toContain('setup.agents_first');
     await w.findAll('button').find(b => b.text() === 'common.retry')!.trigger('click');
     await flushPromises();
     expect(listAgents).toHaveBeenCalledTimes(2);
-    expect(w.text()).toContain('agent.empty');
+    expect(w.text()).toContain('setup.agents_first');
   });
 });
