@@ -55,9 +55,10 @@ func TestLogin_OIDCLeads(t *testing.T) {
 	out = render(t, Login(layout.LayoutData{Title: "Sign in"}, v))
 	assert.Contains(t, out, "Continue with Acme ID")
 	assert.Contains(t, out, "New here? Signing in creates your account.")
-	for _, gone := range []string{`name="password"`, "or sign in with a password", "Forgot password?", "<form", `href="/terms"`, "OAgent uses your account"} {
+	for _, gone := range []string{`name="password"`, "or sign in with a password", "Forgot password?", "<form", "OAgent uses your account"} {
 		assert.NotContains(t, out, gone)
 	}
+	assert.Contains(t, out, `<a class="link" href="/terms">Terms</a> · <a class="link" href="/privacy">Privacy</a>`, "the legal links show in every sign-in mode")
 }
 
 func TestLogin_NamesTheIssuerAndThePage(t *testing.T) {

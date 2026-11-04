@@ -70,10 +70,10 @@ templ Login(d layout.LayoutData, v LoginData) {
 		}
 		if !v.PasswordOff {
 			@passwordForm(d, v)
-			<p class="text-xs text-base-content/70">
-				<a class="link" href={ d.Href("/terms") }>Terms</a> · <a class="link" href={ d.Href("/privacy") }>Privacy</a>
-			</p>
 		}
+		<p class="text-xs text-base-content/70">
+			<a class="link" href={ d.Href("/terms") }>Terms</a> · <a class="link" href={ d.Href("/privacy") }>Privacy</a>
+		</p>
 		if v.PageURL != "" {
 			<p class="font-mono text-xs text-base-content/70">{ v.PageURL }</p>
 		}
