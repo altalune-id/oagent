@@ -116,6 +116,21 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, name, slug string) (
 	return p, nil
 }
 
+// UpdateEnvironment tags a project with env, or clears the tag with EnvironmentNone.
+func (s *Service) UpdateEnvironment(ctx context.Context, id uuid.UUID, env string) (*Project, error) {
+	p, err := s.store.ByID(ctx, id)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "project: update environment", err)
+	}
+	if err := p.SetEnvironment(env); err != nil {
+		return nil, err
+	}
+	if err := s.store.SetEnvironment(ctx, p.ID, p.Environment); err != nil {
+		return nil, s.errOrReport(ctx, "project: update environment", err)
+	}
+	return p, nil
+}
+
 func (s *Service) errOrReport(ctx context.Context, message string, err error) error {
 	if IsExpectedError(err) {
 		return err

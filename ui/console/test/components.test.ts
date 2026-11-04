@@ -10,12 +10,16 @@ import { APIKeySchema } from '#gen/apikey/v1/apikey_pb';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { WebhookSchema } from '#gen/webhook/v1/webhook_pb';
 import { mountPage } from '#test/mount-page';
-import { setClient, setRoute } from '#test/nuxt-globals';
+import { deferred, setClient, setRoute } from '#test/nuxt-globals';
+import AgentCreateModal from '~/components/agent/create/AgentCreateModal.vue';
 import APIKeyCreateModal from '~/components/apikey/create/APIKeyCreateModal.vue';
 import APIKeyList from '~/components/apikey/list/APIKeyList.vue';
+import InviteModal from '~/components/member/invite/InviteModal.vue';
 import MemberList from '~/components/member/MemberList.vue';
 import OrgCreateModal from '~/components/org/create/OrgCreateModal.vue';
 import OrgFields from '~/components/org/create/OrgFields.vue';
+import ProfilePassword from '~/components/profile/ProfilePassword.vue';
+import ProfileSessions from '~/components/profile/ProfileSessions.vue';
 import WebhookCreateModal from '~/components/webhook/create/WebhookCreateModal.vue';
 import WebhookList from '~/components/webhook/list/WebhookList.vue';
 import AgentsPage from '~/pages/o/[org]/projects/[project]/agents/index.vue';
@@ -45,14 +49,27 @@ describe('org create modal copy', () => {
   });
 });
 
+describe('agent create modal', () => {
+  it('labels every field through FormField and ends in Create and configure', async () => {
+    const w = mount(AgentCreateModal, { props: { orgId, projectId }, attachTo: document.body });
+    await w.get('button').trigger('click');
+    const dialog = openDialog()!;
+    const named = [...dialog.querySelectorAll('input, textarea')].map(c => dialog.querySelector(`label[for="${c.id}"]`)?.textContent?.trim());
+    expect(named).toEqual(['common.name', 'common.slug', 'agent.description_label']);
+    expect([...dialog.querySelectorAll('button')].map(b => b.textContent?.trim())).toContain('agent.create_and_configure');
+    w.unmount();
+  });
+});
+
 describe('org fields', () => {
-  it('names each input by its fieldset legend and shows its error', () => {
+  it('names each input by its label and shows its error', () => {
     const w = mount(OrgFields, { props: { name: '', slug: '', fieldErrors: { slug: 'taken' } } });
-    const legends = w.findAll('fieldset > legend.fieldset-legend');
-    expect(legends.map(l => l.text())).toEqual(['common.name', 'common.slug']);
+    expect(w.find('legend').exists()).toBe(false);
     const [name, slug] = w.findAll('input');
-    expect(name!.attributes('aria-labelledby')).toBe(legends[0]!.attributes('id'));
-    expect(slug!.attributes('aria-labelledby')).toBe(legends[1]!.attributes('id'));
+    const label = (id?: string) => w.get(`label[for="${id}"]`);
+    expect(label(name!.attributes('id')).text()).toBe('common.name');
+    expect(label(slug!.attributes('id')).text()).toBe('common.slug');
+    expect(label(slug!.attributes('id')).classes()).toEqual(['label', 'text-ui', 'text-base-content']);
     expect(slug!.attributes('aria-invalid')).toBe('true');
     expect(w.text()).toContain('taken');
   });
@@ -62,14 +79,55 @@ describe('org fields', () => {
   });
 });
 
+describe('labels above compact fields', () => {
+  it('labels the invite fields above input-sm and select-sm', () => {
+    const form = mount(InviteModal, { props: { open: true }, attachTo: document.body });
+    const email = form.get('input[type="email"]');
+    expect(email.classes()).toEqual(expect.arrayContaining(['input', 'input-sm', 'text-ui']));
+    expect(email.element.closest('label')!.querySelector('span.label')!.textContent).toBe('Email');
+    expect(form.get('select').classes()).toEqual(expect.arrayContaining(['select', 'select-sm', 'text-ui']));
+    form.unmount();
+  });
+
+  it('keeps the hidden username field labelled for password managers', () => {
+    const labels = { title: 'Password', email: 'Email', current: 'Current', next: 'New', rules: 'r', hint: 'h', change: 'Change' };
+    const w = mount(ProfilePassword, { props: { current: '', next: '', email: 'ana@example.com', labels } });
+    expect(w.get('section h2').text()).toBe('Password');
+    expect(w.find('.card').exists()).toBe(false);
+    const hidden = w.get('input[autocomplete="username"]');
+    expect(hidden.element.closest('label')!.classList.contains('hidden')).toBe(true);
+    expect(hidden.element.closest('label')!.textContent).toContain('Email');
+    expect(w.findAll('input[type="password"]').every(i => i.element.closest('label')?.querySelector('span.label'))).toBe(true);
+  });
+});
+
+describe('destructive buttons in three tiers', () => {
+  it('opens sign-out-everywhere from a soft error button and confirms with a solid one', () => {
+    const labels = { title: 'Sessions', body: 'b', signOut: 'Sign out everywhere', confirmTitle: 'Sure?', confirmBody: 'c', cancel: 'Cancel' };
+    const w = mount(ProfileSessions, { props: { labels, confirming: true }, attachTo: document.body });
+    expect(w.get('section h2').classes()).toEqual(['text-ui', 'font-semibold']);
+    expect(w.get('section p').classes()).toEqual(['text-ui', 'text-base-content/70']);
+    const [ask, cancel, confirm] = w.findAll('button');
+    expect(ask!.classes()).toEqual(expect.arrayContaining(['btn-error', 'btn-soft', 'btn-sm', 'text-ui']));
+    expect(cancel!.text()).toBe('Cancel');
+    expect(confirm!.classes()).toEqual(expect.arrayContaining(['btn-error', 'btn-sm']));
+    expect(confirm!.classes()).not.toContain('btn-soft');
+    w.unmount();
+  });
+});
+
 describe('member list', () => {
-  it('collapses row actions into a menu below sm, named for the member', () => {
+  it('puts row actions in a menu named for the member', () => {
     const w = mount(MemberList, { props: { rows: [{ userId: 'F5pLm2XwQ8kRt3VnZ7bYc', email: 'budi@acme.test', name: 'Budi', role: 'member', initials: 'B', self: false, roles: ['member'], removable: true }] } });
-    const menu = w.get('.dropdown');
-    expect(menu.classes()).toEqual(expect.arrayContaining(['dropdown-left', 'sm:hidden']));
-    expect(menu.get('[role="button"] .sr-only').text()).toBe('Actions for Budi');
-    expect(menu.find('[data-icon="lucide:ellipsis"]').exists()).toBe(true);
-    expect(w.findAll('.max-sm\\:hidden button').map(b => b.text())).toContain('Remove');
+    const menu = w.get('table [popover]');
+    expect(menu.classes()).toContain('dropdown-end');
+    expect(w.get('table button[popovertarget] .sr-only').text()).toBe('Actions for Budi');
+    expect(menu.findAll('button').map(b => b.text())).toEqual(['Remove']);
+  });
+
+  it('shows no menu for a member the viewer cannot act on', () => {
+    const w = mount(MemberList, { props: { rows: [{ userId: 'F5pLm2XwQ8kRt3VnZ7bYc', email: 'budi@acme.test', name: 'Budi', role: 'owner', initials: 'B', self: false, roles: [], removable: false }] } });
+    expect(w.find('button[popovertarget]').exists()).toBe(false);
   });
 });
 
@@ -78,13 +136,34 @@ describe('destructive actions ask first', () => {
     const revokeAPIKey = vi.fn().mockResolvedValue({});
     setClient('$apiKeyClient', { listAPIKeys: vi.fn().mockResolvedValue({ keys: [create(APIKeySchema, { id: 'K9tWq4ZbN2xLm7VcR5pHs', name: 'deploy-bot', kind: 'org', secretHint: 'ab12' })] }), revokeAPIKey });
     const w = await mountPage(APIKeyList, { pageProps: { orgId, canManage: true }, attachTo: document.body });
-    await w.get('tbody button').trigger('click');
+    expect(w.get('tbody button[popovertarget] .sr-only').text()).toContain('deploy-bot');
+    await w.get('tbody [popover] button').trigger('click');
     expect(revokeAPIKey).not.toHaveBeenCalled();
     expect(openDialog()!.textContent).toContain('apikeys.revoke_confirm');
     expect(openDialog()!.textContent).toContain('apikeys.revoke_body|{"name":"deploy-bot","hint":"ab12"}');
     const confirm = [...openDialog()!.querySelectorAll('button')].find(b => b.textContent!.includes('common.revoke'))!;
     confirm.click();
     await vi.waitFor(() => expect(revokeAPIKey).toHaveBeenCalledWith({ orgId, hint: 'ab12' }));
+  });
+
+  it('shows a loading status, not a blank page, while API keys load', async () => {
+    const pending = deferred<{ keys: never[] }>();
+    setClient('$apiKeyClient', { listAPIKeys: vi.fn().mockReturnValue(pending.promise) });
+    const w = await mountPage(APIKeyList, { pageProps: { orgId, canManage: true } });
+    expect(w.get('[role="status"]').text()).toContain('common.loading');
+    expect(w.get('[role="status"]').classes()).toContain('text-ui');
+    pending.resolve({ keys: [] });
+    await flushPromises();
+    expect(w.get('h2').text()).toBe('apikeys.empty');
+  });
+
+  it('shows an expired API key as Expired, with no Revoke', async () => {
+    const expired = create(APIKeySchema, { id: 'M4pXc7RtV2nKw9BsL6yQd', name: 'old-bot', kind: 'org', secretHint: 'cd34', expiresAt: { seconds: 1n, nanos: 0 } });
+    setClient('$apiKeyClient', { listAPIKeys: vi.fn().mockResolvedValue({ keys: [expired] }) });
+    const w = await mountPage(APIKeyList, { pageProps: { orgId, canManage: true } });
+    expect(w.get('tbody').text()).toContain('tokens.status_expired');
+    expect(w.get('tbody').text()).not.toContain('tokens.status_active');
+    expect(w.findAll('tbody button')).toHaveLength(0);
   });
 
   it('asks before deleting a webhook', async () => {
@@ -105,7 +184,7 @@ describe('destructive actions ask first', () => {
     const deleteAgent = vi.fn().mockResolvedValue({});
     setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ id: 'A7kPq2WxN4mLt8VcR3bZs', projectId, slug: 'support', name: 'Support', description: '' }] }), deleteAgent });
     const w = await mountPage(AgentsPage, { attachTo: document.body });
-    await w.findAll('button').find(b => b.text().includes('common.delete'))!.trigger('click');
+    await w.findAll('button').find(b => b.attributes('aria-label') === 'agent.delete_named|{"name":"Support"}')!.trigger('click');
     expect(deleteAgent).not.toHaveBeenCalled();
     expect(openDialog()!.textContent).toContain('agent.delete_title');
     expect(openDialog()!.textContent).toContain('agent.delete_body|{"name":"Support"}');
@@ -138,10 +217,16 @@ describe('a one-time secret stays until Done', () => {
     setClient('$webhookClient', { createWebhook: vi.fn().mockResolvedValue({ secret: 'whsec_once' }) });
     const w = mount(WebhookCreateModal, { props: { orgId: keyOrgId, projectId }, attachTo: document.body });
     await w.get('button').trigger('click');
+    for (const input of w.findAll('dialog input[type="url"], dialog input[type="text"]')) {
+      expect(w.find(`label[for="${input.attributes('id')}"]`).classes()).toEqual(['label', 'text-ui', 'text-base-content']);
+    }
     await w.get('dialog input[type="url"]').setValue('https://hooks.acme.test/oagent');
     await w.get('dialog input[type="checkbox"]').setValue(true);
     await w.findAll('dialog button').find(b => b.text() === 'common.create')!.trigger('click');
     await flushPromises();
+    const sendTest = w.findAll('dialog button').find(b => b.text().includes('webhooks.test'))!;
+    expect(sendTest.classes()).not.toContain('btn-outline');
+    expect(sendTest.classes()).toEqual(expect.arrayContaining(['btn', 'btn-sm', 'text-ui']));
     await escapeKeepsIt(w, 'whsec_once');
   });
 
@@ -182,7 +267,8 @@ describe('actions follow the caller\'s permissions', () => {
     signedInWith('org:read');
     const w = await mountPage(OrgSettings);
     expect(w.find('form').exists()).toBe(false);
-    expect(w.get('dl').text()).toContain('Acme');
+    expect(w.get('[data-testid="org-settings-readonly"] dl').text()).toContain('Acme');
+    expect(w.get('[data-testid="org-settings-readonly"] dl').text()).toContain('acme');
     expect(w.text()).toContain('settings.read_only');
   });
 
@@ -192,6 +278,7 @@ describe('actions follow the caller\'s permissions', () => {
     signedInWith('org:read', 'org:write');
     const w = await mountPage(OrgSettings);
     expect(w.find('form').exists()).toBe(true);
+    expect(w.get('form').classes()).toEqual(expect.arrayContaining(['rounded-box', 'border', 'border-base-300', 'bg-base-100', 'p-4']));
     expect(w.text()).not.toContain('settings.read_only');
   });
 
@@ -201,6 +288,16 @@ describe('actions follow the caller\'s permissions', () => {
     const w = await mountPage(ProjectSettings);
     expect(w.find('form').exists()).toBe(false);
     expect(w.text()).toContain('project.read_only');
+    expect(w.get('h1').classes()).toEqual(['text-xl', 'font-semibold', 'break-words']);
+    expect(w.get('[data-testid="project-settings-readonly"] dl').text()).toContain('Web');
+    expect(w.get('[data-testid="project-settings-readonly"] dl').text()).toContain('web');
+  });
+
+  it('boxes the project settings form like the org one, with project:write', async () => {
+    inProject('/settings');
+    signedInWith('project:read', 'project:write');
+    const w = await mountPage(ProjectSettings);
+    expect(w.get('form').classes()).toEqual(expect.arrayContaining(['rounded-box', 'border', 'border-base-300', 'bg-base-100', 'p-4']));
   });
 
   it('offers New project and Edit only with project:write', async () => {

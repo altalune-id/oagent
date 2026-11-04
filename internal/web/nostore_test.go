@@ -71,5 +71,5 @@ func TestStaticAssetsKeepTheirCacheBesidePreSignInPages(t *testing.T) {
 	srv := NewServer(ServerOpts{Routes: []Registrar{preSignIn{}}})
 	rec := get(t, srv, "/static/favicon.ico")
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "public, max-age=3600", rec.Header().Get("Cache-Control"))
+	assert.Equal(t, "no-cache", rec.Header().Get("Cache-Control"))
 }

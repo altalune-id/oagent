@@ -4,7 +4,7 @@ import AppDropdown from './AppDropdown.vue';
 const meta = {
   title: 'UI/AppDropdown',
   component: AppDropdown,
-  args: { label: 'Account', open: true },
+  args: { label: 'Account', open: true, placement: 'end', contentClass: 'w-60' },
 } satisfies Meta<typeof AppDropdown>;
 
 export default meta;
@@ -15,9 +15,9 @@ export const Menu: Story = {
     components: { AppDropdown },
     setup: () => ({ args }),
     template: `
-      <AppDropdown v-bind="args" class="dropdown-end">
+      <AppDropdown v-bind="args">
         <template #trigger>ada@example.com</template>
-        <ul tabindex="-1" class="dropdown-content menu z-50 mt-2 w-60 rounded-box border border-base-300 bg-base-100 p-2 shadow">
+        <ul class="menu w-full p-0">
           <li><button type="button">Switch account</button></li>
           <li><button type="button">Sign out</button></li>
         </ul>

@@ -21,7 +21,7 @@ import (
 )
 
 type rlsTenant struct {
-	org, project, user, key, endpoint uuid.UUID
+	org, project, user, key, endpoint, agent uuid.UUID
 }
 
 type rlsFixture struct {
@@ -41,7 +41,7 @@ func newRLSFixture(t *testing.T) *rlsFixture {
 
 func (f *rlsFixture) seed(t *testing.T, tag string) rlsTenant {
 	t.Helper()
-	tn := rlsTenant{org: uuid.New(), project: uuid.New(), user: uuid.New(), key: uuid.New(), endpoint: uuid.New()}
+	tn := rlsTenant{org: uuid.New(), project: uuid.New(), user: uuid.New(), key: uuid.New(), endpoint: uuid.New(), agent: uuid.New()}
 	for _, ins := range rlsInserts() {
 		_, err := f.admin.ExecContext(t.Context(), ins.sql(f.schema), ins.args(tn, tag)...)
 		require.NoError(t, err, ins.table)
@@ -78,7 +78,12 @@ func rlsInserts() []rlsInsert {
 		{"agents", func(s string) string {
 			return `INSERT INTO ` + s + `.agents (id, public_id, org_id, project_id, slug, name, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, 'A', $6, $6)`
 		}, func(tn rlsTenant, _ string) []any {
-			return []any{uuid.New(), "a" + id()[:12], tn.org, tn.project, "a" + id()[:12], now}
+			return []any{tn.agent, "a" + id()[:12], tn.org, tn.project, "a" + id()[:12], now}
+		}},
+		{"agent_versions", func(s string) string {
+			return `INSERT INTO ` + s + `.agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at) VALUES ($1, $2, $3, $4, $5, 1, '{}', $6)`
+		}, func(tn rlsTenant, _ string) []any {
+			return []any{uuid.New(), "v" + id()[:12], tn.org, tn.project, tn.agent, now}
 		}},
 		{"invites", func(s string) string {
 			return `INSERT INTO ` + s + `.invites (id, public_id, org_id, email, role, token_hash, expires_at, created_at, updated_at, email_only) VALUES ($1, $2, $3, $4, 'member', $5, $6, $6, $6, false)`
@@ -207,7 +212,7 @@ func TestRLS_EveryOrgOwnedTableIsolatesTenants(t *testing.T) {
 			assert.Positive(t, before)
 		})
 	}
-	assert.Equal(t, 10, tables, "every org-owned table is covered")
+	assert.Equal(t, 11, tables, "every org-owned table is covered")
 }
 
 // SECURITY: a user-only scope reads its own memberships and orgs, but every write needs the org itself.

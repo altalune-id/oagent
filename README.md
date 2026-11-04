@@ -126,6 +126,7 @@ OAGENT_OIDC_ISSUER=https://idp.example.com          # exactly as the provider na
 OAGENT_OIDC_CLIENT_ID=...
 OAGENT_OIDC_CLIENT_SECRET=...
 OAGENT_OIDC_BUTTON_LABEL="Continue with Acme ID"   # default "Continue with SSO"
+OAGENT_OIDC_ACCOUNT_URL=https://idp.example.com/account/   # optional: "Your account" in the user menu
 ```
 
 At the provider, register a web client with:

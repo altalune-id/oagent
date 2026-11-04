@@ -164,7 +164,7 @@ func warnSampleLegal(cfg config.Config, log *slog.Logger, serving bool) {
 }
 
 func buildRoutes(cfg config.Config, svcs *Services, log *slog.Logger, unexpected apperror.UnexpectedFunc) []web.Registrar {
-	kit := layout.Kit{BasePath: cfg.HTTP.BasePath, Log: log, Unexpected: unexpected}
+	kit := layout.Kit{BasePath: cfg.HTTP.BasePath, Log: log, Unexpected: unexpected, Version: web.StaticVersion}
 	legalOpts := legal.WebOpts{Kit: kit, TermsURL: cfg.Compliance.TermsURL, PrivacyURL: cfg.Compliance.PrivacyURL}
 	if svcs == nil || !svcs.Caps.LocalLogin {
 		return []web.Registrar{legal.NewWeb(legalOpts)}
@@ -268,6 +268,7 @@ func buildHTTPHandler(s httpSurfaces) http.Handler {
 		MCPHandler: s.mcp,
 		Console:    s.console,
 		Routes:     s.routes,
+		NotFound:   notFoundPage(layout.Kit{BasePath: s.basePath, Log: s.log, Unexpected: s.unexpected, Version: web.StaticVersion}),
 		BasePath:   s.basePath,
 		Log:        s.log,
 		Unexpected: s.unexpected,
@@ -283,12 +284,18 @@ func buildHTTPHandler(s httpSurfaces) http.Handler {
 	})
 }
 
+func notFoundPage(kit layout.Kit) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		kit.Render(w, r, http.StatusNotFound, layout.Error(kit.Layout("Page not found"), "There is no page at this address."))
+	})
+}
+
 func consoleWeb(cfg config.Config, svcs *Services, kit layout.Kit, sessions auth.CookieSessions, limits auth.Limits) *auth.Web {
 	w := auth.NewWeb(kit, svcs.Auth, sessions, newPublicIDs(svcs)).WithLimits(limits)
 	if svcs.OIDC != nil {
 		w.WithOIDC(auth.OIDCSignIn{
-			Provider: svcs.OIDC, ButtonLabel: cfg.OIDC.ButtonLabel, SignedOut: publicBase(cfg.HTTP) + "/login", OpenSignup: cfg.OpenSignup(),
-			RememberLastUser: cfg.Auth.RememberLastUser,
+			Provider: svcs.OIDC, ButtonLabel: cfg.OIDC.ButtonLabel, IssuerHost: cfg.OIDC.IssuerHost(),
+			SignedOut: publicBase(cfg.HTTP) + "/login", OpenSignup: cfg.OpenSignup(), RememberLastUser: cfg.Auth.RememberLastUser,
 		})
 	}
 	if !svcs.Caps.Passwords {

@@ -1,8 +1,13 @@
 <script setup lang="ts">
+import type { Column } from '#base/components/ui/types';
 import type { ShownError } from '#base/lib/apperror/message';
 import { computed } from 'vue';
+import AppBadge from '#base/components/ui/AppBadge.vue';
+import AppButton from '#base/components/ui/AppButton.vue';
 import AppDropdown from '#base/components/ui/AppDropdown.vue';
 import AppModal from '#base/components/ui/AppModal.vue';
+import Avatar from '#base/components/ui/Avatar.vue';
+import DataTable from '#base/components/ui/DataTable.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import { displayName } from './names';
 
@@ -18,6 +23,7 @@ export interface MemberListRow {
 }
 
 export interface MemberListLabels {
+  caption: string;
   member: string;
   role: string;
   you: string;
@@ -33,6 +39,7 @@ export interface MemberListLabels {
   changeRole: string;
   empty: string;
   actions: string;
+  actionsColumn: string;
 }
 
 const props = withDefaults(defineProps<{
@@ -50,6 +57,7 @@ const props = withDefaults(defineProps<{
   confirming: null,
   confirmMessage: '',
   labels: () => ({
+    caption: 'Members',
     member: 'Member',
     role: 'Role',
     you: 'you',
@@ -65,6 +73,7 @@ const props = withDefaults(defineProps<{
     changeRole: 'Change role',
     empty: 'No members yet.',
     actions: 'Actions for {name}',
+    actionsColumn: 'Actions',
   }),
 });
 
@@ -111,6 +120,16 @@ const confirmAction = computed(() => {
   }
 });
 
+const columns = computed<Column[]>(() => [
+  { key: 'member', label: props.labels.member },
+  { key: 'role', label: props.labels.role },
+  { key: 'menu', label: props.labels.actionsColumn, hideLabel: true, align: 'end' },
+]);
+
+function hasActions(m: MemberListRow): boolean {
+  return m.removable || (m.self && props.canLeave);
+}
+
 function onRole(m: MemberListRow, event: Event) {
   const select = event.target as HTMLSelectElement;
   const role = select.value;
@@ -120,107 +139,70 @@ function onRole(m: MemberListRow, event: Event) {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="flex flex-col gap-4">
     <ErrorText :error="error" />
 
-    <p v-if="rows.length === 0" class="text-sm text-base-content/60">
+    <p v-if="rows.length === 0" class="text-ui text-base-content/70">
       {{ labels.empty }}
     </p>
-    <div v-else class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
-      <table class="table table-sm">
-        <thead>
-          <tr>
-            <th>{{ labels.member }}</th>
-            <th>{{ labels.role }}</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="m in rows" :key="m.userId" class="hover:bg-base-200">
-            <td>
-              <div class="flex items-center gap-3">
-                <div class="avatar avatar-placeholder">
-                  <div class="w-9 rounded-full bg-neutral text-neutral-content">
-                    <span class="text-xs" aria-hidden="true">{{ m.initials }}</span>
-                  </div>
-                </div>
-                <div class="min-w-0">
-                  <div class="truncate font-medium">
-                    {{ displayName(m) }}
-                    <span v-if="m.self" class="badge badge-ghost badge-sm ml-1">{{ labels.you }}</span>
-                  </div>
-                  <div v-if="m.name.trim()" class="truncate text-xs text-base-content/60">
-                    {{ m.email }}
-                  </div>
-                </div>
-              </div>
-            </td>
-            <td>
-              <select
-                v-if="m.roles.length > 0"
-                class="select w-36"
-                :value="m.role"
-                :aria-label="`${labels.role}: ${displayName(m)}`"
-                :disabled="busy"
-                @change="onRole(m, $event)"
-              >
-                <option v-for="r in m.roles" :key="r" :value="r">
-                  {{ roleLabel(r) }}
-                </option>
-              </select>
-              <span v-else class="badge badge-sm" :class="m.role === 'owner' ? 'badge-primary' : 'badge-ghost'">
-                {{ roleLabel(m.role) }}
-              </span>
-            </td>
-            <td class="whitespace-nowrap text-right">
-              <template v-if="m.removable || (m.self && canLeave)">
-                <div class="max-sm:hidden">
-                  <button v-if="m.removable" type="button" class="btn btn-ghost btn-xs" :disabled="busy" @click="emit('remove', m.userId)">
-                    <Icon name="lucide:user-minus" size="14" class="text-error" />
-                    {{ labels.remove }}
-                  </button>
-                  <button v-else type="button" class="btn btn-ghost btn-xs" :disabled="busy" @click="emit('leave')">
-                    <Icon name="lucide:log-out" size="14" />
-                    {{ labels.leave }}
-                  </button>
-                </div>
-                <AppDropdown class="dropdown-left sm:hidden" :label="labels.actions.replace('{name}', displayName(m))" :disabled="busy" trigger-class="btn-square">
-                  <template #trigger>
-                    <Icon name="lucide:ellipsis" size="16" />
-                  </template>
-                  <ul tabindex="-1" class="dropdown-content menu z-10 w-52 rounded-box border border-base-300 bg-base-100 p-1 shadow">
-                    <li v-if="m.removable">
-                      <button type="button" @click="emit('remove', m.userId)">
-                        <Icon name="lucide:user-minus" size="14" class="text-error" />
-                        {{ labels.remove }}
-                      </button>
-                    </li>
-                    <li v-else>
-                      <button type="button" @click="emit('leave')">
-                        <Icon name="lucide:log-out" size="14" />
-                        {{ labels.leave }}
-                      </button>
-                    </li>
-                  </ul>
-                </AppDropdown>
-              </template>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <DataTable v-else :caption="labels.caption" row-key="userId" :columns="columns" :rows="rows">
+      <template #cell-member="{ row }">
+        <span class="flex min-w-0 items-center gap-3">
+          <Avatar :id="row.userId" :name="row.name" :email="row.email" size="sm" />
+          <span class="flex min-w-0 flex-col">
+            <span class="flex items-center gap-2">
+              <span class="truncate font-medium">{{ displayName(row) }}</span>
+              <AppBadge v-if="row.self" :label="labels.you" size="xs" outline />
+            </span>
+            <span v-if="row.name.trim()" class="truncate text-xs text-base-content/70">{{ row.email }}</span>
+          </span>
+        </span>
+      </template>
+      <template #cell-role="{ row }">
+        <label v-if="row.roles.length > 0" class="select select-xs w-32 text-xs">
+          <span class="sr-only">{{ labels.role }}: {{ displayName(row) }}</span>
+          <select :value="row.role" :disabled="busy" @change="onRole(row, $event)">
+            <option v-for="r in row.roles" :key="r" :value="r">
+              {{ roleLabel(r) }}
+            </option>
+          </select>
+        </label>
+        <AppBadge v-else :label="roleLabel(row.role)" />
+      </template>
+      <template #cell-menu="{ row }">
+        <AppDropdown v-if="hasActions(row)" placement="end" size="xs" trigger-class="btn-square" content-class="w-48" :label="labels.actions.replace('{name}', displayName(row))" :disabled="busy">
+          <template #trigger>
+            <Icon name="lucide:ellipsis" size="14" class="shrink-0" aria-hidden="true" />
+          </template>
+          <ul class="menu menu-sm w-full p-0 text-ui">
+            <li v-if="row.removable">
+              <button type="button" @click="emit('remove', row.userId)">
+                <Icon name="lucide:user-minus" size="16" class="shrink-0 text-error" aria-hidden="true" />
+                {{ labels.remove }}
+              </button>
+            </li>
+            <li v-else>
+              <button type="button" @click="emit('leave')">
+                <Icon name="lucide:log-out" size="16" class="shrink-0" aria-hidden="true" />
+                {{ labels.leave }}
+              </button>
+            </li>
+          </ul>
+        </AppDropdown>
+      </template>
+    </DataTable>
 
     <AppModal :open="confirming !== null" :title="confirmTitle" @close="emit('cancel')">
-      <p class="text-sm">
+      <p class="text-ui">
         {{ confirmMessage }}
       </p>
       <template #footer>
-        <button type="button" class="btn btn-ghost btn-sm" @click="emit('cancel')">
+        <AppButton variant="ghost" size="sm" @click="emit('cancel')">
           {{ labels.cancel }}
-        </button>
-        <button type="button" class="btn btn-sm" :class="confirming?.kind === 'role' ? 'btn-primary' : 'btn-error'" :disabled="busy" @click="emit('confirm')">
+        </AppButton>
+        <AppButton :variant="confirming?.kind === 'role' ? 'primary' : 'error'" size="sm" :disabled="busy" @click="emit('confirm')">
           {{ confirmAction }}
-        </button>
+        </AppButton>
       </template>
     </AppModal>
   </div>

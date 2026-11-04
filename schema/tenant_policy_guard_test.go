@@ -16,6 +16,9 @@ var (
 //nolint:gochecknoglobals // the tables a user-only scope may read through its memberships.
 var userReadable = map[string]bool{"orgs": true, "memberships": true}
 
+//nolint:gochecknoglobals // the org-owned tables whose rows are never updated or deleted, only removed with their parent.
+var appendOnly = map[string]bool{"agent_versions": true}
+
 // SECURITY: an inlined current_setting(...)::uuid throws 22P02 once a pooled connection has served a tenant, because a transaction-local set_config resets to empty string rather than NULL.
 func TestMigrations_PoliciesUseTheGuardedScopeHelpers(t *testing.T) {
 	sources := migrationSources(t)
@@ -57,13 +60,37 @@ func TestMigrations_EveryOrgOwnedTableForcesItsPolicy(t *testing.T) {
 			checkSplitPolicies(t, all, table, target)
 			continue
 		}
+		if appendOnly[table] {
+			checkAppendOnlyPolicies(t, all, table, target)
+			continue
+		}
 		policy := regexp.MustCompile(`(?s)CREATE POLICY \{\{\.TablePrefix\}\}` + table + `_tenant ON ` + regexp.QuoteMeta(target) + `\s+FOR ALL\s+USING \(.*?\)\s+WITH CHECK \(.*?current_org_id\(\).*?\);`)
 		if !policy.MatchString(all) {
 			t.Errorf("%s: missing a FOR ALL policy %s_tenant with USING and a WITH CHECK on current_org_id()", table, table)
 		}
 	}
-	if tables != 10 {
-		t.Fatalf("found %d org-owned tables, want 10; add the new table to the tenant list in schema/README.md and to this guard", tables)
+	if tables != 11 {
+		t.Fatalf("found %d org-owned tables, want 11; add the new table to the tenant list in schema/README.md and to this guard", tables)
+	}
+}
+
+// SECURITY: an append-only table reads and inserts within the org, and no policy lets a row change or go.
+func checkAppendOnlyPolicies(t *testing.T, all, table, target string) {
+	t.Helper()
+	scope := `org_id = ` + regexp.QuoteMeta(`{{.Schema}}.{{.TablePrefix}}current_org_id()`)
+	q := regexp.QuoteMeta(target)
+	for name, re := range map[string]*regexp.Regexp{
+		"read":   regexp.MustCompile(`CREATE POLICY \{\{\.TablePrefix\}\}` + table + `_read ON ` + q + `\s+FOR SELECT\s+USING \(` + scope + `\);`),
+		"insert": regexp.MustCompile(`CREATE POLICY \{\{\.TablePrefix\}\}` + table + `_insert ON ` + q + `\s+FOR INSERT\s+WITH CHECK \(` + scope + `\);`),
+	} {
+		if !re.MatchString(all) {
+			t.Errorf("%s: missing the %s_%s policy that checks %s", table, table, name, scope)
+		}
+	}
+	for _, m := range policyRe.FindAllStringSubmatch(all, -1) {
+		if strings.HasPrefix(m[1], table+"_") && m[1] != table+"_read" && m[1] != table+"_insert" {
+			t.Errorf("%s: policy %s would let a row change or go", table, m[1])
+		}
 	}
 }
 

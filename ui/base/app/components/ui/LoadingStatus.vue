@@ -3,7 +3,7 @@ const { label } = defineProps<{ label: string }>();
 </script>
 
 <template>
-  <span role="status" class="inline-flex items-center">
+  <span role="status" class="inline-flex items-center text-ui">
     <span class="loading loading-spinner loading-sm" aria-hidden="true" />
     <span class="sr-only">{{ label }}</span>
   </span>

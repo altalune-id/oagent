@@ -24,7 +24,44 @@ func (s *postgresStore) ByID(ctx context.Context, id uuid.UUID) (*Agent, error) 
 		}
 		return nil, fmt.Errorf("agent.postgres: ByID: %w", err)
 	}
-	return row.toAgent(), nil
+	return row.toAgent()
+}
+
+// Versions returns up to limit of the agent's versions, newest first.
+func (s *postgresStore) Versions(ctx context.Context, agentID uuid.UUID, limit int) ([]*Version, error) {
+	return s.selectVersions(ctx, "Versions", agentID, int64(max(limit, 1)))
+}
+
+// LatestVersion returns the agent's newest version, or nil before the first publish.
+func (s *postgresStore) LatestVersion(ctx context.Context, agentID uuid.UUID) (*Version, error) {
+	vs, err := s.selectVersions(ctx, "LatestVersion", agentID, 1)
+	if err != nil || len(vs) == 0 {
+		return nil, err
+	}
+	return vs[0], nil
+}
+
+func (s *postgresStore) selectVersions(ctx context.Context, op string, agentID uuid.UUID, limit int64) ([]*Version, error) {
+	stmt := postgres.SELECT(s.versions.AllColumns).
+		FROM(s.versions).
+		WHERE(s.versions.AgentID.EQ(postgres.UUID(agentID))).
+		ORDER_BY(s.versions.Version.DESC())
+	if limit > 0 {
+		stmt = stmt.LIMIT(limit)
+	}
+	var rows []versionRow
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil {
+		return nil, fmt.Errorf("agent.postgres: %s: %w", op, err)
+	}
+	out := make([]*Version, 0, len(rows))
+	for i := range rows {
+		v, err := rows[i].toVersion()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, nil
 }
 
 // List returns a project's agents ordered by creation time.
@@ -39,7 +76,11 @@ func (s *postgresStore) List(ctx context.Context, projectID uuid.UUID) ([]*Agent
 	}
 	out := make([]*Agent, 0, len(rows))
 	for i := range rows {
-		out = append(out, rows[i].toAgent())
+		a, err := rows[i].toAgent()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
 	}
 	return out, nil
 }

@@ -90,7 +90,9 @@ A page in the web console (`ui/console`): the Nuxt 4 single-page app served at `
    - `AppButton` (variants `primary`, `neutral`, `ghost`, `outline`, `error`, `plain`; `soft`, `square`, `busy`; `to` for an in-app link, `href` for a plain one) for new buttons.
    - `ConfirmModal` with a `useConfirm` handle for every destructive action; `AppModal` for anything else.
    - `LoadError` (the error plus Retry) for a failed load, and `LoadingStatus` for a page spinner.
-   - `AppDropdown` for every menu: its trigger is a focusable `div` that Safari opens, and its `label` is added to the visible text.
+   - `AppDropdown` for every menu: a popover anchored to its trigger button (Escape and outside clicks close it), and its `label` is added to the visible text.
+   - `PageHeader` (title, description, actions, breadcrumbs, a Preview badge), `Section` for each card, `DataTable` for lists (skeleton rows, a stacked list on phones, an `empty` slot with `EmptyState`), `FormField` and `KeyValue`, `SecretField` for a one-time secret, and `useToast().push()` to confirm a change.
+   - Muted text is `text-base-content/70`; a guard refuses anything lower.
    - `useDates()` (`date`, `moment`, `when`) and `formatDate` for every date; never a new `Intl.DateTimeFormat` or `toLocaleString()`.
 5. **Page.** `app/pages/o/[org]/.../<name>.vue`. Resolve the slugs from the route through the stores, throw a 404 when not found, set the title, and pass public ids down.
 
@@ -112,7 +114,7 @@ A page in the web console (`ui/console`): the Nuxt 4 single-page app served at `
    </script>
    ```
 
-6. **Nav.** Add the item and its target to the matching sidebar: `AppSidebar.vue`, `SettingsSidebar.vue`, `ProjectSidebar.vue` or `AgentSidebar.vue`.
+6. **Nav.** Add the item (`to` and `active`) to the matching sidebar group: `AppSidebar.vue` (org pages and org settings), `ProjectSidebar.vue` or `AgentSidebar.vue`. `pages/o/[org].vue` puts the sidebar in the `AppShell` drawer.
 7. **i18n.** Add every page key to every file in `ui/console/i18n/locales/` (`en-US.json`, `id-ID.json`). Keys are flat and dotted (`things.title`). Use `error.<action>` for fallbacks. Shared keys live in the `ui/base` layer's `i18n/locales/`: `common.*`, `field.<proto_field>` for field names in validation messages, `validation.*`, `scope.*`, `language.*`, `theme.*` and `apperror.<CODE>` / `apperror.<CODE>_<reason>`; `ui/console/i18n/locales.test.ts` refuses a shared key in the console file. `ui/base/app/lib/apperror/catalog.test.ts` fails when the locales differ in keys or params, or an error code has no message.
 8. **Stories.** `<Component>.stories.ts` next to a presentational component (`title: '<Area>/<Name>'`), one story per state: empty, filled, error, confirming.
 9. **Tests.** `<file>.test.ts` next to every store, composable and helper. Fake clients with `setClient`, refusals with `connectError` ([`#test/nuxt-globals`](../../ui/base/test/nuxt-globals.ts)). Coverage counts `.ts` files only and fails below 90% lines, functions and statements, 85% branches, so keep logic out of `.vue` files.

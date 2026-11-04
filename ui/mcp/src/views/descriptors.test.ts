@@ -16,12 +16,21 @@ const detail = (tool: string) => descriptors[tool] as DetailDescriptor;
 
 describe('tool views', () => {
   it('serves every tool from a descriptor, keeping only the views that need their own', () => {
-    for (const tool of ['member_invite_confirm', 'member_invite_discard', 'org_get', 'org_create', 'org_list', 'project_get', 'project_list', 'project_create', 'agent_get', 'agent_list', 'agent_create', 'agent_update', 'agent_delete', 'member_list', 'webhook_list', 'webhook_create', 'webhook_deliveries', 'webhook_retry_failed']) {
+    for (const tool of ['member_invite_confirm', 'member_invite_discard', 'org_get', 'org_create', 'org_list', 'project_get', 'project_list', 'project_create', 'agent_get', 'agent_list', 'agent_create', 'agent_update', 'agent_delete', 'member_list', 'webhook_list', 'webhook_create', 'webhook_deliveries', 'webhook_retry_failed', 'agent_version_list', 'agent_update_draft', 'agent_publish']) {
       expect(resolveView(tool).descriptor, tool).toBeDefined();
     }
     for (const tool of ['member_invite', 'auth_whoami']) {
       expect(resolveView(tool).descriptor, tool).toBeUndefined();
     }
+  });
+
+  it('lists an agent\'s versions and shows a saved draft and a publish', () => {
+    const versions = mount(ListView, { props: { data: { versions: [{ id: 'v1', version: 3, createdAt: '2026-11-04T01:00:00Z' }] }, descriptor: list('agent_version_list') }, ...provide() });
+    expect(versions.text()).toContain('3');
+    expect(list('agent_version_list').refresh).toEqual({ tool: 'agent_version_list', args: ['agentId'] });
+    expect(detail('agent_update_draft').object).toBe('agent');
+    expect(detail('agent_publish').object).toBe('version');
+    expect(detail('agent_publish').fields.map(f => f.key)).toEqual(['version', 'createdAt']);
   });
 
   it('refreshes agents for the same project', async () => {

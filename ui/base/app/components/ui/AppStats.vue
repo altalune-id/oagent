@@ -6,12 +6,19 @@ defineProps<{ items: StatItem[] }>();
 
 <template>
   <div class="grid gap-3 sm:grid-cols-3">
-    <div v-for="item in items" :key="item.label" class="stat rounded-box border border-base-300 bg-base-100">
-      <div class="stat-title">
-        {{ item.label }}
-      </div>
-      <div class="stat-value text-3xl">
-        {{ item.value }}
+    <div v-for="item in items" :key="item.label" class="stats rounded-box border border-base-300 bg-base-100">
+      <div class="stat px-4 py-3">
+        <div class="stat-title text-xs text-base-content/70">
+          {{ item.label }}
+        </div>
+        <div class="stat-value text-2xl font-semibold tabular-nums">
+          <template v-if="item.unknown">
+            <span aria-hidden="true">—</span><span class="sr-only">{{ item.unknown }}</span>
+          </template>
+          <template v-else>
+            {{ item.value }}
+          </template>
+        </div>
       </div>
     </div>
   </div>

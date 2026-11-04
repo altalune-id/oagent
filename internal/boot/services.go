@@ -52,15 +52,17 @@ type Services struct {
 	Outbox       outbox.Store
 	WebhookStore webhook.Store
 	Webhooks     *webhook.Service
-	Sealer       sealer.Sealer
-	Mailer       mailer.Mailer
-	MailQueue    mailqueue.Store
-	Users        *user.Service
-	Members      *member.Service
-	Invites      *invite.Service
-	Sessions     session.Store
-	Auth         *auth.Service
-	Resets       *auth.Resets
+	// ConsoleURL is the console's absolute root without a trailing slash, the base of every server-side link into it.
+	ConsoleURL string
+	Sealer     sealer.Sealer
+	Mailer     mailer.Mailer
+	MailQueue  mailqueue.Store
+	Users      *user.Service
+	Members    *member.Service
+	Invites    *invite.Service
+	Sessions   session.Store
+	Auth       *auth.Service
+	Resets     *auth.Resets
 	// OIDC is the relying party at oidc.issuer, or nil without one.
 	OIDC auth.OIDCProvider
 	// MCPTokens verifies the provider's access tokens on /mcp, or is nil without MCP OAuth.
@@ -158,6 +160,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	}
 
 	svcs := &Services{
+		ConsoleURL:   publicBase(cfg.HTTP) + "/console",
 		OrgStore:     orgStore,
 		Orgs:         orgs,
 		ProjectStore: projectStore,

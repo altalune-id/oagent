@@ -7,11 +7,5 @@ const { mode, supportsMode, toggle } = useTheme();
 </script>
 
 <template>
-  <ThemeToggle
-    v-if="supportsMode"
-    :mode="mode"
-    :light-label="t('theme.light')"
-    :dark-label="t('theme.dark')"
-    @toggle="toggle"
-  />
+  <ThemeToggle v-if="supportsMode" :mode="mode" :label="t('theme.switch_mode')" @toggle="toggle" />
 </template>

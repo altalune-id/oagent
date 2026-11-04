@@ -9,6 +9,8 @@ minimumReleaseAgeStrict: true
 
 # Versions shared by more than one ui/* package; reference them as "catalog:".
 catalog:
+  "@fontsource-variable/instrument-sans": 5.3.0
+  "@fontsource-variable/jetbrains-mono": 5.3.0
   "@iconify-json/lucide": ^1.2.147
   "@iconify/vue": ^5.0.4
   "@tailwindcss/vite": ^4.3.3

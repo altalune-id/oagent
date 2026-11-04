@@ -243,6 +243,22 @@ func TestFilesHandler(t *testing.T) {
 	}
 }
 
+func TestFilesVersion(t *testing.T) {
+	t.Parallel()
+	files := load(t, testFS())
+	v := files.Version("_nuxt/app.js")
+	require.Len(t, v, 32, "the plain bytes' hash, unquoted")
+	assert.Equal(t, strings.Trim(files["_nuxt/app.js"].plain.etag, `"`), v)
+	assert.Empty(t, files.Version("missing.js"))
+
+	h := files.Handler("no-cache")
+	for q, want := range map[string]string{"?v=" + v: "public, max-age=31536000, immutable", "?v=0" + v[1:]: "no-cache", "?v=": "no-cache", "": "no-cache"} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/_nuxt/app.js"+q, nil))
+		assert.Equal(t, want, rec.Header().Get("Cache-Control"), q)
+	}
+}
+
 func TestFilesSibling(t *testing.T) {
 	t.Parallel()
 	files := load(t, testFS())

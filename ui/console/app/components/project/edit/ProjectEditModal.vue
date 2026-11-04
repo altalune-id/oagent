@@ -15,17 +15,17 @@ defineExpose({ show });
   <AppModal :open="open" :title="t('project.edit')" @close="hide()">
     <form novalidate class="space-y-1" @submit.prevent="submit()">
       <div class="fieldset">
-        <label :for="ids.name" class="fieldset-legend">{{ t('common.name') }}</label>
+        <label :for="ids.name" class="label text-ui text-base-content">{{ t('common.name') }}</label>
         <input
-          :id="ids.name" v-model="name" type="text" class="input w-full" :class="{ 'input-error': fieldErrors.name }"
+          :id="ids.name" v-model="name" type="text" class="input input-sm w-full text-ui" :class="{ 'input-error': fieldErrors.name }"
           :disabled="busy" :aria-invalid="!!fieldErrors.name" :aria-describedby="ids.nameErr"
         >
         <FieldError :id="ids.nameErr" :message="fieldErrors.name" />
       </div>
       <div class="fieldset">
-        <label :for="ids.slug" class="fieldset-legend">{{ t('common.slug') }}</label>
+        <label :for="ids.slug" class="label text-ui text-base-content">{{ t('common.slug') }}</label>
         <input
-          :id="ids.slug" v-model="slug" type="text" class="input w-full font-mono" :class="{ 'input-error': fieldErrors.slug }"
+          :id="ids.slug" v-model="slug" type="text" class="input input-sm w-full font-mono text-ui" :class="{ 'input-error': fieldErrors.slug }"
           :disabled="busy" :aria-invalid="!!fieldErrors.slug" :aria-describedby="ids.slugErr"
         >
         <FieldError :id="ids.slugErr" :message="fieldErrors.slug" />
@@ -33,10 +33,10 @@ defineExpose({ show });
       <ErrorText :error="error" />
     </form>
     <template #footer>
-      <button class="btn btn-ghost btn-sm" type="button" :disabled="busy" @click="hide()">
+      <button class="btn btn-ghost btn-sm text-ui" type="button" :disabled="busy" @click="hide()">
         {{ t('common.cancel') }}
       </button>
-      <button class="btn btn-primary btn-sm" type="button" :disabled="busy || !name.trim()" @click="submit()">
+      <button class="btn btn-primary btn-sm text-ui" type="button" :disabled="busy || !name.trim()" @click="submit()">
         {{ busy ? t('common.saving') : t('common.save') }}
       </button>
     </template>

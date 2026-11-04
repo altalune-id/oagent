@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from '#base/components/ui/PageHeader.vue';
 import PersonalKeyCreateForm from '~/components/apikey/personal/PersonalKeyCreateForm.vue';
 import PersonalKeys from '~/components/apikey/personal/PersonalKeys.vue';
 import { usePersonalKeyCreate } from '~/components/apikey/personal/usePersonalKeyCreate';
@@ -63,15 +64,8 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('apikeys.per
 </script>
 
 <template>
-  <div v-if="org" class="space-y-6">
-    <div>
-      <h1 class="text-2xl font-bold">
-        {{ t('apikeys.personal_title') }}
-      </h1>
-      <p class="text-sm text-base-content/60">
-        {{ t('apikeys.personal_subtitle') }}
-      </p>
-    </div>
+  <div v-if="org" class="flex flex-col gap-4">
+    <PageHeader :title="t('apikeys.personal_title')" :description="t('apikeys.personal_subtitle')" />
     <PersonalKeyCreateForm
       v-if="signedIn"
       v-model:name="name"
@@ -90,6 +84,9 @@ useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('apikeys.per
     />
     <PersonalKeys
       :keys="rows"
+      :caption="t('apikeys.personal_title')"
+      :actions-for="(name: string) => t('apikeys.actions_for', { name })"
+      :actions-column="t('apikeys.col_actions')"
       :created="created"
       :error="error"
       :signed-in="signedIn"

@@ -3,6 +3,7 @@ import type { Outcome, ToolCaller } from './invite';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import ViewShell from '../components/ViewShell.vue';
 import { t } from '../copy';
+import FieldValue from '../generic/FieldValue.vue';
 import { confirmDraft, discardDraft, EXPIRED_MESSAGE, isExpired, parseDraft } from './invite';
 
 const props = defineProps<{ data: Record<string, unknown> }>();
@@ -33,7 +34,9 @@ async function run(action: (app: ToolCaller) => Promise<Outcome>) {
 const confirm = () => draft.value && run(a => confirmDraft(a, draft.value!, new Date()));
 const discard = () => draft.value && run(a => discardDraft(a, draft.value!));
 
+const elsewhere = computed(() => draft.value?.canConfirm === false || outcome.value?.state === 'console');
 const done = computed(() => outcome.value?.state === 'sent' || outcome.value?.state === 'discarded' || outcome.value?.state === 'expired');
+const consoleLink = { key: 'consoleUrl', label: t('mcp.invite_console'), kind: 'url' } as const;
 </script>
 
 <template>
@@ -42,38 +45,42 @@ const done = computed(() => outcome.value?.state === 'sent' || outcome.value?.st
     <template v-else>
       <p>{{ t('mcp.invite_intro') }}</p>
       <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-        <dt class="text-base-content/60">
+        <dt class="text-base-content/70">
           {{ t('field.email') }}
         </dt>
         <dd class="font-mono break-all">
           {{ draft.email }}
         </dd>
-        <dt class="text-base-content/60">
+        <dt class="text-base-content/70">
           {{ t('mcp.title_org') }}
         </dt>
         <dd class="break-all">
           {{ draft.orgName }}
         </dd>
-        <dt class="text-base-content/60">
+        <dt class="text-base-content/70">
           {{ t('field.role') }}
         </dt>
         <dd>{{ draft.role }}</dd>
       </dl>
 
       <div v-if="!done" class="flex gap-2">
-        <button type="button" class="btn btn-primary btn-sm" :disabled="busy" @click="confirm">
+        <button v-if="!elsewhere" type="button" class="btn btn-primary btn-sm text-ui" :disabled="busy" @click="confirm">
           <span v-if="busy" class="loading loading-spinner loading-xs" aria-hidden="true" />
           {{ t('mcp.invite_send') }}
         </button>
-        <button type="button" class="btn btn-ghost btn-sm" :disabled="busy" @click="discard">
+        <button type="button" class="btn btn-ghost btn-sm text-ui" :disabled="busy" @click="discard">
           {{ t('mcp.invite_discard') }}
         </button>
       </div>
 
+      <div v-if="elsewhere && !done" role="status" class="space-y-1 text-sm">
+        <p>{{ t('mcp.invite_console') }}</p>
+        <FieldValue v-if="draft.consoleUrl" :field="consoleLink" :value="draft.consoleUrl" />
+      </div>
       <p v-if="outcome?.state === 'sent'" role="status">
         {{ t('mcp.invite_sent_to', { email: outcome.email }) }}
       </p>
-      <p v-else-if="outcome?.state === 'discarded'" role="status" class="text-sm text-base-content/60">
+      <p v-else-if="outcome?.state === 'discarded'" role="status" class="text-sm text-base-content/70">
         {{ t('mcp.invite_discarded_body') }}
       </p>
       <ErrorText v-else-if="outcome?.state === 'expired' || outcome?.state === 'error'" :error="{ message: outcome.message }" />

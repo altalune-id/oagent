@@ -51,6 +51,8 @@ func fillProbe(msg *dynamicpb.Message) {
 			msg.Set(fd, protoreflect.ValueOfBool(true))
 		case fd.Kind() == protoreflect.MessageKind && fd.Name() == "expires_at":
 			msg.Set(fd, protoreflect.ValueOfMessage(timestamppb.New(time.Now().Add(time.Hour)).ProtoReflect()))
+		case fd.Kind() == protoreflect.MessageKind && fd.Name() == "config":
+			msg.Set(fd, protoreflect.ValueOfMessage(msg.NewField(fd).Message()))
 		}
 	}
 }

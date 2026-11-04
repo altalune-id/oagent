@@ -1,10 +1,17 @@
 <script setup lang="ts">
+import type { Column, StatusTone } from '#base/components/ui/types';
 import type { ShownError } from '#base/lib/apperror/message';
 import type { ExpiryState } from '#base/lib/tokens/keyStatus';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import AppButton from '#base/components/ui/AppButton.vue';
+import AppDropdown from '#base/components/ui/AppDropdown.vue';
+import AppModal from '#base/components/ui/AppModal.vue';
 import CopyButton from '#base/components/ui/CopyButton.vue';
+import DataTable from '#base/components/ui/DataTable.vue';
+import EmptyState from '#base/components/ui/EmptyState.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import SecretField from '#base/components/ui/SecretField.vue';
+import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { keyStatus } from '#base/lib/tokens/keyStatus';
 
 export interface PersonalKeyView {
@@ -42,8 +49,11 @@ export interface PersonalKeysLabels {
   signInLink: string;
 }
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   keys: PersonalKeyView[],
+  caption: string,
+  actionsFor: (name: string) => string,
+  actionsColumn: string,
   created?: { plaintext: string, snippet: string } | null,
   error?: ShownError | null,
   signedIn?: boolean,
@@ -84,102 +94,109 @@ const emit = defineEmits<{
   dismiss: [],
 }>();
 
-const confirming = ref('');
-const statusBadge = { active: 'badge-success', expired: 'badge-error', revoked: 'badge-ghost' } as const;
+const confirming = ref<PersonalKeyView | null>(null);
+const statusTone: Record<string, StatusTone> = { active: 'success', expired: 'error', revoked: 'neutral' };
 
-function revoke(k: PersonalKeyView) {
-  confirming.value = '';
-  emit('revoke', k.secretHint);
+const columns = computed<Column[]>(() => [
+  { key: 'name', label: props.labels.name },
+  { key: 'scopes', label: props.labels.scopes },
+  { key: 'lastUsed', label: props.labels.lastUsed, muted: true },
+  { key: 'expires', label: props.labels.expires },
+  { key: 'status', label: props.labels.status },
+  { key: 'menu', label: props.actionsColumn, hideLabel: true, align: 'end' },
+]);
+
+function revoke() {
+  const k = confirming.value;
+  confirming.value = null;
+  if (k) {
+    emit('revoke', k.secretHint);
+  }
 }
 </script>
 
 <template>
-  <div v-if="!signedIn" class="rounded-box border border-base-300 p-4 text-sm">
+  <div v-if="!signedIn" class="rounded-box border border-base-300 p-4 text-ui">
     {{ labels.signIn }}
-    <a :href="loginUrl" class="link link-primary">{{ labels.signInLink }}</a>
+    <a :href="loginUrl" class="link">{{ labels.signInLink }}</a>
   </div>
 
-  <div v-else class="space-y-4">
-    <div v-if="created" role="alert" class="alert alert-success alert-soft flex flex-col items-stretch gap-3">
+  <div v-else class="flex flex-col gap-4">
+    <div v-if="created" role="alert" class="alert alert-success alert-soft text-base-content flex flex-col items-stretch gap-3 text-ui">
       <div class="flex w-full items-center justify-between gap-3">
-        <p class="text-sm font-medium">
+        <p class="font-medium">
           {{ labels.secretWarning }}
         </p>
-        <button type="button" class="btn btn-sm shrink-0" @click="emit('dismiss')">
+        <AppButton variant="plain" size="sm" class="shrink-0" @click="emit('dismiss')">
           {{ labels.done }}
-        </button>
+        </AppButton>
       </div>
       <div class="w-full min-w-0">
         <SecretField :value="created.plaintext" :label="labels.copy" />
       </div>
-      <div class="w-full min-w-0 space-y-1">
+      <div class="flex w-full min-w-0 flex-col gap-1">
         <div class="flex items-center justify-between gap-2">
           <span class="text-xs">{{ labels.snippet }}</span>
           <CopyButton :value="created.snippet" :label="labels.copySnippet" />
         </div>
-        <pre class="overflow-x-auto rounded-box bg-base-100 p-3 text-xs text-base-content">{{ created.snippet }}</pre>
+        <pre class="overflow-x-auto rounded-box bg-base-100 p-3 font-mono text-xs text-base-content">{{ created.snippet }}</pre>
       </div>
     </div>
 
     <ErrorText :error="error" />
 
-    <p v-if="keys.length === 0" class="text-sm text-base-content/60">
-      {{ labels.empty }}
-    </p>
-    <div v-else class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
-      <table class="table table-sm">
-        <thead>
-          <tr>
-            <th>{{ labels.name }}</th>
-            <th>{{ labels.scopes }}</th>
-            <th>{{ labels.lastUsed }}</th>
-            <th>{{ labels.expires }}</th>
-            <th>{{ labels.status }}</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="k in keys" :key="k.rowKey" class="hover:bg-base-200">
-            <td class="whitespace-nowrap">
-              <span class="font-medium">{{ k.name }}</span>
-              <span class="ml-2 font-mono text-xs text-base-content/60">…{{ k.secretHint }}</span>
-            </td>
-            <td class="text-base-content/60">
-              {{ k.scopes.join(', ') }}
-            </td>
-            <td class="whitespace-nowrap text-base-content/60">
-              {{ k.lastUsed || labels.neverUsed }}
-            </td>
-            <td class="whitespace-nowrap">
-              <span v-if="k.revoked || k.expiry.kind === 'none'" class="text-base-content/60">—</span>
-              <span v-else-if="k.expiry.kind === 'soon'" class="badge badge-sm badge-warning">{{ labels.expiresSoon(k.expiry.days) }}</span>
-              <span v-else class="text-base-content/60">{{ k.expires }}</span>
-            </td>
-            <td>
-              <span class="badge badge-sm" :class="statusBadge[keyStatus(k.revoked, k.expiry)]">
-                {{ labels[keyStatus(k.revoked, k.expiry)] }}
-              </span>
-            </td>
-            <td class="whitespace-nowrap text-right">
-              <template v-if="keyStatus(k.revoked, k.expiry) === 'active'">
-                <template v-if="confirming === k.rowKey">
-                  <span class="mr-1 text-xs">{{ labels.revokeConfirm }}</span>
-                  <button type="button" class="btn btn-error btn-xs" @click="revoke(k)">
-                    {{ labels.revoke }}
-                  </button>
-                  <button type="button" class="btn btn-ghost btn-xs" @click="confirming = ''">
-                    {{ labels.cancel }}
-                  </button>
-                </template>
-                <button v-else type="button" class="btn btn-ghost btn-xs" @click="confirming = k.rowKey">
-                  <Icon name="lucide:ban" size="14" class="text-error" />
-                  {{ labels.revoke }}
-                </button>
-              </template>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <EmptyState v-if="keys.length === 0" icon="lucide:key-round" :title="labels.empty" />
+    <DataTable v-else :caption="caption" row-key="rowKey" :columns="columns" :rows="keys">
+      <template #cell-name="{ row }">
+        <span class="whitespace-nowrap">
+          <span class="font-medium">{{ row.name }}</span>
+          <span class="ms-2 font-mono text-xs text-base-content/70">…{{ row.secretHint }}</span>
+        </span>
+      </template>
+      <template #cell-scopes="{ row }">
+        <span class="text-base-content/70">{{ row.scopes.join(', ') }}</span>
+      </template>
+      <template #cell-lastUsed="{ row }">
+        <span class="whitespace-nowrap">{{ row.lastUsed || labels.neverUsed }}</span>
+      </template>
+      <template #cell-expires="{ row }">
+        <span v-if="row.revoked || row.expiry.kind === 'none'" class="text-base-content/70">—</span>
+        <StatusLabel v-else-if="row.expiry.kind === 'soon'" tone="warning" :label="labels.expiresSoon(row.expiry.days)" />
+        <span v-else class="whitespace-nowrap text-base-content/70">{{ row.expires }}</span>
+      </template>
+      <template #cell-status="{ row }">
+        <StatusLabel :tone="statusTone[keyStatus(row.revoked, row.expiry)] ?? 'neutral'" :label="labels[keyStatus(row.revoked, row.expiry)]" />
+      </template>
+      <template #cell-menu="{ row }">
+        <AppDropdown v-if="keyStatus(row.revoked, row.expiry) === 'active'" placement="end" size="xs" trigger-class="btn-square" content-class="w-44" :label="actionsFor(row.name)">
+          <template #trigger>
+            <Icon name="lucide:ellipsis" size="14" class="shrink-0" aria-hidden="true" />
+          </template>
+          <ul class="menu menu-sm w-full p-0 text-ui">
+            <li>
+              <button type="button" @click="confirming = row as PersonalKeyView">
+                <Icon name="lucide:ban" size="16" class="shrink-0 text-error" aria-hidden="true" />
+                {{ labels.revoke }}
+              </button>
+            </li>
+          </ul>
+        </AppDropdown>
+      </template>
+    </DataTable>
+
+    <AppModal :open="!!confirming" :title="labels.revokeConfirm" @close="confirming = null">
+      <p class="text-ui">
+        <span class="font-medium">{{ confirming?.name }}</span>
+        <span class="ms-2 font-mono text-xs text-base-content/70">…{{ confirming?.secretHint }}</span>
+      </p>
+      <template #footer>
+        <AppButton variant="ghost" size="sm" @click="confirming = null">
+          {{ labels.cancel }}
+        </AppButton>
+        <AppButton variant="error" size="sm" @click="revoke()">
+          {{ labels.revoke }}
+        </AppButton>
+      </template>
+    </AppModal>
   </div>
 </template>

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -140,6 +141,73 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 		return s.errOrReport(ctx, "agent: delete", err)
 	}
 	return nil
+}
+
+// UpdateDraft replaces an agent's draft config; the published version is unchanged.
+func (s *Service) UpdateDraft(ctx context.Context, id uuid.UUID, cfg Config) (*Agent, error) {
+	// NOTE: last write wins; add a draft revision check once two people edit one agent at a time.
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+	var a *Agent
+	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
+		var err error
+		if a, err = s.store.LockForPublish(ctx, id); err != nil {
+			return err
+		}
+		if err := a.SetDraft(cfg, time.Now().UTC()); err != nil {
+			return err
+		}
+		return s.store.SaveDraft(ctx, a)
+	})
+	if err != nil {
+		return nil, s.errOrReport(ctx, "agent: update draft", err)
+	}
+	return a, nil
+}
+
+// Publish makes the draft the next version by person by (uuid.Nil for a key); an unchanged draft returns the latest, created false.
+func (s *Service) Publish(ctx context.Context, id, by uuid.UUID) (a *Agent, v *Version, created bool, err error) {
+	err = s.uow.RunInTx(ctx, func(ctx context.Context) error {
+		if a, err = s.store.LockForPublish(ctx, id); err != nil {
+			return err
+		}
+		latest, err := s.store.LatestVersion(ctx, id)
+		if err != nil {
+			return err
+		}
+		if v, created, err = a.Publish(latest, by, time.Now().UTC()); err != nil {
+			return err
+		}
+		if created {
+			if err := s.store.InsertVersion(ctx, v); err != nil {
+				return err
+			}
+		}
+		return s.store.MarkPublished(ctx, a)
+	})
+	if err != nil {
+		return nil, nil, false, s.errOrReport(ctx, "agent: publish", err)
+	}
+	return a, v, created, nil
+}
+
+// DefaultVersionsListed is how many versions Versions returns when asked for none in particular.
+const DefaultVersionsListed = 50
+
+// MaxVersionsListed caps how many versions one Versions call returns.
+const MaxVersionsListed = 100
+
+// Versions returns up to limit of an agent's published versions, newest first; limit 0 means DefaultVersionsListed.
+func (s *Service) Versions(ctx context.Context, id uuid.UUID, limit int) ([]*Version, error) {
+	if limit <= 0 {
+		limit = DefaultVersionsListed
+	}
+	vs, err := s.store.Versions(ctx, id, min(limit, MaxVersionsListed))
+	if err != nil {
+		return nil, s.errOrReport(ctx, "agent: versions", err)
+	}
+	return vs, nil
 }
 
 // NOTE: one unit of work, so the save and its event commit together or not at all.

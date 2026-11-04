@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import AppBadge from '#base/components/ui/AppBadge.vue';
 import CopyButton from '#base/components/ui/CopyButton.vue';
+import LoadError from '#base/components/ui/LoadError.vue';
+import PageHeader from '#base/components/ui/PageHeader.vue';
+import Section from '#base/components/ui/Section.vue';
 import { useAgentsStore } from '~/stores/agents';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
@@ -27,47 +31,37 @@ useHead({ title: () => `${project.value?.name ?? t('project.title')} · OAgent` 
 </script>
 
 <template>
-  <div v-if="project" class="space-y-6">
-    <div>
-      <h1 class="text-2xl font-bold">
-        {{ project.name }}
-      </h1>
-      <p class="text-sm text-base-content/60">
-        {{ t('nav.overview') }}
-      </p>
-      <div class="mt-1 flex items-center gap-1 text-xs text-base-content/60">
-        <span class="font-mono">{{ project.id }}</span>
-        <CopyButton :value="project.id" :label="t('common.copy')" />
-      </div>
-    </div>
+  <div v-if="project" class="flex flex-col gap-5">
+    <PageHeader :title="project.name" :description="t('project.overview_subtitle')">
+      <template #status>
+        <p class="flex items-center gap-1 text-xs text-base-content/70">
+          <span class="font-mono">{{ project.id }}</span>
+          <CopyButton :value="project.id" :label="t('common.copy_label', { label: t('common.id') })" />
+        </p>
+      </template>
+    </PageHeader>
 
-    <section class="space-y-3">
-      <h2 class="text-lg font-semibold">
-        {{ t('nav.agents') }}
-      </h2>
-      <div v-if="items.length" class="grid gap-3 sm:grid-cols-2">
-        <NuxtLink
-          v-for="agent in items"
-          :key="agent.id"
-          :to="`/o/${org?.slug}/projects/${project.slug}/agents/${agent.slug}`"
-          class="card border border-base-300 bg-base-100 transition-colors hover:border-primary"
-        >
-          <div class="card-body">
-            <h3 class="card-title text-base">
-              {{ agent.name }}
-            </h3>
-            <p class="text-sm text-base-content/60">
-              {{ agent.slug }}
-            </p>
-            <p v-if="agent.description" class="text-sm text-base-content/50">
+    <LoadError v-if="agents.error" :error="agents.error" :busy="agents.loading" :retry-label="t('common.retry')" @retry="agents.load(project.id)" />
+    <Section v-else :title="t('nav.agents')" flush class="max-w-2xl" data-testid="project-agents">
+      <ul v-if="items.length" class="divide-y divide-base-300">
+        <li v-for="agent in items" :key="agent.id" class="flex items-center gap-2 px-4 py-2 text-ui">
+          <div class="min-w-0 flex-1">
+            <div class="flex min-w-0 items-center gap-2">
+              <NuxtLink :to="`/o/${org?.slug}/projects/${project.slug}/agents/${agent.slug}`" class="link link-hover min-w-0 truncate font-medium">
+                {{ agent.name }}
+              </NuxtLink>
+              <span class="min-w-0 truncate font-mono text-xs text-base-content/70">{{ agent.slug }}</span>
+            </div>
+            <p v-if="agent.description" class="truncate text-xs text-base-content/70">
               {{ agent.description }}
             </p>
           </div>
-        </NuxtLink>
-      </div>
-      <p v-else class="text-sm text-base-content/60">
+          <AppBadge v-if="agent.unpublishedChanges" :label="t('agent.draft_changes')" outline class="shrink-0" />
+        </li>
+      </ul>
+      <p v-else class="px-4 py-3 text-ui text-base-content/70">
         {{ t('agent.empty') }}
       </p>
-    </section>
+    </Section>
   </div>
 </template>

@@ -22,6 +22,7 @@ type ServerOpts struct {
 	MCPHandler http.Handler // optional MCP surface mounted at BasePath+"/mcp"
 	Console    http.Handler // optional console SPA mounted at BasePath+"/console"
 	Routes     []Registrar  // optional server-rendered routes; their mux also answers every unknown path
+	NotFound   http.Handler // optional page for paths no route claims; a wrong method on a real route keeps its 405
 	Probes     Registrar    // optional /healthz and /readyz, mounted with no gate, session or CSRF check
 
 	ResourceMetadata map[string]http.Handler // optional RFC 9728 documents by path, mounted like Probes
@@ -69,7 +70,8 @@ func NewServer(opts ServerOpts) http.Handler {
 		outer.Handle(console+"/", withSession(spa))
 	}
 	static := layout.Path(opts.BasePath, "/static") + "/"
-	outer.Handle("GET "+static, staticHandler(static, StaticFS()))
+	outer.Handle("GET "+static, staticHandler(static, loadStatic))
+	outer.Handle("GET "+layout.Path(opts.BasePath, "/favicon.ico"), http.RedirectHandler(static+"favicon.ico", http.StatusFound))
 	toConsole := http.RedirectHandler(layout.Path(opts.BasePath, "/console")+"/", http.StatusFound)
 	outer.Handle("GET "+strings.TrimRight(opts.BasePath, "/")+"/{$}", toConsole)
 	if bp := strings.TrimRight(opts.BasePath, "/"); bp != "" {
@@ -80,7 +82,7 @@ func NewServer(opts ServerOpts) http.Handler {
 		for _, r := range opts.Routes {
 			r.Register(routes)
 		}
-		outer.Handle("/", middleware.NoStore(cop.Handler(withSession(routes))))
+		outer.Handle("/", middleware.NoStore(cop.Handler(withSession(withNotFound(routes, opts.NotFound)))))
 	} else {
 		outer.Handle("/", http.NotFoundHandler())
 	}
@@ -109,4 +111,46 @@ func chain(outer, inner func(http.Handler) http.Handler) func(http.Handler) http
 		}
 		return h
 	}
+}
+
+// NOTE: only the mux's own 404 becomes the branded page; its 405 with Allow and every handler's answer pass through.
+func withNotFound(mux *http.ServeMux, notFound http.Handler) http.Handler {
+	if notFound == nil {
+		return mux
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, pattern := mux.Handler(r); pattern != "" {
+			mux.ServeHTTP(w, r)
+			return
+		}
+		probe := &notFoundProbe{ResponseWriter: w}
+		mux.ServeHTTP(probe, r)
+		if probe.missed {
+			notFound.ServeHTTP(w, r)
+		}
+	})
+}
+
+type notFoundProbe struct {
+	http.ResponseWriter
+	missed, wrote bool
+}
+
+func (p *notFoundProbe) WriteHeader(code int) {
+	if !p.wrote && code == http.StatusNotFound {
+		p.missed, p.wrote = true, true
+		return
+	}
+	p.wrote = true
+	p.ResponseWriter.WriteHeader(code)
+}
+
+func (p *notFoundProbe) Write(b []byte) (int, error) {
+	if !p.wrote {
+		p.WriteHeader(http.StatusOK)
+	}
+	if p.missed {
+		return len(b), nil
+	}
+	return p.ResponseWriter.Write(b)
 }

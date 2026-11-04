@@ -41,6 +41,8 @@ func TestProjectReach_IDOnlyRPCs(t *testing.T) {
 				assert.True(t, project.IsNotFoundError(err), "GetProject %s: %v", id, err)
 				_, err = cp.UpdateProject(ctx, connect.NewRequest(&projectv1.UpdateProjectRequest{Id: id, Name: "Hacked"}))
 				assert.True(t, project.IsNotFoundError(err), "UpdateProject %s: %v", id, err)
+				_, err = cp.UpdateProjectEnvironment(ctx, connect.NewRequest(&projectv1.UpdateProjectEnvironmentRequest{Id: id}))
+				assert.True(t, project.IsNotFoundError(err), "UpdateProjectEnvironment %s: %v", id, err)
 			}
 			assert.Nil(t, store.Saved, "nothing written")
 			for _, orgID := range []string{orgBPub, orgB.String()} {

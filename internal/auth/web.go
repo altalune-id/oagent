@@ -179,7 +179,8 @@ func (h *Web) getLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	view.OIDCURL = h.oidcURL(view.ReturnTo, hint)
 	if h.oidc != nil {
-		view.ButtonLabel, view.NewHere = h.oidc.ButtonLabel, h.oidc.OpenSignup
+		view.ButtonLabel, view.NewHere, view.IssuerHost = h.oidc.ButtonLabel, h.oidc.OpenSignup, h.oidc.IssuerHost
+		_, view.PageURL, _ = strings.Cut(h.oidc.SignedOut, "://")
 	}
 	h.kit.Render(w, r, http.StatusOK, views.Login(h.kit.Layout("Sign in"), view))
 }

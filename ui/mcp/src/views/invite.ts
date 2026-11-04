@@ -13,6 +13,8 @@ export interface Draft {
   orgName: string;
   invitedBy: string;
   expiresAt: Date | null;
+  consoleUrl: string;
+  canConfirm: boolean;
 }
 
 export type { ToolCaller };
@@ -21,6 +23,7 @@ export type Outcome
   = | { state: 'sent', email: string }
     | { state: 'discarded' }
     | { state: 'expired', message: string }
+    | { state: 'console' }
     | { state: 'error', message: string };
 
 export function parseDraft(data: Record<string, unknown> | undefined): Draft | null {
@@ -39,6 +42,8 @@ export function parseDraft(data: Record<string, unknown> | undefined): Draft | n
     orgName: String(data?.orgName ?? ''),
     invitedBy: String(invite?.invitedByName ?? ''),
     expiresAt: expires && !Number.isNaN(expires.getTime()) ? expires : null,
+    consoleUrl: typeof data?.consoleUrl === 'string' ? data.consoleUrl : '',
+    canConfirm: data?.canConfirm === true,
   };
 }
 
@@ -80,8 +85,12 @@ async function call(app: ToolCaller, name: string, d: Draft): Promise<Called> {
 
 function failure(res: ToolResult): Outcome {
   const text = res.content?.find(c => c.type === 'text')?.text ?? '';
-  if (errorEnvelope(text)?.code === 'INV003') {
+  const code = errorEnvelope(text)?.code;
+  if (code === 'INV003') {
     return { state: 'expired', message: EXPIRED_MESSAGE };
+  }
+  if (code === 'GEN007') {
+    return { state: 'console' };
   }
   return { state: 'error', message: errorText(res) };
 }

@@ -25,6 +25,11 @@ func TestLogin_PasswordOnly(t *testing.T) {
 	assert.Contains(t, out, `name="password"`)
 	assert.Contains(t, out, "Forgot password?")
 	assert.Contains(t, out, "required autofocus>", "the email field takes focus when it is the only way in")
+	assert.Contains(t, out, `<h1 class="text-2xl font-semibold text-balance">Sign in to OAgent</h1>`, "the page names the product, not just the tab")
+	assert.Contains(t, out, "See what your agents did and why.", "the page says what OAgent is for")
+	assert.Contains(t, out, "<title>Sign in · OAgent</title>")
+	assert.Contains(t, out, `href="/terms"`, "OAgent's own password form links its terms")
+	assert.NotContains(t, out, "card-body", "the sign-in page is one column, not a card")
 }
 
 func TestLogin_PasswordOff(t *testing.T) {
@@ -50,9 +55,30 @@ func TestLogin_OIDCLeads(t *testing.T) {
 	out = render(t, Login(layout.LayoutData{Title: "Sign in"}, v))
 	assert.Contains(t, out, "Continue with Acme ID")
 	assert.Contains(t, out, "New here? Signing in creates your account.")
-	for _, gone := range []string{`name="password"`, "or sign in with a password", "Forgot password?", "<form"} {
+	for _, gone := range []string{`name="password"`, "or sign in with a password", "Forgot password?", "<form", "OAgent uses your account"} {
 		assert.NotContains(t, out, gone)
 	}
+	assert.Contains(t, out, `<a class="link" href="/terms">Terms</a> · <a class="link" href="/privacy">Privacy</a>`, "the legal links show in every sign-in mode")
+}
+
+func TestLogin_NamesTheIssuerAndThePage(t *testing.T) {
+	v := LoginData{
+		OIDCURL: "/login/oidc", ButtonLabel: "Continue with your Altalune account", PasswordOff: true, NewHere: true,
+		IssuerHost: "othra.example", PageURL: "oagent.example/login",
+	}
+	out := render(t, Login(layout.LayoutData{Title: "Sign in"}, v))
+	assert.Contains(t, out, "OAgent uses your account on othra.example.", "the help line names the issuer host, never an upstream provider")
+	assert.Contains(t, out, `<p class="font-mono text-xs text-base-content/70">oagent.example/login</p>`)
+	assert.Contains(t, out, `<img src="/static/oagent-mark.svg" alt="" width="20" height="20" class="size-5 shrink-0">`, "the brand mark is decorative; the name beside it is the text")
+	assert.Equal(t, 1, strings.Count(out, "btn-primary"), "one primary button")
+	help := strings.Index(out, "OAgent uses your account")
+	page := strings.Index(out, "oagent.example/login")
+	require.True(t, strings.Index(out, ">Continue with your Altalune account</a>") < help && help < page, "the button, then the help line, then the page address")
+
+	v.PageURL, v.IssuerHost, v.NewHere = "", "", false
+	out = render(t, Login(layout.LayoutData{Title: "Sign in"}, v))
+	assert.NotContains(t, out, "font-mono", "no address line without a public URL")
+	assert.NotContains(t, out, "text-ui text-base-content/70", "no empty help line")
 }
 
 func TestLogin_ContinueAs(t *testing.T) {

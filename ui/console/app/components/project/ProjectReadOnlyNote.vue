@@ -4,8 +4,8 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <div role="note" class="alert alert-soft">
-    <Icon :name="icon" size="18" class="text-info" />
-    <span class="text-sm text-base-content">{{ text || t('project.read_only') }}</span>
+  <div role="note" class="alert items-start text-ui">
+    <Icon :name="icon" size="16" class="shrink-0 text-info" aria-hidden="true" />
+    <span>{{ text || t('project.read_only') }}</span>
   </div>
 </template>

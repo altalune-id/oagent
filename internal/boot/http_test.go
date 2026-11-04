@@ -1,6 +1,7 @@
 package boot
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -52,6 +53,31 @@ func TestBuildRoutes_TermsOverride(t *testing.T) {
 	rec := serveRoutes(cfg, nil, http.MethodGet, "/terms")
 	assert.Equal(t, http.StatusFound, rec.Code)
 	assert.Equal(t, "https://example.com/t", rec.Header().Get("Location"))
+}
+
+func TestBuildHTTPHandler_BrandsUnknownPathsAndKeeps405(t *testing.T) {
+	users := &user.Service{}
+	local := &Services{Caps: capabilities.Capabilities{LocalLogin: true}, Auth: &auth.Service{}, Users: users, Legal: legal.NewService(users)}
+	for _, svcs := range []*Services{nil, local} {
+		for _, base := range []string{"", "/app"} {
+			cfg := config.Config{HTTP: config.HTTPConfig{BasePath: base}}
+			name := fmt.Sprintf("local=%t base=%q", svcs != nil, base)
+
+			rec := serveRoutes(cfg, svcs, http.MethodGet, base+"/nope")
+			assert.Equal(t, http.StatusNotFound, rec.Code, name)
+			assert.Equal(t, "text/html; charset=utf-8", rec.Header().Get("Content-Type"), name)
+			assert.Contains(t, rec.Body.String(), "Page not found", name)
+			assert.Contains(t, rec.Body.String(), "Go to the console", "%s: an unknown page offers a way back", name)
+			assert.NotContains(t, rec.Body.String(), "404 page not found", name)
+
+			rec = serveRoutes(cfg, svcs, http.MethodGet, base+"/favicon.ico")
+			assert.Equal(t, http.StatusFound, rec.Code, name)
+			assert.Equal(t, base+"/static/favicon.ico", rec.Header().Get("Location"), name)
+		}
+	}
+	rec := serveRoutes(config.Config{}, local, http.MethodGet, "/logout")
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code, "a wrong method on a real route keeps its 405")
+	assert.Equal(t, "POST", rec.Header().Get("Allow"))
 }
 
 func TestBuildRoutes_WelcomeFollowsFlag(t *testing.T) {

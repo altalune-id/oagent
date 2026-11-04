@@ -14,6 +14,7 @@ import (
 	agentv1 "altalune.id/oagent/gen/go/agent/v1"
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	"altalune.id/oagent/internal/agent"
+	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/testutil/fakes"
 )
 
@@ -152,4 +153,80 @@ func TestAgentService_DeleteAgent(t *testing.T) {
 	_, err = c.DeleteAgent(context.Background(), connect.NewRequest(&agentv1.DeleteAgentRequest{Id: a.PublicID}))
 	require.NoError(t, err)
 	assert.Equal(t, a.ID, store.Deleted)
+}
+
+func TestAgentService_DraftPublishAndVersions(t *testing.T) {
+	refs := fakes.NewPublicIDs()
+	a, _, _ := registeredAgent(t, refs, "acme")
+	store := &fakes.AgentStore{Agent: a}
+	c := newAgentServiceClient(t, store, refs)
+	ctx := context.Background()
+	cfg := &agentv1.AgentConfig{
+		Instructions: "Be brief.", Model: "anthropic/claude-sonnet-5-5", Temperature: 0.5, MaxSteps: 8, MaxCostCents: 300,
+		Tools: []*agentv1.AgentTool{{Name: "refund", RequireApproval: true}},
+	}
+
+	_, err := c.UpdateAgentDraft(ctx, connect.NewRequest(&agentv1.UpdateAgentDraftRequest{
+		Id: a.PublicID, Config: &agentv1.AgentConfig{Tools: []*agentv1.AgentTool{{Name: "x"}, {Name: "x"}}},
+	}))
+	assert.ErrorContains(t, err, "config.tools", "duplicate tool names")
+	drafted, err := c.UpdateAgentDraft(ctx, connect.NewRequest(&agentv1.UpdateAgentDraftRequest{Id: a.PublicID, Config: cfg}))
+	require.NoError(t, err)
+	assert.Equal(t, cfg.GetTools()[0].GetName(), drafted.Msg.GetAgent().GetDraft().GetTools()[0].GetName())
+	assert.True(t, drafted.Msg.GetAgent().GetDraft().GetTools()[0].GetRequireApproval())
+	assert.True(t, drafted.Msg.GetAgent().GetUnpublishedChanges())
+	assert.NotNil(t, drafted.Msg.GetAgent().GetDraftUpdatedAt())
+	assert.Zero(t, drafted.Msg.GetAgent().GetPublishedVersion())
+
+	published, err := c.PublishAgent(ctx, connect.NewRequest(&agentv1.PublishAgentRequest{Id: a.PublicID}))
+	require.NoError(t, err)
+	assert.True(t, published.Msg.GetCreated())
+	assert.Equal(t, int32(1), published.Msg.GetVersion().GetVersion())
+	assert.Equal(t, a.PublicID, published.Msg.GetVersion().GetAgentId())
+	assert.Len(t, published.Msg.GetVersion().GetId(), 21)
+	assert.Empty(t, published.Msg.GetVersion().GetCreatedBy(), "the operator is no person")
+	assert.Equal(t, int32(1), published.Msg.GetAgent().GetPublishedVersion())
+	assert.False(t, published.Msg.GetAgent().GetUnpublishedChanges())
+
+	again, err := c.PublishAgent(ctx, connect.NewRequest(&agentv1.PublishAgentRequest{Id: a.PublicID}))
+	require.NoError(t, err)
+	assert.False(t, again.Msg.GetCreated())
+	assert.Equal(t, published.Msg.GetVersion().GetId(), again.Msg.GetVersion().GetId())
+
+	list, err := c.ListAgentVersions(ctx, connect.NewRequest(&agentv1.ListAgentVersionsRequest{AgentId: a.PublicID, Limit: 1}))
+	require.NoError(t, err)
+	require.Len(t, list.Msg.GetVersions(), 1)
+	assert.Equal(t, "anthropic/claude-sonnet-5-5", list.Msg.GetVersions()[0].GetConfig().GetModel())
+
+	for _, id := range []string{"not-a-public-id", a.ID.String()} {
+		_, err := c.PublishAgent(ctx, connect.NewRequest(&agentv1.PublishAgentRequest{Id: id}))
+		assert.Error(t, err, id)
+	}
+}
+
+func TestAgentService_PublishRecordsThePerson(t *testing.T) {
+	refs := fakes.NewPublicIDs()
+	a, _, _ := registeredAgent(t, refs, "acme")
+	userID := uuid.New()
+	userPub := refs.User(userID)
+	refs.Resource(a.ID, a.OrgID)
+	cp := agent.NewControlPlane(agent.NewService(&fakes.AgentStore{Agent: a}, fakes.Transactor{}, nil), refs)
+	ctx := session.PrincipalInto(context.Background(), session.Principal{
+		Source: session.SourceLocal, UserID: userID, ActiveOrgID: a.OrgID, Scopes: []string{"*"},
+	})
+
+	out, err := cp.PublishAgent(ctx, connect.NewRequest(&agentv1.PublishAgentRequest{Id: a.PublicID}))
+	require.NoError(t, err)
+	assert.Equal(t, userPub, out.Msg.GetVersion().GetCreatedBy())
+	list, err := cp.ListAgentVersions(ctx, connect.NewRequest(&agentv1.ListAgentVersionsRequest{AgentId: a.PublicID}))
+	require.NoError(t, err)
+	assert.Equal(t, userPub, list.Msg.GetVersions()[0].GetCreatedBy())
+
+	a.Draft.Model = "m-2"
+	_, err = cp.PublishAgent(ctx, connect.NewRequest(&agentv1.PublishAgentRequest{Id: a.PublicID}))
+	require.NoError(t, err)
+	one, err := cp.ListAgentVersions(ctx, connect.NewRequest(&agentv1.ListAgentVersionsRequest{AgentId: a.PublicID, Limit: 1}))
+	require.NoError(t, err)
+	require.Len(t, one.Msg.GetVersions(), 1, "the request's limit reaches the store")
+	assert.Equal(t, int32(2), one.Msg.GetVersions()[0].GetVersion())
 }

@@ -89,6 +89,11 @@ func (f *PublicIDs) OrgID(_ context.Context, publicID string) (uuid.UUID, bool, 
 	return r.id, ok, err
 }
 
+// MembersURL implements invite.OrgIDs with a fixed console path.
+func (f *PublicIDs) MembersURL(_ context.Context, _ uuid.UUID) (string, error) {
+	return "/console/o/org/settings/members", nil
+}
+
 // IDByPublicID implements invite.OrgIDs; an unknown public id is an error.
 func (f *PublicIDs) IDByPublicID(_ context.Context, publicID string) (uuid.UUID, error) {
 	r, ok, err := f.find(kindOrg, publicID)

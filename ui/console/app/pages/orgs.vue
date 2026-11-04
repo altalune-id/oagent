@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import AppButton from '#base/components/ui/AppButton.vue';
-import ErrorText from '#base/components/ui/ErrorText.vue';
+import LoadError from '#base/components/ui/LoadError.vue';
+import PageHeader from '#base/components/ui/PageHeader.vue';
+import Section from '#base/components/ui/Section.vue';
 import { useOrgCreation } from '~/components/org/create/useOrgCreation';
 import OrgsEmptyState from '~/components/org/OrgsEmptyState.vue';
 import { siblingURL } from '~/lib/auth/urls';
@@ -32,47 +34,34 @@ useHead({ title: () => `${t('org.all')} · OAgent` });
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
-    <div class="flex items-start justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold">
-          {{ t('org.title') }}
-        </h1>
-        <p v-if="!isEmpty" class="mt-1 text-sm text-base-content/60">
-          {{ t('org.subtitle') }}
+  <div class="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-8 sm:px-6 sm:py-10">
+    <PageHeader :title="t('org.title')" :description="isEmpty ? '' : t('org.subtitle')">
+      <template #actions>
+        <p v-if="allowed && ownsOne" class="max-w-56 text-right text-xs text-base-content/70" data-testid="org-create-owned">
+          {{ t('org.create_owned') }}
         </p>
-      </div>
-      <p v-if="allowed && ownsOne" class="max-w-56 text-right text-xs text-base-content/60" data-testid="org-create-owned">
-        {{ t('org.create_owned') }}
-      </p>
-      <AppButton v-else-if="canCreate && !isEmpty" size="sm" @click="ui.openOrgCreate()">
-        <Icon name="lucide:plus" size="16" />
-        {{ t('org.new') }}
-      </AppButton>
-    </div>
+        <AppButton v-else-if="canCreate && !isEmpty" size="sm" @click="ui.openOrgCreate()">
+          <Icon name="lucide:plus" size="16" class="shrink-0" aria-hidden="true" />
+          {{ t('org.new') }}
+        </AppButton>
+      </template>
+    </PageHeader>
 
-    <ErrorText v-if="orgs.error" :error="orgs.error" class="mt-6" />
+    <LoadError v-if="orgs.error" :error="orgs.error" :busy="orgs.loading" :retry-label="t('common.retry')" @retry="orgs.load()" />
     <OrgsEmptyState
       v-else-if="isEmpty"
       :logout-url="siblingURL(apiUrl, '/logout')"
       :labels="emptyLabels"
     />
-    <div v-else class="mt-6 grid gap-3 sm:grid-cols-2">
-      <NuxtLink
-        v-for="org in orgs.items"
-        :key="org.slug"
-        :to="`/o/${org.slug}`"
-        class="card border border-base-300 bg-base-100 transition-colors hover:border-primary"
-      >
-        <div class="card-body">
-          <h2 class="card-title text-base">
+    <Section v-else :title="t('org.all')" flush data-testid="org-list">
+      <ul class="divide-y divide-base-300">
+        <li v-for="org in orgs.items" :key="org.slug" class="flex items-center gap-2 px-4 py-2 text-ui">
+          <NuxtLink :to="`/o/${org.slug}`" class="link link-hover min-w-0 truncate font-medium">
             {{ org.name }}
-          </h2>
-          <p class="text-sm text-base-content/60">
-            /{{ org.slug }}
-          </p>
-        </div>
-      </NuxtLink>
-    </div>
+          </NuxtLink>
+          <span class="min-w-0 truncate font-mono text-xs text-base-content/70">/{{ org.slug }}</span>
+        </li>
+      </ul>
+    </Section>
   </div>
 </template>

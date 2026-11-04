@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ShownError } from '#base/lib/apperror/message';
 import { useId } from 'vue';
+import AppButton from '#base/components/ui/AppButton.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 
 export interface PersonalKeyCreateLabels {
@@ -62,63 +63,63 @@ const ids = {
 <template>
   <form class="space-y-2 rounded-box border border-base-300 bg-base-100 p-4" @submit.prevent="emit('submit')">
     <div class="fieldset">
-      <label :for="ids.name" class="fieldset-legend">{{ labels.name }}</label>
-      <input :id="ids.name" v-model="name" type="text" class="input w-full" placeholder="laptop" maxlength="100" autocomplete="off" :disabled="busy">
+      <label :for="ids.name" class="label text-ui text-base-content">{{ labels.name }}</label>
+      <input :id="ids.name" v-model="name" type="text" class="input input-sm w-full text-ui" placeholder="laptop" maxlength="100" autocomplete="off" :disabled="busy">
     </div>
 
     <div class="fieldset">
-      <label :for="ids.expires" class="fieldset-legend">{{ labels.expires }}</label>
-      <select :id="ids.expires" v-model.number="expiresInDays" class="select w-full" :aria-describedby="ids.expiresHelp" :disabled="busy">
+      <label :for="ids.expires" class="label text-ui text-base-content">{{ labels.expires }}</label>
+      <select :id="ids.expires" v-model.number="expiresInDays" class="select select-sm w-full text-ui" :aria-describedby="ids.expiresHelp" :disabled="busy">
         <option v-for="o in expiryOptions" :key="o.days" :value="o.days">
           {{ o.label }}
         </option>
       </select>
-      <p :id="ids.expiresHelp" class="label whitespace-normal">
+      <p :id="ids.expiresHelp" class="label whitespace-normal text-xs text-base-content/70">
         {{ labels.expiresHelp }}
       </p>
     </div>
 
     <fieldset class="fieldset">
-      <legend class="fieldset-legend">
+      <legend class="fieldset-legend text-ui">
         {{ labels.projects }}
       </legend>
-      <label class="flex items-center gap-2 text-sm">
+      <label class="flex items-center gap-2 text-ui">
         <input v-model="allProjects" type="radio" :value="true" class="radio radio-sm" :disabled="busy">
         {{ labels.allProjects }}
       </label>
-      <label class="flex items-center gap-2 text-sm">
+      <label class="flex items-center gap-2 text-ui">
         <input v-model="allProjects" type="radio" :value="false" class="radio radio-sm" :disabled="busy">
         {{ labels.selectProjects }}
       </label>
       <div v-if="!allProjects" class="max-h-40 space-y-1 overflow-auto rounded-box border border-base-300 p-2">
-        <label v-for="p in projects" :key="p.id" class="flex items-center gap-2 text-sm">
-          <input v-model="projectIds" type="checkbox" :value="p.id" class="checkbox checkbox-sm rounded-sm" :disabled="busy">
+        <label v-for="p in projects" :key="p.id" class="flex items-center gap-2 text-ui">
+          <input v-model="projectIds" type="checkbox" :value="p.id" class="checkbox checkbox-xs rounded-sm" :disabled="busy">
           {{ p.name }}
         </label>
       </div>
     </fieldset>
 
     <fieldset class="fieldset" :aria-describedby="ids.scopesHelp">
-      <legend class="fieldset-legend">
+      <legend class="fieldset-legend text-ui">
         {{ labels.scopes }}
       </legend>
       <div class="grid gap-1 sm:grid-cols-2">
-        <label v-for="s in scopeOptions" :key="s.name" class="flex items-center gap-2 text-sm">
-          <input v-model="scopes" type="checkbox" :value="s.name" class="checkbox checkbox-sm rounded-sm" :disabled="busy">
+        <label v-for="s in scopeOptions" :key="s.name" class="flex items-center gap-2 text-ui">
+          <input v-model="scopes" type="checkbox" :value="s.name" class="checkbox checkbox-xs rounded-sm" :disabled="busy">
           {{ s.label }}
         </label>
       </div>
-      <p :id="ids.scopesHelp" class="label whitespace-normal">
+      <p :id="ids.scopesHelp" class="label whitespace-normal text-xs text-base-content/70">
         {{ labels.scopesHelp }}
       </p>
     </fieldset>
 
     <ErrorText :error="error" />
     <div class="flex justify-end pt-2">
-      <button type="submit" class="btn btn-primary btn-sm" :disabled="!canSubmit">
-        <Icon name="lucide:plus" size="16" />
+      <AppButton type="submit" size="sm" :disabled="!canSubmit">
+        <Icon name="lucide:plus" size="16" class="shrink-0" aria-hidden="true" />
         {{ busy ? labels.creating : labels.create }}
-      </button>
+      </AppButton>
     </div>
   </form>
 </template>

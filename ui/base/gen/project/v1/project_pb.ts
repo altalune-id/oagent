@@ -2,8 +2,8 @@
 // @generated from file project/v1/project.proto (package project.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import { file_buf_validate_validate } from "../../buf/validate/validate_pb.js";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file project/v1/project.proto.
  */
 export const file_project_v1_project: GenFile = /*@__PURE__*/
-  fileDesc("Chhwcm9qZWN0L3YxL3Byb2plY3QucHJvdG8SCnByb2plY3QudjEisgEKB1Byb2plY3QSCgoCaWQYASABKAkSDgoGb3JnX2lkGAMgASgJEgwKBHNsdWcYBCABKAkSDAoEbmFtZRgFIAEoCRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEoECAIQA1IJcHVibGljX2lkImkKFENyZWF0ZVByb2plY3RSZXF1ZXN0EhwKBm9yZ19pZBgBIAEoCUIMukgJyAEBcgSI5DIBEhcKBHNsdWcYAiABKAlCCbpIBnIEoOQyARIaCgRuYW1lGAMgASgJQgy6SAnIAQFyBJDkMgEiPQoVQ3JlYXRlUHJvamVjdFJlc3BvbnNlEiQKB3Byb2plY3QYASABKAsyEy5wcm9qZWN0LnYxLlByb2plY3QiLQoRR2V0UHJvamVjdFJlcXVlc3QSGAoCaWQYASABKAlCDLpICcgBAXIEiOQyASI6ChJHZXRQcm9qZWN0UmVzcG9uc2USJAoHcHJvamVjdBgBIAEoCzITLnByb2plY3QudjEuUHJvamVjdCIzChNMaXN0UHJvamVjdHNSZXF1ZXN0EhwKBm9yZ19pZBgBIAEoCUIMukgJyAEBcgSI5DIBIj0KFExpc3RQcm9qZWN0c1Jlc3BvbnNlEiUKCHByb2plY3RzGAEgAygLMhMucHJvamVjdC52MS5Qcm9qZWN0ImgKFFVwZGF0ZVByb2plY3RSZXF1ZXN0EhgKAmlkGAEgASgJQgy6SAnIAQFyBIjkMgESGgoEbmFtZRgCIAEoCUIMukgJyAEBcgSQ5DIBEhoKBHNsdWcYAyABKAlCDLpICcgBAXIEoOQyASI9ChVVcGRhdGVQcm9qZWN0UmVzcG9uc2USJAoHcHJvamVjdBgBIAEoCzITLnByb2plY3QudjEuUHJvamVjdDLEBAoOUHJvamVjdFNlcnZpY2USxAEKDUNyZWF0ZVByb2plY3QSIC5wcm9qZWN0LnYxLkNyZWF0ZVByb2plY3RSZXF1ZXN0GiEucHJvamVjdC52MS5DcmVhdGVQcm9qZWN0UmVzcG9uc2UibsrzGGoKDnByb2plY3RfY3JlYXRlElFDcmVhdGUgYSBwcm9qZWN0IHdpdGhpbiBhbiBvcmdhbml6YXRpb24sIG1pbnRpbmcgYSBzbHVnIHdoZW4gb25lIGlzIG5vdCBzdXBwbGllZC4gASoDYXBwEn0KCkdldFByb2plY3QSHS5wcm9qZWN0LnYxLkdldFByb2plY3RSZXF1ZXN0Gh4ucHJvamVjdC52MS5HZXRQcm9qZWN0UmVzcG9uc2UiMMrzGCwKC3Byb2plY3RfZ2V0EhRHZXQgYSBwcm9qZWN0IGJ5IGlkLhoCaWQqA2FwcBKVAQoMTGlzdFByb2plY3RzEh8ucHJvamVjdC52MS5MaXN0UHJvamVjdHNSZXF1ZXN0GiAucHJvamVjdC52MS5MaXN0UHJvamVjdHNSZXNwb25zZSJCyvMYPgoMcHJvamVjdF9saXN0EiFMaXN0IHByb2plY3RzIGluIGFuIG9yZ2FuaXphdGlvbi4aBm9yZ19pZCoDYXBwElQKDVVwZGF0ZVByb2plY3QSIC5wcm9qZWN0LnYxLlVwZGF0ZVByb2plY3RSZXF1ZXN0GiEucHJvamVjdC52MS5VcGRhdGVQcm9qZWN0UmVzcG9uc2VClwEKDmNvbS5wcm9qZWN0LnYxQgxQcm9qZWN0UHJvdG9QAVouYWx0YWx1bmUuaWQvb2FnZW50L2dlbi9nby9wcm9qZWN0L3YxO3Byb2plY3R2MaICA1BYWKoCClByb2plY3QuVjHKAgpQcm9qZWN0XFYx4gIWUHJvamVjdFxWMVxHUEJNZXRhZGF0YeoCC1Byb2plY3Q6OlYxYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mcp_v1_annotations, file_oagent_v1_rules]);
+  fileDesc("Chhwcm9qZWN0L3YxL3Byb2plY3QucHJvdG8SCnByb2plY3QudjEi5wEKB1Byb2plY3QSCgoCaWQYASABKAkSDgoGb3JnX2lkGAMgASgJEgwKBHNsdWcYBCABKAkSDAoEbmFtZRgFIAEoCRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIzCgtlbnZpcm9ubWVudBgIIAEoDjIeLnByb2plY3QudjEuUHJvamVjdEVudmlyb25tZW50SgQIAhADUglwdWJsaWNfaWQiaQoUQ3JlYXRlUHJvamVjdFJlcXVlc3QSHAoGb3JnX2lkGAEgASgJQgy6SAnIAQFyBIjkMgESFwoEc2x1ZxgCIAEoCUIJukgGcgSg5DIBEhoKBG5hbWUYAyABKAlCDLpICcgBAXIEkOQyASI9ChVDcmVhdGVQcm9qZWN0UmVzcG9uc2USJAoHcHJvamVjdBgBIAEoCzITLnByb2plY3QudjEuUHJvamVjdCItChFHZXRQcm9qZWN0UmVxdWVzdBIYCgJpZBgBIAEoCUIMukgJyAEBcgSI5DIBIjoKEkdldFByb2plY3RSZXNwb25zZRIkCgdwcm9qZWN0GAEgASgLMhMucHJvamVjdC52MS5Qcm9qZWN0IjMKE0xpc3RQcm9qZWN0c1JlcXVlc3QSHAoGb3JnX2lkGAEgASgJQgy6SAnIAQFyBIjkMgEiPQoUTGlzdFByb2plY3RzUmVzcG9uc2USJQoIcHJvamVjdHMYASADKAsyEy5wcm9qZWN0LnYxLlByb2plY3QiaAoUVXBkYXRlUHJvamVjdFJlcXVlc3QSGAoCaWQYASABKAlCDLpICcgBAXIEiOQyARIaCgRuYW1lGAIgASgJQgy6SAnIAQFyBJDkMgESGgoEc2x1ZxgDIAEoCUIMukgJyAEBcgSg5DIBIj0KFVVwZGF0ZVByb2plY3RSZXNwb25zZRIkCgdwcm9qZWN0GAEgASgLMhMucHJvamVjdC52MS5Qcm9qZWN0InoKH1VwZGF0ZVByb2plY3RFbnZpcm9ubWVudFJlcXVlc3QSGAoCaWQYASABKAlCDLpICcgBAXIEiOQyARI9CgtlbnZpcm9ubWVudBgCIAEoDjIeLnByb2plY3QudjEuUHJvamVjdEVudmlyb25tZW50Qgi6SAWCAQIQASJICiBVcGRhdGVQcm9qZWN0RW52aXJvbm1lbnRSZXNwb25zZRIkCgdwcm9qZWN0GAEgASgLMhMucHJvamVjdC52MS5Qcm9qZWN0KsEBChJQcm9qZWN0RW52aXJvbm1lbnQSIwofUFJPSkVDVF9FTlZJUk9OTUVOVF9VTlNQRUNJRklFRBAAEiIKHlBST0pFQ1RfRU5WSVJPTk1FTlRfUFJPRFVDVElPThABEh8KG1BST0pFQ1RfRU5WSVJPTk1FTlRfU1RBR0lORxACEiMKH1BST0pFQ1RfRU5WSVJPTk1FTlRfREVWRUxPUE1FTlQQAxIcChhQUk9KRUNUX0VOVklST05NRU5UX0xBQlMQBDK7BQoOUHJvamVjdFNlcnZpY2USxAEKDUNyZWF0ZVByb2plY3QSIC5wcm9qZWN0LnYxLkNyZWF0ZVByb2plY3RSZXF1ZXN0GiEucHJvamVjdC52MS5DcmVhdGVQcm9qZWN0UmVzcG9uc2UibsrzGGoKDnByb2plY3RfY3JlYXRlElFDcmVhdGUgYSBwcm9qZWN0IHdpdGhpbiBhbiBvcmdhbml6YXRpb24sIG1pbnRpbmcgYSBzbHVnIHdoZW4gb25lIGlzIG5vdCBzdXBwbGllZC4gASoDYXBwEn0KCkdldFByb2plY3QSHS5wcm9qZWN0LnYxLkdldFByb2plY3RSZXF1ZXN0Gh4ucHJvamVjdC52MS5HZXRQcm9qZWN0UmVzcG9uc2UiMMrzGCwKC3Byb2plY3RfZ2V0EhRHZXQgYSBwcm9qZWN0IGJ5IGlkLhoCaWQqA2FwcBKVAQoMTGlzdFByb2plY3RzEh8ucHJvamVjdC52MS5MaXN0UHJvamVjdHNSZXF1ZXN0GiAucHJvamVjdC52MS5MaXN0UHJvamVjdHNSZXNwb25zZSJCyvMYPgoMcHJvamVjdF9saXN0EiFMaXN0IHByb2plY3RzIGluIGFuIG9yZ2FuaXphdGlvbi4aBm9yZ19pZCoDYXBwElQKDVVwZGF0ZVByb2plY3QSIC5wcm9qZWN0LnYxLlVwZGF0ZVByb2plY3RSZXF1ZXN0GiEucHJvamVjdC52MS5VcGRhdGVQcm9qZWN0UmVzcG9uc2USdQoYVXBkYXRlUHJvamVjdEVudmlyb25tZW50EisucHJvamVjdC52MS5VcGRhdGVQcm9qZWN0RW52aXJvbm1lbnRSZXF1ZXN0GiwucHJvamVjdC52MS5VcGRhdGVQcm9qZWN0RW52aXJvbm1lbnRSZXNwb25zZUKXAQoOY29tLnByb2plY3QudjFCDFByb2plY3RQcm90b1ABWi5hbHRhbHVuZS5pZC9vYWdlbnQvZ2VuL2dvL3Byb2plY3QvdjE7cHJvamVjdHYxogIDUFhYqgIKUHJvamVjdC5WMcoCClByb2plY3RcVjHiAhZQcm9qZWN0XFYxXEdQQk1ldGFkYXRh6gILUHJvamVjdDo6VjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mcp_v1_annotations, file_oagent_v1_rules]);
 
 /**
  * @generated from message project.v1.Project
@@ -50,6 +50,11 @@ export type Project = Message<"project.v1.Project"> & {
    * @generated from field: google.protobuf.Timestamp updated_at = 7;
    */
   updatedAt?: Timestamp;
+
+  /**
+   * @generated from field: project.v1.ProjectEnvironment environment = 8;
+   */
+  environment: ProjectEnvironment;
 };
 
 /**
@@ -216,6 +221,85 @@ export const UpdateProjectResponseSchema: GenMessage<UpdateProjectResponse> = /*
   messageDesc(file_project_v1_project, 8);
 
 /**
+ * @generated from message project.v1.UpdateProjectEnvironmentRequest
+ */
+export type UpdateProjectEnvironmentRequest = Message<"project.v1.UpdateProjectEnvironmentRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * UNSPECIFIED clears the tag.
+   *
+   * @generated from field: project.v1.ProjectEnvironment environment = 2;
+   */
+  environment: ProjectEnvironment;
+};
+
+/**
+ * Describes the message project.v1.UpdateProjectEnvironmentRequest.
+ * Use `create(UpdateProjectEnvironmentRequestSchema)` to create a new message.
+ */
+export const UpdateProjectEnvironmentRequestSchema: GenMessage<UpdateProjectEnvironmentRequest> = /*@__PURE__*/
+  messageDesc(file_project_v1_project, 9);
+
+/**
+ * @generated from message project.v1.UpdateProjectEnvironmentResponse
+ */
+export type UpdateProjectEnvironmentResponse = Message<"project.v1.UpdateProjectEnvironmentResponse"> & {
+  /**
+   * @generated from field: project.v1.Project project = 1;
+   */
+  project?: Project;
+};
+
+/**
+ * Describes the message project.v1.UpdateProjectEnvironmentResponse.
+ * Use `create(UpdateProjectEnvironmentResponseSchema)` to create a new message.
+ */
+export const UpdateProjectEnvironmentResponseSchema: GenMessage<UpdateProjectEnvironmentResponse> = /*@__PURE__*/
+  messageDesc(file_project_v1_project, 10);
+
+/**
+ * ProjectEnvironment is an optional tag for what a project is used for; UNSPECIFIED is no tag.
+ *
+ * @generated from enum project.v1.ProjectEnvironment
+ */
+export enum ProjectEnvironment {
+  /**
+   * @generated from enum value: PROJECT_ENVIRONMENT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: PROJECT_ENVIRONMENT_PRODUCTION = 1;
+   */
+  PRODUCTION = 1,
+
+  /**
+   * @generated from enum value: PROJECT_ENVIRONMENT_STAGING = 2;
+   */
+  STAGING = 2,
+
+  /**
+   * @generated from enum value: PROJECT_ENVIRONMENT_DEVELOPMENT = 3;
+   */
+  DEVELOPMENT = 3,
+
+  /**
+   * @generated from enum value: PROJECT_ENVIRONMENT_LABS = 4;
+   */
+  LABS = 4,
+}
+
+/**
+ * Describes the enum project.v1.ProjectEnvironment.
+ */
+export const ProjectEnvironmentSchema: GenEnum<ProjectEnvironment> = /*@__PURE__*/
+  enumDesc(file_project_v1_project, 0);
+
+/**
  * ProjectService manages projects. Every id is a public id.
  *
  * @generated from service project.v1.ProjectService
@@ -252,6 +336,14 @@ export const ProjectService: GenService<{
     methodKind: "unary";
     input: typeof UpdateProjectRequestSchema;
     output: typeof UpdateProjectResponseSchema;
+  },
+  /**
+   * @generated from rpc project.v1.ProjectService.UpdateProjectEnvironment
+   */
+  updateProjectEnvironment: {
+    methodKind: "unary";
+    input: typeof UpdateProjectEnvironmentRequestSchema;
+    output: typeof UpdateProjectEnvironmentResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_project_v1_project, 0);

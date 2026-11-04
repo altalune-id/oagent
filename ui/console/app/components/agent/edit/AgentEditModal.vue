@@ -15,17 +15,17 @@ defineExpose({ show });
   <AppModal :open="open" :title="t('agent.edit')" @close="hide()">
     <form novalidate class="space-y-1" @submit.prevent="submit()">
       <div class="fieldset">
-        <label :for="ids.name" class="fieldset-legend">{{ t('common.name') }}</label>
+        <label :for="ids.name" class="label text-ui text-base-content">{{ t('common.name') }}</label>
         <input
-          :id="ids.name" v-model="name" type="text" class="input w-full" :class="{ 'input-error': fieldErrors.name }"
+          :id="ids.name" v-model="name" type="text" class="input input-sm w-full text-ui" :class="{ 'input-error': fieldErrors.name }"
           :disabled="busy" :aria-invalid="!!fieldErrors.name" :aria-describedby="ids.nameErr"
         >
         <FieldError :id="ids.nameErr" :message="fieldErrors.name" />
       </div>
       <div class="fieldset">
-        <label :for="ids.description" class="fieldset-legend">{{ t('common.description') }}</label>
+        <label :for="ids.description" class="label text-ui text-base-content">{{ t('common.description') }}</label>
         <textarea
-          :id="ids.description" v-model="description" rows="3" class="textarea w-full" :class="{ 'textarea-error': fieldErrors.description }"
+          :id="ids.description" v-model="description" rows="3" class="textarea w-full text-ui" :class="{ 'textarea-error': fieldErrors.description }"
           :disabled="busy" :aria-invalid="!!fieldErrors.description" :aria-describedby="ids.descriptionErr"
         />
         <FieldError :id="ids.descriptionErr" :message="fieldErrors.description" />
@@ -33,10 +33,10 @@ defineExpose({ show });
       <ErrorText :error="error" />
     </form>
     <template #footer>
-      <button class="btn btn-ghost btn-sm" type="button" :disabled="busy" @click="hide()">
+      <button class="btn btn-ghost btn-sm text-ui" type="button" :disabled="busy" @click="hide()">
         {{ t('common.cancel') }}
       </button>
-      <button class="btn btn-primary btn-sm" type="button" :disabled="busy || !name.trim()" @click="submit()">
+      <button class="btn btn-primary btn-sm text-ui" type="button" :disabled="busy || !name.trim()" @click="submit()">
         {{ busy ? t('common.saving') : t('common.save') }}
       </button>
     </template>

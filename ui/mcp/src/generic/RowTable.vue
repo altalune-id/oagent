@@ -12,12 +12,12 @@ const { rows, columns, rowId, empty } = defineProps<{
 </script>
 
 <template>
-  <p v-if="rows.length === 0" class="text-sm text-base-content/60">
+  <p v-if="rows.length === 0" class="text-sm text-base-content/70">
     {{ empty }}
   </p>
   <div v-else class="overflow-x-auto">
     <table class="table table-sm">
-      <thead>
+      <thead class="text-base-content/70">
         <tr>
           <th v-for="c in columns" :key="c.key">
             {{ c.label }}

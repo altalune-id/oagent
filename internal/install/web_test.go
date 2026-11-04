@@ -147,6 +147,7 @@ func TestInstall_TokenGate(t *testing.T) {
 			form := f.do(t, req)
 			assert.Equal(t, http.StatusOK, form.Code)
 			assert.Contains(t, form.Body.String(), `name="password"`)
+			assert.Contains(t, form.Body.String(), `<h1 class="card-title text-2xl">Set up OAgent</h1>`)
 			assert.NotContains(t, form.Body.String(), testToken)
 		})
 	}

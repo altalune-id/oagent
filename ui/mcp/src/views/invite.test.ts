@@ -32,7 +32,15 @@ describe('parseDraft', () => {
       orgName: 'Acme',
       invitedBy: 'Olga',
       expiresAt: new Date('2026-10-13T09:15:00Z'),
+      consoleUrl: '',
+      canConfirm: false,
     });
+  });
+
+  it('reads where to send it, and lets only a caller the server allows send here', () => {
+    const d = parseDraft({ ...result, consoleUrl: 'https://console.example.com/o/acme/members' })!;
+    expect([d.consoleUrl, d.canConfirm]).toEqual(['https://console.example.com/o/acme/members', false]);
+    expect(parseDraft({ ...result, canConfirm: true })!.canConfirm).toBe(true);
   });
 
   it('reads a malformed result as no draft', () => {
@@ -73,9 +81,14 @@ describe('confirmDraft', () => {
     expect(await confirmDraft(app, parseDraft(result)!, now)).toEqual({ state: 'expired', message: EXPIRED_MESSAGE });
   });
 
-  it('shows any other error message', async () => {
+  it('reads a GEN007 refusal as send it from the console, never the raw error', async () => {
     const { app } = caller({ isError: true, content: [{ type: 'text', text: '{"code":"GEN007","message":"Forbidden"}' }] });
-    expect(await confirmDraft(app, parseDraft(result)!, now)).toEqual({ state: 'error', message: 'Forbidden (GEN007)' });
+    expect(await confirmDraft(app, parseDraft(result)!, now)).toEqual({ state: 'console' });
+  });
+
+  it('shows any other error message', async () => {
+    const { app } = caller({ isError: true, content: [{ type: 'text', text: '{"code":"GEN005","message":"Invite not found"}' }] });
+    expect(await confirmDraft(app, parseDraft(result)!, now)).toEqual({ state: 'error', message: 'Not found (GEN005)' });
     const bad = caller({ isError: true, content: [{ type: 'text', text: 'not json' }] });
     expect(await confirmDraft(bad.app, parseDraft(result)!, now)).toEqual({ state: 'error', message: 'not json' });
     const thrown: ToolCaller = { callServerTool: async () => {

@@ -67,7 +67,7 @@ func newOIDCWebFixture(t *testing.T, passwordOff bool) *oidcWebFixture {
 	sessions := testSessions(f.store)
 	sessions.Cookie.Path = "/"
 	f.web = NewWeb(layout.Kit{Unexpected: f.report}, f.auth, sessions, f.ids).WithOIDC(OIDCSignIn{
-		Provider: f.rp, ButtonLabel: "Continue with Acme ID", SignedOut: "http://oagent.test/login", RememberLastUser: true,
+		Provider: f.rp, ButtonLabel: "Continue with Acme ID", IssuerHost: "idp.test", SignedOut: "http://oagent.test/login", RememberLastUser: true,
 	})
 	if passwordOff {
 		f.web.WithoutPasswords()
@@ -175,6 +175,14 @@ func TestOIDCSignIn_CallbackRefusals(t *testing.T) {
 	assert.Equal(t, http.StatusSeeOther, rec.Code)
 	assert.Equal(t, "/login", rec.Header().Get("Location"), "cancelled at the provider: back to sign in, quietly")
 
+	c, state = f.start(t, "return_to="+url.QueryEscape("/console/o/acme"))
+	rec = f.callback("error=access_denied&state="+state, c)
+	assert.Equal(t, "/login?return_to=%2Fconsole%2Fo%2Facme", rec.Header().Get("Location"), "a cancel keeps where the person was going")
+
+	c, state = f.start(t, "return_to=/console/x&invite=inv-1")
+	rec = f.callback("error=access_denied&state="+state, c)
+	assert.Equal(t, "/invite", rec.Header().Get("Location"), "a cancel from an invite goes back to that invite")
+
 	for _, code := range []string{"invalid_grant", "invalid_request"} {
 		c, state = f.start(t, "")
 		f.rp.err = &oidcrp.Error{Reason: oidcrp.ReasonTokenExchange, OAuthError: code, Err: errors.New("status 400")}
@@ -261,6 +269,8 @@ func TestOIDCSignIn_LoginPage(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), `/login/oidc?return_to=%2Fconsole%2Fx`)
 	assert.Contains(t, rec.Body.String(), "Continue with Acme ID")
 	assert.Contains(t, rec.Body.String(), `name="password"`)
+	assert.Contains(t, rec.Body.String(), "OAgent uses your account on idp.test.")
+	assert.Contains(t, rec.Body.String(), ">oagent.test/login</p>", "the page shows its own public address without the scheme")
 	rec = f.do(httptest.NewRequest(http.MethodGet, "/login?email=Ada%40Example.com", nil))
 	assert.Contains(t, rec.Body.String(), `/login/oidc?login_hint=ada%40example.com`)
 

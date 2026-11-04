@@ -161,6 +161,16 @@ jobs:
         run: make ui-test
       - name: Build the embedded UI (sign-in assets, MCP views, console)
         run: make ui
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Built console keeps every placeholder the server rewrites
+        env:
+          REQUIRE_BUILT_UI: "1"
+        run: |
+          set -o pipefail
+          go test ./internal/web/console/ -run TestBuiltIndex -v -count=1 | tee built-index.out
+          test "$(grep -c -- '--- PASS: TestBuiltIndex' built-index.out)" -eq 1
       - name: Storybook
         run: pnpm --filter @oagent/console build-storybook --quiet
 

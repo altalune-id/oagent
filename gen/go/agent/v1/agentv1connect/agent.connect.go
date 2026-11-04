@@ -46,6 +46,15 @@ const (
 	// AgentServiceDeleteAgentProcedure is the fully-qualified name of the AgentService's DeleteAgent
 	// RPC.
 	AgentServiceDeleteAgentProcedure = "/agent.v1.AgentService/DeleteAgent"
+	// AgentServiceUpdateAgentDraftProcedure is the fully-qualified name of the AgentService's
+	// UpdateAgentDraft RPC.
+	AgentServiceUpdateAgentDraftProcedure = "/agent.v1.AgentService/UpdateAgentDraft"
+	// AgentServicePublishAgentProcedure is the fully-qualified name of the AgentService's PublishAgent
+	// RPC.
+	AgentServicePublishAgentProcedure = "/agent.v1.AgentService/PublishAgent"
+	// AgentServiceListAgentVersionsProcedure is the fully-qualified name of the AgentService's
+	// ListAgentVersions RPC.
+	AgentServiceListAgentVersionsProcedure = "/agent.v1.AgentService/ListAgentVersions"
 )
 
 // AgentServiceClient is a client for the agent.v1.AgentService service.
@@ -55,6 +64,9 @@ type AgentServiceClient interface {
 	ListAgents(context.Context, *connect.Request[v1.ListAgentsRequest]) (*connect.Response[v1.ListAgentsResponse], error)
 	UpdateAgent(context.Context, *connect.Request[v1.UpdateAgentRequest]) (*connect.Response[v1.UpdateAgentResponse], error)
 	DeleteAgent(context.Context, *connect.Request[v1.DeleteAgentRequest]) (*connect.Response[v1.DeleteAgentResponse], error)
+	UpdateAgentDraft(context.Context, *connect.Request[v1.UpdateAgentDraftRequest]) (*connect.Response[v1.UpdateAgentDraftResponse], error)
+	PublishAgent(context.Context, *connect.Request[v1.PublishAgentRequest]) (*connect.Response[v1.PublishAgentResponse], error)
+	ListAgentVersions(context.Context, *connect.Request[v1.ListAgentVersionsRequest]) (*connect.Response[v1.ListAgentVersionsResponse], error)
 }
 
 // NewAgentServiceClient constructs a client for the agent.v1.AgentService service. By default, it
@@ -98,16 +110,37 @@ func NewAgentServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(agentServiceMethods.ByName("DeleteAgent")),
 			connect.WithClientOptions(opts...),
 		),
+		updateAgentDraft: connect.NewClient[v1.UpdateAgentDraftRequest, v1.UpdateAgentDraftResponse](
+			httpClient,
+			baseURL+AgentServiceUpdateAgentDraftProcedure,
+			connect.WithSchema(agentServiceMethods.ByName("UpdateAgentDraft")),
+			connect.WithClientOptions(opts...),
+		),
+		publishAgent: connect.NewClient[v1.PublishAgentRequest, v1.PublishAgentResponse](
+			httpClient,
+			baseURL+AgentServicePublishAgentProcedure,
+			connect.WithSchema(agentServiceMethods.ByName("PublishAgent")),
+			connect.WithClientOptions(opts...),
+		),
+		listAgentVersions: connect.NewClient[v1.ListAgentVersionsRequest, v1.ListAgentVersionsResponse](
+			httpClient,
+			baseURL+AgentServiceListAgentVersionsProcedure,
+			connect.WithSchema(agentServiceMethods.ByName("ListAgentVersions")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // agentServiceClient implements AgentServiceClient.
 type agentServiceClient struct {
-	createAgent *connect.Client[v1.CreateAgentRequest, v1.CreateAgentResponse]
-	getAgent    *connect.Client[v1.GetAgentRequest, v1.GetAgentResponse]
-	listAgents  *connect.Client[v1.ListAgentsRequest, v1.ListAgentsResponse]
-	updateAgent *connect.Client[v1.UpdateAgentRequest, v1.UpdateAgentResponse]
-	deleteAgent *connect.Client[v1.DeleteAgentRequest, v1.DeleteAgentResponse]
+	createAgent       *connect.Client[v1.CreateAgentRequest, v1.CreateAgentResponse]
+	getAgent          *connect.Client[v1.GetAgentRequest, v1.GetAgentResponse]
+	listAgents        *connect.Client[v1.ListAgentsRequest, v1.ListAgentsResponse]
+	updateAgent       *connect.Client[v1.UpdateAgentRequest, v1.UpdateAgentResponse]
+	deleteAgent       *connect.Client[v1.DeleteAgentRequest, v1.DeleteAgentResponse]
+	updateAgentDraft  *connect.Client[v1.UpdateAgentDraftRequest, v1.UpdateAgentDraftResponse]
+	publishAgent      *connect.Client[v1.PublishAgentRequest, v1.PublishAgentResponse]
+	listAgentVersions *connect.Client[v1.ListAgentVersionsRequest, v1.ListAgentVersionsResponse]
 }
 
 // CreateAgent calls agent.v1.AgentService.CreateAgent.
@@ -135,6 +168,21 @@ func (c *agentServiceClient) DeleteAgent(ctx context.Context, req *connect.Reque
 	return c.deleteAgent.CallUnary(ctx, req)
 }
 
+// UpdateAgentDraft calls agent.v1.AgentService.UpdateAgentDraft.
+func (c *agentServiceClient) UpdateAgentDraft(ctx context.Context, req *connect.Request[v1.UpdateAgentDraftRequest]) (*connect.Response[v1.UpdateAgentDraftResponse], error) {
+	return c.updateAgentDraft.CallUnary(ctx, req)
+}
+
+// PublishAgent calls agent.v1.AgentService.PublishAgent.
+func (c *agentServiceClient) PublishAgent(ctx context.Context, req *connect.Request[v1.PublishAgentRequest]) (*connect.Response[v1.PublishAgentResponse], error) {
+	return c.publishAgent.CallUnary(ctx, req)
+}
+
+// ListAgentVersions calls agent.v1.AgentService.ListAgentVersions.
+func (c *agentServiceClient) ListAgentVersions(ctx context.Context, req *connect.Request[v1.ListAgentVersionsRequest]) (*connect.Response[v1.ListAgentVersionsResponse], error) {
+	return c.listAgentVersions.CallUnary(ctx, req)
+}
+
 // AgentServiceHandler is an implementation of the agent.v1.AgentService service.
 type AgentServiceHandler interface {
 	CreateAgent(context.Context, *connect.Request[v1.CreateAgentRequest]) (*connect.Response[v1.CreateAgentResponse], error)
@@ -142,6 +190,9 @@ type AgentServiceHandler interface {
 	ListAgents(context.Context, *connect.Request[v1.ListAgentsRequest]) (*connect.Response[v1.ListAgentsResponse], error)
 	UpdateAgent(context.Context, *connect.Request[v1.UpdateAgentRequest]) (*connect.Response[v1.UpdateAgentResponse], error)
 	DeleteAgent(context.Context, *connect.Request[v1.DeleteAgentRequest]) (*connect.Response[v1.DeleteAgentResponse], error)
+	UpdateAgentDraft(context.Context, *connect.Request[v1.UpdateAgentDraftRequest]) (*connect.Response[v1.UpdateAgentDraftResponse], error)
+	PublishAgent(context.Context, *connect.Request[v1.PublishAgentRequest]) (*connect.Response[v1.PublishAgentResponse], error)
+	ListAgentVersions(context.Context, *connect.Request[v1.ListAgentVersionsRequest]) (*connect.Response[v1.ListAgentVersionsResponse], error)
 }
 
 // NewAgentServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -181,6 +232,24 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(agentServiceMethods.ByName("DeleteAgent")),
 		connect.WithHandlerOptions(opts...),
 	)
+	agentServiceUpdateAgentDraftHandler := connect.NewUnaryHandler(
+		AgentServiceUpdateAgentDraftProcedure,
+		svc.UpdateAgentDraft,
+		connect.WithSchema(agentServiceMethods.ByName("UpdateAgentDraft")),
+		connect.WithHandlerOptions(opts...),
+	)
+	agentServicePublishAgentHandler := connect.NewUnaryHandler(
+		AgentServicePublishAgentProcedure,
+		svc.PublishAgent,
+		connect.WithSchema(agentServiceMethods.ByName("PublishAgent")),
+		connect.WithHandlerOptions(opts...),
+	)
+	agentServiceListAgentVersionsHandler := connect.NewUnaryHandler(
+		AgentServiceListAgentVersionsProcedure,
+		svc.ListAgentVersions,
+		connect.WithSchema(agentServiceMethods.ByName("ListAgentVersions")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/agent.v1.AgentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AgentServiceCreateAgentProcedure:
@@ -193,6 +262,12 @@ func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect.HandlerOpti
 			agentServiceUpdateAgentHandler.ServeHTTP(w, r)
 		case AgentServiceDeleteAgentProcedure:
 			agentServiceDeleteAgentHandler.ServeHTTP(w, r)
+		case AgentServiceUpdateAgentDraftProcedure:
+			agentServiceUpdateAgentDraftHandler.ServeHTTP(w, r)
+		case AgentServicePublishAgentProcedure:
+			agentServicePublishAgentHandler.ServeHTTP(w, r)
+		case AgentServiceListAgentVersionsProcedure:
+			agentServiceListAgentVersionsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -220,4 +295,16 @@ func (UnimplementedAgentServiceHandler) UpdateAgent(context.Context, *connect.Re
 
 func (UnimplementedAgentServiceHandler) DeleteAgent(context.Context, *connect.Request[v1.DeleteAgentRequest]) (*connect.Response[v1.DeleteAgentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agent.v1.AgentService.DeleteAgent is not implemented"))
+}
+
+func (UnimplementedAgentServiceHandler) UpdateAgentDraft(context.Context, *connect.Request[v1.UpdateAgentDraftRequest]) (*connect.Response[v1.UpdateAgentDraftResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agent.v1.AgentService.UpdateAgentDraft is not implemented"))
+}
+
+func (UnimplementedAgentServiceHandler) PublishAgent(context.Context, *connect.Request[v1.PublishAgentRequest]) (*connect.Response[v1.PublishAgentResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agent.v1.AgentService.PublishAgent is not implemented"))
+}
+
+func (UnimplementedAgentServiceHandler) ListAgentVersions(context.Context, *connect.Request[v1.ListAgentVersionsRequest]) (*connect.Response[v1.ListAgentVersionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agent.v1.AgentService.ListAgentVersions is not implemented"))
 }

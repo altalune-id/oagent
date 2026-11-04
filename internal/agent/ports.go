@@ -19,4 +19,5 @@ type Refs interface {
 	OrgPublicID(ctx context.Context, id uuid.UUID) (string, error)
 	ProjectID(ctx context.Context, publicID string) (id, orgID uuid.UUID, ok bool, err error)
 	ProjectPublicID(ctx context.Context, id uuid.UUID) (string, error)
+	UserPublicID(ctx context.Context, id uuid.UUID) (string, error)
 }

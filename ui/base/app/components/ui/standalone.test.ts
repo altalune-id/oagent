@@ -2,12 +2,11 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { addIcon } from '@iconify/vue/offline';
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import AppButton from './AppButton.vue';
 import CopyButton from './CopyButton.vue';
-import { installStandalone } from './standalone';
+import { addIcons, installStandalone } from './standalone';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 const files = readdirSync(dir).filter(f => /\.(?:vue|ts)$/.test(f) && !/\.(?:test|stories)\.ts$/.test(f));
@@ -69,11 +68,11 @@ describe('ui components outside Nuxt', () => {
   });
 
   it('renders the globals without Nuxt', () => {
-    addIcon('lucide:copy', { body: '<path d="M0 0h1v1H0z"/>', width: 24, height: 24 });
+    addIcons({ prefix: 'lucide', icons: { copy: { body: '<path stroke-width="2" d="M0 0h1v1H0z"/>' } }, width: 24, height: 24 });
     const global = { plugins: [{ install: installStandalone }], stubs: { NuxtLink: false, Icon: false } };
     const link = mount(AppButton, { props: { to: '/console/' }, slots: { default: 'Open' }, global });
     expect(link.get('a').attributes('href')).toBe('/console/');
     const copy = mount(CopyButton, { props: { value: 'x', label: 'Copy x' }, global });
-    expect(copy.find('svg').exists()).toBe(true);
+    expect(copy.get('svg path').attributes('stroke-width')).toBe('1.75');
   });
 });

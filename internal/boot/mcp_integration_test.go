@@ -48,7 +48,7 @@ func TestMCP_KeyScopesTheToolList(t *testing.T) {
 	for _, tool := range list.Result.Tools {
 		names = append(names, tool.Name)
 	}
-	assert.ElementsMatch(t, []string{"agent_get", "agent_list", "auth_whoami"}, names)
+	assert.ElementsMatch(t, []string{"agent_get", "agent_list", "agent_version_list", "auth_whoami"}, names)
 }
 
 func TestMCP_WhoamiWithAKey(t *testing.T) {

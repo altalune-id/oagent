@@ -23,4 +23,6 @@ type Reader interface {
 // Writer writes Project aggregates.
 type Writer interface {
 	Save(ctx context.Context, p *Project) error
+	// SetEnvironment writes only the environment tag of the project id.
+	SetEnvironment(ctx context.Context, id uuid.UUID, env string) error
 }

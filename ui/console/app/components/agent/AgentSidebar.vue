@@ -1,22 +1,29 @@
 <script setup lang="ts">
-import type { NavItem } from '#base/components/ui/types';
+import type { NavGroup } from '#base/components/ui/types';
 import SidebarNav from '#base/components/ui/SidebarNav.vue';
+import { useAgentNav } from '~/components/agent/useAgentNav';
+import SidebarUser from '~/components/layout/SidebarUser.vue';
 import { useAgentsStore } from '~/stores/agents';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
+import { useUIStore } from '~/stores/ui';
 
 const route = useRoute();
 const { t } = useI18n();
-const { appVersion } = useRuntimeConfig().public;
 const orgs = useOrgsStore();
 const projects = useProjectsStore();
 const agents = useAgentsStore();
+const ui = useUIStore();
+
+watch(() => route.params.run, (run) => {
+  ui.rail = !!run;
+}, { immediate: true });
 
 const org = computed(() => orgs.bySlug(route.params.org as string));
 const project = computed(() => projects.items.find(p => p.orgId === org.value?.id && p.slug === route.params.project));
 const agentSlug = computed(() => route.params.agent as string);
+const { list, groups } = useAgentNav();
 const agent = computed(() => (project.value ? agents.items.find(a => a.projectId === project.value!.id && a.slug === agentSlug.value) : undefined));
-const base = computed(() => `/o/${route.params.org}/projects/${route.params.project}/agents/${agentSlug.value}`);
 
 watch(project, (value) => {
   if (value) {
@@ -24,25 +31,28 @@ watch(project, (value) => {
   }
 }, { immediate: true });
 
-const items = computed<NavItem[]>(() => [
-  { key: 'general', label: t('nav.general'), icon: 'lucide:info', active: route.path === base.value },
-  { key: 'prompt', label: t('nav.prompt'), icon: 'lucide:file-text', active: route.path === `${base.value}/prompt` },
-  { key: 'model', label: t('nav.model'), icon: 'lucide:cpu', active: route.path === `${base.value}/model` },
-  { key: 'tools', label: t('nav.tools'), icon: 'lucide:hammer', active: route.path === `${base.value}/tools` },
-]);
-
-function onSelect(key: string) {
-  return navigateTo(key === 'general' ? base.value : `${base.value}/${key}`);
-}
+const back = computed<NavGroup[]>(() => [{ items: [{ key: 'agents', label: t('nav.agents'), to: list.value, icon: 'lucide:arrow-left' }] }]);
+const version = computed(() => {
+  const v = agent.value?.publishedVersion;
+  if (!v) {
+    return t('agent.not_published');
+  }
+  return agent.value?.unpublishedChanges ? t('agent.version_draft', { n: v }) : `v${v}`;
+});
 </script>
 
 <template>
-  <SidebarNav :label="agent?.name ?? agentSlug" :items="items" :version="appVersion" @select="onSelect">
-    <template #back>
-      <NuxtLink :to="`/o/${route.params.org}/projects/${route.params.project}/agents`" class="inline-flex items-center gap-1 text-xs text-base-content/60 transition-colors hover:text-base-content">
-        <Icon name="lucide:chevron-left" size="14" />
-        {{ t('agent.all') }}
-      </NuxtLink>
+  <SidebarNav :label="agent?.name ?? agentSlug" :lead="back" :groups="groups" :dense="false" :rail="ui.rail">
+    <template #between>
+      <p class="truncate text-sm font-semibold">
+        {{ agent?.name ?? agentSlug }}
+      </p>
+      <p class="text-xs text-base-content/70">
+        {{ version }}
+      </p>
+    </template>
+    <template #footer>
+      <SidebarUser :compact="ui.rail" />
     </template>
   </SidebarNav>
 </template>

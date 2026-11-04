@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"altalune.id/oagent/apperror"
 	projectv1 "altalune.id/oagent/gen/go/project/v1"
 	"altalune.id/oagent/nanoid"
 )
@@ -31,14 +32,34 @@ var slugRe = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`)
 
 // Project is an aggregate scoped to an organization.
 type Project struct {
-	ID        uuid.UUID
-	PublicID  string
-	OrgID     uuid.UUID
-	Slug      string
-	Name      string
-	CreatedBy uuid.NullUUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID          uuid.UUID
+	PublicID    string
+	OrgID       uuid.UUID
+	Slug        string
+	Name        string
+	Environment string
+	CreatedBy   uuid.NullUUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+// The environment tags a project may carry; EnvironmentNone is no tag.
+const (
+	EnvironmentNone        = ""
+	EnvironmentProduction  = "production"
+	EnvironmentStaging     = "staging"
+	EnvironmentDevelopment = "development"
+	EnvironmentLabs        = "labs"
+)
+
+// SetEnvironment tags the project with env, one of the Environment constants.
+func (p *Project) SetEnvironment(env string) error {
+	switch env {
+	case EnvironmentNone, EnvironmentProduction, EnvironmentStaging, EnvironmentDevelopment, EnvironmentLabs:
+		p.Environment = env
+		return nil
+	}
+	return apperror.Validation([]apperror.Violation{{Field: "environment", Reason: apperror.FieldInvalid}})
 }
 
 // NewProject constructs a Project after validating slug and name.
@@ -98,38 +119,58 @@ func ValidateName(n string) error {
 }
 
 type projectRow struct {
-	ID        uuid.UUID     `alias:"projects.id"`
-	PublicID  string        `alias:"projects.public_id"`
-	OrgID     uuid.UUID     `alias:"projects.org_id"`
-	Slug      string        `alias:"projects.slug"`
-	Name      string        `alias:"projects.name"`
-	CreatedBy uuid.NullUUID `alias:"projects.created_by"`
-	CreatedAt time.Time     `alias:"projects.created_at"`
-	UpdatedAt time.Time     `alias:"projects.updated_at"`
+	ID          uuid.UUID     `alias:"projects.id"`
+	PublicID    string        `alias:"projects.public_id"`
+	OrgID       uuid.UUID     `alias:"projects.org_id"`
+	Slug        string        `alias:"projects.slug"`
+	Name        string        `alias:"projects.name"`
+	CreatedBy   uuid.NullUUID `alias:"projects.created_by"`
+	CreatedAt   time.Time     `alias:"projects.created_at"`
+	UpdatedAt   time.Time     `alias:"projects.updated_at"`
+	Environment string        `alias:"projects.environment"`
 }
 
 func (r *projectRow) toProject() *Project {
 	return &Project{
-		ID:        r.ID,
-		PublicID:  r.PublicID,
-		OrgID:     r.OrgID,
-		Slug:      r.Slug,
-		Name:      r.Name,
-		CreatedBy: r.CreatedBy,
-		CreatedAt: r.CreatedAt,
-		UpdatedAt: r.UpdatedAt,
+		ID:          r.ID,
+		PublicID:    r.PublicID,
+		OrgID:       r.OrgID,
+		Slug:        r.Slug,
+		Name:        r.Name,
+		CreatedBy:   r.CreatedBy,
+		CreatedAt:   r.CreatedAt,
+		UpdatedAt:   r.UpdatedAt,
+		Environment: r.Environment,
 	}
 }
 
 func projectToProto(p *Project, orgPublicID string) *projectv1.Project {
 	return &projectv1.Project{
-		Id:        p.PublicID,
-		OrgId:     orgPublicID,
-		Slug:      p.Slug,
-		Name:      p.Name,
-		CreatedAt: timestamppb.New(p.CreatedAt),
-		UpdatedAt: timestamppb.New(p.UpdatedAt),
+		Id:          p.PublicID,
+		OrgId:       orgPublicID,
+		Slug:        p.Slug,
+		Name:        p.Name,
+		CreatedAt:   timestamppb.New(p.CreatedAt),
+		UpdatedAt:   timestamppb.New(p.UpdatedAt),
+		Environment: environmentToProto[p.Environment],
 	}
+}
+
+//nolint:gochecknoglobals // the fixed mapping between the stored tag and the wire enum.
+var environmentToProto = map[string]projectv1.ProjectEnvironment{
+	EnvironmentProduction:  projectv1.ProjectEnvironment_PROJECT_ENVIRONMENT_PRODUCTION,
+	EnvironmentStaging:     projectv1.ProjectEnvironment_PROJECT_ENVIRONMENT_STAGING,
+	EnvironmentDevelopment: projectv1.ProjectEnvironment_PROJECT_ENVIRONMENT_DEVELOPMENT,
+	EnvironmentLabs:        projectv1.ProjectEnvironment_PROJECT_ENVIRONMENT_LABS,
+}
+
+func environmentFromProto(e projectv1.ProjectEnvironment) string {
+	for tag, v := range environmentToProto {
+		if v == e {
+			return tag
+		}
+	}
+	return EnvironmentNone
 }
 
 // Ref names a project and the tenant it belongs to, before any row is read.

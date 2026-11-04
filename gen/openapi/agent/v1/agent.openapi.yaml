@@ -107,6 +107,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/agent.v1.GetAgentResponse'
+  /agent.v1.AgentService/ListAgentVersions:
+    post:
+      tags:
+        - agent.v1.AgentService
+      summary: ListAgentVersions
+      operationId: agent.v1.AgentService.ListAgentVersions
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/agent.v1.ListAgentVersionsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agent.v1.ListAgentVersionsResponse'
   /agent.v1.AgentService/ListAgents:
     post:
       tags:
@@ -142,6 +177,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/agent.v1.ListAgentsResponse'
+  /agent.v1.AgentService/PublishAgent:
+    post:
+      tags:
+        - agent.v1.AgentService
+      summary: PublishAgent
+      operationId: agent.v1.AgentService.PublishAgent
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/agent.v1.PublishAgentRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agent.v1.PublishAgentResponse'
   /agent.v1.AgentService/UpdateAgent:
     post:
       tags:
@@ -177,6 +247,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/agent.v1.UpdateAgentResponse'
+  /agent.v1.AgentService/UpdateAgentDraft:
+    post:
+      tags:
+        - agent.v1.AgentService
+      summary: UpdateAgentDraft
+      operationId: agent.v1.AgentService.UpdateAgentDraft
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/agent.v1.UpdateAgentDraftRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/agent.v1.UpdateAgentDraftResponse'
 components:
   schemas:
     agent.v1.Agent:
@@ -206,8 +311,105 @@ components:
         updatedAt:
           title: updated_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
+        draft:
+          title: draft
+          $ref: '#/components/schemas/agent.v1.AgentConfig'
+        publishedVersion:
+          type: integer
+          title: published_version
+          format: int32
+          description: published_version is the latest version's number, 0 when the agent was never published.
+        draftUpdatedAt:
+          title: draft_updated_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        unpublishedChanges:
+          type: boolean
+          title: unpublished_changes
+          description: unpublished_changes is true when the draft was edited after the last publish.
       title: Agent
       additionalProperties: false
+    agent.v1.AgentConfig:
+      type: object
+      properties:
+        instructions:
+          type: string
+          title: instructions
+          description: |
+            agent.instructions.max_len.32000
+        model:
+          type: string
+          title: model
+          pattern: ^[A-Za-z0-9._:/-]*$
+          description: |
+            agent.model.max_len.128
+        temperature:
+          type: number
+          title: temperature
+          maximum: 2
+          minimum: 0
+          format: double
+        maxSteps:
+          type: integer
+          title: max_steps
+          maximum: 100
+          minimum: 0
+          format: int32
+        maxCostCents:
+          type: integer
+          title: max_cost_cents
+          maximum: 1000000
+          minimum: 0
+          format: int32
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/agent.v1.AgentTool'
+          title: tools
+          maxItems: 64
+          description: |
+            agent.tools.unique
+      title: AgentConfig
+      additionalProperties: false
+      description: AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique.
+    agent.v1.AgentTool:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+          pattern: ^[a-z0-9_.-]{1,64}$
+        requireApproval:
+          type: boolean
+          title: require_approval
+      title: AgentTool
+      additionalProperties: false
+      description: AgentTool is a tool the agent may call; require_approval makes a person approve each call.
+    agent.v1.AgentVersion:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        agentId:
+          type: string
+          title: agent_id
+        version:
+          type: integer
+          title: version
+          format: int32
+        config:
+          title: config
+          $ref: '#/components/schemas/agent.v1.AgentConfig'
+        createdAt:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        createdBy:
+          type: string
+          title: created_by
+          description: created_by is the publishing person's user public id, empty for an API key.
+      title: AgentVersion
+      additionalProperties: false
+      description: AgentVersion is an immutable published configuration; version is a display label, id the public id.
     agent.v1.CreateAgentRequest:
       type: object
       properties:
@@ -289,6 +491,35 @@ components:
           $ref: '#/components/schemas/agent.v1.Agent'
       title: GetAgentResponse
       additionalProperties: false
+    agent.v1.ListAgentVersionsRequest:
+      type: object
+      properties:
+        agentId:
+          type: string
+          title: agent_id
+          description: |
+            oagent.public_id = true
+        limit:
+          type: integer
+          title: limit
+          maximum: 100
+          minimum: 0
+          format: int32
+      title: ListAgentVersionsRequest
+      required:
+        - agentId
+      additionalProperties: false
+      description: ListAgentVersionsRequest lists an agent's versions newest first; limit 0 means the server default of 50, and the most is 100.
+    agent.v1.ListAgentVersionsResponse:
+      type: object
+      properties:
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/agent.v1.AgentVersion'
+          title: versions
+      title: ListAgentVersionsResponse
+      additionalProperties: false
     agent.v1.ListAgentsRequest:
       type: object
       properties:
@@ -310,6 +541,57 @@ components:
             $ref: '#/components/schemas/agent.v1.Agent'
           title: agents
       title: ListAgentsResponse
+      additionalProperties: false
+    agent.v1.PublishAgentRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: |
+            oagent.public_id = true
+      title: PublishAgentRequest
+      required:
+        - id
+      additionalProperties: false
+    agent.v1.PublishAgentResponse:
+      type: object
+      properties:
+        agent:
+          title: agent
+          $ref: '#/components/schemas/agent.v1.Agent'
+        version:
+          title: version
+          $ref: '#/components/schemas/agent.v1.AgentVersion'
+        created:
+          type: boolean
+          title: created
+          description: created is false when the draft matched the latest version, which is returned instead.
+      title: PublishAgentResponse
+      additionalProperties: false
+    agent.v1.UpdateAgentDraftRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: |
+            oagent.public_id = true
+        config:
+          title: config
+          $ref: '#/components/schemas/agent.v1.AgentConfig'
+      title: UpdateAgentDraftRequest
+      required:
+        - id
+        - config
+      additionalProperties: false
+    agent.v1.UpdateAgentDraftResponse:
+      type: object
+      properties:
+        agent:
+          title: agent
+          $ref: '#/components/schemas/agent.v1.Agent'
+      title: UpdateAgentDraftResponse
       additionalProperties: false
     agent.v1.UpdateAgentRequest:
       type: object

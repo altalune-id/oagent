@@ -72,7 +72,7 @@ func Document(d layout.LayoutData, doc DocumentData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if !doc.UpdatedAt.IsZero() {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-base-content/60\">Last updated ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-base-content/70\">Last updated ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

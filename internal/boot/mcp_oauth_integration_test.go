@@ -169,6 +169,8 @@ func TestMCPOAuth_TokenCannotSendADraftedInvite(t *testing.T) {
 	status, _, body := f.mcpCall(t, tok, toolCall("member_invite", map[string]any{"orgId": acme.PublicID, "email": "new@example.com"}))
 	require.Equal(t, http.StatusOK, status, string(body))
 	require.NotContains(t, string(body), `"isError":true`)
+	assert.Contains(t, string(body), "/console/o/"+acme.Slug+"/settings/members", "the draft says where a person sends it")
+	assert.NotContains(t, string(body), "canConfirm", "a token can't send it itself")
 	var draftID string
 	require.NoError(t, f.db.QueryRowContext(t.Context(), `SELECT public_id FROM invites WHERE org_id = $1`, acme.ID).Scan(&draftID))
 	mailBefore := f.queuedMail(t)

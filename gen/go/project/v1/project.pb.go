@@ -25,6 +25,62 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// ProjectEnvironment is an optional tag for what a project is used for; UNSPECIFIED is no tag.
+type ProjectEnvironment int32
+
+const (
+	ProjectEnvironment_PROJECT_ENVIRONMENT_UNSPECIFIED ProjectEnvironment = 0
+	ProjectEnvironment_PROJECT_ENVIRONMENT_PRODUCTION  ProjectEnvironment = 1
+	ProjectEnvironment_PROJECT_ENVIRONMENT_STAGING     ProjectEnvironment = 2
+	ProjectEnvironment_PROJECT_ENVIRONMENT_DEVELOPMENT ProjectEnvironment = 3
+	ProjectEnvironment_PROJECT_ENVIRONMENT_LABS        ProjectEnvironment = 4
+)
+
+// Enum value maps for ProjectEnvironment.
+var (
+	ProjectEnvironment_name = map[int32]string{
+		0: "PROJECT_ENVIRONMENT_UNSPECIFIED",
+		1: "PROJECT_ENVIRONMENT_PRODUCTION",
+		2: "PROJECT_ENVIRONMENT_STAGING",
+		3: "PROJECT_ENVIRONMENT_DEVELOPMENT",
+		4: "PROJECT_ENVIRONMENT_LABS",
+	}
+	ProjectEnvironment_value = map[string]int32{
+		"PROJECT_ENVIRONMENT_UNSPECIFIED": 0,
+		"PROJECT_ENVIRONMENT_PRODUCTION":  1,
+		"PROJECT_ENVIRONMENT_STAGING":     2,
+		"PROJECT_ENVIRONMENT_DEVELOPMENT": 3,
+		"PROJECT_ENVIRONMENT_LABS":        4,
+	}
+)
+
+func (x ProjectEnvironment) Enum() *ProjectEnvironment {
+	p := new(ProjectEnvironment)
+	*p = x
+	return p
+}
+
+func (x ProjectEnvironment) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ProjectEnvironment) Descriptor() protoreflect.EnumDescriptor {
+	return file_project_v1_project_proto_enumTypes[0].Descriptor()
+}
+
+func (ProjectEnvironment) Type() protoreflect.EnumType {
+	return &file_project_v1_project_proto_enumTypes[0]
+}
+
+func (x ProjectEnvironment) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ProjectEnvironment.Descriptor instead.
+func (ProjectEnvironment) EnumDescriptor() ([]byte, []int) {
+	return file_project_v1_project_proto_rawDescGZIP(), []int{0}
+}
+
 type Project struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -33,6 +89,7 @@ type Project struct {
 	Name          string                 `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Environment   ProjectEnvironment     `protobuf:"varint,8,opt,name=environment,proto3,enum=project.v1.ProjectEnvironment" json:"environment,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -107,6 +164,13 @@ func (x *Project) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *Project) GetEnvironment() ProjectEnvironment {
+	if x != nil {
+		return x.Environment
+	}
+	return ProjectEnvironment_PROJECT_ENVIRONMENT_UNSPECIFIED
 }
 
 type CreateProjectRequest struct {
@@ -493,12 +557,109 @@ func (x *UpdateProjectResponse) GetProject() *Project {
 	return nil
 }
 
+type UpdateProjectEnvironmentRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// UNSPECIFIED clears the tag.
+	Environment   ProjectEnvironment `protobuf:"varint,2,opt,name=environment,proto3,enum=project.v1.ProjectEnvironment" json:"environment,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateProjectEnvironmentRequest) Reset() {
+	*x = UpdateProjectEnvironmentRequest{}
+	mi := &file_project_v1_project_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateProjectEnvironmentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateProjectEnvironmentRequest) ProtoMessage() {}
+
+func (x *UpdateProjectEnvironmentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_project_v1_project_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateProjectEnvironmentRequest.ProtoReflect.Descriptor instead.
+func (*UpdateProjectEnvironmentRequest) Descriptor() ([]byte, []int) {
+	return file_project_v1_project_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *UpdateProjectEnvironmentRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateProjectEnvironmentRequest) GetEnvironment() ProjectEnvironment {
+	if x != nil {
+		return x.Environment
+	}
+	return ProjectEnvironment_PROJECT_ENVIRONMENT_UNSPECIFIED
+}
+
+type UpdateProjectEnvironmentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Project       *Project               `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateProjectEnvironmentResponse) Reset() {
+	*x = UpdateProjectEnvironmentResponse{}
+	mi := &file_project_v1_project_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateProjectEnvironmentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateProjectEnvironmentResponse) ProtoMessage() {}
+
+func (x *UpdateProjectEnvironmentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_project_v1_project_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateProjectEnvironmentResponse.ProtoReflect.Descriptor instead.
+func (*UpdateProjectEnvironmentResponse) Descriptor() ([]byte, []int) {
+	return file_project_v1_project_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *UpdateProjectEnvironmentResponse) GetProject() *Project {
+	if x != nil {
+		return x.Project
+	}
+	return nil
+}
+
 var File_project_v1_project_proto protoreflect.FileDescriptor
 
 const file_project_v1_project_proto_rawDesc = "" +
 	"\n" +
 	"\x18project/v1/project.proto\x12\n" +
-	"project.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\x1a\x15oagent/v1/rules.proto\"\xdf\x01\n" +
+	"project.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\x1a\x15oagent/v1/rules.proto\"\xa1\x02\n" +
 	"\aProject\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06org_id\x18\x03 \x01(\tR\x05orgId\x12\x12\n" +
@@ -507,7 +668,8 @@ const file_project_v1_project_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtJ\x04\b\x02\x10\x03R\tpublic_id\"|\n" +
+	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12@\n" +
+	"\venvironment\x18\b \x01(\x0e2\x1e.project.v1.ProjectEnvironmentR\venvironmentJ\x04\b\x02\x10\x03R\tpublic_id\"|\n" +
 	"\x14CreateProjectRequest\x12#\n" +
 	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12\x1d\n" +
 	"\x04slug\x18\x02 \x01(\tB\t\xbaH\x06r\x04\xa0\xe42\x01R\x04slug\x12 \n" +
@@ -527,7 +689,18 @@ const file_project_v1_project_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x90\xe42\x01R\x04name\x12 \n" +
 	"\x04slug\x18\x03 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\xa0\xe42\x01R\x04slug\"F\n" +
 	"\x15UpdateProjectResponse\x12-\n" +
-	"\aproject\x18\x01 \x01(\v2\x13.project.v1.ProjectR\aproject2\xc4\x04\n" +
+	"\aproject\x18\x01 \x01(\v2\x13.project.v1.ProjectR\aproject\"\x8b\x01\n" +
+	"\x1fUpdateProjectEnvironmentRequest\x12\x1c\n" +
+	"\x02id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\x12J\n" +
+	"\venvironment\x18\x02 \x01(\x0e2\x1e.project.v1.ProjectEnvironmentB\b\xbaH\x05\x82\x01\x02\x10\x01R\venvironment\"Q\n" +
+	" UpdateProjectEnvironmentResponse\x12-\n" +
+	"\aproject\x18\x01 \x01(\v2\x13.project.v1.ProjectR\aproject*\xc1\x01\n" +
+	"\x12ProjectEnvironment\x12#\n" +
+	"\x1fPROJECT_ENVIRONMENT_UNSPECIFIED\x10\x00\x12\"\n" +
+	"\x1ePROJECT_ENVIRONMENT_PRODUCTION\x10\x01\x12\x1f\n" +
+	"\x1bPROJECT_ENVIRONMENT_STAGING\x10\x02\x12#\n" +
+	"\x1fPROJECT_ENVIRONMENT_DEVELOPMENT\x10\x03\x12\x1c\n" +
+	"\x18PROJECT_ENVIRONMENT_LABS\x10\x042\xbb\x05\n" +
 	"\x0eProjectService\x12\xc4\x01\n" +
 	"\rCreateProject\x12 .project.v1.CreateProjectRequest\x1a!.project.v1.CreateProjectResponse\"n\xca\xf3\x18j\n" +
 	"\x0eproject_create\x12QCreate a project within an organization, minting a slug when one is not supplied. \x01*\x03app\x12}\n" +
@@ -536,7 +709,8 @@ const file_project_v1_project_proto_rawDesc = "" +
 	"\vproject_get\x12\x14Get a project by id.\x1a\x02id*\x03app\x12\x95\x01\n" +
 	"\fListProjects\x12\x1f.project.v1.ListProjectsRequest\x1a .project.v1.ListProjectsResponse\"B\xca\xf3\x18>\n" +
 	"\fproject_list\x12!List projects in an organization.\x1a\x06org_id*\x03app\x12T\n" +
-	"\rUpdateProject\x12 .project.v1.UpdateProjectRequest\x1a!.project.v1.UpdateProjectResponseB\x97\x01\n" +
+	"\rUpdateProject\x12 .project.v1.UpdateProjectRequest\x1a!.project.v1.UpdateProjectResponse\x12u\n" +
+	"\x18UpdateProjectEnvironment\x12+.project.v1.UpdateProjectEnvironmentRequest\x1a,.project.v1.UpdateProjectEnvironmentResponseB\x97\x01\n" +
 	"\x0ecom.project.v1B\fProjectProtoP\x01Z.altalune.id/oagent/gen/go/project/v1;projectv1\xa2\x02\x03PXX\xaa\x02\n" +
 	"Project.V1\xca\x02\n" +
 	"Project\\V1\xe2\x02\x16Project\\V1\\GPBMetadata\xea\x02\vProject::V1b\x06proto3"
@@ -553,39 +727,48 @@ func file_project_v1_project_proto_rawDescGZIP() []byte {
 	return file_project_v1_project_proto_rawDescData
 }
 
-var file_project_v1_project_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_project_v1_project_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_project_v1_project_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_project_v1_project_proto_goTypes = []any{
-	(*Project)(nil),               // 0: project.v1.Project
-	(*CreateProjectRequest)(nil),  // 1: project.v1.CreateProjectRequest
-	(*CreateProjectResponse)(nil), // 2: project.v1.CreateProjectResponse
-	(*GetProjectRequest)(nil),     // 3: project.v1.GetProjectRequest
-	(*GetProjectResponse)(nil),    // 4: project.v1.GetProjectResponse
-	(*ListProjectsRequest)(nil),   // 5: project.v1.ListProjectsRequest
-	(*ListProjectsResponse)(nil),  // 6: project.v1.ListProjectsResponse
-	(*UpdateProjectRequest)(nil),  // 7: project.v1.UpdateProjectRequest
-	(*UpdateProjectResponse)(nil), // 8: project.v1.UpdateProjectResponse
-	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
+	(ProjectEnvironment)(0),                  // 0: project.v1.ProjectEnvironment
+	(*Project)(nil),                          // 1: project.v1.Project
+	(*CreateProjectRequest)(nil),             // 2: project.v1.CreateProjectRequest
+	(*CreateProjectResponse)(nil),            // 3: project.v1.CreateProjectResponse
+	(*GetProjectRequest)(nil),                // 4: project.v1.GetProjectRequest
+	(*GetProjectResponse)(nil),               // 5: project.v1.GetProjectResponse
+	(*ListProjectsRequest)(nil),              // 6: project.v1.ListProjectsRequest
+	(*ListProjectsResponse)(nil),             // 7: project.v1.ListProjectsResponse
+	(*UpdateProjectRequest)(nil),             // 8: project.v1.UpdateProjectRequest
+	(*UpdateProjectResponse)(nil),            // 9: project.v1.UpdateProjectResponse
+	(*UpdateProjectEnvironmentRequest)(nil),  // 10: project.v1.UpdateProjectEnvironmentRequest
+	(*UpdateProjectEnvironmentResponse)(nil), // 11: project.v1.UpdateProjectEnvironmentResponse
+	(*timestamppb.Timestamp)(nil),            // 12: google.protobuf.Timestamp
 }
 var file_project_v1_project_proto_depIdxs = []int32{
-	9,  // 0: project.v1.Project.created_at:type_name -> google.protobuf.Timestamp
-	9,  // 1: project.v1.Project.updated_at:type_name -> google.protobuf.Timestamp
-	0,  // 2: project.v1.CreateProjectResponse.project:type_name -> project.v1.Project
-	0,  // 3: project.v1.GetProjectResponse.project:type_name -> project.v1.Project
-	0,  // 4: project.v1.ListProjectsResponse.projects:type_name -> project.v1.Project
-	0,  // 5: project.v1.UpdateProjectResponse.project:type_name -> project.v1.Project
-	1,  // 6: project.v1.ProjectService.CreateProject:input_type -> project.v1.CreateProjectRequest
-	3,  // 7: project.v1.ProjectService.GetProject:input_type -> project.v1.GetProjectRequest
-	5,  // 8: project.v1.ProjectService.ListProjects:input_type -> project.v1.ListProjectsRequest
-	7,  // 9: project.v1.ProjectService.UpdateProject:input_type -> project.v1.UpdateProjectRequest
-	2,  // 10: project.v1.ProjectService.CreateProject:output_type -> project.v1.CreateProjectResponse
-	4,  // 11: project.v1.ProjectService.GetProject:output_type -> project.v1.GetProjectResponse
-	6,  // 12: project.v1.ProjectService.ListProjects:output_type -> project.v1.ListProjectsResponse
-	8,  // 13: project.v1.ProjectService.UpdateProject:output_type -> project.v1.UpdateProjectResponse
-	10, // [10:14] is the sub-list for method output_type
-	6,  // [6:10] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	12, // 0: project.v1.Project.created_at:type_name -> google.protobuf.Timestamp
+	12, // 1: project.v1.Project.updated_at:type_name -> google.protobuf.Timestamp
+	0,  // 2: project.v1.Project.environment:type_name -> project.v1.ProjectEnvironment
+	1,  // 3: project.v1.CreateProjectResponse.project:type_name -> project.v1.Project
+	1,  // 4: project.v1.GetProjectResponse.project:type_name -> project.v1.Project
+	1,  // 5: project.v1.ListProjectsResponse.projects:type_name -> project.v1.Project
+	1,  // 6: project.v1.UpdateProjectResponse.project:type_name -> project.v1.Project
+	0,  // 7: project.v1.UpdateProjectEnvironmentRequest.environment:type_name -> project.v1.ProjectEnvironment
+	1,  // 8: project.v1.UpdateProjectEnvironmentResponse.project:type_name -> project.v1.Project
+	2,  // 9: project.v1.ProjectService.CreateProject:input_type -> project.v1.CreateProjectRequest
+	4,  // 10: project.v1.ProjectService.GetProject:input_type -> project.v1.GetProjectRequest
+	6,  // 11: project.v1.ProjectService.ListProjects:input_type -> project.v1.ListProjectsRequest
+	8,  // 12: project.v1.ProjectService.UpdateProject:input_type -> project.v1.UpdateProjectRequest
+	10, // 13: project.v1.ProjectService.UpdateProjectEnvironment:input_type -> project.v1.UpdateProjectEnvironmentRequest
+	3,  // 14: project.v1.ProjectService.CreateProject:output_type -> project.v1.CreateProjectResponse
+	5,  // 15: project.v1.ProjectService.GetProject:output_type -> project.v1.GetProjectResponse
+	7,  // 16: project.v1.ProjectService.ListProjects:output_type -> project.v1.ListProjectsResponse
+	9,  // 17: project.v1.ProjectService.UpdateProject:output_type -> project.v1.UpdateProjectResponse
+	11, // 18: project.v1.ProjectService.UpdateProjectEnvironment:output_type -> project.v1.UpdateProjectEnvironmentResponse
+	14, // [14:19] is the sub-list for method output_type
+	9,  // [9:14] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_project_v1_project_proto_init() }
@@ -598,13 +781,14 @@ func file_project_v1_project_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_project_v1_project_proto_rawDesc), len(file_project_v1_project_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   9,
+			NumEnums:      1,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_project_v1_project_proto_goTypes,
 		DependencyIndexes: file_project_v1_project_proto_depIdxs,
+		EnumInfos:         file_project_v1_project_proto_enumTypes,
 		MessageInfos:      file_project_v1_project_proto_msgTypes,
 	}.Build()
 	File_project_v1_project_proto = out.File

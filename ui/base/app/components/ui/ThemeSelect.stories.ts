@@ -6,8 +6,7 @@ const meta = {
   component: ThemeSelect,
   args: {
     modelValue: 'oagent',
-    label: 'Theme',
-    open: true,
+    label: 'Theme family',
     families: [
       { id: 'oagent', label: 'OAgent', theme: 'oagent-light' },
       { id: 'bumblebee', label: 'Bumblebee', theme: 'bumblebee-light' },

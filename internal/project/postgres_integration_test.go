@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/org"
@@ -141,6 +142,42 @@ func TestProjectStore_SaveUpdatesMutableColumnsOnly(t *testing.T) {
 	inA, err := f.projects.List(tenant.Into(ctx, tenant.Context{OrgID: orgA}), orgA)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"web-renamed"}, slugsOf(inA), "upsert by id must not insert a second row")
+}
+
+func TestProjectStore_Environment(t *testing.T) {
+	f := newProjectFixture(t)
+	orgA := f.seedOrg(t, "acme")
+	scope := tenant.Into(t.Context(), tenant.Context{OrgID: orgA})
+	p := newProject(t, orgA, "web", uuid.New())
+	require.NoError(t, f.projects.Save(scope, p))
+	require.NoError(t, f.projects.SetEnvironment(scope, p.ID, project.EnvironmentStaging))
+	got, err := f.projects.ByID(scope, p.ID)
+	require.NoError(t, err)
+	assert.Equal(t, project.EnvironmentStaging, got.Environment)
+	assert.True(t, project.IsNotFoundError(f.projects.SetEnvironment(scope, uuid.New(), project.EnvironmentStaging)))
+
+	assert.Equal(t, "23514", pgCode(f.projects.SetEnvironment(scope, p.ID, "qa")), "the check constraint refuses an unknown tag")
+}
+
+func TestService_EnvironmentSurvivesAStaleSave(t *testing.T) {
+	f := newProjectFixture(t)
+	orgID := f.seedOrg(t, "acme")
+	scope := tenant.Into(t.Context(), tenant.Context{OrgID: orgID})
+	p := newProject(t, orgID, "web", uuid.New())
+	require.NoError(t, f.projects.Save(scope, p))
+	stale, err := f.projects.ByID(scope, p.ID)
+	require.NoError(t, err)
+
+	svc := project.NewService(f.projects, apperror.NewReporter(nil, false).Unexpected)
+	_, err = svc.UpdateEnvironment(scope, p.ID, project.EnvironmentStaging)
+	require.NoError(t, err)
+	stale.Name = "Web renamed"
+	require.NoError(t, f.projects.Save(scope, stale), "a rename read before the tag change writes after it")
+
+	got, err := f.projects.ByID(scope, p.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "Web renamed", got.Name)
+	assert.Equal(t, project.EnvironmentStaging, got.Environment, "the rename keeps the tag set in between")
 }
 
 func TestProjectStore_UniqueConstraints(t *testing.T) {

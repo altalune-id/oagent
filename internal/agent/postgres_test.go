@@ -29,9 +29,12 @@ func TestAgentRow_ToAgent(t *testing.T) {
 		CreatedBy:   createdBy,
 		CreatedAt:   time.Unix(1, 0),
 		UpdatedAt:   time.Unix(2, 0),
+		DraftConfig: `{"model":"m-1","tools":[{"name":"search","require_approval":true}]}`,
 	}
 
-	a := in.toAgent()
+	a, err := in.toAgent()
+	require.NoError(t, err)
+	assert.Equal(t, Config{Model: "m-1", Tools: []Tool{{Name: "search", RequireApproval: true}}}, a.Draft)
 	assert.Equal(t, in.ID, a.ID)
 	assert.Equal(t, in.OrgID, a.OrgID)
 	assert.Equal(t, in.ProjectID, a.ProjectID)
@@ -39,6 +42,12 @@ func TestAgentRow_ToAgent(t *testing.T) {
 	assert.Equal(t, "n", a.Name)
 	assert.Equal(t, "d", a.Description)
 	assert.Equal(t, createdBy, a.CreatedBy)
+
+	in.DraftConfig = "not json"
+	_, err = in.toAgent()
+	assert.Error(t, err)
+	_, err = (&versionRow{Config: "not json"}).toVersion()
+	assert.Error(t, err)
 }
 
 func TestNewStore(t *testing.T) {
@@ -46,7 +55,11 @@ func TestNewStore(t *testing.T) {
 }
 
 func agentRowColumns() []string {
-	return []string{"agents.id", "agents.public_id", "agents.org_id", "agents.project_id", "agents.slug", "agents.name", "agents.description", "agents.created_by", "agents.created_at", "agents.updated_at"}
+	return []string{
+		"agents.id", "agents.public_id", "agents.org_id", "agents.project_id", "agents.slug", "agents.name", "agents.description",
+		"agents.created_by", "agents.created_at", "agents.updated_at",
+		"agents.draft_config", "agents.draft_updated_at", "agents.published_version", "agents.published_at",
+	}
 }
 
 func TestList(t *testing.T) {
@@ -55,7 +68,7 @@ func TestList(t *testing.T) {
 
 	id := uuid.New()
 	rows := sqlmock.NewRows(agentRowColumns()).
-		AddRow(id, "p", uuid.New(), uuid.New(), "acme", "Acme", "d", nil, time.Now(), time.Now())
+		AddRow(id, "p", uuid.New(), uuid.New(), "acme", "Acme", "d", nil, time.Now(), time.Now(), "{}", nil, 0, nil)
 	dbtest.ExpectTx(mock)
 	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 	mock.ExpectCommit()

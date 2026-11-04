@@ -4,15 +4,51 @@ import type { ShownError } from '../../lib/apperror/message';
 export interface NavItem {
   key: string;
   label: string;
+  to: string;
   icon?: string;
   active?: boolean;
+  badge?: string | number;
+}
+
+export interface Crumb {
+  label: string;
+  to?: string;
+  mono?: boolean;
+}
+
+export interface Column {
+  key: string;
+  label: string;
+  align?: 'start' | 'end';
+  mono?: boolean;
+  muted?: boolean;
+  hideLabel?: boolean;
+  sortable?: boolean;
+}
+
+export interface TableSort {
+  key: string;
+  dir: 'ascending' | 'descending';
+}
+
+export interface KeyValueItem {
+  label: string;
+  value?: string;
+  mono?: boolean;
+  copy?: boolean;
+}
+
+export interface NavGroup {
+  label?: string;
+  items: NavItem[];
 }
 
 export interface EntityItem {
   key: string;
   label: string;
   active?: boolean;
-  pinned?: boolean;
+  mono?: boolean;
+  badge?: string;
 }
 
 export interface LanguageOption {
@@ -38,4 +74,20 @@ export interface ConfirmHandle {
 export interface StatItem {
   label: string;
   value: string | number;
+  unknown?: string;
+}
+
+export type StatusTone = 'success' | 'warning' | 'error' | 'info' | 'neutral';
+
+export interface PaletteItem {
+  key: string;
+  label: string;
+  to: string;
+  group?: string;
+  mono?: boolean;
+}
+
+export interface TopBarPlace {
+  label: string;
+  badge?: string;
 }

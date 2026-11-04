@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from '#base/components/ui/PageHeader.vue';
 import WebhookCreateModal from '~/components/webhook/create/WebhookCreateModal.vue';
 import WebhookList from '~/components/webhook/list/WebhookList.vue';
 import { useCan } from '~/composables/useCan';
@@ -26,18 +27,12 @@ await useAuthStore().load();
 </script>
 
 <template>
-  <div v-if="org && project" class="space-y-6">
-    <div class="flex items-start justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold">
-          {{ t('webhooks.title') }}
-        </h1>
-        <p class="text-sm text-base-content/60">
-          {{ t('webhooks.subtitle') }}
-        </p>
-      </div>
-      <WebhookCreateModal v-if="canManage" :org-id="org.id" :project-id="project.id" />
-    </div>
+  <div v-if="org && project" class="flex flex-col gap-4">
+    <PageHeader :title="t('webhooks.title')" :description="t('webhooks.subtitle')">
+      <template v-if="canManage" #actions>
+        <WebhookCreateModal :org-id="org.id" :project-id="project.id" />
+      </template>
+    </PageHeader>
     <WebhookList :org-id="org.id" :project-id="project.id" :can-manage="canManage" />
   </div>
 </template>

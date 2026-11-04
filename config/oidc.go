@@ -13,6 +13,8 @@ type OIDCConfig struct {
 	ClientSecret string   `yaml:"clientSecret" mapstructure:"clientSecret" awareness:"secret"`
 	Scopes       []string `yaml:"scopes"       mapstructure:"scopes"`
 	ButtonLabel  string   `yaml:"buttonLabel"  mapstructure:"buttonLabel"`
+	// AccountURL is where a signed-in person manages their account at the provider, linked from the console's user menu.
+	AccountURL string `yaml:"accountURL" mapstructure:"accountURL" validate:"omitempty,http_url"`
 }
 
 // Enabled reports whether a provider is configured.
@@ -20,6 +22,15 @@ func (c OIDCConfig) Enabled() bool { return c.Issuer != "" }
 
 // NormalizedIssuer is Issuer without a trailing slash, the key every account link is stored under.
 func (c OIDCConfig) NormalizedIssuer() string { return strings.TrimSuffix(c.Issuer, "/") }
+
+// IssuerHost is the issuer's host, as the sign-in page names it; empty when Issuer is unset or unparsable.
+func (c OIDCConfig) IssuerHost() string {
+	u, err := url.Parse(c.Issuer)
+	if err != nil {
+		return ""
+	}
+	return u.Host
+}
 
 // NormalizeScopes trims each scope, as an env list like "openid, email" leaves spaces.
 func NormalizeScopes(scopes []string) []string {

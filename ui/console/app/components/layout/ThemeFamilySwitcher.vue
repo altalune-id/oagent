@@ -12,5 +12,5 @@ const options = computed<ThemeFamilyOption[]>(() =>
 </script>
 
 <template>
-  <ThemeSelect :label="t('theme.label')" :model-value="family.id" :families="options" @select="setFamily" />
+  <ThemeSelect :label="t('theme.family')" :model-value="family.id" :families="options" @select="setFamily" />
 </template>

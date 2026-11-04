@@ -4,7 +4,7 @@ import ThemeToggle from './ThemeToggle.vue';
 const meta = {
   title: 'UI/ThemeToggle',
   component: ThemeToggle,
-  args: { mode: 'light', lightLabel: 'Light', darkLabel: 'Dark' },
+  args: { mode: 'light', label: 'Switch between light and dark' },
 } satisfies Meta<typeof ThemeToggle>;
 
 export default meta;

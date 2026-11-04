@@ -110,8 +110,13 @@ func (s *InviteService) DraftInvite(
 	if err != nil {
 		return nil, err
 	}
+	members, err := s.orgs.MembersURL(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&invitev1.DraftInviteResponse{
 		Invite: s.toProto(ctx, d), OrgId: req.Msg.GetOrgId(), OrgName: strings.Join(strings.Fields(name), " "),
+		ConsoleUrl: members, CanConfirm: session.PrincipalFrom(ctx).Source != session.SourceToken,
 	}), nil
 }
 

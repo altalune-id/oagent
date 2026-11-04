@@ -37,6 +37,7 @@ service ProjectService {
     };
   }
   rpc UpdateProject(UpdateProjectRequest) returns (UpdateProjectResponse);
+  rpc UpdateProjectEnvironment(UpdateProjectEnvironmentRequest) returns (UpdateProjectEnvironmentResponse);
 }
 
 message Project {
@@ -48,6 +49,16 @@ message Project {
   string name = 5;
   google.protobuf.Timestamp created_at = 6;
   google.protobuf.Timestamp updated_at = 7;
+  ProjectEnvironment environment = 8;
+}
+
+// ProjectEnvironment is an optional tag for what a project is used for; UNSPECIFIED is no tag.
+enum ProjectEnvironment {
+  PROJECT_ENVIRONMENT_UNSPECIFIED = 0;
+  PROJECT_ENVIRONMENT_PRODUCTION = 1;
+  PROJECT_ENVIRONMENT_STAGING = 2;
+  PROJECT_ENVIRONMENT_DEVELOPMENT = 3;
+  PROJECT_ENVIRONMENT_LABS = 4;
 }
 
 message CreateProjectRequest {
@@ -106,5 +117,18 @@ message UpdateProjectRequest {
 }
 
 message UpdateProjectResponse {
+  Project project = 1;
+}
+
+message UpdateProjectEnvironmentRequest {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  // UNSPECIFIED clears the tag.
+  ProjectEnvironment environment = 2 [(buf.validate.field).enum.defined_only = true];
+}
+
+message UpdateProjectEnvironmentResponse {
   Project project = 1;
 }

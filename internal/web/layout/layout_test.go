@@ -40,6 +40,11 @@ func TestLayoutDataHref(t *testing.T) {
 func TestLayoutDataStatic(t *testing.T) {
 	assert.Equal(t, "/app/static/app.css", LayoutData{BasePath: "/app/"}.Static("/app.css"))
 	assert.Equal(t, "/static/favicon.ico", LayoutData{}.Static("/favicon.ico"))
+
+	known := func(name string) string { return map[string]string{"app.css": "abc123"}[name] }
+	d := Kit{BasePath: "/app", Version: known}.Layout("Sign in")
+	assert.Equal(t, "/app/static/app.css?v=abc123", d.Static("/app.css"), "the kit carries the version into every page")
+	assert.Equal(t, "/app/static/favicon.ico", d.Static("/favicon.ico"), "an unknown file stays unversioned")
 }
 
 func TestLayoutDataLang(t *testing.T) {
@@ -90,18 +95,33 @@ func TestLayoutTemplate(t *testing.T) {
 	out := buf.String()
 
 	assert.Contains(t, out, "<!doctype html>")
-	assert.Contains(t, out, `<html lang="id" data-theme="oagent-light">`)
+	assert.Contains(t, out, `<html lang="id">`, "no data-theme: the page follows the system, oagent-light or its prefersdark oagent-dark")
 	assert.Contains(t, out, "<title>Home &lt;x&gt; · OAgent</title>")
 	assert.Contains(t, out, `href="/app/static/favicon.ico"`)
 	assert.Contains(t, out, `href="/app/static/favicon-32x32.png"`)
 	assert.Contains(t, out, `href="/app/static/apple-touch-icon.png"`)
 	assert.Contains(t, out, `href="/app/static/app.css"`)
 	assert.Contains(t, out, "<p>inner</p>")
+	assert.Contains(t, out, `<body class="min-h-screen bg-base-200 text-sm leading-[normal] text-base-content">`, "the design's 14px base text")
 }
 
 func TestLayoutTemplateDefaultsLang(t *testing.T) {
 	out := renderString(t, Layout(LayoutData{Title: "Home"}))
 	assert.Contains(t, out, `<html lang="en"`)
+}
+
+func TestColumnTemplate(t *testing.T) {
+	ctx := templ.WithChildren(context.Background(), templ.Raw("<p>inner</p>"))
+	var buf bytes.Buffer
+	require.NoError(t, Column(LayoutData{BasePath: "/app", Title: "Sign in"}).Render(ctx, &buf))
+	out := buf.String()
+
+	assert.Contains(t, out, "<title>Sign in · OAgent</title>")
+	assert.Contains(t, out, `href="/app/static/app.css"`, "the column shares the layout's head")
+	assert.NotContains(t, out, "data-theme", "the sign-in page follows the system theme")
+	assert.Contains(t, out, `<body class="min-h-dvh bg-base-100 text-sm leading-[normal] text-base-content">`, "the design's 14px base text")
+	assert.Contains(t, out, `<div class="flex w-full max-w-[25rem] flex-col gap-5"><p>inner</p></div>`)
+	assert.NotContains(t, out, "card")
 }
 
 func TestCardTemplate(t *testing.T) {
@@ -241,6 +261,7 @@ func TestTemplatesReturnWriteErrors(t *testing.T) {
 		c    templ.Component
 	}{
 		{"Layout", Layout(d)},
+		{"Column", Column(d)},
 		{"Card", Card("Title")},
 		{"Error", Error(d, "message")},
 		{"PasswordField", PasswordField(d, PasswordFieldData{Name: "password", Label: "Password"})},
@@ -267,7 +288,7 @@ func TestTemplatesStopOnCancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	d := LayoutData{Title: "Oops"}
-	for _, c := range []templ.Component{Layout(d), Card("Title"), Error(d, "message"), PasswordField(d, PasswordFieldData{})} {
+	for _, c := range []templ.Component{Layout(d), Column(d), Card("Title"), Error(d, "message"), PasswordField(d, PasswordFieldData{})} {
 		var buf bytes.Buffer
 		require.ErrorIs(t, c.Render(ctx, &buf), context.Canceled)
 		assert.Empty(t, buf.String())
@@ -276,7 +297,7 @@ func TestTemplatesStopOnCancelledContext(t *testing.T) {
 
 func TestTemplatesReturnChildErrors(t *testing.T) {
 	ctx := templ.WithChildren(context.Background(), failing(errWriteLimit))
-	for _, c := range []templ.Component{Layout(LayoutData{}), Card("Title")} {
+	for _, c := range []templ.Component{Layout(LayoutData{}), Column(LayoutData{}), Card("Title")} {
 		var buf bytes.Buffer
 		assert.ErrorIs(t, c.Render(ctx, &buf), errWriteLimit)
 	}

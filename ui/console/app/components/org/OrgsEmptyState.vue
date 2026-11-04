@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import AppButton from '#base/components/ui/AppButton.vue';
+import EmptyState from '#base/components/ui/EmptyState.vue';
+
 export interface OrgsEmptyStateLabels {
   title: string;
   body: string;
@@ -9,23 +12,14 @@ const { logoutUrl, labels } = defineProps<{ logoutUrl: string, labels: OrgsEmpty
 </script>
 
 <template>
-  <div class="card mt-6 border border-base-300 bg-base-100">
-    <div class="card-body items-center text-center">
-      <Icon name="lucide:building-2" size="32" class="text-base-content/40" />
-      <h2 class="card-title text-base">
-        {{ labels.title }}
-      </h2>
-      <p class="text-sm text-base-content/60">
-        {{ labels.body }}
-      </p>
-      <div class="card-actions mt-2 justify-center">
-        <form method="post" :action="logoutUrl">
-          <button type="submit" class="btn btn-sm btn-ghost gap-2">
-            <Icon name="lucide:log-out" size="16" />
-            {{ labels.signOut }}
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
+  <EmptyState icon="lucide:building-2" :title="labels.title" :body="labels.body">
+    <template #actions>
+      <form method="post" :action="logoutUrl">
+        <AppButton type="submit" variant="ghost" size="sm">
+          <Icon name="lucide:log-out" size="16" class="shrink-0" aria-hidden="true" />
+          {{ labels.signOut }}
+        </AppButton>
+      </form>
+    </template>
+  </EmptyState>
 </template>

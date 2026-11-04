@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import AppButton from '#base/components/ui/AppButton.vue';
 import LoadError from '#base/components/ui/LoadError.vue';
 import LoadingStatus from '#base/components/ui/LoadingStatus.vue';
+import PageHeader from '#base/components/ui/PageHeader.vue';
 import SavedNote from '#base/components/ui/SavedNote.vue';
 import { useDates } from '#base/composables/useDates';
 import InviteModal from '~/components/member/invite/InviteModal.vue';
@@ -42,6 +44,7 @@ const {
 } = invite;
 
 const labels = computed(() => ({
+  caption: t('members.title'),
   member: t('members.col_member'),
   role: t('members.col_role'),
   you: t('members.you'),
@@ -50,6 +53,7 @@ const labels = computed(() => ({
   memberRole: t('members.role_member'),
   remove: t('members.remove'),
   actions: t('members.actions_for', { name: '{name}' }),
+  actionsColumn: t('members.col_actions'),
   leave: t('members.leave'),
   cancel: t('common.cancel'),
   removeTitle: t('members.remove_title'),
@@ -73,6 +77,8 @@ const modalLabels = computed(() => ({
 }));
 const inviteLabels = computed(() => ({
   title: t('invites.title'),
+  actionsColumn: t('invites.col_actions'),
+  actionsFor: t('members.actions_for', { name: '{name}' }),
   draftsTitle: t('invites.drafts_title'),
   draftsHint: t('invites.drafts_hint'),
   email: t('invites.col_email'),
@@ -93,31 +99,28 @@ const inviteLabels = computed(() => ({
   copy: t('invites.copy'),
 }));
 
-await members.load();
-if (canInvite.value) {
-  await invite.load();
+async function load() {
+  await members.load();
+  if (canInvite.value) {
+    await invite.load();
+  }
 }
+void load();
 
 useHead({ title: () => `${org.value?.name ?? t('org.title')} · ${t('members.title')} · OAgent` });
 </script>
 
 <template>
-  <div v-if="org" class="space-y-6">
-    <div class="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h1 class="text-2xl font-bold">
-          {{ t('members.title') }}
-        </h1>
-        <p class="text-sm text-base-content/60">
-          {{ t('members.subtitle') }}
-        </p>
-      </div>
-      <button v-if="canInvite" type="button" class="btn btn-primary btn-sm" @click="invite.open">
-        <Icon name="lucide:user-plus" size="16" />
-        {{ t('invites.invite') }}
-      </button>
-    </div>
-    <LoadError v-if="loadError" :error="loadError" :busy="loading" :retry-label="t('common.retry')" @retry="members.load()" />
+  <div v-if="org" class="flex flex-col gap-5">
+    <PageHeader :title="t('members.title')" :description="t('members.subtitle')">
+      <template v-if="canInvite" #actions>
+        <AppButton size="sm" @click="invite.open">
+          <Icon name="lucide:user-plus" size="16" class="shrink-0" aria-hidden="true" />
+          {{ t('invites.invite') }}
+        </AppButton>
+      </template>
+    </PageHeader>
+    <LoadError v-if="loadError" :error="loadError" :busy="loading" :retry-label="t('common.retry')" @retry="load" />
     <LoadingStatus v-else-if="loading" :label="t('common.loading')" />
     <MemberList
       v-else

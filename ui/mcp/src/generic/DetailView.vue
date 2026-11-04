@@ -13,11 +13,11 @@ const note = computed(() => (object.value && d.note ? d.note(object.value) : '')
 
 <template>
   <ViewShell :title="d.title">
-    <p v-if="!object" class="text-sm text-base-content/60">
+    <p v-if="!object" class="text-sm text-base-content/70">
       {{ t('mcp.nothing') }}
     </p>
     <template v-else>
-      <div v-if="d.kind === 'result'" role="status" class="alert alert-soft alert-success py-2 text-sm">
+      <div v-if="d.kind === 'result'" role="status" class="alert alert-soft text-base-content alert-success py-2 text-sm">
         <Icon name="lucide:circle-check" size="16" />
         {{ t('common.done') }}
       </div>

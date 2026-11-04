@@ -100,7 +100,7 @@ func (h *Web) getLink(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	inv, err := h.o.Invites.Lookup(r.Context(), r.PathValue("token"))
 	if err != nil {
-		h.failed(w, r, nil, err)
+		h.failed(w, r, inv, err)
 		return
 	}
 	h.cookie.Set(w, inv.PublicID+"|"+strconv.FormatInt(inv.ExpiresAt.Unix(), 10), inv.ExpiresAt)
@@ -238,7 +238,11 @@ func (h *Web) landing(r *http.Request, inv *Invite) (views.LandingData, error) {
 		}
 		v.Password = slices.Contains(h.o.Methods, MethodPassword)
 		if slices.Contains(h.o.Methods, MethodOIDC) {
-			v.OIDCURL, v.OIDCLabel = h.oidcURL(inv), h.o.OIDCLabel
+			slug, err := h.o.OrgLinks.Slug(ctx, inv.OrgID)
+			if err != nil {
+				return views.LandingData{}, err
+			}
+			v.OIDCURL, v.OIDCLabel = h.oidcURL(inv, slug), h.o.OIDCLabel
 		}
 		v.State = views.StateJoin
 		if !v.Password && v.OIDCURL == "" {
@@ -288,7 +292,19 @@ func (h *Web) failed(w http.ResponseWriter, r *http.Request, inv *Invite, err er
 	h.cookie.Clear(w)
 	v := views.GoneData{Message: goneMessage(reason)}
 	p := session.PrincipalFrom(r.Context())
-	v.SignIn = reason == ReasonUsed && !p.IsPerson()
+	v.SignIn = (reason == ReasonUsed || reason == ReasonExpired) && !p.IsPerson()
+	if reason == ReasonExpired && p.IsPerson() {
+		v.OpenURL, v.OpenOrg = h.o.Kit.Path("/console/"), "the console"
+	}
+	if inv != nil && reason == ReasonExpired {
+		if org, oerr := h.o.Orgs.Name(r.Context(), inv.OrgID); oerr == nil {
+			who, ok := h.o.Invites.knownInviter(r.Context(), inv.InvitedBy)
+			if !ok {
+				who = "the person who invited you"
+			}
+			v.Message = "Your invite to join " + strings.Join(strings.Fields(org), " ") + " has expired. Ask " + who + " to send you a new one."
+		}
+	}
 	if inv != nil && reason == ReasonUsed && p.IsPerson() && inv.AcceptedBy == p.UserID {
 		if slug, serr := h.o.OrgLinks.Slug(r.Context(), inv.OrgID); serr == nil {
 			v.OpenURL = h.consoleURL(slug)
@@ -364,9 +380,9 @@ func (h *Web) readCookie(r *http.Request) (publicID string, issued int64, ok boo
 }
 
 // NOTE: the OIDC sign-in claims the invite by its public id, for its verified email only; the account picker lets the invitee choose.
-func (h *Web) oidcURL(inv *Invite) string {
+func (h *Web) oidcURL(inv *Invite, orgSlug string) string {
 	q := url.Values{
-		"invite": {inv.PublicID}, "login_hint": {inv.Email}, "prompt": {"select_account"}, "return_to": {h.o.Kit.Path("/console/")},
+		"invite": {inv.PublicID}, "login_hint": {inv.Email}, "prompt": {"select_account"}, "return_to": {h.consoleURL(orgSlug)},
 	}
 	return h.o.Kit.Path("/login/oidc") + "?" + q.Encode()
 }

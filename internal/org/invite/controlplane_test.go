@@ -41,6 +41,10 @@ func (o orgIDs) IDByPublicID(_ context.Context, publicID string) (uuid.UUID, err
 	return uuid.Nil, &org.NotFoundError{}
 }
 
+func (o orgIDs) MembersURL(_ context.Context, _ uuid.UUID) (string, error) {
+	return "https://oagent.example.com/console/o/acme/settings/members", nil
+}
+
 type cpFixture struct {
 	*fixture
 	other uuid.UUID
@@ -145,6 +149,8 @@ func TestInviteService_Flow(t *testing.T) {
 	assert.Equal(t, orgPublicID, draft.Msg.GetOrgId())
 	assert.Equal(t, "Acme Corp", draft.Msg.GetOrgName())
 	assert.Equal(t, "member", draft.Msg.GetInvite().GetRole())
+	assert.Equal(t, "https://oagent.example.com/console/o/acme/settings/members", draft.Msg.GetConsoleUrl())
+	assert.True(t, draft.Msg.GetCanConfirm(), "a person in the console sends it themselves")
 
 	list, err := c.ListInvites(ctx, connect.NewRequest(&invitev1.ListInvitesRequest{OrgId: orgPublicID}))
 	require.NoError(t, err)
@@ -235,6 +241,8 @@ func TestInviteService_TokenDraftsButNeverSends(t *testing.T) {
 
 	draft, err := c.DraftInvite(ctx, connect.NewRequest(&invitev1.DraftInviteRequest{OrgId: orgPublicID, Email: "dina@x.io"}))
 	require.NoError(t, err)
+	assert.False(t, draft.Msg.GetCanConfirm(), "a token is told to send it from the console")
+	assert.NotEmpty(t, draft.Msg.GetConsoleUrl())
 	_, err = c.ConfirmDraftInvite(ctx, connect.NewRequest(&invitev1.ConfirmDraftInviteRequest{OrgId: orgPublicID, InviteId: draft.Msg.GetInvite().GetId()}))
 	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
 	assert.Equal(t, apperror.CodeForbidden, errCode(t, err))

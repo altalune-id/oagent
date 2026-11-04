@@ -58,3 +58,15 @@ func TestValidateName(t *testing.T) {
 	assert.True(t, IsInvalidNameError(ValidateName("")))
 	assert.True(t, IsInvalidNameError(ValidateName(strings.Repeat("a", 201))))
 }
+
+func TestProject_SetEnvironment(t *testing.T) {
+	p, err := NewProject(uuid.New(), "acme", "Acme Inc", uuid.New())
+	require.NoError(t, err)
+	assert.Equal(t, EnvironmentNone, p.Environment, "a new project has no tag")
+	for _, env := range []string{EnvironmentProduction, EnvironmentStaging, EnvironmentDevelopment, EnvironmentLabs, EnvironmentNone} {
+		require.NoError(t, p.SetEnvironment(env))
+		assert.Equal(t, env, p.Environment)
+	}
+	assert.Error(t, p.SetEnvironment("qa"))
+	assert.Equal(t, EnvironmentNone, p.Environment, "a refused tag changes nothing")
+}

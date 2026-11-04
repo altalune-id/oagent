@@ -1,3 +1,4 @@
+import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -18,8 +19,20 @@ describe('useAgentsStore', () => {
     const agents = useAgentsStore();
     await agents.load('x6MH9WPWjktMwCBKHy4pF');
     expect(listAgents).toHaveBeenCalledWith({ projectId: 'x6MH9WPWjktMwCBKHy4pF' });
-    expect(agents.items).toEqual([bot, other]);
-    expect(agents.forProject('x6MH9WPWjktMwCBKHy4pF')).toEqual([bot]);
+    expect(agents.items).toEqual([{ ...bot, publishedVersion: undefined, unpublishedChanges: undefined, updatedAt: undefined }, { ...other, publishedVersion: undefined, unpublishedChanges: undefined, updatedAt: undefined }]);
+    expect(agents.forProject('x6MH9WPWjktMwCBKHy4pF').map(a => a.id)).toEqual([bot.id]);
+  });
+
+  it('keeps the published version, the draft flag and the newest of draft and update times', async () => {
+    const draftAt = new Date('2026-11-02T01:00:00Z');
+    const updatedAt = new Date('2026-11-01T01:00:00Z');
+    setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [
+      { ...bot, publishedVersion: 3, unpublishedChanges: true, draftUpdatedAt: timestampFromDate(draftAt), updatedAt: timestampFromDate(updatedAt) },
+      { ...other, projectId: bot.projectId, publishedVersion: 0, unpublishedChanges: false, updatedAt: timestampFromDate(updatedAt) },
+    ] }) });
+    const agents = useAgentsStore();
+    await agents.load(bot.projectId);
+    expect(agents.items.map(a => [a.publishedVersion, a.unpublishedChanges, a.updatedAt?.toISOString()])).toEqual([[3, true, draftAt.toISOString()], [0, false, updatedAt.toISOString()]]);
   });
 
   it('treats a missing list as empty', async () => {

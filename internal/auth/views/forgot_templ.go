@@ -63,14 +63,14 @@ func Forgot(d layout.LayoutData, v ForgotData) templ.Component {
 				}
 				ctx = templ.InitializeContext(ctx)
 				if v.Error != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div role=\"alert\" class=\"alert alert-error alert-soft\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div role=\"alert\" class=\"alert alert-error alert-soft text-base-content\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var4 string
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(v.Error)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `auth/views/forgot.templ`, Line: 16, Col: 68}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `auth/views/forgot.templ`, Line: 16, Col: 86}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 					if templ_7745c5c3_Err != nil {
@@ -86,7 +86,7 @@ func Forgot(d layout.LayoutData, v ForgotData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if v.Sent {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div role=\"status\" class=\"alert alert-info alert-soft\">If an account exists for that email, we sent a link to reset its password. The link works for one hour.</div><p class=\"text-sm\"><a class=\"link\" href=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div role=\"status\" class=\"alert alert-info alert-soft text-base-content\">If an account exists for that email, we sent a link to reset its password. The link works for one hour.</div><p class=\"text-sm\"><a class=\"link\" href=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

@@ -51,7 +51,7 @@ templ SignInError(d layout.LayoutData, v SignInErrorData) {
 	@layout.Layout(d) {
 		{{ c := v.copy() }}
 		@layout.Card(c.title) {
-			<div role="alert" class="alert alert-error alert-soft">
+			<div role="alert" class="alert alert-error alert-soft text-base-content">
 				<span>
 					if c.lead != "" {
 						<span class="font-medium break-all">{ c.lead }</span>
@@ -65,7 +65,7 @@ templ SignInError(d layout.LayoutData, v SignInErrorData) {
 				}
 				<a class="btn btn-ghost btn-block" href={ templ.SafeURL(v.BackURL) }>Back to sign in</a>
 			</div>
-			<p class="text-xs text-base-content/60">Error code: { v.Code }</p>
+			<p class="text-xs text-base-content/70">Error code: { v.Code }</p>
 		}
 	}
 }

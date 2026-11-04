@@ -23,6 +23,7 @@ export const NameRefused: Story = { args: { name: 'x'.repeat(40), fieldError: 'A
 
 const passwordLabels = {
   title: 'Password',
+  email: 'Email',
   current: 'Current password',
   next: 'New password',
   rules: 'At least 12 characters, not a common password, and not your email or name.',

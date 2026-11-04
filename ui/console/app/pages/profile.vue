@@ -28,6 +28,7 @@ const {
 const nameLabels = computed(() => ({ title: t('profile.name_title'), name: t('common.name'), hint: t('profile.name_hint'), save: t('common.save') }));
 const passwordLabels = computed(() => ({
   title: t('profile.password_title'),
+  email: t('field.email'),
   current: t('profile.current_password'),
   next: t('profile.new_password'),
   rules: t('profile.password_rules'),
@@ -49,19 +50,19 @@ useHead({ title: () => `${t('profile.title')} · OAgent` });
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-2xl space-y-6 px-4 py-8 sm:px-6 sm:py-10">
+  <div class="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 py-8 sm:px-6 sm:py-10">
     <div class="flex items-center gap-4">
       <Avatar v-if="person" :id="person.id" :name="person.name" :email="person.email" :avatar-url="person.avatarUrl" size="lg" />
       <div class="min-w-0">
-        <h1 class="text-2xl font-bold">
+        <h1 class="text-xl font-semibold">
           {{ t('profile.title') }}
         </h1>
-        <p v-if="person" class="truncate text-sm text-base-content/60">
+        <p v-if="person" class="truncate text-ui text-base-content/70">
           {{ person.email }}
         </p>
       </div>
     </div>
-    <p v-if="!isPerson" class="text-sm text-base-content/70">
+    <p v-if="!isPerson" class="text-ui text-base-content/70">
       {{ t('profile.not_a_person') }}
     </p>
     <template v-else>

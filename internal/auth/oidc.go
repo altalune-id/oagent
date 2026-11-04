@@ -33,10 +33,12 @@ type OIDCProvider interface {
 	EndSessionURL(ctx context.Context, idTokenHint, postLogoutRedirectURI, state string) (string, error)
 }
 
-// OIDCSignIn is sign-in through the OIDC provider: its relying party, button, sign-out landing, signup and last user.
+// OIDCSignIn is sign-in through the OIDC provider: its relying party, button, issuer host, sign-out landing, signup and last user.
 type OIDCSignIn struct {
-	Provider         OIDCProvider
-	ButtonLabel      string
+	Provider    OIDCProvider
+	ButtonLabel string
+	IssuerHost  string
+	// SignedOut is the login page's public URL, where sign-out lands and which the page shows.
 	SignedOut        string
 	OpenSignup       bool
 	RememberLastUser bool
@@ -143,7 +145,14 @@ func (h *Web) callback(w http.ResponseWriter, r *http.Request) {
 	var rpErr *oidcrp.Error
 	switch {
 	case errors.As(err, &rpErr) && rpErr.Reason == oidcrp.ReasonCancelled:
-		http.Redirect(w, r, h.kit.Path("/login"), http.StatusSeeOther)
+		to := h.kit.Path("/login")
+		switch {
+		case st.Invite != "":
+			to = h.kit.Path("/invite")
+		case st.ReturnTo != "":
+			to += "?" + url.Values{"return_to": {st.ReturnTo}}.Encode()
+		}
+		http.Redirect(w, r, to, http.StatusSeeOther) //nolint:gosec // G710: return_to was sanitized when the sign-in started.
 		return
 	case errors.As(err, &rpErr) && (expiredReason(rpErr.Reason) || refusedCode(rpErr)):
 		h.signInFailed(w, r, &SignInExpiredError{}, "", st.ReturnTo)
