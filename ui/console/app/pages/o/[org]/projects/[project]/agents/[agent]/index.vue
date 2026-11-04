@@ -65,6 +65,7 @@ const loaded = computed(() => !!state.value && !draft.loadError.value);
 const canPublish = computed(() => canEdit.value && loaded.value && !usesSamples.value && !draft.publishing.value && (current.value === 0 || !!state.value?.unpublishedChanges || draft.dirty.value));
 
 onBeforeRouteLeave(() => draft.leaveGuard());
+onBeforeRouteUpdate(() => draft.leaveGuard());
 onMounted(() => window.addEventListener('beforeunload', draft.warnUnload));
 onBeforeUnmount(() => window.removeEventListener('beforeunload', draft.warnUnload));
 
@@ -114,7 +115,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
         </p>
       </div>
       <div v-if="canEdit" class="flex items-center gap-2">
-        <AppButton variant="plain" size="sm" :disabled="!canPublish" @click="publishOpen = true">
+        <AppButton variant="plain" size="sm" :disabled="!loaded" @click="publishOpen = true">
           <Icon name="lucide:git-compare" size="16" aria-hidden="true" />
           {{ t('configure.view_changes') }}
         </AppButton>
@@ -153,7 +154,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
         <AppButton variant="plain" size="sm" :disabled="draft.publishing.value" @click="publishOpen = false">
           {{ t('configure.keep_editing') }}
         </AppButton>
-        <AppButton size="sm" :busy="draft.publishing.value" :aria-busy="draft.publishing.value || undefined" @click="publish()">
+        <AppButton size="sm" :busy="draft.publishing.value" :aria-busy="draft.publishing.value || undefined" :disabled="!canPublish" :aria-describedby="reasonId" @click="publish()">
           {{ draft.publishing.value ? t('configure.publishing') : t('configure.publish_n', { n: current + 1 }) }}
         </AppButton>
       </template>

@@ -208,6 +208,20 @@ describe('useAgentDraft', () => {
     expect(await d.leaveGuard()).toBe(true);
   });
 
+  it('blocks a leave again after a save succeeds between two failures', async () => {
+    const d = useAgentDraft(id);
+    await d.load();
+    d.config.value = { ...d.config.value, model: 'small-3' };
+    await vi.advanceTimersByTimeAsync(0);
+    client.updateAgentDraft!.mockRejectedValueOnce(connectError('GEN900'));
+    expect(await d.leaveGuard()).toBe(false);
+    expect(await d.save()).toBe(true);
+    d.config.value = { ...d.config.value, model: 'tiny-1' };
+    await vi.advanceTimersByTimeAsync(0);
+    client.updateAgentDraft!.mockRejectedValueOnce(connectError('GEN900'));
+    expect(await d.leaveGuard()).toBe(false);
+  });
+
   it('keeps edits typed while a publish is in flight, and saves them after', async () => {
     const d = useAgentDraft(id);
     await d.load();

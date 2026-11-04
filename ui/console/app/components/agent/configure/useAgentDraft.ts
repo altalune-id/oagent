@@ -26,6 +26,7 @@ export function useAgentDraft(agentId: string) {
   const dirty = ref(false);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let saved = '';
+  let leaveBlocked = false;
   let inflight: Promise<boolean> | null = null;
 
   const diff = computed(() => changes(config.value, live.value));
@@ -71,6 +72,7 @@ export function useAgentDraft(agentId: string) {
         track(stateOf(res.agent));
       }
       saved = body;
+      leaveBlocked = false;
       return true;
     } catch (e) {
       saveError.value = errorMessage(e, 'error.save_draft');
@@ -154,8 +156,6 @@ export function useAgentDraft(agentId: string) {
       event.preventDefault();
     }
   }
-
-  let leaveBlocked = false;
 
   async function leaveGuard() {
     if (!dirty.value && !saving.value) {

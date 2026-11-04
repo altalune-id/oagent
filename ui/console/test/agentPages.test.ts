@@ -158,6 +158,7 @@ describe('configure page', () => {
   beforeEach(() => {
     vi.stubGlobal('definePageMeta', vi.fn());
     vi.stubGlobal('onBeforeRouteLeave', vi.fn());
+    vi.stubGlobal('onBeforeRouteUpdate', vi.fn());
   });
 
   it('locks the form and Publish after a failed load', async () => {
@@ -180,6 +181,29 @@ describe('configure page', () => {
     expect(w.get('[role="status"]').element.parentElement!.textContent).toContain('configure.samples_block');
     await publish.trigger('click');
     expect(client.publishAgent).not.toHaveBeenCalled();
+    const view = w.findAll('button').find(b => b.text() === 'configure.view_changes')!;
+    expect(view.attributes('disabled')).toBeUndefined();
+    await view.trigger('click');
+    const dialog = [...document.querySelectorAll('dialog')].find(d => d.open)!;
+    const publishN = [...dialog.querySelectorAll('button')].find(b => b.textContent?.includes('configure.publish_n'))!;
+    expect(publishN.disabled).toBe(true);
+    publishN.click();
+    await flushPromises();
+    expect(client.publishAgent).not.toHaveBeenCalled();
+    w.unmount();
+  });
+
+  it('guards a move to another agent\'s Configure page like a leave', async () => {
+    const update = vi.fn();
+    vi.stubGlobal('onBeforeRouteUpdate', update);
+    inProject('/agents/support', [support], 'agent:read', 'agent:write');
+    const client = withDraft();
+    const w = await mountPage(ConfigurePage);
+    expect(update).toHaveBeenCalledOnce();
+    const guard = update.mock.calls[0]![0] as () => Promise<boolean>;
+    client.updateAgentDraft.mockRejectedValue(new Error('offline'));
+    await w.get('textarea').setValue('Help even more.');
+    expect(await guard()).toBe(false);
     w.unmount();
   });
 
