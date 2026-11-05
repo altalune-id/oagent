@@ -107,11 +107,24 @@ message Agent {
 
 // AgentTool is a tool the agent may call; require_approval makes a person approve each call.
 message AgentTool {
-  string name = 1 [(buf.validate.field).string.pattern = "^[a-z0-9_.-]{1,64}$"];
+  string name = 1 [(buf.validate.field).string.pattern = "^[a-zA-Z0-9_.-]{1,64}$"];
   bool require_approval = 2;
 }
 
-// AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique.
+// McpGrant lets an agent call the listed tools of one MCP server; missing is output only and true when the server no longer exists.
+message McpGrant {
+  string server_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  repeated AgentTool tools = 2 [
+    (buf.validate.field).repeated.max_items = 64,
+    (buf.validate.field).cel = {id: "agent.grant_tools.unique", expression: "this.map(t, t.name).unique() ? '' : 'tool names must be unique'"}
+  ];
+  bool missing = 3;
+}
+
+// AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider's public id; provider_missing is output only.
 message AgentConfig {
   string instructions = 1 [
     (buf.validate.field).cel = {id: "agent.instructions.max_len.32000", expression: "this.size() <= 32000 ? '' : 'must be at most 32000 characters'"}
@@ -136,6 +149,16 @@ message AgentConfig {
     (buf.validate.field).repeated.max_items = 64,
     (buf.validate.field).cel = {id: "agent.tools.unique", expression: "this.map(t, t.name).unique() ? '' : 'tool names must be unique'"}
   ];
+  string provider_id = 7 [(buf.validate.field).string.(oagent.v1.public_id) = true];
+  string helper_model = 8 [
+    (buf.validate.field).cel = {id: "agent.helper_model.max_len.128", expression: "this.size() <= 128 ? '' : 'must be at most 128 characters'"},
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9._:/-]*$"
+  ];
+  repeated McpGrant mcp_servers = 9 [
+    (buf.validate.field).repeated.max_items = 16,
+    (buf.validate.field).cel = {id: "agent.mcp_servers.unique", expression: "this.map(g, g.server_id).unique() ? '' : 'server ids must be unique'"}
+  ];
+  bool provider_missing = 10;
 }
 
 // AgentVersion is an immutable published configuration; version is a display label, id the public id.

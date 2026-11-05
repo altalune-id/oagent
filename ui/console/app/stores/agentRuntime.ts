@@ -1,21 +1,6 @@
 import { sampleAgentRuntime, sampleAgentSlug } from '~/preview/samples';
 
-export type AskWhen = 'never' | 'always' | 'match';
-
-export interface ToolGrant {
-  serverId: string;
-  serverName: string;
-  tool: string;
-  ask: AskWhen;
-  matchArg?: string;
-  matchValue?: boolean;
-}
-
 export interface AgentRuntimeConfig {
-  providerId: string;
-  model: string;
-  helperModel: string;
-  grants: ToolGrant[];
   webFetch: boolean;
   allowedDomains: string[];
   webSearch: boolean;
@@ -24,10 +9,10 @@ export interface AgentRuntimeConfig {
 }
 
 export function emptyRuntime(): AgentRuntimeConfig {
-  return { providerId: '', model: '', helperModel: '', grants: [], webFetch: false, allowedDomains: [], webSearch: false, memory: false, knowledgeIds: [] };
+  return { webFetch: false, allowedDomains: [], webSearch: false, memory: false, knowledgeIds: [] };
 }
 
-// TODO: replace with the runtime config RPCs; until then this keeps each agent's provider, tools, web, memory and knowledge draft.
+// TODO: replace with the web, memory and knowledge RPCs; until then this keeps each agent's draft of them.
 export const useAgentRuntimeStore = defineStore('agentRuntime', () => {
   const drafts = ref<Record<string, AgentRuntimeConfig>>({});
   const sampled = ref<string[]>([]);

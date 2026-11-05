@@ -3,6 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { fakeRuntimeClients } from '~~/test/fixtures/runtime';
 import { mountPage } from '#test/mount-page';
 import { setClient, setRoute } from '#test/nuxt-globals';
 import Overview from '~/pages/o/[org]/projects/[project]/index.vue';
@@ -16,6 +17,7 @@ const projectId = 'x6MH9WPWjktMwCBKHy4pF';
 
 beforeEach(() => {
   setActivePinia(createPinia());
+  fakeRuntimeClients();
   useOrgsStore().items = [{ id: orgId, slug: 'acme', name: 'Acme', role: 'owner', permissions: [] }];
   useProjectsStore().items = [{ id: projectId, orgId, slug: 'web', name: 'Web' }] as never;
   setRoute({ path: '/o/acme/projects/web', params: { org: 'acme', project: 'web' } });
@@ -40,8 +42,8 @@ describe('project overview', () => {
     expect(rows[1]!.find('.badge').exists()).toBe(false);
   });
 
-  it('leads with the set-up checklist, done from the sample providers and servers up to the next step', async () => {
-    setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ id: 'A1', projectId, slug: 'yasaku-keuangan', name: 'Yasaku Keuangan' }] }) });
+  it('leads with the set-up checklist, done from the providers, servers and the draft\'s provider up to the next step', async () => {
+    setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ id: 'A1', projectId, slug: 'yasaku-keuangan', name: 'Yasaku Keuangan', draft: { providerId: 'Pv6tQm2ZxR8wKp3VbNc4K', model: 'openai/gpt-4.1-mini' } }] }) });
     const w = await mountPage(Overview);
     const steps = w.findAll('[data-testid="setup-checklist"] li');
     expect(steps).toHaveLength(6);
@@ -57,7 +59,7 @@ describe('project overview', () => {
   });
 
   it('marks Try it and the channel done from what happened in this session', async () => {
-    setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ id: 'A1', projectId, slug: 'yasaku-keuangan', name: 'Yasaku Keuangan', publishedVersion: 4 }] }) });
+    setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ id: 'A1', projectId, slug: 'yasaku-keuangan', name: 'Yasaku Keuangan', publishedVersion: 4, draft: { providerId: 'Pv6tQm2ZxR8wKp3VbNc4K', model: 'openai/gpt-4.1-mini' } }] }) });
     useTryItStore().markTried('A1');
     useChannelsStore().save('A1', { id: 'chn_1', provider: 'openwa', status: 'connected', baseUrl: 'https://openwa.example.id', deviceId: 'dev_1', webhookUrl: '', rejected24h: 0, rejectedLastHour: 0 });
     const w = await mountPage(Overview);

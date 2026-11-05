@@ -20,7 +20,9 @@ import (
 	apikeyv1 "altalune.id/oagent/gen/go/apikey/v1"
 	authv1 "altalune.id/oagent/gen/go/auth/v1"
 	invitev1 "altalune.id/oagent/gen/go/invite/v1"
+	mcpserverv1 "altalune.id/oagent/gen/go/mcpserver/v1"
 	memberv1 "altalune.id/oagent/gen/go/member/v1"
+	modelproviderv1 "altalune.id/oagent/gen/go/modelprovider/v1"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	projectv1 "altalune.id/oagent/gen/go/project/v1"
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
@@ -36,6 +38,8 @@ var unruled = map[string]string{
 
 	"apikey.v1.CreateAPIKeyRequest.all_projects":    "a bool; the domain checks it against project_ids (KEY005)",
 	"webhook.v1.UpdateWebhookRequest.active":        "a bool; false deactivates",
+	"mcpserver.v1.CreateMcpServerRequest.trusted":   "a bool; true lets read-only hints skip approval",
+	"mcpserver.v1.UpdateMcpServerRequest.trusted":   "a bool; true lets read-only hints skip approval",
 	"webhook.v1.ListWebhookDeliveriesRequest.limit": "any int32 works today: clamped to 1..50",
 }
 
@@ -179,6 +183,13 @@ func TestRequestRules_Accept(t *testing.T) {
 		{"12-character password counted in runes", &authv1.ChangePasswordRequest{CurrentPassword: "x", NewPassword: strings.Repeat("ü", 12)}},
 		{"common password is the domain's", &authv1.ChangePasswordRequest{CurrentPassword: "x", NewPassword: "password1234"}},
 		{"padded description", &agentv1.UpdateAgentRequest{Id: goodID, Name: "Bot", Description: " " + strings.Repeat("d", 2000) + " "}},
+		{"model provider", newProviderRequest()},
+		{"mcp server", newMCPRequest()},
+		{"mcp server without auth", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) {
+			r.AuthKind, r.AuthHeader, r.AuthValue = mcpserverv1.McpServerAuthKind_MCP_SERVER_AUTH_KIND_NONE, "", ""
+		})},
+		{"mcp server update keeping the value", &mcpserverv1.UpdateMcpServerRequest{Id: goodID, Url: "https://e.com/mcp", AuthKind: mcpserverv1.McpServerAuthKind_MCP_SERVER_AUTH_KIND_BEARER, TimeoutMs: 20000}},
+		{"model provider update keeping the key", &modelproviderv1.UpdateModelProviderRequest{Id: goodID, Name: "p", Kind: openAICompatible, BaseUrl: "https://e.com/v1", Models: []*modelproviderv1.Model{{Id: "org/model:v1.2"}}}},
 		{"webhook url url.Parse accepts", &webhookv1.CreateWebhookRequest{OrgId: goodID, ProjectId: goodID, Url: " HTTPS://example.com/a b/ü ", EventTypes: []string{"agent.created"}}},
 		{"duplicate events are the domain's", &webhookv1.UpdateWebhookRequest{OrgId: goodID, ProjectId: goodID, Id: goodID, Url: "http://[::1]:8080/x", EventTypes: []string{"agent.created", "agent.created"}}},
 		{"any delivery limit", &webhookv1.ListWebhookDeliveriesRequest{OrgId: goodID, ProjectId: goodID, Id: goodID, Limit: -5}},
@@ -241,6 +252,37 @@ func TestRequestRules_Refuse(t *testing.T) {
 		{"2-character slug", &projectv1.CreateProjectRequest{OrgId: goodID, Name: "Web", Slug: "ab"}, "slug", apperror.FieldTooShort},
 		{"65-character slug", &agentv1.CreateAgentRequest{OrgId: goodID, ProjectId: goodID, Name: "Bot", Slug: strings.Repeat("a", 65)}, "slug", apperror.FieldTooLong},
 		{"missing slug on update", &orgv1.UpdateOrgRequest{Id: goodID, Name: "Acme"}, "slug", apperror.FieldRequired},
+		{"missing provider org", withProvider(func(r *modelproviderv1.CreateModelProviderRequest) { r.OrgId = "" }), "org_id", apperror.FieldRequired},
+		{"missing provider kind", withProvider(func(r *modelproviderv1.CreateModelProviderRequest) { r.Kind = 0 }), "kind", apperror.FieldRequired},
+		{"unknown provider kind", withProvider(func(r *modelproviderv1.CreateModelProviderRequest) { r.Kind = 99 }), "kind", apperror.FieldNotAllowed},
+		{"relative base url", withProvider(func(r *modelproviderv1.CreateModelProviderRequest) { r.BaseUrl = "/v1" }), "base_url", apperror.FieldInvalidFormat},
+		{"2049-character base url", withProvider(func(r *modelproviderv1.CreateModelProviderRequest) {
+			r.BaseUrl = "https://e.com/" + strings.Repeat("u", 2035)
+		}), "base_url", apperror.FieldTooLong},
+		{"missing api key", withProvider(func(r *modelproviderv1.CreateModelProviderRequest) { r.ApiKey = "" }), "api_key", apperror.FieldRequired},
+		{"513-character api key", withProvider(func(r *modelproviderv1.CreateModelProviderRequest) { r.ApiKey = strings.Repeat("k", 513) }), "api_key", apperror.FieldTooLong},
+		{"no models", withProvider(func(r *modelproviderv1.CreateModelProviderRequest) { r.Models = nil }), "models", apperror.FieldRequired},
+		{"65 models", withProvider(func(r *modelproviderv1.CreateModelProviderRequest) { r.Models = manyModels(65) }), "models", apperror.FieldTooMany},
+		{"duplicate model ids", withProvider(func(r *modelproviderv1.CreateModelProviderRequest) {
+			r.Models = []*modelproviderv1.Model{{Id: "a"}, {Id: "a"}}
+		}), "models", apperror.FieldInvalid},
+		{"model id shape", withProvider(func(r *modelproviderv1.CreateModelProviderRequest) { r.Models[0].Id = "bad id" }), "models[0].id", apperror.FieldInvalidFormat},
+		{"129-character model id", withProvider(func(r *modelproviderv1.CreateModelProviderRequest) { r.Models[0].Id = strings.Repeat("m", 129) }), "models[0].id", apperror.FieldTooLong},
+		{"negative price", withProvider(func(r *modelproviderv1.CreateModelProviderRequest) {
+			r.Models[0].Prices = &modelproviderv1.ModelPrices{OutputMicros: -1}
+		}), "models[0].prices.output_micros", apperror.FieldInvalid},
+		{"empty api key on update", &modelproviderv1.UpdateModelProviderRequest{Id: goodID, Name: "p", Kind: openAICompatible, BaseUrl: "https://e.com", ApiKey: new(string), Models: []*modelproviderv1.Model{{Id: "m"}}}, "api_key", apperror.FieldTooShort},
+		{"mcp server name with an underscore", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.Name = "my_server" }), "name", apperror.FieldInvalidFormat},
+		{"33-character mcp server name", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.Name = strings.Repeat("a", 33) }), "name", apperror.FieldInvalidFormat},
+		{"missing mcp server org", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.OrgId = "" }), "org_id", apperror.FieldRequired},
+		{"missing mcp auth kind", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.AuthKind = 0 }), "auth_kind", apperror.FieldRequired},
+		{"relative mcp url", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.Url = "/mcp" }), "url", apperror.FieldInvalidFormat},
+		{"2049-character mcp url", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.Url = "https://e.com/" + strings.Repeat("u", 2035) }), "url", apperror.FieldTooLong},
+		{"timeout 999", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.TimeoutMs = 999 }), "timeout_ms", apperror.FieldInvalid},
+		{"timeout 20001", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.TimeoutMs = 20001 }), "timeout_ms", apperror.FieldInvalid},
+		{"129-character header name", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.AuthHeader = strings.Repeat("h", 129) }), "auth_header", apperror.FieldTooLong},
+		{"4097-character auth value", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.AuthValue = strings.Repeat("v", 4097) }), "auth_value", apperror.FieldTooLong},
+		{"empty auth value on update", &mcpserverv1.UpdateMcpServerRequest{Id: goodID, Url: "https://e.com", AuthKind: mcpserverv1.McpServerAuthKind_MCP_SERVER_AUTH_KIND_BEARER, AuthValue: new(string), TimeoutMs: 5000}, "auth_value", apperror.FieldTooShort},
 		{"delivery id", &webhookv1.RetryWebhookDeliveryRequest{OrgId: goodID, ProjectId: goodID, Id: goodID, DeliveryId: "x"}, "delivery_id", apperror.FieldInvalidFormat},
 	}
 	for _, tt := range refused {
@@ -251,6 +293,42 @@ func TestRequestRules_Refuse(t *testing.T) {
 			assert.Len(t, ae.Violations(), 1, "%v", ae.Violations())
 		})
 	}
+}
+
+const openAICompatible = modelproviderv1.ModelProviderKind_MODEL_PROVIDER_KIND_OPENAI_COMPATIBLE
+
+func newProviderRequest() *modelproviderv1.CreateModelProviderRequest {
+	return &modelproviderv1.CreateModelProviderRequest{
+		OrgId: goodID, ProjectId: goodID, Name: "openrouter", Kind: openAICompatible, BaseUrl: "https://openrouter.ai/api/v1", ApiKey: "sk-x",
+		Models: []*modelproviderv1.Model{{Id: "gpt-4o", Vision: true, Prices: &modelproviderv1.ModelPrices{InputMicros: 1}}, {Id: "llama-3"}},
+	}
+}
+
+func newMCPRequest() *mcpserverv1.CreateMcpServerRequest {
+	return &mcpserverv1.CreateMcpServerRequest{
+		OrgId: goodID, ProjectId: goodID, Name: "yasaku-2", Url: "https://yasaku.example.com/mcp",
+		AuthKind: mcpserverv1.McpServerAuthKind_MCP_SERVER_AUTH_KIND_HEADER, AuthHeader: "X-Api-Key", AuthValue: "v", TimeoutMs: 1000,
+	}
+}
+
+func withMCP(edit func(*mcpserverv1.CreateMcpServerRequest)) *mcpserverv1.CreateMcpServerRequest {
+	r := newMCPRequest()
+	edit(r)
+	return r
+}
+
+func withProvider(edit func(*modelproviderv1.CreateModelProviderRequest)) *modelproviderv1.CreateModelProviderRequest {
+	r := newProviderRequest()
+	edit(r)
+	return r
+}
+
+func manyModels(n int) []*modelproviderv1.Model {
+	out := make([]*modelproviderv1.Model, n)
+	for i := range out {
+		out[i] = &modelproviderv1.Model{Id: "m" + strings.Repeat("x", i)}
+	}
+	return out
 }
 
 func paramOf(vs []apperror.Violation, field string) string {

@@ -36,6 +36,7 @@ import (
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/org"
@@ -47,6 +48,7 @@ import (
 
 type apiFixture struct {
 	db     *sql.DB
+	pool   db.Pool
 	svcs   *Services
 	url    string
 	mcpURL string
@@ -106,7 +108,7 @@ func startAPIFixture(t *testing.T, idp *oidcrptest.IDP) *apiFixture {
 	require.NoError(t, err)
 	sys, err := svcs.Orgs.System(t.Context())
 	require.NoError(t, err)
-	return &apiFixture{db: sqlDB, svcs: svcs, url: ts.URL + "/api", mcpURL: ts.URL + "/mcp", owner: owner, orgID: sys.PublicID, sysID: sys.ID}
+	return &apiFixture{db: sqlDB, pool: svc, svcs: svcs, url: ts.URL + "/api", mcpURL: ts.URL + "/mcp", owner: owner, orgID: sys.PublicID, sysID: sys.ID}
 }
 
 func (f *apiFixture) mint(t *testing.T, kind apikey.Kind, scopes ...string) string {

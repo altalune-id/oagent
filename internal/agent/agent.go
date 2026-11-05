@@ -31,13 +31,16 @@ const (
 	maxSteps        = 100
 	maxCostCents    = 1000000
 	maxTools        = 64
+	maxGrants       = 16
+	maxGrantTools   = 128
 )
 
 //nolint:gochecknoglobals // immutable compiled patterns.
 var (
-	slugRe     = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`)
-	modelRe    = regexp.MustCompile(`^[A-Za-z0-9._:/-]*$`)
-	toolNameRe = regexp.MustCompile(`^[a-z0-9_.-]{1,64}$`)
+	slugRe      = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`)
+	modelRe     = regexp.MustCompile(`^[A-Za-z0-9._:/-]*$`)
+	toolNameRe  = regexp.MustCompile(`^[a-zA-Z0-9_.-]{1,64}$`)
+	grantNameRe = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
 )
 
 // Agent is an aggregate scoped to an organization and a project.
@@ -67,7 +70,43 @@ type Config struct {
 	Temperature  float64 `json:"temperature,omitempty"`
 	MaxSteps     int32   `json:"max_steps,omitempty"`
 	MaxCostCents int32   `json:"max_cost_cents,omitempty"`
-	Tools        []Tool  `json:"tools,omitempty"`
+	// Tools is the legacy tool list from before grants; a new draft never sets it.
+	Tools       []Tool     `json:"tools,omitempty"`
+	ProviderID  uuid.UUID  `json:"provider_id,omitzero"`
+	HelperModel string     `json:"helper_model,omitempty"`
+	MCPServers  []MCPGrant `json:"mcp_servers,omitempty"`
+}
+
+// MCPGrant lets the agent call the listed tools of one MCP server.
+type MCPGrant struct {
+	ServerID uuid.UUID `json:"server_id,omitzero"`
+	Tools    []Tool    `json:"tools,omitempty"`
+}
+
+// Legacy reports whether c predates provider grants: no provider, or a top-level tool list; it must be republished before it runs.
+func (c Config) Legacy() bool {
+	return c.ProviderID == uuid.Nil || len(c.Tools) > 0
+}
+
+// Models returns the model ids c uses, the main model first.
+func (c Config) Models() []string {
+	out := []string{}
+	if c.Model != "" {
+		out = append(out, c.Model)
+	}
+	if c.HelperModel != "" && c.HelperModel != c.Model {
+		out = append(out, c.HelperModel)
+	}
+	return out
+}
+
+// ServerIDs returns the MCP servers c grants tools of.
+func (c Config) ServerIDs() []uuid.UUID {
+	out := make([]uuid.UUID, 0, len(c.MCPServers))
+	for _, g := range c.MCPServers {
+		out = append(out, g.ServerID)
+	}
+	return out
 }
 
 // Tool is a tool the agent may call; RequireApproval makes a person approve each call.
@@ -101,6 +140,10 @@ func (c Config) Validate() error {
 		return invalid("model", apperror.FieldTooLong)
 	case !modelRe.MatchString(c.Model):
 		return invalid("model", apperror.FieldInvalidFormat)
+	case len(c.HelperModel) > maxModelLen:
+		return invalid("helper_model", apperror.FieldTooLong)
+	case !modelRe.MatchString(c.HelperModel):
+		return invalid("helper_model", apperror.FieldInvalidFormat)
 	case !(c.Temperature >= 0 && c.Temperature <= maxTemperature):
 		return invalid("temperature", apperror.FieldInvalid)
 	case c.MaxSteps < 0 || c.MaxSteps > maxSteps:
@@ -120,13 +163,49 @@ func (c Config) Validate() error {
 		}
 		seen[t.Name] = true
 	}
+	return c.validateGrants(invalid)
+}
+
+func (c Config) validateGrants(invalid func(string, apperror.FieldReason) error) error {
+	if len(c.MCPServers) > maxGrants {
+		return invalid("mcp_servers", apperror.FieldTooMany)
+	}
+	total := 0
+	servers := make(map[uuid.UUID]bool, len(c.MCPServers))
+	for _, g := range c.MCPServers {
+		if servers[g.ServerID] {
+			return invalid("mcp_servers", apperror.FieldInvalid)
+		}
+		servers[g.ServerID] = true
+		if len(g.Tools) > maxTools {
+			return invalid("mcp_servers.tools", apperror.FieldTooMany)
+		}
+		names := make(map[string]bool, len(g.Tools))
+		for _, t := range g.Tools {
+			if !grantNameRe.MatchString(t.Name) {
+				return &InvalidGrantError{Reason: GrantToolName, Name: t.Name}
+			}
+			if names[t.Name] {
+				return invalid("mcp_servers.tools", apperror.FieldInvalid)
+			}
+			names[t.Name] = true
+		}
+		total += len(g.Tools)
+	}
+	if total > maxGrantTools {
+		return invalid("mcp_servers", apperror.FieldTooMany)
+	}
 	return nil
 }
 
 // Equal reports whether c and o run the same; a nil and an empty tool list are equal.
 func (c Config) Equal(o Config) bool {
 	return c.Instructions == o.Instructions && c.Model == o.Model && c.Temperature == o.Temperature &&
-		c.MaxSteps == o.MaxSteps && c.MaxCostCents == o.MaxCostCents && slices.Equal(c.Tools, o.Tools)
+		c.MaxSteps == o.MaxSteps && c.MaxCostCents == o.MaxCostCents && slices.Equal(c.Tools, o.Tools) &&
+		c.ProviderID == o.ProviderID && c.HelperModel == o.HelperModel &&
+		slices.EqualFunc(c.MCPServers, o.MCPServers, func(a, b MCPGrant) bool {
+			return a.ServerID == b.ServerID && slices.Equal(a.Tools, b.Tools)
+		})
 }
 
 // SetDraft replaces the draft with a valid cfg edited at now; the published version is unchanged.
@@ -351,9 +430,29 @@ func versionToProto(v *Version, agentPublicID, createdBy string) *agentv1.AgentV
 func configToProto(c Config) *agentv1.AgentConfig {
 	out := &agentv1.AgentConfig{
 		Instructions: c.Instructions, Model: c.Model, Temperature: c.Temperature, MaxSteps: c.MaxSteps, MaxCostCents: c.MaxCostCents,
+		HelperModel: c.HelperModel, Tools: toolsToProto(c.Tools),
 	}
-	for _, t := range c.Tools {
-		out.Tools = append(out.Tools, &agentv1.AgentTool{Name: t.Name, RequireApproval: t.RequireApproval})
+	for _, g := range c.MCPServers {
+		out.McpServers = append(out.McpServers, &agentv1.McpGrant{Tools: toolsToProto(g.Tools)})
+	}
+	return out
+}
+
+func toolsToProto(tools []Tool) []*agentv1.AgentTool {
+	out := make([]*agentv1.AgentTool, 0, len(tools))
+	for _, t := range tools {
+		out = append(out, &agentv1.AgentTool{Name: t.Name, RequireApproval: t.RequireApproval})
+	}
+	return out
+}
+
+func toolsFromProto(tools []*agentv1.AgentTool) []Tool {
+	if len(tools) == 0 {
+		return nil
+	}
+	out := make([]Tool, 0, len(tools))
+	for _, t := range tools {
+		out = append(out, Tool{Name: t.GetName(), RequireApproval: t.GetRequireApproval()})
 	}
 	return out
 }
@@ -361,10 +460,11 @@ func configToProto(c Config) *agentv1.AgentConfig {
 func configFromProto(c *agentv1.AgentConfig) Config {
 	out := Config{
 		Instructions: c.GetInstructions(), Model: c.GetModel(), Temperature: c.GetTemperature(),
-		MaxSteps: c.GetMaxSteps(), MaxCostCents: c.GetMaxCostCents(),
+		MaxSteps: c.GetMaxSteps(), MaxCostCents: c.GetMaxCostCents(), HelperModel: c.GetHelperModel(),
+		Tools: toolsFromProto(c.GetTools()),
 	}
-	for _, t := range c.GetTools() {
-		out.Tools = append(out.Tools, Tool{Name: t.GetName(), RequireApproval: t.GetRequireApproval()})
+	for _, g := range c.GetMcpServers() {
+		out.MCPServers = append(out.MCPServers, MCPGrant{Tools: toolsFromProto(g.GetTools())})
 	}
 	return out
 }

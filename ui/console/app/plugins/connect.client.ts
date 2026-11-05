@@ -6,7 +6,9 @@ import { AgentService } from '#gen/agent/v1/agent_pb';
 import { APIKeyService } from '#gen/apikey/v1/apikey_pb';
 import { AuthService } from '#gen/auth/v1/auth_pb';
 import { InviteService } from '#gen/invite/v1/invite_pb';
+import { McpServerService } from '#gen/mcpserver/v1/mcpserver_pb';
 import { MemberService } from '#gen/member/v1/member_pb';
+import { ModelProviderService } from '#gen/modelprovider/v1/modelprovider_pb';
 import { OrgService } from '#gen/org/v1/org_pb';
 import { ProjectService } from '#gen/project/v1/project_pb';
 import { WebhookService } from '#gen/webhook/v1/webhook_pb';
@@ -42,6 +44,8 @@ export default defineNuxtPlugin({
         orgClient: createClient(OrgService, transport),
         projectClient: createClient(ProjectService, transport),
         agentClient: createClient(AgentService, transport),
+        modelProviderClient: createClient(ModelProviderService, transport),
+        mcpServerClient: createClient(McpServerService, transport),
         apiKeyClient: createClient(APIKeyService, transport),
         webhookClient: createClient(WebhookService, transport),
         memberClient: createClient(MemberService, transport),

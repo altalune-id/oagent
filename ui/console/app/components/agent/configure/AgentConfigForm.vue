@@ -1,34 +1,38 @@
 <script setup lang="ts">
 import type { AgentConfig } from './agentConfig';
 import type { ConfigureLinks } from './runtime';
+import type { FieldError as DraftFieldError } from './useAgentDraft';
 import type { AgentRuntimeConfig } from '~/stores/agentRuntime';
 import type { KnowledgeSource } from '~/stores/knowledge';
 import type { McpServer } from '~/stores/mcpServers';
-import type { ModelProvider } from '~/stores/providers';
+import type { ModelProvider, ProviderModel } from '~/stores/modelProviders';
 import AppButton from '#base/components/ui/AppButton.vue';
 import FieldError from '#base/components/ui/FieldError.vue';
 import Section from '#base/components/ui/Section.vue';
 import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { knowledgeTone } from '~/components/knowledge/knowledge';
+import { usdText } from '~/lib/money/usd';
 import { describedBy } from '~/lib/names/names';
 import McpGrants from './McpGrants.vue';
-import { chosenModel, costCapError, embeddingReady, parseDollars, parseDomains, readsPrivateData } from './runtime';
+import { chosenModel, costCapError, helperCapError, parseDollars, parseDomains, readsPrivateData } from './runtime';
 
-const { providers, servers, sources, searchReady, links, legacyModel = '', disabled = false } = defineProps<{
+const { providers, servers, sources, searchReady, embeddings, links, legacyModel = '', disabled = false, fieldError = null } = defineProps<{
   providers: ModelProvider[],
   servers: McpServer[],
   sources: KnowledgeSource[],
   searchReady: boolean,
+  embeddings: boolean,
   links: ConfigureLinks,
   legacyModel?: string,
   disabled?: boolean,
+  fieldError?: DraftFieldError | null,
 }>();
 
 const config = defineModel<AgentConfig>({ required: true });
 const runtime = defineModel<AgentRuntimeConfig>('runtime', { required: true });
 const { t } = useI18n();
 const uid = useId();
-const ids = { count: `${uid}-count`, temperature: `${uid}-temp`, helper: `${uid}-helper`, domains: `${uid}-domains`, steps: `${uid}-steps`, cost: `${uid}-cost` };
+const ids = { count: `${uid}-count`, temperature: `${uid}-temp`, helper: `${uid}-helper`, provider: `${uid}-provider`, model: `${uid}-model`, tools: `${uid}-tools`, domains: `${uid}-domains`, steps: `${uid}-steps`, cost: `${uid}-cost` };
 
 const sections = computed(() => [
   { id: 'configure-instructions', label: t('configure.instructions') },
@@ -39,19 +43,36 @@ const sections = computed(() => [
   { id: 'configure-limits', label: t('limits.title') },
 ]);
 
-const chosen = computed(() => chosenModel(runtime.value, providers));
-const chatModels = computed(() => (chosen.value.provider?.models ?? []).filter(m => !m.embedding));
-const embeddings = computed(() => embeddingReady(providers));
-const allowListRequired = computed(() => readsPrivateData(runtime.value));
+const chosen = computed(() => chosenModel(config.value, providers));
+const chatModels = computed(() => chosen.value.provider?.models ?? []);
+const allowListRequired = computed(() => readsPrivateData(config.value, runtime.value));
+const serverError = (...reasons: string[]) => (fieldError && reasons.includes(fieldError.reason) ? fieldError.message : '');
+
+function modelLabel(m: ProviderModel) {
+  const name = m.vision ? t('configure.model_vision', { model: m.id }) : m.id;
+  return m.prices ? name : t('configure.model_unpriced_option', { model: name });
+}
+
+const priceLine = computed(() => {
+  const p = chosen.value.model?.prices;
+  if (!chosen.value.model) {
+    return '';
+  }
+  return p ? t('configure.model_price', { input: usdText(p.inputMicros), output: usdText(p.outputMicros) }) : t('configure.model_unpriced');
+});
 const allowListError = computed(() => runtime.value.webFetch && allowListRequired.value && runtime.value.allowedDomains.length === 0 ? t('webtools.allowlist_required') : '');
 const costText = ref(config.value.maxCostCents > 0 ? (config.value.maxCostCents / 100).toFixed(2) : '');
 const costTyped = computed(() => parseDollars(costText.value));
+const helperError = computed(() => {
+  const key = helperCapError(config.value, providers);
+  return key ? t(key, { model: config.value.helperModel, provider: chosen.value.provider?.name ?? '' }) : serverError('helper_model');
+});
 const costError = computed(() => {
   if (costTyped.value === null) {
     return t('limits.not_amount');
   }
-  const key = costCapError(runtime.value, { providers, maxCostCents: config.value.maxCostCents });
-  return key ? t(key, { provider: chosen.value.provider?.name ?? '' }) : '';
+  const key = costCapError(config.value, providers);
+  return key ? t(key, { provider: chosen.value.provider?.name ?? '' }) : serverError('budget_unpriced');
 });
 
 watch(costTyped, (cents) => {
@@ -79,7 +100,7 @@ function goTo(id: string) {
 function setProvider(id: string) {
   const provider = providers.find(p => p.id === id);
   const keep = (m: string) => (provider?.models.some(x => x.id === m) ? m : '');
-  runtime.value = { ...runtime.value, providerId: id, model: keep(runtime.value.model), helperModel: keep(runtime.value.helperModel) };
+  config.value = { ...config.value, providerId: id, providerMissing: false, model: keep(config.value.model), helperModel: keep(config.value.helperModel) };
 }
 
 function toggleSource(id: string, on: boolean) {
@@ -122,6 +143,13 @@ function toggleSource(id: string, on: boolean) {
           <p v-if="legacyModel" class="text-ui text-base-content/70">
             {{ t('legacy.was_model', { model: legacyModel }) }}
           </p>
+          <div v-if="config.providerMissing" role="alert" class="alert alert-warning alert-soft text-base-content text-ui">
+            <Icon name="lucide:triangle-alert" size="16" class="shrink-0" aria-hidden="true" />
+            <span>
+              {{ t('configure.provider_missing') }}
+              <NuxtLink :to="links.providers" class="link">{{ t('providers.title') }}</NuxtLink>
+            </span>
+          </div>
           <p v-if="!providers.length" class="text-ui text-base-content/70">
             {{ t('configure.no_providers') }}
             <NuxtLink :to="links.providers" class="link">
@@ -129,43 +157,63 @@ function toggleSource(id: string, on: boolean) {
             </NuxtLink>
           </p>
           <div class="grid gap-4 sm:grid-cols-2">
-            <label class="flex flex-col gap-1">
-              <span class="label text-ui text-base-content">{{ t('configure.provider') }}</span>
-              <select class="select select-sm w-full text-ui" data-field="model" :value="runtime.providerId" @change="setProvider(($event.target as HTMLSelectElement).value)">
-                <option value="" disabled>
-                  {{ t('configure.choose_provider') }}
-                </option>
-                <option v-for="p in providers" :key="p.id" :value="p.id">
-                  {{ p.name }}
-                </option>
-              </select>
-            </label>
-            <label class="flex flex-col gap-1">
-              <span class="label text-ui text-base-content">{{ t('configure.model') }}</span>
-              <select v-model="runtime.model" class="select select-sm w-full font-mono text-xs" :disabled="!chosen.provider">
-                <option value="" disabled>
-                  {{ t('configure.choose_model') }}
-                </option>
-                <option v-for="m in chatModels" :key="m.id" :value="m.id">
-                  {{ m.vision ? t('configure.model_vision', { model: m.id }) : m.id }}
-                </option>
-              </select>
-            </label>
+            <div class="flex flex-col gap-1">
+              <label class="flex flex-col gap-1">
+                <span class="label text-ui text-base-content">{{ t('configure.provider') }}</span>
+                <select
+                  class="select select-sm w-full text-ui" data-field="model" :class="{ 'select-error': serverError('provider') }" :value="config.providerId"
+                  :aria-invalid="!!serverError('provider')" :aria-describedby="describedBy(!!serverError('provider') && `${ids.provider}-err`)"
+                  @change="setProvider(($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="" disabled>
+                    {{ t('configure.choose_provider') }}
+                  </option>
+                  <option v-for="p in providers" :key="p.id" :value="p.id">
+                    {{ p.name }}
+                  </option>
+                </select>
+              </label>
+              <FieldError :id="`${ids.provider}-err`" :message="serverError('provider')" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="flex flex-col gap-1">
+                <span class="label text-ui text-base-content">{{ t('configure.model') }}</span>
+                <select
+                  v-model="config.model" class="select select-sm w-full font-mono text-xs" :class="{ 'select-error': serverError('model') }" :disabled="!chosen.provider"
+                  :aria-invalid="!!serverError('model')" :aria-describedby="describedBy(`${ids.model}-hint`, !!serverError('model') && `${ids.model}-err`)"
+                >
+                  <option value="" disabled>
+                    {{ t('configure.choose_model') }}
+                  </option>
+                  <option v-for="m in chatModels" :key="m.id" :value="m.id">
+                    {{ modelLabel(m) }}
+                  </option>
+                </select>
+              </label>
+              <p :id="`${ids.model}-hint`" class="text-xs text-base-content/70">
+                {{ priceLine }}
+              </p>
+              <FieldError :id="`${ids.model}-err`" :message="serverError('model')" />
+            </div>
             <div class="flex flex-col gap-1">
               <label class="flex flex-col gap-1">
                 <span class="label text-ui text-base-content">{{ t('configure.helper_model') }}</span>
-                <select v-model="runtime.helperModel" class="select select-sm w-full font-mono text-xs" :disabled="!chosen.provider" :aria-describedby="`${ids.helper}-hint`">
+                <select
+                  v-model="config.helperModel" data-field="helper" class="select select-sm w-full font-mono text-xs" :class="{ 'select-error': helperError }" :disabled="!chosen.provider"
+                  :aria-invalid="!!helperError" :aria-describedby="describedBy(`${ids.helper}-hint`, !!helperError && `${ids.helper}-err`)"
+                >
                   <option value="">
                     {{ t('configure.helper_none') }}
                   </option>
                   <option v-for="m in chatModels" :key="m.id" :value="m.id">
-                    {{ m.id }}
+                    {{ modelLabel(m) }}
                   </option>
                 </select>
               </label>
               <p :id="`${ids.helper}-hint`" class="text-xs text-base-content/70">
                 {{ t('configure.helper_hint') }}
               </p>
+              <FieldError :id="`${ids.helper}-err`" :message="helperError" />
             </div>
             <div class="flex flex-col gap-1">
               <label class="flex flex-col gap-1">
@@ -186,7 +234,8 @@ function toggleSource(id: string, on: boolean) {
         </Section>
 
         <Section id="configure-tools" :title="t('grants.title')" :description="t('grants.hint')" class="scroll-mt-14">
-          <McpGrants v-model="runtime" :servers="servers" :disabled="disabled" :servers-link="links.servers" />
+          <McpGrants v-model="config" :servers="servers" :disabled="disabled" :servers-link="links.servers" />
+          <FieldError :id="ids.tools" :message="serverError('server', 'tool_name', 'legacy_tools')" />
           <div v-if="config.tools.length" class="flex flex-col gap-2 rounded-box border border-base-300 px-4 py-3">
             <h3 class="text-ui font-semibold">
               {{ t('legacy.old_tools') }}
@@ -207,7 +256,7 @@ function toggleSource(id: string, on: boolean) {
           </div>
         </Section>
 
-        <Section id="configure-web" :title="t('webtools.title')" class="scroll-mt-14">
+        <Section id="configure-web" :title="t('webtools.title')" :description="t('configure.preview_section')" class="scroll-mt-14">
           <div class="flex flex-col gap-2">
             <label class="label cursor-pointer gap-2 text-ui text-base-content">
               <input v-model="runtime.webFetch" type="checkbox" class="toggle toggle-sm">
@@ -241,7 +290,7 @@ function toggleSource(id: string, on: boolean) {
           </div>
         </Section>
 
-        <Section id="configure-memory" :title="t('configure.memory_knowledge')" class="scroll-mt-14">
+        <Section id="configure-memory" :title="t('configure.memory_knowledge')" :description="t('configure.preview_section')" class="scroll-mt-14">
           <div class="flex flex-col gap-1">
             <label class="label cursor-pointer gap-2 text-ui text-base-content">
               <input v-model="runtime.memory" type="checkbox" class="toggle toggle-sm">

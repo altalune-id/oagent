@@ -2,25 +2,25 @@
 import type { useMcpServerForm } from './useMcpServerForm';
 import AppButton from '#base/components/ui/AppButton.vue';
 import AppModal from '#base/components/ui/AppModal.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
 import FieldError from '#base/components/ui/FieldError.vue';
 import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import CodeText from '~/components/layout/CodeText.vue';
 import { describedBy } from '~/lib/names/names';
-import McpToolList from './McpToolList.vue';
+import { useMcpServersStore } from '~/stores/mcpServers';
+import McpServerTools from './McpServerTools.vue';
 
 const { form, readOnly = false } = defineProps<{ form: ReturnType<typeof useMcpServerForm>, readOnly?: boolean }>();
 
 const { t } = useI18n();
 const uid = useId();
 const ids = { name: `${uid}-name`, url: `${uid}-url`, header: `${uid}-header`, secret: `${uid}-secret`, timeout: `${uid}-timeout` };
-const { open, editing, name, url, auth, headerName, secret, replacingSecret, trusted, timeout, errors, probing, probed, urlChanged, needsSecret, secretShown, secretRequired } = form;
+const { open, editing, name, url, auth, headerName, secret, replacingSecret, trusted, timeout, errors, formError, busy, urlChanged, needsSecret, secretShown, secretRequired } = form;
+const servers = useMcpServersStore();
 
 const shownName = computed(() => editing.value?.name ?? (name.value.trim() || t('mcpservers.example_server')));
 const title = computed(() => (editing.value ? editing.value.name : t('mcpservers.add')));
-const probeError = computed(() => {
-  const kind = probed.value?.kind;
-  return kind && kind !== 'ok' && kind !== 'empty' ? t(`mcpservers.probe_${kind}`, { name: shownName.value, seconds: timeout.value }) : '';
-});
+const saved = computed(() => servers.items.find(s => s.id === editing.value?.id));
 </script>
 
 <template>
@@ -101,7 +101,7 @@ const probeError = computed(() => {
         </div>
         <label class="flex flex-col gap-1">
           <span class="label text-ui font-semibold text-base-content">{{ t('mcpservers.timeout') }}</span>
-          <input v-model.number="timeout" type="number" min="1" max="120" class="input input-sm w-32 tabular-nums" :class="{ 'input-error': errors.timeout }" :aria-invalid="!!errors.timeout" :aria-describedby="describedBy(`${ids.timeout}-hint`, !!errors.timeout && `${ids.timeout}-err`)">
+          <input v-model.number="timeout" type="number" min="1" max="20" step="any" class="input input-sm w-32 tabular-nums" :class="{ 'input-error': errors.timeout }" :aria-invalid="!!errors.timeout" :aria-describedby="describedBy(`${ids.timeout}-hint`, !!errors.timeout && `${ids.timeout}-err`)">
         </label>
         <p :id="`${ids.timeout}-hint`" class="-mt-2 text-xs text-base-content/70">
           {{ t('mcpservers.timeout_hint') }}
@@ -109,52 +109,19 @@ const probeError = computed(() => {
         <FieldError :id="`${ids.timeout}-err`" :message="errors.timeout" />
       </fieldset>
 
-      <section class="flex flex-col gap-2" :aria-label="t('mcpservers.tools')">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h3 class="text-ui font-semibold">
-            {{ t('mcpservers.tools') }}
-          </h3>
-          <AppButton variant="outline" size="sm" :busy="probing" @click="form.loadTools()">
-            <Icon v-if="!probing" name="lucide:refresh-cw" size="14" aria-hidden="true" />
-            {{ t('mcpservers.load_tools') }}
-          </AppButton>
-        </div>
-        <div aria-live="polite" class="flex flex-col gap-2">
-          <p v-if="probing" role="status" class="flex items-center gap-2 text-ui text-base-content/70">
-            <span class="loading loading-spinner loading-xs" aria-hidden="true" />
-            {{ t('mcpservers.probing', { name: shownName }) }}
-          </p>
-          <div v-else-if="probeError" role="alert" class="alert alert-error alert-soft alert-vertical text-base-content text-ui sm:alert-horizontal">
-            <Icon name="lucide:circle-alert" size="16" class="shrink-0" aria-hidden="true" />
-            <span>{{ probeError }}</span>
-            <AppButton v-if="probed?.kind === 'auth' && needsSecret && !secretShown && !readOnly" variant="plain" size="xs" @click="replacingSecret = true">
-              {{ t('mcpservers.replace_secret') }}
-            </AppButton>
-            <AppButton variant="plain" size="xs" @click="form.loadTools()">
-              {{ t('common.retry') }}
-            </AppButton>
-          </div>
-          <p v-else-if="probed?.kind === 'empty'" class="text-ui">
-            {{ t('mcpservers.probe_empty', { name: shownName }) }}
-          </p>
-          <template v-else-if="probed?.kind === 'ok'">
-            <p class="text-xs text-base-content/70">
-              {{ t('mcpservers.tool_count', { n: probed.tools.length }, probed.tools.length) }}
-            </p>
-            <McpToolList :server="shownName" :tools="probed.tools" :trusted="trusted" />
-          </template>
-          <p v-else class="text-xs text-base-content/70">
-            {{ t('mcpservers.tools_hint') }}
-          </p>
-        </div>
-      </section>
+      <ErrorText :error="formError" />
+
+      <McpServerTools v-if="saved" :server="saved" :trusted="trusted" @replace-secret="replacingSecret = true" />
+      <p v-else class="text-xs text-base-content/70">
+        {{ t('mcpservers.tools_after_save') }}
+      </p>
     </form>
 
     <template #footer>
       <AppButton variant="plain" size="sm" @click="form.hide()">
         {{ readOnly ? t('common.close') : t('common.cancel') }}
       </AppButton>
-      <AppButton v-if="!readOnly" size="sm" @click="form.submit()">
+      <AppButton v-if="!readOnly" size="sm" :busy="busy" @click="form.submit()">
         {{ t('mcpservers.save') }}
       </AppButton>
     </template>

@@ -2,18 +2,19 @@
 import type { useProviderForm } from './useProviderForm';
 import AppButton from '#base/components/ui/AppButton.vue';
 import AppModal from '#base/components/ui/AppModal.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
 import FieldError from '#base/components/ui/FieldError.vue';
 import KeyValue from '#base/components/ui/KeyValue.vue';
 import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { describedBy } from '~/lib/names/names';
-import { hasMorePrices, mainPriceKeys, maxModels, morePriceKeys } from './useProviderForm';
+import { hasMorePrices, mainPriceKeys, morePriceKeys } from './useProviderForm';
 
 const { form, readOnly = false } = defineProps<{ form: ReturnType<typeof useProviderForm>, readOnly?: boolean }>();
 
 const { t } = useI18n();
 const id = useId();
 const ids = { name: `${id}-name`, url: `${id}-url`, urlHint: `${id}-url-hint`, key: `${id}-key`, keyHint: `${id}-key-hint`, models: `${id}-models` };
-const { open, editing, name, baseUrl, key, replacingKey, models, errors, modelErrors, busy, urlChanged, keyShown, keyRequired } = form;
+const { open, editing, name, baseUrl, key, replacingKey, models, errors, modelErrors, formError, busy, urlChanged, keyShown, keyRequired } = form;
 
 const openPrices = ref(new Set<number>());
 watch(open, (shown) => {
@@ -28,9 +29,8 @@ const facts = computed(() => editing.value
   ? [
       { label: t('common.name'), value: editing.value.name },
       { label: t('providers.base_url'), value: editing.value.baseUrl, mono: true },
-      { label: t('providers.api_key'), value: t('providers.key_set') },
+      { label: t('providers.api_key'), value: editing.value.keySet ? t('providers.key_set') : t('providers.key_missing') },
       { label: t('providers.models'), value: editing.value.models.map(m => m.id).join(', '), mono: true },
-      { label: t('providers.used_by'), value: editing.value.usedBy.join(', ') || t('providers.used_by_none') },
     ]
   : []);
 </script>
@@ -48,9 +48,6 @@ const facts = computed(() => editing.value
           <input v-model="name" type="text" class="input input-sm w-full text-ui" :class="{ 'input-error': errors.name }" placeholder="OpenRouter" :aria-invalid="!!errors.name" :aria-describedby="describedBy(!!errors.name && `${ids.name}-err`)">
         </label>
         <FieldError :id="`${ids.name}-err`" :message="errors.name" />
-        <p v-if="editing?.usedBy.length" class="text-xs text-base-content/70">
-          {{ t('providers.used_by_list', { agents: editing.usedBy.join(', ') }) }}
-        </p>
 
         <label class="flex flex-col gap-1">
           <span class="label text-ui text-base-content">{{ t('providers.base_url') }}</span>
@@ -90,6 +87,7 @@ const facts = computed(() => editing.value
         <p class="text-xs text-base-content/70">
           {{ t('providers.models_hint') }}
         </p>
+        <FieldError :id="`${ids.models}-err`" :message="errors.models" />
         <ul class="flex flex-col gap-2">
           <li v-for="m in models" :key="m.key" class="flex flex-col gap-2 rounded-box border border-base-300 p-3">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
@@ -111,16 +109,10 @@ const facts = computed(() => editing.value
               </div>
             </div>
             <FieldError :id="`${ids.models}-${m.key}`" :message="modelErrors[m.key]" />
-            <div class="flex flex-wrap gap-x-4 gap-y-1">
-              <label class="flex items-center gap-2 text-xs">
-                <input v-model="m.vision" type="checkbox" class="checkbox checkbox-sm rounded-sm" :aria-label="t('providers.vision_for', { model: m.id || '…' })">
-                {{ t('providers.vision') }}
-              </label>
-              <label class="flex items-center gap-2 text-xs">
-                <input v-model="m.embedding" type="checkbox" class="checkbox checkbox-sm rounded-sm" :aria-label="t('providers.embedding_for', { model: m.id || '…' })">
-                {{ t('providers.embedding') }}
-              </label>
-            </div>
+            <label class="flex items-center gap-2 text-xs">
+              <input v-model="m.vision" type="checkbox" class="checkbox checkbox-sm rounded-sm" :aria-label="t('providers.vision_for', { model: m.id || '…' })">
+              {{ t('providers.vision') }}
+            </label>
             <details class="collapse collapse-arrow rounded-box bg-base-200" :open="openPrices.has(m.key) || undefined">
               <summary class="collapse-title min-h-0 py-2 text-xs font-medium">
                 {{ t('providers.more_prices') }}
@@ -141,12 +133,13 @@ const facts = computed(() => editing.value
           {{ t('providers.price_unit') }}
         </p>
         <div>
-          <AppButton variant="ghost" size="sm" :disabled="models.length >= maxModels" @click="form.addModel()">
+          <AppButton variant="ghost" size="sm" @click="form.addModel()">
             <Icon name="lucide:plus" size="16" aria-hidden="true" />
             {{ t('providers.add_model') }}
           </AppButton>
         </div>
       </fieldset>
+      <ErrorText :error="formError" />
     </form>
 
     <template #footer>

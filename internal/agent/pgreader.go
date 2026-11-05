@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/go-jet/jet/v2/postgres"
@@ -9,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/internal/kernel/tenant"
 )
 
 // ByID loads an agent by id.
@@ -100,4 +102,48 @@ func (s *postgresStore) Resolve(ctx context.Context, publicID string) (Ref, erro
 		return Ref{}, fmt.Errorf("agent.postgres: Resolve: %w", err)
 	}
 	return Ref(row), nil
+}
+
+// ProviderUse reports how the latest published versions in the org on ctx use a model provider; drafts never count.
+func (s *postgresStore) ProviderUse(ctx context.Context, providerID uuid.UUID) (ProviderUsage, error) {
+	cfgs, err := s.latestConfigs(ctx, "ProviderUse", s.providerUse, providerID)
+	if err != nil {
+		return ProviderUsage{}, err
+	}
+	out := ProviderUsage{InUse: len(cfgs) > 0, Models: map[string]bool{}}
+	for _, c := range cfgs {
+		for _, m := range c.Models() {
+			out.Models[m] = out.Models[m] || c.MaxCostCents > 0
+		}
+	}
+	return out, nil
+}
+
+// MCPServerInUse reports whether a latest published version in the org on ctx grants tools of a server.
+func (s *postgresStore) MCPServerInUse(ctx context.Context, serverID uuid.UUID) (bool, error) {
+	cfgs, err := s.latestConfigs(ctx, "MCPServerInUse", s.serverUse, serverID)
+	return len(cfgs) > 0, err
+}
+
+func (s *postgresStore) latestConfigs(ctx context.Context, op, query string, id uuid.UUID) ([]Config, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stmt := postgres.RawStatement(query, postgres.RawArgs{"#id": id.String(), "#org": tc.OrgID})
+	var rows []struct {
+		Config string `alias:"agent_versions.config"`
+	}
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
+		return nil, fmt.Errorf("agent.postgres: %s: %w", op, err)
+	}
+	out := make([]Config, 0, len(rows))
+	for _, r := range rows {
+		var c Config
+		if err := json.Unmarshal([]byte(r.Config), &c); err != nil {
+			return nil, fmt.Errorf("agent.postgres: %s: %w", op, err)
+		}
+		out = append(out, c)
+	}
+	return out, nil
 }

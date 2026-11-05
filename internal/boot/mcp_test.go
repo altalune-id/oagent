@@ -19,7 +19,9 @@ import (
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
 	authv1mcp "altalune.id/oagent/gen/go/auth/v1/authv1mcp"
 	invitev1mcp "altalune.id/oagent/gen/go/invite/v1/invitev1mcp"
+	mcpserverv1mcp "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1mcp"
 	memberv1mcp "altalune.id/oagent/gen/go/member/v1/memberv1mcp"
+	modelproviderv1mcp "altalune.id/oagent/gen/go/modelprovider/v1/modelproviderv1mcp"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
 	projectv1mcp "altalune.id/oagent/gen/go/project/v1/projectv1mcp"
@@ -258,6 +260,14 @@ func TestMCPTools_PermissionsComeFromTheTable(t *testing.T) {
 		invitev1mcp.MemberInviteConfirmToolName: {scope.MemberWrite},
 		invitev1mcp.MemberInviteDiscardToolName: {scope.MemberWrite},
 		authv1mcp.AuthWhoamiToolName:            {authz.AnyAuthenticated},
+
+		modelproviderv1mcp.ModelProviderGetToolName:    {scope.ProviderRead},
+		modelproviderv1mcp.ModelProviderListToolName:   {scope.ProviderRead},
+		modelproviderv1mcp.ModelProviderDeleteToolName: {scope.ProviderWrite},
+		mcpserverv1mcp.McpServerGetToolName:            {scope.McpserverRead},
+		mcpserverv1mcp.McpServerListToolName:           {scope.McpserverRead},
+		mcpserverv1mcp.McpServerDeleteToolName:         {scope.McpserverWrite},
+		mcpserverv1mcp.McpServerToolsToolName:          {scope.McpserverRead},
 	}
 	names := srv.Registry().Names()
 	assert.Len(t, names, len(want), "the published tool list")

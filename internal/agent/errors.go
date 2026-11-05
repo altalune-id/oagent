@@ -126,10 +126,88 @@ func IsInvalidDescriptionError(err error) bool {
 	return ok
 }
 
+// NeedsRepublishError reports a config from before provider grants, which must be republished with a provider before it runs.
+type NeedsRepublishError struct{}
+
+func (*NeedsRepublishError) Error() string {
+	return "agent: config needs a provider and grants; edit and publish it again"
+}
+
+// IsNeedsRepublishError reports whether err's tree contains a *NeedsRepublishError.
+func IsNeedsRepublishError(err error) bool {
+	_, ok := errors.AsType[*NeedsRepublishError](err)
+	return ok
+}
+
+// GrantReason is the stable cause of an InvalidGrantError, sent to clients as meta.reason.
+type GrantReason string
+
+// The causes of an InvalidGrantError.
+const (
+	GrantProvider       GrantReason = "provider"
+	GrantModel          GrantReason = "model"
+	GrantHelperModel    GrantReason = "helper_model"
+	GrantServer         GrantReason = "server"
+	GrantToolName       GrantReason = "tool_name"
+	GrantLegacyTools    GrantReason = "legacy_tools"
+	GrantBudgetUnpriced GrantReason = "budget_unpriced"
+)
+
+func (r GrantReason) text() string {
+	switch r {
+	case GrantProvider:
+		return "names a model provider this project does not have"
+	case GrantModel:
+		return "names a model the provider does not list"
+	case GrantHelperModel:
+		return "names a helper model the provider does not list"
+	case GrantServer:
+		return "names an MCP server this project does not have"
+	case GrantToolName:
+		return "grants a tool whose prefixed name breaks the tool name rule"
+	case GrantLegacyTools:
+		return "uses the old top-level tool list; grant tools per MCP server"
+	case GrantBudgetUnpriced:
+		return "has a cost limit on a model without prices"
+	default:
+		return "is invalid"
+	}
+}
+
+// InvalidGrantError reports a config reference or grant the project cannot honor; Name names the model, server or tool, if any.
+type InvalidGrantError struct {
+	Reason GrantReason
+	Name   string
+}
+
+func (e *InvalidGrantError) Error() string {
+	if e.Name == "" {
+		return "agent: config " + e.Reason.text()
+	}
+	return "agent: config " + e.Reason.text() + ": " + apperror.Echo(e.Name)
+}
+
+// IsInvalidGrantError reports whether err's tree contains an *InvalidGrantError.
+func IsInvalidGrantError(err error) bool {
+	_, ok := errors.AsType[*InvalidGrantError](err)
+	return ok
+}
+
 // IsExpectedError reports whether err is a typed domain error a service returns as-is.
 func IsExpectedError(err error) bool {
 	return IsNotFoundError(err) || IsAlreadyExistsError(err) || IsInvalidSlugError(err) ||
-		IsInvalidNameError(err) || IsInvalidDescriptionError(err)
+		IsInvalidNameError(err) || IsInvalidDescriptionError(err) || IsNeedsRepublishError(err) || IsInvalidGrantError(err)
+}
+
+// ToAppError maps NeedsRepublishError to its own code.
+func (e *NeedsRepublishError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeAgentNeedsRepublish, "Agent config needs a provider; edit and publish it again").WithCause(e)
+}
+
+// ToAppError maps InvalidGrantError to its own code with the reason.
+func (e *InvalidGrantError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeAgentInvalidGrant, "Agent config "+e.Reason.text()).
+		WithMeta(map[string]string{"reason": string(e.Reason)}).WithCause(e)
 }
 
 // ToAppError maps NotFoundError to the canonical NotFound envelope.

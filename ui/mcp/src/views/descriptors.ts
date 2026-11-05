@@ -1,6 +1,7 @@
 import type { Descriptor, Field } from '../generic/descriptor';
 import { t } from '../copy';
 import { roles } from './members';
+import { authKinds, modelSummary, timeoutText } from './providers';
 
 const orgFields: Field[] = [
   { key: 'name', label: t('common.name') },
@@ -30,6 +31,25 @@ const webhookFields: Field[] = [
   { key: 'description', label: t('common.description'), hideEmpty: true },
   { key: 'eventTypes', label: t('field.event_types'), kind: 'list' },
   { key: 'active', label: t('tokens.status_active'), kind: 'bool' },
+  { key: 'id', label: t('common.id'), kind: 'id' },
+];
+
+const modelProviderFields: Field[] = [
+  { key: 'name', label: t('common.name') },
+  { key: 'baseUrl', label: t('mcp.base_url'), kind: 'url' },
+  { key: 'models', label: t('mcp.models'), format: modelSummary },
+  { key: 'apiKeySet', label: t('mcp.api_key_set'), kind: 'bool' },
+  { key: 'id', label: t('common.id'), kind: 'id' },
+];
+
+const mcpServerFields: Field[] = [
+  { key: 'name', label: t('common.name'), kind: 'mono' },
+  { key: 'url', label: t('field.url'), kind: 'url' },
+  { key: 'authKind', label: t('mcp.auth'), kind: 'badge', badges: authKinds },
+  { key: 'authHeader', label: t('mcp.auth_header_name'), kind: 'mono', hideEmpty: true },
+  { key: 'authSet', label: t('mcp.auth_set'), kind: 'bool' },
+  { key: 'timeoutMs', label: t('mcp.timeout'), format: timeoutText },
+  { key: 'trusted', label: t('mcp.trusted'), kind: 'bool' },
   { key: 'id', label: t('common.id'), kind: 'id' },
 ];
 
@@ -102,6 +122,43 @@ export const descriptors: Record<string, Descriptor> = {
       { key: 'createdAt', label: t('mcp.created'), kind: 'date' },
     ],
     refresh: { tool: 'agent_version_list', args: ['agentId'] },
+  },
+  model_provider_list: {
+    kind: 'list',
+    title: t('mcp.title_model_providers'),
+    rows: 'modelProviders',
+    key: 'id',
+    empty: t('mcp.empty_model_providers'),
+    columns: modelProviderFields,
+    refresh: { tool: 'model_provider_list', args: ['projectId'] },
+  },
+  model_provider_get: { kind: 'detail', title: t('mcp.title_model_provider'), object: 'modelProvider', fields: modelProviderFields },
+  model_provider_delete: { kind: 'result', title: t('mcp.model_provider_deleted'), fields: [] },
+  mcp_server_list: {
+    kind: 'list',
+    title: t('mcp.title_mcp_servers'),
+    rows: 'mcpServers',
+    key: 'id',
+    empty: t('mcp.empty_mcp_servers'),
+    columns: mcpServerFields.filter(f => f.key !== 'authHeader'),
+    refresh: { tool: 'mcp_server_list', args: ['projectId'] },
+  },
+  mcp_server_get: { kind: 'detail', title: t('mcp.title_mcp_server'), object: 'mcpServer', fields: mcpServerFields },
+  mcp_server_delete: { kind: 'result', title: t('mcp.mcp_server_deleted'), fields: [] },
+  mcp_server_tools: {
+    kind: 'list',
+    title: t('mcp.title_mcp_server_tools'),
+    rows: 'tools',
+    key: 'name',
+    empty: t('mcp.empty_mcp_server_tools'),
+    columns: [
+      { key: 'name', label: t('common.name'), kind: 'mono' },
+      { key: 'description', label: t('common.description') },
+      { key: 'readOnly', label: t('mcp.tool_read_only'), kind: 'bool' },
+      { key: 'requireApproval', label: t('mcp.tool_require_approval'), kind: 'bool' },
+      { key: 'grantable', label: t('mcp.tool_grantable'), kind: 'bool' },
+    ],
+    refresh: { tool: 'mcp_server_tools', args: ['id'] },
   },
   member_list: {
     kind: 'list',

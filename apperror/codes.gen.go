@@ -31,6 +31,8 @@ const (
 	CodeAgentInvalidSlug        Code = "AGT003"
 	CodeAgentInvalidName        Code = "AGT004"
 	CodeAgentInvalidDescription Code = "AGT005"
+	CodeAgentNeedsRepublish     Code = "AGT006"
+	CodeAgentInvalidGrant       Code = "AGT007"
 
 	CodeAPIKeyNotFound             Code = "KEY001"
 	CodeAPIKeyInvalidName          Code = "KEY002"
@@ -77,6 +79,24 @@ const (
 	CodeWebhookSecretConflict       Code = "WHK007"
 	CodeWebhookDeliveryNotFound     Code = "WHK008"
 	CodeWebhookDeliveryNotRetryable Code = "WHK009"
+
+	CodeModelProviderNotFound           Code = "PRV001"
+	CodeModelProviderAlreadyExists      Code = "PRV002"
+	CodeModelProviderInvalidBaseURL     Code = "PRV003"
+	CodeModelProviderInvalidModels      Code = "PRV004"
+	CodeModelProviderInUse              Code = "PRV005"
+	CodeModelProviderSecretRequired     Code = "PRV006"
+	CodeModelProviderUnknownModel       Code = "PRV007"
+	CodeModelProviderSecretsUnavailable Code = "PRV008"
+
+	CodeMcpServerNotFound           Code = "MCS001"
+	CodeMcpServerAlreadyExists      Code = "MCS002"
+	CodeMcpServerInvalidURL         Code = "MCS003"
+	CodeMcpServerInUse              Code = "MCS004"
+	CodeMcpServerUnreachable        Code = "MCS005"
+	CodeMcpServerSecretRequired     Code = "MCS006"
+	CodeMcpServerSecretsUnavailable Code = "MCS007"
+	CodeMcpServerAuthRefused        Code = "MCS008"
 )
 
 var kinds = map[Code]Kind{
@@ -107,6 +127,8 @@ var kinds = map[Code]Kind{
 	CodeAgentInvalidSlug:        KindInvalid,
 	CodeAgentInvalidName:        KindInvalid,
 	CodeAgentInvalidDescription: KindInvalid,
+	CodeAgentNeedsRepublish:     KindFailedPrecondition,
+	CodeAgentInvalidGrant:       KindInvalid,
 
 	CodeAPIKeyNotFound:             KindNotFound,
 	CodeAPIKeyInvalidName:          KindInvalid,
@@ -153,4 +175,22 @@ var kinds = map[Code]Kind{
 	CodeWebhookSecretConflict:       KindFailedPrecondition,
 	CodeWebhookDeliveryNotFound:     KindNotFound,
 	CodeWebhookDeliveryNotRetryable: KindFailedPrecondition,
+
+	CodeModelProviderNotFound:           KindNotFound,
+	CodeModelProviderAlreadyExists:      KindAlreadyExists,
+	CodeModelProviderInvalidBaseURL:     KindInvalid,
+	CodeModelProviderInvalidModels:      KindInvalid,
+	CodeModelProviderInUse:              KindFailedPrecondition,
+	CodeModelProviderSecretRequired:     KindInvalid,
+	CodeModelProviderUnknownModel:       KindNotFound,
+	CodeModelProviderSecretsUnavailable: KindFailedPrecondition,
+
+	CodeMcpServerNotFound:           KindNotFound,
+	CodeMcpServerAlreadyExists:      KindAlreadyExists,
+	CodeMcpServerInvalidURL:         KindInvalid,
+	CodeMcpServerInUse:              KindFailedPrecondition,
+	CodeMcpServerUnreachable:        KindFailedPrecondition,
+	CodeMcpServerSecretRequired:     KindInvalid,
+	CodeMcpServerSecretsUnavailable: KindFailedPrecondition,
+	CodeMcpServerAuthRefused:        KindFailedPrecondition,
 }

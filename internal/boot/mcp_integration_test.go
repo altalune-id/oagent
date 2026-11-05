@@ -51,6 +51,32 @@ func TestMCP_KeyScopesTheToolList(t *testing.T) {
 	assert.ElementsMatch(t, []string{"agent_get", "agent_list", "agent_version_list", "auth_whoami"}, names)
 }
 
+// SECURITY: a key with every provider and MCP server permission still sees no tool that takes a secret.
+func TestMCP_KeyScopesTheToolListForProvidersAndServers(t *testing.T) {
+	f := newAPIFixture(t)
+	key := f.mint(t, apikey.KindOrg, "provider:read", "provider:write", "mcpserver:read", "mcpserver:write")
+
+	status, _, body := f.mcpCall(t, key, `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`)
+	require.Equal(t, http.StatusOK, status, string(body))
+	var list struct {
+		Result struct {
+			Tools []struct{ Name string } `json:"tools"`
+		} `json:"result"`
+	}
+	require.NoError(t, json.Unmarshal(body, &list))
+	var names []string
+	for _, tool := range list.Result.Tools {
+		names = append(names, tool.Name)
+	}
+	assert.ElementsMatch(t, []string{
+		"model_provider_get", "model_provider_list", "model_provider_delete",
+		"mcp_server_get", "mcp_server_list", "mcp_server_delete", "mcp_server_tools", "auth_whoami",
+	}, names)
+	for _, never := range []string{"model_provider_create", "model_provider_update", "mcp_server_create", "mcp_server_update"} {
+		assert.NotContains(t, names, never)
+	}
+}
+
 func TestMCP_WhoamiWithAKey(t *testing.T) {
 	f := newAPIFixture(t)
 	key := f.mint(t, apikey.KindOrg, "agent:read")

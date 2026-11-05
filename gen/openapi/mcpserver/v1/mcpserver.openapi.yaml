@@ -1,0 +1,732 @@
+openapi: 3.1.0
+info:
+  title: mcpserver.v1
+paths:
+  /mcpserver.v1.McpServerService/CreateMcpServer:
+    post:
+      tags:
+        - mcpserver.v1.McpServerService
+      summary: CreateMcpServer
+      operationId: mcpserver.v1.McpServerService.CreateMcpServer
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mcpserver.v1.CreateMcpServerRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mcpserver.v1.CreateMcpServerResponse'
+  /mcpserver.v1.McpServerService/DeleteMcpServer:
+    post:
+      tags:
+        - mcpserver.v1.McpServerService
+      summary: DeleteMcpServer
+      operationId: mcpserver.v1.McpServerService.DeleteMcpServer
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mcpserver.v1.DeleteMcpServerRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mcpserver.v1.DeleteMcpServerResponse'
+  /mcpserver.v1.McpServerService/GetMcpServer:
+    post:
+      tags:
+        - mcpserver.v1.McpServerService
+      summary: GetMcpServer
+      operationId: mcpserver.v1.McpServerService.GetMcpServer
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mcpserver.v1.GetMcpServerRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mcpserver.v1.GetMcpServerResponse'
+  /mcpserver.v1.McpServerService/ListMcpServerTools:
+    post:
+      tags:
+        - mcpserver.v1.McpServerService
+      summary: ListMcpServerTools
+      operationId: mcpserver.v1.McpServerService.ListMcpServerTools
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mcpserver.v1.ListMcpServerToolsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mcpserver.v1.ListMcpServerToolsResponse'
+  /mcpserver.v1.McpServerService/ListMcpServers:
+    post:
+      tags:
+        - mcpserver.v1.McpServerService
+      summary: ListMcpServers
+      operationId: mcpserver.v1.McpServerService.ListMcpServers
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mcpserver.v1.ListMcpServersRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mcpserver.v1.ListMcpServersResponse'
+  /mcpserver.v1.McpServerService/UpdateMcpServer:
+    post:
+      tags:
+        - mcpserver.v1.McpServerService
+      summary: UpdateMcpServer
+      operationId: mcpserver.v1.McpServerService.UpdateMcpServer
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mcpserver.v1.UpdateMcpServerRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mcpserver.v1.UpdateMcpServerResponse'
+components:
+  schemas:
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          oneOf:
+            - type: object
+              title: Any
+              additionalProperties: true
+              description: Detailed error information.
+          discriminator:
+            propertyName: type
+          title: Debug
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+    google.protobuf.ListValue:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.protobuf.Value'
+          title: values
+          description: Repeated field of dynamically typed values.
+      title: ListValue
+      additionalProperties: false
+      description: Represents a JSON array.
+    google.protobuf.NullValue:
+      type: string
+      title: NullValue
+      enum:
+        - NULL_VALUE
+      description: |-
+        Represents a JSON `null`.
+
+         `NullValue` is a sentinel, using an enum with only one value to represent
+         the null value for the `Value` type union.
+
+         A field of type `NullValue` with any value other than `0` is considered
+         invalid. Most ProtoJSON serializers will emit a `Value` with a `null_value`
+         set as a JSON `null` regardless of the integer value, and so will round trip
+         to a `0` value.
+    google.protobuf.Struct:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/google.protobuf.Value'
+      description: |-
+        Represents a JSON object.
+
+         An unordered key-value map, intending to perfectly capture the semantics of a
+         JSON object. This enables parsing any arbitrary JSON payload as a message
+         field in ProtoJSON format.
+
+         This follows RFC 8259 guidelines for interoperable JSON: notably this type
+         cannot represent large Int64 values or `NaN`/`Infinity` numbers,
+         since the JSON format generally does not support those values in its number
+         type.
+
+         If you do not intend to parse arbitrary JSON into your message, a custom
+         typed message should be preferred instead of using this type.
+    google.protobuf.Struct.FieldsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/google.protobuf.Value'
+      title: FieldsEntry
+      additionalProperties: false
+    google.protobuf.Timestamp:
+      type: string
+      examples:
+        - "2023-01-15T01:30:15.01Z"
+        - "2024-12-25T12:00:00Z"
+      format: date-time
+      description: |-
+        A Timestamp represents a point in time independent of any time zone or local
+         calendar, encoded as a count of seconds and fractions of seconds at
+         nanosecond resolution. The count is relative to an epoch at UTC midnight on
+         January 1, 1970, in the proleptic Gregorian calendar which extends the
+         Gregorian calendar backwards to year one.
+
+         All minutes are 60 seconds long. Leap seconds are "smeared" so that no leap
+         second table is needed for interpretation, using a [24-hour linear
+         smear](https://developers.google.com/time/smear).
+
+         The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By
+         restricting to that range, we ensure that we can convert to and from [RFC
+         3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.
+
+         # Examples
+
+         Example 1: Compute Timestamp from POSIX `time()`.
+
+             Timestamp timestamp;
+             timestamp.set_seconds(time(NULL));
+             timestamp.set_nanos(0);
+
+         Example 2: Compute Timestamp from POSIX `gettimeofday()`.
+
+             struct timeval tv;
+             gettimeofday(&tv, NULL);
+
+             Timestamp timestamp;
+             timestamp.set_seconds(tv.tv_sec);
+             timestamp.set_nanos(tv.tv_usec * 1000);
+
+         Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.
+
+             FILETIME ft;
+             GetSystemTimeAsFileTime(&ft);
+             UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+
+             // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z
+             // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.
+             Timestamp timestamp;
+             timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));
+             timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));
+
+         Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.
+
+             long millis = System.currentTimeMillis();
+
+             Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
+                 .setNanos((int) ((millis % 1000) * 1000000)).build();
+
+         Example 5: Compute Timestamp from Java `Instant.now()`.
+
+             Instant now = Instant.now();
+
+             Timestamp timestamp =
+                 Timestamp.newBuilder().setSeconds(now.getEpochSecond())
+                     .setNanos(now.getNano()).build();
+
+         Example 6: Compute Timestamp from current time in Python.
+
+             timestamp = Timestamp()
+             timestamp.GetCurrentTime()
+
+         # JSON Mapping
+
+         In JSON format, the Timestamp type is encoded as a string in the
+         [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the
+         format is "{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z"
+         where {year} is always expressed using four digits while {month}, {day},
+         {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
+         seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
+         are optional. The "Z" suffix indicates the timezone ("UTC"); the timezone
+         is required. A ProtoJSON serializer should always use UTC (as indicated by
+         "Z") when printing the Timestamp type and a ProtoJSON parser should be
+         able to accept both UTC and other timezones (as indicated by an offset).
+
+         For example, "2017-01-15T01:30:15.01Z" encodes 15.01 seconds past
+         01:30 UTC on January 15, 2017.
+
+         In JavaScript, one can convert a Date object to this format using the
+         standard
+         [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
+         method. In Python, a standard `datetime.datetime` object can be converted
+         to this format using
+         [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with
+         the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
+         the Joda Time's [`ISODateTimeFormat.dateTime()`](
+         http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
+         ) to obtain a formatter capable of generating timestamps in this format.
+    google.protobuf.Value:
+      oneOf:
+        - type: "null"
+        - type: number
+        - type: string
+        - type: boolean
+        - type: array
+        - type: object
+          additionalProperties: true
+      description: |-
+        Represents a JSON value.
+
+         `Value` represents a dynamically typed value which can be either
+         null, a number, a string, a boolean, a recursive struct value, or a
+         list of values. A producer of value is expected to set one of these
+         variants. Absence of any variant is an invalid state.
+    mcpserver.v1.CreateMcpServerRequest:
+      type: object
+      properties:
+        orgId:
+          type: string
+          title: org_id
+          description: |
+            oagent.public_id = true
+        projectId:
+          type: string
+          title: project_id
+          description: |
+            oagent.public_id = true
+        name:
+          type: string
+          title: name
+          pattern: ^[a-z0-9][a-z0-9-]{0,31}$
+          description: name is lowercase letters, digits and dashes, at most 32, never an underscore; it is the tool prefix and never changes.
+        url:
+          type: string
+          title: url
+          description: |
+            mcpserver.url.format
+            mcpserver.url.max_len.2048
+        authKind:
+          title: auth_kind
+          $ref: '#/components/schemas/mcpserver.v1.McpServerAuthKind'
+        authHeader:
+          type: string
+          title: auth_header
+          maxLength: 128
+          description: auth_header is the header name, used only for header auth.
+        authValue:
+          type: string
+          title: auth_value
+          maxLength: 4096
+          description: 'auth_value is write-only: sealed at rest and never returned; required unless auth_kind is none.'
+        timeoutMs:
+          type: integer
+          title: timeout_ms
+          maximum: 20000
+          minimum: 1000
+          format: int32
+        trusted:
+          type: boolean
+          title: trusted
+      title: CreateMcpServerRequest
+      required:
+        - orgId
+        - projectId
+        - name
+        - url
+        - authKind
+      additionalProperties: false
+    mcpserver.v1.CreateMcpServerResponse:
+      type: object
+      properties:
+        mcpServer:
+          title: mcp_server
+          $ref: '#/components/schemas/mcpserver.v1.McpServer'
+      title: CreateMcpServerResponse
+      additionalProperties: false
+    mcpserver.v1.DeleteMcpServerRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: |
+            oagent.public_id = true
+      title: DeleteMcpServerRequest
+      required:
+        - id
+      additionalProperties: false
+    mcpserver.v1.DeleteMcpServerResponse:
+      type: object
+      title: DeleteMcpServerResponse
+      additionalProperties: false
+    mcpserver.v1.GetMcpServerRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: |
+            oagent.public_id = true
+      title: GetMcpServerRequest
+      required:
+        - id
+      additionalProperties: false
+    mcpserver.v1.GetMcpServerResponse:
+      type: object
+      properties:
+        mcpServer:
+          title: mcp_server
+          $ref: '#/components/schemas/mcpserver.v1.McpServer'
+      title: GetMcpServerResponse
+      additionalProperties: false
+    mcpserver.v1.ListMcpServerToolsRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: |
+            oagent.public_id = true
+      title: ListMcpServerToolsRequest
+      required:
+        - id
+      additionalProperties: false
+    mcpserver.v1.ListMcpServerToolsResponse:
+      type: object
+      properties:
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/mcpserver.v1.McpServerTool'
+          title: tools
+      title: ListMcpServerToolsResponse
+      additionalProperties: false
+    mcpserver.v1.ListMcpServersRequest:
+      type: object
+      properties:
+        projectId:
+          type: string
+          title: project_id
+          description: |
+            oagent.public_id = true
+      title: ListMcpServersRequest
+      required:
+        - projectId
+      additionalProperties: false
+    mcpserver.v1.ListMcpServersResponse:
+      type: object
+      properties:
+        mcpServers:
+          type: array
+          items:
+            $ref: '#/components/schemas/mcpserver.v1.McpServer'
+          title: mcp_servers
+      title: ListMcpServersResponse
+      additionalProperties: false
+    mcpserver.v1.McpServer:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        orgId:
+          type: string
+          title: org_id
+        projectId:
+          type: string
+          title: project_id
+        name:
+          type: string
+          title: name
+        url:
+          type: string
+          title: url
+        authKind:
+          title: auth_kind
+          $ref: '#/components/schemas/mcpserver.v1.McpServerAuthKind'
+        authHeader:
+          type: string
+          title: auth_header
+          description: auth_header is the header name for header auth, never its value.
+        authSet:
+          type: boolean
+          title: auth_set
+        timeoutMs:
+          type: integer
+          title: timeout_ms
+          format: int32
+        trusted:
+          type: boolean
+          title: trusted
+          description: trusted lets the server's read-only hints skip approval.
+        createdAt:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        updatedAt:
+          title: updated_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: McpServer
+      additionalProperties: false
+      description: McpServer is a remote MCP endpoint of a project; its name is the tool prefix and never changes, and auth_set says whether a credential is stored, which is never returned.
+    mcpserver.v1.McpServerAuthKind:
+      type: string
+      title: McpServerAuthKind
+      enum:
+        - MCP_SERVER_AUTH_KIND_UNSPECIFIED
+        - MCP_SERVER_AUTH_KIND_NONE
+        - MCP_SERVER_AUTH_KIND_BEARER
+        - MCP_SERVER_AUTH_KIND_HEADER
+      description: McpServerAuthKind says how oagent authenticates to a server.
+    mcpserver.v1.McpServerTool:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        description:
+          type: string
+          title: description
+        readOnly:
+          type: boolean
+          title: read_only
+        grantable:
+          type: boolean
+          title: grantable
+          description: grantable is false when <server>__<tool> breaks ^[a-zA-Z0-9_-]{1,64}$.
+        requireApproval:
+          type: boolean
+          title: require_approval
+        inputSchema:
+          title: input_schema
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: McpServerTool
+      additionalProperties: false
+      description: McpServerTool is one tool a server offers; require_approval is the suggested default, the inverse of read_only.
+    mcpserver.v1.UpdateMcpServerRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: |
+            oagent.public_id = true
+        url:
+          type: string
+          title: url
+          description: |
+            mcpserver.url.format
+            mcpserver.url.max_len.2048
+        authKind:
+          title: auth_kind
+          $ref: '#/components/schemas/mcpserver.v1.McpServerAuthKind'
+        authHeader:
+          type: string
+          title: auth_header
+          maxLength: 128
+          description: auth_header is the header name, used only for header auth.
+        authValue:
+          type:
+            - string
+            - "null"
+          title: auth_value
+          maxLength: 4096
+          minLength: 1
+          description: 'auth_value is write-only: sealed at rest and never returned.'
+        timeoutMs:
+          type: integer
+          title: timeout_ms
+          maximum: 20000
+          minimum: 1000
+          format: int32
+        trusted:
+          type: boolean
+          title: trusted
+      title: UpdateMcpServerRequest
+      required:
+        - id
+        - url
+        - authKind
+      additionalProperties: false
+      description: UpdateMcpServerRequest replaces a server's editable fields; the name never changes, and leaving auth_value unset keeps the credential, which a url or auth_kind change refuses.
+    mcpserver.v1.UpdateMcpServerResponse:
+      type: object
+      properties:
+        mcpServer:
+          title: mcp_server
+          $ref: '#/components/schemas/mcpserver.v1.McpServer'
+      title: UpdateMcpServerResponse
+      additionalProperties: false
+security: []
+tags:
+  - name: mcpserver.v1.McpServerService
+    description: McpServerService manages the remote MCP servers a project's agents may call. Every id is a public id; a credential is write-only, and the RPCs that take one have no MCP tool.

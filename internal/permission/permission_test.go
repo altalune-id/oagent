@@ -11,7 +11,9 @@ import (
 	apikeyv1 "altalune.id/oagent/gen/go/apikey/v1"
 	authv1 "altalune.id/oagent/gen/go/auth/v1"
 	invitev1 "altalune.id/oagent/gen/go/invite/v1"
+	mcpserverv1 "altalune.id/oagent/gen/go/mcpserver/v1"
 	memberv1 "altalune.id/oagent/gen/go/member/v1"
+	modelproviderv1 "altalune.id/oagent/gen/go/modelprovider/v1"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	projectv1 "altalune.id/oagent/gen/go/project/v1"
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
@@ -26,7 +28,9 @@ func allProcedures() []string {
 		apikeyv1.File_apikey_v1_apikey_proto,
 		authv1.File_auth_v1_auth_proto,
 		invitev1.File_invite_v1_invite_proto,
+		mcpserverv1.File_mcpserver_v1_mcpserver_proto,
 		memberv1.File_member_v1_member_proto,
+		modelproviderv1.File_modelprovider_v1_modelprovider_proto,
 		orgv1.File_org_v1_org_proto,
 		projectv1.File_project_v1_project_proto,
 		webhookv1.File_webhook_v1_webhook_proto,
@@ -44,7 +48,7 @@ func allProcedures() []string {
 
 func TestEveryRPCHasAPermission(t *testing.T) {
 	procs := allProcedures()
-	require.Len(t, procs, 48, "Org 4, Project 5, Agent 8, APIKey 3, Webhook 11, Auth 6, Member 4, Invite 7")
+	require.Len(t, procs, 59, "Org 4, Project 5, Agent 8, APIKey 3, Webhook 11, Auth 6, Member 4, Invite 7, ModelProvider 5, McpServer 6")
 	table := Table()
 	for _, proc := range procs {
 		perms := table[proc]
@@ -63,40 +67,51 @@ func TestEveryRPCHasAPermission(t *testing.T) {
 func TestPermissionTable_Spec15(t *testing.T) {
 	table := Table()
 	for proc, want := range map[string]string{
-		"/org.v1.OrgService/CreateOrg":                            "org:write",
-		"/org.v1.OrgService/ListOrgs":                             "org:read",
-		"/org.v1.OrgService/UpdateOrg":                            "org:write",
-		"/project.v1.ProjectService/UpdateProject":                "project:write",
-		"/project.v1.ProjectService/UpdateProjectEnvironment":     "project:write",
-		"/project.v1.ProjectService/ListProjects":                 "project:read",
-		"/agent.v1.AgentService/DeleteAgent":                      "agent:write",
-		"/agent.v1.AgentService/UpdateAgentDraft":                 "agent:write",
-		"/agent.v1.AgentService/PublishAgent":                     "agent:write",
-		"/agent.v1.AgentService/ListAgentVersions":                "agent:read",
-		"/agent.v1.AgentService/GetAgent":                         "agent:read",
-		"/webhook.v1.WebhookService/ListWebhookDeliveryAttempts":  "webhook:read",
-		"/webhook.v1.WebhookService/RotateWebhookSecret":          "webhook:write",
-		"/webhook.v1.WebhookService/RetryFailedWebhookDeliveries": "webhook:write",
-		"/apikey.v1.APIKeyService/ListAPIKeys":                    "apikey:read",
-		"/apikey.v1.APIKeyService/CreateAPIKey":                   authz.AnyAuthenticated,
-		"/apikey.v1.APIKeyService/RevokeAPIKey":                   authz.AnyAuthenticated,
-		"/auth.v1.AuthService/Whoami":                             authz.AnyAuthenticated,
-		"/auth.v1.AuthService/UpdateProfile":                      authz.PersonOnly,
-		"/auth.v1.AuthService/ChangePassword":                     authz.PersonOnly,
-		"/auth.v1.AuthService/SignOutEverywhere":                  authz.PersonOnly,
-		"/auth.v1.AuthService/SetActiveOrg":                       authz.PersonOnly,
-		"/auth.v1.AuthService/CreateOwnOrg":                       authz.PersonOnly,
-		"/member.v1.MemberService/ListMembers":                    "member:read",
-		"/member.v1.MemberService/SetMemberRole":                  "member:write",
-		"/member.v1.MemberService/RemoveMember":                   "member:write",
-		"/member.v1.MemberService/LeaveOrg":                       authz.PersonOnly,
-		"/invite.v1.InviteService/ListInvites":                    "member:read",
-		"/invite.v1.InviteService/CreateInvite":                   "member:write",
-		"/invite.v1.InviteService/ResendInvite":                   "member:write",
-		"/invite.v1.InviteService/RevokeInvite":                   "member:write",
-		"/invite.v1.InviteService/DraftInvite":                    "member:write",
-		"/invite.v1.InviteService/ConfirmDraftInvite":             "member:write",
-		"/invite.v1.InviteService/DiscardDraftInvite":             "member:write",
+		"/org.v1.OrgService/CreateOrg":                               "org:write",
+		"/org.v1.OrgService/ListOrgs":                                "org:read",
+		"/org.v1.OrgService/UpdateOrg":                               "org:write",
+		"/project.v1.ProjectService/UpdateProject":                   "project:write",
+		"/project.v1.ProjectService/UpdateProjectEnvironment":        "project:write",
+		"/project.v1.ProjectService/ListProjects":                    "project:read",
+		"/agent.v1.AgentService/DeleteAgent":                         "agent:write",
+		"/agent.v1.AgentService/UpdateAgentDraft":                    "agent:write",
+		"/agent.v1.AgentService/PublishAgent":                        "agent:write",
+		"/agent.v1.AgentService/ListAgentVersions":                   "agent:read",
+		"/agent.v1.AgentService/GetAgent":                            "agent:read",
+		"/modelprovider.v1.ModelProviderService/CreateModelProvider": "provider:write",
+		"/modelprovider.v1.ModelProviderService/UpdateModelProvider": "provider:write",
+		"/modelprovider.v1.ModelProviderService/DeleteModelProvider": "provider:write",
+		"/modelprovider.v1.ModelProviderService/GetModelProvider":    "provider:read",
+		"/modelprovider.v1.ModelProviderService/ListModelProviders":  "provider:read",
+		"/mcpserver.v1.McpServerService/CreateMcpServer":             "mcpserver:write",
+		"/mcpserver.v1.McpServerService/UpdateMcpServer":             "mcpserver:write",
+		"/mcpserver.v1.McpServerService/DeleteMcpServer":             "mcpserver:write",
+		"/mcpserver.v1.McpServerService/GetMcpServer":                "mcpserver:read",
+		"/mcpserver.v1.McpServerService/ListMcpServers":              "mcpserver:read",
+		"/mcpserver.v1.McpServerService/ListMcpServerTools":          "mcpserver:read",
+		"/webhook.v1.WebhookService/ListWebhookDeliveryAttempts":     "webhook:read",
+		"/webhook.v1.WebhookService/RotateWebhookSecret":             "webhook:write",
+		"/webhook.v1.WebhookService/RetryFailedWebhookDeliveries":    "webhook:write",
+		"/apikey.v1.APIKeyService/ListAPIKeys":                       "apikey:read",
+		"/apikey.v1.APIKeyService/CreateAPIKey":                      authz.AnyAuthenticated,
+		"/apikey.v1.APIKeyService/RevokeAPIKey":                      authz.AnyAuthenticated,
+		"/auth.v1.AuthService/Whoami":                                authz.AnyAuthenticated,
+		"/auth.v1.AuthService/UpdateProfile":                         authz.PersonOnly,
+		"/auth.v1.AuthService/ChangePassword":                        authz.PersonOnly,
+		"/auth.v1.AuthService/SignOutEverywhere":                     authz.PersonOnly,
+		"/auth.v1.AuthService/SetActiveOrg":                          authz.PersonOnly,
+		"/auth.v1.AuthService/CreateOwnOrg":                          authz.PersonOnly,
+		"/member.v1.MemberService/ListMembers":                       "member:read",
+		"/member.v1.MemberService/SetMemberRole":                     "member:write",
+		"/member.v1.MemberService/RemoveMember":                      "member:write",
+		"/member.v1.MemberService/LeaveOrg":                          authz.PersonOnly,
+		"/invite.v1.InviteService/ListInvites":                       "member:read",
+		"/invite.v1.InviteService/CreateInvite":                      "member:write",
+		"/invite.v1.InviteService/ResendInvite":                      "member:write",
+		"/invite.v1.InviteService/RevokeInvite":                      "member:write",
+		"/invite.v1.InviteService/DraftInvite":                       "member:write",
+		"/invite.v1.InviteService/ConfirmDraftInvite":                "member:write",
+		"/invite.v1.InviteService/DiscardDraftInvite":                "member:write",
 	} {
 		assert.Equal(t, []string{want}, table[proc], proc)
 	}

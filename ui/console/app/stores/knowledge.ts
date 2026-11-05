@@ -21,6 +21,8 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   const items = ref<KnowledgeSource[]>([]);
   const loading = ref(false);
   const error = ref<ShownError | null>(null);
+  // NOTE: preview until a model can be marked for embeddings.
+  const embeddingReady = ref(true);
   let loadedFor = '';
 
   async function load(projectId: string) {
@@ -50,5 +52,5 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     items.value = items.value.filter(s => s.id !== id);
   }
 
-  return { items, loading, error, load, ensureLoaded, addWebsite, retry, remove };
+  return { items, loading, error, embeddingReady, load, ensureLoaded, addWebsite, retry, remove };
 });

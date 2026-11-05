@@ -4,8 +4,6 @@ import type { ApprovalArg, ApprovalItem, ApprovalRequest } from '~/stores/approv
 import type { ChannelSettings, OpenwaCheck, OpenwaFill } from '~/stores/channels';
 import type { EndUserList, EndUserThread } from '~/stores/endUsers';
 import type { KnowledgeSource } from '~/stores/knowledge';
-import type { McpServer, McpTool, McpToolArg, ProbeResult, ToolHint } from '~/stores/mcpServers';
-import type { ModelProvider } from '~/stores/providers';
 import type { RunDetail, RunSummary, ThreadDetail } from '~/stores/threads';
 import type { ChatScript } from '~/stores/tryIt';
 import type { WebSearchSetting } from '~/stores/webSearch';
@@ -95,100 +93,6 @@ export function sampleRuns(): RunSummary[] {
   ];
 }
 
-export function sampleProviders(): ModelProvider[] {
-  return [
-    {
-      id: 'prv_6tQm2ZxR8wLp3VbNc4Kd',
-      name: 'OpenRouter',
-      baseUrl: 'https://openrouter.ai/api/v1',
-      keySet: true,
-      models: [
-        { id: 'openai/gpt-4.1-mini', vision: true, embedding: false, price: { input: 0.4, output: 1.6, cacheRead: 0.1 } },
-        { id: 'google/gemini-2.5-flash', vision: true, embedding: false, price: { input: 0.3, output: 2.5 } },
-        { id: 'openai/text-embedding-3-small', vision: false, embedding: true, price: { input: 0.02, output: 0 } },
-      ],
-      usedBy: ['Yasaku Keuangan v4', 'Draft of Tagihan'],
-    },
-    {
-      id: 'prv_9pHs4YvT1kMq7WcXe2Bf',
-      name: 'Groq',
-      baseUrl: 'https://api.groq.com/openai/v1',
-      keySet: true,
-      models: [{ id: 'llama-3.3-70b-versatile', vision: false, embedding: false, price: {} }],
-      usedBy: [],
-    },
-  ];
-}
-
-const confirmArg: McpToolArg = { name: 'confirm', type: 'boolean' };
-
-function yasakuTools(): McpTool[] {
-  const tool = (name: string, description: string, hint: ToolHint, args: McpToolArg[] = []) => ({ name, description, hint, args });
-  return [
-    tool('record_expense', 'Record an expense in a wallet', 'changes', [confirmArg, { name: 'amount', type: 'number' }]),
-    tool('record_income', 'Record income in a wallet', 'changes', [confirmArg, { name: 'amount', type: 'number' }]),
-    tool('record_transfer', 'Move money between wallets', 'changes', [confirmArg, { name: 'amount', type: 'number' }]),
-    tool('record_batch', 'Record several transactions at once', 'changes', [confirmArg]),
-    tool('delete_tx', 'Delete a transaction', 'destructive', [{ name: 'id', type: 'string' }]),
-    tool('list_wallets', 'List wallets and balances', 'read_only'),
-    tool('list_categories', 'List categories', 'read_only'),
-    tool('search_tx', 'Search transactions', 'read_only', [{ name: 'query', type: 'string' }]),
-    tool('list_recent_tx', 'List the latest transactions', 'read_only'),
-    tool('period_report', 'Totals per category for a period', 'read_only'),
-    tool('cashflow_report', 'Money in and out for a period', 'read_only'),
-    tool('close_period', 'Close a month so it can no longer change', 'changes'),
-    tool('export_all_transactions_as_spreadsheet_for_accountant_review', 'Export every transaction as a spreadsheet', 'read_only'),
-  ];
-}
-
-export function sampleMcpServers(): McpServer[] {
-  return [{
-    id: 'mcs_2bVn7QxK4pRt9LwZc3Hy',
-    name: 'yasaku',
-    url: 'https://yasaku.altalune.id/mcp',
-    auth: 'bearer',
-    headerName: '',
-    secretSet: true,
-    trusted: true,
-    timeoutSeconds: 20,
-    tools: yasakuTools(),
-    usedBy: ['Yasaku Keuangan (draft)'],
-  }, {
-    id: 'mcs_8kWq3NvT6yHp1ZxR5cJb',
-    name: 'tagihan',
-    url: 'https://tagihan.example.id/401/mcp',
-    auth: 'header',
-    headerName: 'X-Api-Key',
-    secretSet: true,
-    trusted: false,
-    timeoutSeconds: 10,
-    tools: [
-      { name: 'list_bills', description: 'List unpaid bills', hint: 'read_only', args: [] },
-      { name: 'mark_paid', description: 'Mark a bill as paid', hint: 'changes', args: [{ name: 'id', type: 'string' }] },
-    ],
-    usedBy: [],
-  }];
-}
-
-// NOTE: the probe answers by URL so every result can be clicked: "down" unreachable, "401" auth, a private host refused, "empty" no tools.
-export async function sampleProbe(url: string, waitMs = 700): Promise<ProbeResult> {
-  await new Promise(resolve => setTimeout(resolve, waitMs));
-  const host = URL.canParse(url) ? new URL(url).hostname : '';
-  if (/^(?:localhost|127\.|10\.|192\.168\.)/.test(host)) {
-    return { kind: 'private' };
-  }
-  if (url.includes('down')) {
-    return { kind: 'unreachable' };
-  }
-  if (url.includes('401')) {
-    return { kind: 'auth' };
-  }
-  if (url.includes('empty')) {
-    return { kind: 'empty' };
-  }
-  return { kind: 'ok', tools: yasakuTools() };
-}
-
 export function sampleWebSearch(): WebSearchSetting {
   return { provider: '', usedBy: ['Tagihan v2'] };
 }
@@ -196,21 +100,7 @@ export function sampleWebSearch(): WebSearchSetting {
 export const sampleAgentSlug = 'yasaku-keuangan';
 
 export function sampleAgentRuntime(): AgentRuntimeConfig {
-  const yasaku = { serverId: 'mcs_2bVn7QxK4pRt9LwZc3Hy', serverName: 'yasaku' };
-  const confirm = { ask: 'match' as const, matchArg: 'confirm', matchValue: true };
   return {
-    providerId: 'prv_6tQm2ZxR8wLp3VbNc4Kd',
-    model: 'openai/gpt-4.1-mini',
-    helperModel: 'google/gemini-2.5-flash',
-    grants: [
-      { ...yasaku, tool: 'record_expense', ...confirm },
-      { ...yasaku, tool: 'record_income', ...confirm },
-      { ...yasaku, tool: 'record_transfer', ...confirm },
-      { ...yasaku, tool: 'delete_tx', ask: 'always' },
-      { ...yasaku, tool: 'list_wallets', ask: 'never' },
-      { ...yasaku, tool: 'search_tx', ask: 'never' },
-      { ...yasaku, tool: 'period_report', ask: 'never' },
-    ],
     webFetch: true,
     allowedDomains: ['bca.co.id'],
     webSearch: false,

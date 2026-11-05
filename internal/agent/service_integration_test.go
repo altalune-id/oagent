@@ -5,6 +5,7 @@ package agent_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/events"
+	"altalune.id/oagent/internal/testutil/fakes"
 )
 
 type txPublisher struct {
@@ -33,6 +35,16 @@ func (p *txPublisher) Enqueue(ctx context.Context, _ events.Type, _ any) error {
 
 func (f *pgFixture) service(pub agent.Publisher) *agent.Service {
 	return agent.NewService(f.store, db.NewTransactor(f.pool), apperror.NewReporter(nil, false).Unexpected).WithPublisher(pub)
+}
+
+func (f *pgFixture) granted(projectID uuid.UUID) (*agent.Service, uuid.UUID, *fakes.AgentGrants) {
+	provider := uuid.New()
+	models := make([]agent.ModelRef, 10)
+	for i := range models {
+		models[i] = agent.ModelRef{ID: fmt.Sprintf("m-%d", i)}
+	}
+	g := &fakes.AgentGrants{Providers: map[uuid.UUID]fakes.GrantProvider{provider: {ProjectID: projectID, Models: models}}}
+	return f.service(nil).WithProviders(g).WithMCPServers(g).WithLocker(g), provider, g
 }
 
 func TestService_CreateWithAFailedEventSavesNothing(t *testing.T) {
@@ -84,10 +96,18 @@ func TestService_DraftPublishAndVersionsInPostgres(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
 	ctx := in(orgID)
-	svc := f.service(nil)
+	provider, server := uuid.New(), uuid.New()
+	grants := &fakes.AgentGrants{
+		Providers: map[uuid.UUID]fakes.GrantProvider{provider: {ProjectID: projectID, Models: []agent.ModelRef{{ID: "m-1"}, {ID: "m-2"}}}},
+		Servers:   map[uuid.UUID]fakes.GrantServer{server: {ProjectID: projectID, Name: "billing"}},
+	}
+	svc := f.service(nil).WithProviders(grants).WithMCPServers(grants).WithLocker(grants)
 	a, err := svc.Create(ctx, agent.CreateRequest{OrgID: orgID, ProjectID: projectID, Slug: "support", Name: "Support"})
 	require.NoError(t, err)
-	cfg := agent.Config{Instructions: "Be brief.", Model: "m-1", Temperature: 0.4, Tools: []agent.Tool{{Name: "refund", RequireApproval: true}}}
+	cfg := agent.Config{
+		Instructions: "Be brief.", ProviderID: provider, Model: "m-1", Temperature: 0.4,
+		MCPServers: []agent.MCPGrant{{ServerID: server, Tools: []agent.Tool{{Name: "refund", RequireApproval: true}}}},
+	}
 
 	_, err = svc.UpdateDraft(ctx, a.ID, cfg)
 	require.NoError(t, err)
@@ -145,11 +165,11 @@ func TestService_VersionsHonoursTheLimitInSQL(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
 	ctx := in(orgID)
-	svc := f.service(nil)
+	svc, provider, _ := f.granted(projectID)
 	a, err := svc.Create(ctx, agent.CreateRequest{OrgID: orgID, ProjectID: projectID, Slug: "versions", Name: "Versions"})
 	require.NoError(t, err)
 	for _, model := range []string{"m-1", "m-2", "m-3"} {
-		_, err = svc.UpdateDraft(ctx, a.ID, agent.Config{Model: model})
+		_, err = svc.UpdateDraft(ctx, a.ID, agent.Config{ProviderID: provider, Model: model})
 		require.NoError(t, err)
 		_, _, _, err = svc.Publish(ctx, a.ID, uuid.Nil)
 		require.NoError(t, err)
@@ -167,10 +187,10 @@ func TestService_ConcurrentPublishesCreateOneVersion(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
 	ctx := in(orgID)
-	svc := f.service(nil)
+	svc, provider, _ := f.granted(projectID)
 	a, err := svc.Create(ctx, agent.CreateRequest{OrgID: orgID, ProjectID: projectID, Slug: "racer", Name: "Racer"})
 	require.NoError(t, err)
-	_, err = svc.UpdateDraft(ctx, a.ID, agent.Config{Model: "m-1"})
+	_, err = svc.UpdateDraft(ctx, a.ID, agent.Config{ProviderID: provider, Model: "m-1"})
 	require.NoError(t, err)
 
 	const n = 5
@@ -210,19 +230,20 @@ func TestService_DraftEditDuringAPublishKeepsTheVersion(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
 	ctx := in(orgID)
-	svc := f.service(nil)
+	svc, provider, grants := f.granted(projectID)
 	a, err := svc.Create(ctx, agent.CreateRequest{OrgID: orgID, ProjectID: projectID, Slug: "racer", Name: "Racer"})
 	require.NoError(t, err)
-	_, err = svc.UpdateDraft(ctx, a.ID, agent.Config{Model: "m-1"})
+	_, err = svc.UpdateDraft(ctx, a.ID, agent.Config{ProviderID: provider, Model: "m-1"})
 	require.NoError(t, err)
 
 	var edit sync.WaitGroup
 	var editErr error
 	paused := &pausedPublish{Store: f.store, during: func() {
-		edit.Go(func() { _, editErr = svc.UpdateDraft(ctx, a.ID, agent.Config{Model: "m-2"}) })
+		edit.Go(func() { _, editErr = svc.UpdateDraft(ctx, a.ID, agent.Config{ProviderID: provider, Model: "m-2"}) })
 		time.Sleep(200 * time.Millisecond)
 	}}
-	publisher := agent.NewService(paused, db.NewTransactor(f.pool), apperror.NewReporter(nil, false).Unexpected)
+	publisher := agent.NewService(paused, db.NewTransactor(f.pool), apperror.NewReporter(nil, false).Unexpected).
+		WithProviders(grants).WithMCPServers(grants).WithLocker(grants)
 	_, v1, created, err := publisher.Publish(ctx, a.ID, uuid.Nil)
 	require.NoError(t, err)
 	require.True(t, created)
@@ -243,19 +264,20 @@ func TestService_DraftEditDuringAPublishStaysUnpublished(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
 	ctx := in(orgID)
-	svc := f.service(nil)
+	svc, provider, grants := f.granted(projectID)
 	a, err := svc.Create(ctx, agent.CreateRequest{OrgID: orgID, ProjectID: projectID, Slug: "late-edit", Name: "Late edit"})
 	require.NoError(t, err)
-	_, err = svc.UpdateDraft(ctx, a.ID, agent.Config{Model: "m-1"})
+	_, err = svc.UpdateDraft(ctx, a.ID, agent.Config{ProviderID: provider, Model: "m-1"})
 	require.NoError(t, err)
 
 	var edit sync.WaitGroup
 	var editErr error
 	paused := &pausedPublish{Store: f.store, during: func() {
-		edit.Go(func() { _, editErr = svc.UpdateDraft(ctx, a.ID, agent.Config{Model: "m-2"}) })
+		edit.Go(func() { _, editErr = svc.UpdateDraft(ctx, a.ID, agent.Config{ProviderID: provider, Model: "m-2"}) })
 		time.Sleep(200 * time.Millisecond)
 	}}
-	publisher := agent.NewService(paused, db.NewTransactor(f.pool), apperror.NewReporter(nil, false).Unexpected)
+	publisher := agent.NewService(paused, db.NewTransactor(f.pool), apperror.NewReporter(nil, false).Unexpected).
+		WithProviders(grants).WithMCPServers(grants).WithLocker(grants)
 	_, _, _, err = publisher.Publish(ctx, a.ID, uuid.Nil)
 	require.NoError(t, err)
 	edit.Wait()

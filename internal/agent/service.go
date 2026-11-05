@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -15,6 +16,8 @@ import (
 	slugpkg "altalune.id/oagent/slug"
 )
 
+var errNoLocker = errors.New("agent: publish needs a locker for its references")
+
 // Service is the agent application service: the driving port surfaces call.
 type Service struct {
 	store      Store
@@ -22,6 +25,9 @@ type Service struct {
 	unexpected apperror.UnexpectedFunc
 	publisher  Publisher
 	projects   tenant.ProjectResolver
+	providers  Providers
+	servers    MCPServers
+	locker     Locker
 }
 
 // NewService builds a Service over store; a save and its event run as one unit of work on uow.
@@ -38,6 +44,24 @@ func (s *Service) WithPublisher(p Publisher) *Service {
 // WithProjects makes Create refuse a project outside the request's org; nil skips the check.
 func (s *Service) WithProjects(r tenant.ProjectResolver) *Service {
 	s.projects = r
+	return s
+}
+
+// WithProviders checks a config's provider and models against p; without it every provider is unknown.
+func (s *Service) WithProviders(p Providers) *Service {
+	s.providers = p
+	return s
+}
+
+// WithMCPServers checks a config's MCP server grants against m; without it every server is unknown.
+func (s *Service) WithMCPServers(m MCPServers) *Service {
+	s.servers = m
+	return s
+}
+
+// WithLocker share-locks a version's references while it is published; without it every publish fails.
+func (s *Service) WithLocker(l Locker) *Service {
+	s.locker = l
 	return s
 }
 
@@ -149,10 +173,16 @@ func (s *Service) UpdateDraft(ctx context.Context, id uuid.UUID, cfg Config) (*A
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
+	if len(cfg.Tools) > 0 {
+		return nil, &InvalidGrantError{Reason: GrantLegacyTools}
+	}
 	var a *Agent
 	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		var err error
 		if a, err = s.store.LockForPublish(ctx, id); err != nil {
+			return err
+		}
+		if err := s.checkReferences(ctx, a.ProjectID, cfg, false); err != nil {
 			return err
 		}
 		if err := a.SetDraft(cfg, time.Now().UTC()); err != nil {
@@ -170,6 +200,18 @@ func (s *Service) UpdateDraft(ctx context.Context, id uuid.UUID, cfg Config) (*A
 func (s *Service) Publish(ctx context.Context, id, by uuid.UUID) (a *Agent, v *Version, created bool, err error) {
 	err = s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		if a, err = s.store.LockForPublish(ctx, id); err != nil {
+			return err
+		}
+		if a.Draft.Legacy() {
+			return &NeedsRepublishError{}
+		}
+		if s.locker == nil {
+			return errNoLocker
+		}
+		if err := s.locker.LockShared(ctx, []uuid.UUID{a.Draft.ProviderID}, a.Draft.ServerIDs()); err != nil {
+			return err
+		}
+		if err := s.checkReferences(ctx, a.ProjectID, a.Draft, true); err != nil {
 			return err
 		}
 		latest, err := s.store.LatestVersion(ctx, id)
@@ -190,6 +232,62 @@ func (s *Service) Publish(ctx context.Context, id, by uuid.UUID) (a *Agent, v *V
 		return nil, nil, false, s.errOrReport(ctx, "agent: publish", err)
 	}
 	return a, v, created, nil
+}
+
+func (s *Service) checkReferences(ctx context.Context, projectID uuid.UUID, cfg Config, publishing bool) error {
+	if cfg.ProviderID != uuid.Nil {
+		if err := s.checkModels(ctx, projectID, cfg, publishing); err != nil {
+			return err
+		}
+	}
+	for _, g := range cfg.MCPServers {
+		if s.servers == nil {
+			return &InvalidGrantError{Reason: GrantServer}
+		}
+		name, err := s.servers.Exists(ctx, projectID, g.ServerID)
+		if err != nil {
+			return err
+		}
+		for _, t := range g.Tools {
+			if !grantNameRe.MatchString(name + "__" + t.Name) {
+				return &InvalidGrantError{Reason: GrantToolName, Name: t.Name}
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Service) checkModels(ctx context.Context, projectID uuid.UUID, cfg Config, publishing bool) error {
+	if s.providers == nil {
+		return &InvalidGrantError{Reason: GrantProvider}
+	}
+	models, err := s.providers.Models(ctx, projectID, cfg.ProviderID)
+	if err != nil {
+		return err
+	}
+	priced := make(map[string]bool, len(models))
+	for _, m := range models {
+		priced[m.ID] = m.Priced
+	}
+	for _, use := range []struct {
+		id     string
+		reason GrantReason
+	}{{cfg.Model, GrantModel}, {cfg.HelperModel, GrantHelperModel}} {
+		if use.id == "" {
+			if publishing && use.reason == GrantModel {
+				return &InvalidGrantError{Reason: GrantModel}
+			}
+			continue
+		}
+		isPriced, ok := priced[use.id]
+		if !ok {
+			return &InvalidGrantError{Reason: use.reason, Name: use.id}
+		}
+		if publishing && cfg.MaxCostCents > 0 && !isPriced {
+			return &InvalidGrantError{Reason: GrantBudgetUnpriced, Name: use.id}
+		}
+	}
+	return nil
 }
 
 // DefaultVersionsListed is how many versions Versions returns when asked for none in particular.

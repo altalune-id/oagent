@@ -1,15 +1,21 @@
 import type { ShownError } from '#base/lib/apperror/message';
-import type { AgentConfig, AgentState } from './agentConfig';
+import type { AgentConfig, AgentState, ChangeNames } from './agentConfig';
 import { useToast } from '#base/components/ui/toast';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { errorCode, errorMeta } from '#base/lib/apperror/message';
 import { useUnits } from '~/composables/useUnits';
 import { useAgentsStore } from '~/stores/agents';
-import { changes, fromWire, stateOf } from './agentConfig';
+import { changes, fromWire, stateOf, toWire } from './agentConfig';
 
 export const autosaveDelayMs = 1000;
 
+export interface FieldError {
+  reason: string;
+  message: string;
+}
+
 // useAgentDraft loads an agent's draft and live version, autosaves edits through UpdateAgentDraft and publishes them.
-export function useAgentDraft(agentId: string) {
+export function useAgentDraft(agentId: string, names: ChangeNames) {
   const { $agentClient: client } = useNuxtApp();
   const errorMessage = useErrorMessage();
   const agents = useAgentsStore();
@@ -22,6 +28,7 @@ export function useAgentDraft(agentId: string) {
   const loadError = ref<ShownError | null>(null);
   const saveError = ref<ShownError | null>(null);
   const publishError = ref<ShownError | null>(null);
+  const fieldError = ref<FieldError | null>(null);
   const saving = ref(false);
   const publishing = ref(false);
   const dirty = ref(false);
@@ -31,17 +38,18 @@ export function useAgentDraft(agentId: string) {
   let inflight: Promise<boolean> | null = null;
 
   const { money } = useUnits();
-  const diff = computed(() => changes(config.value, live.value, money));
+  const diff = computed(() => changes(config.value, live.value, money, names));
+  const wireBody = () => JSON.stringify(toWire(config.value));
 
   function track(next: AgentState) {
     state.value = next;
-    agents.setPublishState(agentId, { publishedVersion: next.publishedVersion, unpublishedChanges: next.unpublishedChanges });
+    agents.setPublishState(agentId, { publishedVersion: next.publishedVersion, unpublishedChanges: next.unpublishedChanges, providerId: next.draft.providerId, model: next.draft.model });
   }
 
   function apply(next: AgentState) {
     track(next);
     config.value = next.draft;
-    saved = JSON.stringify(next.draft);
+    saved = JSON.stringify(toWire(next.draft));
   }
 
   async function load() {
@@ -68,20 +76,28 @@ export function useAgentDraft(agentId: string) {
   async function send(body: string) {
     saving.value = true;
     saveError.value = null;
+    fieldError.value = null;
     try {
       const res = await client.updateAgentDraft({ id: agentId, config: JSON.parse(body) });
       if (res.agent) {
-        track(stateOf(res.agent));
+        const next = stateOf(res.agent);
+        track(next);
+        if (!next.draft.tools.length && config.value.tools.length) {
+          config.value = { ...config.value, tools: [] };
+        }
       }
       saved = body;
       leaveBlocked = false;
       return true;
     } catch (e) {
       saveError.value = errorMessage(e, 'error.save_draft');
+      if (errorCode(e) === 'AGT007') {
+        fieldError.value = { reason: errorMeta(e).reason ?? '', message: saveError.value.message };
+      }
       return false;
     } finally {
       saving.value = false;
-      dirty.value = JSON.stringify(config.value) !== saved;
+      dirty.value = wireBody() !== saved;
       if (dirty.value && !saveError.value && !timer) {
         schedule();
       }
@@ -99,12 +115,12 @@ export function useAgentDraft(agentId: string) {
       await busy;
       busy = inflight;
     }
-    const body = JSON.stringify(config.value);
-    if (body === saved) {
+    const next = wireBody();
+    if (next === saved) {
       dirty.value = false;
       return true;
     }
-    const run = send(body).finally(() => {
+    const run = send(next).finally(() => {
       inflight = null;
     });
     inflight = run;
@@ -112,7 +128,10 @@ export function useAgentDraft(agentId: string) {
   }
 
   watch(config, () => {
-    if (JSON.stringify(config.value) === saved) {
+    if (wireBody() === saved) {
+      fieldError.value = null;
+      saveError.value = null;
+      dirty.value = false;
       return;
     }
     dirty.value = true;
@@ -135,8 +154,8 @@ export function useAgentDraft(agentId: string) {
       if (res.agent) {
         const next = stateOf(res.agent);
         track(next);
-        saved = JSON.stringify(next.draft);
-        dirty.value = JSON.stringify(config.value) !== saved;
+        saved = JSON.stringify(toWire(next.draft));
+        dirty.value = wireBody() !== saved;
         if (dirty.value) {
           schedule();
         }
@@ -147,6 +166,9 @@ export function useAgentDraft(agentId: string) {
       return { created: res.created, version: res.version?.version ?? 0 };
     } catch (e) {
       publishError.value = errorMessage(e, 'error.publish_agent');
+      if (errorCode(e) === 'AGT007') {
+        fieldError.value = { reason: errorMeta(e).reason ?? '', message: publishError.value.message };
+      }
       return null;
     } finally {
       publishing.value = false;
@@ -182,5 +204,5 @@ export function useAgentDraft(agentId: string) {
     });
   });
 
-  return { config, state, live, diff, dirty, saving, publishing, loadError, saveError, publishError, load, save, publish, warnUnload, leaveGuard };
+  return { config, state, live, diff, dirty, saving, publishing, loadError, saveError, fieldError, publishError, load, save, publish, warnUnload, leaveGuard };
 }

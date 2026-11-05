@@ -24,6 +24,8 @@ import (
 	"altalune.id/oagent/internal/kernel/tokens"
 	"altalune.id/oagent/internal/kernel/usage"
 	"altalune.id/oagent/internal/legal"
+	"altalune.id/oagent/internal/mcpserver"
+	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
@@ -38,20 +40,24 @@ const keyUsageInterval = 30 * time.Second
 
 // Services is every store and service the composition root wires.
 type Services struct {
-	OrgStore     org.Store
-	Orgs         *org.Service
-	ProjectStore project.Store
-	Projects     *project.Service
-	AgentStore   agent.Store
-	Agents       *agent.Service
-	APIKeyStore  apikey.Store
-	APIKeys      *apikey.Service
-	KeyScheme    apikey.Scheme
-	KeyAuthn     *apikey.Authenticator
-	KeyUsage     *usage.Worker
-	Outbox       outbox.Store
-	WebhookStore webhook.Store
-	Webhooks     *webhook.Service
+	OrgStore           org.Store
+	Orgs               *org.Service
+	ProjectStore       project.Store
+	Projects           *project.Service
+	AgentStore         agent.Store
+	Agents             *agent.Service
+	APIKeyStore        apikey.Store
+	APIKeys            *apikey.Service
+	KeyScheme          apikey.Scheme
+	KeyAuthn           *apikey.Authenticator
+	KeyUsage           *usage.Worker
+	Outbox             outbox.Store
+	WebhookStore       webhook.Store
+	Webhooks           *webhook.Service
+	ModelProviders     *modelprovider.Service
+	ModelProviderStore modelprovider.Store
+	MCPServers         *mcpserver.Service
+	MCPServerStore     mcpserver.Store
 	// ConsoleURL is the console's absolute root without a trailing slash, the base of every server-side link into it.
 	ConsoleURL string
 	Sealer     sealer.Sealer
@@ -109,7 +115,16 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		refResolver{projects: projects, orgs: orgs}, append(webhookServiceOpts(cfg), webhook.WithProjects(projectOwners))...,
 	)
 
-	agents := agent.NewService(agentStore, uow, k.Reporter.Unexpected).WithPublisher(webhooks).WithProjects(projectOwners)
+	providerStore := modelprovider.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)
+	providers := configureModelProviders(modelprovider.NewService(providerStore, uow, k.Reporter.Unexpected).
+		WithSealer(sl).WithUsage(providerUsage{agents: agentStore}).WithProjects(projectOwners), cfg)
+	serverStore := mcpserver.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)
+	servers := configureMCPServers(mcpserver.NewService(serverStore, uow, k.Reporter.Unexpected).
+		WithSealer(sl).WithUsage(serverUsage{agents: agentStore}).WithProjects(projectOwners), cfg, k.Log)
+
+	agents := agent.NewService(agentStore, uow, k.Reporter.Unexpected).WithPublisher(webhooks).WithProjects(projectOwners).
+		WithProviders(grantProviders{providers: providers}).WithMCPServers(grantServers{servers: servers}).
+		WithLocker(grantLocker{providers: providerStore, servers: serverStore})
 
 	keyScheme := apikey.NewScheme("")
 	owners := ownerRoles{members: members}
@@ -160,33 +175,37 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	}
 
 	svcs := &Services{
-		ConsoleURL:   publicBase(cfg.HTTP) + "/console",
-		OrgStore:     orgStore,
-		Orgs:         orgs,
-		ProjectStore: projectStore,
-		Projects:     projects,
-		AgentStore:   agentStore,
-		Agents:       agents,
-		APIKeyStore:  apiKeyStore,
-		APIKeys:      apiKeys,
-		KeyScheme:    keyScheme,
-		KeyAuthn:     keyAuthn,
-		KeyUsage:     keyUsage,
-		Outbox:       outboxStore,
-		WebhookStore: webhookStore,
-		Webhooks:     webhooks,
-		Sealer:       sl,
-		MailQueue:    mailQueue,
-		Users:        users,
-		Members:      members,
-		Sessions:     sessions,
-		Auth:         authn,
-		Install:      installer,
-		Legal:        terms,
-		Invites:      invites,
-		Caps:         caps,
-		AuthLimiter:  ratelimit.Disabled(),
-		OIDC:         buildOIDCProvider(cfg),
+		ConsoleURL:         publicBase(cfg.HTTP) + "/console",
+		OrgStore:           orgStore,
+		Orgs:               orgs,
+		ProjectStore:       projectStore,
+		Projects:           projects,
+		AgentStore:         agentStore,
+		Agents:             agents,
+		APIKeyStore:        apiKeyStore,
+		APIKeys:            apiKeys,
+		KeyScheme:          keyScheme,
+		KeyAuthn:           keyAuthn,
+		KeyUsage:           keyUsage,
+		Outbox:             outboxStore,
+		WebhookStore:       webhookStore,
+		Webhooks:           webhooks,
+		ModelProviders:     providers,
+		ModelProviderStore: providerStore,
+		MCPServers:         servers,
+		MCPServerStore:     serverStore,
+		Sealer:             sl,
+		MailQueue:          mailQueue,
+		Users:              users,
+		Members:            members,
+		Sessions:           sessions,
+		Auth:               authn,
+		Install:            installer,
+		Legal:              terms,
+		Invites:            invites,
+		Caps:               caps,
+		AuthLimiter:        ratelimit.Disabled(),
+		OIDC:               buildOIDCProvider(cfg),
 	}
 	svcs.Resets = auth.NewResets(auth.ResetDeps{
 		Store:      auth.NewResetStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix),

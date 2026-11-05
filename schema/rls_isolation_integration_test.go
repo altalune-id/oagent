@@ -85,6 +85,16 @@ func rlsInserts() []rlsInsert {
 		}, func(tn rlsTenant, _ string) []any {
 			return []any{uuid.New(), "v" + id()[:12], tn.org, tn.project, tn.agent, now}
 		}},
+		{"model_providers", func(s string) string {
+			return `INSERT INTO ` + s + `.model_providers (id, public_id, org_id, project_id, name, kind, base_url, api_key_sealed, models, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, 'openai_compatible', 'https://e.com/v1', '\x01', '[]', $6, $6)`
+		}, func(tn rlsTenant, _ string) []any {
+			return []any{uuid.New(), "r" + id()[:12], tn.org, tn.project, "m" + id()[:12], now}
+		}},
+		{"mcp_servers", func(s string) string {
+			return `INSERT INTO ` + s + `.mcp_servers (id, public_id, org_id, project_id, name, url, auth_kind, timeout_ms, trusted, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, 'https://e.com/mcp', 'none', 5000, false, $6, $6)`
+		}, func(tn rlsTenant, _ string) []any {
+			return []any{uuid.New(), "s" + id()[:12], tn.org, tn.project, "m" + id()[:12], now}
+		}},
 		{"invites", func(s string) string {
 			return `INSERT INTO ` + s + `.invites (id, public_id, org_id, email, role, token_hash, expires_at, created_at, updated_at, email_only) VALUES ($1, $2, $3, $4, 'member', $5, $6, $6, $6, false)`
 		}, func(tn rlsTenant, _ string) []any {
@@ -212,7 +222,7 @@ func TestRLS_EveryOrgOwnedTableIsolatesTenants(t *testing.T) {
 			assert.Positive(t, before)
 		})
 	}
-	assert.Equal(t, 11, tables, "every org-owned table is covered")
+	assert.Equal(t, 13, tables, "every org-owned table is covered")
 }
 
 // SECURITY: a user-only scope reads its own memberships and orgs, but every write needs the org itself.

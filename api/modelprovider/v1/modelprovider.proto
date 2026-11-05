@@ -1,0 +1,187 @@
+syntax = "proto3";
+
+package modelprovider.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "mcp/v1/annotations.proto";
+import "oagent/v1/rules.proto";
+
+option go_package = "altalune.id/oagent/gen/go/modelprovider/v1;modelproviderv1";
+
+// ModelProviderService manages the model providers a project's agents call. Every id is a public id; an API key is write-only, and the RPCs that take one have no MCP tool.
+service ModelProviderService {
+  rpc CreateModelProvider(CreateModelProviderRequest) returns (CreateModelProviderResponse);
+  rpc GetModelProvider(GetModelProviderRequest) returns (GetModelProviderResponse) {
+    option (mcp.v1.tool) = {
+      name: "model_provider_get"
+      description: "Get a model provider by id: its base URL, models and prices, and whether an API key is set; the key is never returned. Creating a provider, or changing its key or base URL, is done in the console under Project settings, Model providers."
+      required: ["id"]
+      ui: "app"
+    };
+  }
+  rpc ListModelProviders(ListModelProvidersRequest) returns (ListModelProvidersResponse) {
+    option (mcp.v1.tool) = {
+      name: "model_provider_list"
+      description: "List the model providers in a project; keys are never returned. Creating a provider, or changing its key or base URL, is done in the console under Project settings, Model providers."
+      required: ["project_id"]
+      ui: "app"
+    };
+  }
+  rpc UpdateModelProvider(UpdateModelProviderRequest) returns (UpdateModelProviderResponse);
+  rpc DeleteModelProvider(DeleteModelProviderRequest) returns (DeleteModelProviderResponse) {
+    option (mcp.v1.tool) = {
+      name: "model_provider_delete"
+      description: "Delete a model provider by id; refused while a published agent version uses it."
+      required: ["id"]
+      mutation: true
+      destructive: true
+      ui: "app"
+    };
+  }
+}
+
+// ModelProviderKind is the wire protocol a provider speaks.
+enum ModelProviderKind {
+  MODEL_PROVIDER_KIND_UNSPECIFIED = 0;
+  MODEL_PROVIDER_KIND_OPENAI_COMPATIBLE = 1;
+}
+
+// ModelPrices are integer micro-USD per 1M tokens, per token class, in the platform currency USD. Cost micros are ceil(tokens x price / 1 000 000) per class, summed; cents are ceil(micros / 10 000).
+message ModelPrices {
+  int64 input_micros = 1 [(buf.validate.field).int64.gte = 0];
+  int64 output_micros = 2 [(buf.validate.field).int64.gte = 0];
+  int64 cache_read_micros = 3 [(buf.validate.field).int64.gte = 0];
+  int64 cache_write_micros = 4 [(buf.validate.field).int64.gte = 0];
+}
+
+// Model is one model a provider serves; without prices it is unpriced, and an agent with a cost limit cannot use it.
+message Model {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {id: "modelprovider.model.max_len.128", expression: "this.size() <= 128 ? '' : 'must be at most 128 characters'"},
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9._:/-]+$"
+  ];
+  bool vision = 2;
+  // prices are micro-USD per 1M tokens.
+  optional ModelPrices prices = 3;
+}
+
+// ModelProvider is a model endpoint of a project; api_key_set says whether a key is stored, and the key is never returned.
+message ModelProvider {
+  string id = 1;
+  string org_id = 2;
+  string project_id = 3;
+  string name = 4;
+  ModelProviderKind kind = 5;
+  string base_url = 6;
+  bool api_key_set = 7;
+  repeated Model models = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message CreateModelProviderRequest {
+  string org_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string project_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.name) = true
+  ];
+  ModelProviderKind kind = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string base_url = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {id: "modelprovider.base_url.max_len.2048", expression: "this.trim().size() <= 2048 ? '' : 'must be at most 2048 characters'"},
+    (buf.validate.field).cel = {id: "modelprovider.base_url.format", expression: "this.trim().matches('^[A-Za-z][A-Za-z0-9+.-]*://[^\\\\s/?#]') ? '' : 'must be an absolute URL'"}
+  ];
+  // api_key is write-only: it is sealed at rest and never returned.
+  string api_key = 6 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
+  repeated Model models = 7 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 64,
+    (buf.validate.field).cel = {id: "modelprovider.models.unique", expression: "this.map(m, m.id).unique() ? '' : 'model ids must be unique'"}
+  ];
+}
+
+message CreateModelProviderResponse {
+  ModelProvider model_provider = 1;
+}
+
+message GetModelProviderRequest {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+}
+
+message GetModelProviderResponse {
+  ModelProvider model_provider = 1;
+}
+
+message ListModelProvidersRequest {
+  string project_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+}
+
+message ListModelProvidersResponse {
+  repeated ModelProvider model_providers = 1;
+}
+
+// UpdateModelProviderRequest replaces a provider's editable fields; leaving api_key unset keeps the stored key, which a base_url change refuses.
+message UpdateModelProviderRequest {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.name) = true
+  ];
+  ModelProviderKind kind = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string base_url = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {id: "modelprovider.base_url.max_len.2048", expression: "this.trim().size() <= 2048 ? '' : 'must be at most 2048 characters'"},
+    (buf.validate.field).cel = {id: "modelprovider.base_url.format", expression: "this.trim().matches('^[A-Za-z][A-Za-z0-9+.-]*://[^\\\\s/?#]') ? '' : 'must be an absolute URL'"}
+  ];
+  // api_key is write-only: it is sealed at rest and never returned.
+  optional string api_key = 5 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
+  repeated Model models = 6 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 64,
+    (buf.validate.field).cel = {id: "modelprovider.models.unique", expression: "this.map(m, m.id).unique() ? '' : 'model ids must be unique'"}
+  ];
+}
+
+message UpdateModelProviderResponse {
+  ModelProvider model_provider = 1;
+}
+
+message DeleteModelProviderRequest {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+}
+
+message DeleteModelProviderResponse {}

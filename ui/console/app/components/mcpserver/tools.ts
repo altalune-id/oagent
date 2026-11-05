@@ -1,6 +1,4 @@
-import type { McpTool, ToolHint } from '~/stores/mcpServers';
-
-const toolNamePattern = /^[\w-]{1,64}$/;
+import type { ToolHint } from '~/stores/mcpServers';
 
 // toolName is the prefixed name the model sees for a server's tool.
 export function toolName(server: string, tool: string): string {
@@ -12,11 +10,6 @@ export function nameParts(name: string): string[] {
   return name.match(/[^_]*_+|[^_]+$/g) ?? [name];
 }
 
-// grantable mirrors the grant-time check on the prefixed name the model sees.
-export function grantable(server: string, tool: McpTool): boolean {
-  return toolNamePattern.test(toolName(server, tool.name));
-}
-
 // hintBadges maps a tool's hint to its badge text key and icon.
 export const hintBadges: Record<ToolHint, { labelKey: string, icon: string }> = {
   read_only: { labelKey: 'mcptools.hint_read_only', icon: 'lucide:eye' },
@@ -24,13 +17,12 @@ export const hintBadges: Record<ToolHint, { labelKey: string, icon: string }> = 
   destructive: { labelKey: 'mcptools.hint_destructive', icon: 'lucide:triangle-alert' },
 };
 
-// serverNameError returns the text key of the first rule a new server name breaks, or '' when it is valid.
-export function serverNameError(name: string): string {
-  if (!name) {
-    return 'mcpservers.name_required';
+const reservedHeaders = ['host', 'content-length', 'transfer-encoding', 'connection', 'content-type', 'accept', 'mcp-session-id', 'mcp-protocol-version', 'te', 'trailer', 'upgrade', 'keep-alive', 'proxy-authorization', 'proxy-connection', 'expect'];
+
+// headerNameError returns the text key for a header name the server refuses: not an HTTP token, or one oagent sets itself.
+export function headerNameError(name: string): string {
+  if (!/^[\w!#$%&'*+.^`|~-]+$/.test(name)) {
+    return 'mcpservers.header_required';
   }
-  if (name.includes('__')) {
-    return 'mcpservers.name_double_underscore';
-  }
-  return /^[\w-]{1,32}$/.test(name) ? '' : 'mcpservers.name_chars';
+  return reservedHeaders.includes(name.toLowerCase()) ? 'mcpservers.header_reserved' : '';
 }

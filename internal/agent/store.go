@@ -21,6 +21,16 @@ type Reader interface {
 	Versions(ctx context.Context, agentID uuid.UUID, limit int) ([]*Version, error)
 	// LatestVersion returns the agent's newest version, or nil before the first publish.
 	LatestVersion(ctx context.Context, agentID uuid.UUID) (*Version, error)
+	// ProviderUse reports how the latest published versions in the org on ctx use a model provider; drafts never count.
+	ProviderUse(ctx context.Context, providerID uuid.UUID) (ProviderUsage, error)
+	// MCPServerInUse reports whether a latest published version in the org on ctx grants tools of a server.
+	MCPServerInUse(ctx context.Context, serverID uuid.UUID) (bool, error)
+}
+
+// ProviderUsage says whether a provider is used and, per model id used, whether a cost limit needs its price.
+type ProviderUsage struct {
+	InUse  bool
+	Models map[string]bool
 }
 
 // Writer writes Agent aggregates.

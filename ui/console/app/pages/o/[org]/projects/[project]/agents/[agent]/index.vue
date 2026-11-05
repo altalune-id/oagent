@@ -7,7 +7,7 @@ import { useToast } from '#base/components/ui/toast';
 import { useDates } from '#base/composables/useDates';
 import AgentConfigForm from '~/components/agent/configure/AgentConfigForm.vue';
 import ConfigurePane from '~/components/agent/configure/ConfigurePane.vue';
-import { publishBlockers, runtimeChanges } from '~/components/agent/configure/runtime';
+import { publishBlockers } from '~/components/agent/configure/runtime';
 import { useAgentDraft } from '~/components/agent/configure/useAgentDraft';
 import { useCan } from '~/composables/useCan';
 import { useAgentRuntimeStore } from '~/stores/agentRuntime';
@@ -15,9 +15,9 @@ import { useAgentsStore } from '~/stores/agents';
 import { useAuthStore } from '~/stores/auth';
 import { useKnowledgeStore } from '~/stores/knowledge';
 import { useMcpServersStore } from '~/stores/mcpServers';
+import { useModelProvidersStore } from '~/stores/modelProviders';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
-import { useProvidersStore } from '~/stores/providers';
 import { useWebSearchStore } from '~/stores/webSearch';
 
 definePageMeta({ bleed: true });
@@ -27,7 +27,7 @@ const route = useRoute();
 const orgs = useOrgsStore();
 const projects = useProjectsStore();
 const agents = useAgentsStore();
-const providers = useProvidersStore();
+const providers = useModelProvidersStore();
 const servers = useMcpServersStore();
 const knowledge = useKnowledgeStore();
 const webSearch = useWebSearchStore();
@@ -64,7 +64,11 @@ if (!agent.value) {
   throw createError({ statusCode: 404, statusMessage: t('error.agent_not_found'), fatal: true });
 }
 
-const draft = useAgentDraft(agent.value.id);
+const names = {
+  provider: (id: string) => providers.items.find(p => p.id === id)?.name ?? '—',
+  server: (id: string) => servers.items.find(s => s.id === id)?.name ?? id,
+};
+const draft = useAgentDraft(agent.value.id, names);
 await draft.load();
 
 const { config, state, diff } = draft;
@@ -81,13 +85,10 @@ const runtime = computed({
 });
 const base = computed(() => `/o/${route.params.org}/projects/${route.params.project}`);
 const links = computed(() => ({ providers: `${base.value}/settings/model-providers`, servers: `${base.value}/settings/mcp-servers`, webSearch: `${base.value}/settings/web-search`, knowledge: `${base.value}/knowledge` }));
-const legacy = computed(() => current.value > 0);
-const blockers = computed(() => publishBlockers(runtime.value, { providers: providers.items, servers: servers.items, maxCostCents: config.value.maxCostCents, oldTools: config.value.tools.length }));
-const allChanges = computed(() => [...diff.value, ...runtimeChanges(runtime.value, undefined, providers.items)]);
-const usesSamples = computed(() => runtimes.usesSample(agentId));
+const legacy = computed(() => current.value > 0 && !!draft.live.value && !draft.live.value.providerId);
+const blockers = computed(() => publishBlockers(config.value, { providers: providers.items, servers: servers.items }));
 const loaded = computed(() => !!state.value && !draft.loadError.value);
-// TODO: allow publishing once the runtime config RPCs land; the preview keeps it off.
-const canPublish = computed(() => false);
+const canPublish = computed(() => loaded.value && blockers.value.length === 0);
 const blockersId = useId();
 
 function openFixes() {
@@ -95,12 +96,12 @@ function openFixes() {
   void nextTick(() => document.getElementById(blockersId)?.focus());
 }
 
-function jump(target: string) {
+function jump(target: string, field = target) {
   publishOpen.value = false;
   void nextTick(() => {
     const section = document.getElementById(`configure-${target}`);
     section?.scrollIntoView({ block: 'start' });
-    (section?.querySelector<HTMLElement>(`[data-field="${target}"]`) ?? section?.querySelector<HTMLElement>('select, input, textarea, button'))?.focus({ preventScroll: true });
+    (section?.querySelector<HTMLElement>(`[data-field="${field}"]`) ?? section?.querySelector<HTMLElement>('select, input, textarea, button'))?.focus({ preventScroll: true });
   });
 }
 
@@ -118,7 +119,12 @@ const status = computed(() => {
   }
   return state.value?.draftUpdatedAt ? t('configure.saved_at', { when: when(state.value.draftUpdatedAt) }) : '';
 });
-const liveLine = computed(() => (current.value ? t('legacy.live_needs_republish', { n: current.value }) : t('configure.never_published')));
+const liveLine = computed(() => {
+  if (!current.value) {
+    return t('configure.never_published');
+  }
+  return legacy.value ? t('legacy.live_needs_republish', { n: current.value }) : t('configure.live_version', { n: current.value });
+});
 
 function changeIcon(key: string) {
   if (key.endsWith('_removed')) {
@@ -147,12 +153,10 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
           <h1 class="truncate text-xl font-semibold">
             {{ agent.name }}
           </h1>
-          <span class="badge badge-info badge-soft text-base-content badge-sm">{{ t('preview.badge') }}</span>
         </div>
         <p :id="reasonId" class="flex flex-wrap gap-x-1 text-ui text-base-content/70">
           <span role="status">{{ draft.loadError.value ? '' : status }}</span>
           <span v-if="!draft.loadError.value">{{ liveLine }}</span>
-          <span v-if="canEdit && loaded">{{ usesSamples ? t('configure.samples_block') : t('configure.preview_off') }}</span>
         </p>
       </div>
       <div v-if="canEdit" class="flex items-center gap-2">
@@ -160,7 +164,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
           <Icon name="lucide:git-compare" size="16" aria-hidden="true" />
           {{ t('configure.view_changes') }}
         </AppButton>
-        <AppButton v-if="loaded && !current && blockers.length" variant="plain" size="sm" @click="openFixes()">
+        <AppButton v-if="loaded && blockers.length" variant="plain" size="sm" @click="openFixes()">
           <Icon name="lucide:circle-alert" size="16" class="text-error" aria-hidden="true" />
           {{ t('publish.fix_count', { n: blockers.length }, blockers.length) }}
         </AppButton>
@@ -173,7 +177,12 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
 
     <div class="flex flex-col gap-2 px-4 lg:px-6" :class="{ 'pt-4': legacy && loaded }">
       <LoadError :error="draft.loadError.value" :busy="false" :retry-label="t('common.retry')" @retry="draft.load()" />
-      <ErrorText :error="draft.saveError.value" />
+      <div v-if="draft.saveError.value && !draft.fieldError.value" class="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <ErrorText :error="draft.saveError.value" />
+        <AppButton variant="plain" size="xs" :busy="draft.saving.value" @click="draft.save()">
+          {{ t('common.retry') }}
+        </AppButton>
+      </div>
       <div v-if="legacy && loaded" role="alert" class="alert alert-warning alert-soft alert-vertical text-base-content text-ui sm:alert-horizontal">
         <Icon name="lucide:triangle-alert" size="16" class="shrink-0" aria-hidden="true" />
         <span>{{ t('legacy.banner', { n: current }) }}</span>
@@ -186,7 +195,8 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
     <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(22rem,26rem)]">
       <AgentConfigForm
         v-model="config" v-model:runtime="runtime" :providers="providers.items" :servers="servers.items" :sources="knowledge.items"
-        :search-ready="!!webSearch.setting.provider" :links="links" :legacy-model="legacy ? (draft.live.value?.model ?? '') : ''" :disabled="!canEdit || !loaded"
+        :search-ready="!!webSearch.setting.provider" :embeddings="knowledge.embeddingReady" :links="links" :legacy-model="legacy ? (draft.live.value?.model ?? '') : ''" :disabled="!canEdit || !loaded"
+        :field-error="draft.fieldError.value"
       />
       <ConfigurePane :agent-id="agent.id" :config="config" />
     </div>
@@ -199,8 +209,8 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
             {{ t('publish.fix_first') }}
           </p>
           <ul class="flex flex-col gap-1">
-            <li v-for="b in blockers" :key="b.key + (b.params?.server ?? '')">
-              <button type="button" class="link link-hover text-start" @click="jump(b.target)">
+            <li v-for="b in blockers" :key="b.key">
+              <button type="button" class="link link-hover text-start" @click="jump(b.target, b.field)">
                 {{ t(b.key, b.params ?? {}) }}
               </button>
             </li>
@@ -208,10 +218,10 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
         </div>
       </div>
       <p class="text-ui text-base-content/70">
-        {{ current ? t('configure.publish_body_legacy', { n: current + 1 }) : t('configure.publish_first') }}
+        {{ current ? t('configure.publish_body', { n: current + 1, current }) : t('configure.publish_first') }}
       </p>
-      <ul v-if="allChanges.length" class="flex flex-col gap-2 py-3 text-ui">
-        <li v-for="(change, i) in allChanges" :key="i" class="flex gap-2">
+      <ul v-if="diff.length" class="flex flex-col gap-2 py-3 text-ui">
+        <li v-for="(change, i) in diff" :key="i" class="flex gap-2">
           <Icon :name="changeIcon(change.key)" size="16" class="mt-0.5 shrink-0" aria-hidden="true" />
           <span>{{ t(change.key, change.params ?? {}) }}</span>
         </li>
@@ -221,7 +231,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
       </p>
       <p class="flex items-center gap-1.5 text-xs text-base-content/70">
         <Icon name="lucide:flask-conical" size="14" class="shrink-0" aria-hidden="true" />
-        {{ usesSamples ? t('configure.samples_block') : t('configure.preview_off') }}
+        {{ t('configure.preview_not_published') }}
       </p>
       <ErrorText :error="draft.publishError.value" />
       <template #footer>

@@ -6,7 +6,7 @@ import { useAgentsStore } from '~/stores/agents';
 import { useAuthStore } from '~/stores/auth';
 import { useKnowledgeStore } from '~/stores/knowledge';
 import { useMcpServersStore } from '~/stores/mcpServers';
-import { useProvidersStore } from '~/stores/providers';
+import { useModelProvidersStore } from '~/stores/modelProviders';
 import { useWebSearchStore } from '~/stores/webSearch';
 
 // useAgentPage resolves the agent in the route with the project data its pages read, and throws a 404 when it is unknown.
@@ -15,7 +15,7 @@ export async function useAgentPage() {
   const { t } = useI18n();
   const { project } = useProject();
   const agents = useAgentsStore();
-  const providers = useProvidersStore();
+  const providers = useModelProvidersStore();
   const servers = useMcpServersStore();
   const knowledge = useKnowledgeStore();
   const webSearch = useWebSearchStore();

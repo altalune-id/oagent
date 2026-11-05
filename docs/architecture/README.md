@@ -25,7 +25,7 @@ flowchart TB
   CLI --> BOOT["internal/boot<br/>composition root"]
   BOOT --> CP["internal/controlplane<br/>Connect handlers, permission, validation"]
   BOOT --> WEB["internal/web<br/>mux, static, gates (no domain)"]
-  CP --> DOM["domains<br/>org, project, agent, apikey, webhook, user, auth, install, legal, health"]
+  CP --> DOM["domains<br/>org, project, agent, modelprovider, mcpserver, apikey, webhook, user, auth, install, legal, health"]
   WEB -. Registrar .-> DOM
   DOM --> LAYOUT["internal/web/layout<br/>templ shell"]
   DOM --> KERNEL["internal/kernel/*<br/>authn, authz, session, tenant, events, capabilities<br/>features: db, outbox, mailqueue, queue, ratelimit"]
@@ -68,13 +68,13 @@ Only the connection, its drivers, boot and the test helpers import a backend lib
 
 ## Domains
 
-Each domain is a package under `internal/`: `org` (with `org/member` and `org/invite`), `project`, `agent`, `apikey`, `webhook`, `user`, `auth`, `install`, `legal`, `health`. Each uses only the files it needs: `<domain>.go`, `errors.go`, `ports.go`, `store.go` + `pg*.go`, `service.go`, then one file per surface (`controlplane.go`, `cli.go`, `web.go`), with templ views in `<domain>/views`. See [module.md](../howto/module.md).
+Each domain is a package under `internal/`: `org` (with `org/member` and `org/invite`), `project`, `agent`, `modelprovider`, `mcpserver`, `apikey`, `webhook`, `user`, `auth`, `install`, `legal`, `health`. Each uses only the files it needs: `<domain>.go`, `errors.go`, `ports.go`, `store.go` + `pg*.go`, `service.go`, then one file per surface (`controlplane.go`, `cli.go`, `web.go`), with templ views in `<domain>/views`. See [module.md](../howto/module.md).
 
 Other internal packages: `permission` (the permission each RPC needs), `apiclient` (the CLI's Connect client), `prompt` (stdin prompts), `render` (CLI output), `mcp` (MCP auth and payloads).
 
 ## Root packages
 
-Packages at the repo root never import `internal/`: `apperror` (error codes, `codes.json`), `config`, the connections `pg`, `nats` and `redis`, `migrator`, `mailer` (+ console, smtp, resend), `worker`, `scheduler`, `httpclient`, `httpserver`, `mcp`, `password`, `sealer`, `nanoid`, `slug`, `scope`, `reqid`, `telemetry`, `version`.
+Packages at the repo root never import `internal/`: `apperror` (error codes, `codes.json`), `config`, the connections `pg`, `nats` and `redis`, `migrator`, `mailer` (+ console, smtp, resend), `worker`, `scheduler`, `httpclient`, `httpserver`, `mcp`, `password`, `sealer`, `nanoid`, `slug`, `weburl`, `scope`, `reqid`, `telemetry`, `version`.
 
 ## UI builds
 

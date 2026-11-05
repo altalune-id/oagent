@@ -19,6 +19,9 @@ type AgentStore struct {
 	Deleted  uuid.UUID
 	// Published holds the inserted versions, newest first.
 	Published []*agent.Version
+	// Usage and ServerInUse answer the usage queries.
+	Usage       agent.ProviderUsage
+	ServerInUse bool
 }
 
 // SaveDraft implements agent.Store like Save.
@@ -112,4 +115,14 @@ func (f *AgentStore) Resolve(_ context.Context, publicID string) (agent.Ref, err
 		return agent.Ref{}, err
 	}
 	return agent.Ref{ID: p.ID, OrgID: p.OrgID, ProjectID: p.ProjectID}, nil
+}
+
+// ProviderUse implements agent.Store; Usage answers it.
+func (f *AgentStore) ProviderUse(context.Context, uuid.UUID) (agent.ProviderUsage, error) {
+	return f.Usage, f.Err
+}
+
+// MCPServerInUse implements agent.Store; ServerInUse answers it.
+func (f *AgentStore) MCPServerInUse(context.Context, uuid.UUID) (bool, error) {
+	return f.ServerInUse, f.Err
 }

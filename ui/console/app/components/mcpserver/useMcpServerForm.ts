@@ -1,9 +1,12 @@
-import type { McpAuth, McpServer, ProbeResult } from '~/stores/mcpServers';
+import type { ShownError } from '#base/lib/apperror/message';
+import type { McpAuth, McpServer, ServerInput } from '~/stores/mcpServers';
 import { useToast } from '#base/components/ui/toast';
-import { nameTaken } from '~/lib/names/names';
-import { isHttpsUrl } from '~/lib/url/url';
-import { useMcpServersStore } from '~/stores/mcpServers';
-import { serverNameError } from './tools';
+import { useValidation } from '#base/composables/useValidation';
+import { CreateMcpServerRequestSchema } from '#gen/mcpserver/v1/mcpserver_pb';
+import { createRequest, useMcpServersStore } from '~/stores/mcpServers';
+import { headerNameError } from './tools';
+
+export const defaultTimeoutSeconds = 10;
 
 export interface ServerErrors {
   name?: string;
@@ -13,12 +16,15 @@ export interface ServerErrors {
   timeout?: string;
 }
 
-// useMcpServerForm holds the add and edit form of an MCP server and its tool probe; the name is fixed once saved.
-export function useMcpServerForm(probe?: (url: string) => Promise<ProbeResult>) {
+// useMcpServerForm holds the add and edit form of an MCP server; the name is fixed once saved and the secret is write-only, never kept after a save.
+export function useMcpServerForm(orgId: string, projectId: string) {
   const { t } = useI18n();
   const servers = useMcpServersStore();
-  const probeUrl = probe ?? servers.probe;
   const toast = useToast();
+  const validation = useValidation(CreateMcpServerRequestSchema, {
+    fields: ['name', 'url', 'auth_header', 'auth_value', 'timeout_ms'],
+    codes: { MCS002: 'name', MCS003: 'url', MCS006: 'auth_value', MCS006_header_name: 'auth_header' },
+  });
 
   const open = ref(false);
   const editing = ref<McpServer | null>(null);
@@ -29,15 +35,11 @@ export function useMcpServerForm(probe?: (url: string) => Promise<ProbeResult>) 
   const secret = ref('');
   const replacingSecret = ref(false);
   const trusted = ref(false);
-  const timeout = ref(20);
-  const errors = ref<ServerErrors>({});
-  const probing = ref(false);
-  const result = ref<ProbeResult | null>(null);
-  const resultUrl = ref('');
-  let probeRun = 0;
-  let probingUrl = '';
+  const timeout = ref(defaultTimeoutSeconds);
+  const local = ref<ServerErrors>({});
+  const formError = ref<ShownError | null>(null);
+  const busy = ref(false);
 
-  const probed = computed(() => (resultUrl.value === url.value.trim() ? result.value : null));
   const urlChanged = computed(() => !!editing.value && url.value.trim() !== editing.value.url);
   const needsSecret = computed(() => auth.value !== 'none');
   const secretRequired = computed(() => {
@@ -45,16 +47,13 @@ export function useMcpServerForm(probe?: (url: string) => Promise<ProbeResult>) 
     return needsSecret.value && (!was || !was.secretSet || was.auth !== auth.value || urlChanged.value);
   });
   const secretShown = computed(() => needsSecret.value && (secretRequired.value || replacingSecret.value));
-
-  watch(url, (next) => {
-    if (probing.value && next.trim() !== probingUrl) {
-      probeRun++;
-      probing.value = false;
-    }
+  const errors = computed<ServerErrors>(() => {
+    const v = validation.errors.value;
+    const out: ServerErrors = { name: v.name, url: v.url, headerName: v.auth_header, secret: v.auth_value, timeout: v.timeout_ms, ...local.value };
+    return Object.fromEntries(Object.entries(out).filter(([, msg]) => msg)) as ServerErrors;
   });
 
   function show(server?: McpServer) {
-    probeRun++;
     editing.value = server ?? null;
     name.value = server?.name ?? '';
     url.value = server?.url ?? '';
@@ -63,86 +62,64 @@ export function useMcpServerForm(probe?: (url: string) => Promise<ProbeResult>) 
     secret.value = '';
     replacingSecret.value = false;
     trusted.value = server?.trusted ?? false;
-    timeout.value = server?.timeoutSeconds ?? 20;
-    errors.value = {};
-    result.value = server ? { kind: 'ok', tools: server.tools } : null;
-    resultUrl.value = server?.url ?? '';
-    probing.value = false;
+    timeout.value = server ? server.timeoutMs / 1000 : defaultTimeoutSeconds;
+    local.value = {};
+    formError.value = null;
+    validation.clear();
     open.value = true;
   }
 
   function hide() {
-    probeRun++;
-    probing.value = false;
+    if (busy.value) {
+      return;
+    }
     secret.value = '';
     open.value = false;
   }
 
-  function validate(): boolean {
+  function input(): ServerInput | null {
     const next: ServerErrors = {};
-    const nameKey = editing.value ? '' : serverNameError(name.value.trim());
-    if (nameKey) {
-      next.name = t(nameKey);
-    } else if (!editing.value && nameTaken(servers.items, name.value)) {
-      next.name = t('mcpservers.name_taken');
-    }
-    if (!isHttpsUrl(url.value.trim())) {
-      next.url = t('mcpservers.url_https');
-    }
-    if (auth.value === 'header' && !/^[\w-]+$/.test(headerName.value.trim())) {
-      next.headerName = t('mcpservers.header_required');
+    const headerKey = auth.value === 'header' ? headerNameError(headerName.value.trim()) : '';
+    if (headerKey) {
+      next.headerName = t(headerKey, { name: headerName.value.trim() });
     }
     if (secretRequired.value && !secret.value.trim()) {
       next.secret = t('mcpservers.secret_required');
     }
-    if (!Number.isInteger(timeout.value) || timeout.value < 1 || timeout.value > 120) {
-      next.timeout = t('mcpservers.timeout_range');
-    }
-    errors.value = next;
-    return Object.keys(next).length === 0;
+    const ms = Math.round(Number(timeout.value) * 1000);
+    local.value = next;
+    const out: ServerInput = { name: editing.value?.name ?? name.value, url: url.value, auth: auth.value, headerName: headerName.value, secret: secret.value, trusted: trusted.value, timeoutMs: ms };
+    const storedSecret = 'kept';
+    const shaped = validation.check(createRequest(orgId, projectId, { ...out, secret: out.secret.trim() || storedSecret }));
+    formError.value = validation.formError.value;
+    return shaped && Object.keys(next).length === 0 ? out : null;
   }
 
-  async function loadTools() {
-    const target = url.value.trim();
-    if (!isHttpsUrl(target)) {
-      errors.value = { ...errors.value, url: t('mcpservers.url_https') };
-      return;
-    }
-    const mine = ++probeRun;
-    probingUrl = target;
-    probing.value = true;
-    result.value = null;
-    const answer = await probeUrl(target);
-    if (mine === probeRun) {
-      result.value = answer;
-      resultUrl.value = target;
-      probing.value = false;
-    }
-  }
-
-  function submit(): boolean {
-    if (!validate()) {
+  async function submit(): Promise<boolean> {
+    if (busy.value) {
       return false;
     }
-    const was = editing.value;
-    const found = probed.value;
-    servers.save({
-      id: was?.id ?? `mcs_${Date.now().toString(36)}`,
-      name: was?.name ?? name.value.trim(),
-      url: url.value.trim(),
-      auth: auth.value,
-      headerName: auth.value === 'header' ? headerName.value.trim() : '',
-      secretSet: needsSecret.value,
-      trusted: trusted.value,
-      timeoutSeconds: timeout.value,
-      tools: found?.kind === 'ok' ? found.tools : [],
-      usedBy: was?.usedBy ?? [],
-    });
-    toast.push('success', t('mcpservers.saved', { name: was?.name ?? name.value.trim() }));
-    secret.value = '';
-    open.value = false;
-    return true;
+    const req = input();
+    if (!req) {
+      return false;
+    }
+    busy.value = true;
+    try {
+      const was = editing.value;
+      const saved = was ? await servers.update(was.id, req) : await servers.add(orgId, projectId, req);
+      toast.push('success', t('mcpservers.saved', { name: saved.name }));
+      secret.value = '';
+      open.value = false;
+      void servers.loadTools(saved.id);
+      return true;
+    } catch (e) {
+      local.value = {};
+      formError.value = validation.fromServer(e, 'error.save_mcp_server');
+      return false;
+    } finally {
+      busy.value = false;
+    }
   }
 
-  return { open, editing, name, url, auth, headerName, secret, replacingSecret, trusted, timeout, errors, probing, probed, urlChanged, needsSecret, secretRequired, secretShown, show, hide, loadTools, submit };
+  return { open, editing, name, url, auth, headerName, secret, replacingSecret, trusted, timeout, errors, formError, busy, urlChanged, needsSecret, secretRequired, secretShown, show, hide, submit };
 }

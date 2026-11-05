@@ -24,6 +24,8 @@ export interface Agent {
   description: string;
   publishedVersion?: number;
   unpublishedChanges?: boolean;
+  providerId?: string;
+  model?: string;
   updatedAt?: Date;
 }
 
@@ -54,7 +56,7 @@ export const useAgentsStore = defineStore('agents', () => {
     items.value = items.value.filter(a => a.id !== id);
   }
 
-  function setPublishState(id: string, state: Pick<Agent, 'publishedVersion' | 'unpublishedChanges'>) {
+  function setPublishState(id: string, state: Pick<Agent, 'publishedVersion' | 'unpublishedChanges' | 'providerId' | 'model'>) {
     items.value = items.value.map(a => (a.id === id ? { ...a, ...state } : a));
   }
 
@@ -79,6 +81,8 @@ export const useAgentsStore = defineStore('agents', () => {
         description: a.description,
         publishedVersion: a.publishedVersion,
         unpublishedChanges: a.unpublishedChanges,
+        providerId: a.draft?.providerId ?? '',
+        model: a.draft?.model ?? '',
         updatedAt: a.draftUpdatedAt ? timestampDate(a.draftUpdatedAt) : a.updatedAt ? timestampDate(a.updatedAt) : undefined,
       }));
       loadedFor = projectId;

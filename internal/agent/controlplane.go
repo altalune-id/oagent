@@ -97,7 +97,11 @@ func (s *AgentService) ListAgents(
 				return nil, err
 			}
 		}
-		out = append(out, agentToProto(a, orgPublicID, req.Msg.GetProjectId()))
+		item := agentToProto(a, orgPublicID, req.Msg.GetProjectId())
+		if err := s.fillRefs(ctx, a.Draft, item.Draft); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
 	}
 	return connect.NewResponse(&agentv1.ListAgentsResponse{Agents: out}), nil
 }
@@ -146,7 +150,11 @@ func (s *AgentService) UpdateAgentDraft(
 	if err != nil {
 		return nil, err
 	}
-	a, err = s.agents.UpdateDraft(ctx, a.ID, configFromProto(req.Msg.GetConfig()))
+	cfg, err := s.configFrom(ctx, a.ProjectID, req.Msg.GetConfig())
+	if err != nil {
+		return nil, err
+	}
+	a, err = s.agents.UpdateDraft(ctx, a.ID, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +186,11 @@ func (s *AgentService) PublishAgent(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&agentv1.PublishAgentResponse{Agent: out, Version: versionToProto(v, a.PublicID, by), Created: created}), nil
+	version, err := s.versionOut(ctx, v, a.PublicID, by)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&agentv1.PublishAgentResponse{Agent: out, Version: version, Created: created}), nil
 }
 
 // ListAgentVersions lists an agent's published versions, newest first.
@@ -204,7 +216,11 @@ func (s *AgentService) ListAgentVersions(
 			}
 			people[v.CreatedBy.UUID] = by
 		}
-		out = append(out, versionToProto(v, a.PublicID, by))
+		version, err := s.versionOut(ctx, v, a.PublicID, by)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, version)
 	}
 	return connect.NewResponse(&agentv1.ListAgentVersionsResponse{Versions: out}), nil
 }
@@ -259,5 +275,62 @@ func (s *AgentService) toProto(ctx context.Context, a *Agent) (*agentv1.Agent, e
 	if err != nil {
 		return nil, err
 	}
-	return agentToProto(a, orgPublicID, projectPublicID), nil
+	out := agentToProto(a, orgPublicID, projectPublicID)
+	if err := s.fillRefs(ctx, a.Draft, out.Draft); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (s *AgentService) versionOut(ctx context.Context, v *Version, agentPublicID, by string) (*agentv1.AgentVersion, error) {
+	out := versionToProto(v, agentPublicID, by)
+	if err := s.fillRefs(ctx, v.Config, out.Config); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// SECURITY: a reference that no longer resolves renders empty and flagged, never as its UUID and never as an error.
+func (s *AgentService) fillRefs(ctx context.Context, c Config, out *agentv1.AgentConfig) error {
+	if c.ProviderID != uuid.Nil {
+		pub, ok, err := s.refs.ProviderPublicID(ctx, c.ProviderID)
+		if err != nil {
+			return err
+		}
+		out.ProviderId, out.ProviderMissing = pub, !ok
+	}
+	for i, g := range c.MCPServers {
+		pub, ok, err := s.refs.MCPServerPublicID(ctx, g.ServerID)
+		if err != nil {
+			return err
+		}
+		out.McpServers[i].ServerId, out.McpServers[i].Missing = pub, !ok
+	}
+	return nil
+}
+
+// SECURITY: a provider or server of another project answers the same as an unknown one.
+func (s *AgentService) configFrom(ctx context.Context, projectID uuid.UUID, in *agentv1.AgentConfig) (Config, error) {
+	cfg := configFromProto(in)
+	if pub := in.GetProviderId(); pub != "" {
+		id, owner, ok, err := s.refs.ProviderID(ctx, pub)
+		if err != nil {
+			return Config{}, err
+		}
+		if !ok || owner != projectID {
+			return Config{}, &InvalidGrantError{Reason: GrantProvider}
+		}
+		cfg.ProviderID = id
+	}
+	for i, g := range in.GetMcpServers() {
+		id, owner, ok, err := s.refs.MCPServerID(ctx, g.GetServerId())
+		if err != nil {
+			return Config{}, err
+		}
+		if !ok || owner != projectID {
+			return Config{}, &InvalidGrantError{Reason: GrantServer}
+		}
+		cfg.MCPServers[i].ServerID = id
+	}
+	return cfg, nil
 }
