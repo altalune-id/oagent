@@ -11,10 +11,10 @@ minimumReleaseAgeStrict: true
 catalog:
   "@fontsource-variable/instrument-sans": 5.3.0
   "@fontsource-variable/jetbrains-mono": 5.3.0
-  "@iconify-json/lucide": ^1.2.147
-  "@iconify/vue": ^5.0.4
+  "@iconify-json/lucide": ^1.2.150
+  "@iconify/vue": ^5.0.5
   "@tailwindcss/vite": ^4.3.3
-  "@types/node": ^26.6.5
+  "@types/node": ^26.6.6
   "@vitejs/plugin-vue": ^6.0.10
   "@vitest/coverage-v8": 5.0.5
   "@vue/test-utils": 2.5.1
@@ -25,4 +25,4 @@ catalog:
   vite: ^8.3.5
   vitest: 5.0.5
   vue: ^3.5.44
-  vue-tsc: ^3.3.13
+  vue-tsc: ^3.3.14
