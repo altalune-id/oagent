@@ -17,10 +17,13 @@ describe('useDates', () => {
   });
 
   it('says how long ago from when it was called', () => {
+    vi.useFakeTimers({ now: new Date(Date.UTC(2026, 9, 27, 12)) });
     vi.stubGlobal('useI18n', () => ({ locale: ref('en-US') }));
     const { when } = useDates();
-    expect(when(new Date(Date.now() - 3 * 86_400_000))).toBe('3 days ago');
+    vi.advanceTimersByTime(5);
+    expect(when(new Date(Date.now() - 5 - 3 * 86_400_000))).toBe('3 days ago');
     expect(when(undefined)).toBe('');
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 });
