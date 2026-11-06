@@ -1,10 +1,10 @@
 import type { McpCallToolOptions, McpToolFilterCallback } from '@strands-agents/sdk';
-import type { Credential } from './egress.ts';
-import type { Logger } from './log.ts';
+import type { Credential } from '../egress/fetch.ts';
+import type { Logger } from '../log.ts';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 
 import { McpClient } from '@strands-agents/sdk';
-import { guardedFetch } from './egress.ts';
+import { guardedFetch } from '../egress/fetch.ts';
 
 const MAX_DESCRIPTION_RUNES = 1024;
 const MAX_SCHEMA_BYTES = 16 * 1024;

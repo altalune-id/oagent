@@ -1,17 +1,15 @@
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
+import type { Logger } from '../log.ts';
 import type { TurnRequest } from './contract.ts';
-import type { Logger } from './log.ts';
 import { Buffer } from 'node:buffer';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import process from 'node:process';
 import { configureLogging } from '@strands-agents/sdk';
 
-import { createRunTurn } from './agui.ts';
+import { installGuard } from '../egress/ssrf.ts';
+import { createLogger, strandsLogger } from '../log.ts';
 import { TurnRefusedError, validateRequest } from './contract.ts';
-import { createLogger, strandsLogger } from './log.ts';
-import { ModelClients } from './models.ts';
-import { installGuard } from './ssrf.ts';
 
 export const MAX_BODY_BYTES = 8 * 1024 * 1024;
 const MIN_TOKEN_BYTES = 32;
@@ -224,12 +222,4 @@ export async function start(env: Record<string, string | undefined>, runTurn: Ru
   log.info('listening', { port: (server.address() as { port: number }).port });
   process.once('SIGTERM', () => server.close());
   return server;
-}
-
-if (import.meta.main) {
-  const log = createLogger();
-  start(process.env, createRunTurn({ models: new ModelClients(), log }), log).catch((error: unknown) => {
-    log.error('start failed', { error });
-    process.exit(1);
-  });
 }

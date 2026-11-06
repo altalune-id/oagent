@@ -6,16 +6,16 @@ import { createServer, request as httpRequest } from 'node:http';
 import { fileURLToPath } from 'node:url';
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { createRunTurn } from './agui.ts';
+import { createLogger } from '../log.ts';
+import { ModelClients } from '../models/clients.ts';
+import { ScriptedModel } from '../test/scripted-model.ts';
+import { fakeMcp } from '../test/turn-fixtures.ts';
+import { createRunTurn } from '../turn/agui.ts';
 import { TurnRefusedError } from './contract.ts';
-import { createLogger } from './log.ts';
-import { ModelClients } from './models.ts';
 import { createRuntimeServer, loadConfig, MAX_BODY_BYTES, start } from './server.ts';
-import { ScriptedModel } from './test/scripted-model.ts';
-import { fakeMcp } from './test/turn-fixtures.ts';
 
 const TOKEN = 'a'.repeat(32);
-const goldenBody = readFileSync(fileURLToPath(new URL('../../../internal/kernel/runtime/testdata/turn/plain_reply.request.json', import.meta.url)), 'utf8');
+const goldenBody = readFileSync(fileURLToPath(new URL('../../../../internal/kernel/runtime/testdata/turn/plain_reply.request.json', import.meta.url)), 'utf8');
 const quiet = createLogger(() => {});
 const servers: Server[] = [];
 

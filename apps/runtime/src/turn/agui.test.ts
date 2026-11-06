@@ -2,10 +2,10 @@ import type { Message } from '@strands-agents/sdk';
 import { Message as Msg, TextBlock, ToolResultBlock, ToolUseBlock } from '@strands-agents/sdk';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { ModelClients } from '../models/clients.ts';
+import { ScriptedModel } from '../test/scripted-model.ts';
+import { fakeMcp, goldenRequest, quiet } from '../test/turn-fixtures.ts';
 import { createRunTurn, HEARTBEAT_MS, toAgUiMessages } from './agui.ts';
-import { ModelClients } from './models.ts';
-import { ScriptedModel } from './test/scripted-model.ts';
-import { fakeMcp, goldenRequest, quiet } from './test/turn-fixtures.ts';
 
 afterEach(() => {
   vi.useRealTimers();

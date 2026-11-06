@@ -73,8 +73,8 @@ describe('usageMeter', () => {
 describe('turn limits', async () => {
   const { executeTurn } = await import('./agent.ts');
   const { LIMIT_REPLY } = await import('./limits.ts');
-  const { ScriptedModel } = await import('./test/scripted-model.ts');
-  const { fakeMcp, goldenRequest, quiet, recordTool } = await import('./test/turn-fixtures.ts');
+  const { ScriptedModel } = await import('../test/scripted-model.ts');
+  const { fakeMcp, goldenRequest, quiet, recordTool } = await import('../test/turn-fixtures.ts');
   const never = new AbortController().signal;
 
   it('cancels at the deadline with error deadline and an estimated usage', async () => {

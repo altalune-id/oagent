@@ -1,8 +1,8 @@
 import type { AgentStreamEvent, ContentBlockData, InterruptResponseContentData, JSONValue, MessageData, Model, Snapshot, ToolResultBlockData } from '@strands-agents/sdk';
-import type { TurnRequest } from './contract.ts';
+import type { TurnRequest } from '../http/contract.ts';
+import type { Logger } from '../log.ts';
+import type { McpTurn, Note } from '../mcp/clients.ts';
 import type { TurnUsage } from './limits.ts';
-import type { Logger } from './log.ts';
-import type { McpTurn, Note } from './mcp.ts';
 import {
   AfterToolCallEvent,
   Agent,
@@ -15,9 +15,9 @@ import {
 } from '@strands-agents/sdk';
 import { OpenAIModel } from '@strands-agents/sdk/models/openai';
 
-import { TurnRefusedError } from './contract.ts';
+import { TurnRefusedError } from '../http/contract.ts';
+import { openMcpServers } from '../mcp/clients.ts';
 import { BUDGET_REFUSAL, LIMIT_REPLY, overBudget, stepLimit, UsageMeter } from './limits.ts';
-import { openMcpServers } from './mcp.ts';
 import { cleanSnapshot, SDK_VERSION, tagsMatch } from './snapshot.ts';
 
 export type TurnStatus = 'completed' | 'awaiting_approval' | 'limit_reached' | 'cancelled' | 'failed';
