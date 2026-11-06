@@ -43,6 +43,26 @@ func (s *postgresStore) LatestVersion(ctx context.Context, agentID uuid.UUID) (*
 	return vs[0], nil
 }
 
+// VersionByID loads one version of the org on ctx by id.
+func (s *postgresStore) VersionByID(ctx context.Context, id uuid.UUID) (*Version, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	v := s.versions
+	stmt := postgres.SELECT(v.AllColumns).FROM(v).
+		WHERE(v.ID.EQ(postgres.UUID(id)).AND(v.OrgID.EQ(postgres.UUID(tc.OrgID)))).
+		LIMIT(1)
+	var row versionRow
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
+		if db.IsNoRows(err) {
+			return nil, &NotFoundError{ID: id.String()}
+		}
+		return nil, fmt.Errorf("agent.postgres: VersionByID: %w", err)
+	}
+	return row.toVersion()
+}
+
 func (s *postgresStore) selectVersions(ctx context.Context, op string, agentID uuid.UUID, limit int64) ([]*Version, error) {
 	stmt := postgres.SELECT(s.versions.AllColumns).
 		FROM(s.versions).

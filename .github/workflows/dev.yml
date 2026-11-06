@@ -55,3 +55,22 @@ jobs:
             VERSION=edge-${{ steps.meta.outputs.sha }}
             COMMIT=${{ steps.meta.outputs.sha }}
             BUILD_TIME=${{ steps.meta.outputs.time }}
+      - name: Build and push the runtime edge image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/runtime/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          cache-from: type=gha,scope=runtime
+          cache-to: type=gha,mode=max,scope=runtime
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/oagent-runtime:edge
+            ghcr.io/${{ github.repository_owner }}/oagent-runtime:${{ steps.meta.outputs.sha }}
+          labels: |
+            org.opencontainers.image.title=oagent-runtime
+            org.opencontainers.image.version=edge-${{ steps.meta.outputs.sha }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.time }}
+            org.opencontainers.image.licenses=Apache-2.0

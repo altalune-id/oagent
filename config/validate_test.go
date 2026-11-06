@@ -120,6 +120,13 @@ func TestValidate_EveryRule(t *testing.T) {
 		{"mail.smtp.tls unknown with console", func(c *Config) { devConsole(c); c.Mail.SMTP.TLS = "ssl" }, valid},
 		{"mail.resend.apiKey empty", func(c *Config) { c.Mail.Driver = MailDriverResend }, missingSetting("mail.resend.apiKey")},
 		{"rateLimit.driver unknown", func(c *Config) { c.RateLimit.Driver = "disk" }, invalidSetting("rateLimit.driver")},
+		{"snapshot.driver unknown", func(c *Config) { c.Snapshot.Driver = "s3" }, invalidSetting("snapshot.driver")},
+		{"run.maxConcurrentPerProject zero", func(c *Config) { c.Run.MaxConcurrentPerProject = 0 }, invalidSetting("run.maxConcurrentPerProject")},
+		{"run.maxPerMinutePerProject zero", func(c *Config) { c.Run.MaxPerMinutePerProject = 0 }, invalidSetting("run.maxPerMinutePerProject")},
+		{"run.turnTimeout over 14m", func(c *Config) { c.Run.TurnTimeout = 15 * time.Minute }, invalidSetting("run.turnTimeout")},
+		{"run.heartbeat over ttl/2", func(c *Config) { c.Run.Heartbeat = c.Run.LeaseTTL }, invalidSetting("run.heartbeat")},
+		{"runtime.driver unknown", func(c *Config) { c.Runtime.Driver = "grpc" }, invalidSetting("runtime.driver")},
+		{"runtime.token missing", func(c *Config) { c.Runtime.URL = "http://rt:8080" }, missingSetting("runtime.token")},
 		{"rateLimit.maxKeys 0 with memory", func(c *Config) { c.RateLimit.MaxKeys = 0 }, invalidSetting("rateLimit.maxKeys")},
 		{"rateLimit.maxKeys 0 with redis", func(c *Config) {
 			c.RateLimit.Driver, c.RateLimit.MaxKeys, c.RateLimit.Auth.Enabled = RateLimitDriverRedis, 0, false
@@ -274,6 +281,7 @@ func TestValidate_NoSecretInMessages(t *testing.T) {
 	for name, mutate := range map[string]func(c *Config){
 		"http.stateSecret":      func(c *Config) { c.HTTP.StateSecret = secret },
 		"install.token":         func(c *Config) { c.Install.Token = secret },
+		"runtime.token":         func(c *Config) { c.Runtime.URL, c.Runtime.Token = "http://rt:8080", "short" },
 		"secrets.encryptionKey": func(c *Config) { c.Secrets.EncryptionKey = secret },
 		"redis.url":             func(c *Config) { redisFeature(c); c.Redis.URL = "redis://:" + secret + "@[bad" },
 		"auth.basic.password": func(c *Config) {

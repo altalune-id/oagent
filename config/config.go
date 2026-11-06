@@ -13,6 +13,9 @@ type Config struct {
 	Telemetry  TelemetryConfig  `yaml:"telemetry" mapstructure:"telemetry"`
 	Scheduler  SchedulerConfig  `yaml:"scheduler" mapstructure:"scheduler"`
 	Queue      QueueConfig      `yaml:"queue"     mapstructure:"queue"`
+	Snapshot   SnapshotConfig   `yaml:"snapshot"  mapstructure:"snapshot"`
+	Run        RunConfig        `yaml:"run"       mapstructure:"run"`
+	Runtime    RuntimeConfig    `yaml:"runtime"   mapstructure:"runtime"`
 	API        APIConfig        `yaml:"api"       mapstructure:"api"`
 	MCP        MCPConfig        `yaml:"mcp"       mapstructure:"mcp"`
 	Secrets    SecretsConfig    `yaml:"secrets"   mapstructure:"secrets"`
@@ -158,6 +161,8 @@ func (c *Config) Validate() error {
 		c.validateCompliance,
 		c.validateMail,
 		c.validateRateLimit,
+		c.validateRuntime,
+		c.validateRun,
 		c.validateRedis,
 		c.validateNATS,
 	} {

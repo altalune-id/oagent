@@ -25,7 +25,8 @@ flowchart TD
     RD --> F[buildServices: every domain service, the mail queue]
     F --> M[buildMailer: mail.driver picks mailer/console, mailer/smtp or mailer/resend]
     M --> R["buildLimiters: one limiter per rate limit group, Disabled unless switched on (memory or Redis store)"]
-    R --> G[buildAuthSecrets: state secret, setup token]
+    R --> RN["buildRun: run store, snapshot store, runtime client (only with runtime.url), run service, run-turns runner, kicker; then Declare the queue jobs"]
+    RN --> G[buildAuthSecrets: state secret, setup token]
     G --> H[firstBoot: basic system org / env genesis / log install URL]
     H --> I[installRequired: is the install gate shut?]
     I --> J[build surfaces: API, console, MCP, web routes]
@@ -94,6 +95,8 @@ flowchart TD
 | `mcpserver`     | sealer (credentials), probe client (`mcpserver.NewProbeClient`: private hosts and http only outside production), logger (probe failures, credential redacted), agent usage (`serverUsage`), project (org of project)                                                                                                                                                                                                                                                                                         | ✓                                                                                                                                                                                            | `mcp_server_get`, `mcp_server_list`, `mcp_server_delete`, `mcp_server_tools` (no create or update)                       | —                                                                                                                                                                              |
 | `apikey`        | project (ids), member (owner roles)                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | ✓                                                                                                                                                                                            | —                                                                                                                        | —                                                                                                                                                                              |
 | `webhook`       | project + org (refs), project (org of project), outbox                                                                                                                                                                                                                                                                                                                                                                                                                                                       | ✓ (org events `invite.created`, `member.added`: only a caller who reaches the whole org and holds `member:read` subscribes or reads their payloads)                                          | ✓                                                                                                                        | —                                                                                                                                                                              |
+| `enduser`       | its own store (end users and their identities, one per project, kind and value); logger (identity conflicts, kinds only)                                                                                                                                                                                                                                                                                                                                                                                     |
+| `run`           | its store (threads, inbox, leases, runs, checkpoints), snapshot store (`snapshot.driver`), runtime (`runtime.*`, the HTTP driver), agent (`runAgents`: pinned and latest version), modelprovider (`runProviders`: model and opened key), mcpserver (`runServers`: opened credential), webhook (publisher, inside the settle transaction), rate limit (shared limiter, `run.maxPerMinutePerProject`)                                                                                                          |
 | `user`          | —                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | CLI `user set-password` (operator, boots the `App`)                                                                                                                                          | —                                                                                                                        | —                                                                                                                                                                              |
 | `auth`          | user, member, org (create own org), project, sessions, passwords, identities (OIDC links), invites (claim one, or the email-only owner seat, through `oidcInvites`); password resets (its own store, user, sessions, mail queue); the auth rate limiter on the web side                                                                                                                                                                                                                                      | whoami; `UpdateProfile`, `ChangePassword`, `SignOutEverywhere`, `SetActiveOrg`, `CreateOwnOrg` (people only; not MCP tools); CLI `auth login/logout/whoami` (profiles through `CLIProfiles`) | `auth_whoami`                                                                                                            | `/login`, `/logout`; `/login/oidc`, `/oauth/callback` (with `oidc.issuer`); `/forgot-password`, `/reset-password/{token}`, `/reset-password` (passwords on) (local login only) |
 | `install`       | user (create, accept terms), org, member, project, invite (email-only owner, passwords off); auth (sign-in)                                                                                                                                                                                                                                                                                                                                                                                                  | —                                                                                                                                                                                            | —                                                                                                                        | `/install` (terms and privacy consent, `layout.Consent`) + `InstallGate`                                                                                                       |
@@ -141,6 +144,11 @@ flowchart TD
         apikey
         keyAuthn["apikey.Authenticator"]
     end
+    subgraph Runs
+        run
+        enduser
+        snapshots[(snapshot store)]
+    end
     subgraph Core
         org
         project
@@ -167,6 +175,8 @@ flowchart TD
     apikey --> project & member
     keyAuthn --> member
     member -. effects .-> sessions & apikey & user & org & mailqueue
+    run --> agent & modelprovider & mcpserver & enduser & webhook
+    run -. snapshot .-> snapshots
     health --> dbh[(db-health monitor)]
 
     org --> project
@@ -356,6 +366,19 @@ INFO line.
   `OAGENT` account, user `oagent`, as on `github.com/altalune-id/nats`). Accounts isolate apps,
   since every app uses the same stream names; never share an account between apps.
 
+## Runs
+
+`buildRun` (`run.go`) wires the agent runtime path. A deployment without `runtime.url` boots, and its messages wait pending until a runtime is configured.
+
+- **Store:** `run.NewStore` with `run.maxConcurrentPerProject` (default 4, checked under a per-project advisory lock in `Claim`).
+- **Snapshots:** `snapshot.driver: postgres` (`run/snapshotstore`). `Settle` and the snapshot `Save` commit in one transaction.
+- **Runtime:** `runtime.driver: http` (`internal/kernel/runtime/http`) at `runtime.url` with the bearer `runtime.token`.
+- **Service:** the adapters `runAgents`, `runProviders` and `runServers`, the webhook publisher, `run.turnTimeout` and `run.maxAttempts`, and the rate cap (`run.maxPerMinutePerProject`). The rate cap is always counted: in the configured rate limit store when a group is on, else in an in-process memory store with its `ratelimit.janitor`.
+- **No runtime:** with `runtime.url` empty, boot logs a warning; a kicked thread is released before any run starts, its messages stay pending (a Warn per thread at most every 10 minutes), and they run once a runtime is configured. `/readyz` stays ready.
+- **Runner:** the `run-turns` worker, with `run.maxConcurrentPerInstance`, `run.leaseTTL`, `run.heartbeat`, `run.drainTimeout` and `run.turnTimeout`.
+- **Kicker:** submits the `run.turn` job when `queue.enabled`, else hands the kick straight to the local runner.
+- **Jobs:** `run-sweep` and `run-reconcile`, per tenant, every `run.sweepEvery`.
+
 ## Queue
 
 `queue.enabled` (default false) turns the job queue on and `queue.driver` picks what carries it.
@@ -368,6 +391,8 @@ handlers, listeners, `Declare`, `Submit`, `Emit`, `Consumer`, `Listener`); it im
   creates the streams `WORK`, `DLQ` and `BROADCAST` (subjects `jobs.>`, `dlq.jobs.>`,
   `broadcast.>`) and one durable consumer per job. The names are the same in every Altalune app;
   the NATS account keeps apps apart.
+
+Jobs: `run.turn` (v1), declared in `Boot` from `queueJobs` (`consumers.go`) and handled by the `run-turns` runner's `Handler`. The handler only hands the kick to the runner and acks.
 
 A new driver is one more `case` in `buildQueue` and one more package under `internal/kernel/queue/`.
 `Boot` builds the consumer (`k.Queue.Consumer`) unless the consumer is off, and the broadcast
@@ -425,18 +450,19 @@ group gets `ratelimit.Disabled()`, which allows every call.
 
 The supervisor runs these next to the HTTP server.
 
-| Worker                    | What it does                                                                                                                                                              | When it runs                                                     |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `http`                    | the HTTP server (all surfaces above)                                                                                                                                      | always                                                           |
-| `db-health`               | pings the pool; `health` reads it for `/readyz`                                                                                                                           | always                                                           |
-| `redis-health`            | pings Redis every 5 s; `health` reads it for `/readyz`                                                                                                                    | when a feature uses Redis                                        |
-| `nats-health`             | checks the NATS connection every 5 s; `health` reads it for `/readyz`                                                                                                     | when a feature uses NATS                                         |
-| `outbox`                  | per org (`list_org_ids`, then scoped): claims due outbox entries, delivers signed webhooks; each org drains on its own, so one org's failed delivery never blocks another | always                                                           |
-| `mailqueue.send`          | claims due queued mail, sends it through the mailer, erases the sealed payload once sent or failed                                                                        | always                                                           |
-| `apikey-usage`            | batches `last_used_at` writes every 30 s (`kernel/usage`), one batch per org under that org's scope                                                                       | always                                                           |
-| `ratelimit.janitor`       | drops rate limit keys that have fully refilled, every minute                                                                                                              | when a rate limit group is on and `rateLimit.driver` is `memory` |
-| `scheduler`               | cron jobs (expired-session sweep)                                                                                                                                         | `scheduler.enabled`, unless `--no-scheduler` or consumer-only    |
-| queue consumer / listener | queue handlers (none yet)                                                                                                                                                 | when `queue.enabled`                                             |
+| Worker                    | What it does                                                                                                                                                                          | When it runs                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `http`                    | the HTTP server (all surfaces above)                                                                                                                                                  | always                                                           |
+| `db-health`               | pings the pool; `health` reads it for `/readyz`                                                                                                                                       | always                                                           |
+| `redis-health`            | pings Redis every 5 s; `health` reads it for `/readyz`                                                                                                                                | when a feature uses Redis                                        |
+| `nats-health`             | checks the NATS connection every 5 s; `health` reads it for `/readyz`                                                                                                                 | when a feature uses NATS                                         |
+| `outbox`                  | per org (`list_org_ids`, then scoped): claims due outbox entries, delivers signed webhooks; each org drains on its own, so one org's failed delivery never blocks another             | always                                                           |
+| `mailqueue.send`          | claims due queued mail, sends it through the mailer, erases the sealed payload once sent or failed                                                                                    | always                                                           |
+| `apikey-usage`            | batches `last_used_at` writes every 30 s (`kernel/usage`), one batch per org under that org's scope                                                                                   | always                                                           |
+| `run-turns`               | runs agent turns: claims a thread lease, runs up to 5 turns, heartbeats the lease and reads cancel, drains then interrupts on shutdown (`run.maxConcurrentPerInstance` turns at once) |
+| `ratelimit.janitor`       | drops rate limit keys that have fully refilled, every minute                                                                                                                          | when a rate limit group is on and `rateLimit.driver` is `memory` |
+| `scheduler`               | cron jobs (expired-session sweep; per tenant: `run-sweep` reclaims expired leases and orphan running runs, `run-reconcile` kicks threads with pending messages)                       |
+| queue consumer / listener | queue handlers (`run.turn`: hand the kick to `run-turns`)                                                                                                                             |
 
 ## Files
 
@@ -452,6 +478,7 @@ The supervisor runs these next to the HTTP server.
 | `console.go`                                             | console SPA handler                                                                                                                                                                                                                                                   |
 | `outbox.go`, `schedulers.go`, `consumers.go`, `queue.go` | workers                                                                                                                                                                                                                                                               |
 | `mail.go`                                                | the mailer driver (`mailer/console`, `mailer/smtp` or `mailer/resend`, picked by `mail.driver`), the sealed mail queue (`Services.MailQueue`) and its send worker                                                                                                     |
+| `run.go`                                                 | the run path (`buildRun`): run store, snapshot store, runtime client, run service and its adapters, runner and kicker                                                                                                                                                 |
 | `ratelimit.go`                                           | the rate limit store (`internal/kernel/ratelimit/memory` or `internal/kernel/ratelimit/redis` on the shared connection, picked by `rateLimit.driver`) and one `ratelimit.Limiter` per group (`Services.AuthLimiter`); a group that is off gets `ratelimit.Disabled()` |
 | `redis.go`                                               | the shared Redis connection (root `redis`, only when a feature selects it), its closer and its `redis-health` readiness worker                                                                                                                                        |
 | `nats.go`                                                | the shared NATS connection (root `nats`, only when a feature selects it), its draining closer and its `nats-health` readiness worker                                                                                                                                  |

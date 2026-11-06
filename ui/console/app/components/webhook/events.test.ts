@@ -4,7 +4,7 @@ import { webhookEvents } from './events';
 
 describe('webhookEvents', () => {
   it('lists every subscribable event of the Go catalog', () => {
-    expect(webhookEvents.map(e => e.name)).toEqual(['agent.created', 'agent.updated', 'invite.created', 'member.added']);
+    expect(webhookEvents.map(e => e.name)).toEqual(['agent.created', 'agent.updated', 'invite.created', 'member.added', 'run.completed', 'run.failed']);
   });
 
   it('gives each event a label key built from its name', () => {

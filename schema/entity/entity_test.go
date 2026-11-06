@@ -48,6 +48,44 @@ func TestBindings(t *testing.T) {
 			},
 		},
 		{
+			"threads",
+			func(s, p string) binding { b := entity.NewThreads(s, p); return binding{b, b.AllColumns} },
+			[]string{
+				"id", "public_id", "org_id", "project_id", "agent_id", "kind", "external_key", "lease_owner", "lease_until", "cancel_requested", "next_seq", "created_at", "updated_at",
+			},
+		},
+		{
+			"runs",
+			func(s, p string) binding { b := entity.NewRuns(s, p); return binding{b, b.AllColumns} },
+			[]string{
+				"id", "public_id", "org_id", "project_id", "thread_id", "agent_version_id", "status", "idempotency_key", "attempt", "input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "usage_estimated", "price_input_micros", "price_output_micros", "price_cache_read_micros", "price_cache_write_micros", "cost_micros", "latency_ms", "error_code", "started_at", "ended_at", "created_at", "updated_at",
+			},
+		},
+		{
+			"messages",
+			func(s, p string) binding { b := entity.NewMessages(s, p); return binding{b, b.AllColumns} },
+			[]string{
+				"id", "org_id", "project_id", "thread_id", "seq", "role", "body", "speaker_id", "status", "external_message_id", "run_id", "tool_call_id", "created_at",
+			},
+		},
+		{
+			"thread_snapshots",
+			func(s, p string) binding { b := entity.NewThreadSnapshots(s, p); return binding{b, b.AllColumns} },
+			[]string{
+				"thread_id", "org_id", "project_id", "agent_version_id", "sdk_version", "blob", "updated_at",
+			},
+		},
+		{
+			"end_users",
+			func(s, p string) binding { b := entity.NewEndUsers(s, p); return binding{b, b.AllColumns} },
+			[]string{"id", "public_id", "org_id", "project_id", "created_at", "updated_at"},
+		},
+		{
+			"end_user_identities",
+			func(s, p string) binding { b := entity.NewEndUserIdentities(s, p); return binding{b, b.AllColumns} },
+			[]string{"id", "org_id", "project_id", "end_user_id", "kind", "value", "created_at"},
+		},
+		{
 			"invites",
 			func(s, p string) binding { b := entity.NewInvites(s, p); return binding{b, b.AllColumns} },
 			[]string{

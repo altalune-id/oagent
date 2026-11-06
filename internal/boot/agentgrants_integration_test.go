@@ -4,7 +4,9 @@ package boot
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
 	"sync"
 	"testing"
 	"time"
@@ -15,12 +17,14 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/agent"
+	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/mcpserver"
 	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
+	"altalune.id/oagent/scope"
 )
 
 type grantScope struct {
@@ -226,4 +230,84 @@ func TestDeleteCommittedFirstRefusesThePublish(t *testing.T) {
 	v, err := f.svcs.AgentStore.LatestVersion(g.ctx, a.ID)
 	require.NoError(t, err)
 	assert.Nil(t, v)
+}
+
+func (g grantScope) server(t *testing.T, name string) *mcpserver.Server {
+	t.Helper()
+	s, err := g.servers.Create(g.ctx, g.projectID, mcpserver.Input{Name: name, URL: startProbeMCPServer(t), AuthKind: mcpserver.AuthNone, TimeoutMS: 5000}, "")
+	require.NoError(t, err)
+	return s
+}
+
+func TestGrantAdapters_ForeignOrgIsInvalidGrant(t *testing.T) {
+	f := newAPIFixture(t)
+	home, foreign := newGrantScope(t, f), newGrantScope(t, f)
+	foreignProvider, foreignServer := foreign.provider(t, "theirs"), foreign.server(t, "theirs")
+	providers := grantProviders{providers: f.svcs.ModelProviders}
+	servers := grantServers{servers: f.svcs.MCPServers}
+	locker := grantLocker{providers: f.svcs.ModelProviderStore, servers: f.svcs.MCPServerStore}
+
+	_, err := providers.Models(home.ctx, foreign.projectID, foreignProvider.ID)
+	assert.Equal(t, apperror.CodeAgentInvalidGrant, codeOfErr(err), "provider of another org, its own project id")
+	_, err = servers.Exists(home.ctx, foreign.projectID, foreignServer.ID)
+	assert.Equal(t, apperror.CodeAgentInvalidGrant, codeOfErr(err), "server of another org, its own project id")
+	err = db.NewTransactor(f.pool).RunInTx(home.ctx, func(ctx context.Context) error {
+		return locker.LockShared(ctx, []uuid.UUID{foreignProvider.ID}, nil)
+	})
+	assert.Equal(t, apperror.CodeAgentInvalidGrant, codeOfErr(err), "lock on another org's provider")
+	err = db.NewTransactor(f.pool).RunInTx(home.ctx, func(ctx context.Context) error {
+		return locker.LockShared(ctx, nil, []uuid.UUID{foreignServer.ID})
+	})
+	assert.Equal(t, apperror.CodeAgentInvalidGrant, codeOfErr(err), "lock on another org's server")
+}
+
+func TestGrantAdapters_OtherProjectIsInvalidGrant(t *testing.T) {
+	f := newAPIFixture(t)
+	home := newGrantScope(t, f)
+	other, err := f.svcs.Projects.Create(home.ctx, project.CreateRequest{OrgID: home.orgID, Slug: "other", Name: "Other"})
+	require.NoError(t, err)
+	sibling := home
+	sibling.projectID = other.ID
+	sibling.ctx = tenant.Into(home.ctx, tenant.Context{OrgID: home.orgID, ProjectID: other.ID})
+	siblingProvider, siblingServer := sibling.provider(t, "sibling"), sibling.server(t, "sibling")
+
+	_, err = grantProviders{providers: f.svcs.ModelProviders}.Models(home.ctx, home.projectID, siblingProvider.ID)
+	assert.Equal(t, apperror.CodeAgentInvalidGrant, codeOfErr(err))
+	_, err = grantServers{servers: f.svcs.MCPServers}.Exists(home.ctx, home.projectID, siblingServer.ID)
+	assert.Equal(t, apperror.CodeAgentInvalidGrant, codeOfErr(err))
+}
+
+func TestMCP_AgentScopedKeyCannotBindAProvider(t *testing.T) {
+	f := newAPIFixture(t)
+	home := newGrantScope(t, f)
+	p := home.provider(t, "project-credential")
+	a := home.agentUsing(t, "scoped", agent.Config{Instructions: "Be brief."})
+	call := func(key string, providerID string) string {
+		raw, err := json.Marshal(map[string]any{
+			"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": map[string]any{
+				"name": "agent_update_draft",
+				"arguments": map[string]any{"id": a.PublicID, "config": map[string]any{
+					"instructions": "Be brief.", "providerId": providerID, "model": "m",
+				}},
+			},
+		})
+		require.NoError(t, err)
+		status, _, body := f.mcpCall(t, key, string(raw))
+		require.Equal(t, http.StatusOK, status, string(body))
+		return string(body)
+	}
+
+	scoped := f.mintKey(t, apikey.CreateRequest{
+		OrgID: home.orgID, Kind: apikey.KindOrg, Scopes: []string{scope.AgentRead, scope.AgentWrite},
+		ProjectIDs: []uuid.UUID{home.projectID}, ResourceIDs: []uuid.UUID{a.ID},
+	})
+	refused := call(scoped, p.PublicID)
+	assert.Contains(t, refused, `"isError":true`)
+	assert.Contains(t, refused, string(apperror.CodeAgentInvalidGrant))
+
+	granted := f.mintKey(t, apikey.CreateRequest{
+		OrgID: home.orgID, Kind: apikey.KindOrg, Scopes: []string{scope.AgentRead, scope.AgentWrite, scope.ProviderRead},
+		ProjectIDs: []uuid.UUID{home.projectID}, ResourceIDs: []uuid.UUID{a.ID, p.ID},
+	})
+	assert.NotContains(t, call(granted, p.PublicID), `"isError":true`)
 }

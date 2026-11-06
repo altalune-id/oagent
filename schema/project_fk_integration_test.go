@@ -55,6 +55,8 @@ func inserts(s twoOrgs) map[string]func(ctx context.Context, db *sql.DB, org, pr
 			VALUES ($1, $4, $2, $3, $4, 'openai_compatible', 'https://e.com/v1', '\x01', '[]', now(), now())`),
 		"mcp_servers": exec(`INSERT INTO mcp_servers (id, public_id, org_id, project_id, name, url, auth_kind, timeout_ms, trusted, created_at, updated_at)
 			VALUES ($1, $4, $2, $3, 's' || substr(md5($4), 1, 12), 'https://e.com/mcp', 'none', 5000, false, now(), now())`),
+		"end_users": exec(`INSERT INTO end_users (id, public_id, org_id, project_id, created_at, updated_at)
+			VALUES ($1, $4, $2, $3, now(), now())`),
 		"webhook_endpoints": exec(`INSERT INTO webhook_endpoints (id, public_id, org_id, project_id, url, event_types, secret_primary, active, created_at, updated_at)
 			VALUES ($1, $4, $2, $3, 'https://e.com', 'agent.created', '\x01', true, now(), now())`),
 		"webhook_deliveries": exec(`INSERT INTO webhook_deliveries (id, org_id, project_id, endpoint_id, delivery_id, event_id, event_type, attempt, duration_ms, error, created_at)

@@ -68,6 +68,9 @@ func (c *Config) PostgresFeatures() []string {
 	if c.DB.Driver == DBDriverPostgres {
 		out = append(out, "db.driver")
 	}
+	if c.Snapshot.Driver == SnapshotDriverPostgres {
+		out = append(out, "snapshot.driver")
+	}
 	return out
 }
 

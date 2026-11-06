@@ -141,7 +141,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: make web
+      - name: Runtime image for the run acceptance harness
+        run: docker build -f apps/runtime/Dockerfile -t oagent-runtime:ci .
       - name: Unit + integration tests with the coverage gate (Postgres, Redis and NATS via testcontainers)
+        env:
+          OAGENT_RUNTIME_IMAGE: oagent-runtime:ci
         run: make cover
 
   ui:
@@ -174,9 +178,26 @@ jobs:
       - name: Storybook
         run: pnpm --filter @oagent/console build-storybook --quiet
 
+  runtime:
+    needs: lint-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Runtime typecheck, lint and tests (coverage gate)
+        run: |
+          pnpm --filter @oagent/runtime typecheck
+          pnpm --filter @oagent/runtime lint
+          pnpm --filter @oagent/runtime test
+
   # Stage 3: the image builds (no push).
   docker:
-    needs: [go-test, go-cover, ui]
+    needs: [go-test, go-cover, ui, runtime]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -190,3 +211,12 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             COMMIT=${{ github.sha }}
+      - name: Runtime image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/runtime/Dockerfile
+          push: false
+          platforms: linux/amd64
+          cache-from: type=gha,scope=runtime
+          cache-to: type=gha,mode=max,scope=runtime

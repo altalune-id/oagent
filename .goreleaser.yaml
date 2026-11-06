@@ -76,6 +76,32 @@ dockers_v2:
       org.opencontainers.image.source: "https://github.com/{{ .Env.GITHUB_REPOSITORY }}"
       org.opencontainers.image.created: "{{ .CommitDate }}"
       org.opencontainers.image.licenses: Apache-2.0
+  - id: oagent-runtime
+    dockerfile: apps/runtime/Dockerfile
+    images:
+      - "ghcr.io/{{ .Env.GHCR_OWNER }}/oagent-runtime"
+    tags:
+      - "{{ .Version }}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    # NOTE: the runtime is a Node app, so its image builds from the sources listed here, not from Go binaries.
+    extra_files:
+      - .dockerignore
+      - .npmrc
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - apps/runtime
+      - ui/vitest-config
+    labels:
+      org.opencontainers.image.title: oagent-runtime
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.source: "https://github.com/{{ .Env.GITHUB_REPOSITORY }}"
+      org.opencontainers.image.created: "{{ .CommitDate }}"
+      org.opencontainers.image.licenses: Apache-2.0
 
 snapshot:
   version_template: "{{ incpatch .Version }}-next"

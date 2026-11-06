@@ -367,3 +367,27 @@ func TestService_StoreFailureIsUnexpected(t *testing.T) {
 		})
 	}
 }
+
+func TestService_OpenGivesTheCredentialForATurn(t *testing.T) {
+	f := newFixture(t)
+	s := f.create(t, mcpserver.AuthHeader)
+	srv, value, err := f.svc.Open(f.ctx, s.ID)
+	require.NoError(t, err)
+	assert.Equal(t, s.ID, srv.ID)
+	assert.Equal(t, authValue, value)
+
+	in := input(mcpserver.AuthNone)
+	in.Name = "open"
+	none, err := f.svc.Create(f.ctx, uuid.New(), in, "")
+	require.NoError(t, err)
+	_, value, err = f.svc.Open(f.ctx, none.ID)
+	require.NoError(t, err)
+	assert.Empty(t, value)
+
+	_, _, err = f.svc.Open(f.ctx, uuid.New())
+	assert.Equal(t, apperror.CodeMcpServerNotFound, codeOf(t, err))
+
+	locked := mcpserver.NewService(f.store, f.tx, testUnexpected())
+	_, _, err = locked.Open(f.ctx, s.ID)
+	assert.Equal(t, apperror.CodeMcpServerSecretsUnavailable, codeOf(t, err), "no sealer, no credential")
+}

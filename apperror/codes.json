@@ -79,5 +79,13 @@
   { "code": "MCS005", "name": "McpServerUnreachable", "kind": "failed_precondition", "params": [], "reasons": [] },
   { "code": "MCS006", "name": "McpServerSecretRequired", "kind": "invalid", "params": [], "reasons": ["secret_required", "header_name"] },
   { "code": "MCS007", "name": "McpServerSecretsUnavailable", "kind": "failed_precondition", "params": [], "reasons": [] },
-  { "code": "MCS008", "name": "McpServerAuthRefused", "kind": "failed_precondition", "params": [], "reasons": [] }
+  { "code": "MCS008", "name": "McpServerAuthRefused", "kind": "failed_precondition", "params": [], "reasons": [] },
+  { "code": "EUS001", "name": "EndUserNotFound", "kind": "not_found", "params": [], "reasons": [] },
+  { "code": "EUS002", "name": "EndUserInvalidIdentity", "kind": "invalid", "params": ["max"], "reasons": ["kind", "value"] },
+  { "code": "RUN001", "name": "RunNotFound", "kind": "not_found", "params": [], "reasons": [] },
+  { "code": "RUN002", "name": "RunRateLimited", "kind": "resource_exhausted", "params": [], "reasons": [] },
+  { "code": "RUN003", "name": "RunRuntimeUnavailable", "kind": "failed_precondition", "params": [], "reasons": [] },
+  { "code": "RUN004", "name": "RunTimedOut", "kind": "failed_precondition", "params": [], "reasons": [] },
+  { "code": "RUN005", "name": "RunAttemptsExhausted", "kind": "failed_precondition", "params": [], "reasons": [] },
+  { "code": "RUN006", "name": "RunRuntimeFailed", "kind": "failed_precondition", "params": [], "reasons": [] }
 ]

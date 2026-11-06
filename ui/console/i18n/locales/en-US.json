@@ -172,6 +172,8 @@
   "webhooks.event_agent_updated": "Agent updated",
   "webhooks.event_invite_created": "Invite sent",
   "webhooks.event_member_added": "Member added",
+  "webhooks.event_run_completed": "Run completed",
+  "webhooks.event_run_failed": "Run failed",
   "webhooks.events": "Events",
   "webhooks.inactive": "Inactive",
   "webhooks.logs": "Logs",

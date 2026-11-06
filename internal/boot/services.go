@@ -13,6 +13,7 @@ import (
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/controlplane"
+	"altalune.id/oagent/internal/enduser"
 	"altalune.id/oagent/internal/install"
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/capabilities"
@@ -30,6 +31,7 @@ import (
 	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
+	"altalune.id/oagent/internal/run"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/webhook"
 	"altalune.id/oagent/mailer"
@@ -58,6 +60,12 @@ type Services struct {
 	ModelProviderStore modelprovider.Store
 	MCPServers         *mcpserver.Service
 	MCPServerStore     mcpserver.Store
+	EndUsers           *enduser.Service
+	RunStore           run.Store
+	Runs               *run.Service
+	// RunTurns is the run-turns worker; RunKicker reaches it, through the queue when it is on.
+	RunTurns  *run.Runner
+	RunKicker run.Kicker
 	// ConsoleURL is the console's absolute root without a trailing slash, the base of every server-side link into it.
 	ConsoleURL string
 	Sealer     sealer.Sealer
@@ -193,19 +201,21 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		ModelProviders:     providers,
 		ModelProviderStore: providerStore,
 		MCPServers:         servers,
-		MCPServerStore:     serverStore,
-		Sealer:             sl,
-		MailQueue:          mailQueue,
-		Users:              users,
-		Members:            members,
-		Sessions:           sessions,
-		Auth:               authn,
-		Install:            installer,
-		Legal:              terms,
-		Invites:            invites,
-		Caps:               caps,
-		AuthLimiter:        ratelimit.Disabled(),
-		OIDC:               buildOIDCProvider(cfg),
+		EndUsers: enduser.NewService(enduser.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix), uow, k.Reporter.Unexpected).
+			WithLogger(orDiscard(k.Log)),
+		MCPServerStore: serverStore,
+		Sealer:         sl,
+		MailQueue:      mailQueue,
+		Users:          users,
+		Members:        members,
+		Sessions:       sessions,
+		Auth:           authn,
+		Install:        installer,
+		Legal:          terms,
+		Invites:        invites,
+		Caps:           caps,
+		AuthLimiter:    ratelimit.Disabled(),
+		OIDC:           buildOIDCProvider(cfg),
 	}
 	svcs.Resets = auth.NewResets(auth.ResetDeps{
 		Store:      auth.NewResetStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix),

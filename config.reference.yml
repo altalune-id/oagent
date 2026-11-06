@@ -229,6 +229,34 @@ redis:
   # env: OAGENT_REDIS_WRITE_TIMEOUT
   writeTimeout: 3s
 
+run:
+  # env: OAGENT_RUN_DRAIN_TIMEOUT
+  drainTimeout: 25s
+  # env: OAGENT_RUN_HEARTBEAT
+  heartbeat: 20s
+  # env: OAGENT_RUN_LEASE_TTL
+  leaseTTL: 60s
+  # env: OAGENT_RUN_MAX_ATTEMPTS
+  maxAttempts: 3
+  # env: OAGENT_RUN_MAX_CONCURRENT_PER_INSTANCE
+  maxConcurrentPerInstance: 8
+  # env: OAGENT_RUN_MAX_CONCURRENT_PER_PROJECT
+  maxConcurrentPerProject: 4
+  # env: OAGENT_RUN_MAX_PER_MINUTE_PER_PROJECT
+  maxPerMinutePerProject: 30
+  # env: OAGENT_RUN_SWEEP_EVERY
+  sweepEvery: 15s
+  # env: OAGENT_RUN_TURN_TIMEOUT
+  turnTimeout: 10m
+
+runtime:
+  # env: OAGENT_RUNTIME_DRIVER
+  driver: http
+  # [secret] env: OAGENT_RUNTIME_TOKEN
+  token: ""
+  # env: OAGENT_RUNTIME_URL
+  url: ""
+
 scheduler:
   # env: OAGENT_SCHEDULER_ENABLED
   enabled: true
@@ -238,6 +266,10 @@ scheduler:
 secrets:
   # env: OAGENT_SECRETS_ENCRYPTION_KEY
   encryptionKey: ""
+
+snapshot:
+  # env: OAGENT_SNAPSHOT_DRIVER
+  driver: postgres
 
 telemetry:
   metrics:

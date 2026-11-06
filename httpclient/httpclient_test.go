@@ -234,3 +234,14 @@ func TestErrorTypes(t *testing.T) {
 	assert.False(t, IsUnhealthyStatusError(nil))
 	assert.Contains(t, (&UnhealthyStatusError{StatusCode: 500}).Error(), "unhealthy")
 }
+
+func TestWithoutProxy_NeverReadsProxyEnv(t *testing.T) {
+	transport := func(c *http.Client) *http.Transport {
+		tr, ok := c.Transport.(*http.Transport)
+		require.True(t, ok)
+		return tr
+	}
+	assert.NotNil(t, transport(New(WithOtel(false), WithAllowPrivateHosts(true))).Proxy, "a trusted client honours HTTP(S)_PROXY by default")
+	assert.Nil(t, transport(New(WithOtel(false), WithAllowPrivateHosts(true), WithoutProxy())).Proxy,
+		"WithoutProxy keeps a secret-bearing body off any proxy")
+}

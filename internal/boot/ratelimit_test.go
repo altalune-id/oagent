@@ -16,13 +16,6 @@ import (
 	ratelimitredis "altalune.id/oagent/internal/kernel/ratelimit/redis"
 )
 
-func TestBuildLimiters_OffByDefault(t *testing.T) {
-	l, err := buildLimiters(config.Config{}, nil, testLogger())
-	require.NoError(t, err)
-	assert.Equal(t, ratelimit.Disabled(), l.auth)
-	assert.Nil(t, l.janitor, "no store, no janitor")
-}
-
 func TestBuildLimiters_AuthOnWithMemory(t *testing.T) {
 	for _, driver := range []config.RateLimitDriver{"", config.RateLimitDriverMemory} {
 		cfg := config.Config{RateLimit: config.RateLimitConfig{Driver: driver, MaxKeys: 7, Auth: config.RateLimitGroupConfig{Enabled: true}}}
@@ -70,7 +63,7 @@ func TestBoot_RateLimitOnRedis(t *testing.T) {
 	assert.IsType(t, &ratelimitredis.Store{}, app.Services.AuthLimiter)
 	assert.Contains(t, workerNames(app), "redis-health")
 	assert.NotContains(t, workerNames(app), "ratelimit.janitor")
-	assert.Len(t, app.Supervisor.Workers(), 6) // the default five + redis-health
+	assert.Len(t, app.Supervisor.Workers(), 7) // the default six + redis-health
 	require.NoError(t, app.Close(context.Background()))
 }
 
@@ -88,7 +81,7 @@ func TestBoot_RateLimitAuthEnabled(t *testing.T) {
 	}, testLogger())
 	require.NoError(t, err)
 	assert.Contains(t, workerNames(app), "ratelimit.janitor")
-	assert.Len(t, app.Supervisor.Workers(), 6) // the default five + ratelimit.janitor
+	assert.Len(t, app.Supervisor.Workers(), 7) // the default six + ratelimit.janitor
 	assert.IsType(t, &memory.Store{}, app.Services.AuthLimiter)
 	require.NoError(t, app.Close(context.Background()))
 }
@@ -116,4 +109,12 @@ func TestAuthLimits(t *testing.T) {
 	l = authLimits(config.Config{HTTP: config.HTTPConfig{TrustedProxyHops: 2}}, &Services{AuthLimiter: m})
 	assert.Same(t, m, l.Limiter)
 	assert.Equal(t, 2, l.TrustedProxyHops)
+}
+
+func TestBuildLimiters_RunCapIsAlwaysCounted(t *testing.T) {
+	lims, err := buildLimiters(config.Config{}, nil, testLogger())
+	require.NoError(t, err)
+	assert.NotNil(t, lims.shared, "the run rate cap counts even with every other group off")
+	assert.Equal(t, ratelimit.Disabled(), lims.auth, "auth limits stay off")
+	assert.NotNil(t, lims.janitor, "the in-process store gets its janitor")
 }

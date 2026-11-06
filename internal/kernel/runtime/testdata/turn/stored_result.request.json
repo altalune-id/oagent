@@ -1,0 +1,122 @@
+{
+  "contractVersion": 1,
+  "ids": {
+    "run": "Rn5Q8wYk2HhT3mVz7XcLp",
+    "thread": "t0193a2b4c5d67e8f9a0b1c2d3e4f5a6b",
+    "agent": "a0193a2b4c5d67e8f9a0b1c2d3e4f5a6c",
+    "agentVersion": 3,
+    "attempt": 1,
+    "project": "Pj4kW9sQ2mN7vB3xC8zLr"
+  },
+  "agent": {
+    "instructions": "You record expenses for the user. Be brief.",
+    "temperature": 0.2,
+    "maxSteps": 10,
+    "model": {
+      "baseUrl": "https://llm.example.com/v1",
+      "apiKey": "sk-test",
+      "modelId": "gpt-4o",
+      "maxTokens": 1024
+    }
+  },
+  "mcpServers": [
+    {
+      "name": "yasaku",
+      "url": "https://yasaku.example.com/mcp",
+      "auth": {
+        "kind": "bearer",
+        "value": "tok-test"
+      },
+      "allowedTools": [
+        "record_expense"
+      ],
+      "connectTimeoutMs": 10000,
+      "callTimeoutMs": 5000
+    }
+  ],
+  "snapshot": {
+    "scope": "agent",
+    "schemaVersion": "1.0",
+    "createdAt": "2026-11-06T00:00:00.000Z",
+    "data": {
+      "messages": [
+        {
+          "role": "user",
+          "content": [
+            {
+              "text": "record lunch 25000 from cash"
+            }
+          ]
+        },
+        {
+          "role": "assistant",
+          "content": [
+            {
+              "toolUse": {
+                "toolUseId": "call_1",
+                "name": "yasaku__record_expense",
+                "input": {
+                  "amount": 25000,
+                  "account": "cash",
+                  "note": "lunch"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "interrupts": [
+        {
+          "id": "hook:beforeToolCall:call_1:oagent:approval",
+          "name": "oagent:approval",
+          "reason": {
+            "tool": "yasaku__record_expense",
+            "input": {
+              "amount": 25000,
+              "account": "cash",
+              "note": "lunch"
+            }
+          }
+        }
+      ]
+    },
+    "appData": {
+      "thread": "t0193a2b4c5d67e8f9a0b1c2d3e4f5a6b",
+      "agentVersion": 3,
+      "sdk": "1.23.0"
+    }
+  },
+  "history": [],
+  "input": {
+    "kind": "resume",
+    "responses": [
+      {
+        "interruptId": "hook:beforeToolCall:call_1:oagent:approval",
+        "response": {
+          "approved": true
+        }
+      }
+    ]
+  },
+  "storedResults": [
+    {
+      "toolUseId": "call_1",
+      "result": {
+        "status": "success",
+        "content": [
+          {
+            "json": {
+              "id": "exp_1",
+              "amount": 25000,
+              "account": "cash"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "limits": {
+    "deadlineMs": 270000,
+    "budget": null
+  }
+}

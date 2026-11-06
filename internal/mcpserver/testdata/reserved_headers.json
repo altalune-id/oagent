@@ -1,0 +1,17 @@
+[
+  "Host",
+  "Content-Length",
+  "Transfer-Encoding",
+  "Connection",
+  "Content-Type",
+  "Accept",
+  "Mcp-Session-Id",
+  "MCP-Protocol-Version",
+  "TE",
+  "Trailer",
+  "Upgrade",
+  "Keep-Alive",
+  "Proxy-Authorization",
+  "Proxy-Connection",
+  "Expect"
+]

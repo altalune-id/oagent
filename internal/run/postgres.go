@@ -1,0 +1,152 @@
+package run
+
+import (
+	"encoding/json"
+	"time"
+
+	"github.com/go-jet/jet/v2/postgres"
+	"github.com/google/uuid"
+
+	"altalune.id/oagent/internal/kernel/db"
+	"altalune.id/oagent/schema/entity"
+)
+
+type postgresStore struct {
+	pool          db.Pool
+	maxPerProject int
+	threads       *entity.Threads
+	runs          *entity.Runs
+	messages      *entity.Messages
+}
+
+// NewStore builds the Postgres store over pool.
+func NewStore(pool db.Pool, schema, tablePrefix string) *postgresStore {
+	if schema == "" {
+		schema = "public"
+	}
+	return &postgresStore{
+		pool:          pool,
+		maxPerProject: DefaultMaxConcurrentPerProject,
+		threads:       entity.NewThreads(schema, tablePrefix),
+		runs:          entity.NewRuns(schema, tablePrefix),
+		messages:      entity.NewMessages(schema, tablePrefix),
+	}
+}
+
+// WithMaxConcurrentPerProject caps how many threads of one project hold a live lease at once; n below 1 keeps the default.
+func (s *postgresStore) WithMaxConcurrentPerProject(n int) *postgresStore {
+	if n > 0 {
+		s.maxPerProject = n
+	}
+	return s
+}
+
+type runRow struct {
+	ID                    uuid.UUID  `alias:"runs.id"`
+	PublicID              string     `alias:"runs.public_id"`
+	OrgID                 uuid.UUID  `alias:"runs.org_id"`
+	ProjectID             uuid.UUID  `alias:"runs.project_id"`
+	ThreadID              uuid.UUID  `alias:"runs.thread_id"`
+	AgentVersionID        uuid.UUID  `alias:"runs.agent_version_id"`
+	Status                string     `alias:"runs.status"`
+	IdempotencyKey        *string    `alias:"runs.idempotency_key"`
+	Attempt               int32      `alias:"runs.attempt"`
+	InputTokens           int64      `alias:"runs.input_tokens"`
+	OutputTokens          int64      `alias:"runs.output_tokens"`
+	CacheReadTokens       int64      `alias:"runs.cache_read_tokens"`
+	CacheWriteTokens      int64      `alias:"runs.cache_write_tokens"`
+	UsageEstimated        bool       `alias:"runs.usage_estimated"`
+	PriceInputMicros      *int64     `alias:"runs.price_input_micros"`
+	PriceOutputMicros     *int64     `alias:"runs.price_output_micros"`
+	PriceCacheReadMicros  *int64     `alias:"runs.price_cache_read_micros"`
+	PriceCacheWriteMicros *int64     `alias:"runs.price_cache_write_micros"`
+	ErrorCode             *string    `alias:"runs.error_code"`
+	StartedAt             time.Time  `alias:"runs.started_at"`
+	EndedAt               *time.Time `alias:"runs.ended_at"`
+	UpdatedAt             time.Time  `alias:"runs.updated_at"`
+}
+
+func (r *runRow) toRun() *Run {
+	out := &Run{
+		ID: r.ID, PublicID: r.PublicID, OrgID: r.OrgID, ProjectID: r.ProjectID, ThreadID: r.ThreadID,
+		AgentVersionID: r.AgentVersionID, Status: Status(r.Status), Attempt: r.Attempt,
+		Usage: Usage{
+			InputTokens: r.InputTokens, OutputTokens: r.OutputTokens, CacheReadTokens: r.CacheReadTokens,
+			CacheWriteTokens: r.CacheWriteTokens, Estimated: r.UsageEstimated,
+		},
+		StartedAt: r.StartedAt.UTC(), UpdatedAt: r.UpdatedAt.UTC(),
+	}
+	if r.IdempotencyKey != nil {
+		out.IdempotencyKey = *r.IdempotencyKey
+	}
+	if r.ErrorCode != nil {
+		out.ErrorCode = *r.ErrorCode
+	}
+	if r.EndedAt != nil {
+		out.EndedAt = new(r.EndedAt.UTC())
+	}
+	if r.PriceInputMicros != nil || r.PriceOutputMicros != nil || r.PriceCacheReadMicros != nil || r.PriceCacheWriteMicros != nil {
+		out.Prices = &Prices{
+			Input: r.PriceInputMicros, Output: r.PriceOutputMicros,
+			CacheRead: r.PriceCacheReadMicros, CacheWrite: r.PriceCacheWriteMicros,
+		}
+	}
+	return out
+}
+
+type messageRow struct {
+	ID                uuid.UUID  `alias:"messages.id"`
+	OrgID             uuid.UUID  `alias:"messages.org_id"`
+	ProjectID         uuid.UUID  `alias:"messages.project_id"`
+	ThreadID          uuid.UUID  `alias:"messages.thread_id"`
+	Seq               int64      `alias:"messages.seq"`
+	Role              string     `alias:"messages.role"`
+	Body              string     `alias:"messages.body"`
+	SpeakerID         *uuid.UUID `alias:"messages.speaker_id"`
+	Status            string     `alias:"messages.status"`
+	ExternalMessageID *string    `alias:"messages.external_message_id"`
+	RunID             *uuid.UUID `alias:"messages.run_id"`
+	ToolCallID        *string    `alias:"messages.tool_call_id"`
+	CreatedAt         time.Time  `alias:"messages.created_at"`
+}
+
+func (r *messageRow) toMessage() Message {
+	m := Message{
+		ID: r.ID, OrgID: r.OrgID, ProjectID: r.ProjectID, ThreadID: r.ThreadID, Seq: r.Seq, Role: Role(r.Role),
+		Body: json.RawMessage(r.Body), SpeakerID: r.SpeakerID, Status: MessageStatus(r.Status), RunID: r.RunID,
+		CreatedAt: r.CreatedAt.UTC(),
+	}
+	if r.ExternalMessageID != nil {
+		m.ExternalMessageID = *r.ExternalMessageID
+	}
+	if r.ToolCallID != nil {
+		m.ToolCallID = *r.ToolCallID
+	}
+	return m
+}
+
+func toMessages(rows []messageRow) []Message {
+	out := make([]Message, len(rows))
+	for i := range rows {
+		out[i] = rows[i].toMessage()
+	}
+	return out
+}
+
+func orNull[T any](v *T, expr func(T) postgres.Expression) postgres.Expression {
+	if v == nil {
+		return postgres.NULL
+	}
+	return expr(*v)
+}
+
+func textOrNull(s string) postgres.Expression {
+	if s == "" {
+		return postgres.NULL
+	}
+	return postgres.String(s)
+}
+
+func jsonb(body json.RawMessage) postgres.Expression {
+	return postgres.CAST(postgres.String(string(body))).AS("jsonb")
+}

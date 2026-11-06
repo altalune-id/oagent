@@ -1,0 +1,83 @@
+{
+  "contractVersion": 1,
+  "ids": {
+    "run": "Rn5Q8wYk2HhT3mVz7XcLp",
+    "thread": "t0193a2b4c5d67e8f9a0b1c2d3e4f5a6b",
+    "agent": "a0193a2b4c5d67e8f9a0b1c2d3e4f5a6c",
+    "agentVersion": 3,
+    "attempt": 1,
+    "project": "Pj4kW9sQ2mN7vB3xC8zLr"
+  },
+  "agent": {
+    "instructions": "You record expenses for the user. Be brief.",
+    "temperature": 0.2,
+    "maxSteps": 10,
+    "model": {
+      "baseUrl": "https://llm.example.com/v1",
+      "apiKey": "sk-test",
+      "modelId": "gpt-4o",
+      "maxTokens": 1024
+    }
+  },
+  "mcpServers": [
+    {
+      "name": "yasaku",
+      "url": "https://yasaku.example.com/mcp",
+      "auth": {
+        "kind": "bearer",
+        "value": "tok-test"
+      },
+      "allowedTools": [
+        "record_expense"
+      ],
+      "connectTimeoutMs": 10000,
+      "callTimeoutMs": 5000
+    }
+  ],
+  "snapshot": null,
+  "history": [
+    {
+      "id": "msg_user_0",
+      "role": "user",
+      "content": "record lunch 25000 from cash"
+    },
+    {
+      "id": "msg_asst_0",
+      "role": "assistant",
+      "toolCalls": [
+        {
+          "id": "call_0",
+          "type": "function",
+          "function": {
+            "name": "yasaku__record_expense",
+            "arguments": "{\"amount\":25000,\"account\":\"cash\",\"note\":\"lunch\"}"
+          }
+        }
+      ]
+    },
+    {
+      "id": "msg_tool_call_0",
+      "role": "tool",
+      "toolCallId": "call_0",
+      "content": "{\"id\":\"exp_1\",\"amount\":25000,\"account\":\"cash\"}"
+    },
+    {
+      "id": "msg_asst_0b",
+      "role": "assistant",
+      "content": "Recorded lunch: 25,000 from cash."
+    }
+  ],
+  "input": {
+    "kind": "message",
+    "message": {
+      "id": "msg_user_1",
+      "role": "user",
+      "content": "what did I just record?"
+    }
+  },
+  "storedResults": [],
+  "limits": {
+    "deadlineMs": 270000,
+    "budget": null
+  }
+}

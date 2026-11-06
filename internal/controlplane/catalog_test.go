@@ -27,6 +27,7 @@ import (
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/auth"
+	"altalune.id/oagent/internal/enduser"
 	"altalune.id/oagent/internal/install"
 	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/kernel/authz"
@@ -38,6 +39,7 @@ import (
 	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
+	"altalune.id/oagent/internal/run"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/webhook"
 	"altalune.id/oagent/password"
@@ -213,6 +215,15 @@ func samples() []error {
 		errOf(mcpserver.New(nobody, nobody, mcpserver.Input{Name: "s", URL: "https://e.com", AuthKind: mcpserver.AuthHeader, AuthHeader: "Host"}, time.Time{})),
 		&mcpserver.SecretsUnavailableError{},
 		&mcpserver.AuthRefusedError{Status: 401},
+		&enduser.NotFoundError{ID: "eu"},
+		&enduser.InvalidIdentityError{Reason: enduser.IdentityValue},
+		&enduser.InvalidIdentityError{Reason: enduser.IdentityKind},
+		&run.NotFoundError{ID: "r"},
+		&run.RateLimitedError{},
+		&run.RuntimeUnavailableError{},
+		&run.TimedOutError{},
+		&run.AttemptsExhaustedError{Attempts: 3},
+		&run.RuntimeFailedError{Reason: "model_error"},
 	}
 }
 

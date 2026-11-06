@@ -4,8 +4,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/kernel/queue"
+	"altalune.id/oagent/internal/run"
 )
 
 func TestConsumerOff(t *testing.T) {
@@ -28,6 +31,11 @@ func TestWithConsumer(t *testing.T) {
 }
 
 func TestQueueHandlersAndListeners(t *testing.T) {
-	assert.Nil(t, queueHandlers(nil))
+	assert.Nil(t, queueHandlers(&Services{}), "no runner, no handler")
+	runner := run.NewRunner(nil, nil, run.RunnerOptions{})
+	hs := queueHandlers(&Services{RunTurns: runner})
+	require.Len(t, hs, 1)
+	assert.Equal(t, run.TurnJob, hs[0].Job)
+	assert.Equal(t, []queue.Job{run.TurnJob}, queueJobs(), "every handled job is declared")
 	assert.Nil(t, queueListeners(nil))
 }
