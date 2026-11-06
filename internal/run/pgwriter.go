@@ -13,6 +13,7 @@ import (
 
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/nanoid"
 	"altalune.id/oagent/schema/entity"
 )
 
@@ -63,7 +64,7 @@ func (s *postgresStore) insertMessages(
 			orNull(msg.SpeakerID, func(v uuid.UUID) postgres.Expression { return postgres.UUID(v) }),
 			string(msg.Status), textOrNull(msg.ExternalMessageID),
 			orNull(msg.RunID, func(v uuid.UUID) postgres.Expression { return postgres.UUID(v) }),
-			textOrNull(msg.ToolCallID), now,
+			textOrNull(msg.ToolCallID), now, bytesOrNull(msg.RequestHash),
 		)
 	}
 	if _, err := stmt.ExecContext(ctx, tx); err != nil {
@@ -118,54 +119,163 @@ func (s *postgresStore) AppendMessage(ctx context.Context, threadID uuid.UUID, m
 	return seq, err
 }
 
-// Claim leases the thread to token for ttl when no live lease holds it and its project is under its concurrency cap.
-func (s *postgresStore) Claim(ctx context.Context, threadID uuid.UUID, token string, ttl time.Duration) (bool, error) {
+// Claim leases the thread to token for ttl when it is free and its project is under the cap; the result says why not.
+func (s *postgresStore) Claim(ctx context.Context, threadID uuid.UUID, token string, ttl time.Duration) (ClaimResult, error) {
+	result := LeaseLive
+	err := db.NewTransactor(s.pool).RunInTx(ctx, func(ctx context.Context) error {
+		var err error
+		result, err = s.claim(ctx, threadID, token, ttl)
+		return err
+	})
+	if err != nil {
+		return LeaseLive, err
+	}
+	return result, nil
+}
+
+func (s *postgresStore) claim(ctx context.Context, threadID uuid.UUID, token string, ttl time.Duration) (ClaimResult, error) {
 	tc, err := tenant.From(ctx)
 	if err != nil {
-		return false, err
+		return LeaseLive, err
 	}
-	won := false
+	tx, _ := db.CurrentTx(ctx)
+	t := s.threads
+	head := postgres.SELECT(t.ProjectID, t.LeaseUntil.GT(postgres.NOW()).AS("thread.live")).FROM(t).
+		WHERE(t.ID.EQ(postgres.UUID(threadID)).AND(t.OrgID.EQ(postgres.UUID(tc.OrgID)))).
+		FOR(postgres.UPDATE())
+	var row struct {
+		ProjectID uuid.UUID `alias:"threads.project_id"`
+		Live      *bool     `alias:"thread.live"`
+	}
+	if err := head.QueryContext(ctx, tx, &row); err != nil {
+		if db.IsNoRows(err) {
+			return LeaseLive, nil
+		}
+		return LeaseLive, fmt.Errorf("run.postgres: Claim: %w", err)
+	}
+	if row.Live != nil && *row.Live {
+		return LeaseLive, nil
+	}
+	if err := db.LockInTx(ctx, "run-project:"+row.ProjectID.String()); err != nil {
+		return LeaseLive, err
+	}
+	live := postgres.SELECT(postgres.COUNT(t.ID).AS("live.count")).FROM(t).
+		WHERE(t.ProjectID.EQ(postgres.UUID(row.ProjectID)).AND(t.LeaseUntil.GT(postgres.NOW())))
+	var count struct {
+		Count int `alias:"live.count"`
+	}
+	if err := live.QueryContext(ctx, tx, &count); err != nil {
+		return LeaseLive, fmt.Errorf("run.postgres: Claim: count leases: %w", err)
+	}
+	if count.Count >= s.maxPerProject {
+		return ProjectBusy, nil
+	}
+	stmt := t.UPDATE(t.LeaseOwner, t.LeaseUntil, t.UpdatedAt).
+		SET(postgres.String(token), postgres.NOW().ADD(postgres.INTERVALd(ttl)), postgres.NOW()).
+		WHERE(t.ID.EQ(postgres.UUID(threadID)).AND(t.OrgID.EQ(postgres.UUID(tc.OrgID))))
+	if _, err := rowsOf(stmt.ExecContext(ctx, tx)); err != nil {
+		return LeaseLive, err
+	}
+	return Claimed, nil
+}
+
+// ClaimAndAppend claims the thread and adds m as pending in one transaction; anything but Claimed stores nothing.
+func (s *postgresStore) ClaimAndAppend(
+	ctx context.Context, threadID uuid.UUID, token string, ttl time.Duration, m Message,
+) (ClaimResult, int64, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return LeaseLive, 0, err
+	}
+	result, seq := LeaseLive, int64(0)
+	err = db.NewTransactor(s.pool).RunInTx(ctx, func(ctx context.Context) error {
+		if result, err = s.claim(ctx, threadID, token, ttl); err != nil || result != Claimed {
+			return err
+		}
+		tx, _ := db.CurrentTx(ctx)
+		th, err := s.lock(ctx, tx, tc.OrgID, threadID, nil)
+		if err != nil {
+			return err
+		}
+		if m.ExternalMessageID != "" {
+			known, err := s.messageByExternalID(ctx, tx, tc.OrgID, threadID, m.ExternalMessageID)
+			if err != nil {
+				return err
+			}
+			if known != nil {
+				return &DuplicateMessageError{Seq: known.Seq}
+			}
+		}
+		m.Status, m.RunID = MessagePending, nil
+		added, err := s.insertMessages(ctx, tx, threadID, th, []Message{m})
+		if err != nil {
+			if db.IsUniqueViolation(err) {
+				return &DuplicateMessageError{}
+			}
+			return err
+		}
+		seq = added[0].Seq
+		return nil
+	})
+	if err != nil {
+		return LeaseLive, 0, err
+	}
+	return result, seq, nil
+}
+
+func (s *postgresStore) messageByExternalID(
+	ctx context.Context, q qrm.Queryable, orgID, threadID uuid.UUID, externalID string,
+) (*Message, error) {
+	m := s.messages
+	stmt := postgres.SELECT(m.AllColumns).FROM(m).
+		WHERE(m.ThreadID.EQ(postgres.UUID(threadID)).
+			AND(m.OrgID.EQ(postgres.UUID(orgID))).
+			AND(m.ExternalMessageID.EQ(postgres.String(externalID)))).
+		LIMIT(1)
+	var row messageRow
+	if err := stmt.QueryContext(ctx, q, &row); err != nil {
+		if db.IsNoRows(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("run.postgres: message by external id: %w", err)
+	}
+	msg := row.toMessage()
+	return &msg, nil
+}
+
+// UpsertAPIThread returns agentID's API thread keyed externalKey, created bound to actor; another actor is a *ThreadActorMismatchError.
+func (s *postgresStore) UpsertAPIThread(
+	ctx context.Context, projectID, agentID uuid.UUID, externalKey string, actor uuid.UUID,
+) (*Thread, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if actor == uuid.Nil {
+		return nil, errNoActor
+	}
+	var th *Thread
 	err = db.NewTransactor(s.pool).RunInTx(ctx, func(ctx context.Context) error {
 		tx, _ := db.CurrentTx(ctx)
 		t := s.threads
-		owner := postgres.SELECT(t.ProjectID).FROM(t).WHERE(t.ID.EQ(postgres.UUID(threadID)).AND(t.OrgID.EQ(postgres.UUID(tc.OrgID))))
-		var row struct {
-			ProjectID uuid.UUID `alias:"threads.project_id"`
+		now := time.Now().UTC()
+		insert := t.INSERT(t.ID, t.PublicID, t.OrgID, t.ProjectID, t.AgentID, t.Kind, t.ExternalKey, t.ActorEndUserID, t.CreatedAt, t.UpdatedAt).
+			VALUES(uuid.Must(uuid.NewV7()), nanoid.MustNew(21), tc.OrgID, projectID, agentID, threadKindAPI, externalKey, actor, now, now).
+			ON_CONFLICT(t.AgentID, t.ExternalKey).DO_NOTHING()
+		if _, err := insert.ExecContext(ctx, tx); err != nil {
+			return fmt.Errorf("run.postgres: UpsertAPIThread: %w", err)
 		}
-		if err := owner.QueryContext(ctx, tx, &row); err != nil {
-			if db.IsNoRows(err) {
-				return nil
-			}
-			return fmt.Errorf("run.postgres: Claim: %w", err)
-		}
-		if err := db.LockInTx(ctx, "run-project:"+row.ProjectID.String()); err != nil {
-			return err
-		}
-		live := postgres.SELECT(postgres.COUNT(t.ID).AS("live.count")).FROM(t).
-			WHERE(t.ProjectID.EQ(postgres.UUID(row.ProjectID)).AND(t.LeaseUntil.GT(postgres.NOW())))
-		var count struct {
-			Count int `alias:"live.count"`
-		}
-		if err := live.QueryContext(ctx, tx, &count); err != nil {
-			return fmt.Errorf("run.postgres: Claim: count leases: %w", err)
-		}
-		if count.Count >= s.maxPerProject {
-			return nil
-		}
-		stmt := t.UPDATE(t.LeaseOwner, t.LeaseUntil, t.UpdatedAt).
-			SET(postgres.String(token), postgres.NOW().ADD(postgres.INTERVALd(ttl)), postgres.NOW()).
-			WHERE(t.ID.EQ(postgres.UUID(threadID)).
-				AND(t.OrgID.EQ(postgres.UUID(tc.OrgID))).
-				AND(t.LeaseUntil.IS_NULL().OR(t.LeaseUntil.LT(postgres.NOW()))))
-		res, err := stmt.ExecContext(ctx, tx)
-		if err != nil {
-			return fmt.Errorf("run.postgres: Claim: %w", err)
-		}
-		n, err := res.RowsAffected()
-		won = n == 1
+		th, err = s.threadByExternalKey(ctx, tx, tc.OrgID, agentID, externalKey)
 		return err
 	})
-	return won && err == nil, err
+	if err != nil {
+		return nil, err
+	}
+	// SECURITY: an orphaned thread (its actor deleted) is bound to nobody, so it answers not found to everyone.
+	if th.ActorEndUserID == uuid.Nil || th.ActorEndUserID != actor || th.Kind != threadKindAPI {
+		return nil, &ThreadActorMismatchError{ThreadID: th.ID.String()}
+	}
+	return th, nil
 }
 
 // Heartbeat extends token's lease by ttl and reports whether a cancel was requested.
@@ -216,22 +326,27 @@ func (s *postgresStore) Release(ctx context.Context, threadID uuid.UUID, token s
 	return nil
 }
 
-// RequestCancel flags the thread so its run stops: the turn holding the lease at its next heartbeat, an idle run at its next claim.
-func (s *postgresStore) RequestCancel(ctx context.Context, threadID uuid.UUID) error {
+// RequestCancel flags the thread so runID stops, at the next heartbeat or the next claim; a run that already ended flags nothing.
+func (s *postgresStore) RequestCancel(ctx context.Context, threadID, runID uuid.UUID) error {
 	tc, err := tenant.From(ctx)
 	if err != nil {
 		return err
 	}
-	t := s.threads
+	t, r := s.threads, s.runs
+	open := postgres.SELECT(r.ID).FROM(r).WHERE(r.ID.EQ(postgres.UUID(runID)).
+		AND(r.ThreadID.EQ(postgres.UUID(threadID))).
+		AND(r.Status.IN(
+			postgres.String(string(StatusRunning)), postgres.String(string(StatusAwaitingApproval)), postgres.String(string(StatusInterrupted)),
+		)))
 	stmt := t.UPDATE(t.CancelRequested).
 		SET(postgres.Bool(true)).
-		WHERE(t.ID.EQ(postgres.UUID(threadID)).AND(t.OrgID.EQ(postgres.UUID(tc.OrgID))))
+		WHERE(t.ID.EQ(postgres.UUID(threadID)).AND(t.OrgID.EQ(postgres.UUID(tc.OrgID))).AND(postgres.EXISTS(open)))
 	n, err := s.exec(ctx, "RequestCancel", stmt)
-	if err != nil {
+	if err != nil || n > 0 {
 		return err
 	}
-	if n == 0 {
-		return &ThreadNotFoundError{ID: threadID.String()}
+	if _, err := s.Thread(ctx, threadID); err != nil {
+		return err
 	}
 	return nil
 }
@@ -327,7 +442,7 @@ func (s *postgresStore) StartRun(ctx context.Context, token string, r *Run) ([]M
 		}
 		taken = toMessages(rows)
 		slices.SortFunc(taken, func(a, b Message) int { return int(a.Seq - b.Seq) })
-		return nil
+		return s.recordIdempotencyKey(ctx, tx, r, taken)
 	})
 	if err != nil {
 		return nil, err
@@ -512,4 +627,25 @@ func (s *postgresStore) exec(ctx context.Context, op string, stmt postgres.State
 		return 0, fmt.Errorf("run.postgres: %s: %w", op, err)
 	}
 	return n, nil
+}
+
+func bytesOrNull(b []byte) postgres.Expression {
+	if b == nil {
+		return postgres.NULL
+	}
+	return postgres.Bytea(b)
+}
+
+func (s *postgresStore) recordIdempotencyKey(ctx context.Context, tx *sql.Tx, r *Run, taken []Message) error {
+	key := IdempotencyKeyOf(taken)
+	if key == "" || r.IdempotencyKey != "" {
+		return nil
+	}
+	t := s.runs
+	stmt := t.UPDATE(t.IdempotencyKey).SET(postgres.String(key)).WHERE(t.ID.EQ(postgres.UUID(r.ID)))
+	if _, err := rowsOf(stmt.ExecContext(ctx, tx)); err != nil {
+		return err
+	}
+	r.IdempotencyKey = key
+	return nil
 }

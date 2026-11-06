@@ -22,7 +22,7 @@ const emit = defineEmits<{ approve: [], reject: [reason: string], retry: [], rel
 const { t, locale } = useI18n();
 const time = (d: Date) => chatTime(d, locale.value);
 const days = computed(() => dayBreaks(items.map(i => ({ id: i.id, at: 'at' in i ? i.at : undefined })), locale.value, t('chat.today')));
-const { money, seconds, count } = useUnits();
+const { cost, costTitle, seconds, count } = useUnits();
 const own = 'bg-base-300';
 const other = 'border border-base-300 bg-base-100';
 const side = computed(() => (viewer === 'person'
@@ -114,7 +114,7 @@ function pretty(value: unknown) {
         <NuxtLink :to="`${runBase}/${item.run.id}`" class="link link-hover flex max-w-[85%] flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center text-base-content/70">
           <span class="whitespace-nowrap">{{ t('thread.run') }} <span class="font-mono">{{ item.run.id }}</span></span>
           <StatusLabel :tone="runStatusTone[item.run.status]" :label="t(`runstatus.${item.run.status}`)" class="text-xs whitespace-nowrap" />
-          <span class="whitespace-nowrap">{{ seconds(item.run.seconds) }} · {{ t('thread.tokens', { n: count(item.run.tokens) }) }} · {{ money(item.run.costCents) }}</span>
+          <span class="whitespace-nowrap">{{ seconds(item.run.seconds) }} · {{ t(item.run.estimated ? 'thread.tokens_estimated' : 'thread.tokens', { n: count(item.run.tokens) }) }} · <span v-if="item.run.unpriced">{{ t('thread.unpriced') }}</span><span v-else :title="costTitle(item.run.costCents)">{{ cost(item.run.costCents) }}</span></span>
         </NuxtLink>
         <span class="h-px flex-1 bg-base-300" aria-hidden="true" />
       </div>

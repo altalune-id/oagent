@@ -1,0 +1,27 @@
+id: 1
+data: {"type":"RUN_STARTED","threadId":"client-thread-1","runId":"Rn5Q8wYk2HhT3mVz7XcLp"}
+
+id: 2
+data: {"type":"TOOL_CALL_START","toolCallId":"call_1","toolCallName":"yasaku__record_expense","parentMessageId":"msg_asst_1"}
+
+id: 3
+data: {"type":"TOOL_CALL_ARGS","toolCallId":"call_1","delta":"{\"amount\":25000,\"account\":\"cash\",\"note\":\"lunch\"}"}
+
+id: 4
+data: {"type":"TOOL_CALL_END","toolCallId":"call_1"}
+
+id: 5
+data: {"type":"TOOL_CALL_RESULT","messageId":"msg_tool_call_1","toolCallId":"call_1","content":"{\"id\":\"exp_1\",\"amount\":25000}","role":"tool"}
+
+id: 6
+data: {"type":"TEXT_MESSAGE_START","messageId":"msg_asst_2","role":"assistant"}
+
+id: 7
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"msg_asst_2","delta":"Recorded lunch: 25,000 from cash."}
+
+id: 8
+data: {"type":"TEXT_MESSAGE_END","messageId":"msg_asst_2"}
+
+id: 9
+data: {"type":"RUN_FINISHED","threadId":"client-thread-1","runId":"Rn5Q8wYk2HhT3mVz7XcLp"}
+

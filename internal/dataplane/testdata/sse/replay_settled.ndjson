@@ -1,0 +1,4 @@
+{"id":"msg_user_1","role":"user","content":"record lunch 25000 from cash"}
+{"id":"msg_asst_1","role":"assistant","toolCalls":[{"id":"call_1","type":"function","function":{"name":"yasaku__record_expense","arguments":"{\"amount\":25000,\"account\":\"cash\",\"note\":\"lunch\"}"}}]}
+{"id":"msg_tool_call_1","role":"tool","toolCallId":"call_1","content":"{\"id\":\"exp_1\",\"amount\":25000}"}
+{"id":"msg_asst_2","role":"assistant","content":"Recorded lunch: 25,000 from cash."}

@@ -4,6 +4,7 @@
 | ----------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | [architecture](architecture/README.md)                | the layers, surfaces, boot, kernel, domains and the embedded UI                         |
 | [howto](howto/README.md)                              | "I want to add X": one recipe per kind of change, with Plan / Build / Review checklists |
+| [data-plane](data-plane.md)                           | the `/api/v1/` integrator API: run an agent turn as an AG-UI stream, read and cancel it |
 | [internal/boot/README.md](../internal/boot/README.md) | the current wiring: domains, surfaces, workers and boot order                           |
 | [schema/README.md](../schema/README.md)               | the database schema and its constraints                                                 |
 | [AGENTS.md](../AGENTS.md)                             | the rules every change follows, and the gates                                           |

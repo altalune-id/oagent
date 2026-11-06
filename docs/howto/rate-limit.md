@@ -1,12 +1,12 @@
 # Rate-limit an action
 
-Use this when an action needs oagent's own limiter: a form that can be brute-forced or used to spam mail. oagent's `auth` group is **on by default** (memory driver); a deployment that limits at the edge (a CDN, nginx, an API gateway) may turn it off. Behind a reverse proxy, set `http.trustedProxyHops`, or every visitor shares the proxy's IP bucket. With `rateLimit.driver: redis`, the default `auth` group needs `redis.url`. Each **group** of limits has its own switch, and every group shares one store. The only group today is `auth` (sign-in, password reset, invite pages); it is applied on pre-sign-in web forms only.
+Use this when an action needs oagent's own limiter: a form that can be brute-forced or used to spam mail. oagent's `auth` group is **on by default** (memory driver); a deployment that limits at the edge (a CDN, nginx, an API gateway) may turn it off. Behind a reverse proxy, set `http.trustedProxyHops`, or every visitor shares the proxy's IP bucket. With `rateLimit.driver: redis`, the default `auth` group needs `redis.url`. Each **group** of limits has its own switch, and every group shares one store. The groups today are `auth` (sign-in, password reset, invite pages, on pre-sign-in web forms only) and `dataPlane` (the `/api/v1/` integrator API, per client IP and per API key, through `dataplane.Limits`).
 
 The `internal/kernel/ratelimit` feature is generic: a `Rule` (GCRA: `Rate` calls per `Per`, `Burst` at once), a key, and a `Limiter` with `Allow` and `Reset`. Drivers, picked by `rateLimit.driver`: `ratelimit/memory` (per server, bounded, with a janitor worker) and `ratelimit/redis` (one Lua script over the shared Redis connection, so every server counts against one limit).
 
 ## Plan
 
-- [ ] **Does it belong in the `auth` group?** A pre-sign-in form does. Something else (an API or MCP call counted per key or per org) is a new group with its own switch, `rateLimit.<group>.enabled`. No such group exists yet.
+- [ ] **Does it belong in the `auth` group?** A pre-sign-in form does. Something else (an API or MCP call counted per key or per org) is a new group with its own switch, `rateLimit.<group>.enabled`, like `dataPlane`.
 - [ ] **Subject.** Per client IP (`ratelimit.IPSubject(layout.ClientIP(r, hops))`), per email (`ratelimit.EmailSubject`, a SHA-256, so no key holds an address), or both. Count the IP first.
 - [ ] **Numbers.** `Rate`, `Per`, `Burst`, written in the rule's doc comment ("60 an hour per IP").
 - [ ] **Failures only or every call.** Login counts every attempt per IP and clears the email key on success (`ForgetEmail`), so only failures stay counted per email.

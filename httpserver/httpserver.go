@@ -2,6 +2,7 @@
 package httpserver
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"log/slog"
@@ -12,11 +13,10 @@ import (
 	"altalune.id/oagent/worker"
 )
 
-//nolint:gochecknoglobals // test seams.
-var (
-	listen          = net.Listen
-	shutdownTimeout = 10 * time.Second
-)
+//nolint:gochecknoglobals // a test seam.
+var listen = net.Listen
+
+const defaultShutdownGrace = 10 * time.Second
 
 // New returns a worker.Worker serving h on cfg.Addr with sane timeouts and graceful shutdown.
 func New(cfg Config, h http.Handler, log *slog.Logger) worker.Worker {
@@ -26,7 +26,7 @@ func New(cfg Config, h http.Handler, log *slog.Logger) worker.Worker {
 	if log == nil {
 		log = slog.Default()
 	}
-	return &httpServer{name: cfg.Name, addr: cfg.Addr, handler: h, log: log}
+	return &httpServer{name: cfg.Name, addr: cfg.Addr, handler: h, log: log, grace: cmp.Or(cfg.ShutdownGrace, defaultShutdownGrace)}
 }
 
 var _ worker.Worker = (*httpServer)(nil)
@@ -36,6 +36,7 @@ type httpServer struct {
 	addr    string
 	handler http.Handler
 	log     *slog.Logger
+	grace   time.Duration
 }
 
 // Name implements worker.Worker.
@@ -76,7 +77,7 @@ func (w *httpServer) Run(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), w.grace)
 		defer shutdownCancel()
 		if shutdownErr := srv.Shutdown(shutdownCtx); shutdownErr != nil {
 			w.log.Error("http worker shutdown", slog.String("worker", w.name), slog.Any("err", shutdownErr))

@@ -532,7 +532,7 @@ const file_apikey_v1_apikey_proto_rawDesc = "" +
 	"\n" +
 	"revoked_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\trevokedAt\x12<\n" +
 	"\flast_used_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"lastUsedAtJ\x04\b\x01\x10\x02R\x02id\"\xe1\x04\n" +
+	"lastUsedAtJ\x04\b\x01\x10\x02R\x02id\"\xdb\x04\n" +
 	"\x13CreateAPIKeyRequest\x12#\n" +
 	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12(\n" +
 	"\n" +
@@ -540,8 +540,8 @@ const file_apikey_v1_apikey_proto_rawDesc = "" +
 	"\x04kind\x18\x03 \x01(\tB \xbaH\x1d\xc8\x01\x01r\x18R\aprojectR\x03orgR\bpersonalR\x04kind\x12\xbf\x01\n" +
 	"\x04name\x18\x04 \x01(\tB\xaa\x01\xbaH\xa6\x01\xba\x01A\n" +
 	"\x11apikey.name.blank\x1a,this.trim() != '' ? '' : 'must not be blank'\xba\x01\\\n" +
-	"\x17apikey.name.max_len.100\x1aAthis.trim().size() <= 100 ? '' : 'must be at most 100 characters'\xc8\x01\x01R\x04name\x129\n" +
-	"\x06scopes\x18\x05 \x03(\tB!\xbaH\x1e\x92\x01\x1b\"\x19r\x172\x15^[a-z]+:(read|write)$R\x06scopes\x12/\n" +
+	"\x17apikey.name.max_len.100\x1aAthis.trim().size() <= 100 ? '' : 'must be at most 100 characters'\xc8\x01\x01R\x04name\x123\n" +
+	"\x06scopes\x18\x05 \x03(\tB\x1b\xbaH\x18\x92\x01\x15\"\x13r\x112\x0f^[a-z]+:[a-z]+$R\x06scopes\x12/\n" +
 	"\vproject_ids\x18\x06 \x03(\tB\x0e\xbaH\v\x92\x01\b\"\x06r\x04\x88\xe42\x01R\n" +
 	"projectIds\x12!\n" +
 	"\fall_projects\x18\a \x01(\bR\vallProjects\x121\n" +

@@ -128,10 +128,9 @@ func TestRun_ShutdownDeadlineClosesStragglers(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	addr := ln.Addr().String()
-	origListen, origTimeout := listen, shutdownTimeout
-	t.Cleanup(func() { listen, shutdownTimeout = origListen, origTimeout })
+	origListen := listen
+	t.Cleanup(func() { listen = origListen })
 	listen = func(string, string) (net.Listener, error) { return ln, nil }
-	shutdownTimeout = 100 * time.Millisecond
 
 	started, cut := make(chan struct{}), make(chan struct{})
 	handler := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
@@ -141,7 +140,7 @@ func TestRun_ShutdownDeadlineClosesStragglers(t *testing.T) {
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	errCh := make(chan error, 1)
-	go func() { errCh <- New(Config{Addr: addr}, handler, nil).Run(ctx) }()
+	go func() { errCh <- New(Config{Addr: addr, ShutdownGrace: 100 * time.Millisecond}, handler, nil).Run(ctx) }()
 	req, reqErr := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://"+addr+"/", nil)
 	require.NoError(t, reqErr)
 	go func() {

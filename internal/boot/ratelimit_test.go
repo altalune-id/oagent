@@ -27,6 +27,19 @@ func TestBuildLimiters_AuthOnWithMemory(t *testing.T) {
 	}
 }
 
+func TestBuildLimiters_DataPlaneGroup(t *testing.T) {
+	off, err := buildLimiters(config.Config{RateLimit: config.RateLimitConfig{MaxKeys: 7}}, nil, testLogger())
+	require.NoError(t, err)
+	assert.Equal(t, ratelimit.Disabled(), off.dataPlane, "off limits nothing")
+	assert.NotNil(t, off.shared, "the run cap still counts")
+
+	cfg := config.Config{RateLimit: config.RateLimitConfig{MaxKeys: 7, DataPlane: config.DataPlaneLimitConfig{Enabled: true}}}
+	on, err := buildLimiters(cfg, nil, testLogger())
+	require.NoError(t, err)
+	assert.Same(t, on.shared, on.dataPlane, "the group counts in the shared store")
+	assert.Equal(t, ratelimit.Disabled(), on.auth, "each group has its own switch")
+}
+
 func TestBuildLimiters_UnknownDriver(t *testing.T) {
 	cfg := config.Config{RateLimit: config.RateLimitConfig{Driver: "pigeon", Auth: config.RateLimitGroupConfig{Enabled: true}}}
 	_, err := buildLimiters(cfg, nil, testLogger())

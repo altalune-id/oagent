@@ -17,6 +17,8 @@ type postgresStore struct {
 	threads       *entity.Threads
 	runs          *entity.Runs
 	messages      *entity.Messages
+	resolveThread string
+	resolveRun    string
 }
 
 // NewStore builds the Postgres store over pool.
@@ -30,6 +32,8 @@ func NewStore(pool db.Pool, schema, tablePrefix string) *postgresStore {
 		threads:       entity.NewThreads(schema, tablePrefix),
 		runs:          entity.NewRuns(schema, tablePrefix),
 		messages:      entity.NewMessages(schema, tablePrefix),
+		resolveThread: resolveSQL(schema, tablePrefix, "thread"),
+		resolveRun:    resolveSQL(schema, tablePrefix, "run"),
 	}
 }
 
@@ -108,13 +112,14 @@ type messageRow struct {
 	RunID             *uuid.UUID `alias:"messages.run_id"`
 	ToolCallID        *string    `alias:"messages.tool_call_id"`
 	CreatedAt         time.Time  `alias:"messages.created_at"`
+	RequestHash       []byte     `alias:"messages.request_hash"`
 }
 
 func (r *messageRow) toMessage() Message {
 	m := Message{
 		ID: r.ID, OrgID: r.OrgID, ProjectID: r.ProjectID, ThreadID: r.ThreadID, Seq: r.Seq, Role: Role(r.Role),
 		Body: json.RawMessage(r.Body), SpeakerID: r.SpeakerID, Status: MessageStatus(r.Status), RunID: r.RunID,
-		CreatedAt: r.CreatedAt.UTC(),
+		CreatedAt: r.CreatedAt.UTC(), RequestHash: r.RequestHash,
 	}
 	if r.ExternalMessageID != nil {
 		m.ExternalMessageID = *r.ExternalMessageID
@@ -149,4 +154,9 @@ func textOrNull(s string) postgres.Expression {
 
 func jsonb(body json.RawMessage) postgres.Expression {
 	return postgres.CAST(postgres.String(string(body))).AS("jsonb")
+}
+
+func resolveSQL(schema, tablePrefix, what string) string {
+	return `SELECT x.id AS "ref.id", x.org_id AS "ref.org_id", x.project_id AS "ref.project_id", x.agent_id AS "ref.agent_id" FROM ` +
+		schema + "." + tablePrefix + "resolve_" + what + "_by_public_id(#publicID) x"
 }

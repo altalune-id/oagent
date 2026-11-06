@@ -22,5 +22,8 @@ func (c *Config) validateRun() error {
 	if c.Run.DrainTimeout >= c.Scheduler.ShutdownGrace {
 		return &InvalidSettingError{Key: "run.drainTimeout", Reason: "must be below scheduler.shutdownGrace"}
 	}
+	if c.HTTP.ShutdownGrace <= c.Run.DrainTimeout {
+		return &InvalidSettingError{Key: "http.shutdownGrace", Reason: "must be above run.drainTimeout, so a live run stream can end"}
+	}
 	return nil
 }

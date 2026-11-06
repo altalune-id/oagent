@@ -31,6 +31,8 @@ func lookups() map[string]lookup {
 		"resolve_agent_by_public_id(text)":          {"resolve_agent_by_public_id('x')", []string{"id", "org_id", "project_id"}},
 		"resolve_mcp_server_by_public_id(text)":     {"resolve_mcp_server_by_public_id('x')", []string{"id", "org_id", "project_id"}},
 		"resolve_model_provider_by_public_id(text)": {"resolve_model_provider_by_public_id('x')", []string{"id", "org_id", "project_id"}},
+		"resolve_thread_by_public_id(text)":         {"resolve_thread_by_public_id('x')", []string{"id", "org_id", "project_id", "agent_id"}},
+		"resolve_run_by_public_id(text)":            {"resolve_run_by_public_id('x')", []string{"id", "org_id", "project_id", "agent_id"}},
 		"resolve_invite_by_public_id(text)":         {"resolve_invite_by_public_id('x')", []string{"id", "public_id", "org_id", "email", "role", "draft", "invited_by", "expires_at", "accepted_at", "accepted_by", "revoked_at", "created_at", "updated_at"}},
 		"resolve_api_key_by_secret_hash(bytea)":     {"resolve_api_key_by_secret_hash('\\x00'::bytea)", []string{"id", "org_id", "project_id", "kind", "all_projects", "project_ids", "name", "secret_hint", "scopes", "resource_ids", "created_by", "created_at", "expires_at", "revoked_at", "last_used_at"}},
 	}

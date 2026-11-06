@@ -16,6 +16,7 @@ type Store interface {
 type Reader interface {
 	ByID(ctx context.Context, id uuid.UUID) (*EndUser, error)
 	Owners(ctx context.Context, projectID uuid.UUID, ids []Identity) (map[Identity]uuid.UUID, error)
+	IdentitiesOf(ctx context.Context, endUserID uuid.UUID) ([]Identity, error)
 }
 
 // Writer writes end users and their identities.

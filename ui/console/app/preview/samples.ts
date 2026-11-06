@@ -190,7 +190,15 @@ export function sampleChatScript(prompt: string): ChatScript {
 export const sampleChannelId = 'chn_8fK2pQ';
 
 export function sampleChannelSettings(): ChannelSettings {
-  return { defaultOpenwaBaseUrl: 'https://openwa.altalune.id' };
+  return {
+    defaultOpenwaBaseUrl: 'https://openwa.altalune.id',
+    defaultReplies: {
+      failure: 'Sorry, something went wrong on our side. Please try again in a moment.',
+      voice: 'Voice notes are not supported yet. Please send your message as text.',
+      photo: 'I could not read that photo. Please describe it in text instead.',
+    },
+    timing: { quietMs: 3_000, quietMaxMs: 10_000, maxMessageAgeMinutes: 30 },
+  };
 }
 
 export function sampleOpenwaFill(): OpenwaFill {

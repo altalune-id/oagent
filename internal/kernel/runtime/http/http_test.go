@@ -152,12 +152,12 @@ func TestHTTP_NoTerminalIsCrash(t *testing.T) {
 	assert.NotEmpty(t, events, "the events before the cut still arrive")
 
 	rt = newClient(t, func(w nethttp.ResponseWriter, _ *nethttp.Request) {
-		_, _ = io.WriteString(w, `{"type":"OAGENT_HEARTBEAT"}`+"\n"+`{"type":"NOPE"}`+"\n")
+		_, _ = io.WriteString(w, `{"type":"OAGENT_HEARTBEAT"}`+"\n"+`{"type":"OAGENT_NOPE"}`+"\n")
 	}, nil)
 	s, err = rt.Turn(t.Context(), request(t, "tool_call"))
 	require.NoError(t, err)
 	_, err = drain(t, s)
-	assert.True(t, runtime.IsContractError(err), "an unknown event breaks the contract: %v", err)
+	assert.True(t, runtime.IsContractError(err), "an unknown private event breaks the contract: %v", err)
 }
 
 func TestHTTP_BearerSent(t *testing.T) {
@@ -262,4 +262,42 @@ func TestHTTP_LineOverTheCapBreaksTheContract(t *testing.T) {
 	_, err = drain(t, s)
 	assert.True(t, runtime.IsContractError(err), "a line over 8 MiB is refused before it is decoded: %v", err)
 	assert.ErrorIs(t, err, rthttp.ErrLineTooLong)
+}
+
+func TestHTTP_UnknownStandardTypeIsSkipped(t *testing.T) {
+	lines := strings.SplitAfter(string(golden(t, "plain_reply.stream.ndjson")), "\n")
+	withRaw := lines[0] + `{"type":"RAW","event":{"vendor":"strands"},"source":"strands"}` + "\n" +
+		`{"type":"STATE_DELTA","delta":[]}` + "\n" + strings.Join(lines[1:], "")
+	var logs bytes.Buffer
+	rt := newClient(t, func(w nethttp.ResponseWriter, _ *nethttp.Request) { _, _ = io.WriteString(w, withRaw) }, &logs)
+	s, err := rt.Turn(t.Context(), request(t, "plain_reply"))
+	require.NoError(t, err)
+	events, err := drain(t, s)
+	require.NoError(t, err, "a standard AG-UI type Go does not relay is skipped, and the turn completes")
+	_, ok := events[len(events)-1].(*runtime.Terminal)
+	assert.True(t, ok)
+	for _, e := range events {
+		assert.NotEqual(t, runtime.EventType("RAW"), e.EventType())
+	}
+	assert.Contains(t, logs.String(), "RAW", "the skip is logged at Debug")
+}
+
+func TestHTTP_UnknownPrivateTypeFailsTheTurn(t *testing.T) {
+	rt := newClient(t, func(w nethttp.ResponseWriter, _ *nethttp.Request) {
+		_, _ = io.WriteString(w, `{"type":"OAGENT_HEARTBEAT"}`+"\n"+`{"type":"OAGENT_FOO","x":1}`+"\n")
+	}, nil)
+	s, err := rt.Turn(t.Context(), request(t, "plain_reply"))
+	require.NoError(t, err)
+	_, err = drain(t, s)
+	assert.True(t, runtime.IsContractError(err), "an unknown private event could carry a checkpoint, so it is never dropped: %v", err)
+}
+
+func TestHTTP_UnknownFieldOnAKnownTypeStaysStrict(t *testing.T) {
+	rt := newClient(t, func(w nethttp.ResponseWriter, _ *nethttp.Request) {
+		_, _ = io.WriteString(w, `{"type":"OAGENT_HEARTBEAT","extra":true}`+"\n")
+	}, nil)
+	s, err := rt.Turn(t.Context(), request(t, "plain_reply"))
+	require.NoError(t, err)
+	_, err = drain(t, s)
+	assert.True(t, runtime.IsContractError(err), "%v", err)
 }

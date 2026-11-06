@@ -4,11 +4,13 @@ package boot
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -26,6 +28,7 @@ import (
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
+	"altalune.id/oagent/internal/enduser"
 	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/mcpserver"
@@ -34,7 +37,9 @@ import (
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/permission"
 	"altalune.id/oagent/internal/project"
+	"altalune.id/oagent/internal/run"
 	"altalune.id/oagent/internal/user"
+	"altalune.id/oagent/nanoid"
 	"altalune.id/oagent/scope"
 )
 
@@ -65,7 +70,7 @@ type reachOrg struct {
 }
 
 type reachIDs struct {
-	org, project, otherProject, agent, webhook, delivery, member, invite, keyHint, provider, server string
+	org, project, otherProject, agent, webhook, delivery, member, invite, keyHint, provider, server, thread, run string
 }
 
 func (ids reachIDs) serviceID(service protoreflect.FullName) string {
@@ -119,6 +124,7 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 		Name: "yasaku", URL: mcpURL, AuthKind: mcpserver.AuthBearer, TimeoutMS: 5000,
 	}, "tok-probe")
 	require.NoError(t, err)
+	th, r := seedThread(inB, t, f, prj.ID, ag.ID)
 	var delivery, deliveryID string
 	require.NoError(t, f.db.QueryRowContext(ctx, `SELECT public_id, id::text FROM outbox_entries WHERE target = $1`, hook.ID.String()).
 		Scan(&delivery, &deliveryID))
@@ -132,13 +138,14 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 	s.pub = reachIDs{
 		org: b.PublicID, project: prj.PublicID, otherProject: other.PublicID, agent: ag.PublicID, webhook: hook.PublicID, delivery: delivery,
 		member: u.PublicID, invite: c.Invite.PublicID, keyHint: hintOf(key), provider: provider.PublicID, server: server.PublicID,
+		thread: th.PublicID, run: r.PublicID,
 	}
 	var keyID string
 	require.NoError(t, f.db.QueryRowContext(ctx, `SELECT id::text FROM api_keys WHERE org_id = $1 AND secret_hint = $2`, b.ID, hintOf(key)).Scan(&keyID))
 	s.uuids = reachIDs{
 		org: b.ID.String(), project: prj.ID.String(), otherProject: other.ID.String(), agent: ag.ID.String(), webhook: hook.ID.String(),
 		delivery: deliveryID, member: u.ID.String(), invite: c.Invite.ID.String(), keyHint: keyID,
-		provider: provider.ID.String(), server: server.ID.String(),
+		provider: provider.ID.String(), server: server.ID.String(), thread: th.ID.String(), run: r.ID.String(),
 	}
 	return s
 }
@@ -158,7 +165,9 @@ func (s reachOrg) snapshot(t *testing.T, f *apiFixture) string {
 		(SELECT string_agg(user_id || role, ',' ORDER BY user_id) FROM memberships WHERE org_id = $1),
 		(SELECT count(*) || md5(string_agg(coalesce(token_hash, '') || updated_at || coalesce(revoked_at::text, ''), ',' ORDER BY id)) FROM invites WHERE org_id = $1),
 		(SELECT count(*) || md5(string_agg(name || base_url || models::text || updated_at || api_key_sealed::text, ',' ORDER BY id)) FROM model_providers WHERE org_id = $1),
-		(SELECT count(*) || md5(string_agg(url || auth_kind || coalesce(auth_sealed::text, '') || updated_at, ',' ORDER BY id)) FROM mcp_servers WHERE org_id = $1))`, s.orgB).Scan(&got))
+		(SELECT count(*) || md5(string_agg(url || auth_kind || coalesce(auth_sealed::text, '') || updated_at, ',' ORDER BY id)) FROM mcp_servers WHERE org_id = $1),
+		(SELECT count(*) || md5(string_agg(cancel_requested || coalesce(lease_owner, '') || next_seq, ',' ORDER BY id)) FROM threads WHERE org_id = $1),
+		(SELECT count(*) || md5(string_agg(status || attempt || coalesce(ended_at::text, ''), ',' ORDER BY id)) FROM runs WHERE org_id = $1))`, s.orgB).Scan(&got))
 	return got
 }
 
@@ -180,6 +189,7 @@ func (ids reachIDs) request(t *testing.T, procedure string) (protoreflect.Method
 	tenantIDs := map[protoreflect.Name]string{
 		"org_id": ids.org, "project_id": ids.project, "user_id": ids.member, "invite_id": ids.invite,
 		"delivery_id": ids.delivery, "hint": ids.keyHint, "agent_id": ids.agent, "id": ids.serviceID(method.Parent().FullName()),
+		"thread_id": ids.thread, "run_id": ids.run,
 	}
 	aimed := false
 	fields := method.Input().Fields()
@@ -338,9 +348,9 @@ func TestReach_UUIDsAndGarbageAreRefused(t *testing.T) {
 	f := newAPIFixture(t)
 	s := seedReach(t, f)
 	cookie, _, _ := f.personCookieIn(t, s.orgB, "b-owner@example.com", member.RoleOwner)
-	garbage := reachIDs{"nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope"}
+	garbage := reachIDs{"nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope"}
 	const unknownID = "unknwnunknwnunknwnabc"
-	unknown := reachIDs{unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, "zzzz", unknownID, unknownID}
+	unknown := reachIDs{unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, "zzzz", unknownID, unknownID, unknownID, unknownID}
 	before := s.snapshot(t, f)
 	for name, tc := range map[string]struct {
 		ids  reachIDs
@@ -375,4 +385,31 @@ func startProbeMCPServer(t *testing.T) string {
 		&sdkmcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true}))
 	t.Cleanup(ts.Close)
 	return ts.URL + "/mcp"
+}
+
+// NOTE: a thread with one message and a run left running, so a refused CancelRun would show in the snapshot.
+func seedThread(ctx context.Context, t *testing.T, f *apiFixture, projectID, agentID uuid.UUID) (*run.Thread, *run.Run) {
+	t.Helper()
+	tc, err := tenant.From(ctx)
+	require.NoError(t, err)
+	who, err := f.svcs.EndUsers.Upsert(ctx, projectID, enduser.Identity{Kind: enduser.KindAPIUser, Value: "key:probe-user"})
+	require.NoError(t, err)
+	th, err := f.svcs.RunStore.UpsertAPIThread(ctx, projectID, agentID, "probe-thread", who.ID)
+	require.NoError(t, err)
+	_, err = f.svcs.RunStore.AppendMessage(ctx, th.ID, run.Message{
+		Role: run.RoleUser, Body: json.RawMessage(`{"id":"m1","role":"user","content":"hi"}`), SpeakerID: &who.ID, Status: run.MessagePending,
+	})
+	require.NoError(t, err)
+	version := uuid.New()
+	_, err = f.db.ExecContext(ctx, `INSERT INTO agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at)
+		VALUES ($1, $2, $3, $4, $5, 1, '{}', now())`, version, nanoid.MustNew(21), tc.OrgID, projectID, agentID)
+	require.NoError(t, err)
+	claim, err := f.svcs.RunStore.Claim(ctx, th.ID, "probe-lease", time.Hour)
+	require.NoError(t, err)
+	require.Equal(t, run.Claimed, claim)
+	r := run.New(tc.OrgID, projectID, th.ID, version, time.Now())
+	_, err = f.svcs.RunStore.StartRun(ctx, "probe-lease", r)
+	require.NoError(t, err)
+	require.NoError(t, f.svcs.RunStore.Release(ctx, th.ID, "probe-lease"))
+	return th, r
 }

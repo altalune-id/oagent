@@ -73,6 +73,8 @@ type HTTPConfig struct {
 	StateSecret  string `yaml:"stateSecret"  mapstructure:"stateSecret"  awareness:"secret" validate:"omitempty,secret"`
 	// TrustedProxyHops is how many proxies that append to X-Forwarded-For sit in front of oagent; 0 keys on RemoteAddr.
 	TrustedProxyHops int `yaml:"trustedProxyHops" mapstructure:"trustedProxyHops" validate:"gte=0"`
+	// ShutdownGrace is how long open requests, live run streams included, may finish after a stop; it must exceed run.drainTimeout.
+	ShutdownGrace time.Duration `yaml:"shutdownGrace" mapstructure:"shutdownGrace" validate:"gte=0"`
 }
 
 // APIConfig configures the Connect-RPC controlplane.

@@ -114,6 +114,20 @@ func TestStore_OtherTenantInvisible(t *testing.T) {
 	assert.True(t, enduser.IsNotFoundError(err))
 }
 
+func TestStore_IdentitiesOfOneEndUser(t *testing.T) {
+	f := newPgFixture(t)
+	org, project := f.seedScope(t)
+	other, _ := f.seedScope(t)
+	e, err := f.service().Upsert(in(org), project, phone, lid)
+	require.NoError(t, err)
+	got, err := f.store.IdentitiesOf(in(org), e.ID)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []enduser.Identity{phone, lid}, got)
+	foreign, err := f.store.IdentitiesOf(in(other), e.ID)
+	require.NoError(t, err)
+	assert.Empty(t, foreign, "another tenant sees nothing")
+}
+
 func TestStore_ConcurrentUpsertOneEndUser(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)

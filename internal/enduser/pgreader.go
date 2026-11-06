@@ -59,3 +59,25 @@ func (s *postgresStore) Owners(ctx context.Context, projectID uuid.UUID, ids []I
 	}
 	return out, nil
 }
+
+// IdentitiesOf lists one end user's identities, oldest first.
+func (s *postgresStore) IdentitiesOf(ctx context.Context, endUserID uuid.UUID) ([]Identity, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	t := s.identities
+	stmt := postgres.SELECT(t.Kind, t.Value, t.EndUserID).
+		FROM(t).
+		WHERE(t.EndUserID.EQ(postgres.UUID(endUserID)).AND(t.OrgID.EQ(postgres.UUID(tc.OrgID)))).
+		ORDER_BY(t.CreatedAt.ASC(), t.Kind.ASC())
+	var rows []identityRow
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
+		return nil, fmt.Errorf("enduser.postgres: IdentitiesOf: %w", err)
+	}
+	out := make([]Identity, len(rows))
+	for i, r := range rows {
+		out[i] = Identity{Kind: Kind(r.Kind), Value: r.Value}
+	}
+	return out, nil
+}

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ReplyKey, ReplyTexts } from '~/components/channels/replies';
+import type { ReplyEditorLabels } from '~/components/channels/ReplyTextsEditor.vue';
 import type { WhatsAppStatus } from '~/stores/channels';
 import AppButton from '#base/components/ui/AppButton.vue';
 import AppModal from '#base/components/ui/AppModal.vue';
@@ -15,6 +17,8 @@ import { useDates } from '#base/composables/useDates';
 import { chosenModel } from '~/components/agent/configure/runtime';
 import { useAgentPage } from '~/components/agent/useAgentPage';
 import OpenwaConnectModal from '~/components/channels/OpenwaConnectModal.vue';
+import { replyErrors, replyKeys, seconds } from '~/components/channels/replies';
+import ReplyTextsEditor from '~/components/channels/ReplyTextsEditor.vue';
 import { useOpenwaConnect } from '~/components/channels/useOpenwaConnect';
 import { useReplaceSecret } from '~/components/channels/useReplaceSecret';
 import CodeText from '~/components/layout/CodeText.vue';
@@ -29,6 +33,7 @@ const uid = useId();
 const route = useRoute();
 const { when } = useDates();
 const toast = useToast();
+// TODO: gate on the ChannelService scope once it exists; agent:write stands in until then.
 const canEdit = useCan('agent:write');
 const { agent, providers, base } = await useAgentPage();
 const channels = useChannelsStore();
@@ -71,6 +76,40 @@ const facts = computed(() => {
     { label: t('openwa.device_key'), value: '' },
   ];
 });
+
+const replies = ref<ReplyTexts>({ ...channels.replies(agent.value.id) });
+const replyErrs = ref<Partial<Record<ReplyKey, string>>>({});
+watch(() => connection.value?.id, () => {
+  replies.value = { ...channels.replies(agent.value.id) };
+  replyErrs.value = {};
+});
+
+const replyLabels = computed<ReplyEditorLabels>(() => ({
+  legend: t('channels.replies'),
+  hint: t('channels.replies_hint'),
+  fields: Object.fromEntries(replyKeys.map(k => [k, { label: t(`channels.reply_${k}`), hint: t(`channels.reply_${k}_hint`) }])) as ReplyEditorLabels['fields'],
+  reset: t('channels.reset_reply'),
+  save: t('channels.save_replies'),
+}));
+
+const timing = computed(() => {
+  const w = channels.settings.timing;
+  return [
+    { label: t('channels.quiet_window'), value: t('channels.seconds', { n: seconds(w.quietMs) }) },
+    { label: t('channels.quiet_max'), value: t('channels.seconds', { n: seconds(w.quietMaxMs) }) },
+    { label: t('channels.late_cutoff'), value: t('channels.minutes', { n: w.maxMessageAgeMinutes }) },
+  ];
+});
+
+function saveReplies() {
+  replyErrs.value = Object.fromEntries(Object.entries(replyErrors(replies.value)).map(([k, key]) => [k, t(key)]));
+  if (Object.keys(replyErrs.value).length) {
+    return;
+  }
+  channels.saveReplies(agent.value.id, replies.value);
+  replies.value = { ...channels.replies(agent.value.id) };
+  toast.push('success', t('channels.replies_saved'));
+}
 
 const disconnecting = useConfirm<boolean>(async () => {
   channels.remove(agent.value.id, 'openwa');
@@ -168,6 +207,18 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · 
           {{ t('openwa.who_may_talk') }}
         </p>
       </Section>
+
+      <template v-if="connection">
+        <Section :title="t('channels.replies')">
+          <ReplyTextsEditor v-model="replies" :defaults="channels.settings.defaultReplies" :labels="replyLabels" :errors="replyErrs" :read-only="!canEdit" @save="saveReplies()" />
+        </Section>
+
+        <Section :title="t('channels.windows')" :description="t('channels.windows_hint')">
+          <div class="-mx-4 border-y border-base-300">
+            <KeyValue :items="timing" :copy-label="t('common.copy_label', { label: '{label}' })" />
+          </div>
+        </Section>
+      </template>
 
       <Section :title="t('channels.provider_whatsapp_business')" :description="t('channels.business_subtitle')">
         <template #actions>

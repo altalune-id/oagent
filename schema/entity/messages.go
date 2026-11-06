@@ -20,6 +20,8 @@ type Messages struct {
 	ToolCallID        postgres.ColumnString
 	CreatedAt         postgres.ColumnTimestampz
 
+	RequestHash postgres.ColumnBytea
+
 	AllColumns postgres.ColumnList
 }
 
@@ -42,9 +44,10 @@ func NewMessages(schema, tablePrefix string) *Messages {
 		runID             = postgres.StringColumn("run_id")
 		toolCallID        = postgres.StringColumn("tool_call_id")
 		createdAt         = postgres.TimestampzColumn("created_at")
+		requestHash       = postgres.ByteaColumn("request_hash")
 		all               = postgres.ColumnList{
 			id, orgID, projectID, threadID, seq, role, body, speakerID, status, externalMessageID, runID, toolCallID,
-			createdAt,
+			createdAt, requestHash,
 		}
 	)
 	return &Messages{
@@ -62,6 +65,7 @@ func NewMessages(schema, tablePrefix string) *Messages {
 		RunID:             runID,
 		ToolCallID:        toolCallID,
 		CreatedAt:         createdAt,
+		RequestHash:       requestHash,
 		AllColumns:        all,
 	}
 }

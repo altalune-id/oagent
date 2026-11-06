@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useToast } from '#base/components/ui/toast';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
+import { RunSchema, RunStatus, ThreadMessageSchema, ThreadSchema } from '#gen/thread/v1/thread_pb';
 import { mountPage } from '#test/mount-page';
 import { route, router, setClient, setRoute } from '#test/nuxt-globals';
 import { useNow } from '~/composables/useNow';
@@ -47,6 +48,7 @@ describe('threads page', () => {
     seed('/agents/yasaku-keuangan/threads', { agent: 'yasaku-keuangan' });
     const w = await mountPage(ThreadsPage);
     expect(w.get('h1').text()).toBe('threads.title');
+    expect(w.text()).toContain('threads.preview_note');
     expect(w.findAll('tbody tr')).toHaveLength(4);
     expect(w.get('tbody').text()).toContain('Sari: transfer 200rb ke BCA');
     expect(w.get('tbody').text()).toContain('threads.api_user|{"id":"cust_0001"}');
@@ -80,18 +82,59 @@ describe('threads page', () => {
 
   it('starts empty for another agent with links to Try it and Channels', async () => {
     seed('/agents/tagihan/threads', { agent: 'tagihan' });
+    const listThreads = vi.fn().mockResolvedValue({ threads: [], nextPageToken: '' });
+    setClient('$threadClient', { listThreads });
     const w = await mountPage(ThreadsPage);
     expect(w.text()).toContain('threads.empty');
+    expect(w.text()).not.toContain('threads.preview_note');
+    expect(w.text()).not.toContain('preview.badge');
+    expect(listThreads).toHaveBeenCalledWith(expect.objectContaining({ agentId: 'Ot8KqRm2LxW4pTn6Vc9Bd', pageToken: '' }));
   });
 });
 
 describe('thread view', () => {
+  it('shows Cancelling and hides Cancel run after a cancel until the run settles, still polling', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const threadId = 'Th3kP9wQ2mXr7LtV5nBcZ';
+    const runId = 'Rn2wQ8mX4vL9tB3nC7kPq';
+    const running = create(RunSchema, { id: runId, threadId, status: RunStatus.RUNNING, usage: {} });
+    const thread = create(ThreadSchema, { id: threadId, projectId, agentId: other.id, kind: 'api', endUserLabel: 'API user ·…a91f', openRunStatus: RunStatus.RUNNING, runCount: 1n });
+    const client = {
+      listThreads: vi.fn().mockResolvedValue({ threads: [thread], nextPageToken: '' }),
+      getThread: vi.fn().mockResolvedValue({ thread }),
+      listRuns: vi.fn().mockResolvedValue({ runs: [running], nextPageToken: '' }),
+      listThreadMessages: vi.fn().mockResolvedValueOnce({ messages: [create(ThreadMessageSchema, { seq: 1n, role: 'user', runId, message: { content: 'hi' } })] }).mockResolvedValue({ messages: [] }),
+      getRun: vi.fn().mockResolvedValueOnce({ run: running }).mockResolvedValue({ run: create(RunSchema, { id: runId, threadId, status: RunStatus.CANCELLED, usage: {} }) }),
+      cancelRun: vi.fn().mockResolvedValue({ run: running }),
+    };
+    setClient('$threadClient', client);
+    seed(`/agents/tagihan/threads/${threadId}`, { agent: 'tagihan', thread: threadId });
+    const w = await mountPage(ThreadPage);
+    expect(w.text()).toContain('runstatus.running');
+    await button(w, 'thread.cancel_run').trigger('click');
+    await flushPromises();
+    const dialog = w.findAll('dialog').find(d => d.text().includes('thread.cancel_body'))!;
+    await dialog.findAll('button').find(b => b.text() === 'thread.cancel_run')!.trigger('click');
+    await flushPromises();
+    expect(client.cancelRun).toHaveBeenCalledWith({ runId });
+    expect(w.text()).toContain('thread.cancelling');
+    expect(w.findAll('button').some(b => b.text().includes('thread.cancel_run') && !b.element.closest('dialog'))).toBe(false);
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(w.text()).toContain('thread.cancelling');
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(client.getRun).toHaveBeenCalledTimes(2);
+    expect(w.text()).toContain('runstatus.cancelled');
+    expect(w.text()).not.toContain('thread.cancelling');
+    w.unmount();
+  });
+
   it('shows each speaker, run dividers, tool chips and decided approvals read-only, with the facts', async () => {
     vi.useFakeTimers({ now: new Date(2026, 10, 5, 12), toFake: ['Date'] });
     seed('/agents/yasaku-keuangan/threads/thr_grp3Kd9Q', { agent: 'yasaku-keuangan', thread: 'thr_grp3Kd9Q' });
     const w = await mountPage(ThreadPage, { attachTo: document.body });
     expect(w.get('h1').text()).toBe('Keuangan Rumah');
-    expect(w.text()).toContain('thread.summary|{"runs":4,"cost":"$0.005"}');
+    expect(w.text()).toContain('thread.summary|{"runs":4,"cost":"< $0.01"}');
+    expect(w.findAll('[title="$0.0054"]')).toHaveLength(2);
     const log = w.get('[role="log"]');
     expect(log.findAll('.chat-start .chat-header').map(h => h.text().split(' ')[0])).toEqual(['Budi', 'Sari', 'Sari']);
     expect(log.text()).toContain('thread.photo_placeholder');
@@ -102,9 +145,19 @@ describe('thread view', () => {
     expect(log.findAll('section button').some(b => b.text().includes('approvalcard.approve_run'))).toBe(false);
     expect(w.get('aside').text()).toContain('Budi');
     expect(w.get('aside').getComponent(RouterLinkStub).props('to')).toBe('/o/acme/projects/rumah/end-users/eu_budi1');
+    const th = useThreadsStore().byId('thr_grp3Kd9Q')!;
+    const live = th.items;
     await button(w, 'thread.cancel_run').trigger('click');
     await flushPromises();
     const dialog = w.findAll('dialog').find(d => d.text().includes('thread.cancel_body'))!;
+    expect((dialog.element as HTMLDialogElement).open).toBe(true);
+    th.items = live.map(i => (i.kind === 'run' ? { ...i, run: { ...i.run, status: 'completed' as const } } : i));
+    await flushPromises();
+    expect((dialog.element as HTMLDialogElement).open).toBe(false);
+    th.items = live;
+    await flushPromises();
+    await button(w, 'thread.cancel_run').trigger('click');
+    await flushPromises();
     await dialog.findAll('button').find(b => b.text() === 'thread.cancel_run')!.trigger('click');
     await flushPromises();
     expect(useThreadsStore().byId('thr_grp3Kd9Q')!.status).toBe('cancelled');

@@ -1,6 +1,7 @@
 package entity_test
 
 import (
+	"reflect"
 	"testing"
 
 	jetpg "github.com/go-jet/jet/v2/postgres"
@@ -51,7 +52,7 @@ func TestBindings(t *testing.T) {
 			"threads",
 			func(s, p string) binding { b := entity.NewThreads(s, p); return binding{b, b.AllColumns} },
 			[]string{
-				"id", "public_id", "org_id", "project_id", "agent_id", "kind", "external_key", "lease_owner", "lease_until", "cancel_requested", "next_seq", "created_at", "updated_at",
+				"id", "public_id", "org_id", "project_id", "agent_id", "kind", "external_key", "lease_owner", "lease_until", "cancel_requested", "next_seq", "created_at", "updated_at", "actor_end_user_id",
 			},
 		},
 		{
@@ -65,7 +66,7 @@ func TestBindings(t *testing.T) {
 			"messages",
 			func(s, p string) binding { b := entity.NewMessages(s, p); return binding{b, b.AllColumns} },
 			[]string{
-				"id", "org_id", "project_id", "thread_id", "seq", "role", "body", "speaker_id", "status", "external_message_id", "run_id", "tool_call_id", "created_at",
+				"id", "org_id", "project_id", "thread_id", "seq", "role", "body", "speaker_id", "status", "external_message_id", "run_id", "tool_call_id", "created_at", "request_hash",
 			},
 		},
 		{
@@ -205,5 +206,21 @@ func TestBindings(t *testing.T) {
 			assert.Equal(t, "public", b.table.SchemaName())
 			assert.Equal(t, tt.name, b.table.TableName())
 		})
+	}
+}
+
+func TestBindings_EveryColumnFieldIsSet(t *testing.T) {
+	for name, b := range map[string]any{
+		"threads": entity.NewThreads("s", ""), "runs": entity.NewRuns("s", ""), "messages": entity.NewMessages("s", ""),
+		"thread_snapshots": entity.NewThreadSnapshots("s", ""), "end_users": entity.NewEndUsers("s", ""),
+		"end_user_identities": entity.NewEndUserIdentities("s", ""),
+	} {
+		v := reflect.ValueOf(b).Elem()
+		for i := range v.NumField() {
+			f := v.Field(i)
+			if f.Kind() == reflect.Interface {
+				assert.False(t, f.IsNil(), "%s.%s is never assigned", name, v.Type().Field(i).Name)
+			}
+		}
 	}
 }

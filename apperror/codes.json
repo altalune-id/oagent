@@ -87,5 +87,8 @@
   { "code": "RUN003", "name": "RunRuntimeUnavailable", "kind": "failed_precondition", "params": [], "reasons": [] },
   { "code": "RUN004", "name": "RunTimedOut", "kind": "failed_precondition", "params": [], "reasons": [] },
   { "code": "RUN005", "name": "RunAttemptsExhausted", "kind": "failed_precondition", "params": [], "reasons": [] },
-  { "code": "RUN006", "name": "RunRuntimeFailed", "kind": "failed_precondition", "params": [], "reasons": [] }
+  { "code": "RUN006", "name": "RunRuntimeFailed", "kind": "failed_precondition", "params": [], "reasons": [] },
+  { "code": "RUN007", "name": "RunInProgress", "kind": "failed_precondition", "params": ["run"], "reasons": [] },
+  { "code": "RUN008", "name": "RunIdempotencyConflict", "kind": "invalid", "params": [], "reasons": [] },
+  { "code": "THR001", "name": "ThreadNotFound", "kind": "not_found", "params": [], "reasons": [] }
 ]

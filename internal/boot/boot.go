@@ -115,6 +115,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		return nil, err
 	}
 	svcs.RunStore, svcs.Runs, svcs.RunTurns, svcs.RunKicker = runs.store, runs.svc, runs.runner, runs.kicker
+	svcs.RuntimeReady = runs.ready
 	if err := k.Queue.Declare(queueJobs(), nil); err != nil {
 		return nil, fmt.Errorf("boot: declare queue jobs: %w", err)
 	}
@@ -153,6 +154,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 			probes:     health.NewWeb(health.NewService(readinessChecks(dbHealth, rh, nh)...)),
 			basePath:   cfg.HTTP.BasePath,
 			api:        apiHandler,
+			dataPlane:  buildDataPlane(cfg, svcs, lims, k.Reporter.Unexpected, log),
 			console:    consoleHandler,
 			mcp:        buildMCPHandler(mcpServer, svcs, mcpResource, log),
 			mcpDocs:    mcpDocs,

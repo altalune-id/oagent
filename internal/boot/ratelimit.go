@@ -18,14 +18,15 @@ import (
 const defaultRunLimitKeys = 100_000
 
 type limiters struct {
-	auth ratelimit.Limiter
+	auth      ratelimit.Limiter
+	dataPlane ratelimit.Limiter
 	// shared is the store every limited feature counts in, or nil when no rate limit is on.
 	shared  ratelimit.Limiter
 	janitor worker.Worker
 }
 
 func buildLimiters(cfg config.Config, rdb redis.UniversalClient, log *slog.Logger) (limiters, error) {
-	out := limiters{auth: ratelimit.Disabled()}
+	out := limiters{auth: ratelimit.Disabled(), dataPlane: ratelimit.Disabled()}
 	r := cfg.RateLimit
 	if !r.AnyEnabled() {
 		m := memory.New(cmp.Or(r.MaxKeys, defaultRunLimitKeys), memory.WithLogger(log))
@@ -48,6 +49,9 @@ func buildLimiters(cfg config.Config, rdb redis.UniversalClient, log *slog.Logge
 	out.shared = limiter
 	if r.Auth.Enabled {
 		out.auth = limiter
+	}
+	if r.DataPlane.Enabled {
+		out.dataPlane = limiter
 	}
 	return out, nil
 }

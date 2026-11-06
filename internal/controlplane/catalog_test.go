@@ -224,6 +224,10 @@ func samples() []error {
 		&run.TimedOutError{},
 		&run.AttemptsExhaustedError{Attempts: 3},
 		&run.RuntimeFailedError{Reason: "model_error"},
+		&run.InProgressError{RunPublicID: "r"},
+		&run.IdempotencyConflictError{},
+		&run.ThreadNotFoundError{ID: "t"},
+		&run.ThreadActorMismatchError{ThreadID: "t"},
 	}
 }
 

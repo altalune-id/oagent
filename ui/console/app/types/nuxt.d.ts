@@ -8,6 +8,7 @@ import type { MemberService } from '#gen/member/v1/member_pb';
 import type { ModelProviderService } from '#gen/modelprovider/v1/modelprovider_pb';
 import type { OrgService } from '#gen/org/v1/org_pb';
 import type { ProjectService } from '#gen/project/v1/project_pb';
+import type { ThreadService } from '#gen/thread/v1/thread_pb';
 import type { WebhookService } from '#gen/webhook/v1/webhook_pb';
 
 declare module '#app' {
@@ -17,6 +18,7 @@ declare module '#app' {
     $agentClient: Client<typeof AgentService>;
     $modelProviderClient: Client<typeof ModelProviderService>;
     $mcpServerClient: Client<typeof McpServerService>;
+    $threadClient: Client<typeof ThreadService>;
     $apiKeyClient: Client<typeof APIKeyService>;
     $webhookClient: Client<typeof WebhookService>;
     $memberClient: Client<typeof MemberService>;

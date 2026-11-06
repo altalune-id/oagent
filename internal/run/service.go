@@ -109,10 +109,60 @@ type turn struct {
 	token   string
 	// stored holds the tool calls whose result this run already stored, from earlier attempts and this one.
 	stored map[string]bool
+	// observe sees the turn's events for a streaming client. final holds the runtime's own last event until the run settles.
+	observe Observer
+	final   runtime.Event
+}
+
+func (t *turn) see(e runtime.Event) {
+	if t.observe == nil {
+		return
+	}
+	switch e.(type) {
+	case *runtime.RunFinished, *runtime.RunError:
+		t.final = e
+		return
+	}
+	t.observe(e)
+}
+
+// NOTE: called only after the settle commits, so a crash before it never reads as finished to the client.
+func (t *turn) end() {
+	if t.observe == nil {
+		return
+	}
+	switch t.run.Status {
+	case StatusCancelled:
+		t.observe(&runtime.RunError{Type: runtime.EventRunError, Message: "The run was cancelled.", Code: "cancelled"})
+	case StatusInterrupted:
+		t.observe(&runtime.RunError{
+			Type: runtime.EventRunError, Code: "interrupted",
+			Message: "The run was interrupted and resumes shortly; reload the thread for its result.",
+		})
+	case StatusFailed, StatusExpired:
+		if runErr, ok := t.final.(*runtime.RunError); ok {
+			t.observe(runErr)
+			return
+		}
+		t.observe(&runtime.RunError{Type: runtime.EventRunError, Message: "The run failed.", Code: t.run.ErrorCode})
+	default:
+		if t.final != nil {
+			t.observe(t.final)
+		}
+	}
 }
 
 // Execute runs the thread's next turn under token's lease: it resumes or starts a run; nil, nil means nothing was pending.
 func (s *Service) Execute(ctx context.Context, threadID uuid.UUID, token string) (*Run, error) {
+	return s.execute(ctx, threadID, token, nil)
+}
+
+// ExecuteObserved is Execute for a streamed turn: obs sees its events and its end; the POST already paid the rate charge.
+func (s *Service) ExecuteObserved(ctx context.Context, threadID uuid.UUID, token string, obs Observer) (*Run, error) {
+	return s.execute(ctx, threadID, token, obs)
+}
+
+func (s *Service) execute(ctx context.Context, threadID uuid.UUID, token string, obs Observer) (*Run, error) {
 	th, err := s.store.Thread(ctx, threadID)
 	if err != nil {
 		return nil, s.errOrReport(ctx, "run: thread", err)
@@ -121,7 +171,7 @@ func (s *Service) Execute(ctx context.Context, threadID uuid.UUID, token string)
 		s.warnNoRuntime(ctx, threadID)
 		return nil, &RuntimeUnavailableError{}
 	}
-	t, done, err := s.open(ctx, th, token)
+	t, done, err := s.open(ctx, th, token, obs)
 	if err != nil || done != nil || t == nil {
 		return done, err
 	}
@@ -160,19 +210,27 @@ func domainCode(err error) apperror.Code {
 	return ""
 }
 
-// Cancel stops the thread's run: a live turn is asked to stop at its next heartbeat, an idle open run is settled cancelled at once.
-func (s *Service) Cancel(ctx context.Context, threadID uuid.UUID) error {
+// Cancel stops run runID: a live turn is asked to stop at its next heartbeat, an idle open run is settled cancelled at once.
+func (s *Service) Cancel(ctx context.Context, runID uuid.UUID) error {
+	target, err := s.store.RunByID(ctx, runID)
+	if err != nil {
+		return s.errOrReport(ctx, "run: cancel run", err)
+	}
+	if target.Status.Terminal() {
+		return nil
+	}
+	threadID := target.ThreadID
 	th, err := s.store.Thread(ctx, threadID)
 	if err != nil {
 		return s.errOrReport(ctx, "run: cancel thread", err)
 	}
 	token := uuid.NewString()
-	claimed, err := s.store.Claim(ctx, threadID, token, cancelLease)
+	claim, err := s.store.Claim(ctx, threadID, token, cancelLease)
 	if err != nil {
 		return s.errOrReport(ctx, "run: cancel claim", err)
 	}
-	if !claimed {
-		return s.errOrReport(ctx, "run: request cancel", s.store.RequestCancel(ctx, threadID))
+	if claim != Claimed {
+		return s.errOrReport(ctx, "run: request cancel", s.store.RequestCancel(ctx, threadID, runID))
 	}
 	defer func() {
 		if err := s.store.Release(context.WithoutCancel(ctx), threadID, token); err != nil && !IsLeaseLostError(err) {
@@ -180,7 +238,7 @@ func (s *Service) Cancel(ctx context.Context, threadID uuid.UUID) error {
 		}
 	}()
 	r, err := s.store.OpenRun(ctx, threadID)
-	if err != nil || r == nil {
+	if err != nil || r == nil || r.ID != runID {
 		return s.errOrReport(ctx, "run: cancel open run", err)
 	}
 	t := &turn{run: r, thread: th, token: token, stored: map[string]bool{}}
@@ -194,12 +252,12 @@ func (s *Service) Cancel(ctx context.Context, threadID uuid.UUID) error {
 	return err
 }
 
-func (s *Service) open(ctx context.Context, th *Thread, token string) (*turn, *Run, error) {
+func (s *Service) open(ctx context.Context, th *Thread, token string, obs Observer) (*turn, *Run, error) {
 	r, err := s.store.OpenRun(ctx, th.ID)
 	if err != nil {
 		return nil, nil, s.errOrReport(ctx, "run: open run", err)
 	}
-	t := &turn{run: r, thread: th, token: token, stored: map[string]bool{}}
+	t := &turn{run: r, thread: th, token: token, stored: map[string]bool{}, observe: obs}
 	if r != nil {
 		return s.resume(ctx, t)
 	}
@@ -214,8 +272,8 @@ func (s *Service) open(ctx context.Context, th *Thread, token string) (*turn, *R
 		s.log.DebugContext(ctx, "run: the agent has no published version; the messages wait", "thread", th.ID.String())
 		return nil, nil, nil
 	}
-	if err := s.rate.Allow(ctx, th.ProjectID); err != nil {
-		return nil, nil, s.errOrReport(ctx, "run: rate", err)
+	if err := s.charge(ctx, t); err != nil {
+		return nil, nil, err
 	}
 	t.run = New(th.OrgID, th.ProjectID, th.ID, t.version.ID, time.Now())
 	if !t.version.Legacy {
@@ -231,6 +289,16 @@ func (s *Service) open(ctx context.Context, th *Thread, token string) (*turn, *R
 		return nil, nil, s.errOrReport(ctx, "run: start", err)
 	}
 	return t, nil, nil
+}
+
+func (s *Service) charge(ctx context.Context, t *turn) error {
+	if t.observe != nil {
+		return nil
+	}
+	if err := s.rate.Allow(ctx, t.thread.ProjectID); err != nil {
+		return s.errOrReport(ctx, "run: rate", err)
+	}
+	return nil
 }
 
 func (s *Service) resume(ctx context.Context, t *turn) (*turn, *Run, error) {
@@ -250,8 +318,8 @@ func (s *Service) resume(ctx context.Context, t *turn) (*turn, *Run, error) {
 		done, err := s.fail(ctx, t, apperror.CodeRunAttemptsExhausted)
 		return nil, done, err
 	}
-	if err := s.rate.Allow(ctx, t.thread.ProjectID); err != nil {
-		return nil, nil, s.errOrReport(ctx, "run: rate", err)
+	if err := s.charge(ctx, t); err != nil {
+		return nil, nil, err
 	}
 	if err := r.Move(StatusRunning, time.Now()); err != nil {
 		return nil, nil, s.errOrReport(ctx, "run: resume", err)
@@ -315,6 +383,7 @@ func (s *Service) settle(ctx context.Context, t *turn, u Usage, final []Message,
 	if err != nil {
 		return nil, &SettleError{Cause: s.errOrReport(ctx, "run: settle", err)}
 	}
+	t.end()
 	return t.run, nil
 }
 
@@ -371,4 +440,55 @@ func (s *Service) errOrReport(ctx context.Context, message string, err error) er
 		return err
 	}
 	return s.unexpected(ctx, message, err)
+}
+
+// ResolveThread finds a thread by public id across tenants, for a reach check before any read.
+func (s *Service) ResolveThread(ctx context.Context, publicID string) (Ref, error) {
+	ref, err := s.store.ResolveThread(ctx, publicID)
+	return ref, s.errOrReport(ctx, "run: resolve thread", err)
+}
+
+// ResolveRun finds a run by public id across tenants, for a reach check before any read.
+func (s *Service) ResolveRun(ctx context.Context, publicID string) (Ref, error) {
+	ref, err := s.store.ResolveRun(ctx, publicID)
+	return ref, s.errOrReport(ctx, "run: resolve run", err)
+}
+
+// ListThreads lists a project's threads, newest activity first; agentID uuid.Nil means every agent.
+func (s *Service) ListThreads(ctx context.Context, projectID, agentID uuid.UUID, after Cursor, limit int) ([]ThreadSummary, error) {
+	out, err := s.store.ListThreads(ctx, projectID, agentID, after, limit)
+	return out, s.errOrReport(ctx, "run: list threads", err)
+}
+
+// ThreadSummary loads a thread with its counts.
+func (s *Service) ThreadSummary(ctx context.Context, threadID uuid.UUID) (*ThreadSummary, error) {
+	out, err := s.store.ThreadSummary(ctx, threadID)
+	return out, s.errOrReport(ctx, "run: thread summary", err)
+}
+
+// ThreadMessages lists a thread's messages after afterSeq, oldest first.
+func (s *Service) ThreadMessages(ctx context.Context, threadID uuid.UUID, afterSeq int64, limit int) ([]Message, error) {
+	out, err := s.store.ThreadMessages(ctx, threadID, afterSeq, limit)
+	return out, s.errOrReport(ctx, "run: thread messages", err)
+}
+
+// ListRuns lists a thread's runs, newest first.
+func (s *Service) ListRuns(ctx context.Context, threadID uuid.UUID, after Cursor, limit int) ([]Run, error) {
+	out, err := s.store.ListRuns(ctx, threadID, after, limit)
+	return out, s.errOrReport(ctx, "run: list runs", err)
+}
+
+// Run loads a run by id.
+func (s *Service) Run(ctx context.Context, id uuid.UUID) (*Run, error) {
+	out, err := s.store.RunByID(ctx, id)
+	return out, s.errOrReport(ctx, "run: get run", err)
+}
+
+// AgentVersion is the number of the agent version a run is pinned to.
+func (s *Service) AgentVersion(ctx context.Context, versionID uuid.UUID) (int32, error) {
+	v, err := s.agents.Version(ctx, versionID)
+	if err != nil {
+		return 0, s.errOrReport(ctx, "run: agent version", err)
+	}
+	return v.Version, nil
 }

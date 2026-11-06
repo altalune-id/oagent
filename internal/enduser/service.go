@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,6 +25,13 @@ type Service struct {
 	uow        db.Transactor
 	unexpected apperror.UnexpectedFunc
 	log        *slog.Logger
+	hints      KeyHints
+}
+
+// WithKeyHints labels an end user that is an API key by the key's hint.
+func (s *Service) WithKeyHints(h KeyHints) *Service {
+	s.hints = h
+	return s
 }
 
 // NewService builds a Service over store.
@@ -44,6 +52,22 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (*EndUser, error) {
 		return nil, s.errOrReport(ctx, "enduser: get", err)
 	}
 	return e, nil
+}
+
+// Lookup returns the end user of projectID known by id, or a *NotFoundError; it never creates one.
+func (s *Service) Lookup(ctx context.Context, projectID uuid.UUID, id Identity) (*EndUser, error) {
+	if err := id.Validate(); err != nil {
+		return nil, err
+	}
+	owners, err := s.store.Owners(ctx, projectID, []Identity{id})
+	if err != nil {
+		return nil, s.errOrReport(ctx, "enduser: lookup", err)
+	}
+	owner, ok := owners[id]
+	if !ok {
+		return nil, &NotFoundError{ID: string(id.Kind)}
+	}
+	return s.Get(ctx, owner)
 }
 
 // Upsert resolves ids to one end user of projectID, creating it and linking the unknown identities; call it outside a transaction.
@@ -154,3 +178,45 @@ func (s *Service) errOrReport(ctx context.Context, message string, err error) er
 	}
 	return s.unexpected(ctx, message, err)
 }
+
+// Label names an end user by its first identity's kind and a masked tail; an end user that is gone has no label.
+func (s *Service) Label(ctx context.Context, id uuid.UUID) (string, error) {
+	ids, err := s.store.IdentitiesOf(ctx, id)
+	if err != nil {
+		return "", s.errOrReport(ctx, "enduser: label", err)
+	}
+	if len(ids) == 0 {
+		return "", nil
+	}
+	return s.label(ctx, ids[0])
+}
+
+// SECURITY: a key's end user shows the key's public hint, never its id.
+func (s *Service) label(ctx context.Context, id Identity) (string, error) {
+	raw, isKey := strings.CutPrefix(id.Value, keyActorPrefix)
+	if s.hints == nil || id.Kind != KindAPIUser || !isKey {
+		return Label(id), nil
+	}
+	keyID, ok := parseKeyID(raw)
+	if !ok {
+		return Label(id), nil
+	}
+	hint, err := s.hints.KeyHint(ctx, keyID)
+	if err != nil {
+		return "", s.errOrReport(ctx, "enduser: key hint", err)
+	}
+	if hint == "" {
+		return keyLabel, nil
+	}
+	return keyLabel + " …" + hint, nil
+}
+
+func parseKeyID(raw string) (uuid.UUID, bool) {
+	id, err := uuid.Parse(raw)
+	return id, err == nil
+}
+
+const (
+	keyActorPrefix = "key:"
+	keyLabel       = "api_key"
+)

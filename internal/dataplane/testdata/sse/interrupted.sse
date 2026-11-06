@@ -1,0 +1,12 @@
+id: 1
+data: {"type":"RUN_STARTED","threadId":"client-thread-1","runId":"Rn5Q8wYk2HhT3mVz7XcLp"}
+
+id: 2
+data: {"type":"TOOL_CALL_START","toolCallId":"call_1","toolCallName":"yasaku__record_expense","parentMessageId":"msg_asst_1"}
+
+id: 3
+data: {"type":"TOOL_CALL_ARGS","toolCallId":"call_1","delta":"{\"amount\":25000,\"account\":\"cash\",\"note\":\"lunch\"}"}
+
+id: 4
+data: {"type":"RUN_ERROR","message":"The run was interrupted and resumes shortly; reload the thread for its result.","code":"interrupted"}
+

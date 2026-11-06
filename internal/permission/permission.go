@@ -11,6 +11,7 @@ import (
 	modelproviderv1connect "altalune.id/oagent/gen/go/modelprovider/v1/modelproviderv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
+	threadv1connect "altalune.id/oagent/gen/go/thread/v1/threadv1connect"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/scope"
@@ -51,6 +52,12 @@ func Table() map[string][]string {
 		mcpserverv1connect.McpServerServiceUpdateMcpServerProcedure:    {scope.McpserverWrite},
 		mcpserverv1connect.McpServerServiceDeleteMcpServerProcedure:    {scope.McpserverWrite},
 		mcpserverv1connect.McpServerServiceListMcpServerToolsProcedure: {scope.McpserverRead},
+		threadv1connect.ThreadServiceListThreadsProcedure:              {scope.ThreadRead},
+		threadv1connect.ThreadServiceGetThreadProcedure:                {scope.ThreadRead},
+		threadv1connect.ThreadServiceListThreadMessagesProcedure:       {scope.ThreadRead},
+		threadv1connect.ThreadServiceListRunsProcedure:                 {scope.RunRead},
+		threadv1connect.ThreadServiceGetRunProcedure:                   {scope.RunRead},
+		threadv1connect.ThreadServiceCancelRunProcedure:                {scope.RunCreate},
 
 		apikeyv1connect.APIKeyServiceListAPIKeysProcedure:  {scope.ApikeyRead},
 		apikeyv1connect.APIKeyServiceCreateAPIKeyProcedure: {authz.AnyAuthenticated},

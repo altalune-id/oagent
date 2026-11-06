@@ -14,11 +14,29 @@ func TestLoad_RateLimitDefaults(t *testing.T) {
 	assert.Equal(t, RateLimitDriverMemory, c.RateLimit.Driver)
 	assert.Equal(t, 100_000, c.RateLimit.MaxKeys)
 	assert.Zero(t, c.HTTP.TrustedProxyHops)
+	assert.True(t, c.RateLimit.DataPlane.Enabled, "a default deploy limits the integrator API per key and per IP")
+	assert.Equal(t, 600, c.RateLimit.DataPlane.PerKeyPerMinute)
+	assert.Equal(t, 600, c.RateLimit.DataPlane.PerIPPerMinute)
+}
+
+func TestLoad_DataPlaneLimitFromEnv(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("OAGENT_RATE_LIMIT_AUTH_ENABLED", "false")
+	t.Setenv("OAGENT_RATE_LIMIT_DATA_PLANE_ENABLED", "true")
+	t.Setenv("OAGENT_RATE_LIMIT_DATA_PLANE_PER_KEY_PER_MINUTE", "120")
+	t.Setenv("OAGENT_RATE_LIMIT_DATA_PLANE_PER_IP_PER_MINUTE", "60")
+	c, err := Load(missingPath(t))
+	require.NoError(t, err)
+	assert.True(t, c.RateLimit.DataPlane.Enabled)
+	assert.True(t, c.RateLimit.AnyEnabled(), "the data-plane group alone needs a driver")
+	assert.Equal(t, 120, c.RateLimit.DataPlane.PerKeyPerMinute)
+	assert.Equal(t, 60, c.RateLimit.DataPlane.PerIPPerMinute)
 }
 
 func TestLoad_RateLimitFromEnv(t *testing.T) {
 	setRequiredEnv(t)
 	t.Setenv("OAGENT_RATE_LIMIT_AUTH_ENABLED", "false")
+	t.Setenv("OAGENT_RATE_LIMIT_DATA_PLANE_ENABLED", "false")
 	t.Setenv("OAGENT_RATE_LIMIT_MAX_KEYS", "500")
 	t.Setenv("OAGENT_RATE_LIMIT_DRIVER", "memory")
 	t.Setenv("OAGENT_HTTP_TRUSTED_PROXY_HOPS", "2")
@@ -62,6 +80,7 @@ func TestValidate_RateLimit(t *testing.T) {
 				c.RateLimit.Driver = RateLimitDriverRedis
 				c.RateLimit.MaxKeys = 0
 				c.RateLimit.Auth.Enabled = false
+				c.RateLimit.DataPlane.Enabled = false
 			},
 			check: func(t *testing.T, err error) { assert.NoError(t, err) },
 		},
@@ -80,6 +99,14 @@ func TestValidate_RateLimit(t *testing.T) {
 		"negative trusted proxy hops": {
 			mutate: func(c *Config) { c.HTTP.TrustedProxyHops = -1 },
 			check:  invalidSetting("http.trustedProxyHops"),
+		},
+		"data plane per key zero": {
+			mutate: func(c *Config) { c.RateLimit.DataPlane.PerKeyPerMinute = 0 },
+			check:  invalidSetting("rateLimit.dataPlane.perKeyPerMinute"),
+		},
+		"data plane per ip zero": {
+			mutate: func(c *Config) { c.RateLimit.DataPlane.PerIPPerMinute = 0 },
+			check:  invalidSetting("rateLimit.dataPlane.perIPPerMinute"),
 		},
 		"memory with negative keys": {
 			mutate: func(c *Config) { c.RateLimit.MaxKeys = -1 },

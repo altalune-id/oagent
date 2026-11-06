@@ -1,0 +1,3 @@
+{"type":"RUN_STARTED","threadId":"t0193a2b4c5d67e8f9a0b1c2d3e4f5a6b","runId":"Rn5Q8wYk2HhT3mVz7XcLp"}
+{"type":"TOOL_CALL_START","toolCallId":"call_1","toolCallName":"yasaku__record_expense","parentMessageId":"msg_asst_1"}
+{"type":"TOOL_CALL_ARGS","toolCallId":"call_1","delta":"{\"amount\":25000,\"account\":\"cash\",\"note\":\"lunch\"}"}

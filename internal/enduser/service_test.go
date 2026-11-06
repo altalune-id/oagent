@@ -144,3 +144,52 @@ func TestUpsert_RepeatedIdentityIsOne(t *testing.T) {
 	assert.Equal(t, e.ID, f.store.Identities[f.projectID][lid])
 	assert.Len(t, f.store.Users, 1)
 }
+
+func TestLookup_FindsWithoutCreating(t *testing.T) {
+	f := newFixture(t)
+	_, err := f.svc.Lookup(f.ctx, f.projectID, phone)
+	assert.True(t, enduser.IsNotFoundError(err), "an unknown identity is not found")
+	assert.Empty(t, f.store.Users, "and nothing is created")
+	e, err := f.svc.Upsert(f.ctx, f.projectID, phone)
+	require.NoError(t, err)
+	got, err := f.svc.Lookup(f.ctx, f.projectID, phone)
+	require.NoError(t, err)
+	assert.Equal(t, e.ID, got.ID)
+	_, err = f.svc.Lookup(f.ctx, f.projectID, enduser.Identity{Kind: "bogus", Value: "x"})
+	assert.True(t, enduser.IsInvalidIdentityError(err))
+}
+
+func TestLabel_NamesTheEndUserWithoutTheValue(t *testing.T) {
+	f := newFixture(t)
+	e, err := f.svc.Upsert(f.ctx, f.projectID, phone)
+	require.NoError(t, err)
+	got, err := f.svc.Label(f.ctx, e.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "wa_phone …90", got)
+	gone, err := f.svc.Label(f.ctx, uuid.New())
+	require.NoError(t, err)
+	assert.Empty(t, gone, "an end user that is gone has no label")
+}
+
+type keyHints map[uuid.UUID]string
+
+func (k keyHints) KeyHint(_ context.Context, id uuid.UUID) (string, error) { return k[id], nil }
+
+func TestLabel_AKeyActorShowsTheKeysHint(t *testing.T) {
+	f := newFixture(t)
+	keyID := uuid.New()
+	f.svc.WithKeyHints(keyHints{keyID: "Zz09"})
+	e, err := f.svc.Upsert(f.ctx, f.projectID, enduser.Identity{Kind: enduser.KindAPIUser, Value: "key:" + keyID.String()})
+	require.NoError(t, err)
+	got, err := f.svc.Label(f.ctx, e.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "api_key …Zz09", got, "the key's public handle, never its id")
+	assert.NotContains(t, got, keyID.String()[32:])
+
+	gone := uuid.New()
+	e2, err := f.svc.Upsert(f.ctx, f.projectID, enduser.Identity{Kind: enduser.KindAPIUser, Value: "key:" + gone.String()})
+	require.NoError(t, err)
+	got, err = f.svc.Label(f.ctx, e2.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "api_key", got, "a key that is gone shows only the kind")
+}

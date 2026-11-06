@@ -130,6 +130,7 @@ func TestValidate_EveryRule(t *testing.T) {
 		{"rateLimit.maxKeys 0 with memory", func(c *Config) { c.RateLimit.MaxKeys = 0 }, invalidSetting("rateLimit.maxKeys")},
 		{"rateLimit.maxKeys 0 with redis", func(c *Config) {
 			c.RateLimit.Driver, c.RateLimit.MaxKeys, c.RateLimit.Auth.Enabled = RateLimitDriverRedis, 0, false
+			c.RateLimit.DataPlane.Enabled = false
 		}, valid},
 		{"redis used", redisFeature, valid},
 		{"redis.url empty when used", func(c *Config) { redisFeature(c); c.Redis.URL = "" }, missingSetting("redis.url")},

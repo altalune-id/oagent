@@ -16,7 +16,7 @@ import { channelFilters, filterFromQuery, filterQuery, filterThreads, runStatuse
 import { useThreadsStore } from '~/stores/threads';
 
 const { t } = useI18n();
-const lastLine = (th: ThreadSummary) => `${shownName(th.lastSpeaker, th.lastDeleted, t)}: ${th.lastDeleted ? t('chat.message_deleted') : th.lastText}`;
+const lastLine = (th: ThreadSummary) => (th.lastText || th.lastDeleted ? `${shownName(th.lastSpeaker, th.lastDeleted, t)}: ${th.lastDeleted ? t('chat.message_deleted') : th.lastText}` : '—');
 const route = useRoute();
 const router = useRouter();
 const { when } = useDates();
@@ -56,8 +56,8 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('threads.title')} · O
 
 <template>
   <div class="flex flex-col gap-4">
-    <PageHeader :title="t('threads.title')" :description="t('threads.subtitle')" :preview="t('preview.badge')">
-      <template #status>
+    <PageHeader :title="t('threads.title')" :description="t('threads.subtitle')" :preview="usesSample ? t('preview.badge') : ''">
+      <template v-if="usesSample" #status>
         <PreviewNote :text="t('threads.preview_note')" />
       </template>
     </PageHeader>
@@ -132,7 +132,8 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('threads.title')} · O
           <span class="block max-w-72 truncate text-base-content/70" :title="lastLine(row as ThreadSummary)">{{ lastLine(row as ThreadSummary) }}</span>
         </template>
         <template #cell-status="{ row }">
-          <StatusLabel :tone="runStatusTone[(row as ThreadDetail).status]" :label="t(`runstatus.${row.status}`)" />
+          <StatusLabel v-if="row.status" :tone="runStatusTone[(row as ThreadDetail).status!]" :label="t(`runstatus.${row.status}`)" />
+          <span v-else class="text-base-content/70">{{ t('threads.idle') }}</span>
         </template>
         <template #cell-updatedAt="{ row }">
           <time :datetime="row.updatedAt.toISOString()" class="tabular-nums">{{ when(row.updatedAt) }}</time>

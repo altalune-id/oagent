@@ -18,6 +18,7 @@ import (
 	modelproviderv1connect "altalune.id/oagent/gen/go/modelprovider/v1/modelproviderv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
+	threadv1connect "altalune.id/oagent/gen/go/thread/v1/threadv1connect"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
@@ -29,6 +30,7 @@ import (
 	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
+	"altalune.id/oagent/internal/run"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/webhook"
 )
@@ -51,11 +53,14 @@ type Services struct {
 	Webhooks       *webhook.Service
 	ModelProviders *modelprovider.Service
 	MCPServers     *mcpserver.Service
-	Users          *user.Service
-	Members        *member.Service
-	Invites        *invite.Service
-	Auth           *auth.Service
-	Refs           Refs
+	Runs           *run.Service
+	// EndUsers labels end users for the thread viewer, without their identity values.
+	EndUsers run.Labels
+	Users    *user.Service
+	Members  *member.Service
+	Invites  *invite.Service
+	Auth     *auth.Service
+	Refs     Refs
 	// Passwords is true when console password sign-in is on.
 	Passwords bool
 }
@@ -69,6 +74,7 @@ type Refs interface {
 	webhook.Refs
 	modelprovider.Refs
 	mcpserver.Refs
+	run.Refs
 	member.Refs
 	auth.PublicIDs
 }
@@ -92,6 +98,7 @@ type Server struct {
 
 	ModelProviderSvc *modelprovider.ModelProviderService
 	MCPServerSvc     *mcpserver.McpServerService
+	ThreadSvc        *run.ThreadService
 
 	OpenAPIEnabled   bool
 	OpenAPIBasicAuth *BasicAuth
@@ -134,6 +141,9 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 	if svcs.MCPServers != nil {
 		s.MCPServerSvc = mcpserver.NewControlPlane(svcs.MCPServers, svcs.Refs)
 	}
+	if svcs.Runs != nil && svcs.EndUsers != nil {
+		s.ThreadSvc = run.NewControlPlane(svcs.Runs, svcs.Refs, svcs.EndUsers)
+	}
 	if svcs.Members != nil {
 		s.MemberSvc = member.NewControlPlane(svcs.Members, svcs.Refs)
 	}
@@ -170,6 +180,10 @@ func (s *Server) Handler(basePath string) http.Handler {
 	if s.MCPServerSvc != nil {
 		mcpPath, mcpHandler := mcpserverv1connect.NewMcpServerServiceHandler(s.MCPServerSvc, s.handlerOptions()...)
 		inner.Handle(mcpPath, mcpHandler)
+	}
+	if s.ThreadSvc != nil {
+		threadPath, threadHandler := threadv1connect.NewThreadServiceHandler(s.ThreadSvc, s.handlerOptions()...)
+		inner.Handle(threadPath, threadHandler)
 	}
 	if s.WebhookSvc != nil {
 		hookPath, hookHandler := webhookv1connect.NewWebhookServiceHandler(s.WebhookSvc, s.handlerOptions()...)

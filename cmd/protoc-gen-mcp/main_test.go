@@ -23,6 +23,7 @@ import (
 	modelproviderv1 "altalune.id/oagent/gen/go/modelprovider/v1"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	projectv1 "altalune.id/oagent/gen/go/project/v1"
+	threadv1 "altalune.id/oagent/gen/go/thread/v1"
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
 )
 
@@ -38,6 +39,7 @@ func committedFiles() []protoreflect.FileDescriptor {
 		modelproviderv1.File_modelprovider_v1_modelprovider_proto,
 		orgv1.File_org_v1_org_proto,
 		projectv1.File_project_v1_project_proto,
+		threadv1.File_thread_v1_thread_proto,
 		webhookv1.File_webhook_v1_webhook_proto,
 	}
 }

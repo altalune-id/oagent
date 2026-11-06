@@ -273,6 +273,7 @@ func (s *Service) stream(ctx context.Context, t *turn, req runtime.TurnRequest, 
 		if err != nil {
 			return s.cut(ctx, t, est, err)
 		}
+		t.see(e)
 		switch ev := e.(type) {
 		case *runtime.TextMessageContent:
 			est.output += int64(len(ev.Delta))

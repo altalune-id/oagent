@@ -17,6 +17,7 @@ import (
 	modelproviderv1connect "altalune.id/oagent/gen/go/modelprovider/v1/modelproviderv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
+	threadv1connect "altalune.id/oagent/gen/go/thread/v1/threadv1connect"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
 	"altalune.id/oagent/httpclient"
 	"altalune.id/oagent/internal/kernel/session"
@@ -44,6 +45,7 @@ type Client struct {
 
 	ModelProviders modelproviderv1connect.ModelProviderServiceClient
 	MCPServers     mcpserverv1connect.McpServerServiceClient
+	Threads        threadv1connect.ThreadServiceClient
 }
 
 // New points every client at baseURL+"/api"; a token becomes the Bearer header, else a session becomes the cookie.
@@ -66,6 +68,7 @@ func New(baseURL string, cred Credential) *Client {
 
 		ModelProviders: modelproviderv1connect.NewModelProviderServiceClient(httpClient, base, opts...),
 		MCPServers:     mcpserverv1connect.NewMcpServerServiceClient(httpClient, base, opts...),
+		Threads:        threadv1connect.NewThreadServiceClient(httpClient, base, opts...),
 	}
 }
 

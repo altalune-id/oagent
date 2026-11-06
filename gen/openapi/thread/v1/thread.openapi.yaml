@@ -1,0 +1,809 @@
+openapi: 3.1.0
+info:
+  title: thread.v1
+paths:
+  /thread.v1.ThreadService/CancelRun:
+    post:
+      tags:
+        - thread.v1.ThreadService
+      summary: CancelRun
+      operationId: thread.v1.ThreadService.CancelRun
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/thread.v1.CancelRunRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/thread.v1.CancelRunResponse'
+  /thread.v1.ThreadService/GetRun:
+    post:
+      tags:
+        - thread.v1.ThreadService
+      summary: GetRun
+      operationId: thread.v1.ThreadService.GetRun
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/thread.v1.GetRunRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/thread.v1.GetRunResponse'
+  /thread.v1.ThreadService/GetThread:
+    post:
+      tags:
+        - thread.v1.ThreadService
+      summary: GetThread
+      operationId: thread.v1.ThreadService.GetThread
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/thread.v1.GetThreadRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/thread.v1.GetThreadResponse'
+  /thread.v1.ThreadService/ListRuns:
+    post:
+      tags:
+        - thread.v1.ThreadService
+      summary: ListRuns
+      operationId: thread.v1.ThreadService.ListRuns
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/thread.v1.ListRunsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/thread.v1.ListRunsResponse'
+  /thread.v1.ThreadService/ListThreadMessages:
+    post:
+      tags:
+        - thread.v1.ThreadService
+      summary: ListThreadMessages
+      operationId: thread.v1.ThreadService.ListThreadMessages
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/thread.v1.ListThreadMessagesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/thread.v1.ListThreadMessagesResponse'
+  /thread.v1.ThreadService/ListThreads:
+    post:
+      tags:
+        - thread.v1.ThreadService
+      summary: ListThreads
+      operationId: thread.v1.ThreadService.ListThreads
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/thread.v1.ListThreadsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/thread.v1.ListThreadsResponse'
+components:
+  schemas:
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          oneOf:
+            - type: object
+              title: Any
+              additionalProperties: true
+              description: Detailed error information.
+          discriminator:
+            propertyName: type
+          title: Debug
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+    google.protobuf.ListValue:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.protobuf.Value'
+          title: values
+          description: Repeated field of dynamically typed values.
+      title: ListValue
+      additionalProperties: false
+      description: Represents a JSON array.
+    google.protobuf.NullValue:
+      type: string
+      title: NullValue
+      enum:
+        - NULL_VALUE
+      description: |-
+        Represents a JSON `null`.
+
+         `NullValue` is a sentinel, using an enum with only one value to represent
+         the null value for the `Value` type union.
+
+         A field of type `NullValue` with any value other than `0` is considered
+         invalid. Most ProtoJSON serializers will emit a `Value` with a `null_value`
+         set as a JSON `null` regardless of the integer value, and so will round trip
+         to a `0` value.
+    google.protobuf.Struct:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/google.protobuf.Value'
+      description: |-
+        Represents a JSON object.
+
+         An unordered key-value map, intending to perfectly capture the semantics of a
+         JSON object. This enables parsing any arbitrary JSON payload as a message
+         field in ProtoJSON format.
+
+         This follows RFC 8259 guidelines for interoperable JSON: notably this type
+         cannot represent large Int64 values or `NaN`/`Infinity` numbers,
+         since the JSON format generally does not support those values in its number
+         type.
+
+         If you do not intend to parse arbitrary JSON into your message, a custom
+         typed message should be preferred instead of using this type.
+    google.protobuf.Struct.FieldsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/google.protobuf.Value'
+      title: FieldsEntry
+      additionalProperties: false
+    google.protobuf.Timestamp:
+      type: string
+      examples:
+        - "2023-01-15T01:30:15.01Z"
+        - "2024-12-25T12:00:00Z"
+      format: date-time
+      description: |-
+        A Timestamp represents a point in time independent of any time zone or local
+         calendar, encoded as a count of seconds and fractions of seconds at
+         nanosecond resolution. The count is relative to an epoch at UTC midnight on
+         January 1, 1970, in the proleptic Gregorian calendar which extends the
+         Gregorian calendar backwards to year one.
+
+         All minutes are 60 seconds long. Leap seconds are "smeared" so that no leap
+         second table is needed for interpretation, using a [24-hour linear
+         smear](https://developers.google.com/time/smear).
+
+         The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By
+         restricting to that range, we ensure that we can convert to and from [RFC
+         3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.
+
+         # Examples
+
+         Example 1: Compute Timestamp from POSIX `time()`.
+
+             Timestamp timestamp;
+             timestamp.set_seconds(time(NULL));
+             timestamp.set_nanos(0);
+
+         Example 2: Compute Timestamp from POSIX `gettimeofday()`.
+
+             struct timeval tv;
+             gettimeofday(&tv, NULL);
+
+             Timestamp timestamp;
+             timestamp.set_seconds(tv.tv_sec);
+             timestamp.set_nanos(tv.tv_usec * 1000);
+
+         Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.
+
+             FILETIME ft;
+             GetSystemTimeAsFileTime(&ft);
+             UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+
+             // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z
+             // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.
+             Timestamp timestamp;
+             timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));
+             timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));
+
+         Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.
+
+             long millis = System.currentTimeMillis();
+
+             Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
+                 .setNanos((int) ((millis % 1000) * 1000000)).build();
+
+         Example 5: Compute Timestamp from Java `Instant.now()`.
+
+             Instant now = Instant.now();
+
+             Timestamp timestamp =
+                 Timestamp.newBuilder().setSeconds(now.getEpochSecond())
+                     .setNanos(now.getNano()).build();
+
+         Example 6: Compute Timestamp from current time in Python.
+
+             timestamp = Timestamp()
+             timestamp.GetCurrentTime()
+
+         # JSON Mapping
+
+         In JSON format, the Timestamp type is encoded as a string in the
+         [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the
+         format is "{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z"
+         where {year} is always expressed using four digits while {month}, {day},
+         {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
+         seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
+         are optional. The "Z" suffix indicates the timezone ("UTC"); the timezone
+         is required. A ProtoJSON serializer should always use UTC (as indicated by
+         "Z") when printing the Timestamp type and a ProtoJSON parser should be
+         able to accept both UTC and other timezones (as indicated by an offset).
+
+         For example, "2017-01-15T01:30:15.01Z" encodes 15.01 seconds past
+         01:30 UTC on January 15, 2017.
+
+         In JavaScript, one can convert a Date object to this format using the
+         standard
+         [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
+         method. In Python, a standard `datetime.datetime` object can be converted
+         to this format using
+         [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with
+         the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
+         the Joda Time's [`ISODateTimeFormat.dateTime()`](
+         http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
+         ) to obtain a formatter capable of generating timestamps in this format.
+    google.protobuf.Value:
+      oneOf:
+        - type: "null"
+        - type: number
+        - type: string
+        - type: boolean
+        - type: array
+        - type: object
+          additionalProperties: true
+      description: |-
+        Represents a JSON value.
+
+         `Value` represents a dynamically typed value which can be either
+         null, a number, a string, a boolean, a recursive struct value, or a
+         list of values. A producer of value is expected to set one of these
+         variants. Absence of any variant is an invalid state.
+    thread.v1.CancelRunRequest:
+      type: object
+      properties:
+        runId:
+          type: string
+          title: run_id
+          description: |
+            oagent.public_id = true
+      title: CancelRunRequest
+      required:
+        - runId
+      additionalProperties: false
+    thread.v1.CancelRunResponse:
+      type: object
+      properties:
+        run:
+          title: run
+          $ref: '#/components/schemas/thread.v1.Run'
+      title: CancelRunResponse
+      additionalProperties: false
+    thread.v1.GetRunRequest:
+      type: object
+      properties:
+        runId:
+          type: string
+          title: run_id
+          description: |
+            oagent.public_id = true
+      title: GetRunRequest
+      required:
+        - runId
+      additionalProperties: false
+    thread.v1.GetRunResponse:
+      type: object
+      properties:
+        run:
+          title: run
+          $ref: '#/components/schemas/thread.v1.Run'
+      title: GetRunResponse
+      additionalProperties: false
+    thread.v1.GetThreadRequest:
+      type: object
+      properties:
+        threadId:
+          type: string
+          title: thread_id
+          description: |
+            oagent.public_id = true
+      title: GetThreadRequest
+      required:
+        - threadId
+      additionalProperties: false
+    thread.v1.GetThreadResponse:
+      type: object
+      properties:
+        thread:
+          title: thread
+          $ref: '#/components/schemas/thread.v1.Thread'
+      title: GetThreadResponse
+      additionalProperties: false
+    thread.v1.ListRunsRequest:
+      type: object
+      properties:
+        threadId:
+          type: string
+          title: thread_id
+          description: |
+            oagent.public_id = true
+        pageToken:
+          type: string
+          title: page_token
+          maxLength: 256
+        pageSize:
+          type: integer
+          title: page_size
+          maximum: 200
+          minimum: 0
+          format: int32
+      title: ListRunsRequest
+      required:
+        - threadId
+      additionalProperties: false
+    thread.v1.ListRunsResponse:
+      type: object
+      properties:
+        runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/thread.v1.Run'
+          title: runs
+        nextPageToken:
+          type: string
+          title: next_page_token
+          description: next_page_token is empty on the last page.
+      title: ListRunsResponse
+      additionalProperties: false
+    thread.v1.ListThreadMessagesRequest:
+      type: object
+      properties:
+        threadId:
+          type: string
+          title: thread_id
+          description: |
+            oagent.public_id = true
+        afterSeq:
+          type:
+            - integer
+            - string
+          title: after_seq
+          minimum: 0
+          format: int64
+        limit:
+          type: integer
+          title: limit
+          maximum: 200
+          minimum: 0
+          format: int32
+      title: ListThreadMessagesRequest
+      required:
+        - threadId
+      additionalProperties: false
+    thread.v1.ListThreadMessagesResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/thread.v1.ThreadMessage'
+          title: messages
+        nextAfterSeq:
+          type:
+            - integer
+            - string
+          title: next_after_seq
+          format: int64
+          description: next_after_seq is the last seq returned, or after_seq when none was.
+      title: ListThreadMessagesResponse
+      additionalProperties: false
+    thread.v1.ListThreadsRequest:
+      type: object
+      properties:
+        projectId:
+          type: string
+          title: project_id
+          description: |
+            oagent.public_id = true
+        agentId:
+          type: string
+          title: agent_id
+          description: |
+            oagent.public_id = true
+        pageToken:
+          type: string
+          title: page_token
+          maxLength: 256
+        pageSize:
+          type: integer
+          title: page_size
+          maximum: 200
+          minimum: 0
+          format: int32
+      title: ListThreadsRequest
+      required:
+        - projectId
+      additionalProperties: false
+    thread.v1.ListThreadsResponse:
+      type: object
+      properties:
+        threads:
+          type: array
+          items:
+            $ref: '#/components/schemas/thread.v1.Thread'
+          title: threads
+        nextPageToken:
+          type: string
+          title: next_page_token
+          description: next_page_token is empty on the last page.
+      title: ListThreadsResponse
+      additionalProperties: false
+    thread.v1.Run:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        threadId:
+          type: string
+          title: thread_id
+        status:
+          title: status
+          $ref: '#/components/schemas/thread.v1.RunStatus'
+        attempt:
+          type: integer
+          title: attempt
+          format: int32
+        agentVersion:
+          type: integer
+          title: agent_version
+          format: int32
+        usage:
+          title: usage
+          $ref: '#/components/schemas/thread.v1.Usage'
+        costMicros:
+          type:
+            - integer
+            - string
+            - "null"
+          title: cost_micros
+          format: int64
+        latencyMs:
+          type:
+            - integer
+            - string
+            - "null"
+          title: latency_ms
+          format: int64
+        errorCode:
+          type: string
+          title: error_code
+          description: error_code is the error code of a run that failed.
+        startedAt:
+          title: started_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        endedAt:
+          title: ended_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: Run
+      additionalProperties: false
+      description: Run is one agent turn on a thread; cost_micros is unset when the run is unpriced, latency_ms and ended_at while it runs.
+    thread.v1.RunStatus:
+      type: string
+      title: RunStatus
+      enum:
+        - RUN_STATUS_UNSPECIFIED
+        - RUN_STATUS_RUNNING
+        - RUN_STATUS_AWAITING_APPROVAL
+        - RUN_STATUS_COMPLETED
+        - RUN_STATUS_FAILED
+        - RUN_STATUS_CANCELLED
+        - RUN_STATUS_INTERRUPTED
+        - RUN_STATUS_LIMIT_REACHED
+        - RUN_STATUS_EXPIRED
+      description: RunStatus is where a run is in its lifecycle.
+    thread.v1.Thread:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        projectId:
+          type: string
+          title: project_id
+        agentId:
+          type: string
+          title: agent_id
+        kind:
+          type: string
+          title: kind
+          description: kind is dm, group or api.
+        endUserLabel:
+          type: string
+          title: end_user_label
+          description: end_user_label is the identity kind and a masked tail, never a phone number or LID; empty when unknown.
+        lastActivityAt:
+          title: last_activity_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        openRunStatus:
+          title: open_run_status
+          $ref: '#/components/schemas/thread.v1.RunStatus'
+        messageCount:
+          type:
+            - integer
+            - string
+          title: message_count
+          format: int64
+        runCount:
+          type:
+            - integer
+            - string
+          title: run_count
+          format: int64
+      title: Thread
+      additionalProperties: false
+      description: Thread is one conversation with an agent; open_run_status is unspecified when no run is open, and the counts are set by GetThread only.
+    thread.v1.ThreadMessage:
+      type: object
+      properties:
+        seq:
+          type:
+            - integer
+            - string
+          title: seq
+          format: int64
+        role:
+          type: string
+          title: role
+          description: role is user, assistant, tool or system.
+        message:
+          title: message
+          $ref: '#/components/schemas/google.protobuf.Struct'
+        status:
+          type: string
+          title: status
+          description: status is pending or consumed.
+        runId:
+          type: string
+          title: run_id
+        speakerLabel:
+          type: string
+          title: speaker_label
+        toolCallId:
+          type: string
+          title: tool_call_id
+        createdAt:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: ThreadMessage
+      additionalProperties: false
+      description: ThreadMessage is one stored AG-UI message; run_id is empty for a message no run has taken yet.
+    thread.v1.Usage:
+      type: object
+      properties:
+        inputTokens:
+          type:
+            - integer
+            - string
+          title: input_tokens
+          format: int64
+        outputTokens:
+          type:
+            - integer
+            - string
+          title: output_tokens
+          format: int64
+        cacheReadTokens:
+          type:
+            - integer
+            - string
+          title: cache_read_tokens
+          format: int64
+        cacheWriteTokens:
+          type:
+            - integer
+            - string
+          title: cache_write_tokens
+          format: int64
+        estimated:
+          type: boolean
+          title: estimated
+      title: Usage
+      additionalProperties: false
+      description: Usage is a run's token usage by class; estimated is true when the provider did not report it.
+security: []
+tags:
+  - name: thread.v1.ThreadService
+    description: ThreadService reads a project's conversations and their runs, and cancels a run. Every id is a public id; an end user shows only as its identity kind and a masked tail.

@@ -132,7 +132,7 @@ describe('useOpenwaConnect', () => {
   });
 
   it('leaves the base URL empty when there is no default', () => {
-    useChannelsStore().settings = { defaultOpenwaBaseUrl: '' };
+    useChannelsStore().settings.defaultOpenwaBaseUrl = '';
     const form = useOpenwaConnect(agentId, vi.fn());
     form.show();
     expect(form.baseUrl.value).toBe('');

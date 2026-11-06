@@ -106,7 +106,8 @@ func (e *RuntimeFailedError) Error() string { return "run: runtime failed: " + e
 // IsExpectedError reports whether err is a typed domain error a service returns as-is.
 func IsExpectedError(err error) bool {
 	for _, is := range []func(error) bool{
-		IsNotFoundError, IsRateLimitedError, IsThreadNotFoundError, IsIllegalMoveError,
+		IsNotFoundError, IsRateLimitedError, IsThreadNotFoundError, IsIllegalMoveError, IsInProgressError, IsIdempotencyConflictError,
+		IsInvalidPageTokenError,
 		func(err error) bool { _, ok := errors.AsType[*RuntimeUnavailableError](err); return ok },
 		func(err error) bool { _, ok := errors.AsType[*TimedOutError](err); return ok },
 		func(err error) bool { _, ok := errors.AsType[*AttemptsExhaustedError](err); return ok },
@@ -163,4 +164,94 @@ func (e *SettleError) Unwrap() error { return e.Cause }
 func IsSettleError(err error) bool {
 	_, ok := errors.AsType[*SettleError](err)
 	return ok
+}
+
+// InProgressError reports that the thread already has a live turn; RunPublicID is empty while no run exists yet.
+type InProgressError struct{ RunPublicID string }
+
+func (e *InProgressError) Error() string {
+	if e.RunPublicID == "" {
+		return "run: a turn is in progress on this thread"
+	}
+	return "run: run in progress: " + e.RunPublicID
+}
+
+// IsInProgressError reports whether err's tree contains an *InProgressError.
+func IsInProgressError(err error) bool {
+	_, ok := errors.AsType[*InProgressError](err)
+	return ok
+}
+
+// ToAppError maps InProgressError to its own code, naming the run when there is one.
+func (e *InProgressError) ToAppError() *apperror.AppError {
+	ae := apperror.New(apperror.CodeRunInProgress, "A run is already in progress on this thread").WithCause(e)
+	if e.RunPublicID != "" {
+		ae = ae.WithMeta(map[string]string{"run": e.RunPublicID})
+	}
+	return ae
+}
+
+// IdempotencyConflictError reports an Idempotency-Key already used with a different request body.
+type IdempotencyConflictError struct{}
+
+func (*IdempotencyConflictError) Error() string {
+	return "run: idempotency key reused with another body"
+}
+
+// IsIdempotencyConflictError reports whether err's tree contains an *IdempotencyConflictError.
+func IsIdempotencyConflictError(err error) bool {
+	_, ok := errors.AsType[*IdempotencyConflictError](err)
+	return ok
+}
+
+// ToAppError maps IdempotencyConflictError to its own code.
+func (e *IdempotencyConflictError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeRunIdempotencyConflict, "This Idempotency-Key was already used with a different request").WithCause(e)
+}
+
+const threadNotFoundMessage = "Thread not found"
+
+// ToAppError maps ThreadNotFoundError to its own code.
+func (e *ThreadNotFoundError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeThreadNotFound, threadNotFoundMessage).WithCause(e)
+}
+
+// ThreadActorMismatchError reports a thread bound to another actor; it reads as not found so a stranger learns nothing.
+type ThreadActorMismatchError struct{ ThreadID string }
+
+func (e *ThreadActorMismatchError) Error() string {
+	return "run: thread bound to another actor: " + e.ThreadID
+}
+
+// Unwrap makes the mismatch a ThreadNotFoundError for every caller that checks for one.
+func (e *ThreadActorMismatchError) Unwrap() error { return &ThreadNotFoundError{ID: e.ThreadID} }
+
+// ToAppError maps ThreadActorMismatchError to THR001. SECURITY: the wire must not tell a bound thread from a missing one.
+func (e *ThreadActorMismatchError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeThreadNotFound, threadNotFoundMessage).WithCause(e)
+}
+
+// DuplicateMessageError reports a message whose external id the thread already holds; Seq is the stored one when known.
+type DuplicateMessageError struct{ Seq int64 }
+
+func (e *DuplicateMessageError) Error() string {
+	return "run: the thread already holds this message: seq " + strconv.FormatInt(e.Seq, 10)
+}
+
+var errNoActor = errors.New("run: an API thread needs an actor")
+
+// InvalidPageTokenError reports a page token this server did not issue.
+type InvalidPageTokenError struct{}
+
+func (e *InvalidPageTokenError) Error() string { return "run: invalid page token" }
+
+// IsInvalidPageTokenError reports whether err's tree contains an *InvalidPageTokenError.
+func IsInvalidPageTokenError(err error) bool {
+	_, ok := errors.AsType[*InvalidPageTokenError](err)
+	return ok
+}
+
+// ToAppError maps InvalidPageTokenError to a validation error on page_token.
+func (e *InvalidPageTokenError) ToAppError() *apperror.AppError {
+	return apperror.Validation([]apperror.Violation{{Field: "page_token", Reason: apperror.FieldInvalid}})
 }

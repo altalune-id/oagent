@@ -166,3 +166,37 @@ func TestThreads_DeletingTheAgentCascades(t *testing.T) {
 		assert.Zero(t, n, table)
 	}
 }
+
+func TestThreads_ActorBindingSurvivesItsEndUserAsNull(t *testing.T) {
+	db, _ := pgtest.Migrated(t)
+	s := seedRunScope(t, db)
+	thread := s.thread(t, db, "bound")
+	_, err := db.ExecContext(t.Context(), `UPDATE threads SET actor_end_user_id = $2 WHERE id = $1`, thread, s.endUserA)
+	require.NoError(t, err)
+	otherProjectUser := uuid.New()
+	_, err = db.ExecContext(t.Context(), `INSERT INTO end_users (id, public_id, org_id, project_id, created_at, updated_at) VALUES ($1, $2, $3, $4, now(), now())`,
+		otherProjectUser, "e"+otherProjectUser.String()[:8], s.orgB, s.prjB)
+	require.NoError(t, err)
+	_, err = db.ExecContext(t.Context(), `UPDATE threads SET actor_end_user_id = $2 WHERE id = $1`, thread, otherProjectUser)
+	assert.Equal(t, "23503", pgCode(err), "a thread is bound only to an end user of its own project")
+
+	_, err = db.ExecContext(t.Context(), `DELETE FROM end_users WHERE id = $1`, s.endUserA)
+	require.NoError(t, err)
+	var actor sql.NullString
+	var org uuid.UUID
+	require.NoError(t, db.QueryRowContext(t.Context(), `SELECT actor_end_user_id, org_id FROM threads WHERE id = $1`, thread).Scan(&actor, &org))
+	assert.False(t, actor.Valid, "deleting the end user clears the binding")
+	assert.Equal(t, s.orgA, org, "and keeps the thread's org")
+}
+
+func TestMessages_RequestHashIsOptional(t *testing.T) {
+	db, _ := pgtest.Migrated(t)
+	s := seedRunScope(t, db)
+	thread := s.thread(t, db, "k")
+	_, err := db.ExecContext(t.Context(), `INSERT INTO messages (id, org_id, project_id, thread_id, seq, role, body, status, external_message_id, request_hash, created_at)
+		VALUES ($1, $2, $3, $4, 1, 'user', '{}', 'pending', 'idem:k1', '\x0102', now())`, uuid.New(), s.orgA, s.prjA, thread)
+	require.NoError(t, err)
+	var hash []byte
+	require.NoError(t, db.QueryRowContext(t.Context(), `SELECT request_hash FROM messages WHERE external_message_id = 'idem:k1'`).Scan(&hash))
+	assert.Equal(t, []byte{1, 2}, hash)
+}
