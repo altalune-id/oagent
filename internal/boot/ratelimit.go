@@ -1,6 +1,7 @@
 package boot
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -14,8 +15,12 @@ import (
 	"altalune.id/oagent/worker"
 )
 
+const defaultRunLimitKeys = 100_000
+
 type limiters struct {
-	auth    ratelimit.Limiter
+	auth ratelimit.Limiter
+	// shared is the store every limited feature counts in, or nil when no rate limit is on.
+	shared  ratelimit.Limiter
 	janitor worker.Worker
 }
 
@@ -23,6 +28,8 @@ func buildLimiters(cfg config.Config, rdb redis.UniversalClient, log *slog.Logge
 	out := limiters{auth: ratelimit.Disabled()}
 	r := cfg.RateLimit
 	if !r.AnyEnabled() {
+		m := memory.New(cmp.Or(r.MaxKeys, defaultRunLimitKeys), memory.WithLogger(log))
+		out.shared, out.janitor = m, m
 		return out, nil
 	}
 	var limiter ratelimit.Limiter
@@ -38,6 +45,7 @@ func buildLimiters(cfg config.Config, rdb redis.UniversalClient, log *slog.Logge
 	default:
 		return limiters{}, fmt.Errorf("boot: rateLimit.driver %q is not supported", r.Driver)
 	}
+	out.shared = limiter
 	if r.Auth.Enabled {
 		out.auth = limiter
 	}

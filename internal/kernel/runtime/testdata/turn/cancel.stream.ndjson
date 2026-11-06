@@ -1,0 +1,5 @@
+{"type":"RUN_STARTED","threadId":"t0193a2b4c5d67e8f9a0b1c2d3e4f5a6b","runId":"Rn5Q8wYk2HhT3mVz7XcLp"}
+{"type":"TEXT_MESSAGE_START","messageId":"msg_asst_1","role":"assistant"}
+{"type":"TEXT_MESSAGE_CONTENT","messageId":"msg_asst_1","delta":"Let me think"}
+{"type":"RUN_ERROR","message":"turn deadline reached","code":"deadline"}
+{"type":"OAGENT_TERMINAL","status":"cancelled","stopReason":"cancelled","snapshot":{"scope":"agent","schemaVersion":"1.0","createdAt":"2026-11-06T00:00:00.000Z","data":{"messages":[{"role":"user","content":[{"text":"hello"}]},{"role":"assistant","content":[{"text":"Hi, how can I help?"}]}]},"appData":{"thread":"t0193a2b4c5d67e8f9a0b1c2d3e4f5a6b","agentVersion":3,"sdk":"1.23.0"}},"usage":{"inputTokens":120,"outputTokens":3,"cacheReadInputTokens":0,"cacheWriteInputTokens":0,"estimated":true},"messagesAppended":[{"id":"msg_user_1","role":"user","content":"record lunch 25000 from cash"}],"interrupts":[],"notes":[],"error":{"code":"deadline"}}

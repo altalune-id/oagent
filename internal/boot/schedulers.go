@@ -9,6 +9,7 @@ import (
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/run"
 	"altalune.id/oagent/scheduler"
 	"altalune.id/oagent/worker"
 )
@@ -38,11 +39,17 @@ func schedulerConfig(c config.SchedulerConfig, k kernel.Kernel, log *slog.Logger
 }
 
 func buildScheduler(k kernel.Kernel, cfg config.Config, s *Services, log *slog.Logger) (*scheduler.Runner, error) {
-	r, err := scheduler.New(schedulerConfig(cfg.Scheduler, k, log))
+	opts := schedulerConfig(cfg.Scheduler, k, log)
+	opts.Tenants = outboxTenants{orgs: s.Orgs}
+	r, err := scheduler.New(opts)
 	if err != nil {
 		return nil, err
 	}
-	for _, j := range session.NewScheduler(s.Sessions, orDiscard(log)).SchedulerJobs() {
+	jobs := session.NewScheduler(s.Sessions, orDiscard(log)).SchedulerJobs()
+	if s.RunStore != nil {
+		jobs = append(jobs, run.Jobs(s.RunStore, s.RunKicker, cfg.Run.SweepEvery)...)
+	}
+	for _, j := range jobs {
 		if err := r.Register(j); err != nil {
 			return nil, fmt.Errorf("boot: register %s: %w", j.Name, err)
 		}

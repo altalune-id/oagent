@@ -21,6 +21,8 @@ type Reader interface {
 	Versions(ctx context.Context, agentID uuid.UUID, limit int) ([]*Version, error)
 	// LatestVersion returns the agent's newest version, or nil before the first publish.
 	LatestVersion(ctx context.Context, agentID uuid.UUID) (*Version, error)
+	// VersionByID loads one version of the org on ctx; a run resumes on the version it was pinned to.
+	VersionByID(ctx context.Context, id uuid.UUID) (*Version, error)
 	// ProviderUse reports how the latest published versions in the org on ctx use a model provider; drafts never count.
 	ProviderUse(ctx context.Context, providerID uuid.UUID) (ProviderUsage, error)
 	// MCPServerInUse reports whether a latest published version in the org on ctx grants tools of a server.

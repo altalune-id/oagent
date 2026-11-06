@@ -172,6 +172,8 @@
   "webhooks.event_agent_updated": "Agen diperbarui",
   "webhooks.event_invite_created": "Undangan dikirim",
   "webhooks.event_member_added": "Anggota ditambahkan",
+  "webhooks.event_run_completed": "Run selesai",
+  "webhooks.event_run_failed": "Run gagal",
   "webhooks.events": "Event",
   "webhooks.inactive": "Nonaktif",
   "webhooks.logs": "Log",

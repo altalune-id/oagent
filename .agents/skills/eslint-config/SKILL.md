@@ -14,7 +14,7 @@ metadata:
 - `ui/console/eslint.config.mjs` and `ui/base/eslint.config.mjs` wrap it: `withNuxt(oagent())` adds the `@nuxt/eslint` rules (`eslint: { config: { standalone: false } }` in `nuxt.config.ts`). It needs `.nuxt/` (run `nuxt prepare`, done by `postinstall`).
 - YAML is not ESLint's job (`yaml: false`); yamllint checks it. Go, shell, Dockerfiles and protos have their own linters (see lint-staged in the root `package.json`).
 - Commands: `pnpm lint` (`eslint .`), `pnpm lint:fix` (`eslint . --fix`), `make lint-js`. The husky pre-commit hook runs `lint-staged`, which runs `eslint --fix --no-warn-ignored` on staged files.
-- pnpm 10 workspace: `pnpm/json-enforce-catalog` is off, because the `catalog:` holds only versions shared by several `ui/*` packages.
+- pnpm 10 workspace: `pnpm/json-enforce-catalog` is off, because the `catalog:` holds the versions shared by `ui/*` packages plus every `apps/runtime` dependency, and other packages may still pin their own.
 - The user commits; never commit for them and never add AI attribution. See docs/howto/README.md.
 
 ## What the config enforces

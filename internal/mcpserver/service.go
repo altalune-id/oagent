@@ -163,6 +163,22 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (*Server, error) {
 	return srv, nil
 }
 
+// Open loads a server with its opened auth value for a turn; AuthNone opens to "". SECURITY: the value is a secret; never log it.
+func (s *Service) Open(ctx context.Context, id uuid.UUID) (*Server, string, error) {
+	srv, err := s.store.ByID(ctx, id)
+	if err != nil {
+		return nil, "", s.errOrReport(ctx, "mcpserver: open", err)
+	}
+	if srv.AuthKind == AuthNone {
+		return srv, "", nil
+	}
+	value, err := openAuth(s.sealer, srv.OrgID, srv.ID, srv.AuthSealed)
+	if err != nil {
+		return nil, "", s.errOrReport(ctx, "mcpserver: open auth", secretsErr(err))
+	}
+	return srv, value, nil
+}
+
 // List returns a project's servers.
 func (s *Service) List(ctx context.Context, projectID uuid.UUID) ([]*Server, error) {
 	srvs, err := s.store.List(ctx, projectID)

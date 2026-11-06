@@ -1,0 +1,60 @@
+{
+  "contractVersion": 1,
+  "ids": {
+    "run": "Rn5Q8wYk2HhT3mVz7XcLp",
+    "thread": "t0193a2b4c5d67e8f9a0b1c2d3e4f5a6b",
+    "agent": "a0193a2b4c5d67e8f9a0b1c2d3e4f5a6c",
+    "agentVersion": 3,
+    "attempt": 1,
+    "project": "Pj4kW9sQ2mN7vB3xC8zLr"
+  },
+  "agent": {
+    "instructions": "You record expenses for the user. Be brief.",
+    "temperature": 0.2,
+    "maxSteps": 1,
+    "model": {
+      "baseUrl": "https://llm.example.com/v1",
+      "apiKey": "sk-test",
+      "modelId": "gpt-4o",
+      "maxTokens": 1024
+    }
+  },
+  "mcpServers": [
+    {
+      "name": "yasaku",
+      "url": "https://yasaku.example.com/mcp",
+      "auth": {
+        "kind": "bearer",
+        "value": "tok-test"
+      },
+      "allowedTools": [
+        "record_expense"
+      ],
+      "connectTimeoutMs": 10000,
+      "callTimeoutMs": 5000
+    }
+  ],
+  "snapshot": null,
+  "history": [],
+  "input": {
+    "kind": "message",
+    "message": {
+      "id": "msg_user_1",
+      "role": "user",
+      "content": "record lunch 25000 from cash"
+    }
+  },
+  "storedResults": [],
+  "limits": {
+    "deadlineMs": 270000,
+    "budget": {
+      "remainingMicros": 500000,
+      "prices": {
+        "input": 2500000,
+        "output": 10000000,
+        "cacheRead": 1250000,
+        "cacheWrite": 0
+      }
+    }
+  }
+}

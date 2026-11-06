@@ -146,14 +146,17 @@ func TestBoot(t *testing.T) {
 	assert.NotNil(t, app.Kernel.Meter)
 	assert.NotNil(t, app.Kernel.Queue) // always non-nil; Disabled when queue.enabled=false
 	require.NotNil(t, app.Supervisor)
-	assert.Len(t, app.Supervisor.Workers(), 5) // http + db-health + outbox + mailqueue + apikey-usage
+	assert.Len(t, app.Supervisor.Workers(), 7) // http + db-health + outbox + mailqueue + apikey-usage + run-turns + ratelimit.janitor
 	assert.Contains(t, workerNames(app), "apikey-usage")
+	assert.Contains(t, workerNames(app), "run-turns")
+	assert.NotNil(t, app.Services.Runs)
+	assert.NotNil(t, app.Services.EndUsers)
 	assert.Contains(t, workerNames(app), "mailqueue.send")
 	assert.NotNil(t, app.Services.Mailer)
 	assert.NotNil(t, app.Services.MailQueue)
 	assert.NotNil(t, app.Services.KeyAuthn)
 	assert.Equal(t, ratelimit.Disabled(), app.Services.AuthLimiter, "rate limits are off by default")
-	assert.NotContains(t, workerNames(app), "ratelimit.janitor")
+	assert.Contains(t, workerNames(app), "ratelimit.janitor", "the run rate cap's store is always on")
 
 	require.NoError(t, app.Close(context.Background()))
 	assert.True(t, called)
@@ -173,7 +176,7 @@ func TestBoot_SchedulerEnabled(t *testing.T) {
 		Scheduler: config.SchedulerConfig{Enabled: true},
 	}, testLogger())
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 6) // http + db-health + outbox + mailqueue + apikey-usage + scheduler
+	assert.Len(t, app.Supervisor.Workers(), 8) // http + db-health + outbox + mailqueue + apikey-usage + run-turns + ratelimit.janitor + scheduler
 	require.NoError(t, app.Close(context.Background()))
 }
 
@@ -189,7 +192,7 @@ func TestBoot_WithSchedulerFalse(t *testing.T) {
 		config.Config{Postgres: config.PostgresConfig{DSN: "x"}, Scheduler: config.SchedulerConfig{Enabled: true}},
 		testLogger(), WithScheduler(false))
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 5) // http + db-health + outbox + mailqueue + apikey-usage
+	assert.Len(t, app.Supervisor.Workers(), 7) // http + db-health + outbox + mailqueue + apikey-usage + run-turns + ratelimit.janitor
 	require.NoError(t, app.Close(context.Background()))
 }
 
@@ -231,7 +234,7 @@ func TestBoot_ConsumerEnabled(t *testing.T) {
 
 	app, err := Boot(context.Background(), natsFeatureConfig(), testLogger())
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 8) // http + db-health + nats-health + outbox + mailqueue + apikey-usage + consumer + listener
+	assert.Len(t, app.Supervisor.Workers(), 10) // http + db-health + nats-health + outbox + mailqueue + apikey-usage + run-turns + ratelimit.janitor + consumer + listener
 	assert.Contains(t, workerNames(app), "nats-health")
 	assert.Contains(t, workerNames(app), "fake-consumer")
 	assert.Contains(t, workerNames(app), "fake-listener")
@@ -389,6 +392,8 @@ type fakeQueue struct {
 	queue.Queue
 	consumerErr, listenerErr error
 }
+
+func (fakeQueue) Declare([]queue.Job, []queue.Broadcast) error { return nil }
 
 func (f fakeQueue) Consumer(context.Context, []queue.Handler) (worker.Worker, error) {
 	if f.consumerErr != nil {

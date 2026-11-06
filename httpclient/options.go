@@ -15,7 +15,13 @@ type settings struct {
 	responseBodyLimit int64
 	otel              bool
 	noTimeout         bool
+	noProxy           bool
 	retry             RetryPolicy
+}
+
+// WithoutProxy ignores HTTP_PROXY and HTTPS_PROXY. SECURITY: use it for clients whose request bodies carry secrets.
+func WithoutProxy() Option {
+	return func(s *settings) { s.noProxy = true }
 }
 
 // WithAllowPrivateHosts turns the SSRF dial filter off for trusted, operator-configured URLs.

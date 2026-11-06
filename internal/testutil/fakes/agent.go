@@ -57,6 +57,19 @@ func (f *AgentStore) LatestVersion(context.Context, uuid.UUID) (*agent.Version, 
 	return f.Published[0], nil
 }
 
+// VersionByID implements agent.Store.
+func (f *AgentStore) VersionByID(_ context.Context, id uuid.UUID) (*agent.Version, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	for _, v := range f.Published {
+		if v.ID == id {
+			return v, nil
+		}
+	}
+	return nil, &agent.NotFoundError{ID: id.String()}
+}
+
 var _ agent.Store = (*AgentStore)(nil)
 
 // Save implements agent.Store.

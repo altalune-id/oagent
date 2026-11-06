@@ -459,3 +459,18 @@ func TestService_APIKeyWithControlCharactersIsSecretRequired(t *testing.T) {
 	assert.Len(t, f.store.Providers, 1)
 	assert.Equal(t, before, f.store.Providers[p.ID].APIKeySealed)
 }
+
+func TestService_BaseURLWithControlCharactersIsInvalid(t *testing.T) {
+	f := newFixture(t)
+	p := f.create(t)
+	for _, v := range []string{"https://e.com/v1\r\nHost: evil", "https://e.com/\x00v1", "https://e.com/\tv1", "https://e.com/\x7fv1"} {
+		in := input()
+		in.BaseURL = v
+		_, err := f.svc.Create(f.ctx, uuid.New(), in, "sk-test")
+		assert.Equal(t, apperror.CodeModelProviderInvalidBaseURL, codeOf(t, err), "create %q", v)
+		_, err = f.svc.Update(f.ctx, p.ID, in, nil)
+		assert.Equal(t, apperror.CodeModelProviderInvalidBaseURL, codeOf(t, err), "update %q", v)
+	}
+	assert.Len(t, f.store.Providers, 1)
+	assert.Equal(t, input().BaseURL, f.store.Providers[p.ID].BaseURL)
+}

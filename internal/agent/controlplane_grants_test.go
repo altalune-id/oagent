@@ -12,7 +12,9 @@ import (
 
 	agentv1 "altalune.id/oagent/gen/go/agent/v1"
 	"altalune.id/oagent/internal/agent"
+	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/testutil/fakes"
+	"altalune.id/oagent/scope"
 )
 
 type cpGrants struct {
@@ -159,4 +161,132 @@ func TestAgentService_DraftWithADeletedProvider(t *testing.T) {
 	_, err = f.cp.PublishAgent(f.ctx, connect.NewRequest(&agentv1.PublishAgentRequest{Id: f.agent.PublicID}))
 	assert.Equal(t, "provider", grantReason(t, err))
 	assert.Empty(t, f.store.Published)
+}
+
+func (f *cpGrants) asKey(resources []uuid.UUID, scopes ...string) {
+	f.ctx = session.PrincipalInto(context.Background(), session.Principal{
+		Source: session.SourceAPIKey, KeyID: uuid.New(), ActiveOrgID: f.agent.OrgID,
+		ProjectIDs: []uuid.UUID{f.agent.ProjectID}, ResourceIDs: resources,
+		Scopes: append([]string{scope.AgentRead, scope.AgentWrite}, scopes...),
+	})
+}
+
+func TestAgentService_DraftNeedsReachAndScopeForANewReference(t *testing.T) {
+	cases := map[string]struct {
+		resources func(f *cpGrants) []uuid.UUID
+		scopes    []string
+		edit      func(f *cpGrants, c *agentv1.AgentConfig)
+		want      string
+	}{
+		"provider without provider:read": {
+			resources: func(f *cpGrants) []uuid.UUID { return []uuid.UUID{f.agent.ID, f.provider, f.server} },
+			scopes:    []string{scope.McpserverRead},
+			want:      "provider",
+		},
+		"provider outside the key's resources": {
+			resources: func(f *cpGrants) []uuid.UUID { return []uuid.UUID{f.agent.ID, f.server} },
+			scopes:    []string{scope.ProviderRead, scope.McpserverRead},
+			want:      "provider",
+		},
+		"server without mcpserver:read": {
+			resources: func(f *cpGrants) []uuid.UUID { return []uuid.UUID{f.agent.ID, f.provider, f.server} },
+			scopes:    []string{scope.ProviderRead},
+			want:      "server",
+		},
+		"server outside the key's resources": {
+			resources: func(f *cpGrants) []uuid.UUID { return []uuid.UUID{f.agent.ID, f.provider} },
+			scopes:    []string{scope.ProviderRead, scope.McpserverRead},
+			want:      "server",
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			f := newCPGrants(t)
+			f.asKey(tc.resources(f), tc.scopes...)
+			_, err := f.draft(f.wire())
+			assert.Equal(t, tc.want, grantReason(t, err))
+			assert.Nil(t, f.store.Saved)
+		})
+	}
+}
+
+func TestAgentService_DraftKeepsReferencesAlreadyOnTheDraft(t *testing.T) {
+	f := newCPGrants(t)
+	f.agent.Draft = agent.Config{
+		ProviderID: f.provider, Model: "gpt-4o",
+		MCPServers: []agent.MCPGrant{{ServerID: f.server, Tools: []agent.Tool{{Name: "record_expense"}}}},
+	}
+	f.asKey([]uuid.UUID{f.agent.ID})
+	c := f.wire()
+	c.Instructions = "Be very brief."
+	_, err := f.draft(c)
+	require.NoError(t, err, "a key limited to the agent edits it with the references it already has")
+	assert.Equal(t, "Be very brief.", f.store.Saved.Draft.Instructions)
+
+	c.McpServers = nil
+	_, err = f.draft(c)
+	require.NoError(t, err, "removing a reference needs nothing")
+}
+
+func TestAgentService_DraftBindsWithReachAndScope(t *testing.T) {
+	f := newCPGrants(t)
+	f.asKey([]uuid.UUID{f.agent.ID, f.provider, f.server}, scope.ProviderRead, scope.McpserverRead)
+	_, err := f.draft(f.wire())
+	require.NoError(t, err)
+	assert.Equal(t, f.provider, f.store.Saved.Draft.ProviderID)
+
+	f.asKey(nil, scope.ProviderRead, scope.McpserverRead)
+	_, err = f.draft(f.wire())
+	require.NoError(t, err, "a key over the whole project reaches every resource")
+}
+
+func (f *cpGrants) boundServer() {
+	f.agent.Draft = agent.Config{
+		ProviderID: f.provider, Model: "gpt-4o",
+		MCPServers: []agent.MCPGrant{{ServerID: f.server, Tools: []agent.Tool{
+			{Name: "record_expense", RequireApproval: true}, {Name: "list_wallets"},
+		}}},
+	}
+}
+
+func (f *cpGrants) withTools(tools ...*agentv1.AgentTool) *agentv1.AgentConfig {
+	c := f.wire()
+	c.McpServers[0].Tools = tools
+	return c
+}
+
+func TestAgentService_DraftWideningABoundServerNeedsReachAndScope(t *testing.T) {
+	for name, tools := range map[string][]*agentv1.AgentTool{
+		"a new tool":   {{Name: "record_expense", RequireApproval: true}, {Name: "list_wallets"}, {Name: "delete_tx"}},
+		"approval off": {{Name: "record_expense"}, {Name: "list_wallets"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newCPGrants(t)
+			f.boundServer()
+			f.asKey([]uuid.UUID{f.agent.ID})
+			_, err := f.draft(f.withTools(tools...))
+			assert.Equal(t, "server", grantReason(t, err))
+			assert.Nil(t, f.store.Saved)
+
+			f.asKey([]uuid.UUID{f.agent.ID, f.server}, scope.McpserverRead)
+			_, err = f.draft(f.withTools(tools...))
+			require.NoError(t, err, "with reach on the server and mcpserver:read the widening is allowed")
+		})
+	}
+}
+
+func TestAgentService_DraftNarrowingABoundServerIsFree(t *testing.T) {
+	for name, tools := range map[string][]*agentv1.AgentTool{
+		"a tool removed": {{Name: "record_expense", RequireApproval: true}},
+		"approval on":    {{Name: "record_expense", RequireApproval: true}, {Name: "list_wallets", RequireApproval: true}},
+		"unchanged":      {{Name: "record_expense", RequireApproval: true}, {Name: "list_wallets"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newCPGrants(t)
+			f.boundServer()
+			f.asKey([]uuid.UUID{f.agent.ID})
+			_, err := f.draft(f.withTools(tools...))
+			require.NoError(t, err)
+		})
+	}
 }

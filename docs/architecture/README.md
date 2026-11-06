@@ -1,6 +1,6 @@
 # Architecture
 
-oagent is a self-hosted platform for AI agents. One Go binary (`oagent`, module `altalune.id/oagent`) serves every surface from one set of domain services and one Postgres database.
+oagent is a self-hosted platform for AI agents. One Go binary (`oagent`, module `altalune.id/oagent`) serves every surface from one set of domain services and one Postgres database. A second container, the agent runtime (`apps/runtime`), runs the agent turns.
 
 For step-by-step changes, see the recipes in [docs/howto](../howto/README.md).
 
@@ -17,6 +17,15 @@ For step-by-step changes, see the recipes in [docs/howto](../howto/README.md).
 
 Every signed-in surface (API, MCP, console) reaches a domain through the `controlplane` handlers, which hold the permission and reach checks. Only pre-sign-in pages, operator commands that boot the `App`, and workers call services directly.
 
+## Containers
+
+| Container                                                       | Owns                                                                                                                          | Never                                                       |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `oagent` (Go)                                                   | every surface, tenancy, threads, messages, snapshots, runs, end users, providers, MCP servers, sealed secrets, the turn queue | runs the model                                              |
+| runtime (TypeScript, `apps/runtime`, package `@oagent/runtime`) | one agent turn: builds a Strands agent from the request, calls the model and the MCP tools, streams the turn back             | stores anything, holds database credentials, calls `oagent` |
+
+The flow is one-way. `oagent` posts a turn to the runtime's `POST /turn` with a shared bearer, and reads back an NDJSON stream: AG-UI events plus private checkpoint, heartbeat and terminal events. Everything a turn needs travels in the request, and everything it produces travels in the stream. The request and stream contract lives in `internal/kernel/runtime/contract.go`, with goldens in `internal/kernel/runtime/testdata/turn/` that the Go tests and the runtime's tests both read. Every runtime egress (model, MCP, each redirect hop) goes through one guarded dispatcher that refuses private addresses, with test vectors shared with Go in `httpclient/testdata/ssrf_vectors.json`. The runtime listens on the private network only. See [apps/runtime/README.md](../../apps/runtime/README.md).
+
 ## Layers
 
 ```mermaid
@@ -25,10 +34,10 @@ flowchart TB
   CLI --> BOOT["internal/boot<br/>composition root"]
   BOOT --> CP["internal/controlplane<br/>Connect handlers, permission, validation"]
   BOOT --> WEB["internal/web<br/>mux, static, gates (no domain)"]
-  CP --> DOM["domains<br/>org, project, agent, modelprovider, mcpserver, apikey, webhook, user, auth, install, legal, health"]
+  CP --> DOM["domains<br/>org, project, agent, modelprovider, mcpserver, enduser, run, apikey, webhook, user, auth, install, legal, health"]
   WEB -. Registrar .-> DOM
   DOM --> LAYOUT["internal/web/layout<br/>templ shell"]
-  DOM --> KERNEL["internal/kernel/*<br/>authn, authz, session, tenant, events, capabilities<br/>features: db, outbox, mailqueue, queue, ratelimit"]
+  DOM --> KERNEL["internal/kernel/*<br/>authn, authz, session, tenant, events, capabilities<br/>features: db, outbox, mailqueue, queue, ratelimit, runtime"]
   DOM --> ROOT["root packages<br/>apperror, mailer, worker, scheduler, ..."]
   KERNEL --> ROOT
   BOOT --> CONN["connections (root)<br/>pg, nats, redis"]
@@ -59,6 +68,7 @@ The features, each picking its backend with a `driver` key:
 - `outbox`, `mailqueue`: durable delivery (webhooks, mail). They commit in the same transaction as the domain change, so they keep their Postgres store in-package and have no driver switch.
 - `queue` (`queue.driver: nats`): jobs and broadcasts, driver-agnostic; its NATS JetStream driver is `queue/nats`.
 - `ratelimit` (`rateLimit.driver: memory|redis`): GCRA limits, with `ratelimit/memory` and `ratelimit/redis` drivers and the shared contract in `ratelimit/ratelimittest`.
+- `runtime` (`runtime.driver: http`): `Runtime.Turn` posts one turn and returns its event `Stream`. The turn contract and its goldens are in-package, and the HTTP driver is `runtime/http`.
 
 ## Connections
 
@@ -68,7 +78,7 @@ Only the connection, its drivers, boot and the test helpers import a backend lib
 
 ## Domains
 
-Each domain is a package under `internal/`: `org` (with `org/member` and `org/invite`), `project`, `agent`, `modelprovider`, `mcpserver`, `apikey`, `webhook`, `user`, `auth`, `install`, `legal`, `health`. Each uses only the files it needs: `<domain>.go`, `errors.go`, `ports.go`, `store.go` + `pg*.go`, `service.go`, then one file per surface (`controlplane.go`, `cli.go`, `web.go`), with templ views in `<domain>/views`. See [module.md](../howto/module.md).
+Each domain is a package under `internal/`: `org` (with `org/member` and `org/invite`), `project`, `agent`, `modelprovider`, `mcpserver`, `enduser`, `run`, `apikey`, `webhook`, `user`, `auth`, `install`, `legal`, `health`. `enduser` holds the people agents talk to and their identities per project. `run` holds threads, messages, snapshots and runs: the ordered inbox, the thread lease, the turn runner and the run's usage and cost. Each uses only the files it needs: `<domain>.go`, `errors.go`, `ports.go`, `store.go` + `pg*.go`, `service.go`, then one file per surface (`controlplane.go`, `cli.go`, `web.go`), with templ views in `<domain>/views`. See [module.md](../howto/module.md).
 
 Other internal packages: `permission` (the permission each RPC needs), `apiclient` (the CLI's Connect client), `prompt` (stdin prompts), `render` (CLI output), `mcp` (MCP auth and payloads).
 
@@ -78,7 +88,7 @@ Packages at the repo root never import `internal/`: `apperror` (error codes, `co
 
 ## UI builds
 
-The pnpm workspace `ui/*` builds assets that the binary embeds. The builds are not committed.
+The pnpm workspace holds `ui/*`, whose builds the binary embeds, and `apps/*`, which ship as their own images (`apps/runtime`). The builds are not committed.
 
 | Package      | What                           | Build             | Embedded at                   |
 | ------------ | ------------------------------ | ----------------- | ----------------------------- |

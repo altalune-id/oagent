@@ -8,6 +8,7 @@ import (
 
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/agent"
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/mcpserver"
 	"altalune.id/oagent/internal/modelprovider"
 )
@@ -29,12 +30,17 @@ func configureMCPServers(svc *mcpserver.Service, cfg config.Config, log *slog.Lo
 	return svc.WithAllowInsecureURL()
 }
 
+// SECURITY: a grant ref must sit in the caller's project and in the org of the tenant in ctx, on top of RLS.
+func inScope(ctx context.Context, refOrg, refProject, projectID uuid.UUID) bool {
+	return refProject == projectID && refOrg == tenant.Peek(ctx).OrgID
+}
+
 type grantProviders struct{ providers *modelprovider.Service }
 
 // SECURITY: an unknown, foreign or deleted provider answers the agent's grant error, never the provider's own not-found.
 func (g grantProviders) Models(ctx context.Context, projectID, providerID uuid.UUID) ([]agent.ModelRef, error) {
 	p, err := g.providers.Get(ctx, providerID)
-	if modelprovider.IsNotFoundError(err) || (err == nil && p.ProjectID != projectID) {
+	if modelprovider.IsNotFoundError(err) || (err == nil && !inScope(ctx, p.OrgID, p.ProjectID, projectID)) {
 		return nil, &agent.InvalidGrantError{Reason: agent.GrantProvider}
 	}
 	if err != nil {
@@ -52,7 +58,7 @@ type grantServers struct{ servers *mcpserver.Service }
 // Exists implements agent.MCPServers; an unknown or foreign server answers the agent's grant error.
 func (g grantServers) Exists(ctx context.Context, projectID, serverID uuid.UUID) (string, error) {
 	s, err := g.servers.Get(ctx, serverID)
-	if mcpserver.IsNotFoundError(err) || (err == nil && s.ProjectID != projectID) {
+	if mcpserver.IsNotFoundError(err) || (err == nil && !inScope(ctx, s.OrgID, s.ProjectID, projectID)) {
 		return "", &agent.InvalidGrantError{Reason: agent.GrantServer}
 	}
 	if err != nil {

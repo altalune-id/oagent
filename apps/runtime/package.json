@@ -1,0 +1,30 @@
+{
+  "name": "@oagent/runtime",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": "24.22.1"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@ag-ui/core": "catalog:",
+    "@modelcontextprotocol/client": "catalog:",
+    "@strands-agents/sdk": "catalog:",
+    "openai": "catalog:",
+    "undici": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@oagent/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

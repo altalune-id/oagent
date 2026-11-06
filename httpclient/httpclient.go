@@ -39,9 +39,10 @@ func newTransport(s settings) http.RoundTripper {
 	dialer := &net.Dialer{Timeout: s.dialTimeout, KeepAlive: 30 * time.Second}
 	var proxy func(*http.Request) (*url.URL, error)
 	// SECURITY: a proxy terminates the dial at the proxy's own address, so the filter below would never see the real destination.
-	if s.allowPrivateHosts {
+	if s.allowPrivateHosts && !s.noProxy {
 		proxy = http.ProxyFromEnvironment
-	} else {
+	}
+	if !s.allowPrivateHosts {
 		dialer.ControlContext = rejectPrivate
 	}
 

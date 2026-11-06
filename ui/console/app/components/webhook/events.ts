@@ -9,4 +9,6 @@ export const webhookEvents: WebhookEvent[] = [
   { name: 'agent.updated', labelKey: 'webhooks.event_agent_updated' },
   { name: 'invite.created', labelKey: 'webhooks.event_invite_created' },
   { name: 'member.added', labelKey: 'webhooks.event_member_added' },
+  { name: 'run.completed', labelKey: 'webhooks.event_run_completed' },
+  { name: 'run.failed', labelKey: 'webhooks.event_run_failed' },
 ];

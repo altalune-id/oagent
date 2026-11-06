@@ -131,7 +131,7 @@ lint-js: ## run ESLint over ui/, docs and every JS/TS/Vue/JSON/Markdown/CSS file
 .PHONY: lint-config
 lint-config: ## run yamllint, hadolint, actionlint and shellcheck (binary, else Docker, else skipped)
 	scripts/lint/tool.sh yamllint --strict -c .yamllint.yaml .
-	@if ls Dockerfile* >/dev/null 2>&1; then scripts/lint/tool.sh hadolint Dockerfile*; fi
+	@if ls Dockerfile* apps/*/Dockerfile >/dev/null 2>&1; then scripts/lint/tool.sh hadolint Dockerfile* apps/*/Dockerfile; fi
 	@if ls .github/workflows/*.y*ml >/dev/null 2>&1; then scripts/lint/tool.sh actionlint; fi
 	scripts/lint/tool.sh shellcheck $$(git ls-files -co --exclude-standard -- '*.sh' .husky/pre-commit .husky/pre-push ':!:.agents' ':!:.claude')
 
@@ -158,7 +158,7 @@ test-all: test test-integration ## unit + integration tests
 
 COVER_MIN ?= 85
 # generated code, templ views, test helpers and main wiring
-COVER_SKIP ?= /gen(/|$$)|/views$$|/testutil/|/sessiontest$$|/ratelimittest$$|/examples/|/cmd/oagent$$
+COVER_SKIP ?= /gen(/|$$)|/views$$|/testutil/|/sessiontest$$|/ratelimittest$$|/snapshotstoretest$$|/examples/|/cmd/oagent$$
 
 .PHONY: cover
 cover: ## unit + integration coverage; fails when a package is under COVER_MIN percent

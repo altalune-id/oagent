@@ -3,6 +3,7 @@ package boot
 import (
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel/queue"
+	"altalune.id/oagent/internal/run"
 )
 
 func consumerOff(o *options, cfg config.Config) string {
@@ -17,6 +18,13 @@ func consumerOff(o *options, cfg config.Config) string {
 	return ""
 }
 
-func queueHandlers(_ *Services) []queue.Handler { return nil }
+func queueJobs() []queue.Job { return []queue.Job{run.TurnJob} }
+
+func queueHandlers(s *Services) []queue.Handler {
+	if s.RunTurns == nil {
+		return nil
+	}
+	return []queue.Handler{s.RunTurns.Handler()}
+}
 
 func queueListeners(_ *Services) []queue.Listener { return nil }

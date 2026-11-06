@@ -110,6 +110,14 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		return nil, err
 	}
 	svcs.AuthLimiter = lims.auth
+	runs, err := buildRun(k, cfg, svcs, lims.shared, log)
+	if err != nil {
+		return nil, err
+	}
+	svcs.RunStore, svcs.Runs, svcs.RunTurns, svcs.RunKicker = runs.store, runs.svc, runs.runner, runs.kicker
+	if err := k.Queue.Declare(queueJobs(), nil); err != nil {
+		return nil, fmt.Errorf("boot: declare queue jobs: %w", err)
+	}
 	if svcs.Validator, err = controlplane.NewValidator(); err != nil {
 		return nil, err
 	}
@@ -170,6 +178,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 	sup.Register(buildOutboxWorker(svcs, log))
 	sup.Register(buildMailWorker(svcs, log))
 	sup.Register(svcs.KeyUsage)
+	sup.Register(svcs.RunTurns)
 	if lims.janitor != nil {
 		sup.Register(lims.janitor)
 	}

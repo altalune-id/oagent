@@ -79,3 +79,11 @@ MCS007 McpServerSecretsUnavailable
 AGT006 AgentNeedsRepublish
 AGT007 AgentInvalidGrant
 MCS008 McpServerAuthRefused
+EUS001 EndUserNotFound
+EUS002 EndUserInvalidIdentity
+RUN001 RunNotFound
+RUN002 RunRateLimited
+RUN003 RunRuntimeUnavailable
+RUN004 RunTimedOut
+RUN005 RunAttemptsExhausted
+RUN006 RunRuntimeFailed

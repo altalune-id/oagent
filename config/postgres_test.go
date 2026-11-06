@@ -47,8 +47,8 @@ func TestLoad_PostgresFromEnv(t *testing.T) {
 
 func TestPostgresFeatures(t *testing.T) {
 	c := validConfig(t)
-	assert.Equal(t, []string{"db.driver"}, c.PostgresFeatures())
-	c.DB.Driver = "sqlite"
+	assert.Equal(t, []string{"db.driver", "snapshot.driver"}, c.PostgresFeatures())
+	c.DB.Driver, c.Snapshot.Driver = "sqlite", "s3"
 	assert.Empty(t, c.PostgresFeatures())
 }
 

@@ -14,6 +14,9 @@ const (
 	InviteCreated Type = "invite.created"
 	MemberAdded   Type = "member.added"
 
+	RunCompleted Type = "run.completed"
+	RunFailed    Type = "run.failed"
+
 	WebhookPing Type = "webhook.ping"
 )
 
@@ -35,6 +38,8 @@ func All() []Spec {
 		{Type: AgentUpdated, Version: 1, Subscribable: true},
 		{Type: InviteCreated, Version: 1, Subscribable: true, OrgWide: true},
 		{Type: MemberAdded, Version: 1, Subscribable: true, OrgWide: true},
+		{Type: RunCompleted, Version: 1, Subscribable: true},
+		{Type: RunFailed, Version: 1, Subscribable: true},
 		{Type: WebhookPing, Version: 1},
 	}
 }
@@ -84,6 +89,14 @@ func CheckPayload(t Type, data any) error {
 		}
 	case MemberAdded:
 		if _, ok := data.(MemberAddedV1); !ok {
+			return &PayloadMismatchError{Type: t, Data: data}
+		}
+	case RunCompleted:
+		if _, ok := data.(RunCompletedV1); !ok {
+			return &PayloadMismatchError{Type: t, Data: data}
+		}
+	case RunFailed:
+		if _, ok := data.(RunFailedV1); !ok {
 			return &PayloadMismatchError{Type: t, Data: data}
 		}
 	case WebhookPing:

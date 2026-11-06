@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"slices"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -11,6 +12,7 @@ import (
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/scope"
 )
 
 // AgentService implements agent.v1.AgentService; every id it takes and returns is a public id.
@@ -150,7 +152,7 @@ func (s *AgentService) UpdateAgentDraft(
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := s.configFrom(ctx, a.ProjectID, req.Msg.GetConfig())
+	cfg, err := s.configFrom(ctx, a, req.Msg.GetConfig())
 	if err != nil {
 		return nil, err
 	}
@@ -310,14 +312,14 @@ func (s *AgentService) fillRefs(ctx context.Context, c Config, out *agentv1.Agen
 }
 
 // SECURITY: a provider or server of another project answers the same as an unknown one.
-func (s *AgentService) configFrom(ctx context.Context, projectID uuid.UUID, in *agentv1.AgentConfig) (Config, error) {
+func (s *AgentService) configFrom(ctx context.Context, a *Agent, in *agentv1.AgentConfig) (Config, error) {
 	cfg := configFromProto(in)
 	if pub := in.GetProviderId(); pub != "" {
 		id, owner, ok, err := s.refs.ProviderID(ctx, pub)
 		if err != nil {
 			return Config{}, err
 		}
-		if !ok || owner != projectID {
+		if !ok || owner != a.ProjectID || !mayBind(ctx, a, id, a.Draft.ProviderID == id, scope.ProviderRead) {
 			return Config{}, &InvalidGrantError{Reason: GrantProvider}
 		}
 		cfg.ProviderID = id
@@ -327,10 +329,31 @@ func (s *AgentService) configFrom(ctx context.Context, projectID uuid.UUID, in *
 		if err != nil {
 			return Config{}, err
 		}
-		if !ok || owner != projectID {
+		bound := slices.IndexFunc(a.Draft.MCPServers, func(m MCPGrant) bool { return m.ServerID == id })
+		onDraft := bound >= 0 && !widens(a.Draft.MCPServers[bound], cfg.MCPServers[i])
+		if !ok || owner != a.ProjectID || !mayBind(ctx, a, id, onDraft, scope.McpserverRead) {
 			return Config{}, &InvalidGrantError{Reason: GrantServer}
 		}
 		cfg.MCPServers[i].ServerID = id
 	}
 	return cfg, nil
+}
+
+// SECURITY: a new tool or an approval turned off on a bound server widens the grant; removing a tool or requiring approval narrows it.
+func widens(current, next MCPGrant) bool {
+	for _, t := range next.Tools {
+		i := slices.IndexFunc(current.Tools, func(c Tool) bool { return c.Name == t.Name })
+		if i < 0 || (current.Tools[i].RequireApproval && !t.RequireApproval) {
+			return true
+		}
+	}
+	return false
+}
+
+// SECURITY: a reference new to the draft needs reach on it and its read scope, so an agent-scoped key cannot borrow project credentials.
+func mayBind(ctx context.Context, a *Agent, refID uuid.UUID, onDraft bool, readScope string) bool {
+	if onDraft {
+		return true
+	}
+	return authz.ReachResource(ctx, a.OrgID, a.ProjectID, refID) && authz.Allowed(session.PrincipalFrom(ctx), readScope)
 }

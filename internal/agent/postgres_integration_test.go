@@ -519,3 +519,25 @@ func TestUsage_MCPServerInUse(t *testing.T) {
 		assert.Equal(t, want, got, id.String())
 	}
 }
+
+func TestPostgres_VersionByIDIsTenantScoped(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
+	a := newAgent(t, orgID, projectID, "pinned")
+	require.NoError(t, f.store.Save(ctx, a))
+	f.publish(t, ctx, a, agent.Config{ProviderID: uuid.New(), Model: "gpt-4o", Instructions: "v1"})
+	latest, err := f.store.LatestVersion(ctx, a.ID)
+	require.NoError(t, err)
+
+	got, err := f.store.VersionByID(ctx, latest.ID)
+	require.NoError(t, err)
+	assert.Equal(t, latest.ID, got.ID)
+	assert.Equal(t, "v1", got.Config.Instructions)
+
+	_, err = f.store.VersionByID(ctx, uuid.New())
+	assert.True(t, agent.IsNotFoundError(err))
+	otherOrg, _ := f.seedScope(t)
+	_, err = f.store.VersionByID(in(otherOrg), latest.ID)
+	assert.True(t, agent.IsNotFoundError(err), "another tenant does not see it")
+}

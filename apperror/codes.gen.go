@@ -97,6 +97,16 @@ const (
 	CodeMcpServerSecretRequired     Code = "MCS006"
 	CodeMcpServerSecretsUnavailable Code = "MCS007"
 	CodeMcpServerAuthRefused        Code = "MCS008"
+
+	CodeEndUserNotFound        Code = "EUS001"
+	CodeEndUserInvalidIdentity Code = "EUS002"
+
+	CodeRunNotFound           Code = "RUN001"
+	CodeRunRateLimited        Code = "RUN002"
+	CodeRunRuntimeUnavailable Code = "RUN003"
+	CodeRunTimedOut           Code = "RUN004"
+	CodeRunAttemptsExhausted  Code = "RUN005"
+	CodeRunRuntimeFailed      Code = "RUN006"
 )
 
 var kinds = map[Code]Kind{
@@ -193,4 +203,14 @@ var kinds = map[Code]Kind{
 	CodeMcpServerSecretRequired:     KindInvalid,
 	CodeMcpServerSecretsUnavailable: KindFailedPrecondition,
 	CodeMcpServerAuthRefused:        KindFailedPrecondition,
+
+	CodeEndUserNotFound:        KindNotFound,
+	CodeEndUserInvalidIdentity: KindInvalid,
+
+	CodeRunNotFound:           KindNotFound,
+	CodeRunRateLimited:        KindResourceExhausted,
+	CodeRunRuntimeUnavailable: KindFailedPrecondition,
+	CodeRunTimedOut:           KindFailedPrecondition,
+	CodeRunAttemptsExhausted:  KindFailedPrecondition,
+	CodeRunRuntimeFailed:      KindFailedPrecondition,
 }
