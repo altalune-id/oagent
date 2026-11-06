@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useToast } from '#base/components/ui/toast';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
+import { RunSchema, RunStatus, ThreadMessageSchema, ThreadSchema } from '#gen/thread/v1/thread_pb';
 import { mountPage } from '#test/mount-page';
 import { route, router, setClient, setRoute } from '#test/nuxt-globals';
 import { useNow } from '~/composables/useNow';
@@ -92,6 +93,41 @@ describe('threads page', () => {
 });
 
 describe('thread view', () => {
+  it('shows Cancelling and hides Cancel run after a cancel until the run settles, still polling', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const threadId = 'Th3kP9wQ2mXr7LtV5nBcZ';
+    const runId = 'Rn2wQ8mX4vL9tB3nC7kPq';
+    const running = create(RunSchema, { id: runId, threadId, status: RunStatus.RUNNING, usage: {} });
+    const thread = create(ThreadSchema, { id: threadId, projectId, agentId: other.id, kind: 'api', endUserLabel: 'API user ·…a91f', openRunStatus: RunStatus.RUNNING, runCount: 1n });
+    const client = {
+      listThreads: vi.fn().mockResolvedValue({ threads: [thread], nextPageToken: '' }),
+      getThread: vi.fn().mockResolvedValue({ thread }),
+      listRuns: vi.fn().mockResolvedValue({ runs: [running], nextPageToken: '' }),
+      listThreadMessages: vi.fn().mockResolvedValueOnce({ messages: [create(ThreadMessageSchema, { seq: 1n, role: 'user', runId, message: { content: 'hi' } })] }).mockResolvedValue({ messages: [] }),
+      getRun: vi.fn().mockResolvedValueOnce({ run: running }).mockResolvedValue({ run: create(RunSchema, { id: runId, threadId, status: RunStatus.CANCELLED, usage: {} }) }),
+      cancelRun: vi.fn().mockResolvedValue({ run: running }),
+    };
+    setClient('$threadClient', client);
+    seed(`/agents/tagihan/threads/${threadId}`, { agent: 'tagihan', thread: threadId });
+    const w = await mountPage(ThreadPage);
+    expect(w.text()).toContain('runstatus.running');
+    await button(w, 'thread.cancel_run').trigger('click');
+    await flushPromises();
+    const dialog = w.findAll('dialog').find(d => d.text().includes('thread.cancel_body'))!;
+    await dialog.findAll('button').find(b => b.text() === 'thread.cancel_run')!.trigger('click');
+    await flushPromises();
+    expect(client.cancelRun).toHaveBeenCalledWith({ runId });
+    expect(w.text()).toContain('thread.cancelling');
+    expect(w.findAll('button').some(b => b.text().includes('thread.cancel_run') && !b.element.closest('dialog'))).toBe(false);
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(w.text()).toContain('thread.cancelling');
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(client.getRun).toHaveBeenCalledTimes(2);
+    expect(w.text()).toContain('runstatus.cancelled');
+    expect(w.text()).not.toContain('thread.cancelling');
+    w.unmount();
+  });
+
   it('shows each speaker, run dividers, tool chips and decided approvals read-only, with the facts', async () => {
     vi.useFakeTimers({ now: new Date(2026, 10, 5, 12), toFake: ['Date'] });
     seed('/agents/yasaku-keuangan/threads/thr_grp3Kd9Q', { agent: 'yasaku-keuangan', thread: 'thr_grp3Kd9Q' });

@@ -112,6 +112,7 @@ export const useThreadsStore = defineStore('threads', () => {
   let loadedFor = '';
   let sampled = false;
   let timer: ReturnType<typeof setInterval> | undefined;
+  const cancelAsked = ref<string[]>([]);
   const lastSeq = new Map<string, bigint>();
   const wireMessages = new Map<string, Awaited<ReturnType<typeof client.listThreadMessages>>['messages']>();
 
@@ -265,6 +266,7 @@ export const useThreadsStore = defineStore('threads', () => {
   async function cancelRun(threadId: string, runId: string, by: string) {
     if (!sampled) {
       const res = await client.cancelRun({ runId });
+      cancelAsked.value = [...cancelAsked.value, runId];
       if (res.run) {
         const run = toRunSummary(res.run, byId(threadId)?.title ?? '');
         runs.value = runs.value.map(r => (r.id === run.id ? run : r));
@@ -304,5 +306,5 @@ export const useThreadsStore = defineStore('threads', () => {
     return sampleRun();
   }
 
-  return { threads, runs, loading, error, cursor, load, loadMore, ensureLoaded, byId, open, cancelRun, stopPolling, polling: () => !!timer, runDetail };
+  return { threads, runs, loading, error, cursor, load, loadMore, ensureLoaded, byId, open, cancelRun, cancelling: (runId: string) => cancelAsked.value.includes(runId), stopPolling, polling: () => !!timer, runDetail };
 });

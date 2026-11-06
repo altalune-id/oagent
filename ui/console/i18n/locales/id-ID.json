@@ -974,5 +974,6 @@
   "channels.reply_photo_hint": "Dikirim saat model tidak bisa membaca foto.",
   "channels.reset_reply": "Pakai bawaan",
   "channels.save_replies": "Simpan balasan",
-  "channels.replies_saved": "Balasan tersimpan"
+  "channels.replies_saved": "Balasan tersimpan",
+  "thread.cancelling": "Membatalkan…"
 }

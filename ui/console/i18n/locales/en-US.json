@@ -974,5 +974,6 @@
   "channels.reply_photo_hint": "Sent when the model cannot read a photo.",
   "channels.reset_reply": "Use the default",
   "channels.save_replies": "Save replies",
-  "channels.replies_saved": "Replies saved"
+  "channels.replies_saved": "Replies saved",
+  "thread.cancelling": "Cancelling…"
 }

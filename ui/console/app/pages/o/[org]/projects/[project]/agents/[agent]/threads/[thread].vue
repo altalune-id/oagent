@@ -90,10 +90,10 @@ useHead({ title: () => `${title.value} · ${t('threads.title')} · OAgent` });
         </div>
         <p class="flex flex-wrap items-center gap-x-2 text-ui text-base-content/70">
           <span :title="costTitle(thread.costCents)">{{ t('thread.summary', { runs: thread.runs, cost: cost(thread.costCents) }, thread.runs) }}</span>
-          <StatusLabel v-if="thread.status" :tone="runStatusTone[thread.status]" :label="t(`runstatus.${thread.status}`)" />
+          <StatusLabel v-if="thread.status" :tone="runStatusTone[thread.status]" :label="runningRun && store.cancelling(runningRun.id) ? t('thread.cancelling') : t(`runstatus.${thread.status}`)" />
         </p>
       </div>
-      <AppButton v-if="runningRun && canEdit" variant="error" size="sm" soft @click="cancelling.ask(runningRun.id)">
+      <AppButton v-if="runningRun && canEdit && !store.cancelling(runningRun.id)" variant="error" size="sm" soft @click="cancelling.ask(runningRun.id)">
         <Icon name="lucide:octagon-x" size="16" aria-hidden="true" />
         {{ t('thread.cancel_run') }}
       </AppButton>
