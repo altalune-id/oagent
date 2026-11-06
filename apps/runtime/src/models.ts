@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { OpenAIModel } from '@strands-agents/sdk/models/openai';
 import OpenAI from 'openai';
 
@@ -21,6 +20,7 @@ export interface ModelClientsOptions {
 
 interface Entry {
   client: OpenAI;
+  apiKey: string;
   lastUsed: number;
 }
 
@@ -45,10 +45,10 @@ export class ModelClients {
   client(project: string, spec: ModelSpec): OpenAI {
     const now = Date.now();
     this.dropIdle(now);
-    const key = `${project}:${createHash('sha256').update(JSON.stringify([spec.baseUrl, spec.apiKey])).digest('hex')}`;
+    const key = `${project}:${spec.baseUrl}`;
     const hit = this.entries.get(key);
-    if (hit) {
-      this.entries.delete(key);
+    this.entries.delete(key);
+    if (hit?.apiKey === spec.apiKey) {
       hit.lastUsed = now;
       this.entries.set(key, hit);
       return hit.client;
@@ -61,7 +61,7 @@ export class ModelClients {
       maxRetries: 0,
       fetch: guardedFetch(spec.baseUrl, { header: 'authorization', value: `Bearer ${spec.apiKey}`, secrets: [`Bearer ${spec.apiKey}`, spec.apiKey] }),
     });
-    this.entries.set(key, { client, lastUsed: now });
+    this.entries.set(key, { client, apiKey: spec.apiKey, lastUsed: now });
     while (this.entries.size > this.max) {
       this.entries.delete(this.entries.keys().next().value!);
     }

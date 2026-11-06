@@ -30,17 +30,24 @@ describe('modelClients', () => {
       expect(c).not.toBe(a);
     }
     expect(new Set(others).size).toBe(3);
-    expect(clients.size).toBe(4);
+    expect(clients.size).toBe(3);
   });
 
-  it('never puts the key or the URL in the map key', () => {
+  it('replaces the client when the key changes for the same URL', () => {
+    const clients = new ModelClients();
+    const old = clients.client('p1', spec);
+    const fresh = clients.client('p1', { ...spec, apiKey: 'sk-rotated' });
+    expect(fresh).not.toBe(old);
+    expect(fresh.apiKey).toBe('sk-rotated');
+    expect(clients.size).toBe(1);
+    expect(clients.client('p1', { ...spec, apiKey: 'sk-rotated' })).toBe(fresh);
+    expect(clients.client('p1', spec)).not.toBe(old);
+  });
+
+  it('keys by project and URL, never the API key', () => {
     const clients = new ModelClients();
     clients.client('p1', spec);
-    const keys = clients.keys();
-    expect(keys).toHaveLength(1);
-    expect(keys[0]).toMatch(/^p1:[0-9a-f]{64}$/);
-    expect(keys[0]).not.toContain('sk-test');
-    expect(keys[0]).not.toContain('llm.example.com');
+    expect(clients.keys()).toEqual(['p1:https://llm.example.com/v1']);
   });
 
   it('builds the client for the configured URL and key', () => {
