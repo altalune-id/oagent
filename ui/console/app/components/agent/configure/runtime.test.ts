@@ -1,154 +1,131 @@
-import type { AgentRuntimeConfig } from '~/stores/agentRuntime';
+import type { AgentConfig } from './agentConfig';
 import type { McpServer } from '~/stores/mcpServers';
 import { describe, expect, it } from 'vitest';
-import { sampleAgentRuntime, sampleKnowledgeSources, sampleMcpServers, sampleProviders } from '~/preview/samples';
+import { providers as fixtureProviders, servers as fixtureServers } from '~~/test/fixtures/runtime';
+import { sampleKnowledgeSources } from '~/preview/samples';
 import { emptyRuntime } from '~/stores/agentRuntime';
+import { emptyConfig } from './agentConfig';
 import {
-  booleanArgs,
+  chosenModel,
   costCapError,
-  defaultAsk,
-  embeddingReady,
   grantFor,
+  helperCapError,
   missingServers,
   parseDollars,
   parseDomains,
   publishBlockers,
   readsPrivateData,
   readySources,
-  runtimeChanges,
-  withAsk,
+  withApproval,
   withGrant,
-  withMatch,
+  withoutGrant,
 } from './runtime';
 
-const providers = sampleProviders();
-const [yasaku, tagihan] = sampleMcpServers() as [McpServer, McpServer];
+const providers = fixtureProviders();
+const [yasaku, tagihan] = fixtureServers() as [McpServer, McpServer];
 const tool = (name: string) => yasaku.tools.find(t => t.name === name)!;
-const ctx = { providers, servers: [yasaku, tagihan], maxCostCents: 20, oldTools: 0 };
+const ctx = { providers, servers: [yasaku, tagihan] };
+const ready = (over: Partial<AgentConfig> = {}): AgentConfig => ({ ...emptyConfig(), providerId: 'Pv6tQm2ZxR8wKp3VbNc4K', model: 'openai/gpt-4.1-mini', ...over });
 
 describe('grants', () => {
-  it('asks by default except for read-only tools on a trusted server', () => {
-    expect(defaultAsk(yasaku, tool('list_wallets'))).toBe('never');
-    expect(defaultAsk(yasaku, tool('record_expense'))).toBe('always');
-    expect(defaultAsk(tagihan, tagihan.tools[0]!)).toBe('always');
+  it('turns a tool on with the server\'s suggested approval, then off, dropping an empty server', () => {
+    const on = withGrant(withGrant(emptyConfig(), yasaku, tool('list_wallets'), true), yasaku, tool('record_expense'), true);
+    expect(grantFor(on, yasaku.id, 'list_wallets')).toEqual({ name: 'list_wallets', requireApproval: false });
+    expect(grantFor(on, yasaku.id, 'record_expense')).toEqual({ name: 'record_expense', requireApproval: true });
+    expect(on.grants).toHaveLength(1);
+    const off = withGrant(withGrant(on, yasaku, tool('list_wallets'), false), yasaku, tool('record_expense'), false);
+    expect(off.grants).toEqual([]);
+    expect(grantFor(off, tagihan.id, 'list_bills')).toBeUndefined();
   });
 
-  it('turns a tool on with its default, then off', () => {
-    const on = withGrant(emptyRuntime(), yasaku, tool('list_wallets'), true);
-    expect(grantFor(on, yasaku.id, 'list_wallets')).toEqual({ serverId: yasaku.id, serverName: 'yasaku', tool: 'list_wallets', ask: 'never' });
-    expect(withGrant(on, yasaku, tool('list_wallets'), false).grants).toEqual([]);
+  it('prefills approval strictly from the server\'s require_approval: an untrusted server\'s read-only tool still asks', () => {
+    const listBills = tagihan.tools.find(t => t.name === 'list_bills')!;
+    expect([tagihan.trusted, listBills.hint]).toEqual([false, 'read_only']);
+    expect(grantFor(withGrant(emptyConfig(), tagihan, listBills, true), tagihan.id, 'list_bills')).toEqual({ name: 'list_bills', requireApproval: true });
+    expect(grantFor(withGrant(emptyConfig(), tagihan, { ...listBills, requireApproval: false }, true), tagihan.id, 'list_bills')!.requireApproval).toBe(false);
   });
 
-  it('switches a match rule on the first boolean argument and back to every call', () => {
-    let c = withGrant(emptyRuntime(), yasaku, tool('record_expense'), true);
-    expect(booleanArgs(tool('record_expense'))).toEqual(['confirm']);
-    c = withAsk(c, yasaku.id, tool('record_expense'), 'match');
-    expect(grantFor(c, yasaku.id, 'record_expense')).toMatchObject({ ask: 'match', matchArg: 'confirm', matchValue: true });
-    c = withMatch(c, yasaku.id, 'record_expense', 'confirm', false);
-    expect(grantFor(c, yasaku.id, 'record_expense')!.matchValue).toBe(false);
-    c = withAsk(c, yasaku.id, tool('record_expense'), 'match');
-    expect(grantFor(c, yasaku.id, 'record_expense')!.matchValue).toBe(false);
-    c = withAsk(c, yasaku.id, tool('record_expense'), 'always');
-    expect(grantFor(c, yasaku.id, 'record_expense')).toEqual({ serverId: yasaku.id, serverName: 'yasaku', tool: 'record_expense', ask: 'always' });
-    expect(withAsk(c, 'other', tool('record_expense'), 'never')).toEqual(c);
-    expect(withMatch(c, 'other', 'record_expense', 'x', true)).toEqual(c);
+  it('changes one tool\'s approval and leaves the others', () => {
+    const on = withGrant(withGrant(emptyConfig(), yasaku, tool('record_expense'), true), tagihan, tagihan.tools[0]!, true);
+    const relaxed = withApproval(on, yasaku.id, 'record_expense', false);
+    expect(grantFor(relaxed, yasaku.id, 'record_expense')!.requireApproval).toBe(false);
+    expect(grantFor(relaxed, tagihan.id, 'list_bills')!.requireApproval).toBe(true);
+    expect(withApproval(relaxed, yasaku.id, 'other', true)).toEqual(relaxed);
   });
 
-  it('finds servers the grants name but the project lost', () => {
-    const c = sampleAgentRuntime();
-    expect(missingServers(c, [yasaku])).toEqual([]);
-    expect(missingServers(c, [tagihan])).toEqual([{ id: yasaku.id, name: 'yasaku', tools: 7 }]);
+  it('finds grants of servers marked missing or no longer listed, and removes them', () => {
+    const config = ready({ grants: [
+      { serverId: yasaku.id, missing: false, tools: [{ name: 'list_wallets', requireApproval: false }] },
+      { serverId: 'GneZ23456789abcdefghj', missing: true, tools: [{ name: 'a', requireApproval: true }, { name: 'b', requireApproval: true }] },
+    ] });
+    expect(missingServers(config, [yasaku])).toEqual([{ id: 'GneZ23456789abcdefghj', tools: 2 }]);
+    expect(missingServers(config, [])).toHaveLength(2);
+    expect(withoutGrant(config, 'GneZ23456789abcdefghj').grants.map(g => g.serverId)).toEqual([yasaku.id]);
+  });
+
+  it('counts any granted tool, memory or knowledge as private data', () => {
+    expect(readsPrivateData(emptyConfig(), emptyRuntime())).toBe(false);
+    expect(readsPrivateData(withGrant(emptyConfig(), yasaku, tool('list_wallets'), true), emptyRuntime())).toBe(true);
+    expect(readsPrivateData(emptyConfig(), { ...emptyRuntime(), memory: true })).toBe(true);
+    expect(readsPrivateData(emptyConfig(), { ...emptyRuntime(), knowledgeIds: ['k'] })).toBe(true);
   });
 });
 
-describe('web, memory and knowledge', () => {
-  it('counts any granted tool or memory as private data', () => {
-    expect(readsPrivateData(emptyRuntime())).toBe(false);
-    expect(readsPrivateData({ ...emptyRuntime(), memory: true })).toBe(true);
-    expect(readsPrivateData(sampleAgentRuntime())).toBe(true);
-    expect(readsPrivateData({ ...emptyRuntime(), knowledgeIds: ['kns_1'] })).toBe(true);
-  });
-
-  it('formats and reads dollar caps, keeping empty (no cap) apart from text that is not an amount', () => {
+describe('inputs', () => {
+  it('reads a dollar cap into cents', () => {
     expect(parseDollars('')).toBe(0);
-    expect(parseDollars(' 0 ')).toBe(0);
-    expect(parseDollars('0.2')).toBe(20);
-    expect(parseDollars('$1,5')).toBe(150);
+    expect(parseDollars('$0,50')).toBe(50);
+    expect(parseDollars('1.5')).toBe(150);
     expect(parseDollars('abc')).toBeNull();
-    expect(parseDollars('0.123')).toBeNull();
+    expect(parseDollars('1.234')).toBeNull();
   });
 
   it('parses one domain per line', () => {
     expect(parseDomains(' BCA.co.id\n\nmandiri.co.id \n')).toEqual(['bca.co.id', 'mandiri.co.id']);
   });
 
-  it('needs an embedding model for knowledge and keeps only ready sources', () => {
-    expect(embeddingReady(providers)).toBe(true);
-    expect(embeddingReady([providers[1]!])).toBe(false);
+  it('keeps only ready sources', () => {
     expect(readySources(sampleKnowledgeSources()).map(s => s.name)).toEqual(['Panduan kategori yasaku']);
+  });
+
+  it('finds the chosen provider, model and helper model', () => {
+    const chosen = chosenModel(ready({ helperModel: 'google/gemini-2.5-flash' }), providers);
+    expect([chosen.provider?.name, chosen.model?.id, chosen.helper?.id]).toEqual(['OpenRouter', 'openai/gpt-4.1-mini', 'google/gemini-2.5-flash']);
+    expect(chosenModel({ providerId: 'gone', model: 'x' }, providers)).toEqual({ provider: undefined, model: undefined, helper: undefined });
   });
 });
 
 describe('publishBlockers', () => {
-  it('lets the sample draft through', () => {
-    expect(publishBlockers(sampleAgentRuntime(), ctx)).toEqual([]);
+  it('lets a ready draft through', () => {
+    expect(publishBlockers(ready({ grants: [{ serverId: yasaku.id, missing: false, tools: [] }] }), ctx)).toEqual([]);
   });
 
-  it('asks for a model, then names a removed one', () => {
-    expect(publishBlockers(emptyRuntime(), ctx).map(b => b.key)).toEqual(['publish.blocker_model']);
-    const gone = { ...sampleAgentRuntime(), model: 'openai/gpt-3' };
-    expect(publishBlockers(gone, ctx)).toEqual([{ key: 'publish.blocker_model_removed', target: 'model', params: { model: 'openai/gpt-3', provider: 'OpenRouter' } }]);
+  it('asks for a model, names a removed one, and says when the provider was deleted', () => {
+    expect(publishBlockers(emptyConfig(), ctx)).toEqual([{ key: 'publish.blocker_model', target: 'model' }]);
+    expect(publishBlockers({ ...emptyConfig(), model: 'm', providerMissing: true }, ctx)).toEqual([{ key: 'publish.blocker_provider_missing', target: 'model' }]);
+    expect(publishBlockers(ready({ model: 'gone' }), ctx)).toEqual([{ key: 'publish.blocker_model_removed', target: 'model', params: { model: 'gone', provider: 'OpenRouter' } }]);
   });
 
-  it('refuses a cost cap on an unpriced model', () => {
-    const groq: AgentRuntimeConfig = { ...emptyRuntime(), providerId: providers[1]!.id, model: 'llama-3.3-70b-versatile' };
-    expect(costCapError(groq, ctx)).toBe('limits.unpriced');
-    expect(costCapError(groq, { ...ctx, maxCostCents: 0 })).toBe('');
+  it('refuses a cost cap on an unpriced model or helper model', () => {
+    const groq = ready({ providerId: 'Pv9pHs4YvT7kMq7WcXe2B', model: 'llama-3.3-70b-versatile', maxCostCents: 20 });
+    expect(costCapError(groq, providers)).toBe('limits.unpriced');
+    expect(costCapError({ ...groq, maxCostCents: 0 }, providers)).toBe('');
     expect(publishBlockers(groq, ctx)).toEqual([{ key: 'publish.blocker_unpriced', target: 'limits', params: { provider: 'Groq' } }]);
+    expect(costCapError(ready({ maxCostCents: 20 }), providers)).toBe('');
   });
 
-  it('needs an allow-list, the granted servers and no old tools', () => {
-    const open = { ...sampleAgentRuntime(), allowedDomains: [] };
-    expect(publishBlockers(open, { ...ctx, servers: [tagihan], oldTools: 2 }).map(b => [b.key, b.target])).toEqual([
-      ['publish.blocker_allowlist', 'web'],
-      ['publish.blocker_server_missing', 'tools'],
-      ['publish.blocker_legacy_tools', 'tools'],
-    ]);
-  });
-});
-
-describe('runtimeChanges', () => {
-  it('lists everything the sample draft adds over a legacy live version', () => {
-    expect(runtimeChanges(sampleAgentRuntime(), undefined, providers).map(c => c.key)).toEqual([
-      'configure.change_provider_model',
-      'configure.change_helper',
-      'configure.change_tool_added_approval',
-      'configure.change_tool_added_approval',
-      'configure.change_tool_added_approval',
-      'configure.change_tool_added_approval',
-      'configure.change_tool_added',
-      'configure.change_tool_added',
-      'configure.change_tool_added',
-      'configure.change_web_fetch_on',
-      'configure.change_memory_on',
-      'configure.change_knowledge',
-    ]);
+  it('names an unpriced helper model on its own field and blocker, not the main model\'s', () => {
+    const groqHelper = { ...providers[0]!, models: [...providers[0]!.models, { id: 'free-helper', vision: false }] };
+    const config = ready({ helperModel: 'free-helper', maxCostCents: 20 });
+    expect(costCapError(config, [groqHelper])).toBe('');
+    expect(helperCapError(config, [groqHelper])).toBe('limits.helper_unpriced');
+    expect(helperCapError({ ...config, maxCostCents: 0 }, [groqHelper])).toBe('');
+    expect(publishBlockers(config, { providers: [groqHelper], servers: [] })).toEqual([{ key: 'publish.blocker_helper_unpriced', target: 'model', field: 'helper', params: { model: 'free-helper', provider: 'OpenRouter' } }]);
   });
 
-  it('lists ask changes, removals and switches turned off against a live config', () => {
-    const live = { ...sampleAgentRuntime(), webSearch: true };
-    const draft = withAsk(live, live.grants[0]!.serverId, tool('record_expense'), 'always');
-    const next = { ...draft, grants: draft.grants.filter(g => g.tool !== 'delete_tx'), webFetch: false, webSearch: false, memory: false, providerId: 'gone' };
-    expect(runtimeChanges(next, live, providers)).toEqual([
-      { key: 'configure.change_provider_model', params: { provider: '—', model: 'openai/gpt-4.1-mini' } },
-      { key: 'configure.change_tool_ask', params: { tool: 'yasaku__record_expense' } },
-      { key: 'configure.change_tool_removed', params: { tool: 'yasaku__delete_tx' } },
-      { key: 'configure.change_web_fetch_off' },
-      { key: 'configure.change_web_search_off' },
-      { key: 'configure.change_memory_off' },
-    ]);
-    expect(runtimeChanges({ ...emptyRuntime(), webSearch: true }, emptyRuntime(), providers)).toEqual([{ key: 'configure.change_web_search_on' }]);
-    expect(runtimeChanges({ ...emptyRuntime(), webFetch: true }, emptyRuntime(), providers)).toEqual([]);
-    expect(runtimeChanges({ ...emptyRuntime(), webFetch: true, allowedDomains: ['bca.co.id'] }, emptyRuntime(), providers)).toEqual([{ key: 'configure.change_web_fetch_on', params: { domains: 'bca.co.id' } }]);
+  it('needs the granted servers to exist and no old tools', () => {
+    const config = ready({ grants: [{ serverId: 'GneZ23456789abcdefghj', missing: true, tools: [] }], tools: [{ name: 'old', requireApproval: false }] });
+    expect(publishBlockers(config, ctx).map(b => b.key)).toEqual(['publish.blocker_server_missing', 'publish.blocker_legacy_tools']);
+    expect(publishBlockers(ready(), { providers: [], servers: [] })[0]?.key).toBe('publish.blocker_model');
   });
 });

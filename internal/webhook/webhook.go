@@ -3,7 +3,6 @@ package webhook
 
 import (
 	"fmt"
-	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -13,13 +12,14 @@ import (
 
 	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/nanoid"
+	"altalune.id/oagent/weburl"
 )
 
 // MaxEndpointsPerProject bounds the fan-out of one event.
 const MaxEndpointsPerProject = 10
 
 // MaxURLLen bounds an endpoint URL, in bytes.
-const MaxURLLen = 2048
+const MaxURLLen = weburl.MaxLen
 
 // MaxDescriptionRunes bounds an endpoint description.
 const MaxDescriptionRunes = 200
@@ -147,30 +147,11 @@ func validate(rawURL, description string, types []events.Type, allowInsecureURL 
 }
 
 func validateURL(rawURL string, allowInsecureURL bool) (string, error) {
-	rawURL = strings.TrimSpace(rawURL)
-	if rawURL == "" {
-		return "", &InvalidURLError{Reason: URLRequired}
+	u, reason := weburl.Check(rawURL, allowInsecureURL)
+	if reason != "" {
+		return "", &InvalidURLError{Reason: URLReason(reason)}
 	}
-	if len(rawURL) > MaxURLLen {
-		return "", &InvalidURLError{Reason: URLTooLong}
-	}
-	if !utf8.ValidString(rawURL) {
-		return "", &InvalidURLError{Reason: URLNotUTF8}
-	}
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return "", &InvalidURLError{Reason: URLUnparsable}
-	}
-	if u.Scheme != "https" && (!allowInsecureURL || u.Scheme != "http") {
-		return "", &InvalidURLError{Reason: URLHTTPSRequired}
-	}
-	if u.User != nil {
-		return "", &InvalidURLError{Reason: URLHasCredentials}
-	}
-	if u.Hostname() == "" {
-		return "", &InvalidURLError{Reason: URLNoHost}
-	}
-	return rawURL, nil
+	return u, nil
 }
 
 func validateDescription(description string) (string, error) {

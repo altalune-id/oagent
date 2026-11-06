@@ -1,7 +1,11 @@
 package agent
 
 import (
+	"encoding/json"
+	"errors"
 	"math"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -190,4 +194,91 @@ func TestAgent_PublishNumbersFromTheLatestVersion(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, created)
 	assert.Equal(t, int32(5), v.Version, "a stale agent row never reuses a version number")
+}
+
+func TestConfig_LegacyVersionLoads(t *testing.T) {
+	var cfg Config
+	require.NoError(t, json.Unmarshal([]byte(`{"model":"gpt-4o","tools":[{"name":"x.y"}]}`), &cfg))
+	assert.Equal(t, Config{Model: "gpt-4o", Tools: []Tool{{Name: "x.y"}}}, cfg)
+	assert.True(t, cfg.Legacy())
+	assert.NoError(t, cfg.Validate(), "an old version still validates its shape")
+	out := configToProto(cfg)
+	assert.Equal(t, "gpt-4o", out.GetModel())
+	assert.Equal(t, "x.y", out.GetTools()[0].GetName())
+
+	grant := Config{ProviderID: uuid.New(), Model: "gpt-4o", MCPServers: []MCPGrant{{ServerID: uuid.New(), Tools: []Tool{{Name: "x.y"}}}}}
+	assert.False(t, grant.Legacy())
+	e, ok := errors.AsType[*InvalidGrantError](grant.Validate())
+	require.True(t, ok, "a dotted name is refused as a grant tool")
+	assert.Equal(t, GrantToolName, e.Reason)
+}
+
+func TestConfig_LegacyRule(t *testing.T) {
+	assert.True(t, Config{}.Legacy(), "no provider")
+	assert.True(t, Config{ProviderID: uuid.New(), Tools: []Tool{{Name: "a"}}}.Legacy(), "top-level tools")
+	assert.False(t, Config{ProviderID: uuid.New()}.Legacy())
+}
+
+func TestConfig_EqualNewFields(t *testing.T) {
+	base := Config{
+		ProviderID: uuid.New(), Model: "m", HelperModel: "h",
+		MCPServers: []MCPGrant{{ServerID: uuid.New(), Tools: []Tool{{Name: "a"}, {Name: "b", RequireApproval: true}}}},
+	}
+	clone := func() Config {
+		c := base
+		c.MCPServers = []MCPGrant{{ServerID: base.MCPServers[0].ServerID, Tools: slices.Clone(base.MCPServers[0].Tools)}}
+		return c
+	}
+	assert.True(t, base.Equal(clone()))
+	for name, edit := range map[string]func(*Config){
+		"provider":       func(c *Config) { c.ProviderID = uuid.New() },
+		"helper model":   func(c *Config) { c.HelperModel = "other" },
+		"server":         func(c *Config) { c.MCPServers[0].ServerID = uuid.New() },
+		"grant tool":     func(c *Config) { c.MCPServers[0].Tools[0].Name = "z" },
+		"grant approval": func(c *Config) { c.MCPServers[0].Tools[1].RequireApproval = false },
+		"one grant more": func(c *Config) { c.MCPServers = append(c.MCPServers, MCPGrant{ServerID: uuid.New()}) },
+	} {
+		c := clone()
+		edit(&c)
+		assert.False(t, base.Equal(c), name)
+	}
+	assert.True(t, Config{}.Equal(Config{MCPServers: []MCPGrant{}}), "no grants and an empty grant list are the same")
+}
+
+func TestConfig_JSONOmitsZeroIDs(t *testing.T) {
+	raw, err := json.Marshal(Config{Model: "m", MCPServers: []MCPGrant{{Tools: []Tool{{Name: "a"}}}}})
+	require.NoError(t, err)
+	assert.NotContains(t, string(raw), "provider_id")
+	assert.NotContains(t, string(raw), "server_id")
+	assert.NotContains(t, string(raw), "helper_model")
+
+	id, server := uuid.New(), uuid.New()
+	raw, err = json.Marshal(Config{ProviderID: id, MCPServers: []MCPGrant{{ServerID: server}}})
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), `"provider_id":"`+id.String()+`"`)
+	assert.Contains(t, string(raw), `"server_id":"`+server.String()+`"`)
+}
+
+func TestConfig_ValidateGrants(t *testing.T) {
+	grant := func(tools ...Tool) MCPGrant { return MCPGrant{ServerID: uuid.New(), Tools: tools} }
+	ok := Config{ProviderID: uuid.New(), Model: "m", HelperModel: "h-1", MCPServers: []MCPGrant{grant(Tool{Name: "Expense_create-1"})}}
+	require.NoError(t, ok.Validate())
+
+	tooMany := ok
+	tooMany.MCPServers = nil
+	for range 3 {
+		tools := make([]Tool, 50)
+		for i := range tools {
+			tools[i] = Tool{Name: "t" + strconv.Itoa(i)}
+		}
+		tooMany.MCPServers = append(tooMany.MCPServers, grant(tools...))
+	}
+	for field, c := range map[string]Config{
+		"config.helper_model": {HelperModel: "has space"},
+		"config.mcp_servers":  tooMany,
+	} {
+		ae, isApp := apperror.AsAppError(c.Validate())
+		require.True(t, isApp, field)
+		assert.Equal(t, field, ae.Violations()[0].Field)
+	}
 }

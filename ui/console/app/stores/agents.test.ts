@@ -19,8 +19,16 @@ describe('useAgentsStore', () => {
     const agents = useAgentsStore();
     await agents.load('x6MH9WPWjktMwCBKHy4pF');
     expect(listAgents).toHaveBeenCalledWith({ projectId: 'x6MH9WPWjktMwCBKHy4pF' });
-    expect(agents.items).toEqual([{ ...bot, publishedVersion: undefined, unpublishedChanges: undefined, updatedAt: undefined }, { ...other, publishedVersion: undefined, unpublishedChanges: undefined, updatedAt: undefined }]);
+    const none = { publishedVersion: undefined, unpublishedChanges: undefined, providerId: '', model: '', updatedAt: undefined };
+    expect(agents.items).toEqual([{ ...bot, ...none }, { ...other, ...none }]);
     expect(agents.forProject('x6MH9WPWjktMwCBKHy4pF').map(a => a.id)).toEqual([bot.id]);
+  });
+
+  it('keeps the draft\'s provider and model, so the overview knows the agent is set up', async () => {
+    setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ ...bot, draft: { providerId: 'Pv6tQm2ZxR8wKp3VbNc4K', model: 'm1' } }] }) });
+    const agents = useAgentsStore();
+    await agents.load('x6MH9WPWjktMwCBKHy4pF');
+    expect(agents.items[0]).toMatchObject({ providerId: 'Pv6tQm2ZxR8wKp3VbNc4K', model: 'm1' });
   });
 
   it('keeps the published version, the draft flag and the newest of draft and update times', async () => {

@@ -26,6 +26,8 @@ const (
 	kindProject  = "project"
 	kindUser     = "user"
 	kindResource = "resource"
+	kindProvider = "provider"
+	kindServer   = "mcpserver"
 )
 
 // NewPublicIDs returns an empty lookup.
@@ -148,4 +150,58 @@ func (f *PublicIDs) ResourcePublicID(_ context.Context, _, id uuid.UUID) (public
 	}
 	publicID, ok = f.pubs[kindResource][id]
 	return publicID, ok, nil
+}
+
+// Provider registers a model provider of projectID and returns its public id.
+func (f *PublicIDs) Provider(id, projectID uuid.UUID) string {
+	return f.add(kindProvider, id, projectID)
+}
+
+// MCPServer registers an MCP server of projectID and returns its public id.
+func (f *PublicIDs) MCPServer(id, projectID uuid.UUID) string {
+	return f.add(kindServer, id, projectID)
+}
+
+// ProviderID implements agent.Refs; it answers the provider's project.
+func (f *PublicIDs) ProviderID(_ context.Context, publicID string) (id, projectID uuid.UUID, ok bool, err error) {
+	r, ok, err := f.find(kindProvider, publicID)
+	return r.id, r.orgID, ok, err
+}
+
+// ProviderPublicID implements agent.Refs; an unregistered provider is not ok.
+func (f *PublicIDs) ProviderPublicID(_ context.Context, id uuid.UUID) (publicID string, ok bool, err error) {
+	return f.optionalPublicID(kindProvider, id)
+}
+
+// MCPServerID implements agent.Refs; it answers the server's project.
+func (f *PublicIDs) MCPServerID(_ context.Context, publicID string) (id, projectID uuid.UUID, ok bool, err error) {
+	r, ok, err := f.find(kindServer, publicID)
+	return r.id, r.orgID, ok, err
+}
+
+// MCPServerPublicID implements agent.Refs; an unregistered server is not ok.
+func (f *PublicIDs) MCPServerPublicID(_ context.Context, id uuid.UUID) (publicID string, ok bool, err error) {
+	return f.optionalPublicID(kindServer, id)
+}
+
+func (f *PublicIDs) optionalPublicID(kind string, id uuid.UUID) (publicID string, ok bool, err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Err != nil {
+		return "", false, f.Err
+	}
+	pub, ok := f.pubs[kind][id]
+	return pub, ok, nil
+}
+
+// Remove forgets id under every kind, as if its row were deleted.
+func (f *PublicIDs) Remove(id uuid.UUID) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for kind, pubs := range f.pubs {
+		if pub, ok := pubs[id]; ok {
+			delete(pubs, id)
+			delete(f.refs[kind], pub)
+		}
+	}
 }

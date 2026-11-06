@@ -32,6 +32,8 @@ import (
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/internal/mcpserver"
+	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
@@ -87,6 +89,14 @@ func samples() []error {
 		errOf(agent.New(nobody, nobody, "Not_A_Slug", "Bot", "", nobody)),
 		errOf(agent.New(nobody, nobody, "bot", "", "", nobody)),
 		errOf(agent.New(nobody, nobody, "bot", "Bot", strings.Repeat("d", 2001), nobody)),
+		&agent.NeedsRepublishError{},
+		&agent.InvalidGrantError{Reason: agent.GrantProvider},
+		&agent.InvalidGrantError{Reason: agent.GrantModel, Name: "m"},
+		&agent.InvalidGrantError{Reason: agent.GrantHelperModel, Name: "m"},
+		&agent.InvalidGrantError{Reason: agent.GrantServer},
+		&agent.InvalidGrantError{Reason: agent.GrantToolName, Name: "a.b"},
+		&agent.InvalidGrantError{Reason: agent.GrantLegacyTools},
+		&agent.InvalidGrantError{Reason: agent.GrantBudgetUnpriced, Name: "m"},
 
 		&apikey.NotFoundError{ID: "x"},
 		apikey.ValidateName(""),
@@ -167,7 +177,57 @@ func samples() []error {
 		&webhook.SecretConflictError{ID: "x"},
 		&webhook.DeliveryNotFoundError{ID: "x"},
 		&webhook.DeliveryNotRetryableError{ID: "x"},
+
+		&modelprovider.NotFoundError{ID: "x"},
+		&modelprovider.AlreadyExistsError{Name: "openrouter"},
+		errOf(modelprovider.New(nobody, nobody, provider(""), time.Time{})),
+		errOf(modelprovider.New(nobody, nobody, provider("https://e.com/"+strings.Repeat("a", modelprovider.MaxBaseURLLen)), time.Time{})),
+		errOf(modelprovider.New(nobody, nobody, provider("https://e.com/\xff"), time.Time{})),
+		errOf(modelprovider.New(nobody, nobody, provider("https://e.com/%zz"), time.Time{})),
+		errOf(modelprovider.New(nobody, nobody, provider("http://e.com"), time.Time{})),
+		errOf(modelprovider.New(nobody, nobody, provider("https://u:p@e.com"), time.Time{})),
+		errOf(modelprovider.New(nobody, nobody, provider("https://"), time.Time{})),
+		errOf(modelprovider.New(nobody, nobody, providerModels(nil), time.Time{})),
+		errOf(modelprovider.New(nobody, nobody, providerModels(make([]modelprovider.Model, modelprovider.MaxModels+1)), time.Time{})),
+		errOf(modelprovider.New(nobody, nobody, providerModels([]modelprovider.Model{{ID: "a"}, {ID: "a"}}), time.Time{})),
+		errOf(modelprovider.New(nobody, nobody, providerModels([]modelprovider.Model{{ID: "a", Prices: &modelprovider.Prices{InputMicros: -1}}}), time.Time{})),
+		&modelprovider.InUseError{Reason: modelprovider.InUseDelete},
+		&modelprovider.InUseError{Reason: modelprovider.InUseModelRemoved, Model: "a"},
+		&modelprovider.InUseError{Reason: modelprovider.InUsePriceRemoved, Model: "a"},
+		&modelprovider.SecretRequiredError{},
+		&modelprovider.UnknownModelError{Model: "gpt-9"},
+		&modelprovider.SecretsUnavailableError{},
+
+		&mcpserver.NotFoundError{ID: "x"},
+		&mcpserver.AlreadyExistsError{Name: "yasaku"},
+		errOf(mcpserver.New(nobody, nobody, mcpInput(""), time.Time{})),
+		errOf(mcpserver.New(nobody, nobody, mcpInput("https://e.com/"+strings.Repeat("a", mcpserver.MaxURLLen)), time.Time{})),
+		errOf(mcpserver.New(nobody, nobody, mcpInput("https://e.com/\xff"), time.Time{})),
+		errOf(mcpserver.New(nobody, nobody, mcpInput("https://e.com/%zz"), time.Time{})),
+		errOf(mcpserver.New(nobody, nobody, mcpInput("http://e.com"), time.Time{})),
+		errOf(mcpserver.New(nobody, nobody, mcpInput("https://u:p@e.com"), time.Time{})),
+		errOf(mcpserver.New(nobody, nobody, mcpInput("https://"), time.Time{})),
+		&mcpserver.InUseError{},
+		&mcpserver.UnreachableError{},
+		&mcpserver.SecretRequiredError{Reason: mcpserver.SecretValueRequired},
+		errOf(mcpserver.New(nobody, nobody, mcpserver.Input{Name: "s", URL: "https://e.com", AuthKind: mcpserver.AuthHeader, AuthHeader: "Host"}, time.Time{})),
+		&mcpserver.SecretsUnavailableError{},
+		&mcpserver.AuthRefusedError{Status: 401},
 	}
+}
+
+func mcpInput(url string) mcpserver.Input {
+	return mcpserver.Input{Name: "s", URL: url, AuthKind: mcpserver.AuthNone, TimeoutMS: 5000}
+}
+
+func provider(baseURL string) modelprovider.Input {
+	return modelprovider.Input{Name: "p", Kind: modelprovider.KindOpenAICompatible, BaseURL: baseURL, Models: []modelprovider.Model{{ID: "m"}}}
+}
+
+func providerModels(models []modelprovider.Model) modelprovider.Input {
+	in := provider("https://e.com")
+	in.Models = models
+	return in
 }
 
 var diagnostic = []string{"trace_id", "request_id", "underlying_error"}
@@ -283,6 +343,12 @@ func TestEchoedInputIsCapped(t *testing.T) {
 		&org.InvalidSlugError{Slug: long, Reason: "other"},
 		&project.InvalidSlugError{Slug: long, Reason: "other"},
 		&agent.InvalidSlugError{Slug: long, Reason: "other"},
+		&agent.InvalidGrantError{Reason: agent.GrantToolName, Name: long},
+		&modelprovider.AlreadyExistsError{Name: long},
+		&mcpserver.AlreadyExistsError{Name: long},
+		&modelprovider.UnknownModelError{Model: long},
+		&modelprovider.InvalidModelsError{Reason: modelprovider.ModelsDuplicate, Model: long},
+		&modelprovider.InUseError{Reason: modelprovider.InUseModelRemoved, Model: long},
 	} {
 		det, _ := wireDetail(t, err)
 		for k, v := range det.GetMeta() {

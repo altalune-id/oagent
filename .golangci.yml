@@ -126,8 +126,8 @@ linters:
         domain-purity:
           list-mode: strict
           files:
-            - "**/internal/{agent,apikey,auth,install,legal,org,project,user,webhook}/{agent,apikey,auth,install,legal,org,project,user,webhook}.go"
-            - "**/internal/{agent,apikey,auth,install,legal,org,project,user,webhook}/{store,errors}.go"
+            - "**/internal/{agent,apikey,auth,install,legal,mcpserver,modelprovider,org,project,user,webhook}/{agent,apikey,auth,install,legal,mcpserver,modelprovider,org,project,user,webhook}.go"
+            - "**/internal/{agent,apikey,auth,install,legal,mcpserver,modelprovider,org,project,user,webhook}/{store,errors}.go"
             # org/member and org/invite are excluded: they share role and error types with their parent domain.
           allow:
             - $gostd
@@ -139,6 +139,7 @@ linters:
             - altalune.id/oagent/nanoid
             - altalune.id/oagent/scope
             - altalune.id/oagent/slug
+            - altalune.id/oagent/weburl
         pgx-boundary:
           list-mode: lax
           files:

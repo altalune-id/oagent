@@ -6,7 +6,9 @@ import (
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
 	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
+	mcpserverv1connect "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1connect"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
+	modelproviderv1connect "altalune.id/oagent/gen/go/modelprovider/v1/modelproviderv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
@@ -36,6 +38,19 @@ func Table() map[string][]string {
 		agentv1connect.AgentServiceUpdateAgentDraftProcedure:  {scope.AgentWrite},
 		agentv1connect.AgentServicePublishAgentProcedure:      {scope.AgentWrite},
 		agentv1connect.AgentServiceListAgentVersionsProcedure: {scope.AgentRead},
+
+		modelproviderv1connect.ModelProviderServiceCreateModelProviderProcedure: {scope.ProviderWrite},
+		modelproviderv1connect.ModelProviderServiceGetModelProviderProcedure:    {scope.ProviderRead},
+		modelproviderv1connect.ModelProviderServiceListModelProvidersProcedure:  {scope.ProviderRead},
+		modelproviderv1connect.ModelProviderServiceUpdateModelProviderProcedure: {scope.ProviderWrite},
+		modelproviderv1connect.ModelProviderServiceDeleteModelProviderProcedure: {scope.ProviderWrite},
+
+		mcpserverv1connect.McpServerServiceCreateMcpServerProcedure:    {scope.McpserverWrite},
+		mcpserverv1connect.McpServerServiceGetMcpServerProcedure:       {scope.McpserverRead},
+		mcpserverv1connect.McpServerServiceListMcpServersProcedure:     {scope.McpserverRead},
+		mcpserverv1connect.McpServerServiceUpdateMcpServerProcedure:    {scope.McpserverWrite},
+		mcpserverv1connect.McpServerServiceDeleteMcpServerProcedure:    {scope.McpserverWrite},
+		mcpserverv1connect.McpServerServiceListMcpServerToolsProcedure: {scope.McpserverRead},
 
 		apikeyv1connect.APIKeyServiceListAPIKeysProcedure:  {scope.ApikeyRead},
 		apikeyv1connect.APIKeyServiceCreateAPIKeyProcedure: {authz.AnyAuthenticated},

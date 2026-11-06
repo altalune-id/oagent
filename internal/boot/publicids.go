@@ -9,6 +9,8 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/internal/mcpserver"
+	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/user"
@@ -22,6 +24,9 @@ type publicIDs struct {
 	users    *user.Service
 	webhooks webhook.Store
 	console  string
+
+	providers *modelprovider.Service
+	servers   *mcpserver.Service
 }
 
 func newPublicIDs(s *Services) publicIDs {
@@ -32,6 +37,9 @@ func newPublicIDs(s *Services) publicIDs {
 		users:    s.Users,
 		webhooks: s.WebhookStore,
 		console:  s.ConsoleURL,
+
+		providers: s.ModelProviders,
+		servers:   s.MCPServers,
 	}
 }
 
@@ -130,6 +138,54 @@ func (p publicIDs) ResourcePublicID(ctx context.Context, orgID, id uuid.UUID) (p
 		return "", false, notFoundIsAbsent(err)
 	}
 	return e.PublicID, true, nil
+}
+
+// ProviderID resolves a model provider's public id to its id and project.
+func (p publicIDs) ProviderID(ctx context.Context, publicID string) (id, projectID uuid.UUID, ok bool, err error) {
+	if p.providers == nil {
+		return uuid.Nil, uuid.Nil, false, nil
+	}
+	r, err := p.providers.Resolve(ctx, publicID)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, false, notFoundIsAbsent(err)
+	}
+	return r.ID, r.ProjectID, true, nil
+}
+
+// ProviderPublicID names a model provider of the org on ctx; a deleted one is not ok.
+func (p publicIDs) ProviderPublicID(ctx context.Context, id uuid.UUID) (publicID string, ok bool, err error) {
+	if p.providers == nil {
+		return "", false, nil
+	}
+	pr, err := p.providers.Get(ctx, id)
+	if err != nil {
+		return "", false, notFoundIsAbsent(err)
+	}
+	return pr.PublicID, true, nil
+}
+
+// MCPServerID resolves an MCP server's public id to its id and project.
+func (p publicIDs) MCPServerID(ctx context.Context, publicID string) (id, projectID uuid.UUID, ok bool, err error) {
+	if p.servers == nil {
+		return uuid.Nil, uuid.Nil, false, nil
+	}
+	r, err := p.servers.Resolve(ctx, publicID)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, false, notFoundIsAbsent(err)
+	}
+	return r.ID, r.ProjectID, true, nil
+}
+
+// MCPServerPublicID names an MCP server of the org on ctx; a deleted one is not ok.
+func (p publicIDs) MCPServerPublicID(ctx context.Context, id uuid.UUID) (publicID string, ok bool, err error) {
+	if p.servers == nil {
+		return "", false, nil
+	}
+	s, err := p.servers.Get(ctx, id)
+	if err != nil {
+		return "", false, notFoundIsAbsent(err)
+	}
+	return s.PublicID, true, nil
 }
 
 func notFoundIsAbsent(err error) error {

@@ -27,6 +27,28 @@ func newAgentServiceClient(t *testing.T, store agent.Store, refs agent.Refs) age
 	return agentv1connect.NewAgentServiceClient(http.DefaultClient, ts.URL)
 }
 
+func grantsFor(a *agent.Agent, refs *fakes.PublicIDs, models ...string) (*fakes.AgentGrants, uuid.UUID, string) {
+	provider := uuid.New()
+	refs.Provider(provider, a.ProjectID)
+	g := &fakes.AgentGrants{Providers: map[uuid.UUID]fakes.GrantProvider{provider: {ProjectID: a.ProjectID}}}
+	for _, m := range models {
+		p := g.Providers[provider]
+		p.Models = append(p.Models, agent.ModelRef{ID: m, Priced: true})
+		g.Providers[provider] = p
+	}
+	pub, _, _ := refs.ProviderPublicID(context.Background(), provider)
+	return g, provider, pub
+}
+
+func newGrantedClient(t *testing.T, store agent.Store, refs agent.Refs, g *fakes.AgentGrants) agentv1connect.AgentServiceClient {
+	t.Helper()
+	svc := agent.NewService(store, fakes.Transactor{}, nil).WithProviders(g).WithMCPServers(g).WithLocker(g)
+	_, handler := agentv1connect.NewAgentServiceHandler(agent.NewControlPlane(svc, refs), connect.WithInterceptors(fakes.OperatorInterceptor()))
+	ts := httptest.NewServer(handler)
+	t.Cleanup(ts.Close)
+	return agentv1connect.NewAgentServiceClient(http.DefaultClient, ts.URL)
+}
+
 func registeredAgent(t *testing.T, refs *fakes.PublicIDs, slug string) (a *agent.Agent, orgPub, projectPub string) {
 	t.Helper()
 	orgID, projectID := uuid.New(), uuid.New()
@@ -159,11 +181,16 @@ func TestAgentService_DraftPublishAndVersions(t *testing.T) {
 	refs := fakes.NewPublicIDs()
 	a, _, _ := registeredAgent(t, refs, "acme")
 	store := &fakes.AgentStore{Agent: a}
-	c := newAgentServiceClient(t, store, refs)
+	g, server := grantsWithServer(a, refs)
+	providerPub := ""
+	for id := range g.Providers {
+		providerPub, _, _ = refs.ProviderPublicID(context.Background(), id)
+	}
+	c := newGrantedClient(t, store, refs, g)
 	ctx := context.Background()
 	cfg := &agentv1.AgentConfig{
-		Instructions: "Be brief.", Model: "anthropic/claude-sonnet-5-5", Temperature: 0.5, MaxSteps: 8, MaxCostCents: 300,
-		Tools: []*agentv1.AgentTool{{Name: "refund", RequireApproval: true}},
+		Instructions: "Be brief.", ProviderId: providerPub, Model: "anthropic/claude-sonnet-5-5", Temperature: 0.5, MaxSteps: 8, MaxCostCents: 300,
+		McpServers: []*agentv1.McpGrant{{ServerId: server, Tools: []*agentv1.AgentTool{{Name: "refund", RequireApproval: true}}}},
 	}
 
 	_, err := c.UpdateAgentDraft(ctx, connect.NewRequest(&agentv1.UpdateAgentDraftRequest{
@@ -172,8 +199,9 @@ func TestAgentService_DraftPublishAndVersions(t *testing.T) {
 	assert.ErrorContains(t, err, "config.tools", "duplicate tool names")
 	drafted, err := c.UpdateAgentDraft(ctx, connect.NewRequest(&agentv1.UpdateAgentDraftRequest{Id: a.PublicID, Config: cfg}))
 	require.NoError(t, err)
-	assert.Equal(t, cfg.GetTools()[0].GetName(), drafted.Msg.GetAgent().GetDraft().GetTools()[0].GetName())
-	assert.True(t, drafted.Msg.GetAgent().GetDraft().GetTools()[0].GetRequireApproval())
+	grant := drafted.Msg.GetAgent().GetDraft().GetMcpServers()[0]
+	assert.Equal(t, "refund", grant.GetTools()[0].GetName())
+	assert.True(t, grant.GetTools()[0].GetRequireApproval())
 	assert.True(t, drafted.Msg.GetAgent().GetUnpublishedChanges())
 	assert.NotNil(t, drafted.Msg.GetAgent().GetDraftUpdatedAt())
 	assert.Zero(t, drafted.Msg.GetAgent().GetPublishedVersion())
@@ -210,7 +238,10 @@ func TestAgentService_PublishRecordsThePerson(t *testing.T) {
 	userID := uuid.New()
 	userPub := refs.User(userID)
 	refs.Resource(a.ID, a.OrgID)
-	cp := agent.NewControlPlane(agent.NewService(&fakes.AgentStore{Agent: a}, fakes.Transactor{}, nil), refs)
+	g, provider, _ := grantsFor(a, refs, "m-1", "m-2")
+	a.Draft = agent.Config{ProviderID: provider, Model: "m-1"}
+	svc := agent.NewService(&fakes.AgentStore{Agent: a}, fakes.Transactor{}, nil).WithProviders(g).WithMCPServers(g).WithLocker(g)
+	cp := agent.NewControlPlane(svc, refs)
 	ctx := session.PrincipalInto(context.Background(), session.Principal{
 		Source: session.SourceLocal, UserID: userID, ActiveOrgID: a.OrgID, Scopes: []string{"*"},
 	})
@@ -229,4 +260,11 @@ func TestAgentService_PublishRecordsThePerson(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, one.Msg.GetVersions(), 1, "the request's limit reaches the store")
 	assert.Equal(t, int32(2), one.Msg.GetVersions()[0].GetVersion())
+}
+
+func grantsWithServer(a *agent.Agent, refs *fakes.PublicIDs) (*fakes.AgentGrants, string) {
+	g, _, _ := grantsFor(a, refs, "anthropic/claude-sonnet-5-5")
+	server := uuid.New()
+	g.Servers = map[uuid.UUID]fakes.GrantServer{server: {ProjectID: a.ProjectID, Name: "billing"}}
+	return g, refs.MCPServer(server, a.ProjectID)
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AgentConfig } from './agentConfig';
 import CopyButton from '#base/components/ui/CopyButton.vue';
+import { toWire } from './agentConfig';
 
 const { agentId, config } = defineProps<{ agentId: string, config: AgentConfig }>();
 
@@ -8,7 +9,7 @@ const { t } = useI18n();
 const tab = ref<'api' | 'mcp'>('api');
 const name = useId();
 
-const body = computed(() => ({ id: agentId, config }));
+const body = computed(() => ({ id: agentId, config: toWire(config) }));
 const snippets = computed(() => ({
   api: `curl -X POST "$OAGENT_URL/api/agent.v1.AgentService/UpdateAgentDraft" \\\n  -H "Authorization: Bearer $OAGENT_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(body.value).replaceAll('\'', '\'\\\'\'')}'`,
   mcp: JSON.stringify({ tool: 'agent_update_draft', arguments: body.value }, null, 2),

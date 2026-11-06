@@ -22,15 +22,17 @@ type lookup struct {
 func lookups() map[string]lookup {
 	orgColumns := []string{"id", "public_id", "slug", "name", "created_by", "created_at", "updated_at", "is_system"}
 	return map[string]lookup{
-		"list_org_ids()":                        {"list_org_ids()", []string{"id", "created_at"}},
-		"resolve_system_org()":                  {"resolve_system_org()", orgColumns},
-		"resolve_org_by_slug(text)":             {"resolve_org_by_slug('x')", orgColumns},
-		"resolve_org_by_public_id(text)":        {"resolve_org_by_public_id('x')", orgColumns},
-		"resolve_invite_by_token_hash(text)":    {"resolve_invite_by_token_hash('x')", []string{"id", "public_id", "org_id", "email", "role", "draft", "invited_by", "expires_at", "accepted_at", "accepted_by", "revoked_at", "created_at", "updated_at"}},
-		"resolve_project_by_public_id(text)":    {"resolve_project_by_public_id('x')", []string{"id", "org_id"}},
-		"resolve_agent_by_public_id(text)":      {"resolve_agent_by_public_id('x')", []string{"id", "org_id", "project_id"}},
-		"resolve_invite_by_public_id(text)":     {"resolve_invite_by_public_id('x')", []string{"id", "public_id", "org_id", "email", "role", "draft", "invited_by", "expires_at", "accepted_at", "accepted_by", "revoked_at", "created_at", "updated_at"}},
-		"resolve_api_key_by_secret_hash(bytea)": {"resolve_api_key_by_secret_hash('\\x00'::bytea)", []string{"id", "org_id", "project_id", "kind", "all_projects", "project_ids", "name", "secret_hint", "scopes", "resource_ids", "created_by", "created_at", "expires_at", "revoked_at", "last_used_at"}},
+		"list_org_ids()":                            {"list_org_ids()", []string{"id", "created_at"}},
+		"resolve_system_org()":                      {"resolve_system_org()", orgColumns},
+		"resolve_org_by_slug(text)":                 {"resolve_org_by_slug('x')", orgColumns},
+		"resolve_org_by_public_id(text)":            {"resolve_org_by_public_id('x')", orgColumns},
+		"resolve_invite_by_token_hash(text)":        {"resolve_invite_by_token_hash('x')", []string{"id", "public_id", "org_id", "email", "role", "draft", "invited_by", "expires_at", "accepted_at", "accepted_by", "revoked_at", "created_at", "updated_at"}},
+		"resolve_project_by_public_id(text)":        {"resolve_project_by_public_id('x')", []string{"id", "org_id"}},
+		"resolve_agent_by_public_id(text)":          {"resolve_agent_by_public_id('x')", []string{"id", "org_id", "project_id"}},
+		"resolve_mcp_server_by_public_id(text)":     {"resolve_mcp_server_by_public_id('x')", []string{"id", "org_id", "project_id"}},
+		"resolve_model_provider_by_public_id(text)": {"resolve_model_provider_by_public_id('x')", []string{"id", "org_id", "project_id"}},
+		"resolve_invite_by_public_id(text)":         {"resolve_invite_by_public_id('x')", []string{"id", "public_id", "org_id", "email", "role", "draft", "invited_by", "expires_at", "accepted_at", "accepted_by", "revoked_at", "created_at", "updated_at"}},
+		"resolve_api_key_by_secret_hash(bytea)":     {"resolve_api_key_by_secret_hash('\\x00'::bytea)", []string{"id", "org_id", "project_id", "kind", "all_projects", "project_ids", "name", "secret_hint", "scopes", "resource_ids", "created_by", "created_at", "expires_at", "revoked_at", "last_used_at"}},
 	}
 }
 
@@ -89,6 +91,10 @@ func TestLookups_ResolveTheMatchingRowOnly(t *testing.T) {
 	exec(`INSERT INTO `+s+`projects (id, public_id, org_id, slug, name, created_at, updated_at) VALUES ($1, 'p1', $2, 'web', 'Web', $3, $3)`, project, other, now)
 	agent := uuid.New()
 	exec(`INSERT INTO `+s+`agents (id, public_id, org_id, project_id, slug, name, created_at, updated_at) VALUES ($1, 'a1', $2, $3, 'bot', 'Bot', $4, $4)`, agent, other, project, now)
+	provider := uuid.New()
+	exec(`INSERT INTO `+s+`model_providers (id, public_id, org_id, project_id, name, kind, base_url, api_key_sealed, models, created_at, updated_at) VALUES ($1, 'r1', $2, $3, 'p', 'openai_compatible', 'https://e.com', '\x01', '[]', $4, $4)`, provider, other, project, now)
+	server := uuid.New()
+	exec(`INSERT INTO `+s+`mcp_servers (id, public_id, org_id, project_id, name, url, auth_kind, timeout_ms, trusted, created_at, updated_at) VALUES ($1, 's1', $2, $3, 'yasaku', 'https://e.com/mcp', 'none', 5000, false, $4, $4)`, server, other, project, now)
 	invite := uuid.New()
 	exec(`INSERT INTO `+s+`invites (id, public_id, org_id, email, role, token_hash, expires_at, created_at, updated_at, email_only) VALUES ($1, 'i1', $2, 'a@example.com', 'member', 'tok', $3, $3, $3, false)`, invite, other, now.Add(time.Hour))
 	exec(`INSERT INTO `+s+`api_keys (id, org_id, kind, all_projects, name, secret_hash, secret_hint, created_at) VALUES ($1, $2, 'org', true, 'k', '\x01'::bytea, 'abcd', $3)`, uuid.New(), other, now)
@@ -132,6 +138,10 @@ func TestLookups_ResolveTheMatchingRowOnly(t *testing.T) {
 	assert.Empty(t, ids(`SELECT * FROM `+s+`resolve_project_by_public_id($1)`, "nope"))
 	assert.Equal(t, []uuid.UUID{agent}, ids(`SELECT * FROM `+s+`resolve_agent_by_public_id($1)`, "a1"))
 	assert.Empty(t, ids(`SELECT * FROM `+s+`resolve_agent_by_public_id($1)`, "nope"))
+	assert.Equal(t, []uuid.UUID{provider}, ids(`SELECT * FROM `+s+`resolve_model_provider_by_public_id($1)`, "r1"))
+	assert.Empty(t, ids(`SELECT * FROM `+s+`resolve_model_provider_by_public_id($1)`, "nope"))
+	assert.Equal(t, []uuid.UUID{server}, ids(`SELECT * FROM `+s+`resolve_mcp_server_by_public_id($1)`, "s1"))
+	assert.Empty(t, ids(`SELECT * FROM `+s+`resolve_mcp_server_by_public_id($1)`, "nope"))
 	assert.Empty(t, ids(`SELECT * FROM `+s+`resolve_api_key_by_secret_hash($1)`, []byte{2}))
 }
 

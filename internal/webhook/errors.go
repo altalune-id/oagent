@@ -7,6 +7,7 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/events"
+	"altalune.id/oagent/weburl"
 )
 
 // NotFoundError reports that no endpoint matched the lookup.
@@ -35,35 +36,16 @@ type URLReason string
 
 // The causes of an InvalidURLError.
 const (
-	URLRequired       URLReason = "required"
-	URLTooLong        URLReason = "too_long"
-	URLNotUTF8        URLReason = "not_utf8"
-	URLUnparsable     URLReason = "unparsable"
-	URLHTTPSRequired  URLReason = "https_required"
-	URLHasCredentials URLReason = "has_credentials"
-	URLNoHost         URLReason = "no_host"
+	URLRequired       = URLReason(weburl.Required)
+	URLTooLong        = URLReason(weburl.TooLong)
+	URLNotUTF8        = URLReason(weburl.NotUTF8)
+	URLUnparsable     = URLReason(weburl.Unparsable)
+	URLHTTPSRequired  = URLReason(weburl.HTTPSRequired)
+	URLHasCredentials = URLReason(weburl.HasCredentials)
+	URLNoHost         = URLReason(weburl.NoHost)
 )
 
-func (r URLReason) text() string {
-	switch r {
-	case URLRequired:
-		return "is required"
-	case URLTooLong:
-		return "is longer than " + strconv.Itoa(MaxURLLen) + " characters"
-	case URLNotUTF8:
-		return "is not valid UTF-8"
-	case URLUnparsable:
-		return "cannot be parsed"
-	case URLHTTPSRequired:
-		return "must use https"
-	case URLHasCredentials:
-		return "must not carry credentials"
-	case URLNoHost:
-		return "has no host"
-	default:
-		return "is invalid"
-	}
-}
+func (r URLReason) text() string { return weburl.Reason(r).Text() }
 
 // InvalidURLError reports that the endpoint URL breaks its invariants.
 type InvalidURLError struct{ Reason URLReason }

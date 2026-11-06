@@ -87,6 +87,7 @@ describe('threads page', () => {
 
 describe('thread view', () => {
   it('shows each speaker, run dividers, tool chips and decided approvals read-only, with the facts', async () => {
+    vi.useFakeTimers({ now: new Date(2026, 10, 5, 12), toFake: ['Date'] });
     seed('/agents/yasaku-keuangan/threads/thr_grp3Kd9Q', { agent: 'yasaku-keuangan', thread: 'thr_grp3Kd9Q' });
     const w = await mountPage(ThreadPage, { attachTo: document.body });
     expect(w.get('h1').text()).toBe('Keuangan Rumah');

@@ -14,7 +14,9 @@ import (
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
 	authv1mcp "altalune.id/oagent/gen/go/auth/v1/authv1mcp"
 	invitev1mcp "altalune.id/oagent/gen/go/invite/v1/invitev1mcp"
+	mcpserverv1mcp "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1mcp"
 	memberv1mcp "altalune.id/oagent/gen/go/member/v1/memberv1mcp"
+	modelproviderv1mcp "altalune.id/oagent/gen/go/modelprovider/v1/modelproviderv1mcp"
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
 	projectv1mcp "altalune.id/oagent/gen/go/project/v1/projectv1mcp"
 	webhookv1mcp "altalune.id/oagent/gen/go/webhook/v1/webhookv1mcp"
@@ -23,6 +25,8 @@ import (
 	"altalune.id/oagent/internal/kernel/tokens"
 	mcpinternal "altalune.id/oagent/internal/mcp"
 	mcpui "altalune.id/oagent/internal/mcp/ui"
+	"altalune.id/oagent/internal/mcpserver"
+	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
@@ -46,6 +50,9 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger, allo
 	projectv1mcp.RegisterProjectServiceTools(registry, project.NewControlPlane(svcs.Projects, refs), permission.For, validate)
 	agentv1mcp.RegisterAgentServiceTools(registry, agent.NewControlPlane(svcs.Agents, refs), permission.For, validate)
 	webhookv1mcp.RegisterWebhookServiceTools(registry, webhook.NewControlPlane(svcs.Webhooks, refs), permission.For, validate)
+	modelproviderv1mcp.RegisterModelProviderServiceTools(registry, modelprovider.NewControlPlane(svcs.ModelProviders, refs),
+		permission.For, validate)
+	mcpserverv1mcp.RegisterMcpServerServiceTools(registry, mcpserver.NewControlPlane(svcs.MCPServers, refs), permission.For, validate)
 	memberv1mcp.RegisterMemberServiceTools(registry, member.NewControlPlane(svcs.Members, refs), permission.For, validate)
 	invitev1mcp.RegisterInviteServiceTools(registry, invite.NewControlPlane(svcs.Invites, refs), permission.For, validate)
 	authv1mcp.RegisterAuthServiceTools(registry, auth.NewControlPlane(svcs.Orgs, svcs.Projects, svcs.Users), permission.For, validate)

@@ -30,7 +30,7 @@ const route = useRoute();
 const { when } = useDates();
 const toast = useToast();
 const canEdit = useCan('agent:write');
-const { agent, runtime, providers, base } = await useAgentPage();
+const { agent, providers, base } = await useAgentPage();
 const channels = useChannelsStore();
 await channels.ensureLoaded(agent.value.id);
 const form = useOpenwaConnect(agent.value.id);
@@ -39,7 +39,7 @@ const connection = computed(() => channels.connection(agent.value.id, 'openwa'))
 const replace = useReplaceSecret(agent.value.id, 'openwa');
 const published = computed(() => (agent.value.publishedVersion ?? 0) > 0);
 const unpublished = computed(() => !published.value || !!agent.value.unpublishedChanges);
-const vision = computed(() => !!chosenModel(runtime.value, providers.items).model?.vision);
+const vision = computed(() => !!chosenModel({ providerId: agent.value.providerId ?? '', model: agent.value.model ?? '' }, providers.items).model?.vision);
 const endpoint = computed(() => `https://oagent.altalune.id/api/v1/agents/${agent.value.id}/runs`);
 const curl = computed(() => [
   `curl -N ${endpoint.value} \\`,
@@ -159,7 +159,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · 
         </template>
 
         <p v-if="!vision" role="note" class="text-xs text-base-content/70">
-          {{ t('openwa.no_vision', { model: runtime.model || '—' }) }}
+          {{ t('openwa.no_vision', { model: agent.model || '—' }) }}
           <NuxtLink :to="`${base}#configure-model`" class="link">
             {{ t('try.pick_vision') }}
           </NuxtLink>

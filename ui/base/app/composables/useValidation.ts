@@ -2,14 +2,14 @@ import type { DescMessage, MessageShape } from '@bufbuild/protobuf';
 
 import type { ShownError } from '../lib/apperror/message';
 import type { FieldIssue, FieldIssues } from '../lib/validation/violations';
-import { errorCode } from '../lib/apperror/message';
+import { errorCode, errorMeta } from '../lib/apperror/message';
 import { checkRequest, serverIssues } from '../lib/validation/violations';
 import { useErrorMessage } from './useErrorMessage';
 
 export interface ValidationOptions {
   // fields are the proto field names the form has an input for.
   fields: string[];
-  // codes names the input a domain error code belongs under (ORG002 → slug).
+  // codes names the input a domain error code belongs under (ORG002 → slug); CODE_reason picks one reason (MCS006_header_name).
   codes?: Record<string, string>;
 }
 
@@ -17,6 +17,7 @@ const formatKeys: Record<string, string> = {
   slug: 'validation.slug_format',
   email: 'validation.email_format',
   url: 'validation.absolute_url',
+  base_url: 'validation.absolute_url',
 };
 
 // useValidation checks a request against its proto rules before it is sent, and places the server's refusals under the same inputs.
@@ -77,7 +78,8 @@ export function useValidation<Desc extends DescMessage>(schema: Desc, options: V
       issues.value = server;
       return formError.value;
     }
-    const field = options.codes?.[errorCode(err)];
+    const code = errorCode(err);
+    const field = options.codes?.[`${code}_${errorMeta(err).reason}`] ?? options.codes?.[code];
     if (field && shown.has(field)) {
       placed.value = { [field]: errorMessage(err, fallbackKey).message };
       return null;

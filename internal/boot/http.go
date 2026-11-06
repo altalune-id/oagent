@@ -61,16 +61,18 @@ func buildAPIHandler(
 		opts.OpenAPIBasicAuth = &controlplane.BasicAuth{User: cfg.OpenAPI.BasicAuthUser, Password: cfg.OpenAPI.BasicAuthPassword}
 	}
 	h := controlplane.New(controlplane.Services{
-		Orgs:     svcs.Orgs,
-		Projects: svcs.Projects,
-		Agents:   svcs.Agents,
-		APIKeys:  svcs.APIKeys,
-		Webhooks: svcs.Webhooks,
-		Users:    svcs.Users,
-		Members:  svcs.Members,
-		Invites:  svcs.Invites,
-		Auth:     svcs.Auth,
-		Refs:     newPublicIDs(svcs),
+		Orgs:           svcs.Orgs,
+		Projects:       svcs.Projects,
+		Agents:         svcs.Agents,
+		APIKeys:        svcs.APIKeys,
+		Webhooks:       svcs.Webhooks,
+		ModelProviders: svcs.ModelProviders,
+		MCPServers:     svcs.MCPServers,
+		Users:          svcs.Users,
+		Members:        svcs.Members,
+		Invites:        svcs.Invites,
+		Auth:           svcs.Auth,
+		Refs:           newPublicIDs(svcs),
 
 		Passwords: svcs.Caps.Passwords,
 	}, unexpected, opts).Handler(basePath)

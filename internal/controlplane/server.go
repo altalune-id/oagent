@@ -13,7 +13,9 @@ import (
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
 	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
+	mcpserverv1connect "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1connect"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
+	modelproviderv1connect "altalune.id/oagent/gen/go/modelprovider/v1/modelproviderv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
@@ -21,6 +23,8 @@ import (
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/kernel/authn"
+	"altalune.id/oagent/internal/mcpserver"
+	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
@@ -40,16 +44,18 @@ type Options struct {
 
 // Services are the domain services the controlplane exposes.
 type Services struct {
-	Orgs     *org.Service
-	Projects *project.Service
-	Agents   *agent.Service
-	APIKeys  *apikey.Service
-	Webhooks *webhook.Service
-	Users    *user.Service
-	Members  *member.Service
-	Invites  *invite.Service
-	Auth     *auth.Service
-	Refs     Refs
+	Orgs           *org.Service
+	Projects       *project.Service
+	Agents         *agent.Service
+	APIKeys        *apikey.Service
+	Webhooks       *webhook.Service
+	ModelProviders *modelprovider.Service
+	MCPServers     *mcpserver.Service
+	Users          *user.Service
+	Members        *member.Service
+	Invites        *invite.Service
+	Auth           *auth.Service
+	Refs           Refs
 	// Passwords is true when console password sign-in is on.
 	Passwords bool
 }
@@ -61,6 +67,8 @@ type Refs interface {
 	agent.Refs
 	apikey.Refs
 	webhook.Refs
+	modelprovider.Refs
+	mcpserver.Refs
 	member.Refs
 	auth.PublicIDs
 }
@@ -81,6 +89,9 @@ type Server struct {
 	AuthSvc    *auth.AuthService
 	MemberSvc  *member.MemberService
 	InviteSvc  *invite.InviteService
+
+	ModelProviderSvc *modelprovider.ModelProviderService
+	MCPServerSvc     *mcpserver.McpServerService
 
 	OpenAPIEnabled   bool
 	OpenAPIBasicAuth *BasicAuth
@@ -117,6 +128,12 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 	if svcs.Webhooks != nil {
 		s.WebhookSvc = webhook.NewControlPlane(svcs.Webhooks, svcs.Refs)
 	}
+	if svcs.ModelProviders != nil {
+		s.ModelProviderSvc = modelprovider.NewControlPlane(svcs.ModelProviders, svcs.Refs)
+	}
+	if svcs.MCPServers != nil {
+		s.MCPServerSvc = mcpserver.NewControlPlane(svcs.MCPServers, svcs.Refs)
+	}
 	if svcs.Members != nil {
 		s.MemberSvc = member.NewControlPlane(svcs.Members, svcs.Refs)
 	}
@@ -145,6 +162,14 @@ func (s *Server) Handler(basePath string) http.Handler {
 	if s.APIKeySvc != nil {
 		keyPath, keyHandler := apikeyv1connect.NewAPIKeyServiceHandler(s.APIKeySvc, s.handlerOptions()...)
 		inner.Handle(keyPath, keyHandler)
+	}
+	if s.ModelProviderSvc != nil {
+		providerPath, providerHandler := modelproviderv1connect.NewModelProviderServiceHandler(s.ModelProviderSvc, s.handlerOptions()...)
+		inner.Handle(providerPath, providerHandler)
+	}
+	if s.MCPServerSvc != nil {
+		mcpPath, mcpHandler := mcpserverv1connect.NewMcpServerServiceHandler(s.MCPServerSvc, s.handlerOptions()...)
+		inner.Handle(mcpPath, mcpHandler)
 	}
 	if s.WebhookSvc != nil {
 		hookPath, hookHandler := webhookv1connect.NewWebhookServiceHandler(s.WebhookSvc, s.handlerOptions()...)

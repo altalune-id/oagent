@@ -4,15 +4,16 @@ import type { McpServer } from '~/stores/mcpServers';
 import AppButton from '#base/components/ui/AppButton.vue';
 import AppDropdown from '#base/components/ui/AppDropdown.vue';
 import AppModal from '#base/components/ui/AppModal.vue';
+import { confirmHandle } from '#base/components/ui/confirmHandle';
 import ConfirmModal from '#base/components/ui/ConfirmModal.vue';
 import DataTable from '#base/components/ui/DataTable.vue';
 import EmptyState from '#base/components/ui/EmptyState.vue';
 import LoadError from '#base/components/ui/LoadError.vue';
 import PageHeader from '#base/components/ui/PageHeader.vue';
-import { useConfirm } from '#base/composables/useConfirm';
-import PreviewNote from '~/components/layout/PreviewNote.vue';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { errorCode } from '#base/lib/apperror/message';
 import McpServerModal from '~/components/mcpserver/McpServerModal.vue';
-import McpToolList from '~/components/mcpserver/McpToolList.vue';
+import McpServerTools from '~/components/mcpserver/McpServerTools.vue';
 import { useMcpServerForm } from '~/components/mcpserver/useMcpServerForm';
 import ProjectReadOnlyNote from '~/components/project/ProjectReadOnlyNote.vue';
 import { useProject } from '~/components/project/useProject';
@@ -24,9 +25,9 @@ import { useMcpServersStore } from '~/stores/mcpServers';
 const { t } = useI18n();
 const { seconds } = useUnits();
 const { project } = useProject();
-const canEdit = useCan('project:write');
+const canEdit = useCan('mcpserver:write');
 const servers = useMcpServersStore();
-const form = useMcpServerForm();
+const form = useMcpServerForm(project.value!.orgId, project.value!.id);
 
 void servers.ensureLoaded(project.value!.id);
 
@@ -35,28 +36,25 @@ const columns = computed<Column[]>(() => [
   { key: 'url', label: t('mcpservers.url'), mono: true },
   { key: 'auth', label: t('mcpservers.auth') },
   { key: 'trusted', label: t('mcpservers.trust') },
-  { key: 'timeoutSeconds', label: t('mcpservers.timeout_short'), align: 'end' },
+  { key: 'timeoutMs', label: t('mcpservers.timeout_short'), align: 'end' },
   { key: 'tools', label: t('mcpservers.tools') },
   { key: 'menu', label: t('providers.col_actions'), hideLabel: true, align: 'end' },
 ]);
 
-const viewing = ref<McpServer | null>(null);
-const blocked = ref<McpServer | null>(null);
-const deleting = useConfirm<McpServer>(async (s) => {
-  servers.remove(s.id);
-}, 'error.delete_mcp_server');
+const viewingId = ref('');
+const viewing = computed(() => servers.items.find(s => s.id === viewingId.value));
+const errorMessage = useErrorMessage();
+const deleting = confirmHandle<McpServer>(s => servers.remove(s.id), e => (errorCode(e) === 'MCS004' ? { message: t('mcpservers.in_use') } : errorMessage(e, 'error.delete_mcp_server')));
 
-function askDelete(s: McpServer) {
-  if (s.usedBy.length) {
-    blocked.value = s;
-  } else {
-    deleting.ask(s);
-  }
+function replaceSecret(s: McpServer) {
+  viewingId.value = '';
+  form.show(s);
+  form.replacingSecret.value = true;
 }
 
-function loadTools(s: McpServer) {
-  form.show(s);
-  void form.loadTools();
+function showTools(s: McpServer, reload = false) {
+  viewingId.value = s.id;
+  void (reload ? servers.loadTools(s.id) : servers.ensureTools(s.id));
 }
 
 function authLabel(s: McpServer) {
@@ -73,10 +71,7 @@ await useAuthStore().load();
 
 <template>
   <div class="flex flex-col gap-4">
-    <PageHeader :title="t('mcpservers.title')" :description="t('mcpservers.subtitle')" :preview="t('preview.badge')">
-      <template #status>
-        <PreviewNote :text="t('preview.local_note')" />
-      </template>
+    <PageHeader :title="t('mcpservers.title')" :description="t('mcpservers.subtitle')">
       <template v-if="canEdit && servers.items.length" #actions>
         <AppButton size="sm" @click="form.show()">
           <Icon name="lucide:plus" size="16" aria-hidden="true" />
@@ -113,12 +108,12 @@ await useAuthStore().load();
         <span v-if="row.trusted" class="badge badge-sm badge-soft text-base-content"><Icon name="lucide:shield-check" size="12" aria-hidden="true" />{{ t('mcpservers.trusted_badge') }}</span>
         <span v-else class="badge badge-sm badge-outline">{{ t('mcpservers.untrusted_badge') }}</span>
       </template>
-      <template #cell-timeoutSeconds="{ row }">
-        {{ seconds(row.timeoutSeconds) }}
+      <template #cell-timeoutMs="{ row }">
+        {{ seconds(row.timeoutMs / 1000) }}
       </template>
       <template #cell-tools="{ row }">
-        <button type="button" class="link tabular-nums" aria-haspopup="dialog" @click="viewing = row as McpServer">
-          {{ t('mcpservers.tool_count', { n: row.tools.length }, row.tools.length) }}
+        <button type="button" class="link tabular-nums" aria-haspopup="dialog" @click="showTools(row as McpServer)">
+          {{ row.tools.length ? t('mcpservers.tool_count', { n: row.tools.length }, row.tools.length) : t('mcpservers.show_tools') }}
         </button>
       </template>
       <template #cell-menu="{ row }">
@@ -134,13 +129,13 @@ await useAuthStore().load();
               </button>
             </li>
             <li>
-              <button type="button" @click="loadTools(row as McpServer)">
+              <button type="button" @click="showTools(row as McpServer, true)">
                 <Icon name="lucide:refresh-cw" size="16" class="shrink-0" aria-hidden="true" />
                 {{ t('mcpservers.load_tools') }}
               </button>
             </li>
             <li>
-              <button type="button" @click="askDelete(row as McpServer)">
+              <button type="button" @click="deleting.ask(row as McpServer)">
                 <Icon name="lucide:trash-2" size="16" class="shrink-0 text-error" aria-hidden="true" />
                 {{ t('common.delete') }}
               </button>
@@ -152,10 +147,10 @@ await useAuthStore().load();
 
     <McpServerModal :form="form" :read-only="!canEdit" />
 
-    <AppModal :open="!!viewing" :title="t('mcpservers.tools_of', { name: viewing?.name ?? '' })" wide @close="viewing = null">
-      <McpToolList v-if="viewing" :server="viewing.name" :tools="viewing.tools" :trusted="viewing.trusted" />
+    <AppModal :open="!!viewing" :title="t('mcpservers.tools_of', { name: viewing?.name ?? '' })" wide @close="viewingId = ''">
+      <McpServerTools v-if="viewing" :server="viewing" :trusted="viewing.trusted" @replace-secret="replaceSecret(viewing)" />
       <template #footer>
-        <AppButton variant="plain" size="sm" @click="viewing = null">
+        <AppButton variant="plain" size="sm" @click="viewingId = ''">
           {{ t('common.close') }}
         </AppButton>
       </template>
@@ -168,15 +163,5 @@ await useAuthStore().load();
       :confirm-label="t('common.delete')"
       :cancel-label="t('common.cancel')"
     />
-    <AppModal :open="!!blocked" :title="t('mcpservers.delete_title')" @close="blocked = null">
-      <p class="text-ui">
-        {{ t('mcpservers.in_use', { agents: blocked?.usedBy.join(', ') ?? '' }) }}
-      </p>
-      <template #footer>
-        <AppButton variant="plain" size="sm" @click="blocked = null">
-          {{ t('common.close') }}
-        </AppButton>
-      </template>
-    </AppModal>
   </div>
 </template>

@@ -13,11 +13,36 @@ type Publisher interface {
 	Enqueue(ctx context.Context, t events.Type, data any) error
 }
 
-// Refs turns org and project public ids into ids and back; ok is false for an unknown public id.
+// Refs turns org, project, provider and MCP server public ids into ids and back; ok is false for an unknown id.
 type Refs interface {
 	OrgID(ctx context.Context, publicID string) (id uuid.UUID, ok bool, err error)
 	OrgPublicID(ctx context.Context, id uuid.UUID) (string, error)
 	ProjectID(ctx context.Context, publicID string) (id, orgID uuid.UUID, ok bool, err error)
 	ProjectPublicID(ctx context.Context, id uuid.UUID) (string, error)
 	UserPublicID(ctx context.Context, id uuid.UUID) (string, error)
+	ProviderID(ctx context.Context, publicID string) (id, projectID uuid.UUID, ok bool, err error)
+	ProviderPublicID(ctx context.Context, id uuid.UUID) (publicID string, ok bool, err error)
+	MCPServerID(ctx context.Context, publicID string) (id, projectID uuid.UUID, ok bool, err error)
+	MCPServerPublicID(ctx context.Context, id uuid.UUID) (publicID string, ok bool, err error)
+}
+
+// ModelRef is one model a provider lists; Priced is true when it has prices.
+type ModelRef struct {
+	ID     string
+	Priced bool
+}
+
+// Providers lists a project's provider models; an unknown or foreign provider answers *InvalidGrantError (provider).
+type Providers interface {
+	Models(ctx context.Context, projectID, providerID uuid.UUID) ([]ModelRef, error)
+}
+
+// MCPServers names a project's MCP server; an unknown or foreign server answers *InvalidGrantError (server).
+type MCPServers interface {
+	Exists(ctx context.Context, projectID, serverID uuid.UUID) (name string, err error)
+}
+
+// Locker share-locks a version's providers and servers until the unit of work ends; a gone one answers *InvalidGrantError.
+type Locker interface {
+	LockShared(ctx context.Context, providerIDs, serverIDs []uuid.UUID) error
 }

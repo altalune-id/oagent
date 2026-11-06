@@ -368,16 +368,38 @@ components:
           maxItems: 64
           description: |
             agent.tools.unique
+        providerId:
+          type: string
+          title: provider_id
+          description: |
+            oagent.public_id = true
+        helperModel:
+          type: string
+          title: helper_model
+          pattern: ^[A-Za-z0-9._:/-]*$
+          description: |
+            agent.helper_model.max_len.128
+        mcpServers:
+          type: array
+          items:
+            $ref: '#/components/schemas/agent.v1.McpGrant'
+          title: mcp_servers
+          maxItems: 16
+          description: |
+            agent.mcp_servers.unique
+        providerMissing:
+          type: boolean
+          title: provider_missing
       title: AgentConfig
       additionalProperties: false
-      description: AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique.
+      description: AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider's public id; provider_missing is output only.
     agent.v1.AgentTool:
       type: object
       properties:
         name:
           type: string
           title: name
-          pattern: ^[a-z0-9_.-]{1,64}$
+          pattern: ^[a-zA-Z0-9_.-]{1,64}$
         requireApproval:
           type: boolean
           title: require_approval
@@ -542,6 +564,30 @@ components:
           title: agents
       title: ListAgentsResponse
       additionalProperties: false
+    agent.v1.McpGrant:
+      type: object
+      properties:
+        serverId:
+          type: string
+          title: server_id
+          description: |
+            oagent.public_id = true
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/agent.v1.AgentTool'
+          title: tools
+          maxItems: 64
+          description: |
+            agent.grant_tools.unique
+        missing:
+          type: boolean
+          title: missing
+      title: McpGrant
+      required:
+        - serverId
+      additionalProperties: false
+      description: McpGrant lets an agent call the listed tools of one MCP server; missing is output only and true when the server no longer exists.
     agent.v1.PublishAgentRequest:
       type: object
       properties:

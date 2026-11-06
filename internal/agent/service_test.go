@@ -193,9 +193,13 @@ func TestService_DraftPublishAndVersions(t *testing.T) {
 	a, err := agent.New(uuid.New(), uuid.New(), "acme", "Acme", "", uuid.New())
 	require.NoError(t, err)
 	store := &fakes.AgentStore{Agent: a}
-	svc := agent.NewService(store, fakes.Transactor{}, testUnexpected())
+	provider := uuid.New()
+	grants := &fakes.AgentGrants{Providers: map[uuid.UUID]fakes.GrantProvider{
+		provider: {ProjectID: a.ProjectID, Models: []agent.ModelRef{{ID: "m-1"}, {ID: "m-2"}}},
+	}}
+	svc := agent.NewService(store, fakes.Transactor{}, testUnexpected()).WithProviders(grants).WithMCPServers(grants).WithLocker(grants)
 	ctx := context.Background()
-	cfg := agent.Config{Instructions: "Be brief.", Model: "m-1", Tools: []agent.Tool{{Name: "search"}}}
+	cfg := agent.Config{Instructions: "Be brief.", ProviderID: provider, Model: "m-1"}
 
 	_, err = svc.UpdateDraft(ctx, a.ID, agent.Config{Temperature: 5})
 	assert.Equal(t, apperror.CodeValidation, codeOf(err), "an invalid draft is GEN004")

@@ -17,8 +17,8 @@ definePageMeta({ bleed: true });
 
 const { t } = useI18n();
 const { count, money } = useUnits();
-const { agent, runtime, providers, servers, base } = await useAgentPage();
-const draft = useAgentDraft(agent.value.id);
+const { agent, providers, servers, base } = await useAgentPage();
+const draft = useAgentDraft(agent.value.id, { provider: id => providers.items.find(p => p.id === id)?.name ?? '—', server: id => servers.items.find(s => s.id === id)?.name ?? id });
 await draft.load();
 
 const uid = useId();
@@ -26,8 +26,8 @@ const tab = ref<'draft' | 'live'>('draft');
 const text = ref('');
 const fileInput = ref<HTMLInputElement>();
 const current = computed(() => draft.state.value?.publishedVersion ?? 0);
-const blockers = computed(() => publishBlockers(runtime.value, { providers: providers.items, servers: servers.items, maxCostCents: draft.config.value.maxCostCents, oldTools: draft.config.value.tools.length }));
-const model = computed(() => chosenModel(runtime.value, providers.items).model);
+const blockers = computed(() => publishBlockers(draft.config.value, { providers: providers.items, servers: servers.items }));
+const model = computed(() => chosenModel(draft.config.value, providers.items).model);
 const vision = computed(() => !!model.value?.vision);
 
 const auth = useAuthStore();
@@ -133,7 +133,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('try.title')} · OAgen
             <StatusLabel :tone="status.tone" :label="t(status.key)" :detail="`${stepsText} · ${money(costCents)}`" />
           </summary>
           <div class="collapse-content">
-            <TryRunPane v-model:scenario="scenario" :steps-text="stepsText" :tokens="count(tokens)" :cost="money(costCents)" :model="runtime.model || '—'" :tool-calls="toolCalls" :busy="busy" />
+            <TryRunPane v-model:scenario="scenario" :steps-text="stepsText" :tokens="count(tokens)" :cost="money(costCents)" :model="draft.config.value.model || '—'" :tool-calls="toolCalls" :busy="busy" />
           </div>
         </details>
         <div class="flex-1 p-4 lg:p-6">
@@ -203,7 +203,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('try.title')} · OAgen
             <kbd class="kbd kbd-xs">Shift</kbd>+<kbd class="kbd kbd-xs">Enter</kbd> {{ t('try.keys_newline') }}
           </p>
           <p v-if="!vision" :id="`${uid}-vision`" role="note" class="text-xs text-base-content/70">
-            {{ t('try.no_vision', { model: runtime.model || '—' }) }}
+            {{ t('try.no_vision', { model: draft.config.value.model || '—' }) }}
             <NuxtLink :to="`${base}#configure-model`" class="link">
               {{ t('try.pick_vision') }}
             </NuxtLink>
@@ -219,7 +219,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('try.title')} · OAgen
             </h2>
             <StatusLabel :tone="status.tone" :label="t(status.key)" />
           </div>
-          <TryRunPane v-model:scenario="scenario" :steps-text="stepsText" :tokens="count(tokens)" :cost="money(costCents)" :model="runtime.model || '—'" :tool-calls="toolCalls" :busy="busy" />
+          <TryRunPane v-model:scenario="scenario" :steps-text="stepsText" :tokens="count(tokens)" :cost="money(costCents)" :model="draft.config.value.model || '—'" :tool-calls="toolCalls" :busy="busy" />
         </div>
       </aside>
     </div>

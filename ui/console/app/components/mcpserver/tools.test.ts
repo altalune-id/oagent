@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { grantable, hintBadges, nameParts, serverNameError, toolName } from './tools';
-
-const tool = (name: string) => ({ name, description: '', hint: 'read_only' as const, args: [] });
+import { headerNameError, hintBadges, nameParts, toolName } from './tools';
 
 describe('mcp tools', () => {
   it('prefixes the tool with its server', () => {
@@ -14,22 +12,16 @@ describe('mcp tools', () => {
     expect(nameParts('')).toEqual(['']);
   });
 
-  it('grants only names the model accepts: 64 characters, letters, digits, _ and -', () => {
-    expect(grantable('yasaku', tool('record_expense'))).toBe(true);
-    expect(grantable('yasaku', tool('x'.repeat(56)))).toBe(true);
-    expect(grantable('yasaku', tool('x'.repeat(57)))).toBe(false);
-    expect(grantable('yasaku', tool('bad.name'))).toBe(false);
+  it('refuses a header name that is not an HTTP token or that oagent sets itself', () => {
+    expect(headerNameError('X-Api-Key')).toBe('');
+    expect(headerNameError('X_Key!#$%&\'*+.^`|~')).toBe('');
+    expect(headerNameError('')).toBe('mcpservers.header_required');
+    expect(headerNameError('bad header')).toBe('mcpservers.header_required');
+    expect(headerNameError('Mcp-Session-Id')).toBe('mcpservers.header_reserved');
+    expect(headerNameError('HOST')).toBe('mcpservers.header_reserved');
   });
 
   it('labels every hint with text and an icon', () => {
     expect(Object.values(hintBadges).every(b => b.labelKey && b.icon)).toBe(true);
-  });
-
-  it('refuses empty names, __ and other characters', () => {
-    expect(serverNameError('')).toBe('mcpservers.name_required');
-    expect(serverNameError('ya__saku')).toBe('mcpservers.name_double_underscore');
-    expect(serverNameError('ya saku')).toBe('mcpservers.name_chars');
-    expect(serverNameError('x'.repeat(33))).toBe('mcpservers.name_chars');
-    expect(serverNameError('yasaku-2')).toBe('');
   });
 });

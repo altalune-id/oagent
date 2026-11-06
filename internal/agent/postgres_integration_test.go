@@ -437,3 +437,85 @@ func TestPostgres_AgentResolveNamesTheTenantWithoutAScope(t *testing.T) {
 		assert.True(t, agent.IsNotFoundError(err), "%q is not a public id", bad)
 	}
 }
+
+func (f *pgFixture) publish(t *testing.T, ctx context.Context, a *agent.Agent, cfg agent.Config) {
+	t.Helper()
+	require.NoError(t, a.SetDraft(cfg, time.Now()))
+	latest, err := f.store.LatestVersion(ctx, a.ID)
+	require.NoError(t, err)
+	v, created, err := a.Publish(latest, uuid.Nil, time.Now().UTC())
+	require.NoError(t, err)
+	require.True(t, created)
+	require.NoError(t, f.store.InsertVersion(ctx, v))
+	require.NoError(t, f.store.MarkPublished(ctx, a))
+	require.NoError(t, f.store.SaveDraft(ctx, a))
+}
+
+func TestUsage_ProviderUse(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
+	provider, other := uuid.New(), uuid.New()
+
+	use, err := f.store.ProviderUse(ctx, provider)
+	require.NoError(t, err)
+	assert.False(t, use.InUse)
+
+	capped := newAgent(t, orgID, projectID, "capped")
+	require.NoError(t, f.store.Save(ctx, capped))
+	f.publish(t, ctx, capped, agent.Config{ProviderID: provider, Model: "gpt-4o", HelperModel: "mini", MaxCostCents: 100})
+
+	free := newAgent(t, orgID, projectID, "free")
+	require.NoError(t, f.store.Save(ctx, free))
+	f.publish(t, ctx, free, agent.Config{ProviderID: provider, Model: "llama"})
+
+	moved := newAgent(t, orgID, projectID, "moved")
+	require.NoError(t, f.store.Save(ctx, moved))
+	f.publish(t, ctx, moved, agent.Config{ProviderID: provider, Model: "old-model", MaxCostCents: 5})
+	f.publish(t, ctx, moved, agent.Config{ProviderID: other, Model: "old-model"})
+
+	drafted := newAgent(t, orgID, projectID, "drafted")
+	require.NoError(t, f.store.Save(ctx, drafted))
+	require.NoError(t, drafted.SetDraft(agent.Config{ProviderID: provider, Model: "draft-only", MaxCostCents: 9}, time.Now()))
+	require.NoError(t, f.store.SaveDraft(ctx, drafted))
+
+	use, err = f.store.ProviderUse(ctx, provider)
+	require.NoError(t, err)
+	assert.True(t, use.InUse)
+	assert.Equal(t, map[string]bool{"gpt-4o": true, "mini": true, "llama": false}, use.Models,
+		"only the latest version per agent counts; drafts never do; a cap needs the price")
+
+	use, err = f.store.ProviderUse(in(uuid.New()), provider)
+	require.NoError(t, err)
+	assert.False(t, use.InUse, "another tenant sees no use")
+}
+
+func TestUsage_MCPServerInUse(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
+	provider, server, dropped, drafted := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	grant := func(id uuid.UUID) []agent.MCPGrant {
+		return []agent.MCPGrant{{ServerID: id, Tools: []agent.Tool{{Name: "t"}}}}
+	}
+
+	a := newAgent(t, orgID, projectID, "uses")
+	require.NoError(t, f.store.Save(ctx, a))
+	f.publish(t, ctx, a, agent.Config{ProviderID: provider, Model: "m", MCPServers: append(grant(uuid.New()), grant(server)...)})
+
+	b := newAgent(t, orgID, projectID, "dropped")
+	require.NoError(t, f.store.Save(ctx, b))
+	f.publish(t, ctx, b, agent.Config{ProviderID: provider, Model: "m", MCPServers: grant(dropped)})
+	f.publish(t, ctx, b, agent.Config{ProviderID: provider, Model: "m"})
+
+	c := newAgent(t, orgID, projectID, "drafted")
+	require.NoError(t, f.store.Save(ctx, c))
+	require.NoError(t, c.SetDraft(agent.Config{ProviderID: provider, MCPServers: grant(drafted)}, time.Now()))
+	require.NoError(t, f.store.SaveDraft(ctx, c))
+
+	for id, want := range map[uuid.UUID]bool{server: true, dropped: false, drafted: false, uuid.New(): false} {
+		got, err := f.store.MCPServerInUse(ctx, id)
+		require.NoError(t, err)
+		assert.Equal(t, want, got, id.String())
+	}
+}

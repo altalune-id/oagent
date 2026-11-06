@@ -1,141 +1,139 @@
-import type { ProbeResult } from '~/stores/mcpServers';
+import { create } from '@bufbuild/protobuf';
+import { flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { nextTick } from 'vue';
-import { sampleProbe } from '~/preview/samples';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { fakeRuntimeClients, serverPBs } from '~~/test/fixtures/runtime';
+import { useToast } from '#base/components/ui/toast';
+import { McpServerAuthKind, McpServerSchema } from '#gen/mcpserver/v1/mcpserver_pb';
+import { connectError, deferred, setKnownKeys } from '#test/nuxt-globals';
 import { useMcpServersStore } from '~/stores/mcpServers';
-import { useMcpServerForm } from './useMcpServerForm';
+import { defaultTimeoutSeconds, useMcpServerForm } from './useMcpServerForm';
+
+const orgId = 'V3StGXR8Z5jdHj6BmyT2a';
+const projectId = 'x6MH9WPWjktMwCBKHy4pF';
+const localPB = create(McpServerSchema, { id: 'MsYasakuQcaz23456789a', orgId, projectId, name: 'local-yasaku', url: 'http://127.0.0.1:5190/mcp', authKind: McpServerAuthKind.BEARER, authSet: true, timeoutMs: 10_000 });
 
 describe('useMcpServerForm', () => {
+  let clients: ReturnType<typeof fakeRuntimeClients>;
+
   beforeEach(async () => {
     setActivePinia(createPinia());
-    await useMcpServersStore().load('x6MH9WPWjktMwCBKHy4pF');
+    clients = fakeRuntimeClients();
+    await useMcpServersStore().load(projectId);
   });
 
-  it('creates a server after loading its tools', async () => {
-    const probe = vi.fn().mockResolvedValue({ kind: 'ok', tools: [{ name: 'a', description: '', hint: 'read_only', args: [] }] });
-    const form = useMcpServerForm(probe);
+  it('adds a server with a trimmed secret and a 10 s default timeout, then lists its tools', async () => {
+    clients.server.createMcpServer.mockResolvedValue({ mcpServer: localPB });
+    const form = useMcpServerForm(orgId, projectId);
     form.show();
-    expect(form.submit()).toBe(false);
-    expect(form.errors.value).toEqual({ name: 'mcpservers.name_required', url: 'mcpservers.url_https', secret: 'mcpservers.secret_required' });
-    form.name.value = 'kas';
-    form.url.value = 'https://kas.example.test/mcp';
-    form.auth.value = 'header';
-    form.headerName.value = 'X-Api-Key';
-    form.secret.value = 's';
-    form.timeout.value = 0;
-    expect(form.submit()).toBe(false);
-    expect(form.errors.value).toEqual({ timeout: 'mcpservers.timeout_range' });
-    form.timeout.value = 30;
-    await form.loadTools();
-    expect(probe).toHaveBeenCalledWith('https://kas.example.test/mcp');
-    expect(form.submit()).toBe(true);
-    expect(useMcpServersStore().items.at(-1)).toMatchObject({ name: 'kas', auth: 'header', headerName: 'X-Api-Key', secretSet: true, timeoutSeconds: 30, tools: [{ name: 'a' }] });
+    expect(form.timeout.value).toBe(defaultTimeoutSeconds);
+    expect(form.secretRequired.value).toBe(true);
+    expect(await form.submit()).toBe(false);
+    expect(form.errors.value).toMatchObject({ name: 'validation.required', secret: 'mcpservers.secret_required' });
+    form.name.value = 'local-yasaku';
+    form.url.value = 'http://127.0.0.1:5190/mcp';
+    form.secret.value = '  tok-1  ';
+    expect(await form.submit()).toBe(true);
+    expect(clients.server.createMcpServer.mock.calls[0]![0]).toMatchObject({ orgId, projectId, name: 'local-yasaku', url: 'http://127.0.0.1:5190/mcp', authKind: McpServerAuthKind.BEARER, authValue: 'tok-1', timeoutMs: 10_000 });
     expect(form.secret.value).toBe('');
+    expect(form.open.value).toBe(false);
+    expect(useToast().toasts.at(-1)?.text).toBe('mcpservers.saved|{"name":"local-yasaku"}');
+    await flushPromises();
+    expect(clients.server.listMcpServerTools).toHaveBeenCalledWith({ id: localPB.id });
   });
 
-  it('drops the loaded tools when the URL changes, so a save never keeps tools from another host', async () => {
-    const probe = vi.fn().mockResolvedValue({ kind: 'ok', tools: [{ name: 'a', description: '', hint: 'read_only', args: [] }] });
-    const form = useMcpServerForm(probe);
+  it('checks the header name, the timeout and the URL shape before sending', async () => {
+    const form = useMcpServerForm(orgId, projectId);
     form.show();
-    form.name.value = 'kas';
-    form.url.value = 'https://kas.example.test/mcp';
-    form.auth.value = 'none';
-    await form.loadTools();
-    expect(form.probed.value?.kind).toBe('ok');
-    form.url.value = 'https://other.example.test/mcp';
-    expect(form.probed.value).toBeNull();
-    expect(form.submit()).toBe(true);
-    expect(useMcpServersStore().items.at(-1)!.tools).toEqual([]);
-  });
-
-  it('drops the seeded tools of an edited server when its URL changes', () => {
-    const servers = useMcpServersStore();
-    const form = useMcpServerForm(vi.fn());
-    form.show(servers.items[0]);
-    form.url.value = 'https://moved.example.test/mcp';
-    expect(form.urlChanged.value).toBe(true);
-    form.secret.value = 's';
-    expect(form.submit()).toBe(true);
-    expect(servers.items[0]!.tools).toEqual([]);
-  });
-
-  it('cancels a running probe when the URL changes', async () => {
-    let answer: (r: ProbeResult) => void = () => {};
-    const form = useMcpServerForm(() => new Promise((resolve) => {
-      answer = resolve;
-    }));
-    form.show();
-    form.url.value = 'https://x.test/mcp';
-    const run = form.loadTools();
-    form.url.value = 'https://y.test/mcp';
-    await nextTick();
-    expect(form.probing.value).toBe(false);
-    answer({ kind: 'empty' });
-    await run;
-    expect(form.probed.value).toBeNull();
-  });
-
-  it('refuses a taken name, a bad header and a non-https URL before probing', async () => {
-    const probe = vi.fn();
-    const form = useMcpServerForm(probe);
-    form.show();
-    form.name.value = 'YaSaku';
-    form.url.value = 'http://x.test';
+    form.name.value = 'ok';
+    form.url.value = 'not a url';
     form.auth.value = 'header';
+    form.headerName.value = 'bad header';
     form.secret.value = 's';
-    await form.loadTools();
-    expect(probe).not.toHaveBeenCalled();
-    expect(form.errors.value.url).toBe('mcpservers.url_https');
-    form.submit();
-    expect(form.errors.value).toMatchObject({ name: 'mcpservers.name_taken', headerName: 'mcpservers.header_required' });
+    form.timeout.value = 25;
+    expect(await form.submit()).toBe(false);
+    expect(form.errors.value).toMatchObject({ headerName: 'mcpservers.header_required|{"name":"bad header"}', timeout: 'validation.invalid', url: 'validation.absolute_url' });
+    form.name.value = 'Not_Valid';
+    expect(await form.submit()).toBe(false);
+    expect(form.errors.value.name).toBe('validation.invalid_format');
+    form.auth.value = 'none';
+    expect(form.needsSecret.value).toBe(false);
+    expect(form.secretShown.value).toBe(false);
+    expect(clients.server.createMcpServer).not.toHaveBeenCalled();
   });
 
-  it('keeps the name and secret when editing, and asks for the secret again when the URL or auth changes', () => {
+  it('keeps the name fixed and the secret when editing, and needs it again for a new URL or auth kind', async () => {
     const servers = useMcpServersStore();
     const yasaku = servers.items[0]!;
-    const form = useMcpServerForm(vi.fn());
+    clients.server.updateMcpServer.mockImplementation(async req => ({ mcpServer: create(McpServerSchema, { ...serverPBs()[0]!, url: req.url, trusted: req.trusted }) }));
+    const form = useMcpServerForm(orgId, projectId);
     form.show(yasaku);
-    expect(form.probed.value).toEqual({ kind: 'ok', tools: yasaku.tools });
+    expect(form.timeout.value).toBe(20);
     expect(form.secretShown.value).toBe(false);
     form.name.value = 'renamed';
     form.trusted.value = false;
-    expect(form.submit()).toBe(true);
-    expect(servers.items[0]).toMatchObject({ name: 'yasaku', trusted: false, tools: yasaku.tools });
-    form.show(servers.items[0]);
-    form.url.value = 'https://new.test/mcp';
+    expect(await form.submit()).toBe(true);
+    const sent = clients.server.updateMcpServer.mock.calls[0]![0];
+    expect(sent.authValue).toBeUndefined();
+    expect('name' in sent).toBe(false);
+    expect(servers.items[0]).toMatchObject({ name: 'yasaku', secretSet: true, trusted: false });
+    form.show(servers.items[0]!);
+    form.auth.value = 'header';
     expect(form.secretRequired.value).toBe(true);
-    form.url.value = yasaku.url;
-    form.auth.value = 'none';
-    expect(form.needsSecret.value).toBe(false);
-    expect(form.submit()).toBe(true);
-    expect(servers.items[0]).toMatchObject({ auth: 'none', secretSet: false });
+    form.auth.value = 'bearer';
+    form.url.value = 'https://moved.example.id/mcp';
+    expect(form.urlChanged.value).toBe(true);
+    expect(form.secretRequired.value).toBe(true);
+    expect(await form.submit()).toBe(false);
+    expect(form.errors.value).toEqual({ secret: 'mcpservers.secret_required' });
   });
 
-  it('drops a probe answer that arrives after the form closed', async () => {
-    let answer: (r: ProbeResult) => void = () => {};
-    const form = useMcpServerForm(() => new Promise((resolve) => {
-      answer = resolve;
-    }));
+  it('places MCS006 by reason: a bad header name under the header, a missing secret under the secret', async () => {
+    setKnownKeys('apperror.MCS006_header_name');
+    clients.server.updateMcpServer.mockRejectedValue(connectError('MCS006', { reason: 'header_name' }));
+    const form = useMcpServerForm(orgId, projectId);
+    form.show(useMcpServersStore().items[1]!);
+    expect(await form.submit()).toBe(false);
+    expect(form.errors.value).toEqual({ headerName: 'apperror.MCS006_header_name' });
+    form.headerName.value = 'Host';
+    expect(await form.submit()).toBe(false);
+    expect(form.errors.value).toEqual({ headerName: 'mcpservers.header_reserved|{"name":"Host"}' });
+  });
+
+  it('shows MCS006 under the secret and the name taken (MCS002) under the name', async () => {
+    setKnownKeys('apperror.MCS006_secret_required', 'apperror.MCS002');
+    clients.server.updateMcpServer.mockRejectedValue(connectError('MCS006', { reason: 'secret_required' }));
+    clients.server.createMcpServer.mockRejectedValue(connectError('MCS002', { name: 'yasaku' }));
+    const form = useMcpServerForm(orgId, projectId);
+    form.show(useMcpServersStore().items[0]!);
+    expect(await form.submit()).toBe(false);
+    expect(form.errors.value.secret).toBe('apperror.MCS006_secret_required');
     form.show();
-    form.url.value = 'https://x.test/mcp';
-    const run = form.loadTools();
-    expect(form.probing.value).toBe(true);
+    form.name.value = 'yasaku';
+    form.url.value = 'https://y.test/mcp';
+    form.auth.value = 'none';
+    expect(await form.submit()).toBe(false);
+    expect(form.errors.value.name).toBe('apperror.MCS002|{"name":"yasaku"}');
+    expect(form.formError.value).toBeNull();
+  });
+
+  it('ignores a second submit and stays open while saving', async () => {
+    const pending = deferred<{ mcpServer: typeof localPB }>();
+    clients.server.createMcpServer.mockReturnValue(pending.promise);
+    const form = useMcpServerForm(orgId, projectId);
+    form.show();
+    form.name.value = 'local-yasaku';
+    form.url.value = 'http://127.0.0.1:5190/mcp';
+    form.auth.value = 'none';
+    const saving = form.submit();
+    expect(await form.submit()).toBe(false);
+    form.hide();
+    expect(form.open.value).toBe(true);
+    pending.resolve({ mcpServer: localPB });
+    expect(await saving).toBe(true);
+    form.show();
     form.secret.value = 'typed';
     form.hide();
     expect(form.secret.value).toBe('');
-    answer({ kind: 'empty' });
-    await run;
-    expect(form.probed.value).toBeNull();
-  });
-});
-
-describe('sampleProbe', () => {
-  it('answers each failure by URL so every state can be clicked', async () => {
-    expect(await sampleProbe('https://10.0.0.2/mcp', 0)).toEqual({ kind: 'private' });
-    expect(await sampleProbe('https://down.test/mcp', 0)).toEqual({ kind: 'unreachable' });
-    expect(await sampleProbe('https://x.test/401', 0)).toEqual({ kind: 'auth' });
-    expect(await sampleProbe('https://empty.test/mcp', 0)).toEqual({ kind: 'empty' });
-    expect((await sampleProbe('https://yasaku.altalune.id/mcp', 0)).kind).toBe('ok');
   });
 });

@@ -73,6 +73,15 @@ describe('useValidation', () => {
     expect(v.errors.value).toEqual({ slug: 'apperror.ORG002|{"slug":"acme"}' });
   });
 
+  it('places one reason of a code under its own input before the code\'s input', () => {
+    setKnownKeys('apperror.ORG002_taken', 'apperror.ORG002');
+    const v = useValidation(CreateOrgRequestSchema, { fields: ['name', 'slug'], codes: { ORG002: 'slug', ORG002_taken: 'name' } });
+    v.fromServer(connectError('ORG002', { reason: 'taken' }), 'error.create_org');
+    expect(v.errors.value).toEqual({ name: 'apperror.ORG002_taken' });
+    v.fromServer(connectError('ORG002', { reason: 'other' }), 'error.create_org');
+    expect(v.errors.value).toEqual({ slug: 'apperror.ORG002' });
+  });
+
   it('leaves any other error to the form', () => {
     setKnownKeys('apperror.ORG005');
     const v = useValidation(CreateOrgRequestSchema, { fields: ['name'] });

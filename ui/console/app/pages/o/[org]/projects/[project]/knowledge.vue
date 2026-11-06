@@ -11,7 +11,6 @@ import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { useToast } from '#base/components/ui/toast';
 import { useConfirm } from '#base/composables/useConfirm';
 import { useDates } from '#base/composables/useDates';
-import { embeddingReady } from '~/components/agent/configure/runtime';
 import AddSourceModal from '~/components/knowledge/AddSourceModal.vue';
 import { knowledgeTone } from '~/components/knowledge/knowledge';
 import PreviewNote from '~/components/layout/PreviewNote.vue';
@@ -20,7 +19,6 @@ import { useProject } from '~/components/project/useProject';
 import { useCan } from '~/composables/useCan';
 import { useAuthStore } from '~/stores/auth';
 import { useKnowledgeStore } from '~/stores/knowledge';
-import { useProvidersStore } from '~/stores/providers';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -29,11 +27,9 @@ const { when } = useDates();
 const { project } = useProject();
 const canEdit = useCan('project:write');
 const store = useKnowledgeStore();
-const providers = useProvidersStore();
 void store.ensureLoaded(project.value!.id);
-void providers.ensureLoaded(project.value!.id);
 
-const canEmbed = computed(() => embeddingReady(providers.items));
+const canEmbed = computed(() => store.embeddingReady);
 const providersLink = computed(() => `/o/${route.params.org}/projects/${route.params.project}/settings/model-providers`);
 const adding = ref(false);
 
@@ -82,7 +78,7 @@ await useAuthStore().load();
       </template>
     </PageHeader>
     <ProjectReadOnlyNote v-if="!canEdit" />
-    <div v-else-if="!providers.loading && !canEmbed" role="note" class="alert items-start text-ui">
+    <div v-else-if="!canEmbed" role="note" class="alert items-start text-ui">
       <Icon name="lucide:info" size="16" class="shrink-0 text-warning" aria-hidden="true" />
       <span>
         {{ t('knowledge.needs_embedding') }}

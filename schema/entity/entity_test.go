@@ -71,6 +71,22 @@ func TestBindings(t *testing.T) {
 			[]string{"id", "public_id", "org_id", "user_id", "role", "created_at"},
 		},
 		{
+			"mcp_servers",
+			func(s, p string) binding { b := entity.NewMCPServers(s, p); return binding{b, b.AllColumns} },
+			[]string{
+				"id", "public_id", "org_id", "project_id", "name", "url", "auth_kind", "auth_header", "auth_sealed",
+				"timeout_ms", "trusted", "created_at", "updated_at",
+			},
+		},
+		{
+			"model_providers",
+			func(s, p string) binding { b := entity.NewModelProviders(s, p); return binding{b, b.AllColumns} },
+			[]string{
+				"id", "public_id", "org_id", "project_id", "name", "kind", "base_url", "api_key_sealed", "models",
+				"created_at", "updated_at",
+			},
+		},
+		{
 			"orgs",
 			func(s, p string) binding { b := entity.NewOrgs(s, p); return binding{b, b.AllColumns} },
 			[]string{"id", "public_id", "slug", "name", "created_by", "created_at", "updated_at", "is_system"},

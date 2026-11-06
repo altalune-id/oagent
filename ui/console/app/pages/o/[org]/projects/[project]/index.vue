@@ -8,13 +8,12 @@ import PageHeader from '#base/components/ui/PageHeader.vue';
 import Section from '#base/components/ui/Section.vue';
 import SetupChecklist from '~/components/project/SetupChecklist.vue';
 import { setupSteps } from '~/components/project/setupSteps';
-import { useAgentRuntimeStore } from '~/stores/agentRuntime';
 import { useAgentsStore } from '~/stores/agents';
 import { useChannelsStore } from '~/stores/channels';
 import { useMcpServersStore } from '~/stores/mcpServers';
+import { useModelProvidersStore } from '~/stores/modelProviders';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
-import { useProvidersStore } from '~/stores/providers';
 import { useTryItStore } from '~/stores/tryIt';
 
 const route = useRoute();
@@ -22,7 +21,7 @@ const { t } = useI18n();
 const orgs = useOrgsStore();
 const projects = useProjectsStore();
 const agents = useAgentsStore();
-const providers = useProvidersStore();
+const providers = useModelProvidersStore();
 const mcpServers = useMcpServersStore();
 
 const org = computed(() => orgs.bySlug(route.params.org as string));
@@ -37,7 +36,6 @@ if (!project.value) {
 await Promise.all([agents.ensureLoaded(project.value.id), providers.ensureLoaded(project.value.id), mcpServers.ensureLoaded(project.value.id)]);
 
 const items = computed(() => (project.value ? agents.forProject(project.value.id) : []));
-const runtime = useAgentRuntimeStore();
 const tryIt = useTryItStore();
 const channels = useChannelsStore();
 function progressOf(agent: Agent | undefined): SetupProgress {
@@ -45,7 +43,7 @@ function progressOf(agent: Agent | undefined): SetupProgress {
     return { agentConfigured: false, tried: false, published: false, whatsappConnected: false };
   }
   return {
-    agentConfigured: !!runtime.draftFor(agent.id, agent.slug).providerId,
+    agentConfigured: !!agent.providerId,
     tried: tryIt.tried.includes(agent.id),
     published: !!agent.publishedVersion && !agent.unpublishedChanges,
     whatsappConnected: channels.list(agent.id).some(c => c.status === 'connected'),

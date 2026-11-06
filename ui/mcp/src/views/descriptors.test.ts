@@ -16,7 +16,7 @@ const detail = (tool: string) => descriptors[tool] as DetailDescriptor;
 
 describe('tool views', () => {
   it('serves every tool from a descriptor, keeping only the views that need their own', () => {
-    for (const tool of ['member_invite_confirm', 'member_invite_discard', 'org_get', 'org_create', 'org_list', 'project_get', 'project_list', 'project_create', 'agent_get', 'agent_list', 'agent_create', 'agent_update', 'agent_delete', 'member_list', 'webhook_list', 'webhook_create', 'webhook_deliveries', 'webhook_retry_failed', 'agent_version_list', 'agent_update_draft', 'agent_publish']) {
+    for (const tool of ['member_invite_confirm', 'member_invite_discard', 'org_get', 'org_create', 'org_list', 'project_get', 'project_list', 'project_create', 'agent_get', 'agent_list', 'agent_create', 'agent_update', 'agent_delete', 'member_list', 'webhook_list', 'webhook_create', 'webhook_deliveries', 'webhook_retry_failed', 'agent_version_list', 'agent_update_draft', 'agent_publish', 'model_provider_get', 'model_provider_list', 'model_provider_delete', 'mcp_server_get', 'mcp_server_list', 'mcp_server_delete', 'mcp_server_tools']) {
       expect(resolveView(tool).descriptor, tool).toBeDefined();
     }
     for (const tool of ['member_invite', 'auth_whoami']) {
@@ -88,5 +88,28 @@ describe('tool views', () => {
     expect(mount(DetailView, { props: { data: { requeued: 4 }, descriptor: detail('webhook_retry_failed') }, ...provide() }).text()).toContain('4');
     expect(mount(DetailView, { props: { data: { agent: { id: 'a1', name: 'Support', slug: 'support' } }, descriptor: detail('agent_update') }, ...provide() }).find('h1').text()).toBe('Agent updated');
     expect(mount(DetailView, { props: { data: {}, descriptor: detail('agent_delete') }, ...provide() }).find('h1').text()).toBe('Agent deleted');
+  });
+  it('shows model providers with USD prices per 1M tokens and never a key', () => {
+    const modelProvider = { id: 'p1', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', apiKeySet: true, models: [{ id: 'gpt-4.1-mini', prices: { inputMicros: '400000', outputMicros: '1600000' } }, { id: 'llama' }] };
+    const w = mount(ListView, { props: { data: { modelProviders: [modelProvider] }, descriptor: list('model_provider_list') }, ...provide() });
+    expect(w.text()).toContain('gpt-4.1-mini (in $0.4 · out $1.6 per 1M tokens), llama (no price)');
+    expect(w.text()).toContain('Yes');
+    expect(list('model_provider_list').refresh).toEqual({ tool: 'model_provider_list', args: ['projectId'] });
+    const one = mount(DetailView, { props: { data: { modelProvider: { ...modelProvider, models: [] } }, descriptor: detail('model_provider_get') }, ...provide() });
+    expect(one.text()).toContain('https://openrouter.ai/api/v1');
+    expect(mount(DetailView, { props: { data: {}, descriptor: detail('model_provider_delete') }, ...provide() }).find('h1').text()).toBe('Model provider deleted');
+  });
+
+  it('shows MCP servers with their auth kind and timeout, and their tools', () => {
+    const mcpServer = { id: 's1', name: 'yasaku', url: 'https://yasaku.test/mcp', authKind: 'MCP_SERVER_AUTH_KIND_HEADER', authHeader: 'X-Api-Key', authSet: true, timeoutMs: 10000 };
+    const servers = mount(ListView, { props: { data: { mcpServers: [mcpServer] }, descriptor: list('mcp_server_list') }, ...provide() });
+    expect(servers.find('tbody .badge').text()).toBe('Custom header');
+    expect(servers.text()).toContain('10 s');
+    expect(servers.text()).not.toContain('X-Api-Key');
+    expect(mount(DetailView, { props: { data: { mcpServer }, descriptor: detail('mcp_server_get') }, ...provide() }).text()).toContain('X-Api-Key');
+    expect(mount(DetailView, { props: { data: {}, descriptor: detail('mcp_server_delete') }, ...provide() }).find('h1').text()).toBe('MCP server deleted');
+    const tools = mount(ListView, { props: { data: { tools: [{ name: 'record_expense', description: 'Record an expense', requireApproval: true, grantable: true }] }, descriptor: list('mcp_server_tools') }, ...provide() });
+    expect(tools.findAll('tbody td').map(td => td.text())).toEqual(['record_expense', 'Record an expense', 'No', 'Yes', 'Yes']);
+    expect(list('mcp_server_tools').refresh).toEqual({ tool: 'mcp_server_tools', args: ['id'] });
   });
 });

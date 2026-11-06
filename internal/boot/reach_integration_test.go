@@ -3,13 +3,16 @@
 package boot
 
 import (
+	"context"
 	"net/http"
+	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -25,6 +28,8 @@ import (
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/internal/mcpserver"
+	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/permission"
@@ -60,7 +65,7 @@ type reachOrg struct {
 }
 
 type reachIDs struct {
-	org, project, otherProject, agent, webhook, delivery, member, invite, keyHint string
+	org, project, otherProject, agent, webhook, delivery, member, invite, keyHint, provider, server string
 }
 
 func (ids reachIDs) serviceID(service protoreflect.FullName) string {
@@ -73,6 +78,10 @@ func (ids reachIDs) serviceID(service protoreflect.FullName) string {
 		return ids.agent
 	case "webhook.v1.WebhookService":
 		return ids.webhook
+	case "modelprovider.v1.ModelProviderService":
+		return ids.provider
+	case "mcpserver.v1.McpServerService":
+		return ids.server
 	}
 	return ""
 }
@@ -99,6 +108,17 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 	require.NoError(t, err)
 	ag, err := f.svcs.Agents.Create(ctx, agent.CreateRequest{OrgID: b.ID, ProjectID: prj.ID, Slug: "bot", Name: "Bot"})
 	require.NoError(t, err)
+	inB := tenant.Into(ctx, tenant.Context{OrgID: b.ID, ProjectID: prj.ID})
+	provider, err := f.svcs.ModelProviders.Create(inB, prj.ID, modelprovider.Input{
+		Name: "openrouter", Kind: modelprovider.KindOpenAICompatible, BaseURL: "https://example.com/v1",
+		Models: []modelprovider.Model{{ID: "m"}},
+	}, "sk-probe")
+	require.NoError(t, err)
+	mcpURL := startProbeMCPServer(t)
+	server, err := f.svcs.MCPServers.Create(inB, prj.ID, mcpserver.Input{
+		Name: "yasaku", URL: mcpURL, AuthKind: mcpserver.AuthBearer, TimeoutMS: 5000,
+	}, "tok-probe")
+	require.NoError(t, err)
 	var delivery, deliveryID string
 	require.NoError(t, f.db.QueryRowContext(ctx, `SELECT public_id, id::text FROM outbox_entries WHERE target = $1`, hook.ID.String()).
 		Scan(&delivery, &deliveryID))
@@ -111,13 +131,14 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 	require.NoError(t, err)
 	s.pub = reachIDs{
 		org: b.PublicID, project: prj.PublicID, otherProject: other.PublicID, agent: ag.PublicID, webhook: hook.PublicID, delivery: delivery,
-		member: u.PublicID, invite: c.Invite.PublicID, keyHint: hintOf(key),
+		member: u.PublicID, invite: c.Invite.PublicID, keyHint: hintOf(key), provider: provider.PublicID, server: server.PublicID,
 	}
 	var keyID string
 	require.NoError(t, f.db.QueryRowContext(ctx, `SELECT id::text FROM api_keys WHERE org_id = $1 AND secret_hint = $2`, b.ID, hintOf(key)).Scan(&keyID))
 	s.uuids = reachIDs{
 		org: b.ID.String(), project: prj.ID.String(), otherProject: other.ID.String(), agent: ag.ID.String(), webhook: hook.ID.String(),
 		delivery: deliveryID, member: u.ID.String(), invite: c.Invite.ID.String(), keyHint: keyID,
+		provider: provider.ID.String(), server: server.ID.String(),
 	}
 	return s
 }
@@ -135,7 +156,9 @@ func (s reachOrg) snapshot(t *testing.T, f *apiFixture) string {
 		(SELECT count(*) FROM webhook_deliveries WHERE org_id = $1),
 		(SELECT count(*) FROM api_keys WHERE org_id = $1 AND revoked_at IS NULL),
 		(SELECT string_agg(user_id || role, ',' ORDER BY user_id) FROM memberships WHERE org_id = $1),
-		(SELECT count(*) || md5(string_agg(coalesce(token_hash, '') || updated_at || coalesce(revoked_at::text, ''), ',' ORDER BY id)) FROM invites WHERE org_id = $1))`, s.orgB).Scan(&got))
+		(SELECT count(*) || md5(string_agg(coalesce(token_hash, '') || updated_at || coalesce(revoked_at::text, ''), ',' ORDER BY id)) FROM invites WHERE org_id = $1),
+		(SELECT count(*) || md5(string_agg(name || base_url || models::text || updated_at || api_key_sealed::text, ',' ORDER BY id)) FROM model_providers WHERE org_id = $1),
+		(SELECT count(*) || md5(string_agg(url || auth_kind || coalesce(auth_sealed::text, '') || updated_at, ',' ORDER BY id)) FROM mcp_servers WHERE org_id = $1))`, s.orgB).Scan(&got))
 	return got
 }
 
@@ -315,9 +338,9 @@ func TestReach_UUIDsAndGarbageAreRefused(t *testing.T) {
 	f := newAPIFixture(t)
 	s := seedReach(t, f)
 	cookie, _, _ := f.personCookieIn(t, s.orgB, "b-owner@example.com", member.RoleOwner)
-	garbage := reachIDs{"nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope"}
+	garbage := reachIDs{"nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope"}
 	const unknownID = "unknwnunknwnunknwnabc"
-	unknown := reachIDs{unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, "zzzz"}
+	unknown := reachIDs{unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, "zzzz", unknownID, unknownID}
 	before := s.snapshot(t, f)
 	for name, tc := range map[string]struct {
 		ids  reachIDs
@@ -339,4 +362,17 @@ func TestReach_UUIDsAndGarbageAreRefused(t *testing.T) {
 		}
 	}
 	assert.Equal(t, before, s.snapshot(t, f), "org B is unchanged")
+}
+
+func startProbeMCPServer(t *testing.T) string {
+	t.Helper()
+	srv := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "probe", Version: "1"}, nil)
+	srv.AddTool(&sdkmcp.Tool{Name: "record_expense", InputSchema: map[string]any{"type": "object"}},
+		func(context.Context, *sdkmcp.CallToolRequest) (*sdkmcp.CallToolResult, error) {
+			return &sdkmcp.CallToolResult{}, nil
+		})
+	ts := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return srv },
+		&sdkmcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true}))
+	t.Cleanup(ts.Close)
+	return ts.URL + "/mcp"
 }

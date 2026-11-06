@@ -4,20 +4,21 @@ import { flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { fakeRuntimeClients } from '~~/test/fixtures/runtime';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { mountPage } from '#test/mount-page';
 import { setClient, setRoute } from '#test/nuxt-globals';
 import ChannelsPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/channels.vue';
 import TryPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/try.vue';
 import { useChannelsStore } from '~/stores/channels';
+import { useModelProvidersStore } from '~/stores/modelProviders';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
-import { useProvidersStore } from '~/stores/providers';
 
 const orgId = 'B6rTn1YkM8wQz3XpL5vGd';
 const projectId = 'x6MH9WPWjktMwCBKHy4pF';
 const yasaku = { id: 'Y4sKu8RmT2pLq6WnX9cVb', projectId, slug: 'yasaku-keuangan', name: 'Yasaku Keuangan', description: '', publishedVersion: 4 };
-const draftConfig = { instructions: 'Halo', model: 'large-2', temperature: 0.3, maxSteps: 12, maxCostCents: 20, tools: [] as { name: string, requireApproval: boolean }[] };
+const draftConfig = { instructions: 'Halo', providerId: 'Pv6tQm2ZxR8wKp3VbNc4K', model: 'openai/gpt-4.1-mini', helperModel: '', temperature: 0.3, maxSteps: 12, maxCostCents: 20, mcpServers: [], providerMissing: false, tools: [] as { name: string, requireApproval: boolean }[] };
 
 function seed(agent: Record<string, unknown> = yasaku, permissions = ['agent:read', 'agent:write'], tools = draftConfig.tools) {
   useOrgsStore().items = [{ id: orgId, slug: 'acme', name: 'Acme', role: 'owner', permissions: [] }];
@@ -35,6 +36,7 @@ const button = (w: Awaited<ReturnType<typeof mountPage>>, text: string) => w.fin
 
 beforeEach(() => {
   setActivePinia(createPinia());
+  fakeRuntimeClients();
   vi.stubGlobal('definePageMeta', vi.fn());
 });
 
@@ -130,7 +132,7 @@ describe('try it page', () => {
     Object.defineProperty(input.element, 'files', { value: [{ name: 'big.jpg', size: 6 * 1024 * 1024, type: 'image/jpeg' }] });
     await input.trigger('change');
     expect(w.text()).toContain('try.photo_too_big');
-    useProvidersStore().items[0]!.models[0]!.vision = false;
+    useModelProvidersStore().items[0]!.models[0]!.vision = false;
     await flushPromises();
     expect(w.text()).toContain('try.no_vision');
     expect(w.get('button[aria-label="try.attach"]').attributes('disabled')).toBeDefined();

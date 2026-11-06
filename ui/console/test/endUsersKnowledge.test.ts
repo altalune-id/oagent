@@ -4,6 +4,7 @@ import { flushPromises, RouterLinkStub } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { fakeRuntimeClients } from '~~/test/fixtures/runtime';
 import { useToast } from '#base/components/ui/toast';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { mountPage } from '#test/mount-page';
@@ -15,7 +16,6 @@ import { useEndUsersStore } from '~/stores/endUsers';
 import { useKnowledgeStore } from '~/stores/knowledge';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
-import { useProvidersStore } from '~/stores/providers';
 
 const orgId = 'B6rTn1YkM8wQz3XpL5vGd';
 const projectId = 'x6MH9WPWjktMwCBKHy4pF';
@@ -36,6 +36,7 @@ function page<T extends { findAll: (s: string) => { element: Element }[] }>(w: T
 
 beforeEach(() => {
   setActivePinia(createPinia());
+  fakeRuntimeClients();
 });
 
 describe('end users list', () => {
@@ -204,7 +205,7 @@ describe('knowledge sources', () => {
   it('needs an embedding model before adding, and shows an empty state', async () => {
     seed('/knowledge');
     const w = await mountPage(KnowledgePage);
-    useProvidersStore().items.forEach(p => p.models.forEach(m => (m.embedding = false)));
+    useKnowledgeStore().embeddingReady = false;
     useKnowledgeStore().items = [];
     await flushPromises();
     expect(w.text()).toContain('knowledge.needs_embedding');

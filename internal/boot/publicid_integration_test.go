@@ -44,6 +44,9 @@ func fillProbe(msg *dynamicpb.Message) {
 			if v, ok := probeStrings[fd.Name()]; ok {
 				msg.Set(fd, protoreflect.ValueOfString(v))
 			}
+			if fd.Name() == "name" && msg.Descriptor().FullName() == "mcpserver.v1.CreateMcpServerRequest" {
+				msg.Set(fd, protoreflect.ValueOfString("probe-"+strconv.FormatInt(time.Now().UnixNano(), 36)))
+			}
 			if fd.Name() == "slug" {
 				msg.Set(fd, protoreflect.ValueOfString("probe-"+strconv.FormatInt(time.Now().UnixNano(), 10)))
 			}
@@ -53,13 +56,23 @@ func fillProbe(msg *dynamicpb.Message) {
 			msg.Set(fd, protoreflect.ValueOfMessage(timestamppb.New(time.Now().Add(time.Hour)).ProtoReflect()))
 		case fd.Kind() == protoreflect.MessageKind && fd.Name() == "config":
 			msg.Set(fd, protoreflect.ValueOfMessage(msg.NewField(fd).Message()))
+		case fd.Kind() == protoreflect.EnumKind && !fd.IsList():
+			msg.Set(fd, protoreflect.ValueOfEnum(fd.Enum().Values().Get(1).Number()))
+		case fd.Kind() == protoreflect.Int32Kind && fd.Name() == "timeout_ms":
+			msg.Set(fd, protoreflect.ValueOfInt32(5000))
+		case fd.IsList() && fd.Name() == "models":
+			list := msg.Mutable(fd).List()
+			model := list.NewElement()
+			model.Message().Set(model.Message().Descriptor().Fields().ByName("id"), protoreflect.ValueOfString("m"))
+			list.Append(model)
 		}
 	}
 }
 
 var probeStrings = map[protoreflect.Name]string{
-	"name": "Probe", "description": "probe", "url": "https://example.com/probe",
-	"email": "probe@example.com", "role": "member", "kind": "org",
+	"name": "Probe", "description": "probe", "url": "https://example.com/probe", "base_url": "https://example.com/v1",
+	"api_key": "sk-probe",
+	"email":   "probe@example.com", "role": "member", "kind": "org",
 }
 
 func (f *apiFixture) callForResponse(
