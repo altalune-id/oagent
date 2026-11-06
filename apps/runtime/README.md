@@ -39,7 +39,7 @@ Run it next to a local `oagent`:
    ```sh
    pnpm --filter @oagent/runtime build
    PORT=5170 RUNTIME_TOKEN=<token> RUNTIME_ENV=development RUNTIME_ALLOW_PRIVATE=127.0.0.1:11434,127.0.0.1:5190 \
-     node apps/runtime/dist/server.js
+     node apps/runtime/dist/main.js
    ```
 
 3. Point `oagent` at it: `OAGENT_RUNTIME_URL=http://127.0.0.1:5170` and `OAGENT_RUNTIME_TOKEN=<token>` (config keys `runtime.url`, `runtime.token`).
@@ -49,7 +49,7 @@ Set `PORT` to any free port: the default 5160 may already be taken by another lo
 
 ## Image
 
-`apps/runtime/Dockerfile`, built from the repository root: `docker build -f apps/runtime/Dockerfile .`. It runs `node dist/server.js` as a non-root user on port 5160. Releases publish `ghcr.io/<owner>/oagent-runtime`, and `main` pushes the `edge` tag.
+`apps/runtime/Dockerfile`, built from the repository root: `docker build -f apps/runtime/Dockerfile .`. It runs `node dist/main.js` as a non-root user on port 5160. Releases publish `ghcr.io/<owner>/oagent-runtime`, and `main` pushes the `edge` tag.
 
 ## Deploy
 

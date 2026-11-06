@@ -1,6 +1,6 @@
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import type { McpServerSpec } from './mcp.ts';
+import type { McpServerSpec } from './clients.ts';
 import { Buffer } from 'node:buffer';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -8,9 +8,9 @@ import { fileURLToPath } from 'node:url';
 import { Agent, configureLogging } from '@strands-agents/sdk';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { createLogger, strandsLogger } from './log.ts';
-import { openMcpServers, originFetch, RESERVED_HEADERS, sanitizeDescription } from './mcp.ts';
-import { ScriptedModel } from './test/scripted-model.ts';
+import { createLogger, strandsLogger } from '../log.ts';
+import { ScriptedModel } from '../test/scripted-model.ts';
+import { openMcpServers, originFetch, RESERVED_HEADERS, sanitizeDescription } from './clients.ts';
 
 interface Seen {
   method: string;
@@ -225,7 +225,7 @@ describe('remote text and secrets', () => {
   });
 
   it('reserves exactly the header names Go reserves', () => {
-    const shared = JSON.parse(readFileSync(fileURLToPath(new URL('../../../internal/mcpserver/testdata/reserved_headers.json', import.meta.url)), 'utf8')) as string[];
+    const shared = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../internal/mcpserver/testdata/reserved_headers.json', import.meta.url)), 'utf8')) as string[];
     expect([...RESERVED_HEADERS].sort()).toEqual(shared.map(h => h.toLowerCase()).sort());
   });
 

@@ -1,7 +1,7 @@
 import { OpenAIModel } from '@strands-agents/sdk/models/openai';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ModelClients } from './models.ts';
+import { ModelClients } from './clients.ts';
 
 const spec = { baseUrl: 'https://llm.example.com/v1', apiKey: 'sk-test', modelId: 'gpt-4o', maxTokens: 1024 };
 

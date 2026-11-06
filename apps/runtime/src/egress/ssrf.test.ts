@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { checkedLookup, guardedLookup, installGuard, isPrivateOrLocal, SsrfRefusedError } from './ssrf.ts';
 
-const vectorsPath = fileURLToPath(new URL('../../../httpclient/testdata/ssrf_vectors.json', import.meta.url));
+const vectorsPath = fileURLToPath(new URL('../../../../httpclient/testdata/ssrf_vectors.json', import.meta.url));
 const vectors = JSON.parse(readFileSync(vectorsPath, 'utf8')) as { private: string[], public: string[] };
 
 function listen(handler: Parameters<typeof createServer>[1]): Promise<{ server: Server, port: number }> {

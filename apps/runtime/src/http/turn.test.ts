@@ -3,12 +3,12 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { createLogger } from './log.ts';
+import { createLogger } from '../log.ts';
 import { createRuntimeServer } from './server.ts';
 
 const TOKEN = 'secret-bearer-'.padEnd(40, 'x');
 const SECRETS = ['sk-test', 'tok-test', TOKEN];
-const body = readFileSync(fileURLToPath(new URL('../../../internal/kernel/runtime/testdata/turn/tool_call.request.json', import.meta.url)), 'utf8');
+const body = readFileSync(fileURLToPath(new URL('../../../../internal/kernel/runtime/testdata/turn/tool_call.request.json', import.meta.url)), 'utf8');
 
 describe('turn logging', () => {
   it('never writes a secret from the request, the bearer or an error', async () => {

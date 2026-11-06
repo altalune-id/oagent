@@ -1,7 +1,7 @@
 import { OpenAIModel } from '@strands-agents/sdk/models/openai';
 import OpenAI from 'openai';
 
-import { guardedFetch } from './egress.ts';
+import { guardedFetch } from '../egress/fetch.ts';
 
 const DEFAULT_MAX = 256;
 const DEFAULT_IDLE_MS = 15 * 60_000;

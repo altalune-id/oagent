@@ -1,11 +1,11 @@
 import type { Snapshot } from '@strands-agents/sdk';
-import type { TurnRequest } from '../contract.ts';
-import type { McpTurn } from '../mcp.ts';
+import type { TurnRequest } from '../http/contract.ts';
+import type { McpTurn } from '../mcp/clients.ts';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Agent, FunctionTool, InterventionHandler } from '@strands-agents/sdk';
 
-import { validateRequest } from '../contract.ts';
+import { validateRequest } from '../http/contract.ts';
 import { createLogger } from '../log.ts';
 import { ScriptedModel } from './scripted-model.ts';
 

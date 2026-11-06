@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { guardedFetch, redact } from './egress.ts';
+import { guardedFetch, redact } from './fetch.ts';
 
 interface Call { url: string; headers: Headers; }
 

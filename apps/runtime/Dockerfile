@@ -31,4 +31,4 @@ COPY --from=build --chown=1000:1000 /src/apps/runtime/dist ./dist
 USER 1000:1000
 EXPOSE 5160
 
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/main.js"]

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { CONTRACT_VERSION, validateRequest } from './contract.ts';
 
-const goldens = fileURLToPath(new URL('../../../internal/kernel/runtime/testdata/turn/', import.meta.url));
+const goldens = fileURLToPath(new URL('../../../../internal/kernel/runtime/testdata/turn/', import.meta.url));
 const requests = readdirSync(goldens).filter(f => f.endsWith('.request.json')).sort();
 
 function golden(name: string): Record<string, unknown> {

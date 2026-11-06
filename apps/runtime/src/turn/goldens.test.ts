@@ -1,18 +1,18 @@
-import type { TurnRequest } from './contract.ts';
-import type { Step } from './test/scripted-model.ts';
+import type { TurnRequest } from '../http/contract.ts';
+import type { Step } from '../test/scripted-model.ts';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FunctionTool } from '@strands-agents/sdk';
 import { describe, expect, it } from 'vitest';
 
+import { ModelClients } from '../models/clients.ts';
+import { ScriptedModel } from '../test/scripted-model.ts';
+import { fakeMcp, goldenRequest, pendingSnapshot, quiet } from '../test/turn-fixtures.ts';
 import { createRunTurn } from './agui.ts';
-import { ModelClients } from './models.ts';
 import { SDK_VERSION } from './snapshot.ts';
-import { ScriptedModel } from './test/scripted-model.ts';
-import { fakeMcp, goldenRequest, pendingSnapshot, quiet } from './test/turn-fixtures.ts';
 
-const dir = fileURLToPath(new URL('../../../internal/kernel/runtime/testdata/turn/', import.meta.url));
+const dir = fileURLToPath(new URL('../../../../internal/kernel/runtime/testdata/turn/', import.meta.url));
 const appData = { thread: 't0193a2b4c5d67e8f9a0b1c2d3e4f5a6b', agentVersion: 3, sdk: SDK_VERSION };
 const args = { amount: 25000, account: 'cash', note: 'lunch' };
 const callArgs = { name: 'yasaku__record_expense', id: 'call_1', input: args };
