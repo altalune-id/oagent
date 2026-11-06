@@ -1,4 +1,5 @@
 import type { ShownError } from '#base/lib/apperror/message';
+import type { ChannelTiming, ReplyTexts } from '~/components/channels/replies';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { sampleChannelId, sampleChannelSettings, sampleOpenwaCheck, sampleOpenwaFill, sampleWebhookUrl } from '~/preview/samples';
 
@@ -28,6 +29,8 @@ export interface OpenwaFill {
 
 export interface ChannelSettings {
   defaultOpenwaBaseUrl: string;
+  defaultReplies: ReplyTexts;
+  timing: ChannelTiming;
 }
 
 // NOTE: shaped like the server setting that will carry the default OpenWA base URL; empty leaves the field empty.
@@ -35,7 +38,8 @@ export interface ChannelSettings {
 // TODO: replace with the channel connection RPCs; until then this keeps each agent's connections on the page.
 export const useChannelsStore = defineStore('channels', () => {
   const connections = ref<Record<string, WhatsAppConnection>>({});
-  const settings = ref<ChannelSettings>({ defaultOpenwaBaseUrl: '' });
+  const settings = ref<ChannelSettings>({ defaultOpenwaBaseUrl: '', defaultReplies: { failure: '', voice: '', photo: '' }, timing: { quietMs: 0, quietMaxMs: 0, maxMessageAgeMinutes: 0 } });
+  const savedReplies = ref<Record<string, ReplyTexts>>({});
   const loading = ref(false);
   const error = ref<ShownError | null>(null);
   const errorMessage = useErrorMessage();
@@ -82,6 +86,16 @@ export const useChannelsStore = defineStore('channels', () => {
   function remove(agentId: string, provider: ChannelProvider = 'openwa') {
     const { [keyOf(agentId, provider)]: _gone, ...rest } = connections.value;
     connections.value = rest;
+    const { [keyOf(agentId, provider)]: _replies, ...kept } = savedReplies.value;
+    savedReplies.value = kept;
+  }
+
+  function replies(agentId: string, provider: ChannelProvider = 'openwa'): ReplyTexts {
+    return savedReplies.value[keyOf(agentId, provider)] ?? settings.value.defaultReplies;
+  }
+
+  function saveReplies(agentId: string, next: ReplyTexts, provider: ChannelProvider = 'openwa') {
+    savedReplies.value = { ...savedReplies.value, [keyOf(agentId, provider)]: { failure: next.failure.trim(), voice: next.voice.trim(), photo: next.photo.trim() } };
   }
 
   function newChannelId(): string {
@@ -101,5 +115,5 @@ export const useChannelsStore = defineStore('channels', () => {
     return sampleOpenwaCheck(input);
   }
 
-  return { connections, settings, loading, error, load, ensureLoaded, connection, list, save, replaced, remove, newChannelId, webhookUrl, prefill, check };
+  return { connections, settings, loading, error, load, ensureLoaded, connection, list, save, replaced, remove, replies, saveReplies, newChannelId, webhookUrl, prefill, check };
 });

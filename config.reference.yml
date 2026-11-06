@@ -77,6 +77,8 @@ http:
   baseURL: ""
   # env: OAGENT_HTTP_COOKIE_SECURE
   cookieSecure: true
+  # env: OAGENT_HTTP_SHUTDOWN_GRACE
+  shutdownGrace: 30s
   # [secret] env: OAGENT_HTTP_STATE_SECRET
   stateSecret: ""
   # env: OAGENT_HTTP_TRUSTED_PROXY_HOPS
@@ -206,6 +208,13 @@ rateLimit:
   auth:
     # env: OAGENT_RATE_LIMIT_AUTH_ENABLED
     enabled: true
+  dataPlane:
+    # env: OAGENT_RATE_LIMIT_DATA_PLANE_ENABLED
+    enabled: true
+    # env: OAGENT_RATE_LIMIT_DATA_PLANE_PER_IP_PER_MINUTE
+    perIPPerMinute: 600
+    # env: OAGENT_RATE_LIMIT_DATA_PLANE_PER_KEY_PER_MINUTE
+    perKeyPerMinute: 600
   # env: OAGENT_RATE_LIMIT_DRIVER
   driver: memory
   # env: OAGENT_RATE_LIMIT_MAX_KEYS

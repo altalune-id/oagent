@@ -1,6 +1,9 @@
 package scope
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -107,4 +110,35 @@ func TestCovers(t *testing.T) {
 	assert.False(t, Covers(nil, []string{MemberRead}))
 	assert.True(t, Covers([]string{AgentRead, AgentWrite}, []string{"agent:*"}), "a wildcard is the catalog permissions it names")
 	assert.False(t, Covers([]string{AgentRead}, []string{"agent:*"}))
+}
+
+func TestCatalog_RunAndThreadScopes(t *testing.T) {
+	for _, name := range []string{RunCreate, RunRead, ThreadRead} {
+		level, ok := LevelOf(name)
+		assert.True(t, ok, name)
+		assert.Equal(t, LevelProject, level, "%s is a project scope", name)
+	}
+	assert.Equal(t, "run:create", RunCreate)
+	assert.Equal(t, "run:read", RunRead)
+	assert.Equal(t, "thread:read", ThreadRead)
+}
+
+func TestCatalog_EveryLabelInEveryLocale(t *testing.T) {
+	var specs []struct {
+		Name     string `json:"name"`
+		LabelKey string `json:"labelKey"`
+	}
+	assert.NoError(t, json.Unmarshal(scopesJSON, &specs))
+	assert.Len(t, specs, len(All()))
+	for _, locale := range []string{"en-US", "id-ID"} {
+		raw, err := os.ReadFile(filepath.Join("..", "ui", "base", "i18n", "locales", locale+".json"))
+		if !assert.NoError(t, err) {
+			continue
+		}
+		var keys map[string]string
+		assert.NoError(t, json.Unmarshal(raw, &keys))
+		for _, s := range specs {
+			assert.NotEmpty(t, keys[s.LabelKey], "%s: %s has no label", locale, s.Name)
+		}
+	}
 }

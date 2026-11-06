@@ -47,6 +47,7 @@ describe('threads page', () => {
     seed('/agents/yasaku-keuangan/threads', { agent: 'yasaku-keuangan' });
     const w = await mountPage(ThreadsPage);
     expect(w.get('h1').text()).toBe('threads.title');
+    expect(w.text()).toContain('threads.preview_note');
     expect(w.findAll('tbody tr')).toHaveLength(4);
     expect(w.get('tbody').text()).toContain('Sari: transfer 200rb ke BCA');
     expect(w.get('tbody').text()).toContain('threads.api_user|{"id":"cust_0001"}');
@@ -80,8 +81,13 @@ describe('threads page', () => {
 
   it('starts empty for another agent with links to Try it and Channels', async () => {
     seed('/agents/tagihan/threads', { agent: 'tagihan' });
+    const listThreads = vi.fn().mockResolvedValue({ threads: [], nextPageToken: '' });
+    setClient('$threadClient', { listThreads });
     const w = await mountPage(ThreadsPage);
     expect(w.text()).toContain('threads.empty');
+    expect(w.text()).not.toContain('threads.preview_note');
+    expect(w.text()).not.toContain('preview.badge');
+    expect(listThreads).toHaveBeenCalledWith(expect.objectContaining({ agentId: 'Ot8KqRm2LxW4pTn6Vc9Bd', pageToken: '' }));
   });
 });
 
@@ -91,7 +97,8 @@ describe('thread view', () => {
     seed('/agents/yasaku-keuangan/threads/thr_grp3Kd9Q', { agent: 'yasaku-keuangan', thread: 'thr_grp3Kd9Q' });
     const w = await mountPage(ThreadPage, { attachTo: document.body });
     expect(w.get('h1').text()).toBe('Keuangan Rumah');
-    expect(w.text()).toContain('thread.summary|{"runs":4,"cost":"$0.005"}');
+    expect(w.text()).toContain('thread.summary|{"runs":4,"cost":"< $0.01"}');
+    expect(w.findAll('[title="$0.0054"]')).toHaveLength(2);
     const log = w.get('[role="log"]');
     expect(log.findAll('.chat-start .chat-header').map(h => h.text().split(' ')[0])).toEqual(['Budi', 'Sari', 'Sari']);
     expect(log.text()).toContain('thread.photo_placeholder');
@@ -102,9 +109,19 @@ describe('thread view', () => {
     expect(log.findAll('section button').some(b => b.text().includes('approvalcard.approve_run'))).toBe(false);
     expect(w.get('aside').text()).toContain('Budi');
     expect(w.get('aside').getComponent(RouterLinkStub).props('to')).toBe('/o/acme/projects/rumah/end-users/eu_budi1');
+    const th = useThreadsStore().byId('thr_grp3Kd9Q')!;
+    const live = th.items;
     await button(w, 'thread.cancel_run').trigger('click');
     await flushPromises();
     const dialog = w.findAll('dialog').find(d => d.text().includes('thread.cancel_body'))!;
+    expect((dialog.element as HTMLDialogElement).open).toBe(true);
+    th.items = live.map(i => (i.kind === 'run' ? { ...i, run: { ...i.run, status: 'completed' as const } } : i));
+    await flushPromises();
+    expect((dialog.element as HTMLDialogElement).open).toBe(false);
+    th.items = live;
+    await flushPromises();
+    await button(w, 'thread.cancel_run').trigger('click');
+    await flushPromises();
     await dialog.findAll('button').find(b => b.text() === 'thread.cancel_run')!.trigger('click');
     await flushPromises();
     expect(useThreadsStore().byId('thr_grp3Kd9Q')!.status).toBe('cancelled');

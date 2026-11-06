@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	nethttp "net/http"
 	"net/url"
+	"slices"
 	"strings"
 
 	"altalune.id/oagent/httpclient"
@@ -73,7 +74,7 @@ func (c *Client) Turn(ctx context.Context, req runtime.TurnRequest) (runtime.Str
 		return nil, fmt.Errorf("runtime.http: turn: %w", err)
 	}
 	if resp.StatusCode == nethttp.StatusOK {
-		return &stream{body: resp.Body, r: bufio.NewReaderSize(resp.Body, 64<<10)}, nil
+		return &stream{ctx: ctx, body: resp.Body, r: bufio.NewReaderSize(resp.Body, 64<<10), log: c.log}, nil
 	}
 	defer func() { _ = resp.Body.Close() }()
 	err = refusal(resp)
@@ -103,9 +104,22 @@ func refusal(resp *nethttp.Response) error {
 }
 
 type stream struct {
+	ctx  context.Context
 	body io.ReadCloser
 	r    *bufio.Reader
+	log  *slog.Logger
 	done bool
+}
+
+// SECURITY: an unknown OAGENT_ type may carry a checkpoint, so only unknown standard AG-UI types are skipped.
+func skippable(line []byte) (string, bool) {
+	var head struct {
+		Type string `json:"type"`
+	}
+	if json.Unmarshal(line, &head) != nil || head.Type == "" || strings.HasPrefix(head.Type, "OAGENT_") {
+		return head.Type, false
+	}
+	return head.Type, !slices.Contains(runtime.EventTypes(), runtime.EventType(head.Type))
 }
 
 func (s *stream) line() ([]byte, error) {
@@ -147,7 +161,12 @@ func (s *stream) Next() (runtime.Event, error) {
 		if len(bytes.TrimSpace(line)) == 0 {
 			continue
 		}
-		e, err := runtime.DecodeEvent(bytes.TrimSpace(line))
+		line = bytes.TrimSpace(line)
+		if kind, skip := skippable(line); skip {
+			s.log.DebugContext(s.ctx, "runtime: skipped an event type Go does not relay", slog.String("type", kind))
+			continue
+		}
+		e, err := runtime.DecodeEvent(line)
 		if err != nil {
 			return nil, &runtime.ContractError{Status: nethttp.StatusOK, Cause: err}
 		}

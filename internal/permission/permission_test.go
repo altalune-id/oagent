@@ -16,6 +16,7 @@ import (
 	modelproviderv1 "altalune.id/oagent/gen/go/modelprovider/v1"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	projectv1 "altalune.id/oagent/gen/go/project/v1"
+	threadv1 "altalune.id/oagent/gen/go/thread/v1"
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/scope"
@@ -33,6 +34,7 @@ func allProcedures() []string {
 		modelproviderv1.File_modelprovider_v1_modelprovider_proto,
 		orgv1.File_org_v1_org_proto,
 		projectv1.File_project_v1_project_proto,
+		threadv1.File_thread_v1_thread_proto,
 		webhookv1.File_webhook_v1_webhook_proto,
 	} {
 		svcs := f.Services()
@@ -48,7 +50,7 @@ func allProcedures() []string {
 
 func TestEveryRPCHasAPermission(t *testing.T) {
 	procs := allProcedures()
-	require.Len(t, procs, 59, "Org 4, Project 5, Agent 8, APIKey 3, Webhook 11, Auth 6, Member 4, Invite 7, ModelProvider 5, McpServer 6")
+	require.Len(t, procs, 65, "Org 4, Project 5, Agent 8, APIKey 3, Webhook 11, Auth 6, Member 4, Invite 7, ModelProvider 5, McpServer 6, Thread 6")
 	table := Table()
 	for _, proc := range procs {
 		perms := table[proc]
@@ -89,6 +91,12 @@ func TestPermissionTable_Spec15(t *testing.T) {
 		"/mcpserver.v1.McpServerService/GetMcpServer":                "mcpserver:read",
 		"/mcpserver.v1.McpServerService/ListMcpServers":              "mcpserver:read",
 		"/mcpserver.v1.McpServerService/ListMcpServerTools":          "mcpserver:read",
+		"/thread.v1.ThreadService/ListThreads":                       "thread:read",
+		"/thread.v1.ThreadService/GetThread":                         "thread:read",
+		"/thread.v1.ThreadService/ListThreadMessages":                "thread:read",
+		"/thread.v1.ThreadService/ListRuns":                          "run:read",
+		"/thread.v1.ThreadService/GetRun":                            "run:read",
+		"/thread.v1.ThreadService/CancelRun":                         "run:create",
 		"/webhook.v1.WebhookService/ListWebhookDeliveryAttempts":     "webhook:read",
 		"/webhook.v1.WebhookService/RotateWebhookSecret":             "webhook:write",
 		"/webhook.v1.WebhookService/RetryFailedWebhookDeliveries":    "webhook:write",

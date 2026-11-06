@@ -148,7 +148,8 @@ func quoteJSON(s string) string {
 
 func (d *runDriver) Execute(ctx context.Context, threadID uuid.UUID, token string) (runtimetest.Outcome, error) {
 	ctx = d.ctx(ctx)
-	ok, err := d.store.Claim(ctx, threadID, token, time.Minute)
+	claim, err := d.store.Claim(ctx, threadID, token, time.Minute)
+	ok := claim == run.Claimed
 	if err != nil {
 		return runtimetest.Outcome{}, err
 	}

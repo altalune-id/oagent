@@ -19,6 +19,7 @@ type Registrar interface {
 // ServerOpts configures the web server handler.
 type ServerOpts struct {
 	APIHandler http.Handler // optional Connect-RPC surface mounted at BasePath+"/api"
+	DataPlane  http.Handler // optional bearer-only integrator API mounted at BasePath+"/api/v1", with no session or CSRF check
 	MCPHandler http.Handler // optional MCP surface mounted at BasePath+"/mcp"
 	Console    http.Handler // optional console SPA mounted at BasePath+"/console"
 	Routes     []Registrar  // optional server-rendered routes; their mux also answers every unknown path
@@ -53,6 +54,9 @@ func NewServer(opts ServerOpts) http.Handler {
 	}
 	if opts.APIHandler != nil {
 		outer.Handle(layout.Path(opts.BasePath, "/api")+"/", cop.Handler(opts.APIHandler))
+	}
+	if opts.DataPlane != nil {
+		outer.Handle(layout.Path(opts.BasePath, "/api/v1")+"/", opts.DataPlane)
 	}
 	if opts.MCPHandler != nil {
 		mcp := layout.Path(opts.BasePath, "/mcp")

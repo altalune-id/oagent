@@ -67,3 +67,16 @@ func New(orgID, projectID uuid.UUID, now time.Time) *EndUser {
 		CreatedAt: now, UpdatedAt: now,
 	}
 }
+
+// Label names an end user by an identity's kind and a masked tail. SECURITY: never the whole value, so no phone number or LID shows.
+func Label(id Identity) string {
+	tail := 4
+	if id.Kind == KindWAPhone || id.Kind == KindWALid {
+		tail = 2
+	}
+	r := []rune(id.Value)
+	if len(r) <= 2*tail {
+		return string(id.Kind)
+	}
+	return string(id.Kind) + " …" + string(r[len(r)-tail:])
+}

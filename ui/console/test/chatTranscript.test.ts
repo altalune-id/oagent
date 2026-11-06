@@ -42,4 +42,14 @@ describe('chat transcript sides', () => {
     expect(s.card).toContain('self-end');
     expect(s.userBubble).not.toContain('bg-base-300');
   });
+
+  it('shows a run under one cent as less than a cent with the exact cost as its title, and an unpriced run as Unpriced', () => {
+    const run = { id: 'r1', threadId: 't1', threadTitle: 'T', status: 'completed' as const, startedAt: at, seconds: 14, tokens: 413, costCents: 0.043, estimated: true };
+    const runItems = [{ id: 1, kind: 'run' as const, run }, { id: 2, kind: 'run' as const, run: { ...run, id: 'r2', costCents: 0, unpriced: true, estimated: false } }];
+    const w = mount(ChatTranscript, { props: { items: runItems, agentName: 'Yasaku', youName: 'You', viewer: 'agent' } });
+    const priced = w.find('[title="$0.00043"]');
+    expect(priced.text()).toBe('< $0.01');
+    expect(w.text()).toContain('thread.tokens_estimated');
+    expect(w.text()).toContain('thread.unpriced');
+  });
 });

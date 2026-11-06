@@ -78,7 +78,8 @@ func (f *pgFixture) say(t *testing.T, s scope, thread uuid.UUID) {
 func (f *pgFixture) claimed(t *testing.T, s scope, thread uuid.UUID) string {
 	t.Helper()
 	token := uuid.NewString()
-	ok, err := f.store.Claim(in(s.org), thread, token, ttl)
+	claim, err := f.store.Claim(in(s.org), thread, token, ttl)
+	ok := claim == run.Claimed
 	require.NoError(t, err)
 	require.True(t, ok)
 	return token
@@ -143,7 +144,9 @@ func TestStore_TwoClaimsOneWins(t *testing.T) {
 	wins := make([]bool, 2)
 	for i := range wins {
 		wg.Go(func() {
-			ok, err := f.store.Claim(ctx, thread, uuid.NewString(), ttl)
+			claim, err := f.store.Claim(ctx, thread, uuid.NewString(), ttl)
+
+			ok := claim == run.Claimed
 			assert.NoError(t, err)
 			wins[i] = ok
 		})
@@ -152,7 +155,8 @@ func TestStore_TwoClaimsOneWins(t *testing.T) {
 	assert.NotEqual(t, wins[0], wins[1], "exactly one claim wins")
 
 	f.exec(t, `UPDATE `+f.schema+`.threads SET lease_until = now() - interval '1 second' WHERE id = $1`, thread)
-	ok, err := f.store.Claim(ctx, thread, uuid.NewString(), ttl)
+	claim, err := f.store.Claim(ctx, thread, uuid.NewString(), ttl)
+	ok := claim == run.Claimed
 	require.NoError(t, err)
 	assert.True(t, ok, "an expired lease can be claimed")
 }
@@ -321,10 +325,11 @@ func TestStore_OtherTenantInvisible(t *testing.T) {
 
 	_, err = f.store.AppendMessage(in(b.org), thread, userMsg("x", ""))
 	assert.True(t, run.IsThreadNotFoundError(err), "append: %v", err)
-	ok, err := f.store.Claim(in(b.org), thread, uuid.NewString(), ttl)
+	claim, err := f.store.Claim(in(b.org), thread, uuid.NewString(), ttl)
+	ok := claim == run.Claimed
 	require.NoError(t, err)
 	assert.False(t, ok)
-	assert.True(t, run.IsThreadNotFoundError(f.store.RequestCancel(in(b.org), thread)))
+	assert.True(t, run.IsThreadNotFoundError(f.store.RequestCancel(in(b.org), thread, uuid.New())))
 	got, err := f.store.PendingUnleased(in(b.org), time.Now(), 10)
 	require.NoError(t, err)
 	assert.Empty(t, got)
@@ -340,10 +345,13 @@ func TestStore_CancelReadByHeartbeat(t *testing.T) {
 	ctx := in(s.org)
 	f.say(t, s, thread)
 	token := f.claimed(t, s, thread)
+	r := run.New(s.org, s.project, thread, s.version, time.Now())
+	_, err := f.store.StartRun(ctx, token, r)
+	require.NoError(t, err)
 	cancel, err := f.store.Heartbeat(ctx, thread, token, ttl)
 	require.NoError(t, err)
 	assert.False(t, cancel)
-	require.NoError(t, f.store.RequestCancel(ctx, thread))
+	require.NoError(t, f.store.RequestCancel(ctx, thread, r.ID))
 	cancel, err = f.store.Heartbeat(ctx, thread, token, ttl)
 	require.NoError(t, err)
 	assert.True(t, cancel)
@@ -389,7 +397,7 @@ func TestStore_ResumeKeepsTheRunsMessagesAndResults(t *testing.T) {
 	_, err = f.store.StartRun(ctx, token, open)
 	assert.Error(t, err, "only an interrupted run resumes")
 
-	require.NoError(t, f.store.RequestCancel(ctx, thread))
+	require.NoError(t, f.store.RequestCancel(ctx, thread, open.ID))
 	require.NoError(t, open.Move(run.StatusCancelled, time.Now()))
 	open.ErrorCode = "RUN001"
 	require.NoError(t, f.store.Settle(ctx, token, open, run.Usage{}, nil))
@@ -424,7 +432,8 @@ func TestClaim_OverConcurrencySkipsNotLoses(t *testing.T) {
 	for i := range tokens {
 		tokens[i] = f.claimed(t, s, threads[i])
 	}
-	ok, err := f.store.Claim(ctx, threads[4], uuid.NewString(), ttl)
+	claim, err := f.store.Claim(ctx, threads[4], uuid.NewString(), ttl)
+	ok := claim == run.Claimed
 	require.NoError(t, err)
 	assert.False(t, ok, "a fifth live lease in the project is skipped")
 	pending, err := f.store.PendingUnleased(ctx, time.Now(), 10)
@@ -436,7 +445,8 @@ func TestClaim_OverConcurrencySkipsNotLoses(t *testing.T) {
 	f.claimed(t, other, elsewhere)
 
 	require.NoError(t, f.store.Release(ctx, threads[0], tokens[0]))
-	ok, err = f.store.Claim(ctx, threads[4], uuid.NewString(), ttl)
+	claim, err = f.store.Claim(ctx, threads[4], uuid.NewString(), ttl)
+	ok = claim == run.Claimed
 	require.NoError(t, err)
 	assert.True(t, ok, "once a lease is released the skipped thread is claimed")
 }
@@ -450,7 +460,9 @@ func TestClaim_ConcurrencyCapUnderRace(t *testing.T) {
 	wins := make([]bool, len(threads))
 	for i, th := range threads {
 		wg.Go(func() {
-			ok, err := f.store.Claim(ctx, th, uuid.NewString(), ttl)
+			claim, err := f.store.Claim(ctx, th, uuid.NewString(), ttl)
+
+			ok := claim == run.Claimed
 			assert.NoError(t, err)
 			wins[i] = ok
 		})
@@ -516,7 +528,7 @@ func TestStore_LateCancelDoesNotKillTheNextRun(t *testing.T) {
 	r := run.New(s.org, s.project, thread, s.version, time.Now())
 	_, err := f.store.StartRun(ctx, token, r)
 	require.NoError(t, err)
-	require.NoError(t, f.store.RequestCancel(ctx, thread), "the cancel arrives as the turn finishes")
+	require.NoError(t, f.store.RequestCancel(ctx, thread, r.ID), "the cancel arrives as the turn finishes")
 	require.NoError(t, r.Move(run.StatusCompleted, time.Now()))
 	require.NoError(t, f.store.Settle(ctx, token, r, run.Usage{}, nil))
 	cancel, err := f.store.Heartbeat(ctx, thread, token, ttl)
@@ -547,13 +559,13 @@ func TestStore_CancelOnAnIdleThreadOnlyFlagsIt(t *testing.T) {
 	require.NoError(t, f.store.Settle(ctx, token, r, run.Usage{}, nil))
 	require.NoError(t, f.store.Release(ctx, thread, token))
 
-	require.NoError(t, f.store.RequestCancel(ctx, thread))
+	require.NoError(t, f.store.RequestCancel(ctx, thread, r.ID))
 	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.runs WHERE id = $1 AND status = 'interrupted'`, r.ID),
 		"the store never settles a cancel itself; the service does, so the event is emitted")
 	th, err := f.store.Thread(ctx, thread)
 	require.NoError(t, err)
 	assert.True(t, th.CancelRequested)
-	assert.True(t, run.IsThreadNotFoundError(f.store.RequestCancel(ctx, uuid.New())))
+	assert.True(t, run.IsThreadNotFoundError(f.store.RequestCancel(ctx, uuid.New(), r.ID)))
 }
 
 func TestStore_ReconcileFindsAnInterruptedRunWithNothingPending(t *testing.T) {
@@ -661,7 +673,9 @@ func TestClaim_JoinsTheCallersTransaction(t *testing.T) {
 	s := f.seed(t)
 	thread := f.thread(t, s)
 	err := db.NewTransactor(f.pool).RunInTx(in(s.org), func(ctx context.Context) error {
-		ok, err := f.store.Claim(ctx, thread, "tok", ttl)
+		claim, err := f.store.Claim(ctx, thread, "tok", ttl)
+
+		ok := claim == run.Claimed
 		require.NoError(t, err)
 		require.True(t, ok)
 		return errors.New("roll back")
@@ -669,4 +683,233 @@ func TestClaim_JoinsTheCallersTransaction(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.threads WHERE id = $1 AND lease_owner IS NULL`, thread),
 		"the claim rolled back with the caller's transaction")
+}
+
+func (f *pgFixture) endUser(t *testing.T, s scope) uuid.UUID {
+	t.Helper()
+	id := uuid.New()
+	f.exec(t, `INSERT INTO `+f.schema+`.end_users (id, public_id, org_id, project_id, created_at, updated_at) VALUES ($1, $2, $3, $4, now(), now())`,
+		id, "e"+id.String()[:12], s.org, s.project)
+	return id
+}
+
+func TestStore_ClaimReportsWhy(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	ctx := in(s.org)
+	threads := f.pendingThreads(t, s, 5)
+	got, err := f.store.Claim(ctx, threads[0], "first", ttl)
+	require.NoError(t, err)
+	assert.Equal(t, run.Claimed, got)
+	got, err = f.store.Claim(ctx, threads[0], "second", ttl)
+	require.NoError(t, err)
+	assert.Equal(t, run.LeaseLive, got, "the thread itself is held")
+	for _, th := range threads[1:4] {
+		f.claimed(t, s, th)
+	}
+	got, err = f.store.Claim(ctx, threads[4], "fifth", ttl)
+	require.NoError(t, err)
+	assert.Equal(t, run.ProjectBusy, got, "the thread is free but its project is at the cap")
+	got, err = f.store.Claim(in(f.seed(t).org), threads[4], "stranger", ttl)
+	require.NoError(t, err)
+	assert.Equal(t, run.LeaseLive, got, "another tenant's thread reads as unavailable, never as a reason")
+}
+
+func TestStore_ClaimAndAppendIsAtomic(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	ctx := in(s.org)
+	thread := f.thread(t, s)
+	got, seq, err := f.store.ClaimAndAppend(ctx, thread, "a", ttl, userMsg("first", "idem:k1"))
+	require.NoError(t, err)
+	assert.Equal(t, run.Claimed, got)
+	assert.Equal(t, int64(1), seq)
+	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.threads WHERE id = $1 AND lease_owner = 'a'`, thread))
+
+	got, _, err = f.store.ClaimAndAppend(ctx, thread, "b", ttl, userMsg("second", ""))
+	require.NoError(t, err)
+	assert.Equal(t, run.LeaseLive, got)
+	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.messages WHERE thread_id = $1`, thread), "a refused claim inserts nothing")
+
+	require.NoError(t, f.store.Release(ctx, thread, "a"))
+	_, _, err = f.store.ClaimAndAppend(ctx, thread, "c", ttl, userMsg("again", "idem:k1"))
+	dup, ok := errors.AsType[*run.DuplicateMessageError](err)
+	require.True(t, ok, "%v", err)
+	assert.Equal(t, int64(1), dup.Seq, "the duplicate names the message already stored")
+	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.messages WHERE thread_id = $1`, thread))
+	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.threads WHERE id = $1 AND lease_owner IS NULL`, thread),
+		"the claim rolled back with the duplicate")
+}
+
+func TestStore_ConcurrentIdenticalPOSTsInsertOnce(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	ctx := in(s.org)
+	thread := f.thread(t, s)
+	var wg sync.WaitGroup
+	results := make([]run.ClaimResult, 6)
+	for i := range results {
+		wg.Go(func() {
+			got, _, err := f.store.ClaimAndAppend(ctx, thread, uuid.NewString(), ttl, userMsg("same", "idem:same"))
+			if !errors.As(err, new(*run.DuplicateMessageError)) {
+				assert.NoError(t, err)
+			}
+			results[i] = got
+		})
+	}
+	wg.Wait()
+	claimed := 0
+	for _, r := range results {
+		if r == run.Claimed {
+			claimed++
+		}
+	}
+	assert.Equal(t, 1, claimed, "exactly one POST holds the thread")
+	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.messages WHERE thread_id = $1 AND external_message_id = 'idem:same'`, thread))
+}
+
+func TestStore_APIThreadBindsFirstActor(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	ctx := in(s.org)
+	alice, bob := f.endUser(t, s), f.endUser(t, s)
+	th, err := f.store.UpsertAPIThread(ctx, s.project, s.agent, "conv-1", alice)
+	require.NoError(t, err)
+	assert.Equal(t, "api", th.Kind)
+	assert.Equal(t, "conv-1", th.ExternalKey)
+	assert.Equal(t, alice, th.ActorEndUserID)
+	again, err := f.store.UpsertAPIThread(ctx, s.project, s.agent, "conv-1", alice)
+	require.NoError(t, err)
+	assert.Equal(t, th.ID, again.ID, "the same actor gets the same thread")
+
+	_, err = f.store.UpsertAPIThread(ctx, s.project, s.agent, "conv-1", bob)
+	assert.True(t, errors.As(err, new(*run.ThreadActorMismatchError)), "another actor on a bound thread: %v", err)
+	assert.True(t, run.IsThreadNotFoundError(err), "and it reads as not found")
+
+	f.exec(t, `DELETE FROM `+f.schema+`.end_users WHERE id = $1`, alice)
+	_, err = f.store.UpsertAPIThread(ctx, s.project, s.agent, "conv-1", bob)
+	assert.True(t, run.IsThreadNotFoundError(err), "a thread whose actor is gone is never handed to someone else")
+
+	got, err := f.store.ThreadByExternalKey(ctx, s.agent, "conv-1")
+	require.NoError(t, err)
+	assert.Equal(t, th.ID, got.ID)
+	_, err = f.store.ThreadByExternalKey(ctx, s.agent, "nope")
+	assert.True(t, run.IsThreadNotFoundError(err))
+	_, err = f.store.ThreadByExternalKey(in(f.seed(t).org), s.agent, "conv-1")
+	assert.True(t, run.IsThreadNotFoundError(err), "another tenant sees nothing")
+}
+
+func TestStore_RunAndMessageLookups(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	ctx := in(s.org)
+	thread := f.thread(t, s)
+	msg := userMsg("hi", "idem:abc")
+	msg.RequestHash = []byte{9, 9}
+	_, _, err := f.store.ClaimAndAppend(ctx, thread, "tok", ttl, msg)
+	require.NoError(t, err)
+	stored, err := f.store.MessageByExternalID(ctx, thread, "idem:abc")
+	require.NoError(t, err)
+	require.NotNil(t, stored)
+	assert.Equal(t, []byte{9, 9}, stored.RequestHash)
+	none, err := f.store.MessageByExternalID(ctx, thread, "idem:zzz")
+	require.NoError(t, err)
+	assert.Nil(t, none)
+
+	r := run.New(s.org, s.project, thread, s.version, time.Now())
+	r.IdempotencyKey = "abc"
+	_, err = f.store.StartRun(ctx, "tok", r)
+	require.NoError(t, err)
+	byKey, err := f.store.RunByIdempotencyKey(ctx, thread, "abc")
+	require.NoError(t, err)
+	require.NotNil(t, byKey)
+	assert.Equal(t, r.ID, byKey.ID)
+	missing, err := f.store.RunByIdempotencyKey(ctx, thread, "other")
+	require.NoError(t, err)
+	assert.Nil(t, missing)
+
+	byID, err := f.store.RunByPublicID(ctx, r.PublicID)
+	require.NoError(t, err)
+	assert.Equal(t, r.ID, byID.ID)
+	_, err = f.store.RunByPublicID(ctx, "nope")
+	assert.True(t, run.IsNotFoundError(err))
+	_, err = f.store.RunByPublicID(in(f.seed(t).org), r.PublicID)
+	assert.True(t, run.IsNotFoundError(err), "another tenant sees nothing")
+}
+
+func TestStore_OrphanedThreadNeverRebinds(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	ctx := in(s.org)
+	alice := f.endUser(t, s)
+	th, err := f.store.UpsertAPIThread(ctx, s.project, s.agent, "conv-orphan", alice)
+	require.NoError(t, err)
+	_, _, err = f.store.ClaimAndAppend(ctx, th.ID, "tok", ttl, userMsg("secret plans", ""))
+	require.NoError(t, err)
+	f.exec(t, `DELETE FROM `+f.schema+`.end_users WHERE id = $1`, alice)
+
+	for name, actor := range map[string]uuid.UUID{"another user": f.endUser(t, s), "a fresh end user": f.endUser(t, s)} {
+		_, err := f.store.UpsertAPIThread(ctx, s.project, s.agent, "conv-orphan", actor)
+		assert.True(t, run.IsThreadNotFoundError(err), "%s: an orphaned thread answers not found: %v", name, err)
+	}
+	_, err = f.store.UpsertAPIThread(ctx, s.project, s.agent, "conv-orphan", uuid.Nil)
+	assert.Error(t, err, "a caller with no actor never matches an orphan")
+	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.threads WHERE id = $1 AND actor_end_user_id IS NULL`, th.ID),
+		"the binding is never rewritten")
+}
+
+func TestStore_StartRunRecordsTheIdempotencyKey(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	ctx := in(s.org)
+	thread := f.thread(t, s)
+	_, _, err := f.store.ClaimAndAppend(ctx, thread, "tok", ttl, userMsg("hi", "idem:retry-7"))
+	require.NoError(t, err)
+	r := run.New(s.org, s.project, thread, s.version, time.Now())
+	_, err = f.store.StartRun(ctx, "tok", r)
+	require.NoError(t, err)
+	assert.Equal(t, "retry-7", r.IdempotencyKey, "the run carries the key of the message it took")
+	found, err := f.store.RunByIdempotencyKey(ctx, thread, "retry-7")
+	require.NoError(t, err)
+	require.NotNil(t, found, "a retried POST finds the run")
+	assert.Equal(t, r.ID, found.ID)
+}
+
+func TestStore_ThreadMessagesPageBySeq(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	ctx := in(s.org)
+	thread := f.thread(t, s)
+	for _, text := range []string{"one", "two", "three"} {
+		_, err := f.store.AppendMessage(ctx, thread, userMsg(text, ""))
+		require.NoError(t, err)
+	}
+	page, err := f.store.ThreadMessages(ctx, thread, 0, 2)
+	require.NoError(t, err)
+	require.Len(t, page, 2)
+	assert.Equal(t, []int64{1, 2}, []int64{page[0].Seq, page[1].Seq})
+	page, err = f.store.ThreadMessages(ctx, thread, 2, 10)
+	require.NoError(t, err)
+	require.Len(t, page, 1)
+	assert.Equal(t, int64(3), page[0].Seq, "pending messages are listed too, oldest first")
+	page, err = f.store.ThreadMessages(in(f.seed(t).org), thread, 0, 10)
+	require.NoError(t, err)
+	assert.Empty(t, page, "another tenant sees nothing")
+}
+
+func TestStore_RunByID(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	ctx := in(s.org)
+	thread := f.thread(t, s)
+	f.say(t, s, thread)
+	token := f.claimed(t, s, thread)
+	r := run.New(s.org, s.project, thread, s.version, time.Now())
+	_, err := f.store.StartRun(ctx, token, r)
+	require.NoError(t, err)
+	got, err := f.store.RunByID(ctx, r.ID)
+	require.NoError(t, err)
+	assert.Equal(t, r.PublicID, got.PublicID)
+	_, err = f.store.RunByID(in(f.seed(t).org), r.ID)
+	assert.True(t, run.IsNotFoundError(err))
 }

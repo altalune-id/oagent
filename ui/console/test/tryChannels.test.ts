@@ -232,4 +232,39 @@ describe('channels page', () => {
     expect(w.text()).toContain('openwa.needs_publish');
     expect(w.findAll('button').some(b => b.text().includes('openwa.connect'))).toBe(false);
   });
+
+  it('edits the set replies, refuses a blank one, and shows the read-only timing once connected', async () => {
+    seed();
+    const conn = { id: 'chn_1', provider: 'openwa' as const, status: 'connected' as const, baseUrl: 'https://openwa.example.id', deviceId: 'dev_a', webhookUrl: 'https://x/hooks', rejected24h: 0, rejectedLastHour: 0 };
+    useChannelsStore().save(yasaku.id, conn);
+    const w = await mountPage(ChannelsPage);
+    expect(w.text()).toContain('channels.seconds|{"n":3}');
+    expect(w.text()).toContain('channels.seconds|{"n":10}');
+    expect(w.text()).toContain('channels.minutes|{"n":30}');
+    const replies = w.findAll('form').find(f => f.find('textarea').exists())!;
+    const areas = replies.findAll('textarea');
+    expect((areas[0]!.element as HTMLTextAreaElement).value).toContain('Sorry, something went wrong');
+    await areas[1]!.setValue('  ');
+    await replies.trigger('submit');
+    expect(replies.text()).toContain('channels.error_reply_required');
+    expect(useChannelsStore().replies(yasaku.id).voice).toContain('Voice notes');
+    await areas[1]!.setValue('  Kirim teks saja.  ');
+    await replies.trigger('submit');
+    expect(useChannelsStore().replies(yasaku.id).voice).toBe('Kirim teks saja.');
+    expect(replies.text()).not.toContain('channels.error_reply_required');
+    useChannelsStore().remove(yasaku.id);
+    await flushPromises();
+    expect(w.findAll('textarea')).toHaveLength(0);
+    useChannelsStore().save(yasaku.id, conn);
+    await flushPromises();
+    expect((w.findAll('textarea')[1]!.element as HTMLTextAreaElement).value).toContain('Voice notes');
+  });
+
+  it('shows the set replies read-only without agent:write', async () => {
+    seed(yasaku, ['agent:read']);
+    useChannelsStore().save(yasaku.id, { id: 'chn_1', provider: 'openwa', status: 'connected', baseUrl: 'https://openwa.example.id', deviceId: 'dev_a', webhookUrl: 'https://x/hooks', rejected24h: 0, rejectedLastHour: 0 });
+    const w = await mountPage(ChannelsPage);
+    expect(w.findAll('fieldset').some(f => f.attributes('disabled') !== undefined && f.find('textarea').exists())).toBe(true);
+    expect(w.findAll('button').some(b => b.text().includes('channels.save_replies'))).toBe(false);
+  });
 });

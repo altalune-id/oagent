@@ -62,3 +62,19 @@ func TestConfig_RunDefaultsAndBounds(t *testing.T) {
 		})
 	}
 }
+
+func TestConfig_ShutdownGraceAboveDrain(t *testing.T) {
+	c := validConfig(t)
+	assert.Equal(t, 30*time.Second, c.HTTP.ShutdownGrace, "the default covers the default drain")
+	assert.Greater(t, c.HTTP.ShutdownGrace, c.Run.DrainTimeout)
+	c.HTTP.ShutdownGrace = c.Run.DrainTimeout
+	invalidSetting("http.shutdownGrace")(t, c.Validate())
+	c.HTTP.ShutdownGrace = c.Run.DrainTimeout + time.Second
+	assert.NoError(t, c.Validate())
+
+	setRequiredEnv(t)
+	t.Setenv("OAGENT_HTTP_SHUTDOWN_GRACE", "45s")
+	loaded, err := Load(missingPath(t))
+	require.NoError(t, err)
+	assert.Equal(t, 45*time.Second, loaded.HTTP.ShutdownGrace)
+}

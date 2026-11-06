@@ -1,0 +1,10 @@
+{"type":"RUN_STARTED","threadId":"t0193a2b4c5d67e8f9a0b1c2d3e4f5a6b","runId":"Rn5Q8wYk2HhT3mVz7XcLp"}
+{"type":"OAGENT_HEARTBEAT"}
+{"type":"OAGENT_HEARTBEAT"}
+{"type":"TEXT_MESSAGE_START","messageId":"msg_asst_1","role":"assistant"}
+{"type":"TEXT_MESSAGE_CONTENT","messageId":"msg_asst_1","delta":"Hi, "}
+{"type":"TEXT_MESSAGE_CONTENT","messageId":"msg_asst_1","delta":"how can I help?"}
+{"type":"OAGENT_HEARTBEAT"}
+{"type":"TEXT_MESSAGE_END","messageId":"msg_asst_1"}
+{"type":"RUN_FINISHED","threadId":"t0193a2b4c5d67e8f9a0b1c2d3e4f5a6b","runId":"Rn5Q8wYk2HhT3mVz7XcLp"}
+{"type":"OAGENT_TERMINAL","status":"completed","stopReason":"endTurn","snapshot":{"scope":"agent","schemaVersion":"1.0","createdAt":"2026-11-06T00:00:00.000Z","data":{"messages":[{"role":"user","content":[{"text":"hello"}]},{"role":"assistant","content":[{"text":"Hi, how can I help?"}]}]},"appData":{"thread":"t0193a2b4c5d67e8f9a0b1c2d3e4f5a6b","agentVersion":3,"sdk":"1.23.0"}},"usage":{"inputTokens":120,"outputTokens":9,"cacheReadInputTokens":0,"cacheWriteInputTokens":0,"estimated":false},"messagesAppended":[{"id":"msg_user_1","role":"user","content":"hello"},{"id":"msg_asst_1","role":"assistant","content":"Hi, how can I help?"}],"interrupts":[],"notes":[]}

@@ -66,6 +66,8 @@ type Services struct {
 	// RunTurns is the run-turns worker; RunKicker reaches it, through the queue when it is on.
 	RunTurns  *run.Runner
 	RunKicker run.Kicker
+	// RuntimeReady is true when runtime.url names an agent runtime; without one the data plane answers 503 before writing.
+	RuntimeReady bool
 	// ConsoleURL is the console's absolute root without a trailing slash, the base of every server-side link into it.
 	ConsoleURL string
 	Sealer     sealer.Sealer
@@ -202,7 +204,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		ModelProviderStore: providerStore,
 		MCPServers:         servers,
 		EndUsers: enduser.NewService(enduser.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix), uow, k.Reporter.Unexpected).
-			WithLogger(orDiscard(k.Log)),
+			WithLogger(orDiscard(k.Log)).WithKeyHints(keyHints{keys: apiKeyStore}),
 		MCPServerStore: serverStore,
 		Sealer:         sl,
 		MailQueue:      mailQueue,

@@ -25,6 +25,7 @@ type runParts struct {
 	svc    *run.Service
 	runner *run.Runner
 	kicker run.Kicker
+	ready  bool
 }
 
 func buildRun(k kernel.Kernel, cfg config.Config, s *Services, limiter ratelimit.Limiter, log *slog.Logger) (runParts, error) {
@@ -55,7 +56,7 @@ func buildRun(k kernel.Kernel, cfg config.Config, s *Services, limiter ratelimit
 	}).WithLogger(orDiscard(log))
 	kicker := run.NewKicker(k.Queue, cfg.Queue.Enabled, runner)
 	runner.WithKicker(kicker)
-	return runParts{store: store, svc: svc, runner: runner, kicker: kicker}, nil
+	return runParts{store: store, svc: svc, runner: runner, kicker: kicker, ready: rt != nil}, nil
 }
 
 func buildRuntime(c config.RuntimeConfig) (runtime.Runtime, error) {

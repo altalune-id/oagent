@@ -87,3 +87,6 @@ RUN003 RunRuntimeUnavailable
 RUN004 RunTimedOut
 RUN005 RunAttemptsExhausted
 RUN006 RunRuntimeFailed
+RUN007 RunInProgress
+RUN008 RunIdempotencyConflict
+THR001 ThreadNotFound

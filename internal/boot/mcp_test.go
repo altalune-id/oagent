@@ -25,6 +25,7 @@ import (
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
 	projectv1mcp "altalune.id/oagent/gen/go/project/v1/projectv1mcp"
+	threadv1mcp "altalune.id/oagent/gen/go/thread/v1/threadv1mcp"
 	webhookv1mcp "altalune.id/oagent/gen/go/webhook/v1/webhookv1mcp"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/auth"
@@ -268,6 +269,13 @@ func TestMCPTools_PermissionsComeFromTheTable(t *testing.T) {
 		mcpserverv1mcp.McpServerListToolName:           {scope.McpserverRead},
 		mcpserverv1mcp.McpServerDeleteToolName:         {scope.McpserverWrite},
 		mcpserverv1mcp.McpServerToolsToolName:          {scope.McpserverRead},
+
+		threadv1mcp.ThreadListToolName:     {scope.ThreadRead},
+		threadv1mcp.ThreadGetToolName:      {scope.ThreadRead},
+		threadv1mcp.ThreadMessagesToolName: {scope.ThreadRead},
+		threadv1mcp.RunListToolName:        {scope.RunRead},
+		threadv1mcp.RunGetToolName:         {scope.RunRead},
+		threadv1mcp.RunCancelToolName:      {scope.RunCreate},
 	}
 	names := srv.Registry().Names()
 	assert.Len(t, names, len(want), "the published tool list")

@@ -11,6 +11,7 @@ import { MemberService } from '#gen/member/v1/member_pb';
 import { ModelProviderService } from '#gen/modelprovider/v1/modelprovider_pb';
 import { OrgService } from '#gen/org/v1/org_pb';
 import { ProjectService } from '#gen/project/v1/project_pb';
+import { ThreadService } from '#gen/thread/v1/thread_pb';
 import { WebhookService } from '#gen/webhook/v1/webhook_pb';
 import { loginURL } from '~/lib/auth/urls';
 
@@ -46,6 +47,7 @@ export default defineNuxtPlugin({
         agentClient: createClient(AgentService, transport),
         modelProviderClient: createClient(ModelProviderService, transport),
         mcpServerClient: createClient(McpServerService, transport),
+        threadClient: createClient(ThreadService, transport),
         apiKeyClient: createClient(APIKeyService, transport),
         webhookClient: createClient(WebhookService, transport),
         memberClient: createClient(MemberService, transport),

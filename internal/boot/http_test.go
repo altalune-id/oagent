@@ -23,9 +23,10 @@ import (
 )
 
 func TestHTTPConfig(t *testing.T) {
-	c := httpConfig(config.HTTPConfig{Addr: ":8080"})
+	c := httpConfig(config.HTTPConfig{Addr: ":8080", ShutdownGrace: 30 * time.Second})
 	assert.Equal(t, "http", c.Name)
 	assert.Equal(t, ":8080", c.Addr)
+	assert.Equal(t, 30*time.Second, c.ShutdownGrace)
 }
 
 func TestBuildHTTPHandler_ServesPages(t *testing.T) {
@@ -241,4 +242,33 @@ func TestBuildLegal_AnyCustomURLKeepsNoHistory(t *testing.T) {
 	l := buildLegal(kernel.Kernel{}, cfg, nil)
 	require.NoError(t, l.Publish(t.Context()), "nothing is snapshotted, so no database is touched")
 	assert.True(t, l.TermsUpdatedAt().IsZero(), "custom terms are re-asked only by compliance.termsUpdatedAt")
+}
+
+func TestBuildHTTPHandler_MountsTheDataPlaneWithoutCookiesOrCSRF(t *testing.T) {
+	var seen *http.Request
+	dp := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = r
+		w.WriteHeader(http.StatusTeapot)
+	})
+	session := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Error("the data plane never reads the session cookie")
+			next.ServeHTTP(w, r)
+		})
+	}
+	h := buildHTTPHandler(httpSurfaces{
+		basePath: "/app", dataPlane: dp, session: session,
+		api: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }),
+	})
+	req := httptest.NewRequest(http.MethodPost, "/app/api/v1/agents/a/runs", nil)
+	req.Header.Set("Origin", "https://elsewhere.example")
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusTeapot, rec.Code, "a bearer-only API has no cookie to forge")
+	require.NotNil(t, seen)
+
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/app/api/org.v1.OrgService/GetOrg", nil))
+	assert.Equal(t, http.StatusNoContent, rec.Code, "the Connect API keeps its own mount")
 }

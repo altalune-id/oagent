@@ -93,7 +93,8 @@ func (f *svcFixture) say(t *testing.T, text string) {
 func (f *svcFixture) claim(t *testing.T) string {
 	t.Helper()
 	token := uuid.NewString()
-	ok, err := f.store.Claim(f.ctx, f.thread, token, time.Minute)
+	claim, err := f.store.Claim(f.ctx, f.thread, token, time.Minute)
+	ok := claim == run.Claimed
 	require.NoError(t, err)
 	require.True(t, ok)
 	return token
@@ -512,14 +513,15 @@ func (f *svcFixture) transcript(t *testing.T) []string {
 			} `json:"toolCalls"`
 		}
 		require.NoError(t, json.Unmarshal(m.Body, &am))
-		entry := am.Role
+		var entry strings.Builder
+		entry.WriteString(am.Role)
 		for _, c := range am.ToolCalls {
-			entry += " call:" + c.ID
+			entry.WriteString(" call:" + c.ID)
 		}
 		if am.ToolCallID != "" {
-			entry += " result:" + am.ToolCallID
+			entry.WriteString(" result:" + am.ToolCallID)
 		}
-		out = append(out, entry)
+		out = append(out, entry.String())
 	}
 	return out
 }
@@ -619,7 +621,7 @@ func TestCancel_UnderTheProjectCapStillEmits(t *testing.T) {
 	require.Equal(t, run.StatusInterrupted, r.Status)
 	f.store.Threads[f.thread].LeaseOwner, f.store.Threads[f.thread].LeaseUntil = "busy", time.Now().Add(-time.Second)
 	f.store.ClaimRefused = true
-	require.NoError(t, f.svc.Cancel(f.ctx, f.thread))
+	require.NoError(t, f.svc.Cancel(f.ctx, r.ID))
 	assert.Equal(t, run.StatusInterrupted, f.store.AllRuns()[0].Status, "the store never settles a cancel on its own")
 
 	f.store.ClaimRefused = false
@@ -659,4 +661,17 @@ func TestResume_AfterACrashSendsTheToolRoundNotTheAskAgain(t *testing.T) {
 	require.Len(t, req.StoredResults, 1)
 	assert.Equal(t, "call_1", req.StoredResults[0].ToolUseID)
 	assert.Equal(t, []string{"user", "assistant", "user", "assistant call:call_1", "tool result:call_1", "assistant"}, f.transcript(t))
+}
+
+func TestStartRun_FakeRecordsTheIdempotencyKey(t *testing.T) {
+	f := newSvc(t)
+	token := uuid.NewString()
+	_, _, err := f.store.ClaimAndAppend(f.ctx, f.thread, token, time.Minute, userMsg("hi", "idem:k9"))
+	require.NoError(t, err)
+	r := run.New(f.org, f.project, f.thread, f.version.ID, time.Now())
+	_, err = f.store.StartRun(f.ctx, token, r)
+	require.NoError(t, err)
+	found, err := f.store.RunByIdempotencyKey(f.ctx, f.thread, "k9")
+	require.NoError(t, err)
+	require.NotNil(t, found)
 }

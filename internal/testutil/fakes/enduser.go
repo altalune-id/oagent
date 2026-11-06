@@ -2,6 +2,8 @@ package fakes
 
 import (
 	"context"
+	"slices"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -74,4 +76,23 @@ func (f *EndUserStore) AddIdentity(_ context.Context, e *enduser.EndUser, id end
 	}
 	f.Identities[e.ProjectID][id] = e.ID
 	return true, nil
+}
+
+// IdentitiesOf implements enduser.Store.
+func (f *EndUserStore) IdentitiesOf(_ context.Context, endUserID uuid.UUID) ([]enduser.Identity, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	var out []enduser.Identity
+	for _, ids := range f.Identities {
+		for id, owner := range ids {
+			if owner == endUserID {
+				out = append(out, id)
+			}
+		}
+	}
+	slices.SortFunc(out, func(a, b enduser.Identity) int {
+		return strings.Compare(string(a.Kind)+a.Value, string(b.Kind)+b.Value)
+	})
+	return out, nil
 }

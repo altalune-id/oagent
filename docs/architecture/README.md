@@ -6,16 +6,17 @@ For step-by-step changes, see the recipes in [docs/howto](../howto/README.md).
 
 ## Surfaces
 
-| Surface           | Where                                  | Code                                                                  |
-| ----------------- | -------------------------------------- | --------------------------------------------------------------------- |
-| API               | `/api` (Connect RPC, OpenAPI docs)     | `internal/controlplane`, protos in `api/`                             |
-| MCP server        | `/mcp` (HTTP) and `oagent mcp` (stdio) | generated tools over the Connect handlers, `internal/mcp`, root `mcp` |
-| CLI               | `oagent ...`                           | `internal/cli` (shell) + each domain's `cli.go`                       |
-| Web console       | `/console`                             | Nuxt SPA in `ui/console`, embedded by `internal/web/console`          |
-| Pre-sign-in pages | `/login`, `/install`, `/invite`, ...   | each domain's `web.go` + templ in `<domain>/views`                    |
-| Probes            | `/healthz`, `/readyz`                  | `internal/health`                                                     |
+| Surface           | Where                                                    | Code                                                                  |
+| ----------------- | -------------------------------------------------------- | --------------------------------------------------------------------- |
+| API               | `/api` (Connect RPC, OpenAPI docs)                       | `internal/controlplane`, protos in `api/`                             |
+| Data plane        | `/api/v1/agents/{agent}/...` (AG-UI SSE, bearer API key) | `internal/dataplane`; see [data-plane.md](../data-plane.md)           |
+| MCP server        | `/mcp` (HTTP) and `oagent mcp` (stdio)                   | generated tools over the Connect handlers, `internal/mcp`, root `mcp` |
+| CLI               | `oagent ...`                                             | `internal/cli` (shell) + each domain's `cli.go`                       |
+| Web console       | `/console`                                               | Nuxt SPA in `ui/console`, embedded by `internal/web/console`          |
+| Pre-sign-in pages | `/login`, `/install`, `/invite`, ...                     | each domain's `web.go` + templ in `<domain>/views`                    |
+| Probes            | `/healthz`, `/readyz`                                    | `internal/health`                                                     |
 
-Every signed-in surface (API, MCP, console) reaches a domain through the `controlplane` handlers, which hold the permission and reach checks. Only pre-sign-in pages, operator commands that boot the `App`, and workers call services directly.
+Every signed-in surface (API, MCP, console) reaches a domain through the `controlplane` handlers, which hold the permission and reach checks. The data plane is the integrator's surface: it takes only an API key, checks reach and its `run:*` scopes in its own handler, and drives the run domain's store, runner and cancel directly, because a streamed turn is not an RPC. Only pre-sign-in pages, operator commands that boot the `App`, and workers call services directly.
 
 ## Containers
 

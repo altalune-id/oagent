@@ -20,6 +20,8 @@ type Threads struct {
 	CreatedAt       postgres.ColumnTimestampz
 	UpdatedAt       postgres.ColumnTimestampz
 
+	ActorEndUserID postgres.ColumnString
+
 	AllColumns postgres.ColumnList
 }
 
@@ -42,9 +44,10 @@ func NewThreads(schema, tablePrefix string) *Threads {
 		nextSeq         = postgres.IntegerColumn("next_seq")
 		createdAt       = postgres.TimestampzColumn("created_at")
 		updatedAt       = postgres.TimestampzColumn("updated_at")
+		actorEndUserID  = postgres.StringColumn("actor_end_user_id")
 		all             = postgres.ColumnList{
 			id, publicID, orgID, projectID, agentID, kind, externalKey, leaseOwner, leaseUntil, cancelRequested,
-			nextSeq, createdAt, updatedAt,
+			nextSeq, createdAt, updatedAt, actorEndUserID,
 		}
 	)
 	return &Threads{
@@ -62,6 +65,7 @@ func NewThreads(schema, tablePrefix string) *Threads {
 		NextSeq:         nextSeq,
 		CreatedAt:       createdAt,
 		UpdatedAt:       updatedAt,
+		ActorEndUserID:  actorEndUserID,
 		AllColumns:      all,
 	}
 }

@@ -54,7 +54,7 @@ message CreateAPIKeyRequest {
     (buf.validate.field).cel = {id: "apikey.name.max_len.100", expression: "this.trim().size() <= 100 ? '' : 'must be at most 100 characters'"}
   ];
   repeated string scopes = 5 [
-    (buf.validate.field).repeated.items.string.pattern = "^[a-z]+:(read|write)$"
+    (buf.validate.field).repeated.items.string.pattern = "^[a-z]+:[a-z]+$"
   ];
   repeated string project_ids = 6 [
     (buf.validate.field).repeated.items.string.(oagent.v1.public_id) = true

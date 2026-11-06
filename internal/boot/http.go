@@ -32,7 +32,7 @@ import (
 const requireCredentials = true
 
 func httpConfig(c config.HTTPConfig) httpserver.Config {
-	return httpserver.Config{Name: "http", Addr: c.Addr}
+	return httpserver.Config{Name: "http", Addr: c.Addr, ShutdownGrace: c.ShutdownGrace}
 }
 
 func buildAPIHandler(
@@ -68,6 +68,8 @@ func buildAPIHandler(
 		Webhooks:       svcs.Webhooks,
 		ModelProviders: svcs.ModelProviders,
 		MCPServers:     svcs.MCPServers,
+		Runs:           svcs.Runs,
+		EndUsers:       svcs.EndUsers,
 		Users:          svcs.Users,
 		Members:        svcs.Members,
 		Invites:        svcs.Invites,
@@ -250,6 +252,7 @@ type httpSurfaces struct {
 	probes     web.Registrar
 	basePath   string
 	api        http.Handler
+	dataPlane  http.Handler
 	console    http.Handler
 	mcp        http.Handler
 	mcpDocs    map[string]http.Handler
@@ -267,6 +270,7 @@ type httpSurfaces struct {
 func buildHTTPHandler(s httpSurfaces) http.Handler {
 	return web.NewServer(web.ServerOpts{
 		APIHandler: s.api,
+		DataPlane:  s.dataPlane,
 		MCPHandler: s.mcp,
 		Console:    s.console,
 		Routes:     s.routes,

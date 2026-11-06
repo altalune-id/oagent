@@ -25,6 +25,7 @@ import (
 	modelproviderv1 "altalune.id/oagent/gen/go/modelprovider/v1"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	projectv1 "altalune.id/oagent/gen/go/project/v1"
+	threadv1 "altalune.id/oagent/gen/go/thread/v1"
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
 	"altalune.id/oagent/internal/permission"
 	"altalune.id/oagent/nanoid"
@@ -174,6 +175,7 @@ func TestRequestRules_Accept(t *testing.T) {
 		{"254-character email", &invitev1.DraftInviteRequest{OrgId: goodID, Email: strings.Repeat("a", 242) + "@example.com"}},
 		{"each role", &invitev1.CreateInviteRequest{OrgId: goodID, Email: "a@b.c", Role: "admin"}},
 		{"org key", &apikeyv1.CreateAPIKeyRequest{OrgId: goodID, Kind: "org", Name: " ci ", Scopes: []string{"agent:read", "agent:read"}, ProjectIds: []string{goodID}, ExpiresAt: future}},
+		{"data plane key", &apikeyv1.CreateAPIKeyRequest{OrgId: goodID, Kind: "org", Name: "integrator", Scopes: []string{"run:create", "run:read", "thread:read"}, ProjectIds: []string{goodID}, ExpiresAt: future}},
 		{"project key", &apikeyv1.CreateAPIKeyRequest{OrgId: goodID, ProjectId: goodID, Kind: "project", Name: strings.Repeat("k", 100), ResourceIds: []string{goodID}, ExpiresAt: future}},
 		{"bare hint", &apikeyv1.RevokeAPIKeyRequest{OrgId: goodID, Hint: "a_9-"}},
 		{"hint as shown", &apikeyv1.RevokeAPIKeyRequest{OrgId: goodID, Hint: " …...Zz09 "}},
@@ -193,6 +195,10 @@ func TestRequestRules_Accept(t *testing.T) {
 		{"webhook url url.Parse accepts", &webhookv1.CreateWebhookRequest{OrgId: goodID, ProjectId: goodID, Url: " HTTPS://example.com/a b/ü ", EventTypes: []string{"agent.created"}}},
 		{"duplicate events are the domain's", &webhookv1.UpdateWebhookRequest{OrgId: goodID, ProjectId: goodID, Id: goodID, Url: "http://[::1]:8080/x", EventTypes: []string{"agent.created", "agent.created"}}},
 		{"any delivery limit", &webhookv1.ListWebhookDeliveriesRequest{OrgId: goodID, ProjectId: goodID, Id: goodID, Limit: -5}},
+		{"threads of every agent", &threadv1.ListThreadsRequest{ProjectId: goodID}},
+		{"threads of one agent, a full page", &threadv1.ListThreadsRequest{ProjectId: goodID, AgentId: goodID, PageToken: "opaque", PageSize: 200}},
+		{"messages after a seq", &threadv1.ListThreadMessagesRequest{ThreadId: goodID, AfterSeq: 7, Limit: 200}},
+		{"cancel a run", &threadv1.CancelRunRequest{RunId: goodID}},
 		{"webhook description of 200", &webhookv1.CreateWebhookRequest{OrgId: goodID, ProjectId: goodID, Url: "https://e.com", Description: strings.Repeat("ß", 200), EventTypes: []string{"member.added"}}},
 		{"empty slug on create mints one", &orgv1.CreateOrgRequest{Name: "Acme"}},
 		{"shortest slug", &projectv1.CreateProjectRequest{OrgId: goodID, Name: "Web", Slug: "a-1"}},
@@ -226,6 +232,7 @@ func TestRequestRules_Refuse(t *testing.T) {
 		{"255-character email", &invitev1.DraftInviteRequest{OrgId: goodID, Email: strings.Repeat("a", 243) + "@example.com"}, "email", apperror.FieldTooLong},
 		{"unknown role", &memberv1.SetMemberRoleRequest{OrgId: goodID, UserId: goodID, Role: "Owner"}, "role", apperror.FieldNotAllowed},
 		{"missing role", &invitev1.CreateInviteRequest{OrgId: goodID, Email: "a@b.c"}, "role", apperror.FieldRequired},
+		{"scope with no action", &apikeyv1.CreateAPIKeyRequest{OrgId: goodID, Kind: "org", Name: "ci", Scopes: []string{"run"}, ExpiresAt: future}, "scopes[0]", apperror.FieldInvalidFormat},
 		{"unknown kind", &apikeyv1.CreateAPIKeyRequest{OrgId: goodID, Kind: "admin", Name: "ci", ExpiresAt: future}, "kind", apperror.FieldNotAllowed},
 		{"blank key name", &apikeyv1.CreateAPIKeyRequest{OrgId: goodID, Kind: "org", Name: "  ", ExpiresAt: future}, "name", apperror.FieldRequired},
 		{"101-character key name", &apikeyv1.CreateAPIKeyRequest{OrgId: goodID, Kind: "org", Name: strings.Repeat("k", 101), ExpiresAt: future}, "name", apperror.FieldTooLong},
@@ -280,6 +287,14 @@ func TestRequestRules_Refuse(t *testing.T) {
 		{"2049-character mcp url", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.Url = "https://e.com/" + strings.Repeat("u", 2035) }), "url", apperror.FieldTooLong},
 		{"timeout 999", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.TimeoutMs = 999 }), "timeout_ms", apperror.FieldInvalid},
 		{"timeout 20001", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.TimeoutMs = 20001 }), "timeout_ms", apperror.FieldInvalid},
+		{"missing thread project", &threadv1.ListThreadsRequest{}, "project_id", apperror.FieldRequired},
+		{"agent filter not a public id", &threadv1.ListThreadsRequest{ProjectId: goodID, AgentId: "agent-1"}, "agent_id", apperror.FieldInvalidFormat},
+		{"201 threads a page", &threadv1.ListThreadsRequest{ProjectId: goodID, PageSize: 201}, "page_size", apperror.FieldInvalid},
+		{"257-character page token", &threadv1.ListRunsRequest{ThreadId: goodID, PageToken: strings.Repeat("t", 257)}, "page_token", apperror.FieldTooLong},
+		{"negative after seq", &threadv1.ListThreadMessagesRequest{ThreadId: goodID, AfterSeq: -1}, "after_seq", apperror.FieldInvalid},
+		{"run id a uuid", &threadv1.GetRunRequest{RunId: "0d7c4e0e-8f8a-4a43-9b51-2f1b6f0a9c11"}, "run_id", apperror.FieldInvalidFormat},
+		{"missing run to cancel", &threadv1.CancelRunRequest{}, "run_id", apperror.FieldRequired},
+		{"missing thread", &threadv1.GetThreadRequest{}, "thread_id", apperror.FieldRequired},
 		{"129-character header name", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.AuthHeader = strings.Repeat("h", 129) }), "auth_header", apperror.FieldTooLong},
 		{"4097-character auth value", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.AuthValue = strings.Repeat("v", 4097) }), "auth_value", apperror.FieldTooLong},
 		{"empty auth value on update", &mcpserverv1.UpdateMcpServerRequest{Id: goodID, Url: "https://e.com", AuthKind: mcpserverv1.McpServerAuthKind_MCP_SERVER_AUTH_KIND_BEARER, AuthValue: new(string), TimeoutMs: 5000}, "auth_value", apperror.FieldTooShort},

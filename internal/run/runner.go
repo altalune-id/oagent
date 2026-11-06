@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"golang.org/x/sync/errgroup"
 
 	"altalune.id/oagent/internal/kernel/tenant"
 )
@@ -34,7 +33,7 @@ type Executor interface {
 
 // Leases claims, extends and releases thread leases.
 type Leases interface {
-	Claim(ctx context.Context, threadID uuid.UUID, token string, ttl time.Duration) (bool, error)
+	Claim(ctx context.Context, threadID uuid.UUID, token string, ttl time.Duration) (ClaimResult, error)
 	Heartbeat(ctx context.Context, threadID uuid.UUID, token string, ttl time.Duration) (cancel bool, err error)
 	Release(ctx context.Context, threadID uuid.UUID, token string) error
 }
@@ -77,12 +76,72 @@ type Runner struct {
 	in     chan Kick
 	kicker Kicker
 	log    *slog.Logger
+	slots  chan struct{}
+	wg     sync.WaitGroup
+	mu     sync.Mutex
+	// turns is the context held leases run under; nil while Run is not taking work.
+	turns context.Context
+}
+
+// ObservedExecutor runs a turn whose events a streaming client observes.
+type ObservedExecutor interface {
+	ExecuteObserved(ctx context.Context, threadID uuid.UUID, token string, obs Observer) (*Run, error)
+}
+
+// Slot is one turn of the runner's capacity, reserved before its lease is claimed.
+type Slot struct {
+	r    *Runner
+	once *sync.Once
+}
+
+// Release gives the slot back when the handler bails out before RunHeld; it is safe to call more than once.
+func (s Slot) Release() {
+	if s.once != nil {
+		s.once.Do(func() { <-s.r.slots })
+	}
+}
+
+var errNotRunning = errors.New("run: the runner is not taking work")
+
+// Reserve takes a turn slot without blocking; false means the runner is at its limit.
+func (r *Runner) Reserve() (Slot, bool) {
+	select {
+	case r.slots <- struct{}{}:
+		return Slot{r: r, once: new(sync.Once)}, true
+	default:
+		return Slot{}, false
+	}
+}
+
+// RunHeld runs the lease token already holds on k's thread, on slot; sink sees the first run only and closes when it settles.
+func (r *Runner) RunHeld(slot Slot, k Kick, token string, sink *Sink) error {
+	exec, ok := r.exec.(ObservedExecutor)
+	r.mu.Lock()
+	turns := r.turns
+	if turns != nil && ok {
+		r.wg.Add(1)
+	}
+	r.mu.Unlock()
+	if turns == nil || !ok {
+		slot.Release()
+		sink.Close()
+		return errNotRunning
+	}
+	go func() {
+		defer r.wg.Done()
+		defer slot.Release()
+		r.held(turns, k, token, exec, sink)
+	}()
+	return nil
 }
 
 // NewRunner builds the runner over exec and leases.
 func NewRunner(exec Executor, leases Leases, opts RunnerOptions) *Runner {
 	opts = opts.withDefaults()
-	return &Runner{exec: exec, leases: leases, opts: opts, in: make(chan Kick, opts.Buffer), log: slog.Default()}
+	return &Runner{
+		exec: exec, leases: leases, opts: opts, in: make(chan Kick, opts.Buffer), log: slog.Default(),
+		slots: make(chan struct{}, opts.MaxConcurrent),
+	}
 }
 
 // WithKicker re-kicks threads the runner left with work: after five turns, and on shutdown.
@@ -110,26 +169,36 @@ func (r *Runner) Offer(k Kick) bool {
 	}
 }
 
-// Run takes kicks until ctx ends, then gives in-flight turns the drain timeout before it interrupts them; it returns once every turn has.
+// Run takes kicks and held leases until ctx ends, drains in-flight turns, then interrupts the rest; it returns once every turn has.
 func (r *Runner) Run(ctx context.Context) error {
 	turns, stop := context.WithCancelCause(context.WithoutCancel(ctx))
 	defer stop(nil)
-	var g errgroup.Group
-	g.SetLimit(r.opts.MaxConcurrent)
+	r.mu.Lock()
+	r.turns = turns
+	r.mu.Unlock()
 loop:
 	for {
 		select {
 		case <-ctx.Done():
 			break loop
 		case k := <-r.in:
-			if !g.TryGo(func() error { r.lease(turns, k); return nil }) {
+			slot, ok := r.Reserve()
+			if !ok {
 				r.log.DebugContext(ctx, "run: at the turn limit; the kick waits for the reconciler", "thread", k.ThreadID.String())
+				continue
 			}
+			r.wg.Go(func() {
+				defer slot.Release()
+				r.lease(turns, k)
+			})
 		}
 	}
+	r.mu.Lock()
+	r.turns = nil
+	r.mu.Unlock()
 	done := make(chan struct{})
 	go func() {
-		_ = g.Wait()
+		r.wg.Wait()
 		close(done)
 	}()
 	drain := time.NewTimer(r.opts.DrainTimeout)
@@ -143,17 +212,34 @@ loop:
 	return nil
 }
 
+func (r *Runner) held(ctx context.Context, k Kick, token string, exec ObservedExecutor, sink *Sink) {
+	first := true
+	r.loop(tenant.Into(ctx, tenant.Context{OrgID: k.OrgID}), k, token, func(ctx context.Context) (*Run, error) {
+		if !first {
+			return r.exec.Execute(ctx, k.ThreadID, token)
+		}
+		first = false
+		defer sink.Close()
+		return exec.ExecuteObserved(ctx, k.ThreadID, token, sink.Observe)
+	})
+	sink.Close()
+}
+
 func (r *Runner) lease(ctx context.Context, k Kick) {
 	ctx = tenant.Into(ctx, tenant.Context{OrgID: k.OrgID})
 	token := uuid.NewString()
-	ok, err := r.leases.Claim(ctx, k.ThreadID, token, r.opts.LeaseTTL)
+	claim, err := r.leases.Claim(ctx, k.ThreadID, token, r.opts.LeaseTTL)
 	if err != nil {
 		r.log.ErrorContext(ctx, "run: claim", "thread", k.ThreadID.String(), "err", err.Error())
 		return
 	}
-	if !ok {
+	if claim != Claimed {
 		return
 	}
+	r.loop(ctx, k, token, func(ctx context.Context) (*Run, error) { return r.exec.Execute(ctx, k.ThreadID, token) })
+}
+
+func (r *Runner) loop(ctx context.Context, k Kick, token string, execute func(context.Context) (*Run, error)) {
 	rekick, keep := false, false
 	defer func() {
 		bg := context.WithoutCancel(ctx)
@@ -174,7 +260,7 @@ func (r *Runner) lease(ctx context.Context, k Kick) {
 			rekick = true
 			return
 		}
-		done, err := r.turn(ctx, k.ThreadID, token)
+		done, err := r.turn(ctx, k.ThreadID, token, execute)
 		switch {
 		case IsLeaseLostError(err):
 			return
@@ -202,14 +288,16 @@ func (r *Runner) lease(ctx context.Context, k Kick) {
 	rekick = true
 }
 
-func (r *Runner) turn(ctx context.Context, threadID uuid.UUID, token string) (*Run, error) {
+func (r *Runner) turn(
+	ctx context.Context, threadID uuid.UUID, token string, execute func(context.Context) (*Run, error),
+) (*Run, error) {
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
 	ctx, stop := context.WithTimeout(ctx, r.opts.TurnTimeout)
 	defer stop()
 	var wg sync.WaitGroup
 	wg.Go(func() { r.heartbeat(ctx, cancel, threadID, token) })
-	done, err := r.exec.Execute(ctx, threadID, token)
+	done, err := execute(ctx)
 	cancel(nil)
 	wg.Wait()
 	return done, err

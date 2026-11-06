@@ -21,12 +21,14 @@ definePageMeta({ bleed: true });
 const { t } = useI18n();
 const route = useRoute();
 const { moment } = useDates();
-const { money, count } = useUnits();
+const { cost, costTitle, count } = useUnits();
 const canEdit = useCan('agent:write');
 const { agent, base, usesSample } = await useAgentPage();
 const store = useThreadsStore();
 const auth = useAuthStore();
 await store.ensureLoaded(agent.value.id, usesSample.value);
+await store.open(route.params.thread as string);
+onBeforeUnmount(() => store.stopPolling());
 
 const thread = computed(() => store.byId(route.params.thread as string));
 if (!thread.value && !store.error) {
@@ -53,13 +55,16 @@ const facts = computed(() => !thread.value
       { label: t('thread.id'), value: thread.value!.id, mono: true, copy: true },
       { label: t('thread.people'), value: '' },
       { label: t('thread.created'), value: moment(thread.value!.createdAt) },
-      { label: t('thread.usage'), value: t('thread.usage_value', { tokens: count(thread.value!.tokens), cost: money(thread.value!.costCents) }) },
+      { label: t('thread.usage'), value: t('thread.usage_value', { tokens: count(thread.value!.tokens), cost: cost(thread.value!.costCents) }) },
       { label: t('thread.open_approval'), value: openApproval.value?.kind === 'approval' ? openApproval.value.approval.title : t('thread.none') },
     ]);
 
-const cancelling = useConfirm<string>(async (runId) => {
-  store.cancelRun(thread.value!.id, runId, auth.me?.name ?? '');
-}, 'error.cancel_run');
+const cancelling = useConfirm<string>(runId => store.cancelRun(thread.value!.id, runId, auth.me?.name ?? ''), 'error.cancel_run');
+watch(runningRun, (run) => {
+  if (!run) {
+    cancelling.cancel();
+  }
+});
 
 useHead({ title: () => `${title.value} · ${t('threads.title')} · OAgent` });
 </script>
@@ -81,11 +86,11 @@ useHead({ title: () => `${title.value} · ${t('threads.title')} · OAgent` });
             {{ title }}
           </h1>
           <span class="badge badge-sm badge-ghost">{{ t(`threads.kind_${thread.kind}`) }}</span>
-          <span class="badge badge-info badge-soft text-base-content badge-sm">{{ t('preview.badge') }}</span>
+          <span v-if="usesSample" class="badge badge-info badge-soft text-base-content badge-sm">{{ t('preview.badge') }}</span>
         </div>
         <p class="flex flex-wrap items-center gap-x-2 text-ui text-base-content/70">
-          <span>{{ t('thread.summary', { runs: thread.runs, cost: money(thread.costCents) }, thread.runs) }}</span>
-          <StatusLabel :tone="runStatusTone[thread.status]" :label="t(`runstatus.${thread.status}`)" />
+          <span :title="costTitle(thread.costCents)">{{ t('thread.summary', { runs: thread.runs, cost: cost(thread.costCents) }, thread.runs) }}</span>
+          <StatusLabel v-if="thread.status" :tone="runStatusTone[thread.status]" :label="t(`runstatus.${thread.status}`)" />
         </p>
       </div>
       <AppButton v-if="runningRun && canEdit" variant="error" size="sm" soft @click="cancelling.ask(runningRun.id)">
@@ -100,6 +105,9 @@ useHead({ title: () => `${title.value} · ${t('threads.title')} · OAgent` });
       </section>
       <aside class="min-w-0 border-t border-base-300 bg-base-200 lg:border-s lg:border-t-0" :aria-label="t('thread.facts')">
         <KeyValue :items="facts" :copy-label="t('common.copy_label', { label: '{label}' })">
+          <template #value-4>
+            <span :title="costTitle(thread.costCents)">{{ facts[4]!.value }}</span>
+          </template>
           <template #value-2>
             <span class="flex flex-wrap gap-x-2">
               <template v-for="(p, i) in thread.people" :key="`${i}:${p.name}`">

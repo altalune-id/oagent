@@ -76,3 +76,16 @@ type MCPServers interface {
 type Publisher interface {
 	Enqueue(ctx context.Context, t events.Type, data any) error
 }
+
+// Refs turns project and agent public ids into ids and back for the thread handler.
+type Refs interface {
+	ProjectID(ctx context.Context, publicID string) (id, orgID uuid.UUID, ok bool, err error)
+	ProjectPublicID(ctx context.Context, id uuid.UUID) (string, error)
+	ResourceID(ctx context.Context, orgID uuid.UUID, publicID string) (uuid.UUID, bool, error)
+	ResourcePublicID(ctx context.Context, orgID, id uuid.UUID) (publicID string, ok bool, err error)
+}
+
+// Labels names an end user for display without its identity values; an unknown end user has an empty label.
+type Labels interface {
+	Label(ctx context.Context, id uuid.UUID) (string, error)
+}

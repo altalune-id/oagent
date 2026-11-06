@@ -1,0 +1,18 @@
+id: 1
+data: {"type":"RUN_STARTED","threadId":"client-thread-1","runId":"Rn5Q8wYk2HhT3mVz7XcLp"}
+
+id: 2
+data: {"type":"TEXT_MESSAGE_START","messageId":"msg_asst_1","role":"assistant"}
+
+id: 3
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"msg_asst_1","delta":"Hi, "}
+
+id: 4
+data: {"type":"TEXT_MESSAGE_CONTENT","messageId":"msg_asst_1","delta":"how can I help?"}
+
+id: 5
+data: {"type":"TEXT_MESSAGE_END","messageId":"msg_asst_1"}
+
+id: 6
+data: {"type":"RUN_FINISHED","threadId":"client-thread-1","runId":"Rn5Q8wYk2HhT3mVz7XcLp"}
+
