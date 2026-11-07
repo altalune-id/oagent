@@ -1,9 +1,10 @@
-import type { TurnRequest } from './contract.ts';
+import type { TurnRequest } from './index.ts';
 import { Buffer } from 'node:buffer';
 import { describe, expect, it } from 'vitest';
 
 import { goldenRequest } from '../test/turn-fixtures.ts';
-import { checkImages, MAX_IMAGE_BYTES, MAX_IMAGES, TurnRefusedError, validateRequest } from './contract.ts';
+import { checkImages, MAX_IMAGE_BYTES, MAX_IMAGES } from './images.ts';
+import { TurnRefusedError, validateRequest } from './index.ts';
 
 const PNG = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13]).toString('base64');
 const JPEG = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0, 16]).toString('base64');

@@ -1,31 +1,10 @@
-import type { AgentStreamEvent, Message, Model } from '@strands-agents/sdk';
-import type { TurnRequest } from '../http/contract.ts';
-import type { Emit, RunTurn } from '../http/server.ts';
-import type { Logger } from '../log.ts';
-import type { ModelClients } from '../models/clients.ts';
-import type { ToolResultReport, TurnDeps, TurnOutcome } from './agent.ts';
-import { checkImages } from '../http/contract.ts';
-import { checkSnapshot, executeTurn } from './agent.ts';
+import type { AgentStreamEvent, Message } from '@strands-agents/sdk';
+import type { Emit, TurnRequest } from '../contract/index.ts';
+import type { ToolResultReport } from './execute.ts';
 
-import { emptyUsage, LIMIT_REPLY } from './limits.ts';
 import { IMAGE_NOTE } from './snapshot.ts';
 
-export const HEARTBEAT_MS = 15_000;
-
-const ERROR_TEXT: Record<string, string> = {
-  deadline: 'turn deadline reached',
-  model_error: 'model call failed',
-  runtime_error: 'runtime error',
-};
-
 type Json = Record<string, unknown>;
-
-export interface RunTurnDeps {
-  models: ModelClients;
-  log: Logger;
-  modelFor?: (request: TurnRequest) => Model;
-  openMcp?: TurnDeps['openMcp'];
-}
 
 function contentText(content: unknown[]): string {
   return content.map((block) => {
@@ -81,7 +60,7 @@ export function toAgUiMessages(request: TurnRequest, messages: Message[]): Json[
   return out;
 }
 
-class StreamMapper {
+export class StreamMapper {
   private assistants = 0;
   private current = '';
   private textOpen = false;
@@ -154,65 +133,4 @@ class StreamMapper {
     await this.emit({ type: 'TEXT_MESSAGE_CONTENT', messageId, delta: text });
     await this.emit({ type: 'TEXT_MESSAGE_END', messageId });
   }
-}
-
-function runtimeFailure(): TurnOutcome {
-  return {
-    status: 'failed',
-    stopReason: 'error',
-    snapshot: null,
-    usage: emptyUsage(),
-    newMessages: [],
-    interrupts: [],
-    notes: [],
-    error: { code: 'runtime_error' },
-  };
-}
-
-export function createRunTurn(deps: RunTurnDeps): RunTurn {
-  return async (request, emit, signal) => {
-    checkSnapshot(request);
-    checkImages(request);
-    const model = deps.modelFor?.(request) ?? deps.models.model(request.ids.project, request.agent.model, request.agent.temperature);
-    const mapper = new StreamMapper(emit);
-    const ids = { threadId: request.ids.thread, runId: request.ids.run };
-    await emit({ type: 'RUN_STARTED', ...ids });
-    const beat = setInterval(() => {
-      void emit({ type: 'OAGENT_HEARTBEAT' });
-    }, HEARTBEAT_MS);
-    let outcome: TurnOutcome;
-    try {
-      outcome = await executeTurn(request, signal, {
-        model,
-        log: deps.log,
-        ...(deps.openMcp && { openMcp: deps.openMcp }),
-        onEvent: e => mapper.onEvent(e),
-        onToolResult: r => mapper.onToolResult(r),
-      });
-    } catch (error) {
-      deps.log.error('turn crashed', { run: request.ids.run, error });
-      outcome = runtimeFailure();
-    } finally {
-      clearInterval(beat);
-    }
-    if (outcome.stopReason === 'budget') {
-      await mapper.reply(LIMIT_REPLY);
-    }
-    if (outcome.error) {
-      await emit({ type: 'RUN_ERROR', message: ERROR_TEXT[outcome.error.code] ?? 'turn failed', code: outcome.error.code });
-    } else {
-      await emit({ type: 'RUN_FINISHED', ...ids });
-    }
-    await emit({
-      type: 'OAGENT_TERMINAL',
-      status: outcome.status,
-      stopReason: outcome.stopReason,
-      snapshot: outcome.snapshot,
-      usage: outcome.usage,
-      messagesAppended: toAgUiMessages(request, outcome.newMessages),
-      interrupts: outcome.interrupts,
-      notes: outcome.notes,
-      ...(outcome.error && { error: outcome.error }),
-    });
-  };
 }

@@ -1,13 +1,11 @@
 import type { LookupAddress } from 'node:dns';
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { BlockList, isIP } from 'node:net';
-import process from 'node:process';
 import { Agent, buildConnector, setGlobalDispatcher } from 'undici';
 
 const CONNECT_TIMEOUT_MS = 10_000;
 const HEADERS_TIMEOUT_MS = 60_000;
 const BODY_TIMEOUT_MS = 120_000;
-const PROXY_VARS = ['HTTP_PROXY', 'HTTPS_PROXY', 'NODE_USE_ENV_PROXY', 'http_proxy', 'https_proxy'];
 
 const deny = new BlockList();
 for (const [net, bits] of [
@@ -82,18 +80,6 @@ export async function checkedLookup(hostname: string, resolve: Resolve): Promise
   return addrs;
 }
 
-function parseAllowList(raw: string | undefined): Set<string> {
-  const allow = new Set<string>();
-  for (const entry of (raw ?? '').split(',').map(s => s.trim()).filter(Boolean)) {
-    const m = /^\[([^\]]+)\]:(\d+)$/.exec(entry) ?? /^([^:]+):(\d+)$/.exec(entry);
-    if (!m) {
-      throw new Error(`RUNTIME_ALLOW_PRIVATE: "${entry}" is not host:port`);
-    }
-    allow.add(`${m[1]!.toLowerCase()}:${m[2]}`);
-  }
-  return allow;
-}
-
 function defaultLog(msg: string, fields: Record<string, unknown>): void {
   console.warn(JSON.stringify({ level: 'warn', msg, ...fields }));
 }
@@ -101,7 +87,9 @@ function defaultLog(msg: string, fields: Record<string, unknown>): void {
 const defaultResolve: Resolve = hostname => dnsLookup(hostname, { all: true, verbatim: true });
 
 export interface GuardOptions {
-  env?: Record<string, string | undefined>;
+  allowPrivate?: ReadonlySet<string>;
+  ignoredAllowPrivate?: readonly string[];
+  ignoredProxyVars?: readonly string[];
   log?: Log;
   resolve?: Resolve;
 }
@@ -131,22 +119,14 @@ export function guardedLookup(resolve: Resolve, log: Log) {
 let installed: Agent | undefined;
 
 export function installGuard(options: GuardOptions = {}): Agent {
-  const env = options.env ?? process.env;
   const log = options.log ?? defaultLog;
   const resolve = options.resolve ?? defaultResolve;
-  const runtimeEnv = env.RUNTIME_ENV ?? 'production';
-  if (runtimeEnv !== 'production' && runtimeEnv !== 'development') {
-    throw new Error(`RUNTIME_ENV must be development or production, not "${runtimeEnv}"`);
+  const allow = options.allowPrivate ?? new Set<string>();
+  if (options.ignoredAllowPrivate?.length) {
+    log('private egress list ignored in production', { hosts: [...options.ignoredAllowPrivate] });
   }
-  const listed = parseAllowList(env.RUNTIME_ALLOW_PRIVATE);
-  const allow = runtimeEnv === 'development' ? listed : new Set<string>();
-  if (runtimeEnv === 'production' && listed.size > 0) {
-    log('private egress list ignored in production', { hosts: [...listed] });
-  }
-
-  const proxyVars = PROXY_VARS.filter(v => env[v]);
-  if (proxyVars.length > 0) {
-    log('proxy env ignored', { vars: proxyVars });
+  if (options.ignoredProxyVars?.length) {
+    log('proxy env ignored', { vars: [...options.ignoredProxyVars] });
   }
   if (allow.size > 0) {
     log('private egress allowed', { hosts: [...allow] });

@@ -106,11 +106,9 @@ func (s *Service) ListTools(ctx context.Context, id uuid.UUID) ([]Tool, error) {
 	if err != nil {
 		return nil, s.errOrReport(ctx, "mcpserver: list tools", err)
 	}
-	var value string
-	if srv.AuthKind != AuthNone {
-		if value, err = openAuth(s.sealer, srv.OrgID, srv.ID, srv.AuthSealed); err != nil {
-			return nil, s.errOrReport(ctx, "mcpserver: list tools open", secretsErr(err))
-		}
+	value, err := s.credential(ctx, srv)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "mcpserver: list tools open", secretsErr(err))
 	}
 	tools, err := s.probe(ctx, srv, value)
 	if err != nil {

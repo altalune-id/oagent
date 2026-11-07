@@ -1,22 +1,22 @@
-export interface Prices {
-  input: number;
-  output: number;
-  cacheRead: number;
-  cacheWrite: number;
-}
+export type Prices = {
+  input: number,
+  output: number,
+  cacheRead: number,
+  cacheWrite: number,
+};
 
-export interface Budget {
-  remainingMicros: number;
-  prices: Prices;
-}
+export type Budget = {
+  remainingMicros: number,
+  prices: Prices,
+};
 
-export interface TurnUsage {
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadInputTokens: number;
-  cacheWriteInputTokens: number;
-  estimated: boolean;
-}
+export type TurnUsage = {
+  inputTokens: number,
+  outputTokens: number,
+  cacheReadInputTokens: number,
+  cacheWriteInputTokens: number,
+  estimated: boolean,
+};
 
 export const LIMIT_REPLY = 'This agent reached its spending limit for this conversation.';
 export const BUDGET_REFUSAL = 'DENIED: budget exhausted';

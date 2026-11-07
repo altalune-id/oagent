@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { CONTRACT_VERSION, validateRequest } from './contract.ts';
+import { CONTRACT_VERSION, validateRequest } from './request.ts';
 
 const goldens = fileURLToPath(new URL('../../../../internal/kernel/runtime/testdata/turn/', import.meta.url));
 const requests = readdirSync(goldens).filter(f => f.endsWith('.request.json')).sort();

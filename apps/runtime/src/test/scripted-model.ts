@@ -1,19 +1,19 @@
 import type { BaseModelConfig, Message, ModelStreamEvent, StreamOptions } from '@strands-agents/sdk';
 import { Model } from '@strands-agents/sdk';
 
-export interface Step {
-  text?: string[];
-  toolUse?: { name: string, id: string, input: Record<string, unknown> };
-  usage?: { inputTokens: number, outputTokens: number, cacheReadInputTokens?: number, cacheWriteInputTokens?: number };
-  hang?: boolean;
-  error?: Error;
-  failAfterText?: Error;
-}
+export type Step = {
+  text?: string[],
+  toolUse?: { name: string, id: string, input: Record<string, unknown> },
+  usage?: { inputTokens: number, outputTokens: number, cacheReadInputTokens?: number, cacheWriteInputTokens?: number },
+  hang?: boolean,
+  error?: Error,
+  failAfterText?: Error,
+};
 
-export interface Call {
-  messages: Message[];
-  systemPrompt: unknown;
-}
+export type Call = {
+  messages: Message[],
+  systemPrompt: unknown,
+};
 
 function abortError(): Error {
   const e = new Error('aborted');

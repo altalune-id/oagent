@@ -8,11 +8,11 @@ const MAX_ERROR_READ = 4096;
 const REDIRECT_STATUS = new Set([301, 302, 303, 307, 308]);
 const REDACTED = '[redacted]';
 
-export interface Credential {
-  header: string;
-  value: string;
-  secrets: string[];
-}
+export type Credential = {
+  header: string,
+  value: string,
+  secrets: string[],
+};
 
 export function origin(u: URL): string {
   const port = u.port || (u.protocol === 'https:' ? '443' : '80');

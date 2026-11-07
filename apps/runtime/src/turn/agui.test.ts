@@ -2,10 +2,11 @@ import type { Message } from '@strands-agents/sdk';
 import { Message as Msg, TextBlock, ToolResultBlock, ToolUseBlock } from '@strands-agents/sdk';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ModelClients } from '../models/clients.ts';
+import { createModels } from '../models/index.ts';
 import { ScriptedModel } from '../test/scripted-model.ts';
 import { fakeMcp, goldenRequest, quiet } from '../test/turn-fixtures.ts';
-import { createRunTurn, HEARTBEAT_MS, toAgUiMessages } from './agui.ts';
+import { toAgUiMessages } from './agui.ts';
+import { createRunTurn, HEARTBEAT_MS } from './index.ts';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -16,7 +17,7 @@ describe('heartbeat', () => {
     vi.useFakeTimers();
     const events: Record<string, unknown>[] = [];
     const runTurn = createRunTurn({
-      models: new ModelClients(),
+      models: createModels(),
       log: quiet,
       modelFor: () => new ScriptedModel([{ text: ['slow'], hang: true }]),
       openMcp: fakeMcp([]),
@@ -43,7 +44,7 @@ describe('terminal', () => {
   it('is the last line even when the turn throws outside the model', async () => {
     const events: Record<string, unknown>[] = [];
     const runTurn = createRunTurn({
-      models: new ModelClients(),
+      models: createModels(),
       log: quiet,
       modelFor: () => new ScriptedModel([]),
       openMcp: async () => {
@@ -61,7 +62,7 @@ describe('terminal', () => {
   it('streams the set reply when the budget refuses the model call', async () => {
     const events: Record<string, unknown>[] = [];
     const runTurn = createRunTurn({
-      models: new ModelClients(),
+      models: createModels(),
       log: quiet,
       modelFor: () => new ScriptedModel([]),
       openMcp: fakeMcp([]),
@@ -81,7 +82,7 @@ describe('terminal', () => {
 
   it('refuses an unloadable snapshot before any event', async () => {
     const events: unknown[] = [];
-    const runTurn = createRunTurn({ models: new ModelClients(), log: quiet, modelFor: () => new ScriptedModel([]), openMcp: fakeMcp([]) });
+    const runTurn = createRunTurn({ models: createModels(), log: quiet, modelFor: () => new ScriptedModel([]), openMcp: fakeMcp([]) });
     const request = goldenRequest('resume', (r) => {
       r.snapshot = { ...r.snapshot, appData: { thread: r.ids.thread, agentVersion: 99, sdk: '1.23.0' } };
     });
@@ -93,7 +94,7 @@ describe('terminal', () => {
 
   it('refuses invalid image input before any event', async () => {
     const events: unknown[] = [];
-    const runTurn = createRunTurn({ models: new ModelClients(), log: quiet, modelFor: () => new ScriptedModel([]), openMcp: fakeMcp([]) });
+    const runTurn = createRunTurn({ models: createModels(), log: quiet, modelFor: () => new ScriptedModel([]), openMcp: fakeMcp([]) });
     const request = goldenRequest('plain_reply', (r) => {
       r.input = { kind: 'message', message: { id: 'u1', role: 'user', content: [{ type: 'image', source: { type: 'url', value: 'https://example.com/a.png' } }] } } as never;
     });
@@ -104,7 +105,7 @@ describe('terminal', () => {
   });
 
   it('builds the model from the cached clients by default', async () => {
-    const models = new ModelClients();
+    const models = createModels();
     const spy = vi.spyOn(models, 'model').mockReturnValue(new ScriptedModel([{ text: ['ok'] }]) as never);
     const runTurn = createRunTurn({ models, log: quiet, openMcp: fakeMcp([]) });
     await runTurn(goldenRequest('plain_reply'), async () => {}, new AbortController().signal);

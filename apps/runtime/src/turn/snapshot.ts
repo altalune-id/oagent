@@ -1,6 +1,11 @@
 import type { Snapshot } from '@strands-agents/sdk';
+import type { TurnRequest } from '../contract/index.ts';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { Agent } from '@strands-agents/sdk';
+import { OpenAIModel } from '@strands-agents/sdk/models/openai';
+
+import { TurnRefusedError } from '../contract/index.ts';
 
 export const IMAGE_NOTE = '[image removed]';
 
@@ -21,7 +26,7 @@ function sdkVersion(): string {
 export const SDK_VERSION = sdkVersion();
 
 type Block = Record<string, unknown>;
-interface MessageJson { role: string; content: Block[]; }
+type MessageJson = { role: string, content: Block[] };
 
 function stripBlocks(blocks: Block[]): Block[] {
   return blocks.map((block) => {
@@ -50,12 +55,27 @@ export function cleanSnapshot(snapshot: Snapshot, refusal?: string): Snapshot {
   return { ...snapshot, data: data as Snapshot['data'] };
 }
 
-export interface SnapshotTags {
-  thread: string;
-  agentVersion: number;
-}
+export type SnapshotTags = {
+  thread: string,
+  agentVersion: number,
+};
 
 export function tagsMatch(snapshot: Record<string, unknown>, want: SnapshotTags): boolean {
   const app = snapshot.appData as Record<string, unknown> | undefined;
   return app?.thread === want.thread && app.agentVersion === want.agentVersion && app.sdk === SDK_VERSION;
+}
+
+export function checkSnapshot(request: TurnRequest): void {
+  if (request.snapshot === null) {
+    return;
+  }
+  if (!tagsMatch(request.snapshot, { thread: request.ids.thread, agentVersion: request.ids.agentVersion })) {
+    throw new TurnRefusedError(422, 'snapshot_unloadable');
+  }
+  try {
+    const probe = new Agent({ model: new OpenAIModel({ api: 'chat', modelId: 'snapshot-check', apiKey: 'unused' }), sandbox: false, printer: false });
+    probe.loadSnapshot(request.snapshot as unknown as Snapshot);
+  } catch {
+    throw new TurnRefusedError(422, 'snapshot_unloadable');
+  }
 }

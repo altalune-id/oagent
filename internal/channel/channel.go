@@ -75,7 +75,7 @@ type Ref struct {
 	SecretSet bool
 }
 
-// Secrets are a connection's opened secrets: the signing secrets newest first, and the device key.
+// Secrets are a connection's opened secrets: the signing secrets newest first, and the device key, the bearer the provider's API takes.
 type Secrets struct {
 	Signing   []string
 	DeviceKey string
