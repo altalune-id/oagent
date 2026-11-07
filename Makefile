@@ -157,8 +157,8 @@ test-integration: ## run integration tests (TEST_PG_DSN if set, else one Postgre
 test-all: test test-integration ## unit + integration tests
 
 COVER_MIN ?= 85
-# generated code, templ views, test helpers and main wiring
-COVER_SKIP ?= /gen(/|$$)|/views$$|/testutil/|/sessiontest$$|/ratelimittest$$|/snapshotstoretest$$|/examples/|/cmd/oagent$$
+# generated code, templ views, test helpers, test-only packages and main wiring
+COVER_SKIP ?= /gen(/|$$)|/views$$|/testutil/|/sessiontest$$|/ratelimittest$$|/snapshotstoretest$$|/e2etest$$|/examples/|/cmd/oagent$$
 
 .PHONY: cover
 cover: ## unit + integration coverage; fails when a package is under COVER_MIN percent

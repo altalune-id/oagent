@@ -129,7 +129,10 @@ func TestMCP_ToolResultsHoldNoUUID(t *testing.T) {
 		"delivery_id": s.pub.delivery, "name": "Probe", "email": "probe@example.com", "role": "member",
 		"url": "https://example.com/probe", "event_types": []string{"agent.created"},
 	}
-	ids := map[string]string{"org": s.pub.org, "project": s.pub.project, "agent": s.pub.agent, "webhook": s.pub.webhook}
+	ids := map[string]string{
+		"org": s.pub.org, "project": s.pub.project, "agent": s.pub.agent, "webhook": s.pub.webhook, "channel": s.pub.connection,
+		"mcp_server": s.pub.server, "model_provider": s.pub.provider,
+	}
 	answered := 0
 	for _, tool := range list.Result.Tools {
 		args := map[string]any{}
@@ -138,7 +141,7 @@ func TestMCP_ToolResultsHoldNoUUID(t *testing.T) {
 				args[prop] = v
 			}
 			if prop == "id" {
-				args[prop] = ids[strings.SplitN(tool.Name, "_", 2)[0]]
+				args[prop] = toolDomainID(ids, tool.Name)
 			}
 		}
 		raw, err := json.Marshal(map[string]any{
@@ -155,6 +158,16 @@ func TestMCP_ToolResultsHoldNoUUID(t *testing.T) {
 	assert.Greater(t, answered, len(list.Result.Tools)/2, "most tools must succeed for the check to mean anything")
 }
 
+func toolDomainID(ids map[string]string, tool string) string {
+	parts := strings.SplitN(tool, "_", 3)
+	if len(parts) > 2 {
+		if id, ok := ids[parts[0]+"_"+parts[1]]; ok {
+			return id
+		}
+	}
+	return ids[parts[0]]
+}
+
 func snake(name string) string {
 	var b strings.Builder
 	for _, r := range name {
@@ -165,4 +178,24 @@ func snake(name string) string {
 		b.WriteRune(r)
 	}
 	return b.String()
+}
+
+func TestMCP_KeyScopesTheToolListForChannels(t *testing.T) {
+	f := newAPIFixture(t)
+	key := f.mint(t, apikey.KindOrg, "channel:read", "channel:write")
+
+	status, _, body := f.mcpCall(t, key, `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`)
+	require.Equal(t, http.StatusOK, status, string(body))
+	var list struct {
+		Result struct {
+			Tools []struct{ Name string } `json:"tools"`
+		} `json:"result"`
+	}
+	require.NoError(t, json.Unmarshal(body, &list))
+	var names []string
+	for _, tool := range list.Result.Tools {
+		names = append(names, tool.Name)
+	}
+	assert.ElementsMatch(t, []string{"channel_connection_get", "channel_connection_list", "channel_connection_delete", "auth_whoami"}, names,
+		"no create, update or rotate tool: secrets never travel over MCP")
 }

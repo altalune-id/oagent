@@ -1,0 +1,3 @@
+{"type":"RUN_STARTED","threadId":"t0193a2b4c5d67e8f9a0b1c2d3e4f5a6b","runId":"Rn5Q8wYk2HhT3mVz7XcLp"}
+{"type":"RUN_ERROR","message":"turn failed","code":"image_unsupported"}
+{"type":"OAGENT_TERMINAL","status":"failed","stopReason":"error","snapshot":null,"usage":{"inputTokens":0,"outputTokens":0,"cacheReadInputTokens":0,"cacheWriteInputTokens":0,"estimated":false},"messagesAppended":[{"id":"msg_user_1","role":"user","content":[{"type":"text","text":"Record this receipt"},{"type":"text","text":"[image removed]"}]}],"interrupts":[],"notes":[],"error":{"code":"image_unsupported"}}

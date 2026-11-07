@@ -2,9 +2,9 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import ApprovalCard from '~/components/approval/ApprovalCard.vue';
-import { sampleRun } from '~/preview/samples';
+import { kopiApproval } from '~/preview/samples';
 
-const approval = sampleRun().approval;
+const approval = kopiApproval();
 const button = (w: ReturnType<typeof mount>, text: string) => w.findAll('button').find(b => b.text().includes(text))!;
 
 describe('approval card', () => {

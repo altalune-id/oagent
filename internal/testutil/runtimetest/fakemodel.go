@@ -6,6 +6,7 @@ package runtimetest
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -33,6 +34,7 @@ type FakeModel struct {
 	mu      sync.Mutex
 	replies []Reply
 	calls   int
+	bodies  [][]byte
 	hung    chan struct{}
 }
 
@@ -59,6 +61,13 @@ func (m *FakeModel) Calls() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.calls
+}
+
+// Requests returns the raw body of every chat completion request served so far, in order.
+func (m *FakeModel) Requests() [][]byte {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([][]byte(nil), m.bodies...)
 }
 
 // Hung receives once per reply that started hanging.
@@ -101,7 +110,11 @@ func (m *FakeModel) serve(w http.ResponseWriter, r *http.Request) {
 			Role string `json:"role"`
 		} `json:"messages"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&req)
+	raw, _ := io.ReadAll(r.Body)
+	m.mu.Lock()
+	m.bodies = append(m.bodies, raw)
+	m.mu.Unlock()
+	_ = json.Unmarshal(raw, &req)
 	reply, ok := m.next()
 	if !ok {
 		http.Error(w, `{"error":{"message":"no scripted reply"}}`, http.StatusInternalServerError)

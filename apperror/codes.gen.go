@@ -111,6 +111,13 @@ const (
 	CodeRunIdempotencyConflict Code = "RUN008"
 
 	CodeThreadNotFound Code = "THR001"
+
+	CodeConnectionNotFound              Code = "CHN001"
+	CodeConnectionInvalid               Code = "CHN002"
+	CodeConnectionSecretRequired        Code = "CHN003"
+	CodeConnectionSecretsUnavailable    Code = "CHN004"
+	CodeConnectionProviderUnavailable   Code = "CHN005"
+	CodeConnectionWebhookURLUnavailable Code = "CHN006"
 )
 
 var kinds = map[Code]Kind{
@@ -221,4 +228,11 @@ var kinds = map[Code]Kind{
 	CodeRunIdempotencyConflict: KindInvalid,
 
 	CodeThreadNotFound: KindNotFound,
+
+	CodeConnectionNotFound:              KindNotFound,
+	CodeConnectionInvalid:               KindInvalid,
+	CodeConnectionSecretRequired:        KindInvalid,
+	CodeConnectionSecretsUnavailable:    KindFailedPrecondition,
+	CodeConnectionProviderUnavailable:   KindFailedPrecondition,
+	CodeConnectionWebhookURLUnavailable: KindFailedPrecondition,
 }

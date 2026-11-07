@@ -143,6 +143,36 @@ describe('useThreadsStore on ThreadService', () => {
     expect(store.error).toEqual({ message: 'error.load_thread' });
   });
 
+  it('loads one run with its thread and only the messages that run took or wrote', async () => {
+    const other = create(ThreadMessageSchema, { seq: 5n, role: 'user', message: { role: 'user', content: 'nanti' }, status: 'pending', createdAt: at(3) });
+    const c = client({
+      getRun: vi.fn().mockResolvedValue({ run: run({ status: RunStatus.COMPLETED, attempt: 2, agentVersion: 4, latencyMs: 4200n, costMicros: 782n, endedAt: at(2), usage: { inputTokens: 1204n, outputTokens: 188n } }) }),
+      listThreadMessages: vi.fn().mockResolvedValue({ messages: [userMsg, callMsg, resultMsg, replyMsg, other] }),
+    });
+    const store = useThreadsStore();
+    await store.loadRun(runId);
+    expect(c.getRun).toHaveBeenCalledWith({ runId });
+    expect(c.getThread).toHaveBeenCalledWith({ threadId });
+    const view = store.runView!;
+    expect(view).toMatchObject({ attempt: 2, agentVersion: 4, endedAt: new Date(Date.UTC(2026, 10, 5, 5, 2)), run: { id: runId, threadId, status: 'completed', seconds: 4.2, tokens: 1392 }, thread: { id: threadId } });
+    expect(view.thread!.title).not.toMatch(/3456/);
+    expect(view.items.map(i => i.kind)).toEqual(['user', 'tool', 'agent']);
+    expect(store.runLoading).toBe(false);
+  });
+
+  it('shows a run that fails to load, and a missing or unknown run as none', async () => {
+    setKnownKeys('error.load_run');
+    client({ getRun: vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue({}) });
+    const store = useThreadsStore();
+    await store.loadRun(runId);
+    expect([store.runView, store.runError?.message]).toEqual([null, 'error.load_run']);
+    await store.loadRun(runId);
+    expect([store.runView, store.runError]).toEqual([null, null]);
+    client({ getRun: vi.fn().mockRejectedValue(connectError('RUN001')) });
+    await useThreadsStore().loadRun(runId);
+    expect([store.runView, store.runError]).toEqual([null, null]);
+  });
+
   it('keeps the sample agent on samples, with no RPC, and a load-more failure shows', async () => {
     const c = client();
     const store = useThreadsStore();

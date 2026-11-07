@@ -1,48 +1,57 @@
-import type { OpenwaCheck, WhatsAppConnection, WhatsAppStatus } from '~/stores/channels';
-import { isHttpsUrl } from '~/lib/url/url';
+import type { ShownError } from '#base/lib/apperror/message';
+import type { WhatsAppStatus } from '~/stores/channels';
+import { onScopeDispose } from 'vue';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { errorCode, errorMeta } from '#base/lib/apperror/message';
+import { isWebUrl } from '~/lib/url/url';
 import { useChannelsStore } from '~/stores/channels';
 
 export interface OpenwaErrors {
   baseUrl?: string;
+  openwaOrg?: string;
+  openwaProject?: string;
   deviceId?: string;
   secret?: string;
   deviceKey?: string;
 }
 
-const statusOf: Record<OpenwaCheck, WhatsAppStatus> = {
-  connected: 'connected',
-  no_message: 'waiting',
-  bad_signature: 'bad_signature',
-  key_refused: 'key_refused',
-  device_mismatch: 'device_mismatch',
-};
+export type OpenwaResult = WhatsAppStatus | 'bad_signature';
 
-// useOpenwaConnect walks the three openwa steps (webhook, secret and key, check) and stores the connection; secrets are write-only.
-export function useOpenwaConnect(agentId: string, check?: (input: { deviceId: string, secret: string }) => Promise<OpenwaCheck>) {
+export const devicePattern = /^dev_[\w-]{16}$/;
+
+export const checkPolls = { every: 2_000, times: 15 };
+
+// useOpenwaConnect saves an OpenWA connection with its device key, shows the webhook URL to paste into OpenWA, sets the signing secret OpenWA then mints, and checks the status until the first verified delivery; secrets are write-only.
+export function useOpenwaConnect(projectId: string, agentId: string) {
   const { t } = useI18n();
   const channels = useChannelsStore();
-  const probe = check ?? channels.check;
+  const errorMessage = useErrorMessage();
 
   const open = ref(false);
   const step = ref(1);
   const baseUrl = ref('');
+  const openwaOrg = ref('');
+  const openwaProject = ref('');
   const deviceId = ref('');
   const secret = ref('');
   const deviceKey = ref('');
   const errors = ref<OpenwaErrors>({});
+  const formError = ref<ShownError | null>(null);
+  const saving = ref(false);
   const checking = ref(false);
-  const result = ref<OpenwaCheck | null>(null);
-  const saved = computed(() => channels.connection(agentId, 'openwa'));
-  const channelId = ref('');
-  const webhookUrl = computed(() => channels.webhookUrl(saved.value?.id ?? channelId.value));
-  const needsSecrets = computed(() => !saved.value || saved.value.baseUrl !== baseUrl.value.trim() || saved.value.deviceId !== deviceId.value.trim());
-  const secretsNote = computed(() => (!saved.value ? '' : needsSecrets.value ? 'openwa.secrets_reenter' : 'openwa.secrets_keep'));
+  const result = ref<OpenwaResult | null>(null);
+  const saved = computed(() => channels.connection(agentId));
+  const webhookUrl = computed(() => saved.value?.webhookUrl ?? '');
+  const needsKey = computed(() => !saved.value || saved.value.baseUrl !== baseUrl.value.trim() || saved.value.deviceId !== deviceId.value.trim());
+  const keyNote = computed(() => (!saved.value ? '' : needsKey.value ? 'openwa.key_reenter' : 'openwa.key_keep'));
+  const secretSet = computed(() => !!saved.value?.secretSet);
   let run = 0;
 
-  watch(baseUrl, () => clear('baseUrl'));
-  watch(deviceId, () => clear('deviceId'));
-  watch(secret, () => clear('secret'));
-  watch(deviceKey, () => clear('deviceKey'));
+  onScopeDispose(hide, true);
+
+  for (const [field, value] of [['baseUrl', baseUrl], ['openwaOrg', openwaOrg], ['openwaProject', openwaProject], ['deviceId', deviceId], ['secret', secret], ['deviceKey', deviceKey]] as const) {
+    watch(value, () => clear(field));
+  }
 
   function clear(field: keyof OpenwaErrors) {
     if (errors.value[field]) {
@@ -52,15 +61,17 @@ export function useOpenwaConnect(agentId: string, check?: (input: { deviceId: st
   }
 
   function show(resume = false) {
-    baseUrl.value = saved.value?.baseUrl ?? channels.settings.defaultOpenwaBaseUrl;
-    const fill = saved.value ? { deviceId: saved.value.deviceId, secret: '', deviceKey: '' } : channels.prefill();
-    deviceId.value = fill.deviceId;
-    secret.value = fill.secret;
-    deviceKey.value = fill.deviceKey;
+    const c = saved.value;
+    baseUrl.value = c?.baseUrl ?? channels.settings.defaultOpenwaBaseUrl;
+    openwaOrg.value = c?.openwaOrg ?? '';
+    openwaProject.value = c?.openwaProject ?? '';
+    deviceId.value = c?.deviceId ?? '';
+    secret.value = '';
+    deviceKey.value = '';
     result.value = null;
-    channelId.value = saved.value?.id ?? channels.newChannelId();
-    step.value = resume && saved.value ? 3 : 1;
+    formError.value = null;
     errors.value = {};
+    step.value = resume && c ? 3 : 1;
     open.value = true;
   }
 
@@ -74,80 +85,125 @@ export function useOpenwaConnect(agentId: string, check?: (input: { deviceId: st
 
   function validate(): boolean {
     const next: OpenwaErrors = {};
-    if (!isHttpsUrl(baseUrl.value.trim())) {
-      next.baseUrl = t('openwa.base_url_https');
+    if (!isWebUrl(baseUrl.value.trim())) {
+      next.baseUrl = t('openwa.base_url_format');
     }
-    if (!/^[\w-]{3,64}$/.test(deviceId.value.trim())) {
-      next.deviceId = t('openwa.device_required');
+    if (!openwaOrg.value.trim()) {
+      next.openwaOrg = t('openwa.org_required');
     }
-    if (needsSecrets.value && !secret.value.trim()) {
-      next.secret = t('openwa.secret_required');
+    if (!openwaProject.value.trim()) {
+      next.openwaProject = t('openwa.project_required');
     }
-    if (needsSecrets.value && !deviceKey.value.trim()) {
+    if (!devicePattern.test(deviceId.value.trim())) {
+      next.deviceId = t('openwa.device_format');
+    }
+    if (needsKey.value && !deviceKey.value.trim()) {
       next.deviceKey = t('openwa.key_required');
     }
     errors.value = next;
     return Object.keys(next).length === 0;
   }
 
-  function next() {
-    if (step.value === 2 && !validate()) {
-      return;
-    }
-    step.value = Math.min(3, step.value + 1);
-  }
-
   function back() {
     step.value = Math.max(1, step.value - 1);
   }
 
-  function store(status: WhatsAppStatus) {
-    const connection: WhatsAppConnection = {
-      id: saved.value?.id ?? channelId.value,
-      provider: 'openwa',
-      status,
-      baseUrl: baseUrl.value.trim(),
-      deviceId: deviceId.value.trim(),
-      webhookUrl: webhookUrl.value,
-      lastMessageAt: status === 'connected' ? new Date() : undefined,
-      rejected24h: status === 'bad_signature' || status === 'device_mismatch' ? 3 : 0,
-      rejectedLastHour: status === 'bad_signature' || status === 'device_mismatch' ? 3 : 0,
-    };
-    channels.save(agentId, connection);
-  }
-
-  function ready(): boolean {
-    if (validate()) {
-      return true;
+  async function next() {
+    if (step.value === 1) {
+      step.value = 2;
+      return;
     }
-    step.value = 2;
-    return false;
+    if (step.value === 2) {
+      await save();
+    }
   }
 
-  async function saveAndTest() {
-    if (checking.value || !ready()) {
+  async function save() {
+    if (saving.value || !validate()) {
+      return;
+    }
+    saving.value = true;
+    formError.value = null;
+    try {
+      const c = saved.value;
+      if (!c) {
+        await channels.create(projectId, agentId, { baseUrl: baseUrl.value, openwaOrg: openwaOrg.value, openwaProject: openwaProject.value, deviceId: deviceId.value, deviceKey: deviceKey.value });
+      } else {
+        await channels.update(c.id, { baseUrl: baseUrl.value, openwaOrg: openwaOrg.value, openwaProject: openwaProject.value, deviceId: deviceId.value, deviceKey: deviceKey.value });
+      }
+      deviceKey.value = '';
+      step.value = 3;
+    } catch (e) {
+      if (errorCode(e) === 'CHN002' && errorMeta(e).field === 'base_url') {
+        errors.value = { baseUrl: t('openwa.base_url_refused') };
+      } else {
+        formError.value = errorMessage(e, 'error.save_channel');
+      }
+    } finally {
+      saving.value = false;
+    }
+  }
+
+  async function saveSecret() {
+    const c = saved.value;
+    if (!c || saving.value) {
+      return;
+    }
+    if (!secret.value.trim()) {
+      errors.value = { secret: t('openwa.secret_required') };
+      return;
+    }
+    saving.value = true;
+    formError.value = null;
+    try {
+      await channels.setSecret(c.id, secret.value);
+      secret.value = '';
+    } catch (e) {
+      formError.value = errorMessage(e, 'error.save_channel');
+      return;
+    } finally {
+      saving.value = false;
+    }
+    await check();
+  }
+
+  async function check() {
+    const c = saved.value;
+    if (!c || !c.secretSet || checking.value) {
       return;
     }
     checking.value = true;
     result.value = null;
     const mine = ++run;
-    const got = await probe({ deviceId: deviceId.value.trim(), secret: secret.value.trim() });
-    if (mine !== run || !open.value) {
-      return;
+    const badBefore = c.lastBadSignatureAt?.getTime() ?? 0;
+    try {
+      for (let i = 0; i < checkPolls.times; i++) {
+        const now = await channels.refresh(c.id);
+        if (mine !== run) {
+          return;
+        }
+        if (now.status !== 'waiting') {
+          result.value = now.status;
+          return;
+        }
+        if ((now.lastBadSignatureAt?.getTime() ?? 0) > badBefore) {
+          result.value = 'bad_signature';
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, checkPolls.every));
+        if (mine !== run) {
+          return;
+        }
+      }
+      result.value = 'waiting';
+    } catch (e) {
+      formError.value = errorMessage(e, 'error.load_channels');
+    } finally {
+      if (mine === run) {
+        checking.value = false;
+      }
     }
-    checking.value = false;
-    result.value = got;
-    store(statusOf[got]);
-    secret.value = '';
-    deviceKey.value = '';
   }
 
-  function finishLater() {
-    if (ready()) {
-      store('waiting');
-      hide();
-    }
-  }
-
-  return { open, step, baseUrl, deviceId, secret, deviceKey, errors, checking, result, webhookUrl, needsSecrets, secretsNote, show, hide, next, back, saveAndTest, finishLater };
+  return { open, step, baseUrl, openwaOrg, openwaProject, deviceId, secret, deviceKey, errors, formError, saving, checking, result, webhookUrl, needsKey, keyNote, secretSet, show, hide, next, back, save, saveSecret, check };
 }

@@ -2,9 +2,8 @@
 import { onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
 import { focusWhenShown } from './focusWhenShown';
 
-const { sidebarId = 'app-sidebar', closeLabel = 'Close menu', full = false, breakpoint = 'md', rail = false } = defineProps<{
+const { sidebarId = 'app-sidebar', full = false, breakpoint = 'md', rail = false } = defineProps<{
   sidebarId?: string,
-  closeLabel?: string,
   full?: boolean,
   breakpoint?: 'md' | 'lg',
   rail?: boolean,
@@ -64,7 +63,7 @@ onBeforeUnmount(() => {
       <slot />
     </div>
     <div :id="sidebarId" ref="side" class="drawer-side z-40" :class="{ 'top-14 h-[calc(100dvh-3.5rem)]': !full, 'lg:overflow-visible': rail }">
-      <label :for="toggleId" :aria-label="closeLabel" class="drawer-overlay" />
+      <label :for="toggleId" aria-hidden="true" class="drawer-overlay" />
       <slot name="sidebar" />
     </div>
   </div>

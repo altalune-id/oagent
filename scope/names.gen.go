@@ -19,6 +19,8 @@ const (
 	RunCreate      = "run:create"
 	RunRead        = "run:read"
 	ThreadRead     = "thread:read"
+	ChannelRead    = "channel:read"
+	ChannelWrite   = "channel:write"
 	MemberRead     = "member:read"
 	MemberWrite    = "member:write"
 	ApikeyRead     = "apikey:read"

@@ -1,6 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { decisionStatus } from '~/components/run/runView';
 import { useApprovalsStore } from './approvals';
 import { useThreadsStore } from './threads';
 
@@ -80,13 +79,5 @@ describe('useApprovalsStore', () => {
     expect(store.expired.map(i => i.approval.id)).toEqual(['apr_kp1', 'apr_del1']);
     expect(await store.decide('apr_kp1', true, 'Budi')).toBe(false);
     expect(store.items[0]!.approval.status).toBe('pending');
-  });
-});
-
-describe('decisionStatus', () => {
-  it('shows a waiting run as awaiting approval and a decided one as completed', () => {
-    expect(decisionStatus('waiting')).toBe('awaiting_approval');
-    expect(decisionStatus('approved')).toBe('completed');
-    expect(decisionStatus('rejected')).toBe('completed');
   });
 });

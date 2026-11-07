@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
+	enduserv1 "altalune.id/oagent/gen/go/enduser/v1"
 	"altalune.id/oagent/internal/kernel/events"
 )
 
@@ -53,6 +54,8 @@ type Agents interface {
 type ResolvedModel struct {
 	BaseURL, APIKey string
 	Prices          *Prices
+	// Vision means the model reads images.
+	Vision bool
 }
 
 // Providers resolves a provider's model with its opened key.
@@ -85,7 +88,25 @@ type Refs interface {
 	ResourcePublicID(ctx context.Context, orgID, id uuid.UUID) (publicID string, ok bool, err error)
 }
 
-// Labels names an end user for display without its identity values; an unknown end user has an empty label.
-type Labels interface {
-	Label(ctx context.Context, id uuid.UUID) (string, error)
+// Media reads an inbound photo of a channel message and marks a message read, through the thread's connection.
+type Media interface {
+	Fetch(ctx context.Context, connectionID uuid.UUID, messageID, mime string, maxBytes int64) (data []byte, mimeType string, err error)
+	MarkRead(ctx context.Context, connectionID uuid.UUID, messageID string) error
+}
+
+// Names gives an end user's display name for the speaker prefix of a group line; empty when it has none.
+type Names interface {
+	DisplayName(ctx context.Context, endUserID uuid.UUID) (string, error)
+}
+
+// Person shows an end user: a display name, a kind with a masked hint, and their one-line Label. SECURITY: never an identity value.
+type Person struct {
+	DisplayName string
+	Kind        enduserv1.IdentityKind
+	Hint, Label string
+}
+
+// People names end users for display; an unknown end user is the zero Person.
+type People interface {
+	Person(ctx context.Context, id uuid.UUID) (Person, error)
 }

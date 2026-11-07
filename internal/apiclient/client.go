@@ -11,6 +11,8 @@ import (
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
+	channelv1connect "altalune.id/oagent/gen/go/channel/v1/channelv1connect"
+	enduserv1connect "altalune.id/oagent/gen/go/enduser/v1/enduserv1connect"
 	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
 	mcpserverv1connect "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1connect"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
@@ -45,6 +47,8 @@ type Client struct {
 
 	ModelProviders modelproviderv1connect.ModelProviderServiceClient
 	MCPServers     mcpserverv1connect.McpServerServiceClient
+	Channels       channelv1connect.ChannelServiceClient
+	EndUsers       enduserv1connect.EndUserServiceClient
 	Threads        threadv1connect.ThreadServiceClient
 }
 
@@ -68,6 +72,8 @@ func New(baseURL string, cred Credential) *Client {
 
 		ModelProviders: modelproviderv1connect.NewModelProviderServiceClient(httpClient, base, opts...),
 		MCPServers:     mcpserverv1connect.NewMcpServerServiceClient(httpClient, base, opts...),
+		Channels:       channelv1connect.NewChannelServiceClient(httpClient, base, opts...),
+		EndUsers:       enduserv1connect.NewEndUserServiceClient(httpClient, base, opts...),
 		Threads:        threadv1connect.NewThreadServiceClient(httpClient, base, opts...),
 	}
 }

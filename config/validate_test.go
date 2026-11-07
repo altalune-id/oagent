@@ -130,8 +130,14 @@ func TestValidate_EveryRule(t *testing.T) {
 		{"rateLimit.maxKeys 0 with memory", func(c *Config) { c.RateLimit.MaxKeys = 0 }, invalidSetting("rateLimit.maxKeys")},
 		{"rateLimit.maxKeys 0 with redis", func(c *Config) {
 			c.RateLimit.Driver, c.RateLimit.MaxKeys, c.RateLimit.Auth.Enabled = RateLimitDriverRedis, 0, false
-			c.RateLimit.DataPlane.Enabled = false
+			c.RateLimit.DataPlane.Enabled, c.RateLimit.Ingest.Enabled = false, false
 		}, valid},
+		{"rateLimit.ingest.perConnectionPerMinute zero", func(c *Config) { c.RateLimit.Ingest.PerConnectionPerMinute = 0 }, invalidSetting("rateLimit.ingest.perConnectionPerMinute")},
+		{"rateLimit.ingest.perIPPerMinute zero", func(c *Config) { c.RateLimit.Ingest.PerIPPerMinute = 0 }, invalidSetting("rateLimit.ingest.perIPPerMinute")},
+		{"rateLimit.ingest.burst zero", func(c *Config) { c.RateLimit.Ingest.Burst = 0 }, invalidSetting("rateLimit.ingest.burst")},
+		{"channel.defaultOpenwaBaseURL set", func(c *Config) { c.Channel.DefaultOpenwaBaseURL = "https://wa.example.com" }, valid},
+		{"channel.defaultOpenwaBaseURL not a url", func(c *Config) { c.Channel.DefaultOpenwaBaseURL = "wa.example" }, invalidSetting("channel.defaultOpenwaBaseURL")},
+		{"channel.maxMessageAge zero", func(c *Config) { c.Channel.MaxMessageAge = 0 }, invalidSetting("channel.maxMessageAge")},
 		{"redis used", redisFeature, valid},
 		{"redis.url empty when used", func(c *Config) { redisFeature(c); c.Redis.URL = "" }, missingSetting("redis.url")},
 		{"redis.url wrong scheme when used", func(c *Config) { redisFeature(c); c.Redis.URL = "http://localhost" }, invalidSetting("redis.url")},

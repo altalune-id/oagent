@@ -15,6 +15,15 @@ type RateLimitConfig struct {
 	MaxKeys   int                  `yaml:"maxKeys" mapstructure:"maxKeys"`
 	Auth      RateLimitGroupConfig `yaml:"auth"      mapstructure:"auth"`
 	DataPlane DataPlaneLimitConfig `yaml:"dataPlane" mapstructure:"dataPlane"`
+	Ingest    IngestLimitConfig    `yaml:"ingest"    mapstructure:"ingest"`
+}
+
+// IngestLimitConfig switches the inbound-delivery limits on: per channel connection (a minute, with a burst) and per client IP.
+type IngestLimitConfig struct {
+	Enabled                bool `yaml:"enabled"                mapstructure:"enabled"`
+	PerConnectionPerMinute int  `yaml:"perConnectionPerMinute" mapstructure:"perConnectionPerMinute" validate:"gte=1"`
+	Burst                  int  `yaml:"burst"                  mapstructure:"burst"                  validate:"gte=1"`
+	PerIPPerMinute         int  `yaml:"perIPPerMinute"         mapstructure:"perIPPerMinute"         validate:"gte=1"`
 }
 
 // RateLimitGroupConfig switches one group of limits on.
@@ -30,7 +39,9 @@ type DataPlaneLimitConfig struct {
 }
 
 // AnyEnabled reports whether any group is on, so a driver is needed.
-func (c RateLimitConfig) AnyEnabled() bool { return c.Auth.Enabled || c.DataPlane.Enabled }
+func (c RateLimitConfig) AnyEnabled() bool {
+	return c.Auth.Enabled || c.DataPlane.Enabled || c.Ingest.Enabled
+}
 
 func (c *Config) validateRateLimit() error {
 	if c.RateLimit.Driver == RateLimitDriverMemory && c.RateLimit.MaxKeys < 1 {

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
-import { replyErrors, seconds } from './replies';
+import { replyErrors, seconds, timingErrors, toMs } from './replies';
 import ReplyTextsEditor from './ReplyTextsEditor.vue';
 import { defaultReplies, replyLabels } from './stories';
 
@@ -28,5 +28,19 @@ describe('set replies', () => {
     const w = mount(ReplyTextsEditor, { props: { modelValue: { ...defaultReplies, voice: 'x' }, defaults: defaultReplies, labels: replyLabels, readOnly: true } });
     expect(w.get('fieldset').attributes('disabled')).toBeDefined();
     expect(w.findAll('button')).toHaveLength(0);
+  });
+
+  it('reads typed seconds into milliseconds, one decimal at most', () => {
+    expect(['3', ' 2.5 ', '0', '10', '1,5'].map(toMs)).toEqual([3_000, 2_500, 0, 10_000, 1_500]);
+    expect(['', 'abc', '-1', '2.55', '3s'].map(toMs)).toEqual([null, null, null, null, null]);
+  });
+
+  it('keeps the quiet window and its maximum within 0-10 s, the window no longer than the maximum', () => {
+    expect(timingErrors(3_000, 10_000)).toEqual({});
+    expect(timingErrors(0, 0)).toEqual({});
+    expect(timingErrors(null, 10_000)).toEqual({ quiet: 'channels.error_quiet_range' });
+    expect(timingErrors(3_000, 10_500)).toEqual({ quietMax: 'channels.error_quiet_range' });
+    expect(timingErrors(6_000, 4_000)).toEqual({ quietMax: 'channels.error_quiet_order' });
+    expect(timingErrors(11_000, null)).toEqual({ quiet: 'channels.error_quiet_range', quietMax: 'channels.error_quiet_range' });
   });
 });

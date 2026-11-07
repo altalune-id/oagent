@@ -90,12 +90,15 @@ await auth.load();
       <nav class="tabs tabs-border tabs-sm" :aria-label="t('approvals.tabs')">
         <NuxtLink
           v-for="x in tabs" :key="x" :to="{ query: x === 'pending' ? {} : { tab: x } }" class="tab"
-          :class="{ 'tab-active': tab === x }" :aria-current="tab === x ? 'page' : undefined"
+          :class="tab === x ? 'tab-active' : 'text-base-content/70'" :aria-current="tab === x ? 'page' : undefined"
         >
           {{ t(`approvals.tab_${x}`) }}
           <span v-if="x === 'pending'" class="badge badge-sm badge-ghost ms-1.5 tabular-nums">{{ byTab.pending.length }}</span>
         </NuxtLink>
       </nav>
+      <h2 class="sr-only">
+        {{ t(`approvals.tab_${tab}`) }}
+      </h2>
 
       <template v-if="tab === 'pending'">
         <div :id="listId" tabindex="-1" class="focus:outline-none">

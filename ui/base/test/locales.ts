@@ -35,3 +35,8 @@ export function expectSameKeysAndParams(locales: Record<string, Record<string, s
     }
   }
 }
+
+// htmlKeys lists the messages that hold an HTML tag, which the vue-i18n production build refuses.
+export function htmlKeys(messages: Record<string, string>): string[] {
+  return Object.entries(messages).filter(([, m]) => /<[^>]+>/.test(m)).map(([k]) => k);
+}

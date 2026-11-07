@@ -24,7 +24,7 @@ useHead({ title: () => `${t('onboarding.title')} · OAgent` });
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-lg px-4 py-8 sm:px-6 sm:py-16">
+  <main class="mx-auto w-full max-w-lg px-4 py-8 sm:px-6 sm:py-16">
     <LoadError v-if="orgs.error" :error="orgs.error" :busy="orgs.loading" :retry-label="t('common.retry')" @retry="orgs.load()" />
     <form v-else novalidate class="flex flex-col gap-4 rounded-box border border-base-300 bg-base-100 p-6" @submit.prevent="submit()">
       <div class="flex flex-col gap-3">
@@ -45,5 +45,5 @@ useHead({ title: () => `${t('onboarding.title')} · OAgent` });
         {{ busy ? t('common.creating') : t('onboarding.submit') }}
       </AppButton>
     </form>
-  </div>
+  </main>
 </template>

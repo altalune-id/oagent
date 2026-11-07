@@ -41,7 +41,69 @@ type Message struct {
 	ToolCallID                     string
 	// RequestHash is the SHA-256 of an idempotent request's canonical body; nil for every other message.
 	RequestHash []byte
+	ChannelTime *time.Time
+	SkipReason  string
 	CreatedAt   time.Time
+}
+
+const (
+	senderWindow    = time.Minute
+	turnMaxMessages = 20
+	turnMaxBytes    = 32 << 10
+	maxMessageRunes = 4000
+	turnMaxImages   = 3
+	maxImageBytes   = 5 << 20
+	notePhotoUnread = "[photo not read]"
+	notePhoto       = "[photo]"
+)
+
+// DefaultMaxMessageAge is how old a channel message may be when its turn takes it before it is skipped as stale.
+const DefaultMaxMessageAge = 30 * time.Minute
+
+// The reply states of a channel run.
+const (
+	ReplyDue    = "due"
+	ReplySent   = "sent"
+	ReplyFailed = "failed"
+	ReplyNone   = "none"
+)
+
+const replyGrace = 30 * time.Second
+
+// ReplyJob is what sending a channel run's reply needs. SECURITY: To is a phone, LID or group address; never log it.
+type ReplyJob struct {
+	RunID                   uuid.UUID
+	RunPublicID             string
+	ConnectionID            uuid.UUID
+	Kind, To, QuoteID, Text string
+	State                   string
+	PartsSent, Attempts     int
+	EndedAt                 time.Time
+}
+
+// ReplyTexts are a channel connection's set replies.
+type ReplyTexts struct{ Failure, Voice, PhotoUnreadable string }
+
+// SkipStale marks a channel message too old to answer when its turn took it; no run owns it.
+const SkipStale = "stale"
+
+// SkipSenderRate marks a channel message stored past its sender's per-minute cap; no turn takes it.
+const SkipSenderRate = "sender_rate"
+
+// ChannelMessage is one inbound channel message for the thread its connection and chat key name.
+type ChannelMessage struct {
+	ProjectID, AgentID, ConnectionID        uuid.UUID
+	ChatKey, Kind, ChannelAddress, ReplyVia string
+	// Actor is the person of a DM thread; uuid.Nil for a group.
+	Actor     uuid.UUID
+	Message   Message
+	SenderCap int
+}
+
+// ChannelAppend says where a channel message landed: Pending when a turn should take it, Duplicate when it was already stored.
+type ChannelAppend struct {
+	ThreadID           uuid.UUID
+	Pending, Duplicate bool
 }
 
 // Snapshot is the runtime's opaque state of a thread at a turn boundary.
@@ -65,9 +127,14 @@ type Thread struct {
 	CancelRequested               bool
 	// ActorEndUserID is the end user an API thread is bound to; uuid.Nil when unbound or deleted.
 	ActorEndUserID uuid.UUID
+	// ConnectionID is a channel thread's connection; uuid.Nil for an API thread or once the connection is deleted.
+	ConnectionID uuid.UUID
 }
 
-const threadKindAPI = "api"
+const (
+	threadKindAPI   = "api"
+	threadKindGroup = "group"
+)
 
 // ClaimResult says whether a claim won the lease, and why not.
 type ClaimResult int
@@ -102,6 +169,12 @@ type Ref struct{ ID, OrgID, ProjectID, AgentID uuid.UUID }
 type Cursor struct {
 	At       time.Time
 	PublicID string
+}
+
+// EndUserActivity is when an end user last wrote and how many threads they own or wrote in.
+type EndUserActivity struct {
+	LastSeen time.Time
+	Threads  int64
 }
 
 // ThreadSummary is a thread with its last activity and open run status, empty when none; only ThreadSummary counts Messages and Runs.

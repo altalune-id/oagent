@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	enduserv1 "altalune.id/oagent/gen/go/enduser/v1"
 	"altalune.id/oagent/nanoid"
 )
 
@@ -52,12 +53,22 @@ func (i Identity) Validate() error {
 
 // EndUser is a person who talks to a project's agents, known by one or more identities.
 type EndUser struct {
-	ID        uuid.UUID
-	PublicID  string
-	OrgID     uuid.UUID
-	ProjectID uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID          uuid.UUID
+	PublicID    string
+	OrgID       uuid.UUID
+	ProjectID   uuid.UUID
+	DisplayName string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+// Ref is what an end user public id resolves to before any tenant is bound.
+type Ref struct{ ID, OrgID, ProjectID uuid.UUID }
+
+// Cursor marks where a newest-first page ended; the zero value starts at the newest.
+type Cursor struct {
+	At       time.Time
+	PublicID string
 }
 
 // New returns a fresh end user of projectID.
@@ -68,15 +79,63 @@ func New(orgID, projectID uuid.UUID, now time.Time) *EndUser {
 	}
 }
 
-// Label names an end user by an identity's kind and a masked tail. SECURITY: never the whole value, so no phone number or LID shows.
-func Label(id Identity) string {
+// KindAPIKey names an end user that is an API key acting for itself in a Name; it is never stored as an identity.
+const KindAPIKey Kind = "api_key"
+
+// Name shows an end user: a display name and the first identity's kind with a masked hint. SECURITY: never a whole value.
+type Name struct {
+	DisplayName string
+	Kind        Kind
+	Hint        string
+}
+
+// Label is the display name, else the masked hint ("…90"), else empty; it carries no raw kind.
+func (n Name) Label() string {
+	switch {
+	case n.DisplayName != "":
+		return n.DisplayName
+	case n.Hint != "":
+		return "…" + n.Hint
+	}
+	return ""
+}
+
+// NameOf names an end user by its display name and first identity; no identity gives the zero Name.
+func NameOf(displayName string, ids []Identity) Name {
+	if len(ids) == 0 {
+		return Name{DisplayName: displayName}
+	}
+	return Name{DisplayName: displayName, Kind: ids[0].Kind, Hint: hint(ids[0])}
+}
+
+// SECURITY: two digits of a phone or LID, four of anything else, and nothing for a value too short to mask.
+func hint(id Identity) string {
 	tail := 4
 	if id.Kind == KindWAPhone || id.Kind == KindWALid {
 		tail = 2
 	}
 	r := []rune(id.Value)
 	if len(r) <= 2*tail {
-		return string(id.Kind)
+		return ""
 	}
-	return string(id.Kind) + " …" + string(r[len(r)-tail:])
+	return string(r[len(r)-tail:])
+}
+
+// KindProto is k on the wire.
+func KindProto(k Kind) enduserv1.IdentityKind {
+	switch k {
+	case KindAPIUser:
+		return enduserv1.IdentityKind_IDENTITY_KIND_API_USER
+	case KindAPIKey:
+		return enduserv1.IdentityKind_IDENTITY_KIND_API_KEY
+	case KindWAPhone:
+		return enduserv1.IdentityKind_IDENTITY_KIND_WA_PHONE
+	case KindWALid:
+		return enduserv1.IdentityKind_IDENTITY_KIND_WA_LID
+	case KindWidgetAnon:
+		return enduserv1.IdentityKind_IDENTITY_KIND_WIDGET_ANON
+	case KindWidgetSub:
+		return enduserv1.IdentityKind_IDENTITY_KIND_WIDGET_SUB
+	}
+	return enduserv1.IdentityKind_IDENTITY_KIND_UNSPECIFIED
 }

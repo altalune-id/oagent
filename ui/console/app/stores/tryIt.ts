@@ -17,17 +17,10 @@ export interface ChatScript {
 // TODO: replace with the console test-run RPC; until then Try it plays a scripted reply.
 export const useTryItStore = defineStore('tryIt', () => {
   const prompts = ref<string[]>(samplePrompts);
-  const tried = ref<string[]>([]);
 
   function script(prompt: string): ChatScript {
     return sampleChatScript(prompt);
   }
 
-  function markTried(agentId: string) {
-    if (!tried.value.includes(agentId)) {
-      tried.value = [...tried.value, agentId];
-    }
-  }
-
-  return { prompts, tried, script, markTried };
+  return { prompts, script };
 });

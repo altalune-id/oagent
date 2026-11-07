@@ -31,6 +31,11 @@ type Runs struct {
 	EndedAt               postgres.ColumnTimestampz
 	CreatedAt             postgres.ColumnTimestampz
 	UpdatedAt             postgres.ColumnTimestampz
+	ReplyState            postgres.ColumnString
+	ReplyPartsSent        postgres.ColumnInteger
+	ReplyAttempts         postgres.ColumnInteger
+	ReplyNextAt           postgres.ColumnTimestampz
+	IsGroup               postgres.ColumnBool
 
 	AllColumns postgres.ColumnList
 }
@@ -66,11 +71,16 @@ func NewRuns(schema, tablePrefix string) *Runs {
 		endedAt               = postgres.TimestampzColumn("ended_at")
 		createdAt             = postgres.TimestampzColumn("created_at")
 		updatedAt             = postgres.TimestampzColumn("updated_at")
+		replyState            = postgres.StringColumn("reply_state")
+		replyPartsSent        = postgres.IntegerColumn("reply_parts_sent")
+		replyAttempts         = postgres.IntegerColumn("reply_attempts")
+		replyNextAt           = postgres.TimestampzColumn("reply_next_at")
+		isGroup               = postgres.BoolColumn("is_group")
 		all                   = postgres.ColumnList{
-			id, publicID, orgID, projectID, threadID, agentVersionID, status, idempotencyKey, attempt, inputTokens,
-			outputTokens, cacheReadTokens, cacheWriteTokens, usageEstimated, priceInputMicros, priceOutputMicros,
-			priceCacheReadMicros, priceCacheWriteMicros, costMicros, latencyMS, errorCode, startedAt, endedAt,
-			createdAt, updatedAt,
+			id, publicID, orgID, projectID, threadID, agentVersionID, status, idempotencyKey, attempt, inputTokens, outputTokens,
+			cacheReadTokens, cacheWriteTokens, usageEstimated, priceInputMicros, priceOutputMicros, priceCacheReadMicros,
+			priceCacheWriteMicros, costMicros, latencyMS, errorCode, startedAt, endedAt, createdAt, updatedAt, replyState,
+			replyPartsSent, replyAttempts, replyNextAt, isGroup,
 		}
 	)
 	return &Runs{
@@ -100,6 +110,11 @@ func NewRuns(schema, tablePrefix string) *Runs {
 		EndedAt:               endedAt,
 		CreatedAt:             createdAt,
 		UpdatedAt:             updatedAt,
+		ReplyState:            replyState,
+		ReplyPartsSent:        replyPartsSent,
+		ReplyAttempts:         replyAttempts,
+		ReplyNextAt:           replyNextAt,
+		IsGroup:               isGroup,
 		AllColumns:            all,
 	}
 }

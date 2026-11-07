@@ -11,7 +11,7 @@ import { installGuard } from '../egress/ssrf.ts';
 import { createLogger, strandsLogger } from '../log.ts';
 import { TurnRefusedError, validateRequest } from './contract.ts';
 
-export const MAX_BODY_BYTES = 8 * 1024 * 1024;
+export const MAX_BODY_BYTES = 24 * 1024 * 1024;
 const MIN_TOKEN_BYTES = 32;
 const DEFAULT_PORT = 5160;
 const DEFAULT_MAX_CONCURRENT = 8;

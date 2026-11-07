@@ -32,7 +32,7 @@ const lines = computed(() => ({
             </p>
             <CopyButton :value="snippets[kind]" :label="t('common.copy')" />
           </div>
-          <div class="mockup-code w-full text-xs">
+          <div class="mockup-code w-full text-xs" tabindex="0" role="region" :aria-label="t(`configure.${kind}_title`)">
             <pre v-for="(line, i) in lines[kind]" :key="i" :data-prefix="line.prefix"><code>{{ line.text }}</code></pre>
           </div>
         </div>

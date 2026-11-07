@@ -14,6 +14,8 @@
   { "name": "run:create", "level": "project", "labelKey": "scope.run_create" },
   { "name": "run:read", "level": "project", "labelKey": "scope.run_read" },
   { "name": "thread:read", "level": "project", "labelKey": "scope.thread_read" },
+  { "name": "channel:read", "level": "project", "labelKey": "scope.channel_read" },
+  { "name": "channel:write", "level": "project", "labelKey": "scope.channel_write" },
   { "name": "member:read", "level": "org", "labelKey": "scope.member_read" },
   { "name": "member:write", "level": "org", "labelKey": "scope.member_write", "holder": "person" },
   { "name": "apikey:read", "level": "org", "labelKey": "scope.apikey_read" },

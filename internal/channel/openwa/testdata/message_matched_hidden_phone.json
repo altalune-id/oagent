@@ -1,0 +1,37 @@
+{
+  "device": {
+    "id": "dev_V1StGXR8Z5jdHi6B",
+    "name": "sales-01",
+    "phone": "628123456789"
+  },
+  "chat": {
+    "id": "cht_Hp5Fu2Pq7St0Vw3h",
+    "jid": "55667788990011@lid",
+    "kind": "dm",
+    "name": "Sari"
+  },
+  "sender": {
+    "jid": "55667788990011@lid",
+    "lid": "55667788990011@lid",
+    "phone": "",
+    "push_name": "Sari",
+    "from_me": false
+  },
+  "message": {
+    "id": "msg_Hp6Gv3Qr8Tu1Wx4i",
+    "wa_id": "3A5F0C1D2E3F4A5B6C05",
+    "type": "text",
+    "body": "Nomor saya disembunyikan",
+    "caption": "",
+    "timestamp": "2026-09-28T10:19:00Z",
+    "quoted": null,
+    "mentions": [],
+    "media": null,
+    "location": null
+  },
+  "matched": {
+    "reasons": [
+      "dm"
+    ]
+  }
+}

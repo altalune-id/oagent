@@ -38,6 +38,24 @@ type Leases interface {
 	Release(ctx context.Context, threadID uuid.UUID, token string) error
 }
 
+// Replies sends a settled channel run's due reply.
+type Replies interface {
+	Send(ctx context.Context, runID uuid.UUID) error
+}
+
+// Windows reports how much longer a thread's turn waits for its quiet window; an API thread never waits.
+type Windows interface {
+	QuietWait(ctx context.Context, threadID uuid.UUID, now time.Time) (time.Duration, error)
+}
+
+// QuietWait is how long a turn still waits: until the newest pending message is w old, but never past wmax after the oldest.
+func QuietWait(now, oldest, newest time.Time, w, wmax time.Duration) time.Duration {
+	if w <= 0 {
+		return 0
+	}
+	return max(min(newest.Add(w).Sub(now), oldest.Add(wmax).Sub(now)), 0)
+}
+
 // RunnerOptions bound the turn runner; zero fields take the defaults.
 type RunnerOptions struct {
 	MaxConcurrent int
@@ -70,17 +88,21 @@ func (o RunnerOptions) withDefaults() RunnerOptions {
 
 // Runner is the run-turns worker: it owns every turn goroutine of this instance.
 type Runner struct {
-	exec   Executor
-	leases Leases
-	opts   RunnerOptions
-	in     chan Kick
-	kicker Kicker
-	log    *slog.Logger
-	slots  chan struct{}
-	wg     sync.WaitGroup
-	mu     sync.Mutex
+	exec    Executor
+	leases  Leases
+	windows Windows
+	replies Replies
+	opts    RunnerOptions
+	in      chan Kick
+	kicker  Kicker
+	log     *slog.Logger
+	slots   chan struct{}
+	wg      sync.WaitGroup
+	mu      sync.Mutex
 	// turns is the context held leases run under; nil while Run is not taking work.
 	turns context.Context
+	// timers holds one pending quiet-window re-kick per thread; Run stops them all before it returns.
+	timers map[uuid.UUID]*time.Timer
 }
 
 // ObservedExecutor runs a turn whose events a streaming client observes.
@@ -140,8 +162,20 @@ func NewRunner(exec Executor, leases Leases, opts RunnerOptions) *Runner {
 	opts = opts.withDefaults()
 	return &Runner{
 		exec: exec, leases: leases, opts: opts, in: make(chan Kick, opts.Buffer), log: slog.Default(),
-		slots: make(chan struct{}, opts.MaxConcurrent),
+		slots: make(chan struct{}, opts.MaxConcurrent), timers: map[uuid.UUID]*time.Timer{},
 	}
+}
+
+// WithWindows holds a channel thread's turn until its quiet window closes.
+func (r *Runner) WithWindows(w Windows) *Runner {
+	r.windows = w
+	return r
+}
+
+// WithReplies sends each channel run's due reply right after its settle; the reply job retries what this misses.
+func (r *Runner) WithReplies(s Replies) *Runner {
+	r.replies = s
+	return r
 }
 
 // WithKicker re-kicks threads the runner left with work: after five turns, and on shutdown.
@@ -195,6 +229,10 @@ loop:
 	}
 	r.mu.Lock()
 	r.turns = nil
+	for _, t := range r.timers {
+		t.Stop()
+	}
+	clear(r.timers)
 	r.mu.Unlock()
 	done := make(chan struct{})
 	go func() {
@@ -260,6 +298,10 @@ func (r *Runner) loop(ctx context.Context, k Kick, token string, execute func(co
 			rekick = true
 			return
 		}
+		if wait := r.quietWait(ctx, k.ThreadID); wait > 0 {
+			r.later(k, wait)
+			return
+		}
 		done, err := r.turn(ctx, k.ThreadID, token, execute)
 		switch {
 		case IsLeaseLostError(err):
@@ -281,11 +323,49 @@ func (r *Runner) loop(ctx context.Context, k Kick, token string, execute func(co
 		if done == nil {
 			return
 		}
+		r.reply(ctx, done)
 		if done.Status == StatusInterrupted && ctx.Err() == nil {
 			return
 		}
 	}
 	rekick = true
+}
+
+func (r *Runner) quietWait(ctx context.Context, threadID uuid.UUID) time.Duration {
+	if r.windows == nil {
+		return 0
+	}
+	wait, err := r.windows.QuietWait(ctx, threadID, time.Now())
+	if err != nil {
+		r.log.WarnContext(ctx, "run: quiet window", "thread", threadID.String(), "err", err.Error())
+		return 0
+	}
+	return wait
+}
+
+// NOTE: the re-kick is owned by the runner: Run stops every timer, and one firing after Run returned does nothing.
+func (r *Runner) later(k Kick, wait time.Duration) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.turns == nil {
+		return
+	}
+	if old, ok := r.timers[k.ThreadID]; ok {
+		old.Stop()
+	}
+	var t *time.Timer
+	t = time.AfterFunc(wait, func() {
+		r.mu.Lock()
+		live := r.timers[k.ThreadID] == t && r.turns != nil
+		if r.timers[k.ThreadID] == t {
+			delete(r.timers, k.ThreadID)
+		}
+		r.mu.Unlock()
+		if live && !r.Offer(k) {
+			r.log.Debug("run: quiet re-kick dropped; the reconciler picks it up", "thread", k.ThreadID.String())
+		}
+	})
+	r.timers[k.ThreadID] = t
 }
 
 func (r *Runner) turn(
@@ -339,4 +419,13 @@ func (r *Runner) heartbeat(ctx context.Context, cancel context.CancelCauseFunc, 
 func isRuntimeUnavailable(err error) bool {
 	_, ok := errors.AsType[*RuntimeUnavailableError](err)
 	return ok
+}
+
+func (r *Runner) reply(ctx context.Context, done *Run) {
+	if r.replies == nil || done.ReplyState != ReplyDue {
+		return
+	}
+	if err := r.replies.Send(context.WithoutCancel(ctx), done.ID); err != nil {
+		r.log.WarnContext(ctx, "run: reply send; the reply job retries it", "run", done.PublicID, "err", err.Error())
+	}
 }

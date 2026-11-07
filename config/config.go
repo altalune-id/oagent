@@ -15,6 +15,7 @@ type Config struct {
 	Queue      QueueConfig      `yaml:"queue"     mapstructure:"queue"`
 	Snapshot   SnapshotConfig   `yaml:"snapshot"  mapstructure:"snapshot"`
 	Run        RunConfig        `yaml:"run"       mapstructure:"run"`
+	Channel    ChannelConfig    `yaml:"channel"   mapstructure:"channel"`
 	Runtime    RuntimeConfig    `yaml:"runtime"   mapstructure:"runtime"`
 	API        APIConfig        `yaml:"api"       mapstructure:"api"`
 	MCP        MCPConfig        `yaml:"mcp"       mapstructure:"mcp"`

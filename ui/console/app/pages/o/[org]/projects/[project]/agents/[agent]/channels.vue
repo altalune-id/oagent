@@ -6,6 +6,7 @@ import AppButton from '#base/components/ui/AppButton.vue';
 import AppModal from '#base/components/ui/AppModal.vue';
 import ConfirmModal from '#base/components/ui/ConfirmModal.vue';
 import CopyButton from '#base/components/ui/CopyButton.vue';
+import FieldError from '#base/components/ui/FieldError.vue';
 import KeyValue from '#base/components/ui/KeyValue.vue';
 import LoadError from '#base/components/ui/LoadError.vue';
 import PageHeader from '#base/components/ui/PageHeader.vue';
@@ -14,15 +15,15 @@ import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { useToast } from '#base/components/ui/toast';
 import { useConfirm } from '#base/composables/useConfirm';
 import { useDates } from '#base/composables/useDates';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { chosenModel } from '~/components/agent/configure/runtime';
 import { useAgentPage } from '~/components/agent/useAgentPage';
 import OpenwaConnectModal from '~/components/channels/OpenwaConnectModal.vue';
-import { replyErrors, replyKeys, seconds } from '~/components/channels/replies';
+import { replyErrors, replyKeys, seconds, timingErrors, toMs } from '~/components/channels/replies';
 import ReplyTextsEditor from '~/components/channels/ReplyTextsEditor.vue';
 import { useOpenwaConnect } from '~/components/channels/useOpenwaConnect';
 import { useReplaceSecret } from '~/components/channels/useReplaceSecret';
 import CodeText from '~/components/layout/CodeText.vue';
-import PreviewNote from '~/components/layout/PreviewNote.vue';
 import ProjectReadOnlyNote from '~/components/project/ProjectReadOnlyNote.vue';
 import { useCan } from '~/composables/useCan';
 import { describedBy } from '~/lib/names/names';
@@ -33,19 +34,20 @@ const uid = useId();
 const route = useRoute();
 const { when } = useDates();
 const toast = useToast();
-// TODO: gate on the ChannelService scope once it exists; agent:write stands in until then.
-const canEdit = useCan('agent:write');
-const { agent, providers, base } = await useAgentPage();
+const errorMessage = useErrorMessage();
+const canEdit = useCan('channel:write');
+const { project, agent, providers, base } = await useAgentPage();
 const channels = useChannelsStore();
-await channels.ensureLoaded(agent.value.id);
-const form = useOpenwaConnect(agent.value.id);
+await channels.ensureLoaded(project.value!.id, agent.value.id);
+const form = useOpenwaConnect(project.value!.id, agent.value.id);
 
-const connection = computed(() => channels.connection(agent.value.id, 'openwa'));
-const replace = useReplaceSecret(agent.value.id, 'openwa');
+const connection = computed(() => channels.connection(agent.value.id));
+const replace = useReplaceSecret(() => connection.value?.id);
 const published = computed(() => (agent.value.publishedVersion ?? 0) > 0);
 const unpublished = computed(() => !published.value || !!agent.value.unpublishedChanges);
 const vision = computed(() => !!chosenModel({ providerId: agent.value.providerId ?? '', model: agent.value.model ?? '' }, providers.items).model?.vision);
-const endpoint = computed(() => `https://oagent.altalune.id/api/v1/agents/${agent.value.id}/runs`);
+const { apiUrl } = useRuntimeConfig().public;
+const endpoint = computed(() => new URL(`${(apiUrl || '/api').replace(/\/$/, '')}/v1/agents/${agent.value.id}/runs`, window.location.origin).href);
 const curl = computed(() => [
   `curl -N ${endpoint.value} \\`,
   '  -H "Authorization: Bearer $OAGENT_KEY" \\',
@@ -56,7 +58,6 @@ const curl = computed(() => [
 const statusInfo: Record<WhatsAppStatus, { tone: 'success' | 'warning' | 'error', key: string }> = {
   connected: { tone: 'success', key: 'openwa.status_connected' },
   waiting: { tone: 'warning', key: 'openwa.status_waiting' },
-  bad_signature: { tone: 'error', key: 'openwa.status_bad_signature' },
   key_refused: { tone: 'error', key: 'openwa.status_key_refused' },
   device_mismatch: { tone: 'error', key: 'openwa.status_device_mismatch' },
 };
@@ -69,9 +70,9 @@ const facts = computed(() => {
   return [
     { label: t('openwa.status'), value: '' },
     { label: t('openwa.device_id'), value: c.deviceId, mono: true },
+    { label: t('openwa.workspace'), value: `${c.openwaOrg} / ${c.openwaProject}`, mono: true },
     { label: t('openwa.webhook_url'), value: c.webhookUrl, mono: true, copy: true },
-    { label: t('openwa.last_message'), value: c.lastMessageAt ? t('openwa.last_message_value', { when: when(c.lastMessageAt) }) : t('openwa.no_message_yet') },
-    { label: t('openwa.rejected_24h'), value: String(c.rejected24h) },
+    { label: t('openwa.last_result'), value: c.lastResultAt ? when(c.lastResultAt) : t('openwa.no_message_yet') },
     { label: t('openwa.secret'), value: '' },
     { label: t('openwa.device_key'), value: '' },
   ];
@@ -79,10 +80,20 @@ const facts = computed(() => {
 
 const replies = ref<ReplyTexts>({ ...channels.replies(agent.value.id) });
 const replyErrs = ref<Partial<Record<ReplyKey, string>>>({});
+const savingReplies = ref(false);
+
+const quietText = ref('');
+const quietMaxText = ref('');
+const timingErrs = ref<Partial<Record<'quiet' | 'quietMax', string>>>({});
+const savingTiming = ref(false);
+
 watch(() => connection.value?.id, () => {
   replies.value = { ...channels.replies(agent.value.id) };
   replyErrs.value = {};
-});
+  quietText.value = String(seconds(connection.value?.quietMs ?? channels.settings.timing.quietMs));
+  quietMaxText.value = String(seconds(connection.value?.quietMaxMs ?? channels.settings.timing.quietMaxMs));
+  timingErrs.value = {};
+}, { immediate: true });
 
 const replyLabels = computed<ReplyEditorLabels>(() => ({
   legend: t('channels.replies'),
@@ -92,43 +103,90 @@ const replyLabels = computed<ReplyEditorLabels>(() => ({
   save: t('channels.save_replies'),
 }));
 
-const timing = computed(() => {
-  const w = channels.settings.timing;
-  return [
-    { label: t('channels.quiet_window'), value: t('channels.seconds', { n: seconds(w.quietMs) }) },
-    { label: t('channels.quiet_max'), value: t('channels.seconds', { n: seconds(w.quietMaxMs) }) },
-    { label: t('channels.late_cutoff'), value: t('channels.minutes', { n: w.maxMessageAgeMinutes }) },
-  ];
-});
-
-function saveReplies() {
+async function saveReplies() {
   replyErrs.value = Object.fromEntries(Object.entries(replyErrors(replies.value)).map(([k, key]) => [k, t(key)]));
-  if (Object.keys(replyErrs.value).length) {
+  if (Object.keys(replyErrs.value).length || !connection.value || savingReplies.value) {
     return;
   }
-  channels.saveReplies(agent.value.id, replies.value);
-  replies.value = { ...channels.replies(agent.value.id) };
-  toast.push('success', t('channels.replies_saved'));
+  savingReplies.value = true;
+  try {
+    await channels.update(connection.value.id, { replies: replies.value });
+    replies.value = { ...channels.replies(agent.value.id) };
+    toast.push('success', t('channels.replies_saved'));
+  } catch (e) {
+    toast.push('error', errorMessage(e, 'error.save_channel').message);
+  } finally {
+    savingReplies.value = false;
+  }
 }
 
-const disconnecting = useConfirm<boolean>(async () => {
-  channels.remove(agent.value.id, 'openwa');
+async function saveTiming() {
+  const quietMs = toMs(quietText.value);
+  const quietMaxMs = toMs(quietMaxText.value);
+  timingErrs.value = Object.fromEntries(Object.entries(timingErrors(quietMs, quietMaxMs)).map(([k, key]) => [k, t(key)]));
+  if (Object.keys(timingErrs.value).length || !connection.value || savingTiming.value) {
+    return;
+  }
+  savingTiming.value = true;
+  try {
+    await channels.update(connection.value.id, { quietMs: quietMs!, quietMaxMs: quietMaxMs! });
+    toast.push('success', t('channels.timing_saved'));
+  } catch (e) {
+    toast.push('error', errorMessage(e, 'error.save_channel').message);
+  } finally {
+    savingTiming.value = false;
+  }
+}
+
+const disconnecting = useConfirm<string>(async (id) => {
+  await channels.remove(id);
   toast.push('success', t('openwa.disconnected'));
 }, 'error.disconnect_whatsapp');
+
+function changeDevice() {
+  form.show();
+  void form.next();
+}
+
+const switching = ref(false);
+
+async function setEnabled(id: string, enabled: boolean) {
+  switching.value = true;
+  try {
+    await channels.update(id, { enabled });
+    toast.push('success', enabled ? t('openwa.turned_on') : t('openwa.turned_off'));
+  } catch (e) {
+    toast.push('error', errorMessage(e, 'error.save_channel').message);
+  } finally {
+    switching.value = false;
+  }
+}
+
+const turningOff = useConfirm<string>(id => setEnabled(id, false), 'error.save_channel');
+
+function onSwitch(e: Event) {
+  const box = e.target as HTMLInputElement;
+  const c = connection.value;
+  if (!c) {
+    return;
+  }
+  if (box.checked) {
+    void setEnabled(c.id, true);
+    return;
+  }
+  box.checked = true;
+  turningOff.ask(c.id);
+}
 
 useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · OAgent` });
 </script>
 
 <template>
   <div class="flex max-w-3xl flex-col gap-4">
-    <PageHeader :title="t('channels.title')" :description="t('channels.subtitle')" :preview="t('preview.badge')">
-      <template #status>
-        <PreviewNote :text="t('preview.local_note')" />
-      </template>
-    </PageHeader>
+    <PageHeader :title="t('channels.title')" :description="t('channels.subtitle')" />
     <ProjectReadOnlyNote v-if="!canEdit" :text="t('channels.read_only')" />
 
-    <LoadError v-if="channels.error" :error="channels.error" :busy="channels.loading" :retry-label="t('common.retry')" @retry="channels.load(agent.id)" />
+    <LoadError v-if="channels.error" :error="channels.error" :busy="channels.loading" :retry-label="t('common.retry')" @retry="channels.load(project!.id, agent.id)" />
     <template v-else>
       <Section :title="t('openwa.title')" :description="t('openwa.subtitle')">
         <div v-if="connection && unpublished" role="alert" class="alert alert-warning alert-soft text-base-content text-ui">
@@ -151,13 +209,14 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · 
           </div>
         </template>
 
-        <template v-else-if="connection.status === 'waiting'">
-          <StatusLabel tone="warning" :label="t('openwa.status_waiting')" :detail="t('openwa.waiting_detail')" />
+        <template v-else-if="!connection.secretSet || connection.status === 'waiting'">
+          <StatusLabel v-if="!connection.secretSet" tone="warning" :label="t('openwa.status_needs_secret')" :detail="t('openwa.needs_secret_detail')" />
+          <StatusLabel v-else tone="warning" :label="t('openwa.status_waiting')" :detail="t('openwa.waiting_detail')" />
           <div v-if="canEdit" class="flex flex-wrap gap-2">
             <AppButton size="sm" @click="form.show(true)">
               {{ t('openwa.continue_setup') }}
             </AppButton>
-            <AppButton variant="plain" size="sm" @click="disconnecting.ask(true)">
+            <AppButton variant="plain" size="sm" @click="disconnecting.ask(connection.id)">
               {{ t('openwa.disconnect') }}
             </AppButton>
           </div>
@@ -168,9 +227,11 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · 
             <KeyValue :items="facts" :copy-label="t('common.copy_label', { label: '{label}' })">
               <template #value-0>
                 <StatusLabel :tone="statusInfo[connection.status].tone" :label="t(statusInfo[connection.status].key)" />
+                <span v-if="connection.enabled === false" class="font-medium" data-testid="status-off">· {{ t('openwa.switch_off') }}</span>
               </template>
               <template #value-5>
                 <span>{{ t('openwa.set') }}</span>
+                <span v-if="connection.secondarySet" class="text-xs text-base-content/70">{{ t('openwa.secondary_set') }}</span>
                 <AppButton v-if="canEdit" variant="plain" size="xs" @click="replace.show('secret')">
                   {{ t('openwa.replace') }}
                 </AppButton>
@@ -183,21 +244,44 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · 
               </template>
             </KeyValue>
           </div>
-          <div v-if="connection.status !== 'connected'" role="alert" class="alert alert-error alert-soft alert-vertical text-base-content text-ui sm:alert-horizontal">
+          <div v-if="connection.status === 'key_refused' || connection.status === 'device_mismatch'" role="alert" class="alert alert-error alert-soft alert-vertical text-base-content text-ui sm:alert-horizontal">
             <Icon name="lucide:circle-alert" size="16" class="shrink-0" aria-hidden="true" />
-            <span><CodeText :text="t(`openwa.problem_${connection.status}`, { n: connection.rejectedLastHour })" /></span>
-            <AppButton v-if="canEdit && connection.status !== 'device_mismatch'" variant="plain" size="xs" @click="replace.show(connection.status === 'bad_signature' ? 'secret' : 'key')">
-              {{ connection.status === 'bad_signature' ? t('openwa.replace_secret') : t('openwa.replace_key') }}
+            <span><CodeText :text="t(`openwa.problem_${connection.status}`, { device: connection.deviceId })" /></span>
+            <AppButton v-if="canEdit && connection.status === 'key_refused'" variant="plain" size="xs" @click="replace.show('key')">
+              {{ t('openwa.replace_key') }}
+            </AppButton>
+            <AppButton v-if="canEdit && connection.status === 'device_mismatch'" variant="plain" size="xs" @click="changeDevice()">
+              {{ t('openwa.change_device') }}
             </AppButton>
           </div>
-          <div v-if="canEdit">
-            <AppButton variant="error" size="sm" soft @click="disconnecting.ask(true)">
-              {{ t('openwa.disconnect') }}
+          <div v-if="connection.lastBadSignatureAt" role="note" class="alert alert-warning alert-soft alert-vertical text-base-content text-ui sm:alert-horizontal">
+            <Icon name="lucide:shield-alert" size="16" class="shrink-0" aria-hidden="true" />
+            <span>{{ t('openwa.bad_signature_seen', { when: when(connection.lastBadSignatureAt) }) }}</span>
+            <AppButton v-if="canEdit" variant="plain" size="xs" @click="replace.show('secret')">
+              {{ t('openwa.replace_secret') }}
             </AppButton>
           </div>
         </template>
 
-        <p v-if="!vision" role="note" class="text-xs text-base-content/70">
+        <div v-if="connection" class="flex flex-col gap-1 rounded-box border border-base-300 px-3 py-2" data-testid="channel-switch">
+          <label v-if="canEdit" class="flex items-center gap-2 text-ui font-medium">
+            <input type="checkbox" role="switch" class="toggle toggle-sm" :checked="connection.enabled" :disabled="switching" :aria-describedby="`${uid}-switch-hint`" @change="onSwitch">
+            {{ t('openwa.switch_label') }}
+          </label>
+          <p v-else class="text-ui font-medium">
+            {{ t('openwa.switch_label') }}: {{ connection.enabled ? t('openwa.switch_on') : t('openwa.switch_off') }}
+          </p>
+          <p :id="`${uid}-switch-hint`" class="text-xs text-base-content/70">
+            {{ connection.enabled ? t('openwa.on_hint') : t('openwa.off_hint') }}
+          </p>
+        </div>
+        <div v-if="canEdit && connection && connection.secretSet && connection.status !== 'waiting'">
+          <AppButton variant="error" size="sm" soft @click="disconnecting.ask(connection.id)">
+            {{ t('openwa.disconnect') }}
+          </AppButton>
+        </div>
+
+        <p v-if="agent.model && !vision" role="note" class="text-xs text-base-content/70">
           {{ t('openwa.no_vision', { model: agent.model || '—' }) }}
           <NuxtLink :to="`${base}#configure-model`" class="link">
             {{ t('try.pick_vision') }}
@@ -210,13 +294,48 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · 
 
       <template v-if="connection">
         <Section :title="t('channels.replies')">
-          <ReplyTextsEditor v-model="replies" :defaults="channels.settings.defaultReplies" :labels="replyLabels" :errors="replyErrs" :read-only="!canEdit" @save="saveReplies()" />
+          <ReplyTextsEditor v-model="replies" :defaults="channels.settings.defaultReplies" :labels="replyLabels" :errors="replyErrs" :read-only="!canEdit || savingReplies" @save="saveReplies()" />
         </Section>
 
         <Section :title="t('channels.windows')" :description="t('channels.windows_hint')">
-          <div class="-mx-4 border-y border-base-300">
-            <KeyValue :items="timing" :copy-label="t('common.copy_label', { label: '{label}' })" />
-          </div>
+          <form novalidate class="flex flex-col gap-3" @submit.prevent="saveTiming()">
+            <fieldset class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2" :disabled="!canEdit || savingTiming">
+              <div class="flex flex-col gap-1">
+                <label class="flex flex-col gap-1">
+                  <span class="label text-ui font-semibold text-base-content">{{ t('channels.quiet_window') }}</span>
+                  <span class="input input-sm w-full text-ui tabular-nums" :class="{ 'input-error': timingErrs.quiet }">
+                    <input v-model="quietText" type="text" inputmode="decimal" class="grow" :aria-invalid="!!timingErrs.quiet" :aria-describedby="describedBy(`${uid}-quiet-hint`, !!timingErrs.quiet && `${uid}-quiet-err`)">
+                    <span class="text-base-content/70" aria-hidden="true">s</span>
+                  </span>
+                </label>
+                <p :id="`${uid}-quiet-hint`" class="text-xs text-base-content/70">
+                  {{ t('channels.quiet_window_hint') }}
+                </p>
+                <FieldError :id="`${uid}-quiet-err`" :message="timingErrs.quiet" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="flex flex-col gap-1">
+                  <span class="label text-ui font-semibold text-base-content">{{ t('channels.quiet_max') }}</span>
+                  <span class="input input-sm w-full text-ui tabular-nums" :class="{ 'input-error': timingErrs.quietMax }">
+                    <input v-model="quietMaxText" type="text" inputmode="decimal" class="grow" :aria-invalid="!!timingErrs.quietMax" :aria-describedby="describedBy(`${uid}-max-hint`, !!timingErrs.quietMax && `${uid}-max-err`)">
+                    <span class="text-base-content/70" aria-hidden="true">s</span>
+                  </span>
+                </label>
+                <p :id="`${uid}-max-hint`" class="text-xs text-base-content/70">
+                  {{ t('channels.quiet_max_hint') }}
+                </p>
+                <FieldError :id="`${uid}-max-err`" :message="timingErrs.quietMax" />
+              </div>
+            </fieldset>
+            <p class="text-xs text-base-content/70">
+              {{ t('channels.late_cutoff_value', { n: channels.settings.timing.maxMessageAgeMinutes }) }}
+            </p>
+            <div v-if="canEdit">
+              <AppButton type="submit" size="sm" :busy="savingTiming">
+                {{ t('channels.save_timing') }}
+              </AppButton>
+            </div>
+          </form>
         </Section>
       </template>
 
@@ -251,7 +370,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · 
             </p>
             <CopyButton :value="curl.join('\n')" :label="t('common.copy')" />
           </div>
-          <div class="mockup-code w-full text-xs">
+          <div class="mockup-code w-full text-xs" tabindex="0" role="region" :aria-label="t('apiaccess.example')">
             <pre v-for="(line, i) in curl" :key="i" :data-prefix="i === 0 ? '$' : ' '"><code>{{ line }}</code></pre>
           </div>
         </div>
@@ -284,26 +403,33 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · 
             <Icon name="lucide:circle-alert" size="14" class="shrink-0 text-error" aria-hidden="true" />
             {{ replace.error.value }}
           </p>
-          <template v-if="replace.kind.value === 'secret'">
-            <label class="flex items-start gap-2 text-ui">
-              <input v-model="replace.keepOld.value" type="checkbox" class="checkbox checkbox-sm mt-0.5 rounded-sm">
-              {{ t('openwa.keep_old') }}
+          <div v-if="replace.kind.value === 'secret' && connection?.secretSet" class="flex flex-col gap-1">
+            <label class="flex items-center gap-2 text-ui">
+              <input v-model="replace.dropPrevious.value" type="checkbox" class="checkbox checkbox-sm rounded-sm" :aria-describedby="`${uid}-drop-hint`">
+              <span>{{ t('openwa.drop_previous') }}</span>
             </label>
-            <p class="-mt-2 ps-7 text-xs text-base-content/70">
-              {{ t('openwa.keep_old_why') }}
+            <p :id="`${uid}-drop-hint`" class="text-xs text-base-content/70">
+              {{ t('openwa.rotation_note') }}
             </p>
-          </template>
+          </div>
         </form>
         <template #footer>
           <AppButton variant="plain" size="sm" @click="replace.hide()">
             {{ t('common.cancel') }}
           </AppButton>
-          <AppButton size="sm" @click="replace.save()">
+          <AppButton size="sm" :busy="replace.saving.value" @click="replace.save()">
             {{ t('common.save') }}
           </AppButton>
         </template>
       </AppModal>
 
+      <ConfirmModal
+        :handle="turningOff"
+        :title="t('openwa.turn_off_title')"
+        :body="t('openwa.turn_off_body')"
+        :confirm-label="t('openwa.turn_off')"
+        :cancel-label="t('common.cancel')"
+      />
       <ConfirmModal
         :handle="disconnecting"
         :title="t('openwa.disconnect_title')"

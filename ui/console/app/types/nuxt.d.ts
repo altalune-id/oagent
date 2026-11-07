@@ -2,6 +2,8 @@ import type { Client } from '@connectrpc/connect';
 import type { AgentService } from '#gen/agent/v1/agent_pb';
 import type { APIKeyService } from '#gen/apikey/v1/apikey_pb';
 import type { AuthService } from '#gen/auth/v1/auth_pb';
+import type { ChannelService } from '#gen/channel/v1/channel_pb';
+import type { EndUserService } from '#gen/enduser/v1/enduser_pb';
 import type { InviteService } from '#gen/invite/v1/invite_pb';
 import type { McpServerService } from '#gen/mcpserver/v1/mcpserver_pb';
 import type { MemberService } from '#gen/member/v1/member_pb';
@@ -18,6 +20,8 @@ declare module '#app' {
     $agentClient: Client<typeof AgentService>;
     $modelProviderClient: Client<typeof ModelProviderService>;
     $mcpServerClient: Client<typeof McpServerService>;
+    $channelClient: Client<typeof ChannelService>;
+    $endUserClient: Client<typeof EndUserService>;
     $threadClient: Client<typeof ThreadService>;
     $apiKeyClient: Client<typeof APIKeyService>;
     $webhookClient: Client<typeof WebhookService>;

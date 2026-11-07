@@ -255,3 +255,21 @@ func TestResourceMetadataIsServedOutsideTheSession(t *testing.T) {
 	srv.ServeHTTP(post, httptest.NewRequest(http.MethodPost, "/.well-known/oauth-protected-resource/app/mcp", nil))
 	assert.NotEqual(t, "doc", post.Body.String(), "the document is GET only")
 }
+
+func TestIngestMountsUnderBasePathWithNoSessionOrCrossOriginCheck(t *testing.T) {
+	hooks := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(r.URL.Path))
+	})
+	sessionRan := false
+	srv := NewServer(ServerOpts{BasePath: "/app", Ingest: hooks, Session: func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { sessionRan = true; next.ServeHTTP(w, r) })
+	}})
+	rec := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/app/hooks/openwa/cnx_1", nil)
+	r.Header.Set("Origin", "https://evil.example.com")
+	r.Header.Set("Sec-Fetch-Site", "cross-site")
+	srv.ServeHTTP(rec, r)
+	assert.Equal(t, http.StatusOK, rec.Code, "a provider's server-to-server POST is signed, not cookie-bound")
+	assert.Equal(t, "/app/hooks/openwa/cnx_1", rec.Body.String())
+	assert.False(t, sessionRan, "no session on a delivery")
+}

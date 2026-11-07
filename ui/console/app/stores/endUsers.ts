@@ -1,71 +1,76 @@
+import type { Timestamp } from '@bufbuild/protobuf/wkt';
 import type { ShownError } from '#base/lib/apperror/message';
-import type { ForgottenPerson } from '~/components/enduser/forget';
-import type { ThreadKind } from '~/stores/threads';
+import type { EndUser as EndUserPB, EndUserThread as EndUserThreadPB, IdentityKind } from '#gen/enduser/v1/enduser_pb';
+import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
-import { forgottenFrom } from '~/components/enduser/forget';
-import { sampleEndUsers } from '~/preview/samples';
+import { errorCode } from '#base/lib/apperror/message';
 
-export type IdentityKind = 'phone' | 'lid' | 'api' | 'visitor';
-
-export interface EndUserIdentity {
-  kind: IdentityKind;
-  value: string;
-  linkedAt: Date;
+export interface EndUser {
+  id: string;
+  displayName: string;
+  identityKind: IdentityKind;
+  identityHint: string;
+  firstSeenAt?: Date;
+  lastSeenAt?: Date;
+  threadCount: number;
 }
 
 export interface EndUserThread {
   id: string;
-  title: string;
-  kind: ThreadKind;
-  agentSlug: string;
-  agentName: string;
-  updatedAt: Date;
+  agentId: string;
+  kind: string;
+  lastActivityAt?: Date;
 }
 
-export interface Memory {
-  id: string;
-  text: string;
-  threadId: string;
-  agentSlug: string;
-  learnedAt: Date;
-}
-
-export interface EndUser {
-  id: string;
-  name: string;
-  identities: EndUserIdentity[];
+export interface EndUserDetail {
+  user: EndUser;
   threads: EndUserThread[];
-  memories: Memory[];
-  lastSeenAt: Date;
 }
 
-export interface EndUserList {
-  items: EndUser[];
-  memoryOn: boolean;
+const date = (t?: Timestamp) => (t ? timestampDate(t) : undefined);
+
+function toEndUser(u: EndUserPB): EndUser {
+  return { id: u.id, displayName: u.displayName, identityKind: u.identityKind, identityHint: u.identityHint, firstSeenAt: date(u.firstSeenAt), lastSeenAt: date(u.lastSeenAt), threadCount: Number(u.threadCount) };
 }
 
-// TODO: replace with the end user RPCs; until then a delete lasts only until the page reloads.
+function toThread(th: EndUserThreadPB): EndUserThread {
+  return { id: th.id, agentId: th.agentId, kind: th.kind, lastActivityAt: date(th.lastActivityAt) };
+}
+
+const pageSize = 200;
+
+// useEndUsersStore reads a project's end users through EndUserService; it is read-only, and the name search runs on the server.
 export const useEndUsersStore = defineStore('endUsers', () => {
+  const { $endUserClient: client } = useNuxtApp();
+  const errorMessage = useErrorMessage();
   const items = ref<EndUser[]>([]);
-  const memoryOn = ref(false);
-  const forgotten = ref<ForgottenPerson[]>([]);
   const loading = ref(false);
   const error = ref<ShownError | null>(null);
-  const errorMessage = useErrorMessage();
+  const detail = ref<EndUserDetail | null>(null);
+  const detailLoading = ref(false);
+  const detailError = ref<ShownError | null>(null);
   let loadedFor = '';
+  let latest = 0;
 
-  async function load(projectId: string) {
+  // shortcut: the first page only (200, the API maximum); add paging when a project outgrows it.
+  async function load(projectId: string, query = '') {
+    const mine = ++latest;
     loading.value = true;
     error.value = null;
     try {
-      const list = await Promise.resolve().then(sampleEndUsers);
-      items.value = list.items.filter(u => !forgotten.value.some(f => f.id === u.id));
-      memoryOn.value = list.memoryOn;
-      loadedFor = projectId;
+      const res = await client.listEndUsers({ projectId, query: query.trim(), pageSize });
+      if (mine === latest) {
+        items.value = res.endUsers.map(toEndUser);
+        loadedFor = projectId;
+      }
     } catch (e) {
-      error.value = errorMessage(e, 'error.load_end_users');
+      if (mine === latest) {
+        error.value = errorMessage(e, 'error.load_end_users');
+      }
     } finally {
-      loading.value = false;
+      if (mine === latest) {
+        loading.value = false;
+      }
     }
   }
 
@@ -73,25 +78,19 @@ export const useEndUsersStore = defineStore('endUsers', () => {
     return loadedFor === projectId ? Promise.resolve() : load(projectId);
   }
 
-  function byId(id: string) {
-    return items.value.find(u => u.id === id);
-  }
-
-  function forgetMemory(userId: string, memoryId: string) {
-    const user = byId(userId);
-    if (user) {
-      user.memories = user.memories.filter(m => m.id !== memoryId);
+  async function loadOne(id: string) {
+    detailLoading.value = true;
+    detailError.value = null;
+    try {
+      const res = await client.getEndUser({ id });
+      detail.value = res.endUser ? { user: toEndUser(res.endUser), threads: res.threads.map(toThread) } : null;
+    } catch (e) {
+      detail.value = null;
+      detailError.value = errorCode(e) === 'EUS001' ? null : errorMessage(e, 'error.load_end_users');
+    } finally {
+      detailLoading.value = false;
     }
   }
 
-  function remove(userId: string) {
-    const user = byId(userId);
-    if (!user) {
-      return;
-    }
-    forgotten.value = [...forgotten.value, forgottenFrom(user)];
-    items.value = items.value.filter(u => u.id !== userId);
-  }
-
-  return { items, memoryOn, forgotten, loading, error, load, ensureLoaded, byId, forgetMemory, remove };
+  return { items, loading, error, load, ensureLoaded, detail, detailLoading, detailError, loadOne };
 });

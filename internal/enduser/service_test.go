@@ -96,6 +96,20 @@ func TestUpsert_ConflictLogsWithoutValue(t *testing.T) {
 	assert.Contains(t, logs, "wa_lid")
 	assert.NotContains(t, logs, phone.Value, "a phone number never reaches the logs")
 	assert.NotContains(t, logs, lid.Value)
+	assert.Contains(t, logs, a.PublicID, "the conflict names the end users by public id")
+	assert.Contains(t, logs, b.PublicID)
+	assert.NotContains(t, logs, a.ID.String(), "never the internal id")
+}
+
+func TestSetDisplayName(t *testing.T) {
+	f := newFixture(t)
+	e, err := f.svc.Upsert(f.ctx, f.projectID, phone)
+	require.NoError(t, err)
+	require.NoError(t, f.svc.SetDisplayName(f.ctx, e.ID, "Budi"))
+	got, err := f.svc.Get(f.ctx, e.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "Budi", got.DisplayName)
+	assert.True(t, enduser.IsNotFoundError(f.svc.SetDisplayName(f.ctx, uuid.New(), "x")))
 }
 
 func TestUpsert_InvalidIdentityIsEUS002(t *testing.T) {
@@ -159,37 +173,40 @@ func TestLookup_FindsWithoutCreating(t *testing.T) {
 	assert.True(t, enduser.IsInvalidIdentityError(err))
 }
 
-func TestLabel_NamesTheEndUserWithoutTheValue(t *testing.T) {
+func TestName_NamesTheEndUserWithoutTheValue(t *testing.T) {
 	f := newFixture(t)
 	e, err := f.svc.Upsert(f.ctx, f.projectID, phone)
 	require.NoError(t, err)
-	got, err := f.svc.Label(f.ctx, e.ID)
+	got, err := f.svc.Name(f.ctx, e.ID)
 	require.NoError(t, err)
-	assert.Equal(t, "wa_phone …90", got)
-	gone, err := f.svc.Label(f.ctx, uuid.New())
+	assert.Equal(t, enduser.Name{Kind: enduser.KindWAPhone, Hint: "90"}, got)
+	require.NoError(t, f.svc.SetDisplayName(f.ctx, e.ID, "Sari Wulandari"))
+	got, err = f.svc.Name(f.ctx, e.ID)
 	require.NoError(t, err)
-	assert.Empty(t, gone, "an end user that is gone has no label")
+	assert.Equal(t, enduser.Name{DisplayName: "Sari Wulandari", Kind: enduser.KindWAPhone, Hint: "90"}, got)
+	gone, err := f.svc.Name(f.ctx, uuid.New())
+	require.NoError(t, err)
+	assert.Equal(t, enduser.Name{}, gone, "an end user that is gone has no name")
 }
 
 type keyHints map[uuid.UUID]string
 
 func (k keyHints) KeyHint(_ context.Context, id uuid.UUID) (string, error) { return k[id], nil }
 
-func TestLabel_AKeyActorShowsTheKeysHint(t *testing.T) {
+func TestName_AKeyActorShowsTheKeysHint(t *testing.T) {
 	f := newFixture(t)
 	keyID := uuid.New()
 	f.svc.WithKeyHints(keyHints{keyID: "Zz09"})
 	e, err := f.svc.Upsert(f.ctx, f.projectID, enduser.Identity{Kind: enduser.KindAPIUser, Value: "key:" + keyID.String()})
 	require.NoError(t, err)
-	got, err := f.svc.Label(f.ctx, e.ID)
+	got, err := f.svc.Name(f.ctx, e.ID)
 	require.NoError(t, err)
-	assert.Equal(t, "api_key …Zz09", got, "the key's public handle, never its id")
-	assert.NotContains(t, got, keyID.String()[32:])
+	assert.Equal(t, enduser.Name{Kind: enduser.KindAPIKey, Hint: "Zz09"}, got, "the key's public handle, never its id")
 
 	gone := uuid.New()
 	e2, err := f.svc.Upsert(f.ctx, f.projectID, enduser.Identity{Kind: enduser.KindAPIUser, Value: "key:" + gone.String()})
 	require.NoError(t, err)
-	got, err = f.svc.Label(f.ctx, e2.ID)
+	got, err = f.svc.Name(f.ctx, e2.ID)
 	require.NoError(t, err)
-	assert.Equal(t, "api_key", got, "a key that is gone shows only the kind")
+	assert.Equal(t, enduser.Name{Kind: enduser.KindAPIKey}, got, "a key that is gone shows only the kind")
 }

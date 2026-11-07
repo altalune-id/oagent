@@ -5,6 +5,8 @@ import (
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
+	channelv1connect "altalune.id/oagent/gen/go/channel/v1/channelv1connect"
+	enduserv1connect "altalune.id/oagent/gen/go/enduser/v1/enduserv1connect"
 	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
 	mcpserverv1connect "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1connect"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
@@ -52,6 +54,15 @@ func Table() map[string][]string {
 		mcpserverv1connect.McpServerServiceUpdateMcpServerProcedure:    {scope.McpserverWrite},
 		mcpserverv1connect.McpServerServiceDeleteMcpServerProcedure:    {scope.McpserverWrite},
 		mcpserverv1connect.McpServerServiceListMcpServerToolsProcedure: {scope.McpserverRead},
+		channelv1connect.ChannelServiceCreateConnectionProcedure:       {scope.ChannelWrite},
+		channelv1connect.ChannelServiceGetConnectionProcedure:          {scope.ChannelRead},
+		channelv1connect.ChannelServiceListConnectionsProcedure:        {scope.ChannelRead},
+		channelv1connect.ChannelServiceUpdateConnectionProcedure:       {scope.ChannelWrite},
+		channelv1connect.ChannelServiceSetConnectionSecretProcedure:    {scope.ChannelWrite},
+		channelv1connect.ChannelServiceDeleteConnectionProcedure:       {scope.ChannelWrite},
+		channelv1connect.ChannelServiceGetChannelSettingsProcedure:     {scope.ChannelRead},
+		enduserv1connect.EndUserServiceListEndUsersProcedure:           {scope.ThreadRead},
+		enduserv1connect.EndUserServiceGetEndUserProcedure:             {scope.ThreadRead},
 		threadv1connect.ThreadServiceListThreadsProcedure:              {scope.ThreadRead},
 		threadv1connect.ThreadServiceGetThreadProcedure:                {scope.ThreadRead},
 		threadv1connect.ThreadServiceListThreadMessagesProcedure:       {scope.ThreadRead},

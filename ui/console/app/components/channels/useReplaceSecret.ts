@@ -1,23 +1,25 @@
-import type { ChannelProvider } from '~/stores/channels';
 import { useToast } from '#base/components/ui/toast';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { useChannelsStore } from '~/stores/channels';
 
 export type Replacing = 'secret' | 'key';
 
-// useReplaceSecret replaces a connection's signing secret or device key; the typed value is write-only and cleared on close.
-export function useReplaceSecret(agentId: string, provider: ChannelProvider = 'openwa') {
+// useReplaceSecret sets a connection's signing secret, optionally retiring the previous one, or replaces its device key; the typed value is write-only and cleared on close.
+export function useReplaceSecret(connectionId: () => string | undefined) {
   const { t } = useI18n();
   const channels = useChannelsStore();
   const toast = useToast();
+  const errorMessage = useErrorMessage();
   const kind = ref<Replacing | null>(null);
   const value = ref('');
-  const keepOld = ref(true);
   const error = ref('');
+  const saving = ref(false);
+  const dropPrevious = ref(false);
 
   function show(next: Replacing) {
     value.value = '';
     error.value = '';
-    keepOld.value = true;
+    dropPrevious.value = false;
     kind.value = next;
   }
 
@@ -27,20 +29,36 @@ export function useReplaceSecret(agentId: string, provider: ChannelProvider = 'o
     kind.value = null;
   }
 
-  function save(): boolean {
+  async function save(): Promise<boolean> {
+    const id = connectionId();
+    if (!id || saving.value) {
+      return false;
+    }
     if (!value.value.trim()) {
       error.value = kind.value === 'secret' ? t('openwa.secret_required') : t('openwa.key_required');
       return false;
     }
-    channels.replaced(agentId, provider);
-    toast.push('success', kind.value === 'secret' ? t('openwa.secret_replaced') : t('openwa.key_replaced'));
-    hide();
-    return true;
+    saving.value = true;
+    try {
+      if (kind.value === 'secret') {
+        await channels.setSecret(id, value.value, dropPrevious.value);
+      } else {
+        await channels.update(id, { deviceKey: value.value });
+      }
+      toast.push('success', kind.value === 'secret' ? t('openwa.secret_replaced') : t('openwa.key_replaced'));
+      hide();
+      return true;
+    } catch (e) {
+      error.value = errorMessage(e, 'error.save_channel').message;
+      return false;
+    } finally {
+      saving.value = false;
+    }
   }
 
   watch(value, () => {
     error.value = '';
   });
 
-  return { kind, value, keepOld, error, show, hide, save };
+  return { kind, value, error, saving, dropPrevious, show, hide, save };
 }

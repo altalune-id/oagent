@@ -49,10 +49,26 @@ func TestBindings(t *testing.T) {
 			},
 		},
 		{
+			"channel_connections",
+			func(s, p string) binding { b := entity.NewChannelConnections(s, p); return binding{b, b.AllColumns} },
+			[]string{
+				"id", "public_id", "org_id", "project_id", "agent_id", "provider", "status", "base_url", "openwa_org", "openwa_project", "device_id",
+				"signing_secret_primary_sealed", "signing_secret_secondary_sealed", "device_key_sealed", "quiet_window_ms", "quiet_max_ms",
+				"reply_failure", "reply_voice", "reply_photo_unreadable", "last_result", "last_result_at", "last_bad_signature_at",
+				"created_at", "updated_at",
+			},
+		},
+		{
+			"ingest_deliveries",
+			func(s, p string) binding { b := entity.NewIngestDeliveries(s, p); return binding{b, b.AllColumns} },
+			[]string{"org_id", "project_id", "connection_id", "delivery_id", "received_at"},
+		},
+		{
 			"threads",
 			func(s, p string) binding { b := entity.NewThreads(s, p); return binding{b, b.AllColumns} },
 			[]string{
 				"id", "public_id", "org_id", "project_id", "agent_id", "kind", "external_key", "lease_owner", "lease_until", "cancel_requested", "next_seq", "created_at", "updated_at", "actor_end_user_id",
+				"connection_id", "channel_address", "reply_via",
 			},
 		},
 		{
@@ -60,6 +76,7 @@ func TestBindings(t *testing.T) {
 			func(s, p string) binding { b := entity.NewRuns(s, p); return binding{b, b.AllColumns} },
 			[]string{
 				"id", "public_id", "org_id", "project_id", "thread_id", "agent_version_id", "status", "idempotency_key", "attempt", "input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "usage_estimated", "price_input_micros", "price_output_micros", "price_cache_read_micros", "price_cache_write_micros", "cost_micros", "latency_ms", "error_code", "started_at", "ended_at", "created_at", "updated_at",
+				"reply_state", "reply_parts_sent", "reply_attempts", "reply_next_at", "is_group",
 			},
 		},
 		{
@@ -67,6 +84,7 @@ func TestBindings(t *testing.T) {
 			func(s, p string) binding { b := entity.NewMessages(s, p); return binding{b, b.AllColumns} },
 			[]string{
 				"id", "org_id", "project_id", "thread_id", "seq", "role", "body", "speaker_id", "status", "external_message_id", "run_id", "tool_call_id", "created_at", "request_hash",
+				"channel_time", "skip_reason",
 			},
 		},
 		{
@@ -79,7 +97,7 @@ func TestBindings(t *testing.T) {
 		{
 			"end_users",
 			func(s, p string) binding { b := entity.NewEndUsers(s, p); return binding{b, b.AllColumns} },
-			[]string{"id", "public_id", "org_id", "project_id", "created_at", "updated_at"},
+			[]string{"id", "public_id", "org_id", "project_id", "created_at", "updated_at", "display_name"},
 		},
 		{
 			"end_user_identities",
@@ -214,6 +232,7 @@ func TestBindings_EveryColumnFieldIsSet(t *testing.T) {
 		"threads": entity.NewThreads("s", ""), "runs": entity.NewRuns("s", ""), "messages": entity.NewMessages("s", ""),
 		"thread_snapshots": entity.NewThreadSnapshots("s", ""), "end_users": entity.NewEndUsers("s", ""),
 		"end_user_identities": entity.NewEndUserIdentities("s", ""),
+		"channel_connections": entity.NewChannelConnections("s", ""), "ingest_deliveries": entity.NewIngestDeliveries("s", ""),
 	} {
 		v := reflect.ValueOf(b).Elem()
 		for i := range v.NumField() {

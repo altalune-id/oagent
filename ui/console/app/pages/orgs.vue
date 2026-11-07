@@ -34,7 +34,7 @@ useHead({ title: () => `${t('org.all')} · OAgent` });
 </script>
 
 <template>
-  <div class="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-8 sm:px-6 sm:py-10">
+  <main class="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-8 sm:px-6 sm:py-10">
     <PageHeader :title="t('org.title')" :description="isEmpty ? '' : t('org.subtitle')">
       <template #actions>
         <p v-if="allowed && ownsOne" class="max-w-56 text-right text-xs text-base-content/70" data-testid="org-create-owned">
@@ -63,5 +63,5 @@ useHead({ title: () => `${t('org.all')} · OAgent` });
         </li>
       </ul>
     </Section>
-  </div>
+  </main>
 </template>

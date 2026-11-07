@@ -27,12 +27,12 @@ const (
 type ThreadService struct {
 	runs   *Service
 	refs   Refs
-	labels Labels
+	people People
 }
 
-// NewControlPlane binds the handler to the run service, the project and agent public id lookups and the end user labels.
-func NewControlPlane(runs *Service, refs Refs, labels Labels) *ThreadService {
-	return &ThreadService{runs: runs, refs: refs, labels: labels}
+// NewControlPlane binds the handler to the run service, the project and agent public id lookups and the end user names.
+func NewControlPlane(runs *Service, refs Refs, people People) *ThreadService {
+	return &ThreadService{runs: runs, refs: refs, people: people}
 }
 
 var _ threadv1connect.ThreadServiceHandler = (*ThreadService)(nil)
@@ -130,11 +130,11 @@ func (s *ThreadService) ListThreadMessages(
 		return nil, err
 	}
 	out := &threadv1.ListThreadMessagesResponse{Messages: make([]*threadv1.ThreadMessage, 0, len(msgs)), NextAfterSeq: m.GetAfterSeq()}
-	runPubs, labels := map[uuid.UUID]string{}, map[uuid.UUID]string{}
+	runPubs, people := map[uuid.UUID]string{}, map[uuid.UUID]Person{}
 	for _, msg := range msgs {
 		tm := &threadv1.ThreadMessage{
 			Seq: msg.Seq, Role: string(msg.Role), Message: bodyProto(msg.AGUIBody()), Status: string(msg.Status),
-			ToolCallId: msg.ToolCallID, CreatedAt: timestamppb.New(msg.CreatedAt),
+			ToolCallId: msg.ToolCallID, CreatedAt: timestamppb.New(msg.CreatedAt), SkipReason: msg.SkipReason,
 		}
 		if msg.RunID != nil {
 			if tm.RunId, err = s.runPublicID(ctx, runPubs, *msg.RunID); err != nil {
@@ -142,9 +142,11 @@ func (s *ThreadService) ListThreadMessages(
 			}
 		}
 		if msg.SpeakerID != nil {
-			if tm.SpeakerLabel, err = s.label(ctx, labels, *msg.SpeakerID); err != nil {
+			p, err := s.person(ctx, people, *msg.SpeakerID)
+			if err != nil {
 				return nil, err
 			}
+			tm.SpeakerLabel, tm.SpeakerDisplayName, tm.SpeakerIdentityKind, tm.SpeakerIdentityHint = p.Label, p.DisplayName, p.Kind, p.Hint
 		}
 		out.Messages = append(out.Messages, tm)
 		out.NextAfterSeq = msg.Seq
@@ -152,12 +154,15 @@ func (s *ThreadService) ListThreadMessages(
 	return connect.NewResponse(out), nil
 }
 
-// ListRuns lists a thread's runs, newest first.
+// ListRuns lists a thread's runs, or an agent's runs across its threads, newest first.
 func (s *ThreadService) ListRuns(
 	ctx context.Context,
 	req *connect.Request[threadv1.ListRunsRequest],
 ) (*connect.Response[threadv1.ListRunsResponse], error) {
 	m := req.Msg
+	if m.GetThreadId() == "" {
+		return s.listAgentRuns(ctx, m)
+	}
 	ctx, ref, err := s.reachableThread(ctx, m.GetThreadId())
 	if err != nil {
 		return nil, err
@@ -180,6 +185,58 @@ func (s *ThreadService) ListRuns(
 	threadPub := m.GetThreadId()
 	for i := range runs {
 		r, err := s.runProto(ctx, &runs[i], threadPub)
+		if err != nil {
+			return nil, err
+		}
+		out.Runs = append(out.Runs, r)
+	}
+	return connect.NewResponse(out), nil
+}
+
+func (s *ThreadService) listAgentRuns(
+	ctx context.Context, m *threadv1.ListRunsRequest,
+) (*connect.Response[threadv1.ListRunsResponse], error) {
+	projectID, orgID, ok, err := s.refs.ProjectID(ctx, m.GetProjectId())
+	if err != nil {
+		return nil, err
+	}
+	agentID := uuid.Nil
+	if ok {
+		if agentID, ok, err = s.refs.ResourceID(ctx, orgID, m.GetAgentId()); err != nil {
+			return nil, err
+		}
+	}
+	// SECURITY: an unknown or unreachable project or agent answers the same not-found as an unknown thread.
+	if !ok || !authz.ReachResource(ctx, orgID, projectID, agentID) {
+		return nil, &ThreadNotFoundError{}
+	}
+	ctx = tenant.Into(ctx, tenant.Context{OrgID: orgID, ProjectID: projectID})
+	after, err := decodeCursor(m.GetPageToken())
+	if err != nil {
+		return nil, err
+	}
+	size := pageSize(m.GetPageSize())
+	runs, err := s.runs.ListAgentRuns(ctx, agentID, after, size+1)
+	if err != nil {
+		return nil, err
+	}
+	out := &threadv1.ListRunsResponse{Runs: make([]*threadv1.Run, 0, min(len(runs), size))}
+	if len(runs) > size {
+		runs = runs[:size]
+		last := runs[size-1]
+		out.NextPageToken = encodeCursor(Cursor{At: last.StartedAt, PublicID: last.PublicID})
+	}
+	threads := map[uuid.UUID]string{}
+	for i := range runs {
+		pub, ok := threads[runs[i].ThreadID]
+		if !ok {
+			th, err := s.runs.store.Thread(ctx, runs[i].ThreadID)
+			if err != nil {
+				return nil, s.runs.errOrReport(ctx, "run: thread of run", err)
+			}
+			pub, threads[runs[i].ThreadID] = th.PublicID, th.PublicID
+		}
+		r, err := s.runProto(ctx, &runs[i], pub)
 		if err != nil {
 			return nil, err
 		}
@@ -265,9 +322,11 @@ func (s *ThreadService) threadProto(ctx context.Context, sum *ThreadSummary, pro
 		out.LastActivityAt = timestamppb.New(sum.LastActivityAt)
 	}
 	if sum.ActorEndUserID != uuid.Nil {
-		if out.EndUserLabel, err = s.labels.Label(ctx, sum.ActorEndUserID); err != nil {
+		p, err := s.people.Person(ctx, sum.ActorEndUserID)
+		if err != nil {
 			return nil, err
 		}
+		out.EndUserLabel, out.EndUserDisplayName, out.EndUserIdentityKind, out.EndUserIdentityHint = p.Label, p.DisplayName, p.Kind, p.Hint
 	}
 	return out, nil
 }
@@ -315,16 +374,16 @@ func (s *ThreadService) runPublicID(ctx context.Context, seen map[uuid.UUID]stri
 	return r.PublicID, nil
 }
 
-func (s *ThreadService) label(ctx context.Context, seen map[uuid.UUID]string, id uuid.UUID) (string, error) {
-	if l, ok := seen[id]; ok {
-		return l, nil
+func (s *ThreadService) person(ctx context.Context, seen map[uuid.UUID]Person, id uuid.UUID) (Person, error) {
+	if p, ok := seen[id]; ok {
+		return p, nil
 	}
-	l, err := s.labels.Label(ctx, id)
+	p, err := s.people.Person(ctx, id)
 	if err != nil {
-		return "", err
+		return Person{}, err
 	}
-	seen[id] = l
-	return l, nil
+	seen[id] = p
+	return p, nil
 }
 
 func pageSize(n int32) int {

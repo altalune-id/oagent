@@ -1,5 +1,6 @@
 import type { Snapshot } from '@strands-agents/sdk';
 import type { ToolResultReport } from './agent.ts';
+import { Buffer } from 'node:buffer';
 import { Agent, FunctionTool, ModelThrottledError } from '@strands-agents/sdk';
 import { describe, expect, it } from 'vitest';
 
@@ -216,5 +217,80 @@ describe('historyToMessages', () => {
         { toolResult: { toolUseId: 'c2', status: 'error', content: [{ text: 'r2' }] } },
       ] },
     ]);
+  });
+});
+
+const PNG_BYTES = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13];
+
+function imageRequest(): ReturnType<typeof goldenRequest> {
+  return goldenRequest('plain_reply', (r) => {
+    r.contractVersion = 2;
+    r.input = {
+      kind: 'message',
+      message: {
+        id: 'msg_user_1',
+        role: 'user',
+        content: [
+          { type: 'text', text: 'my receipt' },
+          { type: 'image', source: { type: 'data', value: Buffer.from(PNG_BYTES).toString('base64'), mimeType: 'image/png' } },
+        ],
+      },
+    } as never;
+  });
+}
+
+class StatusError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+describe('image input', () => {
+  it('passes an image part to the model as an image block with the decoded bytes', async () => {
+    const model = new ScriptedModel([{ text: ['Lunch, 25,000.'] }]);
+    const out = await executeTurn(imageRequest(), never, { model, log: quiet, openMcp: fakeMcp([]) });
+    expect(out.status).toBe('completed');
+    const blocks = model.calls[0]!.messages.at(-1)!.content;
+    expect(blocks.map(b => b.type)).toEqual(['textBlock', 'imageBlock']);
+    const img = blocks[1] as unknown as { format: string, source: { bytes: Uint8Array } };
+    expect(img.format).toBe('png');
+    expect([...img.source.bytes]).toEqual(PNG_BYTES);
+  });
+
+  it('keeps no image bytes in the snapshot after the turn', async () => {
+    const model = new ScriptedModel([{ text: ['Lunch, 25,000.'] }]);
+    const out = await executeTurn(imageRequest(), never, { model, log: quiet, openMcp: fakeMcp([]) });
+    const snap = JSON.stringify(out.snapshot);
+    expect(snap).toContain('[image removed]');
+    expect(snap).not.toContain(Buffer.from(PNG_BYTES).toString('base64'));
+    expect(snap).not.toContain('imageBlock');
+  });
+
+  it('reports image_unsupported when the model refuses a turn that carried images', async () => {
+    const model = new ScriptedModel([{ error: new StatusError(400, 'this model does not support image input') }]);
+    const out = await executeTurn(imageRequest(), never, { model, log: quiet, openMcp: fakeMcp([]) });
+    expect(out.status).toBe('failed');
+    expect(out.error).toEqual({ code: 'image_unsupported' });
+  });
+
+  it('keeps model_error for a client error on a text-only turn and for a server error with images', async () => {
+    const textOnly = await executeTurn(goldenRequest('plain_reply'), never, { model: new ScriptedModel([{ error: new StatusError(400, 'bad request') }]), log: quiet, openMcp: fakeMcp([]) });
+    expect(textOnly.error).toEqual({ code: 'model_error' });
+    const server = await executeTurn(imageRequest(), never, { model: new ScriptedModel([{ error: new StatusError(500, 'upstream') }]), log: quiet, openMcp: fakeMcp([]) });
+    expect(server.error).toEqual({ code: 'model_error' });
+    const throttled = await executeTurn(imageRequest(), never, { model: new ScriptedModel([{ error: new StatusError(429, 'slow down') }]), log: quiet, openMcp: fakeMcp([]) });
+    expect(throttled.error).toEqual({ code: 'model_error' });
+    for (const status of [401, 403, 404]) {
+      const auth = await executeTurn(imageRequest(), never, { model: new ScriptedModel([{ error: new StatusError(status, 'denied') }]), log: quiet, openMcp: fakeMcp([]) });
+      expect(auth.error, `status ${status}`).toEqual({ code: 'model_error' });
+    }
+  });
+
+  it.each([400, 413, 415, 422])('maps a %i with images to image_unsupported', async (status) => {
+    const out = await executeTurn(imageRequest(), never, { model: new ScriptedModel([{ error: new StatusError(status, 'no images') }]), log: quiet, openMcp: fakeMcp([]) });
+    expect(out.error).toEqual({ code: 'image_unsupported' });
   });
 });

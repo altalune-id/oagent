@@ -71,8 +71,9 @@ func fillProbe(msg *dynamicpb.Message) {
 
 var probeStrings = map[protoreflect.Name]string{
 	"name": "Probe", "description": "probe", "url": "https://example.com/probe", "base_url": "https://example.com/v1",
-	"api_key": "sk-probe",
-	"email":   "probe@example.com", "role": "member", "kind": "org",
+	"api_key": "sk-probe", "openwa_org": "acme", "openwa_project": "main", "device_id": "dev_V1StGXR8Z5jdHi6B",
+	"signing_secret": "whsec_probe", "device_key": "owk_probe",
+	"email": "probe@example.com", "role": "member", "kind": "org",
 }
 
 func (f *apiFixture) callForResponse(

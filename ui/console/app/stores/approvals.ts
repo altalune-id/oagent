@@ -2,10 +2,8 @@ import type { ShownError } from '#base/lib/apperror/message';
 import type { ThreadKind } from '~/stores/threads';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { decideApproval, statusAt } from '~/components/approval/decision';
-import { forgetInApprovals } from '~/components/enduser/forget';
 import { tick, useNow } from '~/composables/useNow';
 import { sampleApprovals } from '~/preview/samples';
-import { useEndUsersStore } from './endUsers';
 
 export interface ApprovalArg {
   label: string;
@@ -55,15 +53,7 @@ export const useApprovalsStore = defineStore('approvals', () => {
   const loading = ref(false);
   const error = ref<ShownError | null>(null);
   const errorMessage = useErrorMessage();
-  const endUsers = useEndUsersStore();
   let loadedFor = '';
-
-  function forget() {
-    for (const p of endUsers.forgotten) {
-      items.value = forgetInApprovals(items.value, p);
-    }
-  }
-  watch(() => endUsers.forgotten, forget);
 
   const loadedProject = ref('');
   const now = useNow();
@@ -76,7 +66,6 @@ export const useApprovalsStore = defineStore('approvals', () => {
     error.value = null;
     try {
       items.value = await Promise.resolve().then(sampleApprovals);
-      forget();
       loadedFor = projectId;
       loadedProject.value = projectId;
     } catch (e) {

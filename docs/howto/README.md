@@ -19,5 +19,6 @@ Pick the recipe for your change. Each one has a **Plan** checklist (decisions to
 | rate-limit an action                                   | [rate-limit](rate-limit.md)         |
 | add a page before sign-in (templ)                      | [web-page](web-page.md)             |
 | add a console page (signed-in UI)                      | [console-page](console-page.md)     |
+| connect a WhatsApp device through OpenWA (operator)    | [connect-openwa](connect-openwa.md) |
 
 Gates for every change are in [AGENTS.md](../../AGENTS.md#gates).

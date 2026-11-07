@@ -27,17 +27,22 @@ type Reader interface {
 	ListThreads(ctx context.Context, projectID, agentID uuid.UUID, after Cursor, limit int) ([]ThreadSummary, error)
 	ThreadSummary(ctx context.Context, threadID uuid.UUID) (*ThreadSummary, error)
 	ListRuns(ctx context.Context, threadID uuid.UUID, after Cursor, limit int) ([]Run, error)
+	ListAgentRuns(ctx context.Context, agentID uuid.UUID, after Cursor, limit int) ([]Run, error)
+	EndUserActivity(ctx context.Context, endUserIDs []uuid.UUID) (map[uuid.UUID]EndUserActivity, error)
+	EndUserThreads(ctx context.Context, endUserID uuid.UUID) ([]ThreadSummary, error)
 	RunByIdempotencyKey(ctx context.Context, threadID uuid.UUID, key string) (*Run, error)
 	MessageByExternalID(ctx context.Context, threadID uuid.UUID, externalID string) (*Message, error)
 	OpenRun(ctx context.Context, threadID uuid.UUID) (*Run, error)
 	StoredResults(ctx context.Context, runID uuid.UUID) ([]StoredResult, error)
 	Expired(ctx context.Context, now time.Time) ([]uuid.UUID, error)
 	PendingUnleased(ctx context.Context, now time.Time, limit int) ([]uuid.UUID, error)
+	ReplyTexts(ctx context.Context, connectionID uuid.UUID) (ReplyTexts, error)
 }
 
 // Writer writes the inbox and, fenced by the lease token, everything a turn changes.
 type Writer interface {
 	AppendMessage(ctx context.Context, threadID uuid.UUID, m Message) (seq int64, err error)
+	AppendChannelMessage(ctx context.Context, in ChannelMessage) (ChannelAppend, error)
 	Claim(ctx context.Context, threadID uuid.UUID, token string, ttl time.Duration) (ClaimResult, error)
 	ClaimAndAppend(ctx context.Context, threadID uuid.UUID, token string, ttl time.Duration, m Message) (ClaimResult, int64, error)
 	UpsertAPIThread(ctx context.Context, projectID, agentID uuid.UUID, externalKey string, actor uuid.UUID) (*Thread, error)

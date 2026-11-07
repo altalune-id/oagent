@@ -91,6 +91,18 @@ describe('terminal', () => {
     expect(events).toEqual([]);
   });
 
+  it('refuses invalid image input before any event', async () => {
+    const events: unknown[] = [];
+    const runTurn = createRunTurn({ models: new ModelClients(), log: quiet, modelFor: () => new ScriptedModel([]), openMcp: fakeMcp([]) });
+    const request = goldenRequest('plain_reply', (r) => {
+      r.input = { kind: 'message', message: { id: 'u1', role: 'user', content: [{ type: 'image', source: { type: 'url', value: 'https://example.com/a.png' } }] } } as never;
+    });
+    await expect(runTurn(request, async (e) => {
+      events.push(e);
+    }, new AbortController().signal)).rejects.toMatchObject({ status: 422, code: 'image_invalid' });
+    expect(events).toEqual([]);
+  });
+
   it('builds the model from the cached clients by default', async () => {
     const models = new ModelClients();
     const spy = vi.spyOn(models, 'model').mockReturnValue(new ScriptedModel([{ text: ['ok'] }]) as never);
@@ -117,5 +129,17 @@ describe('toAgUiMessages', () => {
       { id: 'msg_tool_c1', role: 'tool', toolCallId: 'c1', content: 'done' },
       { id: 'msg_asst_2', role: 'assistant', content: 'All set.' },
     ]);
+  });
+
+  it('echoes the user message without image bytes: Go already holds the input, and the bytes would double the stream', () => {
+    const request = goldenRequest('plain_reply', (r) => {
+      r.input = { kind: 'message', message: { id: 'msg_user_1', role: 'user', content: [
+        { type: 'text', text: 'my receipt' },
+        { type: 'image', source: { type: 'data', value: 'iVBORw0KGgo=', mimeType: 'image/png' } },
+      ] } } as never;
+    });
+    const out = toAgUiMessages(request, [new Msg({ role: 'user', content: [new TextBlock('my receipt')] })]);
+    expect(out).toEqual([{ id: 'msg_user_1', role: 'user', content: [{ type: 'text', text: 'my receipt' }, { type: 'text', text: '[image removed]' }] }]);
+    expect(JSON.stringify(out)).not.toContain('iVBORw0KGgo=');
   });
 });

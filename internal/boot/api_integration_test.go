@@ -3,11 +3,14 @@
 package boot
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -55,6 +58,7 @@ type apiFixture struct {
 	owner  *user.User
 	orgID  string
 	sysID  uuid.UUID
+	logs   *safeLog
 }
 
 func newAPIFixture(t *testing.T) *apiFixture {
@@ -64,6 +68,8 @@ func newAPIFixture(t *testing.T) *apiFixture {
 
 func startAPIFixture(t *testing.T, idp *oidcrptest.IDP) *apiFixture {
 	t.Helper()
+	logs := &safeLog{}
+	log := slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	cfg := devLocalConfig()
 	cfg.HTTP.StateSecret = strings.Repeat("s", 40)
 	cfg.Secrets.EncryptionKey = testKeyHex
@@ -78,26 +84,26 @@ func startAPIFixture(t *testing.T, idp *oidcrptest.IDP) *apiFixture {
 	svc, sqlDB, schemaName := pgtest.MigratedRLS(t)
 	cfg.Postgres.Schema = schemaName
 	svcs := buildServices(kernel.Kernel{Pool: svc, Reporter: apperror.NewReporter(nil, false)}, cfg)
-	runs, err := buildRun(kernel.Kernel{Pool: svc, Reporter: apperror.NewReporter(nil, false)}, cfg, svcs, nil, testLogger())
+	runs, err := buildRun(kernel.Kernel{Pool: svc, Reporter: apperror.NewReporter(nil, false)}, cfg, svcs, nil, log)
 	require.NoError(t, err)
 	svcs.RunStore, svcs.Runs = runs.store, runs.svc
 	if idp != nil {
 		svcs.MCPTokens, err = buildMCPTokens(cfg, idp.Client())
 		require.NoError(t, err)
 	}
-	require.NoError(t, buildAuthSecrets(cfg, svcs, testLogger()))
+	require.NoError(t, buildAuthSecrets(cfg, svcs, log))
 	svcs.Caps.EnvGenesis = true
-	require.NoError(t, firstBoot(t.Context(), cfg, svcs, testLogger(), false))
+	require.NoError(t, firstBoot(t.Context(), cfg, svcs, log, false))
 	required, err := installRequired(t.Context(), svcs)
 	require.NoError(t, err)
 	svcs.InstallRequired = required
-	mcpServer := buildMCPServer(cfg.MCP, svcs, testLogger())
-	mcpResource, mcpDocs, err := buildMCPResource(cfg, mcpServer, testLogger())
+	mcpServer := buildMCPServer(cfg.MCP, svcs, log)
+	mcpResource, mcpDocs, err := buildMCPResource(cfg, mcpServer, log)
 	require.NoError(t, err)
 
 	h := buildHTTPHandler(httpSurfaces{
-		api:             buildAPIHandler(svcs, nil, cfg.API, "", testLogger()),
-		mcp:             buildMCPHandler(mcpServer, svcs, mcpResource, testLogger()),
+		api:             buildAPIHandler(svcs, nil, cfg.API, "", log),
+		mcp:             buildMCPHandler(mcpServer, svcs, mcpResource, log),
 		mcpDocs:         mcpDocs,
 		routes:          buildRoutes(cfg, svcs, nil, nil),
 		session:         buildSessionMiddleware(svcs, nil),
@@ -110,7 +116,7 @@ func startAPIFixture(t *testing.T, idp *oidcrptest.IDP) *apiFixture {
 	require.NoError(t, err)
 	sys, err := svcs.Orgs.System(t.Context())
 	require.NoError(t, err)
-	return &apiFixture{db: sqlDB, pool: svc, svcs: svcs, url: ts.URL + "/api", mcpURL: ts.URL + "/mcp", owner: owner, orgID: sys.PublicID, sysID: sys.ID}
+	return &apiFixture{db: sqlDB, pool: svc, svcs: svcs, url: ts.URL + "/api", mcpURL: ts.URL + "/mcp", owner: owner, orgID: sys.PublicID, sysID: sys.ID, logs: logs}
 }
 
 func (f *apiFixture) mint(t *testing.T, kind apikey.Kind, scopes ...string) string {
@@ -484,4 +490,21 @@ func TestAPI_KeyListSurvivesADeletedResource(t *testing.T) {
 	require.NoError(t, err, "a deleted resource must not break the org's key list")
 	require.Len(t, resp.Msg.GetKeys(), 1)
 	assert.Empty(t, resp.Msg.GetKeys()[0].GetResourceIds())
+}
+
+type safeLog struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (l *safeLog) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.Write(p)
+}
+
+func (l *safeLog) String() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.String()
 }

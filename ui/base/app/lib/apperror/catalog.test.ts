@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import enUS from '../../../i18n/locales/en-US.json';
 import idID from '../../../i18n/locales/id-ID.json';
-import { expectSameKeysAndParams, paramsOf } from '../../../test/locales';
+import { expectSameKeysAndParams, htmlKeys, paramsOf } from '../../../test/locales';
 
 const locales: Record<string, Record<string, string>> = { 'en-US': enUS, 'id-ID': idID };
 
@@ -29,6 +29,10 @@ describe.each(Object.entries(locales))('%s', (_, messages) => {
     for (const message of Object.values(messages)) {
       paramsOf(message);
     }
+  });
+
+  it('holds no HTML, which the production build refuses', () => {
+    expect(htmlKeys(messages)).toEqual([]);
   });
 });
 

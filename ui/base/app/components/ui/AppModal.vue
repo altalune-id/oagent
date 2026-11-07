@@ -45,7 +45,7 @@ onMounted(sync);
       <div class="py-4">
         <slot />
       </div>
-      <div class="modal-action" :class="{ 'sticky bottom-0 -mb-6 bg-base-100 pt-2 pb-6': stickyFooter }">
+      <div class="modal-action flex-wrap" :class="{ 'sticky bottom-0 -mb-6 bg-base-100 pt-2 pb-6': stickyFooter }">
         <slot name="footer" />
       </div>
     </div>

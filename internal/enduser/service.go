@@ -121,18 +121,14 @@ func (s *Service) upsert(ctx context.Context, orgID, projectID uuid.UUID, ids []
 		}
 		conflict = conflict || o != owner
 	}
-	if conflict {
-		kinds := make([]string, 0, len(ids))
-		for _, id := range ids {
-			if _, ok := owners[id]; ok {
-				kinds = append(kinds, string(id.Kind))
-			}
-		}
-		s.log.WarnContext(ctx, "enduser: identities point at different end users; using the first", "kinds", kinds)
-	}
 	e, err := s.endUser(ctx, orgID, projectID, owner)
 	if err != nil {
 		return nil, err
+	}
+	if conflict {
+		if err := s.logConflict(ctx, ids, owners, e); err != nil {
+			return nil, err
+		}
 	}
 	for _, id := range ids {
 		if _, ok := owners[id]; ok {
@@ -149,6 +145,30 @@ func (s *Service) upsert(ctx context.Context, orgID, projectID uuid.UUID, ids []
 	return e, nil
 }
 
+// SECURITY: the conflict names identity kinds and end user public ids only, never an identity value.
+func (s *Service) logConflict(ctx context.Context, ids []Identity, owners map[Identity]uuid.UUID, kept *EndUser) error {
+	kinds := make([]string, 0, len(ids))
+	others := []string{}
+	for _, id := range ids {
+		o, ok := owners[id]
+		if !ok {
+			continue
+		}
+		kinds = append(kinds, string(id.Kind))
+		if o == kept.ID {
+			continue
+		}
+		other, err := s.store.ByID(ctx, o)
+		if err != nil {
+			return err
+		}
+		others = append(others, other.PublicID)
+	}
+	s.log.WarnContext(ctx, "enduser: identities point at different end users; using the first",
+		"kinds", kinds, "end_user", kept.PublicID, "other_end_users", others)
+	return nil
+}
+
 func (s *Service) endUser(ctx context.Context, orgID, projectID, owner uuid.UUID) (*EndUser, error) {
 	if owner != uuid.Nil {
 		return s.store.ByID(ctx, owner)
@@ -158,6 +178,14 @@ func (s *Service) endUser(ctx context.Context, orgID, projectID, owner uuid.UUID
 		return nil, err
 	}
 	return e, nil
+}
+
+// SetDisplayName replaces an end user's display name; the caller cleans it first.
+func (s *Service) SetDisplayName(ctx context.Context, id uuid.UUID, name string) error {
+	if err := s.store.SetDisplayName(ctx, id, name); err != nil {
+		return s.errOrReport(ctx, "enduser: set display name", err)
+	}
+	return nil
 }
 
 func unique(ids []Identity) []Identity {
@@ -179,36 +207,72 @@ func (s *Service) errOrReport(ctx context.Context, message string, err error) er
 	return s.unexpected(ctx, message, err)
 }
 
-// Label names an end user by its first identity's kind and a masked tail; an end user that is gone has no label.
-func (s *Service) Label(ctx context.Context, id uuid.UUID) (string, error) {
-	ids, err := s.store.IdentitiesOf(ctx, id)
+// Name names an end user by its display name and first identity's masked hint; an end user that is gone has the zero Name.
+func (s *Service) Name(ctx context.Context, id uuid.UUID) (Name, error) {
+	e, err := s.store.ByID(ctx, id)
+	if IsNotFoundError(err) {
+		return Name{}, nil
+	}
 	if err != nil {
-		return "", s.errOrReport(ctx, "enduser: label", err)
+		return Name{}, s.errOrReport(ctx, "enduser: name", err)
 	}
-	if len(ids) == 0 {
-		return "", nil
+	names, err := s.Names(ctx, []*EndUser{e})
+	return names[id], err
+}
+
+// Names names each end user by its display name and first identity's masked hint.
+func (s *Service) Names(ctx context.Context, users []*EndUser) (map[uuid.UUID]Name, error) {
+	ids := make([]uuid.UUID, len(users))
+	for i, e := range users {
+		ids[i] = e.ID
 	}
-	return s.label(ctx, ids[0])
+	all, err := s.store.IdentitiesOfMany(ctx, ids)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "enduser: names", err)
+	}
+	out := make(map[uuid.UUID]Name, len(users))
+	for _, e := range users {
+		n := NameOf(e.DisplayName, all[e.ID])
+		if len(all[e.ID]) > 0 {
+			if key, ok := s.keyActor(all[e.ID][0]); ok {
+				n.Kind, n.Hint = KindAPIKey, ""
+				if s.hints != nil {
+					if n.Hint, err = s.hints.KeyHint(ctx, key); err != nil {
+						return nil, s.errOrReport(ctx, "enduser: key hint", err)
+					}
+				}
+			}
+		}
+		out[e.ID] = n
+	}
+	return out, nil
+}
+
+// Resolve finds an end user by public id with no tenant bound; the caller checks reach before reading it.
+func (s *Service) Resolve(ctx context.Context, publicID string) (Ref, error) {
+	r, err := s.store.Resolve(ctx, publicID)
+	if err != nil {
+		return Ref{}, s.errOrReport(ctx, "enduser: resolve", err)
+	}
+	return r, nil
+}
+
+// List lists a project's end users newest first; query matches part of a display name or a whole identity value.
+func (s *Service) List(ctx context.Context, projectID uuid.UUID, query string, after Cursor, limit int) ([]*EndUser, error) {
+	out, err := s.store.List(ctx, projectID, strings.TrimSpace(query), after, limit)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "enduser: list", err)
+	}
+	return out, nil
 }
 
 // SECURITY: a key's end user shows the key's public hint, never its id.
-func (s *Service) label(ctx context.Context, id Identity) (string, error) {
+func (s *Service) keyActor(id Identity) (uuid.UUID, bool) {
 	raw, isKey := strings.CutPrefix(id.Value, keyActorPrefix)
-	if s.hints == nil || id.Kind != KindAPIUser || !isKey {
-		return Label(id), nil
+	if id.Kind != KindAPIUser || !isKey {
+		return uuid.Nil, false
 	}
-	keyID, ok := parseKeyID(raw)
-	if !ok {
-		return Label(id), nil
-	}
-	hint, err := s.hints.KeyHint(ctx, keyID)
-	if err != nil {
-		return "", s.errOrReport(ctx, "enduser: key hint", err)
-	}
-	if hint == "" {
-		return keyLabel, nil
-	}
-	return keyLabel + " …" + hint, nil
+	return parseKeyID(raw)
 }
 
 func parseKeyID(raw string) (uuid.UUID, bool) {
@@ -216,7 +280,4 @@ func parseKeyID(raw string) (uuid.UUID, bool) {
 	return id, err == nil
 }
 
-const (
-	keyActorPrefix = "key:"
-	keyLabel       = "api_key"
-)
+const keyActorPrefix = "key:"

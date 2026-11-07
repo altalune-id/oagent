@@ -66,7 +66,11 @@ type Run struct {
 	// IdempotencyKey is the caller's key for the request that started the run; empty means none.
 	IdempotencyKey string
 	// ErrorCode is the apperror code of a failed run; empty otherwise.
-	ErrorCode            string
+	ErrorCode string
+	// Group marks a run of a group thread: no single person, so no memories reach it.
+	Group bool
+	// ReplyState is a channel run's reply: ReplyDue, ReplySent, ReplyFailed or ReplyNone; empty for an API or unsettled run.
+	ReplyState           string
 	StartedAt, UpdatedAt time.Time
 	EndedAt              *time.Time
 }

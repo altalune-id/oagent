@@ -4,6 +4,7 @@ import { flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { fakeChannelClient } from '~~/test/fixtures/channels';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { mountPage } from '#test/mount-page';
 import { setClient, setRoute } from '#test/nuxt-globals';
@@ -12,8 +13,6 @@ import RunsPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/runs/ind
 import ThreadPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/threads/[thread].vue';
 import ThreadsPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/threads/index.vue';
 import ApprovalsPage from '~/pages/o/[org]/projects/[project]/approvals.vue';
-import EndUserPage from '~/pages/o/[org]/projects/[project]/end-users/[endUser].vue';
-import EndUsersPage from '~/pages/o/[org]/projects/[project]/end-users/index.vue';
 import WebSearchPage from '~/pages/o/[org]/projects/[project]/settings/web-search.vue';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
@@ -28,7 +27,7 @@ vi.mock('~/preview/samples', async (original) => {
     }
     return (real[name] as (...a: unknown[]) => unknown)(...args);
   };
-  return { ...real, ...Object.fromEntries(['sampleApprovals', 'sampleThreads', 'sampleEndUsers', 'sampleWebSearch', 'sampleChannelSettings'].map(n => [n, wrap(n)])) };
+  return { ...real, ...Object.fromEntries(['sampleApprovals', 'sampleThreads', 'sampleWebSearch'].map(n => [n, wrap(n)])) };
 });
 
 const orgId = 'B6rTn1YkM8wQz3XpL5vGd';
@@ -49,10 +48,7 @@ const cases = [
   ['conversations', 'sampleThreads', '/agents/yasaku-keuangan/threads', agent, ThreadsPage, 'error.load_threads'],
   ['one conversation', 'sampleThreads', '/agents/yasaku-keuangan/threads/thr_grp3Kd9Q', { ...agent, thread: 'thr_grp3Kd9Q' }, ThreadPage, 'error.load_threads'],
   ['runs', 'sampleThreads', '/agents/yasaku-keuangan/runs', agent, RunsPage, 'error.load_threads'],
-  ['end users', 'sampleEndUsers', '/end-users', {}, EndUsersPage, 'error.load_end_users'],
-  ['one end user', 'sampleEndUsers', '/end-users/eu_sari2', { endUser: 'eu_sari2' }, EndUserPage, 'error.load_end_users'],
   ['web search', 'sampleWebSearch', '/settings/web-search', {}, WebSearchPage, 'error.load_web_search'],
-  ['channels', 'sampleChannelSettings', '/agents/yasaku-keuangan/channels', agent, ChannelsPage, 'error.load_channels'],
 ] as const;
 
 beforeEach(() => {
@@ -69,6 +65,18 @@ describe('load errors', () => {
     await flushPromises();
     expect(w.get('[role="alert"]').text()).toContain(key);
     failing.clear();
+    await w.findAll('button').find(b => b.text() === 'common.retry')!.trigger('click');
+    await flushPromises();
+    expect(w.find('[role="alert"]').exists()).toBe(false);
+  });
+
+  it('shows a retryable error when channels fail to load', async () => {
+    seed('/agents/yasaku-keuangan/channels', agent);
+    const { client } = fakeChannelClient();
+    client.listConnections.mockRejectedValueOnce(new Error('boom'));
+    const w = await mountPage(ChannelsPage);
+    await flushPromises();
+    expect(w.get('[role="alert"]').text()).toContain('error.load_channels');
     await w.findAll('button').find(b => b.text() === 'common.retry')!.trigger('click');
     await flushPromises();
     expect(w.find('[role="alert"]').exists()).toBe(false);

@@ -77,3 +77,8 @@ func TestMCPServerOptions_HTTPOnlyOutsideProduction(t *testing.T) {
 		assert.Equal(t, mcpserver.URLHTTPSRequired, e.Reason, "production refuses an http:// server URL")
 	}
 }
+
+func TestChannelHooksURL_EmptyWithoutAPublicBaseURL(t *testing.T) {
+	assert.Empty(t, channelHooksURL(config.HTTPConfig{Addr: ":8080"}), "no localhost URL is handed to OpenWA")
+	assert.Equal(t, "https://oagent.example.com/base/hooks/openwa", channelHooksURL(config.HTTPConfig{BaseURL: "https://oagent.example.com/", BasePath: "/base"}))
+}

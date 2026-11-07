@@ -1,8 +1,13 @@
 import type { JsonObject, JsonValue } from '@bufbuild/protobuf';
 import type { ThreadMessage as MessagePB, Run as RunPB, Thread as ThreadPB } from '#gen/thread/v1/thread_pb';
-import type { RunStatus, RunSummary, ThreadDetail, ThreadKind, TranscriptItem } from '~/stores/threads';
+import type { PersonLabelParts } from '~/components/enduser/label';
+import type { RunStatus, RunSummary, SkipReason, ThreadDetail, ThreadKind, TranscriptItem } from '~/stores/threads';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
+import { IdentityKind } from '#gen/enduser/v1/enduser_pb';
 import { RunStatus as RunStatusPB } from '#gen/thread/v1/thread_pb';
+import { personLabel } from '~/components/enduser/label';
+
+type Translate = (key: string, params?: Record<string, unknown>) => string;
 
 const statuses: Record<RunStatusPB, RunStatus | undefined> = {
   [RunStatusPB.UNSPECIFIED]: undefined,
@@ -18,11 +23,29 @@ const statuses: Record<RunStatusPB, RunStatus | undefined> = {
 
 const kinds: Record<string, ThreadKind> = { dm: 'whatsapp_dm', group: 'whatsapp_group', api: 'api', try: 'try' };
 
+// skipReason maps why no turn took a channel message; a reason this console doesn't know yet still shows as skipped.
+export function skipReason(reason: string): SkipReason | undefined {
+  return !reason ? undefined : reason === 'stale' || reason === 'sender_rate' ? reason : 'other';
+}
+
+// threadKind maps a wire thread kind; an unknown one counts as an API thread.
+export function threadKind(kind: string): ThreadKind {
+  return kinds[kind] ?? 'api';
+}
+
 const phoneLike = /\+?\d[\d\s().-]{5,}\d/g;
 
 // maskedLabel never lets a phone number through: any long digit run keeps only its last four digits.
 export function maskedLabel(label: string): string {
   return label.replace(phoneLike, digits => `…${digits.replace(/\D/g, '').slice(-4)}`);
+}
+
+// wireLabel renders a person from the structured label fields in the viewer's locale, falling back to the server's masked label when the fields are empty.
+export function wireLabel(parts: PersonLabelParts, fallback: string, t: Translate): string {
+  if (!parts.displayName.trim() && parts.identityKind === IdentityKind.UNSPECIFIED && !parts.identityHint) {
+    return maskedLabel(fallback);
+  }
+  return maskedLabel(personLabel(parts, t));
 }
 
 // runStatus maps the wire status; an unspecified one means no run is open.
@@ -31,13 +54,13 @@ export function runStatus(s: RunStatusPB): RunStatus | undefined {
 }
 
 // toThread maps a ThreadService thread onto the console's thread shape; the transcript arrives later through ListThreadMessages.
-export function toThread(th: ThreadPB): ThreadDetail {
+export function toThread(th: ThreadPB, t: Translate): ThreadDetail {
   const at = th.lastActivityAt ? timestampDate(th.lastActivityAt) : new Date(0);
-  const label = maskedLabel(th.endUserLabel);
+  const label = wireLabel({ displayName: th.endUserDisplayName, identityKind: th.endUserIdentityKind, identityHint: th.endUserIdentityHint }, th.endUserLabel, t);
   return {
     id: th.id,
-    title: label,
-    kind: kinds[th.kind] ?? 'api',
+    title: label || t(`threads.kind_${threadKind(th.kind)}`),
+    kind: threadKind(th.kind),
     people: label ? [{ name: label }] : [],
     lastSpeaker: '',
     lastText: '',
@@ -107,7 +130,7 @@ function calls(body: JsonObject): WireCall[] {
 }
 
 // toItems builds the transcript oldest first: tool results fold under their call, and each run's card follows its last message.
-export function toItems(messages: MessagePB[], runs: RunSummary[]): TranscriptItem[] {
+export function toItems(messages: MessagePB[], runs: RunSummary[], t: Translate): TranscriptItem[] {
   const sorted = [...messages].sort((a, b) => Number(a.seq - b.seq));
   const results = new Map(sorted.filter(m => m.role === 'tool').map(m => [m.toolCallId, text(m.message?.content)]));
   const lastOfRun = new Map(sorted.filter(m => m.runId).map(m => [m.runId, m.seq]));
@@ -118,7 +141,8 @@ export function toItems(messages: MessagePB[], runs: RunSummary[]): TranscriptIt
     const body = m.message ?? {};
     const at = m.createdAt ? timestampDate(m.createdAt) : new Date(0);
     if (m.role === 'user') {
-      out.push({ id: id++, kind: 'user', text: text(body.content), speaker: maskedLabel(m.speakerLabel) || undefined, at });
+      const skipped = skipReason(m.skipReason);
+      out.push({ id: id++, kind: 'user', text: text(body.content), speaker: wireLabel({ displayName: m.speakerDisplayName, identityKind: m.speakerIdentityKind, identityHint: m.speakerIdentityHint }, m.speakerLabel, t) || undefined, ...(skipped ? { skipped } : {}), at });
     } else if (m.role === 'assistant') {
       const said = text(body.content);
       if (said) {

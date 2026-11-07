@@ -26,7 +26,7 @@ function reset(key: ReplyKey) {
 <template>
   <form novalidate class="flex flex-col gap-3" @submit.prevent="emit('save')">
     <fieldset class="fieldset gap-3" :disabled="readOnly">
-      <legend class="fieldset-legend text-ui">
+      <legend class="sr-only">
         {{ labels.legend }}
       </legend>
       <p class="text-xs text-base-content/70">

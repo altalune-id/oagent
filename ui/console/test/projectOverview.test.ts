@@ -3,14 +3,13 @@ import { flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { connectionPB, fakeChannelClient } from '~~/test/fixtures/channels';
 import { fakeRuntimeClients } from '~~/test/fixtures/runtime';
 import { mountPage } from '#test/mount-page';
 import { setClient, setRoute } from '#test/nuxt-globals';
 import Overview from '~/pages/o/[org]/projects/[project]/index.vue';
-import { useChannelsStore } from '~/stores/channels';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
-import { useTryItStore } from '~/stores/tryIt';
 
 const orgId = 'B6rTn1YkM8wQz3XpL5vGd';
 const projectId = 'x6MH9WPWjktMwCBKHy4pF';
@@ -58,13 +57,29 @@ describe('project overview', () => {
     expect(steps[4]!.text()).toContain('setup.not_started');
   });
 
-  it('marks Try it and the channel done from what happened in this session', async () => {
+  it('marks Try it done once the agent has a conversation, and the channel once it is connected', async () => {
     setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ id: 'A1', projectId, slug: 'yasaku-keuangan', name: 'Yasaku Keuangan', publishedVersion: 4, draft: { providerId: 'Pv6tQm2ZxR8wKp3VbNc4K', model: 'openai/gpt-4.1-mini' } }] }) });
-    useTryItStore().markTried('A1');
-    useChannelsStore().save('A1', { id: 'chn_1', provider: 'openwa', status: 'connected', baseUrl: 'https://openwa.example.id', deviceId: 'dev_1', webhookUrl: '', rejected24h: 0, rejectedLastHour: 0 });
+    const listThreads = vi.fn().mockResolvedValue({ threads: [{ id: 'Th7sK2pQ9mXr4StV8nBcW' }], nextPageToken: '' });
+    setClient('$threadClient', { listThreads });
+    fakeChannelClient([connectionPB({ projectId, agentId: 'A1' })]);
     const w = await mountPage(Overview);
     const steps = w.findAll('[data-testid="setup-checklist"] li');
     expect(steps.map(s => s.text().includes('setup.done'))).toEqual([true, true, true, true, true, true]);
+    expect(listThreads).toHaveBeenCalledWith({ projectId, agentId: 'A1', pageSize: 1 });
+    expect(w.find('[data-testid="setup-checklist"] .badge').exists()).toBe(false);
+  });
+
+  it('leaves Try it open while the agent has no conversation, or when the check fails', async () => {
+    setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ id: 'A1', projectId, slug: 'yasaku-keuangan', name: 'Yasaku Keuangan', publishedVersion: 4, draft: { providerId: 'Pv6tQm2ZxR8wKp3VbNc4K', model: 'openai/gpt-4.1-mini' } }] }) });
+    setClient('$threadClient', { listThreads: vi.fn().mockResolvedValueOnce({ threads: [], nextPageToken: '' }) });
+    const w = await mountPage(Overview);
+    await flushPromises();
+    expect(w.findAll('[data-testid="setup-checklist"] li')[3]!.text()).not.toContain('setup.done');
+    setActivePinia(createPinia());
+    setClient('$threadClient', { listThreads: vi.fn().mockRejectedValue(new Error('offline')) });
+    const { useThreadsStore } = await import('~/stores/threads');
+    await useThreadsStore().checkHasThreads(projectId, 'A1');
+    expect(useThreadsStore().hasThreads).toEqual({ A1: false });
   });
 
   it('leaves the agent unconfigured when its runtime has no provider', async () => {

@@ -1,46 +1,14 @@
 import type { ShownError } from '#base/lib/apperror/message';
 import type { ApprovalRequest } from '~/stores/approvals';
+import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
-import { forgetInThreads } from '~/components/enduser/forget';
+import { errorCode } from '#base/lib/apperror/message';
 import { toItems, toRunSummary, toThread } from '~/components/thread/fromWire';
-import { sampleRun, sampleRuns, sampleThreads } from '~/preview/samples';
+import { sampleRuns, sampleThreads } from '~/preview/samples';
 import { useAgentsStore } from './agents';
-import { useEndUsersStore } from './endUsers';
 
 export const pollIntervalMs = 2_000;
 const pageSize = 200;
-
-export type RunEventType = 'input' | 'model' | 'tool' | 'approval' | 'error' | 'output';
-
-export interface RunEvent {
-  id: string;
-  type: RunEventType;
-  name: string;
-  labelKey?: string;
-  at: number;
-  took: number;
-  costCents?: number;
-  tokens?: number;
-  summary: string;
-  input?: string;
-  output?: string;
-}
-
-export interface RunDetail {
-  id: string;
-  agentName: string;
-  version: number;
-  model: string;
-  price: { input: number, output: number };
-  startedBy: string;
-  threadId: string;
-  startedAt: Date;
-  maxSteps: number;
-  approval: ApprovalRequest;
-  events: RunEvent[];
-  afterApprove: RunEvent[];
-  afterReject: RunEvent[];
-}
 
 export type RunStatus = 'running' | 'awaiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted' | 'limit_reached' | 'expired';
 
@@ -60,6 +28,15 @@ export interface RunSummary {
   estimated?: boolean;
 }
 
+export interface RunView {
+  run: RunSummary;
+  attempt: number;
+  agentVersion: number;
+  endedAt?: Date;
+  thread?: ThreadDetail;
+  items: TranscriptItem[];
+}
+
 export type ToolState = 'running' | 'done' | 'preview' | 'failed' | 'awaiting' | 'rejected';
 
 export interface Photo {
@@ -67,8 +44,10 @@ export interface Photo {
   url: string;
 }
 
+export type SkipReason = 'stale' | 'sender_rate' | 'other';
+
 export type TranscriptItem
-  = | { id: number, kind: 'user', text: string, speaker?: string, speakerId?: string, photo?: Photo, photoPlaceholder?: boolean, deleted?: boolean, at: Date }
+  = | { id: number, kind: 'user', text: string, speaker?: string, speakerId?: string, photo?: Photo, photoPlaceholder?: boolean, deleted?: boolean, skipped?: SkipReason, at: Date }
     | { id: number, kind: 'agent', text: string, streaming: boolean, failed?: boolean, at: Date }
     | { id: number, kind: 'tool', name: string, args: Record<string, unknown>, result?: unknown, state: ToolState }
     | { id: number, kind: 'approval', approval: ApprovalRequest }
@@ -92,6 +71,7 @@ export interface ThreadSummary {
   runs: number;
   tokens: number;
   costCents: number;
+  unpricedRuns?: number;
 }
 
 export interface ThreadDetail extends ThreadSummary {
@@ -106,28 +86,32 @@ export const useThreadsStore = defineStore('threads', () => {
   const error = ref<ShownError | null>(null);
   const cursor = ref('');
   const errorMessage = useErrorMessage();
-  const endUsers = useEndUsersStore();
   const agents = useAgentsStore();
-  const { $threadClient: client } = useNuxtApp();
+  const { $threadClient: client, $i18n } = useNuxtApp();
+  // shortcut: labels render in the locale active when a thread loads; a locale switch shows them on the next load.
+  const t = (key: string, params?: Record<string, unknown>) => $i18n.t(key, params ?? {});
   let loadedFor = '';
   let sampled = false;
   let timer: ReturnType<typeof setInterval> | undefined;
   const cancelAsked = ref<string[]>([]);
+  const runView = ref<RunView | null>(null);
+  const hasThreads = ref<Record<string, boolean>>({});
+  const runsLoading = ref(false);
+  const runsError = ref<ShownError | null>(null);
+  const runLoading = ref(false);
+  const runError = ref<ShownError | null>(null);
   const lastSeq = new Map<string, bigint>();
   const wireMessages = new Map<string, Awaited<ReturnType<typeof client.listThreadMessages>>['messages']>();
 
-  function forget() {
-    for (const p of endUsers.forgotten) {
-      ({ threads: threads.value, runs: runs.value } = forgetInThreads(threads.value, runs.value, p));
-    }
+  function projectOf(agentId: string) {
+    return agents.items.find(a => a.id === agentId)?.projectId ?? '';
   }
-  watch(() => endUsers.forgotten, forget);
 
   async function page(agentId: string, more: boolean) {
-    const projectId = agents.items.find(a => a.id === agentId)?.projectId ?? '';
+    const projectId = projectOf(agentId);
     const res = await client.listThreads({ projectId, agentId, pageToken: more ? cursor.value : '' });
     cursor.value = res.nextPageToken;
-    return res.threads.map(toThread);
+    return res.threads.map(th => toThread(th, t));
   }
 
   async function load(agentId: string, sample: boolean) {
@@ -140,7 +124,6 @@ export const useThreadsStore = defineStore('threads', () => {
         threads.value = sampleThreads();
         runs.value = sampleRuns();
         cursor.value = '';
-        forget();
       } else {
         threads.value = await page(agentId, false);
         runs.value = [];
@@ -188,7 +171,7 @@ export const useThreadsStore = defineStore('threads', () => {
     }
     const sorted = [...threadRuns].sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
     const open = sorted.find(r => r.status === 'running' || r.status === 'awaiting_approval');
-    put({ ...thread, items: toItems(wireMessages.get(threadId) ?? [], sorted), status: open?.status ?? sorted.at(-1)?.status, runs: sorted.length, tokens: sorted.reduce((n, r) => n + r.tokens, 0), costCents: sorted.reduce((n, r) => n + r.costCents, 0) });
+    put({ ...thread, items: toItems(wireMessages.get(threadId) ?? [], sorted, t), status: open?.status ?? sorted.at(-1)?.status, runs: sorted.length, tokens: sorted.reduce((n, r) => n + r.tokens, 0), costCents: sorted.reduce((n, r) => n + r.costCents, 0), unpricedRuns: sorted.filter(r => r.unpriced).length });
   }
 
   async function messagesAfter(threadId: string) {
@@ -248,7 +231,7 @@ export const useThreadsStore = defineStore('threads', () => {
       if (!got.thread) {
         return;
       }
-      put({ ...toThread(got.thread), runs: Number(got.thread.runCount) });
+      put({ ...toThread(got.thread, t), runs: Number(got.thread.runCount) });
       wireMessages.delete(threadId);
       lastSeq.delete(threadId);
       const [listed] = await Promise.all([client.listRuns({ threadId, pageSize }), messagesAfter(threadId)]);
@@ -302,9 +285,63 @@ export const useThreadsStore = defineStore('threads', () => {
     }
   }
 
-  function runDetail(): RunDetail {
-    return sampleRun();
+  // checkHasThreads records whether an agent has any conversation yet, for the setup steps; a failure counts as none.
+  async function checkHasThreads(projectId: string, agentId: string) {
+    try {
+      const res = await client.listThreads({ projectId, agentId, pageSize: 1 });
+      hasThreads.value = { ...hasThreads.value, [agentId]: res.threads.length > 0 };
+    } catch {
+      hasThreads.value = { ...hasThreads.value, [agentId]: false };
+    }
   }
 
-  return { threads, runs, loading, error, cursor, load, loadMore, ensureLoaded, byId, open, cancelRun, cancelling: (runId: string) => cancelAsked.value.includes(runId), stopPolling, polling: () => !!timer, runDetail };
+  // loadAgentRuns lists an agent's runs, newest first, for the runs page; the sample agent keeps its sample runs.
+  async function loadAgentRuns(agentId: string, sample: boolean) {
+    await ensureLoaded(agentId, sample);
+    if (sampled) {
+      return;
+    }
+    runsLoading.value = true;
+    runsError.value = null;
+    try {
+      // shortcut: the newest page only (200, the API maximum); add paging when an agent's list outgrows it.
+      const listed = await client.listRuns({ projectId: projectOf(agentId), agentId, pageSize });
+      runs.value = listed.runs.map(r => toRunSummary(r, byId(r.threadId)?.title ?? ''));
+    } catch (e) {
+      runsError.value = errorMessage(e, 'error.load_runs');
+    } finally {
+      runsLoading.value = false;
+    }
+  }
+
+  // loadRun reads one run, its thread and the messages that run took or wrote.
+  async function loadRun(runId: string) {
+    runLoading.value = true;
+    runError.value = null;
+    try {
+      const got = await client.getRun({ runId });
+      if (!got.run) {
+        runView.value = null;
+        return;
+      }
+      const threadId = got.run.threadId;
+      const [th] = await Promise.all([client.getThread({ threadId }), (wireMessages.delete(threadId), lastSeq.delete(threadId), messagesAfter(threadId))]);
+      const thread = th.thread ? toThread(th.thread, t) : undefined;
+      runView.value = {
+        run: toRunSummary(got.run, thread?.title ?? ''),
+        attempt: got.run.attempt,
+        agentVersion: got.run.agentVersion,
+        endedAt: got.run.endedAt ? timestampDate(got.run.endedAt) : undefined,
+        thread,
+        items: toItems((wireMessages.get(threadId) ?? []).filter(m => m.runId === runId), [], t),
+      };
+    } catch (e) {
+      runView.value = null;
+      runError.value = errorCode(e) === 'RUN001' ? null : errorMessage(e, 'error.load_run');
+    } finally {
+      runLoading.value = false;
+    }
+  }
+
+  return { threads, runs, loading, error, cursor, load, loadMore, ensureLoaded, byId, open, cancelRun, cancelling: (runId: string) => cancelAsked.value.includes(runId), stopPolling, polling: () => !!timer, hasThreads, checkHasThreads, runsLoading, runsError, loadAgentRuns, runView, runLoading, runError, loadRun };
 });

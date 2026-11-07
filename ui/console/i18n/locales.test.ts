@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { expectSameKeysAndParams, paramsOf } from '#test/locales';
+import { expectSameKeysAndParams, htmlKeys, paramsOf } from '#test/locales';
 import baseEnUS from '../../base/i18n/locales/en-US.json';
 import enUS from './locales/en-US.json';
 import idID from './locales/id-ID.json';
@@ -30,6 +30,11 @@ describe('console locales', () => {
     for (const messages of Object.values(locales)) {
       Object.values(messages).forEach(paramsOf);
     }
+  });
+
+  it('hold no HTML, which the production build refuses', () => {
+    const html = Object.entries(locales).flatMap(([name, messages]) => htmlKeys(messages).map(k => `${name}: ${k}`));
+    expect(html).toEqual([]);
   });
 
   it('leave the shared keys to the base layer', () => {

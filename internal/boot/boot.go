@@ -12,6 +12,7 @@ import (
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/health"
 	"altalune.id/oagent/internal/kernel"
+	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/scheduler"
 	"altalune.id/oagent/worker"
 )
@@ -155,6 +156,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 			basePath:   cfg.HTTP.BasePath,
 			api:        apiHandler,
 			dataPlane:  buildDataPlane(cfg, svcs, lims, k.Reporter.Unexpected, log),
+			ingest:     buildIngest(cfg, svcs, db.NewTransactor(k.Pool), lims, log),
 			console:    consoleHandler,
 			mcp:        buildMCPHandler(mcpServer, svcs, mcpResource, log),
 			mcpDocs:    mcpDocs,

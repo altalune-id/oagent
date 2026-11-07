@@ -1,0 +1,37 @@
+{
+  "device": {
+    "id": "dev_V1StGXR8Z5jdHi6B",
+    "name": "sales-01",
+    "phone": "628123456789"
+  },
+  "chat": {
+    "id": "cht_Dm4Kp7Wx2Rt9Ya1c",
+    "jid": "628111222333@s.whatsapp.net",
+    "kind": "dm",
+    "name": "Budi"
+  },
+  "sender": {
+    "jid": "628111222333@s.whatsapp.net",
+    "lid": "12345678901234@lid",
+    "phone": "628111222333",
+    "push_name": "Budi",
+    "from_me": false
+  },
+  "message": {
+    "id": "msg_Tx1Bq8Lm3Np6Rs9d",
+    "wa_id": "3A5F0C1D2E3F4A5B6C01",
+    "type": "text",
+    "body": "Halo, stok kopi susu masih ada?",
+    "caption": "",
+    "timestamp": "2026-09-28T10:15:00Z",
+    "quoted": null,
+    "mentions": [],
+    "media": null,
+    "location": null
+  },
+  "matched": {
+    "reasons": [
+      "dm"
+    ]
+  }
+}

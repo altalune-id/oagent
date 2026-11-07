@@ -11,7 +11,11 @@ describe('topBar', () => {
     const w = mount(TopBar, { props: { crumbs }, slots: { controls: '<select aria-label="Theme family"></select>' } });
     expect(w.get('.navbar').classes()).toEqual(['navbar', 'min-h-12', 'gap-2', 'border-b', 'border-base-300', 'bg-base-100', 'px-3', 'md:px-4']);
     const buttons = w.findAll('button');
-    expect(buttons.map(b => b.attributes('aria-label'))).toEqual(['Toggle navigation', 'Search and jump, Command K']);
+    expect(buttons.map(b => b.attributes('aria-label'))).toEqual(['Toggle navigation', undefined]);
+    expect(w.element.tagName).toBe('HEADER');
+    expect(buttons[1]!.text()).toContain('Search');
+    expect(buttons[1]!.attributes()).toMatchObject({ 'title': 'Search and jump, Command K', 'aria-keyshortcuts': 'Meta+K Control+K' });
+    expect(buttons[1]!.get('kbd').attributes('aria-hidden')).toBe('true');
     expect(buttons[0]!.classes()).toContain('lg:hidden');
     expect(buttons[0]!.attributes('aria-controls')).toBe('app-sidebar');
     expect(buttons[0]!.attributes('aria-expanded')).toBe('false');

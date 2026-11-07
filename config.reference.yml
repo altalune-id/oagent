@@ -42,6 +42,14 @@ auth:
   # env: OAGENT_AUTH_SESSION_TTL
   sessionTTL: 24h
 
+channel:
+  # env: OAGENT_CHANNEL_ALLOW_PRIVATE_HOSTS
+  allowPrivateHosts: ""
+  # env: OAGENT_CHANNEL_DEFAULT_OPENWA_BASE_URL
+  defaultOpenwaBaseURL: ""
+  # env: OAGENT_CHANNEL_MAX_MESSAGE_AGE
+  maxMessageAge: 30m
+
 cli:
   # env: OAGENT_CLI_SESSION_FILE
   sessionFile: ~/.oagent/session.json
@@ -217,6 +225,15 @@ rateLimit:
     perKeyPerMinute: 600
   # env: OAGENT_RATE_LIMIT_DRIVER
   driver: memory
+  ingest:
+    # env: OAGENT_RATE_LIMIT_INGEST_BURST
+    burst: 30
+    # env: OAGENT_RATE_LIMIT_INGEST_ENABLED
+    enabled: true
+    # env: OAGENT_RATE_LIMIT_INGEST_PER_CONNECTION_PER_MINUTE
+    perConnectionPerMinute: 120
+    # env: OAGENT_RATE_LIMIT_INGEST_PER_IP_PER_MINUTE
+    perIPPerMinute: 600
   # env: OAGENT_RATE_LIMIT_MAX_KEYS
   maxKeys: 100000
 

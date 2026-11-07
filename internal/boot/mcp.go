@@ -13,6 +13,8 @@ import (
 	"altalune.id/oagent/config"
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
 	authv1mcp "altalune.id/oagent/gen/go/auth/v1/authv1mcp"
+	channelv1mcp "altalune.id/oagent/gen/go/channel/v1/channelv1mcp"
+	enduserv1mcp "altalune.id/oagent/gen/go/enduser/v1/enduserv1mcp"
 	invitev1mcp "altalune.id/oagent/gen/go/invite/v1/invitev1mcp"
 	mcpserverv1mcp "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1mcp"
 	memberv1mcp "altalune.id/oagent/gen/go/member/v1/memberv1mcp"
@@ -23,6 +25,8 @@ import (
 	webhookv1mcp "altalune.id/oagent/gen/go/webhook/v1/webhookv1mcp"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/auth"
+	"altalune.id/oagent/internal/channel"
+	"altalune.id/oagent/internal/enduser"
 	"altalune.id/oagent/internal/kernel/tokens"
 	mcpinternal "altalune.id/oagent/internal/mcp"
 	mcpui "altalune.id/oagent/internal/mcp/ui"
@@ -55,7 +59,12 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger, allo
 	modelproviderv1mcp.RegisterModelProviderServiceTools(registry, modelprovider.NewControlPlane(svcs.ModelProviders, refs),
 		permission.For, validate)
 	mcpserverv1mcp.RegisterMcpServerServiceTools(registry, mcpserver.NewControlPlane(svcs.MCPServers, refs), permission.For, validate)
-	threadv1mcp.RegisterThreadServiceTools(registry, run.NewControlPlane(svcs.Runs, refs, svcs.EndUsers), permission.For, validate)
+	channels := channel.NewControlPlane(svcs.Channels, refs, svcs.ChannelOptions)
+	channelv1mcp.RegisterChannelServiceTools(registry, channels, permission.For, validate)
+	people := enduser.NewControlPlane(svcs.EndUsers, refs, endUserActivity{store: svcs.RunStore})
+	enduserv1mcp.RegisterEndUserServiceTools(registry, people, permission.For, validate)
+	threads := run.NewControlPlane(svcs.Runs, refs, runPeople{users: svcs.EndUsers})
+	threadv1mcp.RegisterThreadServiceTools(registry, threads, permission.For, validate)
 	memberv1mcp.RegisterMemberServiceTools(registry, member.NewControlPlane(svcs.Members, refs), permission.For, validate)
 	invitev1mcp.RegisterInviteServiceTools(registry, invite.NewControlPlane(svcs.Invites, refs), permission.For, validate)
 	authv1mcp.RegisterAuthServiceTools(registry, auth.NewControlPlane(svcs.Orgs, svcs.Projects, svcs.Users), permission.For, validate)

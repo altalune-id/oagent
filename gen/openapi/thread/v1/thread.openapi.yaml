@@ -283,6 +283,18 @@ components:
           description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
       additionalProperties: true
       description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+    enduser.v1.IdentityKind:
+      type: string
+      title: IdentityKind
+      enum:
+        - IDENTITY_KIND_UNSPECIFIED
+        - IDENTITY_KIND_API_USER
+        - IDENTITY_KIND_API_KEY
+        - IDENTITY_KIND_WA_PHONE
+        - IDENTITY_KIND_WA_LID
+        - IDENTITY_KIND_WIDGET_ANON
+        - IDENTITY_KIND_WIDGET_SUB
+      description: IdentityKind is where a person's identity comes from; the console names it in its own locale.
     google.protobuf.ListValue:
       type: object
       properties:
@@ -529,10 +541,21 @@ components:
           maximum: 200
           minimum: 0
           format: int32
+        agentId:
+          type: string
+          title: agent_id
+          description: |
+            oagent.public_id = true
+        projectId:
+          type: string
+          title: project_id
+          description: |
+            oagent.public_id = true
       title: ListRunsRequest
-      required:
-        - threadId
       additionalProperties: false
+      description: |
+        ListRunsRequest names a thread, or an agent with its project; a thread_id wins when both are set.
+        thread.list_runs.thread_or_agent
     thread.v1.ListRunsResponse:
       type: object
       properties:
@@ -713,7 +736,7 @@ components:
         endUserLabel:
           type: string
           title: end_user_label
-          description: end_user_label is the identity kind and a masked tail, never a phone number or LID; empty when unknown.
+          description: end_user_label is the display name, else the masked hint ("…90"); never a phone number or LID. Prefer the structured end_user_* fields.
         lastActivityAt:
           title: last_activity_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
@@ -732,6 +755,15 @@ components:
             - string
           title: run_count
           format: int64
+        endUserDisplayName:
+          type: string
+          title: end_user_display_name
+        endUserIdentityKind:
+          title: end_user_identity_kind
+          $ref: '#/components/schemas/enduser.v1.IdentityKind'
+        endUserIdentityHint:
+          type: string
+          title: end_user_identity_hint
       title: Thread
       additionalProperties: false
       description: Thread is one conversation with an agent; open_run_status is unspecified when no run is open, and the counts are set by GetThread only.
@@ -754,7 +786,7 @@ components:
         status:
           type: string
           title: status
-          description: status is pending or consumed.
+          description: status is pending or consumed; a consumed message with a skip_reason was never answered.
         runId:
           type: string
           title: run_id
@@ -767,6 +799,19 @@ components:
         createdAt:
           title: created_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
+        skipReason:
+          type: string
+          title: skip_reason
+          description: skip_reason is stale or sender_rate for a channel message no turn took, empty otherwise.
+        speakerDisplayName:
+          type: string
+          title: speaker_display_name
+        speakerIdentityKind:
+          title: speaker_identity_kind
+          $ref: '#/components/schemas/enduser.v1.IdentityKind'
+        speakerIdentityHint:
+          type: string
+          title: speaker_identity_hint
       title: ThreadMessage
       additionalProperties: false
       description: ThreadMessage is one stored AG-UI message; run_id is empty for a message no run has taken yet.
@@ -806,4 +851,4 @@ components:
 security: []
 tags:
   - name: thread.v1.ThreadService
-    description: ThreadService reads a project's conversations and their runs, and cancels a run. Every id is a public id; an end user shows only as its identity kind and a masked tail.
+    description: ThreadService reads a project's conversations and their runs, and cancels a run. Every id is a public id; an end user shows as a display name and an identity kind with a masked hint, never a phone number or LID.
