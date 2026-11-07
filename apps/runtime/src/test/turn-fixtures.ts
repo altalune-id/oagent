@@ -1,15 +1,15 @@
 import type { Snapshot } from '@strands-agents/sdk';
-import type { TurnRequest } from '../http/contract.ts';
-import type { McpTurn } from '../mcp/clients.ts';
+import type { TurnRequest } from '../contract/index.ts';
+import type { McpTurn } from '../mcp/index.ts';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Agent, FunctionTool, InterventionHandler } from '@strands-agents/sdk';
 
-import { validateRequest } from '../http/contract.ts';
-import { createLogger } from '../log.ts';
+import { validateRequest } from '../contract/index.ts';
+import { captureLogger } from './logger.ts';
 import { ScriptedModel } from './scripted-model.ts';
 
-export const quiet = createLogger(() => {});
+export const quiet = captureLogger();
 
 export function goldenRequest(name: string, over: (r: TurnRequest) => void = () => {}): TurnRequest {
   const path = fileURLToPath(new URL(`../../../../internal/kernel/runtime/testdata/turn/${name}.request.json`, import.meta.url));

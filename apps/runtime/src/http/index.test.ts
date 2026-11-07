@@ -1,29 +1,31 @@
-import type { Server } from 'node:http';
+import type { Buffer } from 'node:buffer';
 import type { AddressInfo } from 'node:net';
-import type { RunTurn } from './server.ts';
+import type { RunTurn } from '../contract/index.ts';
+import type { RuntimeServer } from './index.ts';
+import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { createServer, request as httpRequest } from 'node:http';
+import { connect } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
-import { afterEach, describe, expect, it } from 'vitest';
-import { createLogger } from '../log.ts';
-import { ModelClients } from '../models/clients.ts';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { TurnRefusedError } from '../contract/index.ts';
+import { createModels } from '../models/index.ts';
+import { captureLogger } from '../test/logger.ts';
 import { ScriptedModel } from '../test/scripted-model.ts';
 import { fakeMcp } from '../test/turn-fixtures.ts';
-import { createRunTurn } from '../turn/agui.ts';
-import { TurnRefusedError } from './contract.ts';
-import { createRuntimeServer, loadConfig, MAX_BODY_BYTES, start } from './server.ts';
+import { createRunTurn } from '../turn/index.ts';
+import { createRuntimeServer, listen, MAX_BODY_BYTES } from './index.ts';
 
 const TOKEN = 'a'.repeat(32);
 const goldenBody = readFileSync(fileURLToPath(new URL('../../../../internal/kernel/runtime/testdata/turn/plain_reply.request.json', import.meta.url)), 'utf8');
-const quiet = createLogger(() => {});
-const servers: Server[] = [];
+const quiet = captureLogger();
+const runtimes: RuntimeServer[] = [];
 
 async function serve(runTurn: RunTurn, maxConcurrent = 8): Promise<string> {
-  const server = createRuntimeServer({ token: TOKEN, maxConcurrent, log: quiet, runTurn });
-  servers.push(server);
-  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
-  return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const runtime = createRuntimeServer({ token: TOKEN, maxConcurrent, log: quiet, runTurn });
+  runtimes.push(runtime);
+  return `http://127.0.0.1:${await listen(runtime.server, 0)}`;
 }
 
 function turn(base: string, init: RequestInit = {}): Promise<Response> {
@@ -36,32 +38,15 @@ function turn(base: string, init: RequestInit = {}): Promise<Response> {
 }
 
 afterEach(() => {
-  for (const s of servers.splice(0)) {
-    s.closeAllConnections();
-    s.close();
+  for (const { server } of runtimes.splice(0)) {
+    server.closeAllConnections();
+    server.close();
   }
 });
 
 describe('body cap', () => {
   it('allows 24 MiB, room for three 5 MiB images in base64 plus the rest of the turn', () => {
     expect(MAX_BODY_BYTES).toBe(24 * 1024 * 1024);
-  });
-});
-
-describe('loadConfig', () => {
-  it('needs a token of at least 32 bytes', () => {
-    expect(() => loadConfig({})).toThrow('RUNTIME_TOKEN');
-    expect(() => loadConfig({ RUNTIME_TOKEN: 'short' })).toThrow('RUNTIME_TOKEN');
-  });
-
-  it('reads the defaults and the overrides', () => {
-    expect(loadConfig({ RUNTIME_TOKEN: TOKEN })).toEqual({ token: TOKEN, maxConcurrent: 8, port: 5160 });
-    expect(loadConfig({ RUNTIME_TOKEN: TOKEN, RUNTIME_MAX_CONCURRENT: '2', PORT: '6000' })).toEqual({ token: TOKEN, maxConcurrent: 2, port: 6000 });
-  });
-
-  it('refuses a bad number', () => {
-    expect(() => loadConfig({ RUNTIME_TOKEN: TOKEN, RUNTIME_MAX_CONCURRENT: '0' })).toThrow('RUNTIME_MAX_CONCURRENT');
-    expect(() => loadConfig({ RUNTIME_TOKEN: TOKEN, PORT: 'x' })).toThrow('PORT');
   });
 });
 
@@ -224,7 +209,7 @@ describe('runtime server', () => {
 describe('end to end', () => {
   it('streams one real turn as NDJSON, terminal last', async () => {
     const runTurn = createRunTurn({
-      models: new ModelClients(),
+      models: createModels(),
       log: quiet,
       modelFor: () => new ScriptedModel([{ text: ['Hi, ', 'how can I help?'], usage: { inputTokens: 120, outputTokens: 9 } }]),
       openMcp: fakeMcp([]),
@@ -246,7 +231,7 @@ describe('early headers', () => {
     });
     let mcpDone = false;
     const runTurn = createRunTurn({
-      models: new ModelClients(),
+      models: createModels(),
       log: quiet,
       modelFor: () => new ScriptedModel([{ text: ['ok'] }]),
       openMcp: async () => {
@@ -267,20 +252,63 @@ describe('early headers', () => {
   });
 });
 
-describe('start', () => {
-  it('installs the guard, then listens with the configured runTurn', async () => {
-    const lines: string[] = [];
-    const probe = createServer().listen(0, '127.0.0.1');
-    await new Promise(resolve => probe.once('listening', resolve));
-    const port = (probe.address() as AddressInfo).port;
-    await new Promise(resolve => probe.close(resolve));
-    const server = await start({ RUNTIME_TOKEN: TOKEN, PORT: String(port), RUNTIME_ENV: 'development', RUNTIME_ALLOW_PRIVATE: `127.0.0.1:${port}` }, async (_req, emit) => {
-      emit({ type: 'OAGENT_TERMINAL' });
-    }, createLogger(line => lines.push(line)));
-    servers.push(server);
-    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+describe('drain', () => {
+  it('returns at once when no turn runs, and stops listening', async () => {
+    const base = await serve(async () => {});
+    await runtimes[0]!.drain(60_000);
+    await expect(fetch(`${base}/ping`)).rejects.toThrow();
+  });
+
+  it('lets a running turn finish, and answers 503 to a request on an open connection', async () => {
+    let release: (() => void) | undefined;
+    const base = await serve(async (_req, emit) => {
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await emit({ type: 'OAGENT_TERMINAL' });
+    });
+    const inFlight = turn(base);
+    await vi.waitFor(() => expect(release).toBeDefined());
+    const sock = connect(Number(new URL(base).port), '127.0.0.1');
+    await once(sock, 'connect');
+    sock.write('GET /ping HTTP/1.1\r\nHost: runtime\r\n');
+    await new Promise(resolve => setTimeout(resolve, 20));
+    const drained = runtimes[0]!.drain(5_000);
+    sock.write('\r\n');
+    const [data] = await once(sock, 'data') as [Buffer];
+    expect(data.toString()).toMatch(/^HTTP\/1\.1 503/);
+    sock.destroy();
+    release!();
+    expect(await (await inFlight).text()).toBe('{"type":"OAGENT_TERMINAL"}\n');
+    await drained;
+  });
+
+  it('cuts a turn still running when the grace period ends, with no terminal event', async () => {
+    let aborted = false;
+    const base = await serve(async (_req, emit, signal) => {
+      await emit({ type: 'RUN_STARTED' });
+      await new Promise<void>((resolve) => {
+        signal.addEventListener('abort', () => {
+          aborted = true;
+          resolve();
+        });
+      });
+      await emit({ type: 'OAGENT_TERMINAL' });
+    });
     const res = await turn(base);
-    expect(await res.text()).toBe('{"type":"OAGENT_TERMINAL"}\n');
-    expect(lines.some(l => l.includes('"msg":"listening"'))).toBe(true);
+    await runtimes[0]!.drain(50);
+    const text = await res.text().catch(() => '');
+    expect(text).not.toContain('OAGENT_TERMINAL');
+    await vi.waitFor(() => expect(aborted).toBe(true));
+  });
+});
+
+describe('listen', () => {
+  it('rejects when the port is taken', async () => {
+    const taken = createServer().listen(0);
+    await once(taken, 'listening');
+    const port = (taken.address() as AddressInfo).port;
+    await expect(listen(createServer(), port)).rejects.toMatchObject({ code: 'EADDRINUSE' });
+    taken.close();
   });
 });

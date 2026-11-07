@@ -169,14 +169,19 @@ func (s *Service) Open(ctx context.Context, id uuid.UUID) (*Server, string, erro
 	if err != nil {
 		return nil, "", s.errOrReport(ctx, "mcpserver: open", err)
 	}
-	if srv.AuthKind == AuthNone {
-		return srv, "", nil
-	}
-	value, err := openAuth(s.sealer, srv.OrgID, srv.ID, srv.AuthSealed)
+	value, err := s.credential(ctx, srv)
 	if err != nil {
 		return nil, "", s.errOrReport(ctx, "mcpserver: open auth", secretsErr(err))
 	}
 	return srv, value, nil
+}
+
+// SECURITY: the only place a server's credential is opened; every call that carries it asks here, each time.
+func (s *Service) credential(_ context.Context, srv *Server) (string, error) {
+	if srv.AuthKind == AuthNone {
+		return "", nil
+	}
+	return openAuth(s.sealer, srv.OrgID, srv.ID, srv.AuthSealed)
 }
 
 // List returns a project's servers.

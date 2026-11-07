@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { guardedFetch, redact } from './fetch.ts';
 
-interface Call { url: string; headers: Headers; }
+type Call = { url: string, headers: Headers };
 
 function fake(respond: (url: string) => Response): { fetch: typeof fetch, calls: Call[] } {
   const calls: Call[] = [];

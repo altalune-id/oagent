@@ -1,6 +1,6 @@
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import type { McpServerSpec } from './clients.ts';
+import type { McpServerSpec } from './index.ts';
 import { Buffer } from 'node:buffer';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -8,15 +8,19 @@ import { fileURLToPath } from 'node:url';
 import { Agent, configureLogging } from '@strands-agents/sdk';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { createLogger, strandsLogger } from '../log.ts';
+import { strandsLogger } from '../log.ts';
+import { captureLogger } from '../test/logger.ts';
 import { ScriptedModel } from '../test/scripted-model.ts';
-import { openMcpServers, originFetch, RESERVED_HEADERS, sanitizeDescription } from './clients.ts';
+import { RESERVED_HEADERS } from './auth.ts';
+import { originFetch } from './client.ts';
+import { openMcpServers } from './index.ts';
+import { sanitizeDescription } from './sanitize.ts';
 
-interface Seen {
-  method: string;
-  auth: string | undefined;
-  custom: string | undefined;
-}
+type Seen = {
+  method: string,
+  auth: string | undefined,
+  custom: string | undefined,
+};
 
 const dirty = `Records\u0007 an\u200B expense.\nSecond line.${'x'.repeat(2000)}`;
 const bigSchema = { type: 'object', properties: Object.fromEntries(Array.from({ length: 800 }, (_, i) => [`field_${i}`, { type: 'string', description: 'padding padding' }])) };
@@ -84,7 +88,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
 
 let server: Server;
 let base: string;
-const quiet = createLogger(() => {});
+const quiet = captureLogger();
 
 function spec(over: Partial<McpServerSpec> = {}): McpServerSpec {
   return {
@@ -174,7 +178,7 @@ describe('openMcpServers', () => {
 
   it('drops a down server with a note and a prompt line', async () => {
     const lines: string[] = [];
-    const turn = await openMcpServers([spec(), spec({ name: 'gone', url: 'http://127.0.0.1:1/mcp' })], createLogger(l => lines.push(l)));
+    const turn = await openMcpServers([spec(), spec({ name: 'gone', url: 'http://127.0.0.1:1/mcp' })], captureLogger(lines));
     expect(turn.tools.map(t => t.name).sort()).toEqual(['yasaku__dirty', 'yasaku__record_expense']);
     expect(turn.notes).toEqual([{ kind: 'mcp_server_unavailable', server: 'gone' }]);
     expect(turn.promptLines).toEqual(['Tools from gone are unavailable in this turn.']);
@@ -242,7 +246,7 @@ describe('remote text and secrets', () => {
 
   it('keeps an echoed bearer out of every log line and out of the tool result', async () => {
     const lines: string[] = [];
-    const log = createLogger(l => lines.push(l));
+    const log = captureLogger(lines);
     configureLogging(strandsLogger(log));
     const consoleLines: string[] = [];
     const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map(k => vi.spyOn(console, k).mockImplementation((...a: unknown[]) => {

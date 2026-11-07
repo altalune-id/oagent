@@ -1,7 +1,7 @@
-import type { AgentStreamEvent, ContentBlockData, InterruptResponseContentData, JSONValue, MessageData, Model, Snapshot, ToolResultBlockData } from '@strands-agents/sdk';
-import type { ImageMime, TurnRequest } from '../http/contract.ts';
+import type { AgentStreamEvent, ContentBlockData, InterruptResponseContentData, JSONValue, Model, Snapshot, ToolResultBlockData } from '@strands-agents/sdk';
+import type { ImageMime, TurnRequest } from '../contract/index.ts';
 import type { Logger } from '../log.ts';
-import type { McpTurn, Note } from '../mcp/clients.ts';
+import type { McpTurn, Note } from '../mcp/index.ts';
 import type { TurnUsage } from './limits.ts';
 import {
   AfterToolCallEvent,
@@ -13,36 +13,36 @@ import {
   TextBlock,
   ToolResultBlock,
 } from '@strands-agents/sdk';
-import { OpenAIModel } from '@strands-agents/sdk/models/openai';
 
-import { inputParts, TurnRefusedError } from '../http/contract.ts';
-import { openMcpServers } from '../mcp/clients.ts';
+import { inputParts } from '../contract/index.ts';
+import { openMcpServers } from '../mcp/index.ts';
+import { historyToMessages } from './history.ts';
 import { BUDGET_REFUSAL, LIMIT_REPLY, overBudget, stepLimit, UsageMeter } from './limits.ts';
-import { cleanSnapshot, SDK_VERSION, tagsMatch } from './snapshot.ts';
+import { cleanSnapshot, SDK_VERSION } from './snapshot.ts';
 
 export type TurnStatus = 'completed' | 'awaiting_approval' | 'limit_reached' | 'cancelled' | 'failed';
 
-export interface Checkpoint {
-  toolUseId: string;
-  name: string;
-  input: JSONValue;
-  result: { status: string, content: JSONValue[] };
-}
+export type Checkpoint = {
+  toolUseId: string,
+  name: string,
+  input: JSONValue,
+  result: { status: string, content: JSONValue[] },
+};
 
-export interface ToolResultReport extends Checkpoint {
-  replayed: boolean;
-}
+export type ToolResultReport = Checkpoint & {
+  replayed: boolean,
+};
 
-export interface TurnOutcome {
-  status: TurnStatus;
-  stopReason: string;
-  snapshot: Snapshot | null;
-  usage: TurnUsage;
-  newMessages: Message[];
-  interrupts: { id: string, name: string, reason: JSONValue }[];
-  notes: Note[];
-  error?: { code: string };
-}
+export type TurnOutcome = {
+  status: TurnStatus,
+  stopReason: string,
+  snapshot: Snapshot | null,
+  usage: TurnUsage,
+  newMessages: Message[],
+  interrupts: { id: string, name: string, reason: JSONValue }[],
+  notes: Note[],
+  error?: { code: string },
+};
 
 export interface TurnDeps {
   model: Model;
@@ -51,8 +51,6 @@ export interface TurnDeps {
   onEvent?: (event: AgentStreamEvent) => void | Promise<void>;
   onToolResult?: (report: ToolResultReport) => void | Promise<void>;
 }
-
-type AgUiMessage = TurnRequest['history'][number];
 
 const FORMAT: Record<ImageMime, 'jpeg' | 'png' | 'webp'> = { 'image/jpeg': 'jpeg', 'image/png': 'png', 'image/webp': 'webp' };
 
@@ -72,63 +70,6 @@ function imageRefused(request: TurnRequest, error: unknown): boolean {
   const status = httpStatusOf(error);
   const hasImage = inputParts(request).some(p => 'image' in p);
   return hasImage && status !== undefined && IMAGE_REFUSAL_STATUSES.has(status);
-}
-
-function textOf(content: unknown): string {
-  if (typeof content === 'string') {
-    return content;
-  }
-  if (Array.isArray(content)) {
-    return content.map(p => (p && typeof p === 'object' && (p as { type?: string }).type === 'text' ? String((p as { text?: unknown }).text ?? '') : '')).join('');
-  }
-  return '';
-}
-
-export function historyToMessages(history: AgUiMessage[]): MessageData[] {
-  const out: MessageData[] = [];
-  for (const m of history) {
-    if (m.role === 'user') {
-      out.push({ role: 'user', content: [{ text: textOf(m.content) }] });
-      continue;
-    }
-    if (m.role === 'assistant') {
-      const content: ContentBlockData[] = [];
-      const text = textOf(m.content);
-      if (text) {
-        content.push({ text });
-      }
-      for (const call of m.toolCalls ?? []) {
-        content.push({ toolUse: { name: call.function.name, toolUseId: call.id, input: JSON.parse(call.function.arguments || '{}') as JSONValue } });
-      }
-      out.push({ role: 'assistant', content });
-      continue;
-    }
-    if (m.role === 'tool') {
-      const block: ContentBlockData = { toolResult: { toolUseId: m.toolCallId, status: m.error ? 'error' : 'success', content: [{ text: textOf(m.content) }] } };
-      const last = out.at(-1);
-      if (last?.role === 'user' && last.content.every(c => 'toolResult' in c)) {
-        last.content.push(block);
-        continue;
-      }
-      out.push({ role: 'user', content: [block] });
-    }
-  }
-  return out;
-}
-
-export function checkSnapshot(request: TurnRequest): void {
-  if (request.snapshot === null) {
-    return;
-  }
-  if (!tagsMatch(request.snapshot, { thread: request.ids.thread, agentVersion: request.ids.agentVersion })) {
-    throw new TurnRefusedError(422, 'snapshot_unloadable');
-  }
-  try {
-    const probe = new Agent({ model: new OpenAIModel({ api: 'chat', modelId: 'snapshot-check', apiKey: 'unused' }), sandbox: false, printer: false });
-    probe.loadSnapshot(request.snapshot as unknown as Snapshot);
-  } catch {
-    throw new TurnRefusedError(422, 'snapshot_unloadable');
-  }
 }
 
 function inputOf(request: TurnRequest): ContentBlockData[] | InterruptResponseContentData[] {
@@ -259,7 +200,7 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
     return done;
   } catch (error) {
     meter.closeFailedCall();
-    deps.log.error('turn failed', { run: request.ids.run, error });
+    deps.log.error({ run: request.ids.run, error }, 'turn failed');
     return outcome('failed', 'error', { error: { code: imageRefused(request, error) ? 'image_unsupported' : 'model_error' } });
   } finally {
     await mcp.close();

@@ -66,6 +66,13 @@ export function oagent() {
       },
     },
     {
+      // runtime: type for data shapes, interface only for shapes with methods or function fields.
+      files: ['apps/runtime/**/*.ts'],
+      rules: {
+        'ts/consistent-type-definitions': 'off',
+      },
+    },
+    {
       files: [
         '**/pages/**/*.vue',
         '**/layouts/**/*.vue',

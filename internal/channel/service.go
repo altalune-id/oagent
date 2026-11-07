@@ -239,10 +239,15 @@ func (s *Service) OpenSecrets(ctx context.Context, c *Connection) (Secrets, erro
 		}
 		out.Signing = append(out.Signing, secondary)
 	}
-	if out.DeviceKey, err = open(s.sealer, c, slotDeviceKey, c.DeviceKeySealed); err != nil {
+	if out.DeviceKey, err = s.deviceKey(ctx, c); err != nil {
 		return Secrets{}, s.errOrReport(ctx, "channel: open secrets", err)
 	}
 	return out, nil
+}
+
+// SECURITY: the only place a connection's device key is opened; every provider call asks here, each time.
+func (s *Service) deviceKey(_ context.Context, c *Connection) (string, error) {
+	return open(s.sealer, c, slotDeviceKey, c.DeviceKeySealed)
 }
 
 func (s *Service) publish(ctx context.Context, t events.Type, c *Connection) error {

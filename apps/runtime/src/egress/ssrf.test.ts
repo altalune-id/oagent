@@ -99,20 +99,16 @@ describe('guardedLookup', () => {
   });
 });
 
-describe('rUNTIME_ALLOW_PRIVATE', () => {
-  it('refuses an entry that is not host:port', () => {
-    expect(() => installGuard({ env: { RUNTIME_ALLOW_PRIVATE: 'localhost' }, log: vi.fn() })).toThrow('is not host:port');
-  });
-
-  it('accepts a bracketed IPv6 entry', () => {
+describe('installGuard logging', () => {
+  it('logs the allowed private hosts', () => {
     const log = vi.fn();
-    installGuard({ env: { RUNTIME_ENV: 'development', RUNTIME_ALLOW_PRIVATE: '[::1]:5190, Localhost:5190' }, log });
+    installGuard({ allowPrivate: new Set(['::1:5190', 'localhost:5190']), log });
     expect(log).toHaveBeenCalledWith('private egress allowed', { hosts: ['::1:5190', 'localhost:5190'] });
   });
 
   it('logs JSON to stderr by default', () => {
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    installGuard({ env: { NODE_USE_ENV_PROXY: '1' } });
+    installGuard({ ignoredProxyVars: ['NODE_USE_ENV_PROXY'] });
     expect(spy).toHaveBeenCalledWith(JSON.stringify({ level: 'warn', msg: 'proxy env ignored', vars: ['NODE_USE_ENV_PROXY'] }));
     spy.mockRestore();
   });
@@ -137,7 +133,8 @@ describe('installGuard', () => {
       res.end();
     });
     installGuard({
-      env: { RUNTIME_ENV: 'development', RUNTIME_ALLOW_PRIVATE: `127.0.0.1:${redirector.port}`, HTTP_PROXY: 'http://127.0.0.1:9', HTTPS_PROXY: 'http://127.0.0.1:9' },
+      allowPrivate: new Set([`127.0.0.1:${redirector.port}`]),
+      ignoredProxyVars: ['HTTP_PROXY', 'HTTPS_PROXY'],
       log,
     });
   });
@@ -148,7 +145,7 @@ describe('installGuard', () => {
   });
 
   it('makes the guarded agent the global dispatcher', () => {
-    const agent = installGuard({ env: { RUNTIME_ENV: 'development', RUNTIME_ALLOW_PRIVATE: `127.0.0.1:${redirector.port}` }, log: vi.fn() });
+    const agent = installGuard({ allowPrivate: new Set([`127.0.0.1:${redirector.port}`]), log: vi.fn() });
     expect(getGlobalDispatcher()).toBe(agent);
   });
 
@@ -193,23 +190,22 @@ describe('installGuard', () => {
     expect(res.status).toBe(302);
   });
 
-  it('ignores the allow-list in production, the default, and says so', async () => {
+  it('dials no private host when given only an ignored list, and says so', async () => {
     const quietLog = vi.fn();
-    installGuard({ env: { RUNTIME_ALLOW_PRIVATE: `127.0.0.1:${redirector.port}` }, log: quietLog });
+    installGuard({ ignoredAllowPrivate: [`127.0.0.1:${redirector.port}`], log: quietLog });
     expect(quietLog).toHaveBeenCalledWith('private egress list ignored in production', { hosts: [`127.0.0.1:${redirector.port}`] });
     const cause = await fetch(`http://127.0.0.1:${redirector.port}/`, { redirect: 'manual' }).then(
       () => undefined,
       (error: Error) => error.cause,
     );
     expect(cause).toBeInstanceOf(SsrfRefusedError);
-    expect(() => installGuard({ env: { RUNTIME_ENV: 'staging' }, log: vi.fn() })).toThrow('RUNTIME_ENV');
-    installGuard({ env: { RUNTIME_ENV: 'development', RUNTIME_ALLOW_PRIVATE: `127.0.0.1:${redirector.port}` }, log: vi.fn() });
+    installGuard({ allowPrivate: new Set([`127.0.0.1:${redirector.port}`]), log: vi.fn() });
   });
 
   it('says nothing about proxies when none is set', () => {
     const quiet = vi.fn();
-    installGuard({ env: {}, log: quiet });
+    installGuard({ log: quiet });
     expect(quiet).not.toHaveBeenCalled();
-    installGuard({ env: { RUNTIME_ENV: 'development', RUNTIME_ALLOW_PRIVATE: `127.0.0.1:${redirector.port}` }, log: vi.fn() });
+    installGuard({ allowPrivate: new Set([`127.0.0.1:${redirector.port}`]), log: vi.fn() });
   });
 });

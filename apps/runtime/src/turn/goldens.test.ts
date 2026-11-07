@@ -1,4 +1,4 @@
-import type { TurnRequest } from '../http/contract.ts';
+import type { TurnRequest } from '../contract/index.ts';
 import type { Step } from '../test/scripted-model.ts';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -6,10 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { FunctionTool } from '@strands-agents/sdk';
 import { describe, expect, it } from 'vitest';
 
-import { ModelClients } from '../models/clients.ts';
+import { createModels } from '../models/index.ts';
 import { ScriptedModel } from '../test/scripted-model.ts';
 import { fakeMcp, goldenRequest, pendingSnapshot, quiet } from '../test/turn-fixtures.ts';
-import { createRunTurn } from './agui.ts';
+import { createRunTurn } from './index.ts';
 import { SDK_VERSION } from './snapshot.ts';
 
 const dir = fileURLToPath(new URL('../../../../internal/kernel/runtime/testdata/turn/', import.meta.url));
@@ -26,11 +26,11 @@ function expenseTool(): FunctionTool {
   });
 }
 
-interface Case {
-  steps: Step[];
-  pending?: boolean;
-  down?: boolean;
-}
+type Case = {
+  steps: Step[],
+  pending?: boolean,
+  down?: boolean,
+};
 
 const cases: Record<string, Case> = {
   plain_reply: { steps: [{ text: ['Hi, ', 'how can I help?'], usage: { inputTokens: 120, outputTokens: 9 } }] },
@@ -85,7 +85,7 @@ describe('golden replay', () => {
     });
     const events: Event[] = [];
     const runTurn = createRunTurn({
-      models: new ModelClients(),
+      models: createModels(),
       log: quiet,
       modelFor: () => new ScriptedModel(c.steps),
       openMcp: fakeMcp(c.down ? [] : [expenseTool()], c.down

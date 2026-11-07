@@ -1,14 +1,15 @@
 import type { Snapshot } from '@strands-agents/sdk';
-import type { ToolResultReport } from './agent.ts';
+import type { ToolResultReport } from './execute.ts';
 import { Buffer } from 'node:buffer';
 import { Agent, FunctionTool, ModelThrottledError } from '@strands-agents/sdk';
 import { describe, expect, it } from 'vitest';
 
-import { TurnRefusedError } from '../http/contract.ts';
+import { TurnRefusedError } from '../contract/index.ts';
 import { ScriptedModel } from '../test/scripted-model.ts';
 import { AskFirst, fakeMcp, goldenRequest, quiet, recordTool } from '../test/turn-fixtures.ts';
-import { checkSnapshot, executeTurn, historyToMessages } from './agent.ts';
-import { SDK_VERSION } from './snapshot.ts';
+import { executeTurn } from './execute.ts';
+import { historyToMessages } from './history.ts';
+import { checkSnapshot, SDK_VERSION } from './snapshot.ts';
 
 const THREAD = 't0193a2b4c5d67e8f9a0b1c2d3e4f5a6b';
 const appData = { thread: THREAD, agentVersion: 3, sdk: SDK_VERSION };

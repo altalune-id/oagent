@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { createLogger } from '../log.ts';
-import { createRuntimeServer } from './server.ts';
+import { captureLogger } from '../test/logger.ts';
+import { createRuntimeServer } from './index.ts';
 
 const TOKEN = 'secret-bearer-'.padEnd(40, 'x');
 const SECRETS = ['sk-test', 'tok-test', TOKEN];
@@ -13,10 +13,10 @@ const body = readFileSync(fileURLToPath(new URL('../../../../internal/kernel/run
 describe('turn logging', () => {
   it('never writes a secret from the request, the bearer or an error', async () => {
     const lines: string[] = [];
-    const server = createRuntimeServer({
+    const { server } = createRuntimeServer({
       token: TOKEN,
       maxConcurrent: 8,
-      log: createLogger(line => lines.push(line)),
+      log: captureLogger(lines),
       runTurn: async (req) => {
         throw new Error(`model refused key ${req.agent.model.apiKey} and ${req.mcpServers[0]?.auth.value}`);
       },
