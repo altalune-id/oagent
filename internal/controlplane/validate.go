@@ -66,8 +66,12 @@ func violationsOf(verr *protovalidate.ValidationError) []apperror.Violation {
 		if param == "" && hasLimit(reason) {
 			param = limitOf(pv.RuleValue)
 		}
+		field := protovalidate.FieldPathString(pv.Proto.GetField())
+		if field == "" {
+			field = messageRuleFields[pv.Proto.GetRuleId()]
+		}
 		out = append(out, apperror.Violation{
-			Field:  protovalidate.FieldPathString(pv.Proto.GetField()),
+			Field:  field,
 			Reason: reason,
 			Param:  param,
 		})
@@ -119,6 +123,11 @@ func reasonOf(ruleID string) (reason apperror.FieldReason, param string) {
 		return apperror.FieldInvalidFormat, param
 	}
 	return apperror.FieldInvalid, param
+}
+
+//nolint:gochecknoglobals // a fixed lookup table.
+var messageRuleFields = map[string]string{
+	"thread.list_runs.thread_or_agent": "project_id",
 }
 
 //nolint:gochecknoglobals // a fixed lookup table.

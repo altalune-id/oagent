@@ -162,7 +162,7 @@ func redisURLError(t *testing.T, err error) {
 func TestRedisFeatures(t *testing.T) {
 	c := validConfig(t)
 	c.RateLimit.Driver = RateLimitDriverRedis
-	c.RateLimit.Auth.Enabled, c.RateLimit.DataPlane.Enabled = false, false
+	c.RateLimit.Auth.Enabled, c.RateLimit.DataPlane.Enabled, c.RateLimit.Ingest.Enabled = false, false, false
 	assert.Empty(t, c.RedisFeatures(), "a redis store with every group off needs no connection")
 	c.RateLimit.Auth.Enabled = true
 	assert.Equal(t, []string{"rateLimit.driver"}, c.RedisFeatures())

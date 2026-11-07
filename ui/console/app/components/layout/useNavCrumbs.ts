@@ -1,5 +1,6 @@
 import type { Crumb, NavGroup, PaletteItem, TopBarPlace } from '#base/components/ui/types';
 import { useAgentNav } from '~/components/agent/useAgentNav';
+import { personLabel } from '~/components/enduser/label';
 import { useOrgNav } from '~/components/layout/useOrgNav';
 import { environmentLabelKey } from '~/components/project/environment';
 import { useProjectNav } from '~/components/project/useProjectNav';
@@ -45,7 +46,8 @@ export function useNavCrumbs() {
       const page = active(projectNav.value);
       const endUser = route.params.endUser as string | undefined;
       if (page && endUser) {
-        return [...trail, { label: page.label, to: page.to }, { label: endUsers.byId(endUser)?.name ?? endUser }];
+        const person = endUsers.detail?.user.id === endUser ? endUsers.detail.user : endUsers.items.find(u => u.id === endUser);
+        return [...trail, { label: page.label, to: page.to }, { label: person ? personLabel(person, t) : endUser }];
       }
       return page ? [...trail, { label: page.label }] : trail;
     }

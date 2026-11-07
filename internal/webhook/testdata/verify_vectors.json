@@ -1,0 +1,212 @@
+[
+  {
+    "name": "openwa fixed vector",
+    "secrets": [
+      "whsec_test"
+    ],
+    "timestamp": "1758153600",
+    "body": "{\"a\":1}",
+    "header": "v1=5d7a59cb9a5399806655f45f56c0139fbffdf766435435b0d7004e9d9ae115b1",
+    "now": 1758153600,
+    "valid": true
+  },
+  {
+    "name": "one signature",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "1790000000",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "v1=c56802683eb5513208283fc2359f76751e7b8f750686d7776c237ce1b4dbc851",
+    "now": 1790000000,
+    "valid": true
+  },
+  {
+    "name": "two signatures, the second valid",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "1790000000",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "v1=52ee887dd1f9db52b6e621e4fa8ba25abf98d919be7f7796e775033dc8e68891 v1=c56802683eb5513208283fc2359f76751e7b8f750686d7776c237ce1b4dbc851",
+    "now": 1790000000,
+    "valid": true
+  },
+  {
+    "name": "two signatures, the first valid",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "1790000000",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "v1=c56802683eb5513208283fc2359f76751e7b8f750686d7776c237ce1b4dbc851 v1=52ee887dd1f9db52b6e621e4fa8ba25abf98d919be7f7796e775033dc8e68891",
+    "now": 1790000000,
+    "valid": true
+  },
+  {
+    "name": "rotation: sender signs with both slots, receiver holds only the secondary",
+    "secrets": [
+      "whsec_secondary_3Nb8Kp1Wy6Zc"
+    ],
+    "timestamp": "1790000000",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "v1=c56802683eb5513208283fc2359f76751e7b8f750686d7776c237ce1b4dbc851 v1=94f1c9fe86c48eabb2414eef8c06fe81cd7829c709cbca89d17059c682e0ff20",
+    "now": 1790000000,
+    "valid": true
+  },
+  {
+    "name": "rotation: receiver holds both secrets, sender signs with the secondary only",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx",
+      "whsec_secondary_3Nb8Kp1Wy6Zc"
+    ],
+    "timestamp": "1790000000",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "v1=94f1c9fe86c48eabb2414eef8c06fe81cd7829c709cbca89d17059c682e0ff20",
+    "now": 1790000000,
+    "valid": true
+  },
+  {
+    "name": "timestamp -300 s from now",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "1789999700",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "v1=b36af5bae1d88d1d3afa239b658d6b966b0654a5121cf965d6a0ddf9cd009061",
+    "now": 1790000000,
+    "valid": true
+  },
+  {
+    "name": "timestamp +300 s from now",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "1790000300",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "v1=d4701bc2b60e63857d6746a121096967591e926613977c18839c412b05a35547",
+    "now": 1790000000,
+    "valid": true
+  },
+  {
+    "name": "timestamp -301 s from now",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "1789999699",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "v1=ce1c007f77eba20195c38522d953fc70ca7cf797144d064dfffc694c617b1acd",
+    "now": 1790000000,
+    "valid": false
+  },
+  {
+    "name": "timestamp +301 s from now",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "1790000301",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "v1=ea330a63d4f156984bfeceff2aef1f2532ac8ca924dfc3ad28f66150ace6509f",
+    "now": 1790000000,
+    "valid": false
+  },
+  {
+    "name": "wrong secret",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "1790000000",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "v1=52ee887dd1f9db52b6e621e4fa8ba25abf98d919be7f7796e775033dc8e68891",
+    "now": 1790000000,
+    "valid": false
+  },
+  {
+    "name": "tampered body",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "1790000000",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Hola\"}}}",
+    "header": "v1=c56802683eb5513208283fc2359f76751e7b8f750686d7776c237ce1b4dbc851",
+    "now": 1790000000,
+    "valid": false
+  },
+  {
+    "name": "signature over another timestamp",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "1790000000",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "v1=e29d25bd996a66c8a6ad6b8f7bcd6891c135654f40e2e995e2b219d2cd2d6258",
+    "now": 1790000000,
+    "valid": false
+  },
+  {
+    "name": "malformed header: not hex",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "1790000000",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "v1=zzzz",
+    "now": 1790000000,
+    "valid": false
+  },
+  {
+    "name": "malformed header: empty",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "1790000000",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "",
+    "now": 1790000000,
+    "valid": false
+  },
+  {
+    "name": "malformed header: truncated digest",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "1790000000",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "v1=c56802683eb5513208283fc2359f76751e7b8f750686d7776c237ce1b4dbc8",
+    "now": 1790000000,
+    "valid": false
+  },
+  {
+    "name": "missing v1= prefix",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "1790000000",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "c56802683eb5513208283fc2359f76751e7b8f750686d7776c237ce1b4dbc851",
+    "now": 1790000000,
+    "valid": false
+  },
+  {
+    "name": "other scheme prefix",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "1790000000",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "v0=c56802683eb5513208283fc2359f76751e7b8f750686d7776c237ce1b4dbc851",
+    "now": 1790000000,
+    "valid": false
+  },
+  {
+    "name": "timestamp not a number",
+    "secrets": [
+      "whsec_primary_7Hq2Lm9Rt4Vx"
+    ],
+    "timestamp": "17900x0000",
+    "body": "{\"id\":\"evt_0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b\",\"type\":\"message.matched\",\"data\":{\"message\":{\"body\":\"Halo\"}}}",
+    "header": "v1=38f9364b6c935ac2f90dd3861ccf6b98b8fbe4bc5a6566d0eb9d77e0349d45e2",
+    "now": 1790000000,
+    "valid": false
+  }
+]

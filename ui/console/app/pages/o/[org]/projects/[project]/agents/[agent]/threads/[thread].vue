@@ -48,6 +48,17 @@ const title = computed(() => {
   }
   return th.kind === 'api' ? t('threads.api_user', { id: th.title }) : th.kind === 'try' ? t('try.title') : th.title;
 });
+const costText = computed(() => {
+  const th = thread.value;
+  if (!th) {
+    return '';
+  }
+  const unpriced = th.unpricedRuns ?? 0;
+  if (unpriced > 0 && unpriced >= th.runs) {
+    return t('thread.unpriced');
+  }
+  return unpriced > 0 ? t('thread.cost_partly_unpriced', { cost: cost(th.costCents) }) : cost(th.costCents);
+});
 const facts = computed(() => !thread.value
   ? []
   : [
@@ -55,7 +66,7 @@ const facts = computed(() => !thread.value
       { label: t('thread.id'), value: thread.value!.id, mono: true, copy: true },
       { label: t('thread.people'), value: '' },
       { label: t('thread.created'), value: moment(thread.value!.createdAt) },
-      { label: t('thread.usage'), value: t('thread.usage_value', { tokens: count(thread.value!.tokens), cost: cost(thread.value!.costCents) }) },
+      { label: t('thread.usage'), value: t('thread.usage_value', { tokens: count(thread.value!.tokens), cost: costText.value }) },
       { label: t('thread.open_approval'), value: openApproval.value?.kind === 'approval' ? openApproval.value.approval.title : t('thread.none') },
     ]);
 
@@ -70,7 +81,12 @@ useHead({ title: () => `${title.value} · ${t('threads.title')} · OAgent` });
 </script>
 
 <template>
-  <LoadError v-if="store.error" class="m-4 lg:m-6" :error="store.error" :busy="store.loading" :retry-label="t('common.retry')" @retry="store.load(agent.id, usesSample)" />
+  <div v-if="store.error" class="m-4 lg:m-6">
+    <h1 class="sr-only">
+      {{ t('threads.title') }}
+    </h1>
+    <LoadError :error="store.error" :busy="store.loading" :retry-label="t('common.retry')" @retry="store.load(agent.id, usesSample)" />
+  </div>
   <EmptyState v-else-if="!thread" icon="lucide:messages-square" :title="t('error.thread_not_found')" class="px-4 lg:px-6">
     <template #actions>
       <AppButton variant="outline" size="sm" :to="`${base}/threads`">
@@ -89,7 +105,7 @@ useHead({ title: () => `${title.value} · ${t('threads.title')} · OAgent` });
           <span v-if="usesSample" class="badge badge-info badge-soft text-base-content badge-sm">{{ t('preview.badge') }}</span>
         </div>
         <p class="flex flex-wrap items-center gap-x-2 text-ui text-base-content/70">
-          <span :title="costTitle(thread.costCents)">{{ t('thread.summary', { runs: thread.runs, cost: cost(thread.costCents) }, thread.runs) }}</span>
+          <span :title="thread.unpricedRuns ? undefined : costTitle(thread.costCents)">{{ t('thread.summary', { runs: thread.runs, cost: costText }, thread.runs) }}</span>
           <StatusLabel v-if="thread.status" :tone="runStatusTone[thread.status]" :label="runningRun && store.cancelling(runningRun.id) ? t('thread.cancelling') : t(`runstatus.${thread.status}`)" />
         </p>
       </div>
@@ -106,7 +122,7 @@ useHead({ title: () => `${title.value} · ${t('threads.title')} · OAgent` });
       <aside class="min-w-0 border-t border-base-300 bg-base-200 lg:border-s lg:border-t-0" :aria-label="t('thread.facts')">
         <KeyValue :items="facts" :copy-label="t('common.copy_label', { label: '{label}' })">
           <template #value-4>
-            <span :title="costTitle(thread.costCents)">{{ facts[4]!.value }}</span>
+            <span :title="thread.unpricedRuns ? undefined : costTitle(thread.costCents)">{{ facts[4]!.value }}</span>
           </template>
           <template #value-2>
             <span class="flex flex-wrap gap-x-2">

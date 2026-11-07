@@ -8,7 +8,7 @@ import (
 )
 
 // ContractVersion is the turn contract version both sides speak; a change to any type here bumps it.
-const ContractVersion = 1
+const ContractVersion = 2
 
 // TurnRequest is the body of POST /turn. SECURITY: it carries provider and MCP secrets; never log or trace it.
 type TurnRequest struct {

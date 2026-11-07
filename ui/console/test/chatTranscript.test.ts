@@ -2,13 +2,13 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import ChatTranscript from '~/components/try/ChatTranscript.vue';
-import { sampleRun } from '~/preview/samples';
+import { kopiApproval } from '~/preview/samples';
 
 const at = new Date();
 const items = [
   { id: 1, kind: 'user' as const, text: 'beli kopi', speaker: 'Budi', at },
   { id: 2, kind: 'tool' as const, name: 'yasaku__list_wallets', args: {}, state: 'done' as const },
-  { id: 3, kind: 'approval' as const, approval: sampleRun().approval },
+  { id: 3, kind: 'approval' as const, approval: kopiApproval() },
   { id: 4, kind: 'agent' as const, text: 'Tersimpan', streaming: false, at },
 ];
 
@@ -41,6 +41,14 @@ describe('chat transcript sides', () => {
     expect(s.tool).toContain('self-end');
     expect(s.card).toContain('self-end');
     expect(s.userBubble).not.toContain('bg-base-300');
+  });
+
+  it('names a tool chip by its visible text, spaced, with the toggle hint for screen readers only', () => {
+    const w = mount(ChatTranscript, { props: { items, agentName: 'Yasaku', youName: 'You' } });
+    const chip = w.get('summary');
+    expect(chip.attributes('aria-label')).toBeUndefined();
+    expect(chip.text()).toMatch(/^yasaku__list_wallets\s+try\.tool_done\s*try\.tool_chip_hint$/);
+    expect(chip.get('.sr-only').text()).toBe('try.tool_chip_hint');
   });
 
   it('shows a run under one cent as less than a cent with the exact cost as its title, and an unpriced run as Unpriced', () => {

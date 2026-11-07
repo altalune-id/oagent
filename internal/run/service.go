@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -45,6 +46,8 @@ type Service struct {
 	snaps       SnapshotStore
 	publisher   Publisher
 	rate        RateCap
+	names       Names
+	media       Media
 	log         *slog.Logger
 	turnTimeout time.Duration
 	maxAttempts int
@@ -81,6 +84,12 @@ func (s *Service) WithPublisher(p Publisher) *Service { s.publisher = p; return 
 // WithRateCap limits how often a project starts a run.
 func (s *Service) WithRateCap(c RateCap) *Service { s.rate = c; return s }
 
+// WithNames names group speakers in the turn input.
+func (s *Service) WithNames(n Names) *Service { s.names = n; return s }
+
+// WithMedia fills channel photos and sends read receipts through m.
+func (s *Service) WithMedia(m Media) *Service { s.media = m; return s }
+
 // WithLogger logs turn outcomes to l.
 func (s *Service) WithLogger(l *slog.Logger) *Service { s.log = l; return s }
 
@@ -112,6 +121,9 @@ type turn struct {
 	// observe sees the turn's events for a streaming client. final holds the runtime's own last event until the run settles.
 	observe Observer
 	final   runtime.Event
+	// texts are the channel connection's set replies; imageRefused marks a turn the model failed for its images.
+	texts        ReplyTexts
+	imageRefused bool
 }
 
 func (t *turn) see(e runtime.Event) {
@@ -175,6 +187,18 @@ func (s *Service) execute(ctx context.Context, threadID uuid.UUID, token string,
 	if err != nil || done != nil || t == nil {
 		return done, err
 	}
+	if t.thread.ConnectionID != uuid.Nil {
+		if t.texts, err = s.store.ReplyTexts(ctx, t.thread.ConnectionID); err != nil {
+			return s.abandon(ctx, t, t.run.Usage, err)
+		}
+	}
+	s.markRead(ctx, t)
+	if voiceOnly(t.taken) {
+		if err := t.run.Move(StatusCompleted, time.Now()); err != nil {
+			return nil, s.errOrReport(ctx, "run: voice only", err)
+		}
+		return s.settle(ctx, t, t.run.Usage, nil, nil)
+	}
 	code, err := s.refusal(ctx, t)
 	if err != nil {
 		return s.abandon(ctx, t, t.run.Usage, err)
@@ -187,6 +211,21 @@ func (s *Service) execute(ctx context.Context, threadID uuid.UUID, token string,
 		return s.abandon(ctx, t, t.run.Usage, err)
 	}
 	return s.stream(ctx, t, req, history)
+}
+
+func (s *Service) markRead(ctx context.Context, t *turn) {
+	if s.media == nil || t.thread.ConnectionID == uuid.Nil {
+		return
+	}
+	for _, m := range slices.Backward(t.taken) {
+		if m.Role != RoleUser || m.ExternalMessageID == "" {
+			continue
+		}
+		if err := s.media.MarkRead(ctx, t.thread.ConnectionID, m.ExternalMessageID); err != nil {
+			s.log.WarnContext(ctx, "run: read receipt", "run", t.run.PublicID, "err", err.Error())
+		}
+		return
+	}
 }
 
 func (s *Service) abandon(ctx context.Context, t *turn, u Usage, err error) (*Run, error) {
@@ -276,6 +315,7 @@ func (s *Service) open(ctx context.Context, th *Thread, token string, obs Observ
 		return nil, nil, err
 	}
 	t.run = New(th.OrgID, th.ProjectID, th.ID, t.version.ID, time.Now())
+	t.run.Group = th.Kind == threadKindGroup
 	if !t.version.Legacy {
 		if m, err := s.providers.ResolveModel(ctx, t.version.ProviderID, t.version.Model); err == nil {
 			t.model, t.run.Prices = m, m.Prices
@@ -366,6 +406,7 @@ func (s *Service) fail(ctx context.Context, t *turn, code apperror.Code) (*Run, 
 
 func (s *Service) settle(ctx context.Context, t *turn, u Usage, final []Message, snap *Snapshot) (*Run, error) {
 	ctx = context.WithoutCancel(ctx)
+	final = s.reply(t, final)
 	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
 		if err := s.store.Settle(ctx, t.token, t.run, u, final); err != nil {
 			return err
@@ -470,6 +511,15 @@ func (s *Service) ThreadSummary(ctx context.Context, threadID uuid.UUID) (*Threa
 func (s *Service) ThreadMessages(ctx context.Context, threadID uuid.UUID, afterSeq int64, limit int) ([]Message, error) {
 	out, err := s.store.ThreadMessages(ctx, threadID, afterSeq, limit)
 	return out, s.errOrReport(ctx, "run: thread messages", err)
+}
+
+// ListAgentRuns lists an agent's runs across its threads, newest first.
+func (s *Service) ListAgentRuns(ctx context.Context, agentID uuid.UUID, after Cursor, limit int) ([]Run, error) {
+	out, err := s.store.ListAgentRuns(ctx, agentID, after, limit)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "run: list agent runs", err)
+	}
+	return out, nil
 }
 
 // ListRuns lists a thread's runs, newest first.

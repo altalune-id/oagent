@@ -19,6 +19,7 @@ import (
 	agentv1 "altalune.id/oagent/gen/go/agent/v1"
 	apikeyv1 "altalune.id/oagent/gen/go/apikey/v1"
 	authv1 "altalune.id/oagent/gen/go/auth/v1"
+	channelv1 "altalune.id/oagent/gen/go/channel/v1"
 	invitev1 "altalune.id/oagent/gen/go/invite/v1"
 	mcpserverv1 "altalune.id/oagent/gen/go/mcpserver/v1"
 	memberv1 "altalune.id/oagent/gen/go/member/v1"
@@ -33,9 +34,12 @@ import (
 
 //nolint:gochecknoglobals // a fixed allowlist.
 var unruled = map[string]string{
-	"auth.v1.WhoamiRequest":            "empty request",
-	"auth.v1.SignOutEverywhereRequest": "empty request",
-	"org.v1.ListOrgsRequest":           "empty request",
+	"auth.v1.WhoamiRequest":                               "empty request",
+	"auth.v1.SignOutEverywhereRequest":                    "empty request",
+	"org.v1.ListOrgsRequest":                              "empty request",
+	"channel.v1.GetChannelSettingsRequest":                "empty request",
+	"channel.v1.UpdateConnectionRequest.enabled":          "an optional bool; unset keeps the switch",
+	"channel.v1.SetConnectionSecretRequest.drop_previous": "a bool; true retires the previous secret",
 
 	"apikey.v1.CreateAPIKeyRequest.all_projects":    "a bool; the domain checks it against project_ids (KEY005)",
 	"webhook.v1.UpdateWebhookRequest.active":        "a bool; false deactivates",
@@ -186,7 +190,13 @@ func TestRequestRules_Accept(t *testing.T) {
 		{"common password is the domain's", &authv1.ChangePasswordRequest{CurrentPassword: "x", NewPassword: "password1234"}},
 		{"padded description", &agentv1.UpdateAgentRequest{Id: goodID, Name: "Bot", Description: " " + strings.Repeat("d", 2000) + " "}},
 		{"model provider", newProviderRequest()},
+		{"runs of an agent", &threadv1.ListRunsRequest{AgentId: goodID, ProjectId: goodID}},
 		{"mcp server", newMCPRequest()},
+		{"channel connection", newChannelRequest()},
+		{"channel connection on a private http OpenWA with a path", withChannel(func(r *channelv1.CreateConnectionRequest) { r.BaseUrl = "http://10.0.0.5:8080/openwa" })},
+		{"channel update keeping the key", &channelv1.UpdateConnectionRequest{Id: goodID, BaseUrl: new("https://wa.example.com"), OpenwaOrg: new("acme"), OpenwaProject: new("main"), DeviceId: new("dev_V1StGXR8Z5jdHi6B")}},
+		{"channel update of the switch only", &channelv1.UpdateConnectionRequest{Id: goodID, Enabled: new(false)}},
+		{"channel list for one agent", &channelv1.ListConnectionsRequest{ProjectId: goodID, AgentId: goodID}},
 		{"mcp server without auth", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) {
 			r.AuthKind, r.AuthHeader, r.AuthValue = mcpserverv1.McpServerAuthKind_MCP_SERVER_AUTH_KIND_NONE, "", ""
 		})},
@@ -283,6 +293,22 @@ func TestRequestRules_Refuse(t *testing.T) {
 		{"33-character mcp server name", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.Name = strings.Repeat("a", 33) }), "name", apperror.FieldInvalidFormat},
 		{"missing mcp server org", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.OrgId = "" }), "org_id", apperror.FieldRequired},
 		{"missing mcp auth kind", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.AuthKind = 0 }), "auth_kind", apperror.FieldRequired},
+		{"channel url with a query", withChannel(func(r *channelv1.CreateConnectionRequest) { r.BaseUrl = "https://wa.example.com/?x=1" }), "base_url", apperror.FieldInvalidFormat},
+		{"channel url not http", withChannel(func(r *channelv1.CreateConnectionRequest) { r.BaseUrl = "ftp://wa.example.com" }), "base_url", apperror.FieldInvalidFormat},
+		{"2049-character channel url", withChannel(func(r *channelv1.CreateConnectionRequest) { r.BaseUrl = "https://e.com/" + strings.Repeat("u", 2035) }), "base_url", apperror.FieldTooLong},
+		{"channel device id not OpenWA's", withChannel(func(r *channelv1.CreateConnectionRequest) { r.DeviceId = "device-1" }), "device_id", apperror.FieldInvalidFormat},
+		{"missing channel device key", withChannel(func(r *channelv1.CreateConnectionRequest) { r.DeviceKey = "" }), "device_key", apperror.FieldRequired},
+		{"missing channel agent", withChannel(func(r *channelv1.CreateConnectionRequest) { r.AgentId = "" }), "agent_id", apperror.FieldRequired},
+		{"1001-character set reply", withChannel(func(r *channelv1.CreateConnectionRequest) { r.ReplyVoice = strings.Repeat("v", 1001) }), "reply_voice", apperror.FieldTooLong},
+		{"quiet window over 10 s", withChannel(func(r *channelv1.CreateConnectionRequest) { r.QuietWindowMs = new(int32(10001)) }), "quiet_window_ms", apperror.FieldInvalid},
+		{"empty device key on update", &channelv1.UpdateConnectionRequest{Id: goodID, DeviceKey: new(string)}, "device_key", apperror.FieldTooShort},
+		{"empty base url on update", &channelv1.UpdateConnectionRequest{Id: goodID, BaseUrl: new("")}, "base_url", apperror.FieldInvalidFormat},
+		{"empty openwa org on update", &channelv1.UpdateConnectionRequest{Id: goodID, OpenwaOrg: new("")}, "openwa_org", apperror.FieldTooShort},
+		{"empty openwa project on update", &channelv1.UpdateConnectionRequest{Id: goodID, OpenwaProject: new("")}, "openwa_project", apperror.FieldTooShort},
+		{"empty device id on update", &channelv1.UpdateConnectionRequest{Id: goodID, DeviceId: new("")}, "device_id", apperror.FieldInvalidFormat},
+		{"bad device id on update", &channelv1.UpdateConnectionRequest{Id: goodID, DeviceId: new("device-1")}, "device_id", apperror.FieldInvalidFormat},
+		{"missing signing secret", &channelv1.SetConnectionSecretRequest{Id: goodID, DropPrevious: true}, "signing_secret", apperror.FieldRequired},
+		{"513-character signing secret", &channelv1.SetConnectionSecretRequest{Id: goodID, SigningSecret: strings.Repeat("s", 513)}, "signing_secret", apperror.FieldTooLong},
 		{"relative mcp url", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.Url = "/mcp" }), "url", apperror.FieldInvalidFormat},
 		{"2049-character mcp url", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.Url = "https://e.com/" + strings.Repeat("u", 2035) }), "url", apperror.FieldTooLong},
 		{"timeout 999", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.TimeoutMs = 999 }), "timeout_ms", apperror.FieldInvalid},
@@ -291,6 +317,8 @@ func TestRequestRules_Refuse(t *testing.T) {
 		{"agent filter not a public id", &threadv1.ListThreadsRequest{ProjectId: goodID, AgentId: "agent-1"}, "agent_id", apperror.FieldInvalidFormat},
 		{"201 threads a page", &threadv1.ListThreadsRequest{ProjectId: goodID, PageSize: 201}, "page_size", apperror.FieldInvalid},
 		{"257-character page token", &threadv1.ListRunsRequest{ThreadId: goodID, PageToken: strings.Repeat("t", 257)}, "page_token", apperror.FieldTooLong},
+		{"runs of an agent without its project", &threadv1.ListRunsRequest{AgentId: goodID}, "project_id", apperror.FieldInvalid},
+		{"runs of nothing", &threadv1.ListRunsRequest{}, "project_id", apperror.FieldInvalid},
 		{"negative after seq", &threadv1.ListThreadMessagesRequest{ThreadId: goodID, AfterSeq: -1}, "after_seq", apperror.FieldInvalid},
 		{"run id a uuid", &threadv1.GetRunRequest{RunId: "0d7c4e0e-8f8a-4a43-9b51-2f1b6f0a9c11"}, "run_id", apperror.FieldInvalidFormat},
 		{"missing run to cancel", &threadv1.CancelRunRequest{}, "run_id", apperror.FieldRequired},
@@ -324,6 +352,19 @@ func newMCPRequest() *mcpserverv1.CreateMcpServerRequest {
 		OrgId: goodID, ProjectId: goodID, Name: "yasaku-2", Url: "https://yasaku.example.com/mcp",
 		AuthKind: mcpserverv1.McpServerAuthKind_MCP_SERVER_AUTH_KIND_HEADER, AuthHeader: "X-Api-Key", AuthValue: "v", TimeoutMs: 1000,
 	}
+}
+
+func newChannelRequest() *channelv1.CreateConnectionRequest {
+	return &channelv1.CreateConnectionRequest{
+		ProjectId: goodID, AgentId: goodID, BaseUrl: "https://wa.example.com", OpenwaOrg: "acme", OpenwaProject: "main",
+		DeviceId: "dev_V1StGXR8Z5jdHi6B", DeviceKey: "owk_device", QuietWindowMs: new(int32(0)),
+	}
+}
+
+func withChannel(edit func(*channelv1.CreateConnectionRequest)) *channelv1.CreateConnectionRequest {
+	r := newChannelRequest()
+	edit(r)
+	return r
 }
 
 func withMCP(edit func(*mcpserverv1.CreateMcpServerRequest)) *mcpserverv1.CreateMcpServerRequest {
@@ -386,5 +427,26 @@ func TestPublicIDRule_AcceptsEveryMintedID(t *testing.T) {
 		ae, ok := apperror.AsAppError(v.Validate(&orgv1.GetOrgRequest{Id: goodID[:20] + outside}))
 		require.True(t, ok, outside)
 		assert.Equal(t, apperror.FieldInvalidFormat, ae.Violations()[0].Reason, outside)
+	}
+}
+
+// SECURITY: a message-level rule has no field path of its own; GEN004 must still name the field a client fixes.
+func TestEveryMessageRuleNamesAField(t *testing.T) {
+	for procedure := range permission.Table() {
+		service, method, _ := strings.Cut(strings.TrimPrefix(procedure, "/"), "/")
+		desc, err := protoregistry.GlobalFiles.FindDescriptorByName(protoreflect.FullName(service + "." + method))
+		require.NoError(t, err, procedure)
+		input := desc.(protoreflect.MethodDescriptor).Input()
+		opts := input.Options()
+		if opts == nil || !proto.HasExtension(opts, validate.E_Message) {
+			continue
+		}
+		rules, _ := proto.GetExtension(opts, validate.E_Message).(*validate.MessageRules)
+		for _, cel := range rules.GetCel() {
+			field, ok := messageRuleFields[cel.GetId()]
+			require.True(t, ok, "%s: message rule %s names no field in messageRuleFields", input.FullName(), cel.GetId())
+			assert.NotNil(t, input.Fields().ByName(protoreflect.Name(field)), "%s has no field %s", input.FullName(), field)
+		}
+		assert.Empty(t, rules.GetOneof(), "%s: a message oneof rule has no single field to name; use a CEL rule", input.FullName())
 	}
 }

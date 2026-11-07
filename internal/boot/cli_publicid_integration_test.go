@@ -14,6 +14,7 @@ import (
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
+	channelv1connect "altalune.id/oagent/gen/go/channel/v1/channelv1connect"
 	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
@@ -23,6 +24,7 @@ import (
 	"altalune.id/oagent/internal/apiclient"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/auth"
+	"altalune.id/oagent/internal/channel"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/invite"
@@ -45,6 +47,7 @@ func cliRoot(c *apiclient.Client) *cobra.Command {
 		webhook.NewCmd(func(*cobra.Command) (webhookv1connect.WebhookServiceClient, error) { return c.Webhooks, nil }),
 		member.NewCmd(func(*cobra.Command) (memberv1connect.MemberServiceClient, error) { return c.Members, nil }),
 		invite.NewCmd(func(*cobra.Command) (invitev1connect.InviteServiceClient, error) { return c.Invites, nil }),
+		channel.NewCmd(func(*cobra.Command) (channelv1connect.ChannelServiceClient, error) { return c.Channels, nil }),
 		auth.NewCmd(nil, func(*cobra.Command) (authv1connect.AuthServiceClient, bool, error) { return c.Auth, false, nil }, nil),
 	)
 	return root
@@ -72,6 +75,7 @@ func TestCLI_JSONHoldsNoUUID(t *testing.T) {
 		append([]string{"webhook", "attempts", s.pub.webhook, s.pub.delivery}, scope...),
 		{"member", "list", "--org-id", s.pub.org},
 		{"invite", "list", "--org-id", s.pub.org},
+		{"channel", "list", "--project-id", s.pub.project, "--agent-id", s.pub.agent},
 		{"auth", "whoami"},
 	}
 	for _, args := range commands {

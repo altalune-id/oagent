@@ -201,3 +201,71 @@ func TestUpsert_RepeatedIdentityAgainstPostgres(t *testing.T) {
 	assert.Equal(t, e.ID, owners[phone])
 	assert.Equal(t, e.ID, owners[lid])
 }
+
+func TestStore_DisplayNameSetAndRead(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	e, err := f.service().Upsert(in(orgID), projectID, enduser.Identity{Kind: enduser.KindWAPhone, Value: "628111222333"})
+	require.NoError(t, err)
+	assert.Empty(t, e.DisplayName)
+	require.NoError(t, f.store.SetDisplayName(in(orgID), e.ID, "Budi"))
+	got, err := f.store.ByID(in(orgID), e.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "Budi", got.DisplayName)
+	require.NoError(t, f.store.SetDisplayName(in(orgID), e.ID, ""))
+	got, err = f.store.ByID(in(orgID), e.ID)
+	require.NoError(t, err)
+	assert.Empty(t, got.DisplayName, "an empty name clears it")
+	other, _ := f.seedScope(t)
+	assert.True(t, enduser.IsNotFoundError(f.store.SetDisplayName(in(other), e.ID, "x")), "another org changes nothing")
+}
+
+func TestStore_ResolveListAndIdentitiesOfMany(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
+	svc := f.service()
+	sari, err := svc.Upsert(ctx, projectID, enduser.Identity{Kind: enduser.KindWAPhone, Value: "6281234567890"})
+	require.NoError(t, err)
+	require.NoError(t, svc.SetDisplayName(ctx, sari.ID, "Sari Wulandari"))
+	budi, err := svc.Upsert(ctx, projectID, enduser.Identity{Kind: enduser.KindWAPhone, Value: "6289876543210"})
+	require.NoError(t, err)
+	f.exec(t, `UPDATE `+f.schema+`.end_users SET created_at = now() - interval '1 hour' WHERE id = $1`, sari.ID)
+
+	ref, err := f.store.Resolve(context.Background(), budi.PublicID)
+	require.NoError(t, err, "resolve needs no tenant")
+	assert.Equal(t, enduser.Ref{ID: budi.ID, OrgID: orgID, ProjectID: projectID}, ref)
+	_, err = f.store.Resolve(context.Background(), "unknwnunknwnunknwnabc")
+	assert.True(t, enduser.IsNotFoundError(err))
+
+	all, err := f.store.List(ctx, projectID, "", enduser.Cursor{}, 10)
+	require.NoError(t, err)
+	require.Len(t, all, 2)
+	assert.Equal(t, budi.ID, all[0].ID, "newest first")
+	page, err := f.store.List(ctx, projectID, "", enduser.Cursor{At: all[0].CreatedAt, PublicID: all[0].PublicID}, 10)
+	require.NoError(t, err)
+	require.Len(t, page, 1)
+	assert.Equal(t, sari.ID, page[0].ID)
+	found, err := f.store.List(ctx, projectID, "wulan", enduser.Cursor{}, 10)
+	require.NoError(t, err)
+	require.Len(t, found, 1, "the query matches part of a display name, any case")
+	assert.Equal(t, sari.ID, found[0].ID)
+	byNumber, err := f.store.List(ctx, projectID, "6289876543210", enduser.Cursor{}, 10)
+	require.NoError(t, err)
+	require.Len(t, byNumber, 1, "a whole identity value finds its person")
+	assert.Equal(t, budi.ID, byNumber[0].ID)
+	none, err := f.store.List(ctx, projectID, "62898", enduser.Cursor{}, 10)
+	require.NoError(t, err)
+	assert.Empty(t, none, "part of a number finds nobody")
+
+	ids, err := f.store.IdentitiesOfMany(ctx, []uuid.UUID{sari.ID, budi.ID})
+	require.NoError(t, err)
+	assert.Equal(t, []enduser.Identity{{Kind: enduser.KindWAPhone, Value: "6281234567890"}}, ids[sari.ID])
+	assert.Len(t, ids[budi.ID], 1)
+}
+
+func (f *pgFixture) exec(t *testing.T, q string, args ...any) {
+	t.Helper()
+	_, err := f.admin.ExecContext(t.Context(), q, args...)
+	require.NoError(t, err)
+}

@@ -21,7 +21,7 @@ const emit = defineEmits<{ menu: [], search: [] }>();
 </script>
 
 <template>
-  <div class="navbar min-h-12 gap-2 border-b border-base-300 bg-base-100 px-3 md:px-4">
+  <header class="navbar min-h-12 gap-2 border-b border-base-300 bg-base-100 px-3 md:px-4">
     <AppButton v-if="menu" variant="ghost" size="sm" square :class="{ 'lg:hidden': !rail }" :aria-label="menuLabel" :aria-controls="sidebarId" :aria-expanded="menuOpen" @click="emit('menu')">
       <Icon :name="rail ? 'lucide:panel-left' : 'lucide:menu'" size="16" class="shrink-0" aria-hidden="true" />
     </AppButton>
@@ -32,15 +32,15 @@ const emit = defineEmits<{ menu: [], search: [] }>();
       </div>
     </div>
     <span v-if="place?.badge" class="badge badge-sm md:hidden">{{ place.badge }}</span>
-    <AppButton variant="ghost" size="sm" class="hidden text-base-content/70 md:inline-flex" :aria-label="`${jumpLabel}, ${shortcutLabel}`" @click="emit('search')">
+    <AppButton variant="ghost" size="sm" class="hidden text-base-content/70 md:inline-flex" :title="`${jumpLabel}, ${shortcutLabel}`" aria-keyshortcuts="Meta+K Control+K" @click="emit('search')">
       <Icon name="lucide:search" size="16" class="shrink-0" aria-hidden="true" />
       <span>{{ searchLabel }}</span>
-      <kbd class="kbd kbd-xs">⌘K</kbd>
+      <kbd class="kbd kbd-xs" aria-hidden="true">⌘K</kbd>
     </AppButton>
     <div v-if="$slots.controls" class="hidden md:block">
       <div class="flex items-center gap-1">
         <slot name="controls" />
       </div>
     </div>
-  </div>
+  </header>
 </template>

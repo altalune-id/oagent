@@ -27,6 +27,7 @@ import (
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/auth"
+	"altalune.id/oagent/internal/channel"
 	"altalune.id/oagent/internal/enduser"
 	"altalune.id/oagent/internal/install"
 	"altalune.id/oagent/internal/kernel/authn"
@@ -226,6 +227,12 @@ func samples() []error {
 		&run.RuntimeFailedError{Reason: "model_error"},
 		&run.InProgressError{RunPublicID: "r"},
 		&run.IdempotencyConflictError{},
+		&channel.NotFoundError{},
+		&channel.InvalidError{Field: "base_url"},
+		&channel.SecretRequiredError{},
+		&channel.SecretsUnavailableError{Cause: errors.New("sealer down")},
+		&channel.ProviderUnavailableError{Cause: errors.New("dial tcp: refused")},
+		&channel.WebhookURLUnavailableError{},
 		&run.ThreadNotFoundError{ID: "t"},
 		&run.ThreadActorMismatchError{ThreadID: "t"},
 	}

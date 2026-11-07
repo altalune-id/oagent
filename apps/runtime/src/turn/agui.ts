@@ -4,9 +4,11 @@ import type { Emit, RunTurn } from '../http/server.ts';
 import type { Logger } from '../log.ts';
 import type { ModelClients } from '../models/clients.ts';
 import type { ToolResultReport, TurnDeps, TurnOutcome } from './agent.ts';
-
+import { checkImages } from '../http/contract.ts';
 import { checkSnapshot, executeTurn } from './agent.ts';
+
 import { emptyUsage, LIMIT_REPLY } from './limits.ts';
+import { IMAGE_NOTE } from './snapshot.ts';
 
 export const HEARTBEAT_MS = 15_000;
 
@@ -38,6 +40,13 @@ function contentText(content: unknown[]): string {
   }).join('\n');
 }
 
+function withoutImageBytes<T>(content: T): T {
+  if (!Array.isArray(content)) {
+    return content;
+  }
+  return content.map(p => ((p as { type?: string }).type === 'text' ? p : { type: 'text', text: IMAGE_NOTE })) as T;
+}
+
 export function toAgUiMessages(request: TurnRequest, messages: Message[]): Json[] {
   const out: Json[] = [];
   let assistants = 0;
@@ -64,7 +73,7 @@ export function toAgUiMessages(request: TurnRequest, messages: Message[]): Json[
     }
     users++;
     if (users === 1 && request.input.kind === 'message') {
-      out.push({ id: request.input.message.id, role: 'user', content: request.input.message.content });
+      out.push({ id: request.input.message.id, role: 'user', content: withoutImageBytes(request.input.message.content) });
       continue;
     }
     out.push({ id: `msg_user_${users}`, role: 'user', content: m.content.filter(b => b.type === 'textBlock').map(b => b.text).join('') });
@@ -163,6 +172,7 @@ function runtimeFailure(): TurnOutcome {
 export function createRunTurn(deps: RunTurnDeps): RunTurn {
   return async (request, emit, signal) => {
     checkSnapshot(request);
+    checkImages(request);
     const model = deps.modelFor?.(request) ?? deps.models.model(request.ids.project, request.agent.model, request.agent.temperature);
     const mapper = new StreamMapper(emit);
     const ids = { threadId: request.ids.thread, runId: request.ids.run };

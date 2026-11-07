@@ -18,9 +18,10 @@ import (
 )
 
 type threadLock struct {
-	OrgID     uuid.UUID `alias:"threads.org_id"`
-	ProjectID uuid.UUID `alias:"threads.project_id"`
-	NextSeq   int64     `alias:"threads.next_seq"`
+	OrgID        uuid.UUID  `alias:"threads.org_id"`
+	ProjectID    uuid.UUID  `alias:"threads.project_id"`
+	NextSeq      int64      `alias:"threads.next_seq"`
+	ConnectionID *uuid.UUID `alias:"threads.connection_id"`
 }
 
 func (s *postgresStore) lock(ctx context.Context, tx *sql.Tx, orgID, threadID uuid.UUID, token *string) (threadLock, error) {
@@ -29,7 +30,7 @@ func (s *postgresStore) lock(ctx context.Context, tx *sql.Tx, orgID, threadID uu
 	if token != nil {
 		where = where.AND(t.LeaseOwner.EQ(postgres.String(*token)))
 	}
-	stmt := postgres.SELECT(t.OrgID, t.ProjectID, t.NextSeq).FROM(t).WHERE(where).FOR(postgres.UPDATE())
+	stmt := postgres.SELECT(t.OrgID, t.ProjectID, t.NextSeq, t.ConnectionID).FROM(t).WHERE(where).FOR(postgres.UPDATE())
 	var row threadLock
 	if err := stmt.QueryContext(ctx, tx, &row); err != nil {
 		if !db.IsNoRows(err) {
@@ -50,7 +51,8 @@ func (s *postgresStore) insertMessages(
 		return nil, nil
 	}
 	m := s.messages
-	stmt := m.INSERT(m.AllColumns)
+	stmt := m.INSERT(m.ID, m.OrgID, m.ProjectID, m.ThreadID, m.Seq, m.Role, m.Body, m.SpeakerID, m.Status, m.ExternalMessageID, m.RunID,
+		m.ToolCallID, m.CreatedAt, m.RequestHash, m.ChannelTime, m.SkipReason)
 	out := make([]Message, len(msgs))
 	now := time.Now().UTC()
 	for i, msg := range msgs {
@@ -65,6 +67,8 @@ func (s *postgresStore) insertMessages(
 			string(msg.Status), textOrNull(msg.ExternalMessageID),
 			orNull(msg.RunID, func(v uuid.UUID) postgres.Expression { return postgres.UUID(v) }),
 			textOrNull(msg.ToolCallID), now, bytesOrNull(msg.RequestHash),
+			orNull(msg.ChannelTime, func(v time.Time) postgres.Expression { return postgres.TimestampzT(v.UTC()) }),
+			textOrNull(msg.SkipReason),
 		)
 	}
 	if _, err := stmt.ExecContext(ctx, tx); err != nil {
@@ -117,6 +121,113 @@ func (s *postgresStore) AppendMessage(ctx context.Context, threadID uuid.UUID, m
 		return nil
 	})
 	return seq, err
+}
+
+// AppendChannelMessage upserts the connection's thread for the chat and stores the message, pending or skipped past the sender cap.
+func (s *postgresStore) AppendChannelMessage(ctx context.Context, in ChannelMessage) (ChannelAppend, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return ChannelAppend{}, err
+	}
+	var out ChannelAppend
+	err = db.InTx(ctx, s.pool, func(tx *sql.Tx) error {
+		id, err := s.upsertChannelThread(ctx, tx, tc.OrgID, in)
+		if err != nil {
+			return err
+		}
+		out.ThreadID = id
+		th, err := s.lock(ctx, tx, tc.OrgID, id, nil)
+		if err != nil {
+			return err
+		}
+		msg := in.Message
+		if out.Duplicate, err = s.knownExternal(ctx, tx, id, msg.ExternalMessageID); err != nil || out.Duplicate {
+			return err
+		}
+		recent, err := s.recentFromSpeaker(ctx, tx, id, msg.SpeakerID)
+		if err != nil {
+			return err
+		}
+		msg.Role, msg.Status, msg.RunID, msg.SkipReason = RoleUser, MessagePending, nil, ""
+		if recent >= in.SenderCap {
+			msg.Status, msg.SkipReason = MessageConsumed, SkipSenderRate
+		}
+		out.Pending = msg.Status == MessagePending
+		_, err = s.insertMessages(ctx, tx, id, th, []Message{msg})
+		return err
+	})
+	if err != nil {
+		return ChannelAppend{}, fmt.Errorf("run.postgres: AppendChannelMessage: %w", err)
+	}
+	return out, nil
+}
+
+func (s *postgresStore) upsertChannelThread(ctx context.Context, tx *sql.Tx, orgID uuid.UUID, in ChannelMessage) (uuid.UUID, error) {
+	t := s.threads
+	now := time.Now().UTC()
+	actor := postgres.NULL
+	if in.Actor != uuid.Nil {
+		actor = postgres.UUID(in.Actor)
+	}
+	stmt := t.INSERT(t.ID, t.PublicID, t.OrgID, t.ProjectID, t.AgentID, t.Kind, t.ExternalKey, t.ConnectionID, t.ChannelAddress, t.ReplyVia,
+		t.ActorEndUserID, t.CreatedAt, t.UpdatedAt).
+		VALUES(uuid.Must(uuid.NewV7()), nanoid.MustNew(21), orgID, in.ProjectID, in.AgentID, in.Kind, in.ChatKey, in.ConnectionID,
+			textOrNull(in.ChannelAddress), textOrNull(in.ReplyVia), actor, now, now).
+		ON_CONFLICT(t.ConnectionID, t.ExternalKey).WHERE(postgres.RawBool("connection_id IS NOT NULL")).
+		// SECURITY: the conflict clause is guarded by org, so a key naming another tenant's thread never rewrites it.
+		DO_UPDATE(postgres.SET(
+			t.ChannelAddress.SET(postgres.StringExp(textOrNull(in.ChannelAddress))),
+			t.ReplyVia.SET(postgres.StringExp(textOrNull(in.ReplyVia))),
+		).WHERE(t.OrgID.EQ(postgres.UUID(orgID)))).
+		RETURNING(t.ID)
+	var row struct {
+		ID uuid.UUID `alias:"threads.id"`
+	}
+	if err := stmt.QueryContext(ctx, tx, &row); err != nil {
+		if db.IsNoRows(err) {
+			return uuid.Nil, &ThreadNotFoundError{ID: in.ChatKey}
+		}
+		return uuid.Nil, fmt.Errorf("upsert thread: %w", err)
+	}
+	return row.ID, nil
+}
+
+func (s *postgresStore) knownExternal(ctx context.Context, tx *sql.Tx, threadID uuid.UUID, externalID string) (bool, error) {
+	if externalID == "" {
+		return false, nil
+	}
+	m := s.messages
+	stmt := postgres.SELECT(m.Seq).FROM(m).
+		WHERE(m.ThreadID.EQ(postgres.UUID(threadID)).AND(m.ExternalMessageID.EQ(postgres.String(externalID))))
+	var row struct {
+		Seq int64 `alias:"messages.seq"`
+	}
+	err := stmt.QueryContext(ctx, tx, &row)
+	if db.IsNoRows(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("known message: %w", err)
+	}
+	return true, nil
+}
+
+func (s *postgresStore) recentFromSpeaker(ctx context.Context, tx *sql.Tx, threadID uuid.UUID, speaker *uuid.UUID) (int, error) {
+	if speaker == nil {
+		return 0, nil
+	}
+	m := s.messages
+	stmt := postgres.SELECT(postgres.COUNT(postgres.STAR).AS("count.n")).FROM(m).
+		WHERE(m.ThreadID.EQ(postgres.UUID(threadID)).
+			AND(m.SpeakerID.EQ(postgres.UUID(*speaker))).
+			AND(m.CreatedAt.GT(postgres.NOW().SUB(postgres.INTERVALd(senderWindow)))))
+	var row struct {
+		N int `alias:"count.n"`
+	}
+	if err := stmt.QueryContext(ctx, tx, &row); err != nil {
+		return 0, fmt.Errorf("count sender: %w", err)
+	}
+	return row.N, nil
 }
 
 // Claim leases the thread to token for ttl when it is free and its project is under the cap; the result says why not.
@@ -261,7 +372,7 @@ func (s *postgresStore) UpsertAPIThread(
 		now := time.Now().UTC()
 		insert := t.INSERT(t.ID, t.PublicID, t.OrgID, t.ProjectID, t.AgentID, t.Kind, t.ExternalKey, t.ActorEndUserID, t.CreatedAt, t.UpdatedAt).
 			VALUES(uuid.Must(uuid.NewV7()), nanoid.MustNew(21), tc.OrgID, projectID, agentID, threadKindAPI, externalKey, actor, now, now).
-			ON_CONFLICT(t.AgentID, t.ExternalKey).DO_NOTHING()
+			ON_CONFLICT(t.AgentID, t.ExternalKey).WHERE(postgres.RawBool("kind = 'api'")).DO_NOTHING()
 		if _, err := insert.ExecContext(ctx, tx); err != nil {
 			return fmt.Errorf("run.postgres: UpsertAPIThread: %w", err)
 		}
@@ -413,12 +524,28 @@ func (s *postgresStore) StartRun(ctx context.Context, token string, r *Run) ([]M
 		return nil, err
 	}
 	var taken []Message
+	nothing := false
 	err = db.InTx(ctx, s.pool, func(tx *sql.Tx) error {
-		if _, err := s.lock(ctx, tx, tc.OrgID, r.ThreadID, &token); err != nil {
+		th, err := s.lock(ctx, tx, tc.OrgID, r.ThreadID, &token)
+		if err != nil {
 			return err
 		}
 		if r.Attempt > 1 {
 			return s.resume(ctx, tx, tc.OrgID, r, &taken)
+		}
+		channel := th.ConnectionID != nil
+		if channel {
+			if err := s.skipStale(ctx, tx, tc.OrgID, r.ThreadID); err != nil {
+				return err
+			}
+		}
+		ids, err := s.toTake(ctx, tx, tc.OrgID, r.ThreadID, channel)
+		if err != nil {
+			return err
+		}
+		if len(ids) == 0 {
+			nothing = true
+			return nil
 		}
 		if err := s.insertRun(ctx, tx, r); err != nil {
 			return err
@@ -426,27 +553,85 @@ func (s *postgresStore) StartRun(ctx context.Context, token string, r *Run) ([]M
 		if err := s.clearCancel(ctx, tx, r.ThreadID); err != nil {
 			return err
 		}
-		m := s.messages
-		take := m.UPDATE(m.Status, m.RunID).
-			SET(postgres.String(string(MessageConsumed)), postgres.UUID(r.ID)).
-			WHERE(m.ThreadID.EQ(postgres.UUID(r.ThreadID)).
-				AND(m.OrgID.EQ(postgres.UUID(tc.OrgID))).
-				AND(m.Status.EQ(postgres.String(string(MessagePending))))).
-			RETURNING(m.AllColumns)
-		var rows []messageRow
-		if err := take.QueryContext(ctx, tx, &rows); err != nil && !db.IsNoRows(err) {
-			return fmt.Errorf("run.postgres: StartRun: take pending: %w", err)
+		if taken, err = s.takeIDs(ctx, tx, r.ID, ids); err != nil {
+			return err
 		}
-		if len(rows) == 0 {
-			return ErrNothingPending
-		}
-		taken = toMessages(rows)
-		slices.SortFunc(taken, func(a, b Message) int { return int(a.Seq - b.Seq) })
 		return s.recordIdempotencyKey(ctx, tx, r, taken)
 	})
 	if err != nil {
 		return nil, err
 	}
+	if nothing {
+		return nil, ErrNothingPending
+	}
+	return taken, nil
+}
+
+func (s *postgresStore) skipStale(ctx context.Context, tx *sql.Tx, orgID, threadID uuid.UUID) error {
+	m := s.messages
+	stmt := m.UPDATE(m.Status, m.SkipReason).
+		SET(postgres.String(string(MessageConsumed)), postgres.String(SkipStale)).
+		WHERE(m.ThreadID.EQ(postgres.UUID(threadID)).
+			AND(m.OrgID.EQ(postgres.UUID(orgID))).
+			AND(m.Status.EQ(postgres.String(string(MessagePending)))).
+			AND(m.ChannelTime.LT(postgres.TimestampzT(time.Now().UTC().Add(-s.maxAge)))))
+	if _, err := stmt.ExecContext(ctx, tx); err != nil {
+		return fmt.Errorf("run.postgres: StartRun: skip stale: %w", err)
+	}
+	return nil
+}
+
+// NOTE: a channel turn takes WhatsApp order and stops at 20 messages or 32 KiB; the rest stays pending for the next turn.
+func (s *postgresStore) toTake(ctx context.Context, tx *sql.Tx, orgID, threadID uuid.UUID, channel bool) ([]uuid.UUID, error) {
+	m := s.messages
+	stmt := postgres.SELECT(m.ID, postgres.OCTET_LENGTH(postgres.CAST(m.Body).AS_TEXT()).AS("pending.size")).FROM(m).
+		WHERE(m.ThreadID.EQ(postgres.UUID(threadID)).
+			AND(m.OrgID.EQ(postgres.UUID(orgID))).
+			AND(m.Status.EQ(postgres.String(string(MessagePending)))))
+	if channel {
+		stmt = stmt.ORDER_BY(m.ChannelTime.ASC().NULLS_LAST(), m.Seq.ASC()).LIMIT(turnMaxMessages)
+	} else {
+		stmt = stmt.ORDER_BY(m.Seq.ASC())
+	}
+	var rows []struct {
+		ID   uuid.UUID `alias:"messages.id"`
+		Size int       `alias:"pending.size"`
+	}
+	if err := stmt.QueryContext(ctx, tx, &rows); err != nil && !db.IsNoRows(err) {
+		return nil, fmt.Errorf("run.postgres: StartRun: pending: %w", err)
+	}
+	ids := make([]uuid.UUID, 0, len(rows))
+	total := 0
+	for _, row := range rows {
+		total += row.Size
+		if channel && len(ids) > 0 && total > turnMaxBytes {
+			break
+		}
+		ids = append(ids, row.ID)
+	}
+	return ids, nil
+}
+
+func (s *postgresStore) takeIDs(ctx context.Context, tx *sql.Tx, runID uuid.UUID, ids []uuid.UUID) ([]Message, error) {
+	m := s.messages
+	in := make([]postgres.Expression, len(ids))
+	for i, id := range ids {
+		in[i] = postgres.UUID(id)
+	}
+	take := m.UPDATE(m.Status, m.RunID).
+		SET(postgres.String(string(MessageConsumed)), postgres.UUID(runID)).
+		WHERE(m.ID.IN(in...)).
+		RETURNING(m.AllColumns)
+	var rows []messageRow
+	if err := take.QueryContext(ctx, tx, &rows); err != nil {
+		return nil, fmt.Errorf("run.postgres: StartRun: take pending: %w", err)
+	}
+	order := make(map[uuid.UUID]int, len(ids))
+	for i, id := range ids {
+		order[id] = i
+	}
+	taken := toMessages(rows)
+	slices.SortFunc(taken, func(a, b Message) int { return order[a.ID] - order[b.ID] })
 	return taken, nil
 }
 
@@ -459,11 +644,11 @@ func (s *postgresStore) insertRun(ctx context.Context, tx *sql.Tx, r *Run) error
 	}
 	t := s.runs
 	stmt := t.INSERT(
-		t.ID, t.PublicID, t.OrgID, t.ProjectID, t.ThreadID, t.AgentVersionID, t.Status, t.IdempotencyKey, t.Attempt,
+		t.ID, t.PublicID, t.OrgID, t.ProjectID, t.ThreadID, t.AgentVersionID, t.Status, t.IdempotencyKey, t.Attempt, t.IsGroup,
 		t.PriceInputMicros, t.PriceOutputMicros, t.PriceCacheReadMicros, t.PriceCacheWriteMicros,
 		t.StartedAt, t.CreatedAt, t.UpdatedAt,
 	).VALUES(
-		r.ID, r.PublicID, r.OrgID, r.ProjectID, r.ThreadID, r.AgentVersionID, string(r.Status), textOrNull(r.IdempotencyKey), r.Attempt,
+		r.ID, r.PublicID, r.OrgID, r.ProjectID, r.ThreadID, r.AgentVersionID, string(r.Status), textOrNull(r.IdempotencyKey), r.Attempt, r.Group,
 		price(func(p *Prices) *int64 { return p.Input }), price(func(p *Prices) *int64 { return p.Output }),
 		price(func(p *Prices) *int64 { return p.CacheRead }), price(func(p *Prices) *int64 { return p.CacheWrite }),
 		r.StartedAt.UTC(), r.StartedAt.UTC(), r.UpdatedAt.UTC(),
@@ -593,14 +778,18 @@ func (s *postgresStore) settleRun(ctx context.Context, tx *sql.Tx, orgID uuid.UU
 		latency = postgres.Int(min(r.EndedAt.Sub(r.StartedAt).Milliseconds(), int64(1<<31-1)))
 		ended = postgres.TimestampzT(r.EndedAt.UTC())
 	}
+	var next = postgres.NULL
+	if r.ReplyState == ReplyDue {
+		next = postgres.TimestampzT(r.UpdatedAt.Add(replyGrace).UTC())
+	}
 	t := s.runs
 	stmt := t.UPDATE(
 		t.Status, t.Attempt, t.InputTokens, t.OutputTokens, t.CacheReadTokens, t.CacheWriteTokens, t.UsageEstimated,
-		t.CostMicros, t.LatencyMS, t.ErrorCode, t.EndedAt, t.UpdatedAt,
+		t.CostMicros, t.LatencyMS, t.ErrorCode, t.EndedAt, t.UpdatedAt, t.ReplyState, t.ReplyNextAt,
 	).SET(
 		postgres.String(string(r.Status)), postgres.Int32(r.Attempt), postgres.Int(u.InputTokens), postgres.Int(u.OutputTokens),
 		postgres.Int(u.CacheReadTokens), postgres.Int(u.CacheWriteTokens), postgres.Bool(u.Estimated),
-		cost, latency, textOrNull(r.ErrorCode), ended, postgres.TimestampzT(r.UpdatedAt.UTC()),
+		cost, latency, textOrNull(r.ErrorCode), ended, postgres.TimestampzT(r.UpdatedAt.UTC()), textOrNull(r.ReplyState), next,
 	).WHERE(t.ID.EQ(postgres.UUID(r.ID)).AND(t.OrgID.EQ(postgres.UUID(orgID))))
 	res, err := stmt.ExecContext(ctx, tx)
 	if err != nil {
@@ -648,4 +837,38 @@ func (s *postgresStore) recordIdempotencyKey(ctx context.Context, tx *sql.Tx, r 
 	}
 	r.IdempotencyKey = key
 	return nil
+}
+
+// ReplyProgress records that the first parts of a run's reply were sent.
+func (s *postgresStore) ReplyProgress(ctx context.Context, runID uuid.UUID, partsSent int) error {
+	t := s.runs
+	return s.updateReply(ctx, "ReplyProgress", runID, t.UPDATE(t.ReplyPartsSent).SET(postgres.Int(int64(partsSent))))
+}
+
+// ReplyRetry counts a failed send of a due reply and sets its next try.
+func (s *postgresStore) ReplyRetry(ctx context.Context, runID uuid.UUID, next time.Time) error {
+	t := s.runs
+	return s.updateReply(ctx, "ReplyRetry", runID,
+		t.UPDATE(t.ReplyAttempts, t.ReplyNextAt).SET(t.ReplyAttempts.ADD(postgres.Int(1)), postgres.TimestampzT(next.UTC())))
+}
+
+// ReplyEnd ends a due reply as ReplySent or ReplyFailed.
+func (s *postgresStore) ReplyEnd(ctx context.Context, runID uuid.UUID, state string) error {
+	t := s.runs
+	return s.updateReply(ctx, "ReplyEnd", runID, t.UPDATE(t.ReplyState, t.ReplyNextAt).SET(postgres.String(state), postgres.NULL))
+}
+
+func (s *postgresStore) updateReply(ctx context.Context, op string, runID uuid.UUID, stmt postgres.UpdateStatement) error {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return err
+	}
+	t := s.runs
+	stmt = stmt.WHERE(t.ID.EQ(postgres.UUID(runID)).AND(t.OrgID.EQ(postgres.UUID(tc.OrgID))).AND(t.ReplyState.EQ(postgres.String(ReplyDue))))
+	return db.Write(ctx, s.pool, func(q qrm.DB) error {
+		if _, err := stmt.ExecContext(ctx, q); err != nil {
+			return fmt.Errorf("run.postgres: %s: %w", op, err)
+		}
+		return nil
+	})
 }

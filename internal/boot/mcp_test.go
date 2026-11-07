@@ -18,6 +18,8 @@ import (
 	"altalune.id/oagent/config"
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
 	authv1mcp "altalune.id/oagent/gen/go/auth/v1/authv1mcp"
+	channelv1mcp "altalune.id/oagent/gen/go/channel/v1/channelv1mcp"
+	enduserv1mcp "altalune.id/oagent/gen/go/enduser/v1/enduserv1mcp"
 	invitev1mcp "altalune.id/oagent/gen/go/invite/v1/invitev1mcp"
 	mcpserverv1mcp "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1mcp"
 	memberv1mcp "altalune.id/oagent/gen/go/member/v1/memberv1mcp"
@@ -144,8 +146,9 @@ func TestRegisteredScopes_OfferOnlyTokenScopes(t *testing.T) {
 	reg.Register(rootmcp.ToolSpec{Name: "member_invite", Scopes: []string{scope.MemberWrite}, Handler: noop}, nil)
 	reg.Register(rootmcp.ToolSpec{Name: "apikey_create", Scopes: []string{scope.ApikeyWrite}, Handler: noop}, nil)
 	reg.Register(rootmcp.ToolSpec{Name: "auth_whoami", Scopes: []string{authz.AnyAuthenticated}, Handler: noop}, nil)
+	reg.Register(rootmcp.ToolSpec{Name: "channel_list", Scopes: []string{scope.ChannelRead}, Handler: noop}, nil)
 
-	assert.Equal(t, []string{scope.AgentRead, scope.MemberWrite}, registeredScopes(reg))
+	assert.Equal(t, []string{scope.AgentRead, scope.ChannelRead, scope.MemberWrite}, registeredScopes(reg))
 	assert.Equal(t, []string{scope.MemberWrite}, toolScopes(reg)("member_invite"))
 	assert.Nil(t, toolScopes(reg)("nope"))
 }
@@ -269,6 +272,11 @@ func TestMCPTools_PermissionsComeFromTheTable(t *testing.T) {
 		mcpserverv1mcp.McpServerListToolName:           {scope.McpserverRead},
 		mcpserverv1mcp.McpServerDeleteToolName:         {scope.McpserverWrite},
 		mcpserverv1mcp.McpServerToolsToolName:          {scope.McpserverRead},
+		channelv1mcp.ChannelConnectionGetToolName:      {scope.ChannelRead},
+		channelv1mcp.ChannelConnectionListToolName:     {scope.ChannelRead},
+		channelv1mcp.ChannelConnectionDeleteToolName:   {scope.ChannelWrite},
+		enduserv1mcp.EndUserListToolName:               {scope.ThreadRead},
+		enduserv1mcp.EndUserGetToolName:                {scope.ThreadRead},
 
 		threadv1mcp.ThreadListToolName:     {scope.ThreadRead},
 		threadv1mcp.ThreadGetToolName:      {scope.ThreadRead},

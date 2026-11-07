@@ -1,10 +1,8 @@
 import type { AgentRuntimeConfig } from '~/stores/agentRuntime';
 import type { SampleAgent } from '~/stores/agents';
 import type { ApprovalArg, ApprovalItem, ApprovalRequest } from '~/stores/approvals';
-import type { ChannelSettings, OpenwaCheck, OpenwaFill } from '~/stores/channels';
-import type { EndUserList, EndUserThread } from '~/stores/endUsers';
 import type { KnowledgeSource } from '~/stores/knowledge';
-import type { RunDetail, RunSummary, ThreadDetail } from '~/stores/threads';
+import type { RunSummary, ThreadDetail } from '~/stores/threads';
 import type { ChatScript } from '~/stores/tryIt';
 import type { WebSearchSetting } from '~/stores/webSearch';
 
@@ -19,55 +17,6 @@ export function sampleAgents(): SampleAgent[] {
     { slug: 'yasaku-keuangan', name: 'Yasaku Keuangan', description: 'Mencatat pengeluaran dan pemasukan keluarga di yasaku', version: 4, draft: true, model: 'openai/gpt-4.1-mini', runs7d: 214, medianSeconds: 6, costCents7d: 64, updatedAt: daysAgo(0.1) },
     { slug: 'tagihan', name: 'Tagihan', description: 'Mengingatkan tagihan listrik, air dan internet', version: 2, draft: false, model: 'google/gemini-2.5-flash', runs7d: 38, medianSeconds: 4, costCents7d: 9, updatedAt: daysAgo(3) },
   ];
-}
-
-export function sampleRun(): RunDetail {
-  const raw = { amount: 40000, category: 'Makan & minum', wallet: 'Cash', note: 'Kopi Kenangan', date: '2026-11-04', confirm: true };
-  return {
-    id: 'run_7Xp2KqLvN9sT4bWz',
-    agentName: 'Yasaku Keuangan',
-    version: 4,
-    model: 'openai/gpt-4.1-mini',
-    price: { input: 0.4, output: 1.6 },
-    startedBy: 'Budi · WhatsApp DM',
-    threadId: 'thr_dm8Kq2Wx',
-    startedAt: new Date(Date.now() - 52_000),
-    maxSteps: 12,
-    approval: {
-      id: 'apr_kp1',
-      tool: 'yasaku__record_expense',
-      title: 'Simpan Rp40.000 dari Cash?',
-      args: [
-        { label: 'Jumlah', value: 'Rp40.000' },
-        { label: 'Kategori', value: 'Makan & minum' },
-        { label: 'Dompet', value: 'Cash' },
-        { label: 'Tanggal', value: '4 Nov 2026' },
-        { label: 'confirm', value: 'true', mono: true, gate: true },
-      ],
-      raw,
-      status: 'pending',
-      requestedBy: 'Budi',
-      requestedById: 'eu_budi1',
-      expiresAt: new Date(Date.now() + 23 * 3_600_000),
-    },
-    events: [
-      { id: 'e1', type: 'input', labelKey: 'run.event_message', name: 'Pesan', at: 0, took: 0, summary: 'beli kopi kenangan 40rb pakai cash', input: 'beli kopi kenangan 40rb pakai cash' },
-      { id: 'e2', type: 'model', labelKey: 'run.event_plan', name: 'Rencana', at: 0.2, took: 1.6, costCents: 0.04, tokens: 812, summary: 'Cek dompet, lalu buat ringkasan pengeluaran.', output: 'Cek dompet, lalu buat ringkasan pengeluaran.' },
-      { id: 'e3', type: 'error', name: 'yasaku__list_wallets', at: 1.9, took: 5, summary: 'yasaku did not answer in 5.0 s.', input: '{}' },
-      { id: 'e4', type: 'tool', name: 'yasaku__list_wallets', at: 7.0, took: 0.6, summary: 'Retry worked. Cash Rp1.250.000, BCA Rp8.420.000, GoPay Rp310.000.', input: '{}', output: '[{ "name": "Cash", "balance": 1250000 }, { "name": "BCA", "balance": 8420000 }]' },
-      { id: 'e5', type: 'model', labelKey: 'run.event_preview', name: 'Ringkasan', at: 7.7, took: 1.4, costCents: 0.05, tokens: 1204, summary: 'Preview the expense with confirm=false.' },
-      { id: 'e6', type: 'tool', name: 'yasaku__record_expense', at: 9.2, took: 0.5, summary: 'Preview only (confirm=false): nothing saved.', input: JSON.stringify({ ...raw, confirm: false }), output: '{ "preview": "Simpan Rp40.000 dari Cash?" }' },
-      { id: 'e7', type: 'model', labelKey: 'run.event_ask', name: 'Minta persetujuan', at: 9.8, took: 0.9, costCents: 0.03, tokens: 690, summary: 'Saving needs a person: confirm=true.' },
-      { id: 'e8', type: 'approval', name: 'yasaku__record_expense', at: 10.8, took: 0, summary: 'Simpan Rp40.000 dari Cash?' },
-    ],
-    afterApprove: [
-      { id: 'e9', type: 'tool', name: 'yasaku__record_expense', at: 62.4, took: 0.7, summary: 'Saved: tx_8811.', input: JSON.stringify(raw), output: '{ "id": "tx_8811", "saved": true }' },
-      { id: 'e10', type: 'output', labelKey: 'run.event_reply', name: 'Balasan', at: 63.2, took: 1.8, costCents: 0.07, tokens: 640, summary: 'Tersimpan: Kopi Kenangan Rp40.000 dari Cash. Sisa saldo Cash Rp1.210.000.' },
-    ],
-    afterReject: [
-      { id: 'e9', type: 'output', labelKey: 'run.event_reply', name: 'Balasan', at: 58.0, took: 0.6, costCents: 0.02, tokens: 210, summary: 'Oke, tidak saya simpan.' },
-    ],
-  };
 }
 
 const idMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -187,49 +136,32 @@ export function sampleChatScript(prompt: string): ChatScript {
   };
 }
 
-export const sampleChannelId = 'chn_8fK2pQ';
-
-export function sampleChannelSettings(): ChannelSettings {
-  return {
-    defaultOpenwaBaseUrl: 'https://openwa.altalune.id',
-    defaultReplies: {
-      failure: 'Sorry, something went wrong on our side. Please try again in a moment.',
-      voice: 'Voice notes are not supported yet. Please send your message as text.',
-      photo: 'I could not read that photo. Please describe it in text instead.',
-    },
-    timing: { quietMs: 3_000, quietMaxMs: 10_000, maxMessageAgeMinutes: 30 },
-  };
-}
-
-export function sampleOpenwaFill(): OpenwaFill {
-  return { deviceId: 'dev_yasaku-rumah', secret: 'sample-webhook-secret', deviceKey: 'sample-device-key' };
-}
-
-export function sampleWebhookUrl(channelId = sampleChannelId): string {
-  return `https://oagent.altalune.id/hooks/openwa/${channelId}`;
-}
-
-// NOTE: the check answers by what was typed so every result can be clicked: device "403" refused key, "lain" wrong device, "diam" no message, secret "salah" bad signature.
-export async function sampleOpenwaCheck(input: { deviceId: string, secret: string }, waitMs = 1200): Promise<OpenwaCheck> {
-  await new Promise(resolve => setTimeout(resolve, waitMs));
-  if (input.deviceId.includes('403')) {
-    return 'key_refused';
-  }
-  if (input.deviceId.includes('lain')) {
-    return 'device_mismatch';
-  }
-  if (input.deviceId.includes('diam')) {
-    return 'no_message';
-  }
-  return input.secret === 'salah' ? 'bad_signature' : 'connected';
-}
-
 function run(id: string): RunSummary {
   return sampleRuns().find(r => r.id === id)!;
 }
 
+export function kopiApproval(): ApprovalRequest {
+  return {
+    id: 'apr_kp1',
+    tool: 'yasaku__record_expense',
+    title: 'Simpan Rp40.000 dari Cash?',
+    args: [
+      { label: 'Jumlah', value: 'Rp40.000' },
+      { label: 'Kategori', value: 'Makan & minum' },
+      { label: 'Dompet', value: 'Cash' },
+      { label: 'Tanggal', value: '4 Nov 2026' },
+      { label: 'confirm', value: 'true', mono: true, gate: true },
+    ],
+    raw: { amount: 40000, category: 'Makan & minum', wallet: 'Cash', note: 'Kopi Kenangan', date: '2026-11-04', confirm: true },
+    status: 'pending',
+    requestedBy: 'Budi',
+    requestedById: 'eu_budi1',
+    expiresAt: new Date(Date.now() + 23 * 3_600_000),
+  };
+}
+
 export function sampleThreads(): ThreadDetail[] {
-  const kopi = sampleRun();
+  const kopi = { approval: kopiApproval() };
   const at = (m: number) => minutesAgo(m);
   const parkirAsked = at(2890);
   const parkirDay = idDay(new Date(parkirAsked.getTime() - 86_400_000));
@@ -348,49 +280,4 @@ export function sampleApprovals(): ApprovalItem[] {
     { ...yasaku, approval: { id: 'apr_tr3', tool: 'yasaku__record_transfer', title: 'Transfer Rp500.000 dari BCA ke Cash?', args: [{ label: 'Jumlah', value: 'Rp500.000' }, { label: 'Dari', value: 'BCA' }, { label: 'Ke', value: 'Cash' }, { label: 'confirm', value: 'true', mono: true, gate: true }], raw: { from: 'BCA', to: 'Cash', amount: 500000, confirm: true }, status: 'rejected', requestedBy: 'Budi', decidedBy: 'Budi', decidedVia: { channel: 'console' }, decidedAt: minutesAgo(180) }, threadId: 'thr_try2Hx6P', channel: 'try', askedAt: minutesAgo(181) },
     { ...yasaku, approval: card('thr_grp3Kd9Q', 'apr_del1'), threadId: 'thr_grp3Kd9Q', channel: 'whatsapp_group', askedAt: minutesAgo(2890) },
   ];
-}
-
-export function sampleEndUsers(): EndUserList {
-  const yasaku = { agentSlug: sampleAgentSlug, agentName: 'Yasaku Keuangan' };
-  const group: EndUserThread = { ...yasaku, id: 'thr_grp3Kd9Q', title: 'Keuangan Rumah', kind: 'whatsapp_group', updatedAt: minutesAgo(0.3) };
-  return {
-    memoryOn: true,
-    items: [
-      {
-        id: 'eu_budi1',
-        name: 'Budi',
-        identities: [
-          { kind: 'phone', value: '+62 800 •••• 0001', linkedAt: daysAgo(30) },
-          { kind: 'lid', value: '•••• 4417', linkedAt: daysAgo(30) },
-        ],
-        threads: [{ ...yasaku, id: 'thr_dm8Kq2Wx', title: 'Budi', kind: 'whatsapp_dm', updatedAt: minutesAgo(2) }, group],
-        memories: [
-          { id: 'mem_3Vx8QnT2', text: 'Budi biasanya bayar kopi pakai Cash', threadId: 'thr_dm8Kq2Wx', agentSlug: sampleAgentSlug, learnedAt: daysAgo(4) },
-        ],
-        lastSeenAt: minutesAgo(2),
-      },
-      {
-        id: 'eu_sari2',
-        name: 'Sari',
-        identities: [
-          { kind: 'phone', value: '+62 800 •••• 0002', linkedAt: daysAgo(28) },
-          { kind: 'lid', value: '•••• 9023', linkedAt: daysAgo(28) },
-        ],
-        threads: [group],
-        memories: [
-          { id: 'mem_7Lp2WkR9', text: 'Sari suka mencatat belanja pasar di dompet Cash', threadId: 'thr_grp3Kd9Q', agentSlug: sampleAgentSlug, learnedAt: daysAgo(9) },
-          { id: 'mem_9Dz4HbM6', text: 'Sari bayar listrik pakai BCA setiap tanggal 5', threadId: 'thr_grp3Kd9Q', agentSlug: sampleAgentSlug, learnedAt: daysAgo(2) },
-        ],
-        lastSeenAt: minutesAgo(0.3),
-      },
-      {
-        id: 'eu_api3',
-        name: 'cust_0001',
-        identities: [{ kind: 'api', value: 'cust_0001', linkedAt: daysAgo(12) }],
-        threads: [{ ...yasaku, id: 'thr_api5Tn1R', title: 'cust_0001', kind: 'api', updatedAt: minutesAgo(90) }],
-        memories: [],
-        lastSeenAt: minutesAgo(90),
-      },
-    ],
-  };
 }

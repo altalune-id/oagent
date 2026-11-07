@@ -12,8 +12,11 @@ import (
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/auth"
+	"altalune.id/oagent/internal/channel"
+	"altalune.id/oagent/internal/channel/openwa"
 	"altalune.id/oagent/internal/controlplane"
 	"altalune.id/oagent/internal/enduser"
+	"altalune.id/oagent/internal/ingest"
 	"altalune.id/oagent/internal/install"
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/capabilities"
@@ -60,9 +63,16 @@ type Services struct {
 	ModelProviderStore modelprovider.Store
 	MCPServers         *mcpserver.Service
 	MCPServerStore     mcpserver.Store
-	EndUsers           *enduser.Service
-	RunStore           run.Store
-	Runs               *run.Service
+	Channels           *channel.Service
+	ChannelStore       channel.Store
+	// ChannelOptions are the server settings the channel API reports.
+	ChannelOptions channel.ControlPlaneOptions
+	// ChannelProvider talks to OpenWA; ChannelReplier sends settled channel runs' replies through it.
+	ChannelProvider channel.Provider
+	ChannelReplier  *channel.Replier
+	EndUsers        *enduser.Service
+	RunStore        run.Store
+	Runs            *run.Service
 	// RunTurns is the run-turns worker; RunKicker reaches it, through the queue when it is on.
 	RunTurns  *run.Runner
 	RunKicker run.Kicker
@@ -229,9 +239,30 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		From:       cfg.Mail.From,
 		BaseURL:    publicBase(cfg.HTTP),
 	})
+	svcs.ChannelProvider = openwa.New(channelPrivateHosts(cfg))
+	svcs.ChannelStore = channel.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)
+	svcs.Channels = channel.NewService(svcs.ChannelStore, uow, newPublicIDs(svcs), k.Reporter.Unexpected).
+		WithSealer(sl).WithPublisher(webhooks).WithAllowPrivateHosts(channelPrivateHosts(cfg)).WithLogger(orDiscard(k.Log))
+	svcs.ChannelOptions = channel.ControlPlaneOptions{
+		HooksURL:       channelHooksURL(cfg.HTTP),
+		DefaultBaseURL: cfg.Channel.DefaultOpenwaBaseURL,
+		MaxMessageAge:  cfg.Channel.MaxMessageAge,
+	}
 	members.WithEffects(memberEffects(cfg, svcs)).WithDirectory(memberDirectory{users: users, orgs: orgs})
 	installer.WithTerms(svcs.Legal)
 	return svcs
+}
+
+func channelHooksURL(c config.HTTPConfig) string {
+	if c.BaseURL == "" {
+		return ""
+	}
+	return publicBase(c) + ingest.DefaultBasePath + "/" + channel.ProviderOpenWA
+}
+
+// SECURITY: OpenWA on a private network is allowed outside production, or when the operator sets channel.allowPrivateHosts.
+func channelPrivateHosts(cfg config.Config) bool {
+	return cfg.Channel.AllowPrivateHosts || !cfg.Env.IsProduction()
 }
 
 func buildLegal(k kernel.Kernel, cfg config.Config, users *user.Service) *legal.Service {

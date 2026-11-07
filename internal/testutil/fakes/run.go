@@ -2,6 +2,7 @@ package fakes
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
 	"sync"
@@ -43,6 +44,13 @@ type RunStore struct {
 	// ExternalKeys and Actors hold each API thread's key and bound end user.
 	ExternalKeys map[uuid.UUID]string
 	Actors       map[uuid.UUID]uuid.UUID
+	// Connections holds each channel thread's connection.
+	Connections map[uuid.UUID]uuid.UUID
+	// Texts holds each connection's set replies; TextsErr fails ReplyTexts.
+	Texts    map[uuid.UUID]run.ReplyTexts
+	TextsErr error
+	// Kinds maps a thread to its kind; a thread not in it is an API thread.
+	Kinds map[uuid.UUID]string
 	// Activity holds each thread's last activity, for ListThreads; a missing thread reads as the zero time.
 	Activity map[uuid.UUID]time.Time
 }
@@ -77,8 +85,10 @@ func (f *RunStore) Thread(ctx context.Context, threadID uuid.UUID) (*run.Thread,
 		return nil, err
 	}
 	return &run.Thread{
-		ID: threadID, PublicID: f.PublicIDs[threadID], OrgID: th.OrgID, ProjectID: th.ProjectID, AgentID: f.Agents[threadID], Kind: "api",
+		ID: threadID, PublicID: f.PublicIDs[threadID], OrgID: th.OrgID, ProjectID: th.ProjectID, AgentID: f.Agents[threadID],
+		Kind:            f.kind(threadID),
 		CancelRequested: th.CancelRequested, ExternalKey: f.ExternalKeys[threadID], ActorEndUserID: f.Actors[threadID],
+		ConnectionID: f.Connections[threadID],
 	}, nil
 }
 
@@ -644,7 +654,7 @@ func (f *RunStore) ResolveRun(_ context.Context, publicID string) (run.Ref, erro
 func (f *RunStore) summary(id uuid.UUID, th *RunThread) run.ThreadSummary {
 	out := run.ThreadSummary{
 		Thread: run.Thread{
-			ID: id, PublicID: f.PublicIDs[id], OrgID: th.OrgID, ProjectID: th.ProjectID, AgentID: f.Agents[id], Kind: "api",
+			ID: id, PublicID: f.PublicIDs[id], OrgID: th.OrgID, ProjectID: th.ProjectID, AgentID: f.Agents[id], Kind: f.kind(id),
 			ExternalKey: f.ExternalKeys[id], ActorEndUserID: f.Actors[id], CancelRequested: th.CancelRequested,
 		},
 		LastActivityAt: f.Activity[id],
@@ -737,4 +747,104 @@ func (f *RunStore) ListRuns(ctx context.Context, threadID uuid.UUID, after run.C
 	}
 	slices.SortFunc(out, func(a, b run.Run) int { return newerFirst(a.StartedAt, b.StartedAt, a.PublicID, b.PublicID) })
 	return out[:min(len(out), max(limit, 1))], nil
+}
+
+// AppendChannelMessage implements run.Store; it is not modeled in memory.
+func (f *RunStore) AppendChannelMessage(context.Context, run.ChannelMessage) (run.ChannelAppend, error) {
+	return run.ChannelAppend{}, errors.New("fakes: AppendChannelMessage is not modeled")
+}
+
+func (f *RunStore) kind(id uuid.UUID) string {
+	if k, ok := f.Kinds[id]; ok {
+		return k
+	}
+	return "api"
+}
+
+// ReplyTexts implements run.Store.
+func (f *RunStore) ReplyTexts(_ context.Context, connectionID uuid.UUID) (run.ReplyTexts, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.TextsErr != nil {
+		return run.ReplyTexts{}, f.TextsErr
+	}
+	return f.Texts[connectionID], nil
+}
+
+// ListAgentRuns implements run.Store.
+func (f *RunStore) ListAgentRuns(ctx context.Context, agentID uuid.UUID, after run.Cursor, limit int) ([]run.Run, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out []run.Run
+	for _, r := range f.Runs {
+		if f.Agents[r.ThreadID] == agentID && r.OrgID == tc.OrgID && before(after, r.StartedAt, r.PublicID) {
+			out = append(out, *r)
+		}
+	}
+	slices.SortFunc(out, func(a, b run.Run) int { return newerFirst(a.StartedAt, b.StartedAt, a.PublicID, b.PublicID) })
+	return out[:min(len(out), max(limit, 1))], nil
+}
+
+// EndUserActivity implements run.Store over the stored messages and thread actors.
+func (f *RunStore) EndUserActivity(_ context.Context, ids []uuid.UUID) (map[uuid.UUID]run.EndUserActivity, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := map[uuid.UUID]run.EndUserActivity{}
+	for _, id := range ids {
+		threads := map[uuid.UUID]bool{}
+		var a run.EndUserActivity
+		for _, m := range f.Messages {
+			if m.SpeakerID != nil && *m.SpeakerID == id {
+				threads[m.ThreadID] = true
+				if m.CreatedAt.After(a.LastSeen) {
+					a.LastSeen = m.CreatedAt
+				}
+			}
+		}
+		for thread, actor := range f.Actors {
+			if actor == id {
+				threads[thread] = true
+			}
+		}
+		a.Threads = int64(len(threads))
+		out[id] = a
+	}
+	return out, nil
+}
+
+// EndUserThreads implements run.Store over the stored messages and thread actors.
+func (f *RunStore) EndUserThreads(ctx context.Context, id uuid.UUID) ([]run.ThreadSummary, error) {
+	seen, err := f.EndUserActivity(ctx, []uuid.UUID{id})
+	if err != nil || seen[id].Threads == 0 {
+		return nil, err
+	}
+	f.mu.Lock()
+	ids := map[uuid.UUID]bool{}
+	for _, m := range f.Messages {
+		if m.SpeakerID != nil && *m.SpeakerID == id {
+			ids[m.ThreadID] = true
+		}
+	}
+	for thread, actor := range f.Actors {
+		if actor == id {
+			ids[thread] = true
+		}
+	}
+	f.mu.Unlock()
+	var out []run.ThreadSummary
+	for thread := range ids {
+		th, err := f.Thread(ctx, thread)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, run.ThreadSummary{Thread: *th})
+	}
+	return out, nil
 }

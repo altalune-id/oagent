@@ -1,276 +1,114 @@
 <script setup lang="ts">
-import type { Lane, RunStatus } from '~/components/run/runView';
-import type { ApprovalRequest } from '~/stores/approvals';
-import type { RunEvent } from '~/stores/threads';
-import AppButton from '#base/components/ui/AppButton.vue';
-import { useCopy } from '#base/components/ui/copy';
+import EmptyState from '#base/components/ui/EmptyState.vue';
+import LoadError from '#base/components/ui/LoadError.vue';
+import LoadingStatus from '#base/components/ui/LoadingStatus.vue';
 import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { useDates } from '#base/composables/useDates';
-import ApprovalCard from '~/components/approval/ApprovalCard.vue';
-import { decideApproval } from '~/components/approval/decision';
-import EventMark from '~/components/run/EventMark.vue';
-import RunMinimap from '~/components/run/RunMinimap.vue';
-import { decisionStatus, eventName, eventsFor, lane, lanes, toolCalls, totals } from '~/components/run/runView';
-import { runStatusTone } from '~/components/thread/conversation';
-import { useCan } from '~/composables/useCan';
+import { useAgentPage } from '~/components/agent/useAgentPage';
+import { runDetailText, runFix, runStatusTone } from '~/components/thread/conversation';
+import ChatTranscript from '~/components/try/ChatTranscript.vue';
 import { useUnits } from '~/composables/useUnits';
-import { useAuthStore } from '~/stores/auth';
 import { useThreadsStore } from '~/stores/threads';
 
 definePageMeta({ bleed: true });
 
-const { t } = useI18n();
+const { t, te } = useI18n();
 const route = useRoute();
-const auth = useAuthStore();
-const canEdit = useCan('agent:write');
-const nameOf = (e: RunEvent) => eventName(e, t);
 const { moment } = useDates();
 const { money, seconds, count } = useUnits();
+const { agent, base } = await useAgentPage();
+const store = useThreadsStore();
+const runId = computed(() => route.params.run as string);
+const view = computed(() => (store.runView?.run.id === runId.value ? store.runView : null));
+const run = computed(() => view.value?.run);
+const fix = computed(() => runFix(run.value?.detail, base.value));
+const threadLink = computed(() => (run.value ? `${base.value}/threads/${run.value.threadId}` : ''));
 
-const run = useThreadsStore().runDetail();
-const status = ref<RunStatus>('waiting');
-const approval = ref<ApprovalRequest>({ ...run.approval });
-const runStatus = computed(() => decisionStatus(status.value));
-const threadLink = computed(() => `/o/${route.params.org}/projects/${route.params.project}/agents/${route.params.agent}/threads/${run.threadId}`);
-const shown = ref<Lane[]>([...lanes]);
-const fromHash = route.hash?.startsWith('#event-') ? route.hash.slice('#event-'.length) : '';
-const selectedId = ref(run.events.some(e => e.id === fromHash) ? fromHash : run.events.at(-1)!.id);
-const uid = useId();
+watch(runId, id => void store.loadRun(id), { immediate: true });
 
-const events = computed(() => eventsFor(run, status.value));
-const sum = computed(() => totals(events.value));
-const visible = computed(() => events.value.filter((e) => {
-  const l = lane(e);
-  return l === null || shown.value.includes(l);
-}));
-const selected = computed<RunEvent>(() => events.value.find(e => e.id === selectedId.value) ?? events.value[0]!);
-const selectedLane = computed(() => lane(selected.value));
-const tools = computed(() => toolCalls(events.value));
-const { copy } = useCopy();
-const modelMark = '\u0001';
-const started = computed(() => t('run.started', { agent: run.agentName, version: run.version, model: modelMark, by: run.startedBy, at: moment(run.startedAt) }).split(modelMark));
-
-function copyLink() {
-  void copy(`${window.location.origin}${window.location.pathname}${window.location.search}#event-${selected.value.id}`, t('common.copied'));
-}
-
-function select(id: string) {
-  selectedId.value = id;
-  nextTick(() => document.getElementById(`event-${id}`)?.focus());
-}
-
-function decide(next: RunStatus, reason = '') {
-  const decided = decideApproval(approval.value, next === 'approved', auth.me?.name ?? '', { channel: 'console' }, reason);
-  if (!decided) {
-    return;
-  }
-  approval.value = decided;
-  status.value = next;
-  selectedId.value = events.value.at(-1)!.id;
-}
-
-function eventTime(e: RunEvent) {
-  const time = e.took ? t('run.event_time', { at: e.at, took: e.took }) : t('run.event_at', { at: e.at });
-  return e.costCents ? `${time}, ${money(e.costCents)}` : time;
-}
-
-useHead({ title: () => `${t('run.title', { id: run.id })} · OAgent` });
-
-await auth.load();
+useHead({ title: () => `${t('run.title', { id: runId.value })} · OAgent` });
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-col">
-    <header class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 lg:px-6">
+  <div v-if="store.runError" class="m-4 lg:m-6">
+    <h1 class="sr-only">
+      {{ t('run.title', { id: runId }) }}
+    </h1>
+    <LoadError :error="store.runError" :busy="store.runLoading" :retry-label="t('common.retry')" @retry="store.loadRun(runId)" />
+  </div>
+  <LoadingStatus v-else-if="store.runLoading && !run" class="m-4 lg:m-6" :label="t('common.loading')" />
+  <EmptyState v-else-if="!run || !view" icon="lucide:activity" :title="t('error.run_not_found')" :heading-level="1" class="px-4 lg:px-6">
+    <template #actions>
+      <NuxtLink :to="`${base}/runs`" class="link text-ui">
+        {{ t('run.all') }}
+      </NuxtLink>
+    </template>
+  </EmptyState>
+  <div v-else class="flex min-w-0 flex-col">
+    <header class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-base-300 px-4 py-3 lg:px-6">
       <div class="min-w-0">
         <h1 class="text-xl font-semibold">
           {{ t('run.heading') }} <span class="font-mono text-base font-medium break-all">{{ run.id }}</span>
-          <span class="badge badge-info badge-soft text-base-content badge-sm ms-2 align-middle">{{ t('preview.badge') }}</span>
         </h1>
         <p class="text-ui text-base-content/70">
-          {{ started[0] }}<span class="font-mono text-xs">{{ run.model }}</span>{{ started[1] }}
+          {{ t('run.started_live', { version: view.agentVersion, at: moment(run.startedAt) }) }}<template v-if="view.attempt > 1">
+            · {{ t('run.attempt', { n: view.attempt }) }}
+          </template>
+          ·
           <NuxtLink :to="threadLink" class="link">
             {{ t('run.open_thread') }}
           </NuxtLink>
         </p>
       </div>
-      <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
-        <dl class="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-ui">
-          <div class="flex items-baseline gap-1.5">
-            <dt class="text-base-content/70">
-              {{ t('run.status') }}
-            </dt>
-            <dd role="status">
-              <StatusLabel :tone="runStatusTone[runStatus]" :label="t(`runstatus.${runStatus}`)" />
-            </dd>
-          </div>
-          <div class="flex items-baseline gap-1.5">
-            <dt class="text-base-content/70">
-              {{ t('run.duration') }}
-            </dt>
-            <dd class="font-medium tabular-nums">
-              {{ seconds(sum.seconds) }}
-            </dd>
-          </div>
-          <div class="flex items-baseline gap-1.5">
-            <dt class="text-base-content/70">
-              {{ t('run.cost') }}
-            </dt>
-            <dd class="font-medium tabular-nums">
-              {{ money(sum.costCents) }}
-            </dd>
-          </div>
-          <div class="flex items-baseline gap-1.5">
-            <dt class="text-base-content/70">
-              {{ t('run.steps') }}
-            </dt>
-            <dd class="font-medium tabular-nums">
-              {{ t('run.steps_of', { n: sum.steps, max: run.maxSteps }) }}
-            </dd>
-          </div>
-        </dl>
-        <AppButton v-if="status === 'waiting'" size="sm" @click="select('e8')">
-          <Icon name="lucide:hand" size="16" aria-hidden="true" />
-          {{ t('run.review_approval') }}
-        </AppButton>
-      </div>
-      <p role="note" class="flex w-full items-center gap-1.5 text-xs text-base-content/70">
-        <Icon name="lucide:flask-conical" size="14" class="shrink-0" aria-hidden="true" />
-        {{ t('run.preview_note') }}
+      <dl class="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-ui">
+        <div class="flex items-baseline gap-1.5">
+          <dt class="text-base-content/70">
+            {{ t('run.status') }}
+          </dt>
+          <dd>
+            <span role="status"><StatusLabel :tone="runStatusTone[run.status]" :label="t(`runstatus.${run.status}`)" :detail="runDetailText(run.detail, t, te)" /></span>
+          </dd>
+        </div>
+        <div class="flex items-baseline gap-1.5">
+          <dt class="text-base-content/70">
+            {{ t('run.duration') }}
+          </dt>
+          <dd class="font-medium tabular-nums">
+            {{ seconds(run.seconds) }}
+          </dd>
+        </div>
+        <div class="flex items-baseline gap-1.5">
+          <dt class="text-base-content/70">
+            {{ t('run.tokens') }}
+          </dt>
+          <dd class="font-medium tabular-nums">
+            {{ run.estimated ? t('thread.tokens_estimated', { n: count(run.tokens) }) : count(run.tokens) }}
+          </dd>
+        </div>
+        <div class="flex items-baseline gap-1.5">
+          <dt class="text-base-content/70">
+            {{ t('run.cost') }}
+          </dt>
+          <dd class="font-medium tabular-nums">
+            {{ run.unpriced ? t('thread.unpriced') : money(run.costCents) }}
+          </dd>
+        </div>
+      </dl>
+      <p v-if="fix" class="w-full text-ui">
+        <NuxtLink :to="fix.to" class="link">
+          {{ t(fix.labelKey) }}
+        </NuxtLink>
       </p>
     </header>
 
-    <section class="border-y border-base-300 px-4 py-3 lg:px-6" :aria-label="t('run.timeline')">
-      <RunMinimap :events="events" :selected="selected.id" @select="select" />
+    <section class="min-w-0 px-4 py-3 lg:px-6" :aria-labelledby="`run-${run.id}-messages`">
+      <h2 :id="`run-${run.id}-messages`" class="pb-2 text-ui font-semibold">
+        {{ t('run.messages') }}
+      </h2>
+      <p v-if="!view.items.length" class="text-ui text-base-content/70">
+        {{ t('run.no_messages') }}
+      </p>
+      <ChatTranscript v-else viewer="agent" :items="view.items" :agent-name="agent.name" :you-name="t('try.you')" read-only />
     </section>
-
-    <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)]">
-      <section class="min-w-0" :aria-labelledby="`${uid}-transcript`">
-        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
-          <h2 :id="`${uid}-transcript`" class="text-ui font-semibold">
-            {{ t('run.transcript') }}
-          </h2>
-          <fieldset class="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <legend class="sr-only">
-              {{ t('run.show_types') }}
-            </legend>
-            <label v-for="l in lanes" :key="l" class="label gap-1.5 text-xs text-base-content">
-              <input v-model="shown" class="checkbox checkbox-xs rounded-sm" type="checkbox" :value="l">
-              <EventMark :lane="l" />
-              {{ t(`run.lane_${l}`) }}
-            </label>
-          </fieldset>
-        </div>
-        <ol class="divide-y divide-base-300 border-t border-base-300 text-ui">
-          <template v-for="e in visible" :key="e.id">
-            <li v-if="e.type === 'approval'" id="approval" class="border-y-2 border-warning bg-base-200 px-4 py-3">
-              <button :id="`event-${e.id}`" type="button" class="flex w-full items-start gap-2 text-start" :aria-pressed="e.id === selected.id" @click="selectedId = e.id">
-                <span class="mt-1"><EventMark lane="approval" /></span>
-                <span class="min-w-0 flex-1">
-                  <span class="flex flex-wrap items-center justify-between gap-x-2">
-                    <span class="font-semibold">{{ t('run.approval_prefix') }} <span class="font-mono text-xs">{{ e.name }}</span></span>
-                    <span class="text-xs tabular-nums text-base-content/70">{{ t('run.event_at', { at: e.at }) }}</span>
-                  </span>
-                  <span class="block text-sm">{{ approval.title }}</span>
-                </span>
-              </button>
-              <div class="ps-[1.125rem] pt-2">
-                <ApprovalCard :approval="approval" :read-only="!canEdit" @approve="decide('approved')" @reject="decide('rejected', $event)" />
-              </div>
-            </li>
-            <li v-else>
-              <button
-                :id="`event-${e.id}`"
-                type="button"
-                class="flex w-full items-start gap-2 px-4 py-1.5 text-start hover:bg-base-200 aria-pressed:bg-base-200"
-                :aria-pressed="e.id === selected.id"
-                @click="selectedId = e.id"
-              >
-                <span class="mt-1 w-2.5 shrink-0"><EventMark :lane="lane(e)" /></span>
-                <span class="min-w-0 flex-1">
-                  <span class="flex flex-wrap items-center justify-between gap-x-2">
-                    <span class="font-medium" :class="{ 'font-mono text-xs': e.type === 'tool' || e.type === 'error' }">{{ nameOf(e) }}</span>
-                    <span class="text-xs tabular-nums text-base-content/70">{{ eventTime(e) }}</span>
-                  </span>
-                  <span class="block text-base-content/70">{{ e.summary }}</span>
-                </span>
-              </button>
-            </li>
-          </template>
-        </ol>
-      </section>
-
-      <aside class="min-w-0 border-t border-base-300 bg-base-200 lg:border-s lg:border-t-0" :aria-label="t('run.inspector')">
-        <div class="flex flex-col gap-3 p-4 text-ui lg:sticky lg:top-0 lg:max-h-dvh lg:overflow-y-auto">
-          <div class="flex items-start justify-between gap-2">
-            <div class="min-w-0">
-              <div class="inline-flex items-center gap-1.5 text-xs">
-                <EventMark :lane="selectedLane" />
-                {{ selectedLane ? t(`run.lane_${selectedLane}`) : t('run.input') }}
-              </div>
-              <h2 class="font-semibold break-all">
-                {{ nameOf(selected) }}
-              </h2>
-            </div>
-            <AppButton variant="ghost" size="xs" square :aria-label="t('run.copy_link')" :title="t('run.copy_link')" @click="copyLink()">
-              <Icon name="lucide:link" size="14" aria-hidden="true" />
-            </AppButton>
-          </div>
-          <p>{{ selected.summary }}</p>
-          <p v-if="selected.type === 'model' || selected.type === 'output'" class="text-xs text-base-content/70">
-            {{ t('run.priced_at', { input: money(run.price.input * 100), output: money(run.price.output * 100) }) }}
-          </p>
-          <dl class="grid grid-cols-[4rem_1fr] gap-x-3 gap-y-1 tabular-nums">
-            <dt class="text-base-content/70">
-              {{ t('run.started_at') }}
-            </dt>
-            <dd>{{ seconds(selected.at) }}</dd>
-            <dt class="text-base-content/70">
-              {{ t('run.took') }}
-            </dt>
-            <dd>{{ seconds(selected.took) }}</dd>
-            <dt class="text-base-content/70">
-              {{ t('run.cost') }}
-            </dt>
-            <dd>{{ selected.costCents ? money(selected.costCents) : '—' }}</dd>
-            <dt class="text-base-content/70">
-              {{ t('run.tokens') }}
-            </dt>
-            <dd>{{ selected.tokens ? count(selected.tokens) : '—' }}</dd>
-          </dl>
-          <div v-if="selected.input">
-            <h3 class="text-xs text-base-content/70">
-              {{ t('run.input') }}
-            </h3>
-            <pre class="whitespace-pre-wrap wrap-anywhere rounded-box bg-base-100 p-2 font-mono text-xs">{{ selected.input }}</pre>
-          </div>
-          <div v-if="selected.output">
-            <h3 class="text-xs text-base-content/70">
-              {{ t('run.output') }}
-            </h3>
-            <pre class="whitespace-pre-wrap wrap-anywhere rounded-box bg-base-100 p-2 font-mono text-xs">{{ selected.output }}</pre>
-          </div>
-          <div class="border-t border-base-300 pt-3">
-            <h3 class="pb-1 text-xs text-base-content/70">
-              {{ t('run.tools_in_run') }}
-            </h3>
-            <div class="max-w-full overflow-x-auto">
-              <table class="table table-xs text-xs">
-                <tbody>
-                  <tr v-for="tool in tools" :key="tool.name">
-                    <td class="px-0 font-mono">
-                      {{ tool.name }}
-                    </td>
-                    <td class="px-0 text-end tabular-nums">
-                      {{ tool.failed ? t('run.tool_calls_failed', { calls: tool.calls, failed: tool.failed }) : t('run.tool_calls', { calls: tool.calls, seconds: tool.seconds }, tool.calls) }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </aside>
-    </div>
   </div>
 </template>

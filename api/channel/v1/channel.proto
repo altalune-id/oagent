@@ -1,0 +1,236 @@
+syntax = "proto3";
+
+package channel.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "mcp/v1/annotations.proto";
+import "oagent/v1/rules.proto";
+
+option go_package = "altalune.id/oagent/gen/go/channel/v1;channelv1";
+
+// ChannelService manages the messaging channel connections that bind an agent to a WhatsApp device through OpenWA. Every id is a public id; the signing secret and the device key are write-only, and the RPCs that take one have no MCP tool. A connection is created first, its webhook_url is pasted into OpenWA, and the secret OpenWA then mints is set with SetConnectionSecret.
+service ChannelService {
+  rpc CreateConnection(CreateConnectionRequest) returns (CreateConnectionResponse);
+  rpc GetConnection(GetConnectionRequest) returns (GetConnectionResponse) {
+    option (mcp.v1.tool) = {
+      name: "channel_connection_get"
+      description: "Get a WhatsApp channel connection by id: its agent, OpenWA device, whether it is enabled, whether its signing secret is set, and its status from the last verified delivery or call. Secrets are never returned. While secret_set is false, paste the signing secret from OpenWA in the console, on the agent's Channels page; creating a connection or changing its secret or key is done there too."
+      required: ["id"]
+    };
+  }
+  rpc ListConnections(ListConnectionsRequest) returns (ListConnectionsResponse) {
+    option (mcp.v1.tool) = {
+      name: "channel_connection_list"
+      description: "List the WhatsApp channel connections in a project, optionally for one agent, with whether each signing secret is set. Secrets are never returned."
+      required: ["project_id"]
+    };
+  }
+  rpc UpdateConnection(UpdateConnectionRequest) returns (UpdateConnectionResponse);
+  rpc SetConnectionSecret(SetConnectionSecretRequest) returns (SetConnectionSecretResponse);
+  rpc DeleteConnection(DeleteConnectionRequest) returns (DeleteConnectionResponse) {
+    option (mcp.v1.tool) = {
+      name: "channel_connection_delete"
+      description: "Delete a WhatsApp channel connection by id. Its threads and messages are kept; a new connection for the same chat starts a new thread."
+      required: ["id"]
+      mutation: true
+      destructive: true
+    };
+  }
+  rpc GetChannelSettings(GetChannelSettingsRequest) returns (GetChannelSettingsResponse);
+}
+
+// ConnectionStatus is what the last verified delivery or provider call showed; WAITING until the first. A bad signature is never a status.
+enum ConnectionStatus {
+  CONNECTION_STATUS_UNSPECIFIED = 0;
+  CONNECTION_STATUS_WAITING = 1;
+  CONNECTION_STATUS_CONNECTED = 2;
+  CONNECTION_STATUS_DEVICE_MISMATCH = 3;
+  CONNECTION_STATUS_KEY_REFUSED = 4;
+}
+
+// Connection binds an agent to an OpenWA device; enabled is the admin switch, separate from the reported status.
+message Connection {
+  string id = 1;
+  string org_id = 2;
+  string project_id = 3;
+  string agent_id = 4;
+  string provider = 5;
+  bool enabled = 6;
+  ConnectionStatus status = 7;
+  string base_url = 8;
+  string openwa_org = 9;
+  string openwa_project = 10;
+  string device_id = 11;
+  // webhook_url is where OpenWA posts this connection's deliveries.
+  string webhook_url = 12;
+  // secondary_set is true while the previous signing secret is still accepted after a rotation.
+  bool secondary_set = 13;
+  int32 quiet_window_ms = 14;
+  int32 quiet_max_ms = 15;
+  string reply_failure = 16;
+  string reply_voice = 17;
+  string reply_photo_unreadable = 18;
+  google.protobuf.Timestamp last_result_at = 19;
+  // last_bad_signature_at is when a delivery last failed the signature check; it never changes the status.
+  google.protobuf.Timestamp last_bad_signature_at = 20;
+  google.protobuf.Timestamp created_at = 21;
+  google.protobuf.Timestamp updated_at = 22;
+  // secret_set is false until the signing secret OpenWA mints is set; deliveries are refused until then.
+  bool secret_set = 23;
+}
+
+message CreateConnectionRequest {
+  string project_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string agent_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string base_url = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {id: "channel.base_url.max_len.2048", expression: "this.trim().size() <= 2048 ? '' : 'must be at most 2048 characters'"},
+    (buf.validate.field).cel = {id: "channel.base_url.format", expression: "this.trim().matches('^https?://[^\\\\s/?#]+[^\\\\s?#]*$') ? '' : 'must be an http or https URL with no query or fragment'"}
+  ];
+  string openwa_org = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 128
+  ];
+  string openwa_project = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 128
+  ];
+  string device_id = 6 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^dev_[A-Za-z0-9_-]{16}$"
+  ];
+  // device_key is write-only: the OpenWA key bound to the device, sealed at rest and never returned.
+  string device_key = 7 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 512
+  ];
+  optional int32 quiet_window_ms = 8 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 10000
+  ];
+  optional int32 quiet_max_ms = 9 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 10000
+  ];
+  string reply_failure = 10 [(buf.validate.field).string.max_len = 1000];
+  string reply_voice = 11 [(buf.validate.field).string.max_len = 1000];
+  string reply_photo_unreadable = 12 [(buf.validate.field).string.max_len = 1000];
+}
+
+message CreateConnectionResponse {
+  Connection connection = 1;
+}
+
+message GetConnectionRequest {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+}
+
+message GetConnectionResponse {
+  Connection connection = 1;
+}
+
+// ListConnectionsRequest lists a project's connections; agent_id, when set, limits it to one agent's.
+message ListConnectionsRequest {
+  string project_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string agent_id = 2 [(buf.validate.field).string.(oagent.v1.public_id) = true];
+}
+
+message ListConnectionsResponse {
+  repeated Connection connections = 1;
+}
+
+// UpdateConnectionRequest changes a connection's settings: an unset field keeps the stored value, and an empty set reply keeps it. A new base_url or device_id needs a new device_key.
+message UpdateConnectionRequest {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  optional string base_url = 2 [
+    (buf.validate.field).cel = {id: "channel.base_url.max_len.2048", expression: "this.trim().size() <= 2048 ? '' : 'must be at most 2048 characters'"},
+    (buf.validate.field).cel = {id: "channel.base_url.format", expression: "this.trim().matches('^https?://[^\\\\s/?#]+[^\\\\s?#]*$') ? '' : 'must be an http or https URL with no query or fragment'"}
+  ];
+  optional string openwa_org = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+  optional string openwa_project = 4 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+  optional string device_id = 5 [
+    (buf.validate.field).string.pattern = "^dev_[A-Za-z0-9_-]{16}$"
+  ];
+  // device_key is write-only; leaving it unset keeps the stored key.
+  optional string device_key = 6 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
+  optional int32 quiet_window_ms = 7 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 10000
+  ];
+  optional int32 quiet_max_ms = 8 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 10000
+  ];
+  string reply_failure = 9 [(buf.validate.field).string.max_len = 1000];
+  string reply_voice = 10 [(buf.validate.field).string.max_len = 1000];
+  string reply_photo_unreadable = 11 [(buf.validate.field).string.max_len = 1000];
+  optional bool enabled = 12;
+}
+
+message UpdateConnectionResponse {
+  Connection connection = 1;
+}
+
+// SetConnectionSecretRequest makes signing_secret the primary secret; the old one stays valid as secondary unless drop_previous, which is a no-op on the first set.
+message SetConnectionSecretRequest {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string signing_secret = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 512
+  ];
+  bool drop_previous = 3;
+}
+
+message SetConnectionSecretResponse {
+  Connection connection = 1;
+}
+
+message DeleteConnectionRequest {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+}
+
+message DeleteConnectionResponse {}
+
+message GetChannelSettingsRequest {}
+
+// GetChannelSettingsResponse is what a new connection starts with: the operator's default OpenWA URL (empty when unset), the set replies and quiet times, and the message age limit.
+message GetChannelSettingsResponse {
+  string default_openwa_base_url = 1;
+  string reply_failure = 2;
+  string reply_voice = 3;
+  string reply_photo_unreadable = 4;
+  int32 quiet_window_ms = 5;
+  int32 quiet_max_ms = 6;
+  int32 max_message_age_minutes = 7;
+}

@@ -16,6 +16,7 @@ import (
 
 var goldenCases = []string{
 	"plain_reply", "tool_call", "mcp_server_down", "resume", "rebuild_from_history", "stored_result", "limit_reached", "cancel", "model_error", "resume_after_crash",
+	"image_input", "image_refused",
 }
 
 func readGolden(t *testing.T, name string) []byte {

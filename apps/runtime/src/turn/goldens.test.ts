@@ -46,6 +46,8 @@ const cases: Record<string, Case> = {
   model_error: { steps: [{ toolUse: callArgs, usage: { inputTokens: 880, outputTokens: 30 } }, { error: new Error('upstream 500') }] },
   cancel: { steps: [{ text: ['Let me think'], hang: true }] },
   resume_after_crash: { steps: [{ text: ['Recorded lunch: 25,000 from cash.'], usage: { inputTokens: 460, outputTokens: 12 } }] },
+  image_input: { steps: [{ text: ['A receipt: lunch, 25,000.'], usage: { inputTokens: 900, outputTokens: 10 } }] },
+  image_refused: { steps: [{ error: Object.assign(new Error('this model does not support image input'), { status: 400 }) }] },
 };
 
 type Event = Record<string, unknown>;

@@ -18,8 +18,15 @@ func TestCatalog(t *testing.T) {
 	_, ok = events.Lookup("nope")
 	assert.False(t, ok)
 
-	assert.Len(t, events.Subscribable(), 6)
-	assert.Len(t, events.All(), 7)
+	assert.Len(t, events.Subscribable(), 9)
+	assert.Len(t, events.All(), 10)
+	for _, t2 := range []events.Type{events.ChannelConnectionCreated, events.ChannelConnectionUpdated, events.ChannelConnectionDeleted} {
+		spec, ok := events.Lookup(t2)
+		assert.True(t, ok, t2)
+		assert.True(t, spec.Subscribable, t2)
+		assert.False(t, spec.OrgWide, t2)
+		assert.Equal(t, "v1", spec.APIVersion())
+	}
 	for _, t2 := range []events.Type{events.InviteCreated, events.MemberAdded} {
 		spec, ok := events.Lookup(t2)
 		assert.True(t, ok, t2)
@@ -49,6 +56,13 @@ func TestCheckPayload(t *testing.T) {
 	assert.NoError(t, events.CheckPayload(events.RunFailed, events.RunFailedV1{}))
 	assert.True(t, events.IsPayloadMismatchError(events.CheckPayload(events.RunCompleted, events.RunFailedV1{})))
 	assert.True(t, events.IsPayloadMismatchError(events.CheckPayload(events.RunFailed, events.RunCompletedV1{})))
+
+	assert.NoError(t, events.CheckPayload(events.ChannelConnectionCreated, events.ChannelConnectionCreatedV1{}))
+	assert.NoError(t, events.CheckPayload(events.ChannelConnectionUpdated, events.ChannelConnectionUpdatedV1{}))
+	assert.NoError(t, events.CheckPayload(events.ChannelConnectionDeleted, events.ChannelConnectionDeletedV1{}))
+	assert.True(t, events.IsPayloadMismatchError(events.CheckPayload(events.ChannelConnectionCreated, events.ChannelConnectionUpdatedV1{})))
+	assert.True(t, events.IsPayloadMismatchError(events.CheckPayload(events.ChannelConnectionUpdated, events.ChannelConnectionDeletedV1{})))
+	assert.True(t, events.IsPayloadMismatchError(events.CheckPayload(events.ChannelConnectionDeleted, events.ChannelConnectionCreatedV1{})))
 
 	assert.True(t, events.IsPayloadMismatchError(events.CheckPayload(events.AgentCreated, 1)))
 	assert.True(t, events.IsUnknownTypeError(events.CheckPayload("nope", 1)))

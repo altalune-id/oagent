@@ -9,6 +9,7 @@ import (
 
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/agent"
+	"altalune.id/oagent/internal/channel"
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/ratelimit"
@@ -30,7 +31,8 @@ type runParts struct {
 
 func buildRun(k kernel.Kernel, cfg config.Config, s *Services, limiter ratelimit.Limiter, log *slog.Logger) (runParts, error) {
 	store := run.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix).
-		WithMaxConcurrentPerProject(cfg.Run.MaxConcurrentPerProject)
+		WithMaxConcurrentPerProject(cfg.Run.MaxConcurrentPerProject).
+		WithMaxMessageAge(cfg.Channel.MaxMessageAge)
 	svc := run.NewService(store, db.NewTransactor(k.Pool), k.Reporter.Unexpected).
 		WithAgents(runAgents{store: s.AgentStore}).
 		WithProviders(runProviders{providers: s.ModelProviders}).
@@ -41,6 +43,9 @@ func buildRun(k kernel.Kernel, cfg config.Config, s *Services, limiter ratelimit
 		WithTurnTimeout(cfg.Run.TurnTimeout).
 		WithMaxAttempts(cfg.Run.MaxAttempts).
 		WithLogger(orDiscard(log))
+	if s.EndUsers != nil {
+		svc.WithNames(endUserNames{users: s.EndUsers})
+	}
 	rt, err := buildRuntime(cfg.Runtime)
 	if err != nil {
 		return runParts{}, err
@@ -53,7 +58,12 @@ func buildRun(k kernel.Kernel, cfg config.Config, s *Services, limiter ratelimit
 	runner := run.NewRunner(svc, store, run.RunnerOptions{
 		MaxConcurrent: cfg.Run.MaxConcurrentPerInstance, LeaseTTL: cfg.Run.LeaseTTL, Heartbeat: cfg.Run.Heartbeat,
 		DrainTimeout: cfg.Run.DrainTimeout, TurnTimeout: cfg.Run.TurnTimeout,
-	}).WithLogger(orDiscard(log))
+	}).WithLogger(orDiscard(log)).WithWindows(store)
+	if s.Channels != nil {
+		svc.WithMedia(channel.Media{Service: s.Channels, Provider: s.ChannelProvider})
+		s.ChannelReplier = channel.NewReplier(s.Channels, store, s.ChannelProvider, orDiscard(log))
+		runner.WithReplies(s.ChannelReplier)
+	}
 	kicker := run.NewKicker(k.Queue, cfg.Queue.Enabled, runner)
 	runner.WithKicker(kicker)
 	return runParts{store: store, svc: svc, runner: runner, kicker: kicker, ready: rt != nil}, nil
@@ -121,7 +131,7 @@ func (p runProviders) ResolveModel(ctx context.Context, providerID uuid.UUID, mo
 	if err != nil {
 		return run.ResolvedModel{}, err
 	}
-	out := run.ResolvedModel{BaseURL: r.BaseURL, APIKey: r.APIKey}
+	out := run.ResolvedModel{BaseURL: r.BaseURL, APIKey: r.APIKey, Vision: r.Model.Vision}
 	if pr := r.Model.Prices; pr != nil {
 		out.Prices = &run.Prices{
 			Input: new(pr.InputMicros), Output: new(pr.OutputMicros),

@@ -40,9 +40,6 @@ const stepsText = computed(() => (draft.config.value.maxSteps ? t('run.steps_of'
 function send() {
   const message = text.value;
   text.value = '';
-  if (message.trim()) {
-    tryIt.markTried(agent.value.id);
-  }
   void chat.send(message);
 }
 

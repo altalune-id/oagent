@@ -63,3 +63,13 @@ func (e *InvalidIdentityError) ToAppError() *apperror.AppError {
 		WithMeta(map[string]string{"reason": string(e.Reason), "max": strconv.Itoa(MaxValueLen)}).
 		WithCause(e)
 }
+
+// InvalidPageTokenError reports a page token this server did not issue.
+type InvalidPageTokenError struct{}
+
+func (e *InvalidPageTokenError) Error() string { return "enduser: invalid page token" }
+
+// ToAppError maps InvalidPageTokenError to a validation error on page_token.
+func (e *InvalidPageTokenError) ToAppError() *apperror.AppError {
+	return apperror.Validation([]apperror.Violation{{Field: "page_token", Reason: apperror.FieldInvalid}})
+}

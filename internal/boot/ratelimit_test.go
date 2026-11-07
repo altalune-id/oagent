@@ -40,6 +40,16 @@ func TestBuildLimiters_DataPlaneGroup(t *testing.T) {
 	assert.Equal(t, ratelimit.Disabled(), on.auth, "each group has its own switch")
 }
 
+func TestBuildLimiters_IngestGroup(t *testing.T) {
+	off, err := buildLimiters(config.Config{RateLimit: config.RateLimitConfig{MaxKeys: 7}}, nil, testLogger())
+	require.NoError(t, err)
+	assert.Equal(t, ratelimit.Disabled(), off.ingest, "off limits nothing")
+	on, err := buildLimiters(config.Config{RateLimit: config.RateLimitConfig{MaxKeys: 7, Ingest: config.IngestLimitConfig{Enabled: true}}}, nil, testLogger())
+	require.NoError(t, err)
+	assert.Same(t, on.shared, on.ingest, "the group counts in the shared store")
+	assert.Equal(t, ratelimit.Disabled(), on.dataPlane, "each group has its own switch")
+}
+
 func TestBuildLimiters_UnknownDriver(t *testing.T) {
 	cfg := config.Config{RateLimit: config.RateLimitConfig{Driver: "pigeon", Auth: config.RateLimitGroupConfig{Enabled: true}}}
 	_, err := buildLimiters(cfg, nil, testLogger())

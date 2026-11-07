@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { isHttpsUrl } from './url';
+import { isWebUrl } from './url';
 
-describe('isHttpsUrl', () => {
-  it('accepts only full https URLs', () => {
-    expect(isHttpsUrl('https://openrouter.ai/api/v1')).toBe(true);
-    expect(isHttpsUrl('http://openrouter.ai')).toBe(false);
-    expect(isHttpsUrl('openrouter')).toBe(false);
+describe('isWebUrl', () => {
+  it('takes full http and https URLs and refuses other schemes and fragments of text', () => {
+    expect(isWebUrl('https://openwa.example.id')).toBe(true);
+    expect(isWebUrl('http://10.0.0.5:8080')).toBe(true);
+    expect(['openwa', 'ftp://openwa.example.id', 'https://', ''].some(isWebUrl)).toBe(false);
   });
 });

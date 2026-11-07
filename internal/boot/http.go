@@ -68,8 +68,12 @@ func buildAPIHandler(
 		Webhooks:       svcs.Webhooks,
 		ModelProviders: svcs.ModelProviders,
 		MCPServers:     svcs.MCPServers,
+		Channels:       svcs.Channels,
+		ChannelOptions: svcs.ChannelOptions,
 		Runs:           svcs.Runs,
-		EndUsers:       svcs.EndUsers,
+		EndUsers:       runPeople{users: svcs.EndUsers},
+		People:         svcs.EndUsers,
+		PeopleActivity: endUserActivity{store: svcs.RunStore},
 		Users:          svcs.Users,
 		Members:        svcs.Members,
 		Invites:        svcs.Invites,
@@ -253,6 +257,7 @@ type httpSurfaces struct {
 	basePath   string
 	api        http.Handler
 	dataPlane  http.Handler
+	ingest     http.Handler
 	console    http.Handler
 	mcp        http.Handler
 	mcpDocs    map[string]http.Handler
@@ -271,6 +276,7 @@ func buildHTTPHandler(s httpSurfaces) http.Handler {
 	return web.NewServer(web.ServerOpts{
 		APIHandler: s.api,
 		DataPlane:  s.dataPlane,
+		Ingest:     s.ingest,
 		MCPHandler: s.mcp,
 		Console:    s.console,
 		Routes:     s.routes,

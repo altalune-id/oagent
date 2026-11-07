@@ -17,6 +17,8 @@ import (
 
 	agentv1 "altalune.id/oagent/gen/go/agent/v1"
 	authv1 "altalune.id/oagent/gen/go/auth/v1"
+	channelv1 "altalune.id/oagent/gen/go/channel/v1"
+	enduserv1 "altalune.id/oagent/gen/go/enduser/v1"
 	invitev1 "altalune.id/oagent/gen/go/invite/v1"
 	mcpserverv1 "altalune.id/oagent/gen/go/mcpserver/v1"
 	memberv1 "altalune.id/oagent/gen/go/member/v1"
@@ -33,6 +35,8 @@ func committedFiles() []protoreflect.FileDescriptor {
 	return []protoreflect.FileDescriptor{
 		agentv1.File_agent_v1_agent_proto,
 		authv1.File_auth_v1_auth_proto,
+		channelv1.File_channel_v1_channel_proto,
+		enduserv1.File_enduser_v1_enduser_proto,
 		invitev1.File_invite_v1_invite_proto,
 		mcpserverv1.File_mcpserver_v1_mcpserver_proto,
 		memberv1.File_member_v1_member_proto,

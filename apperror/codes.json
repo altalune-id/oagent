@@ -90,5 +90,11 @@
   { "code": "RUN006", "name": "RunRuntimeFailed", "kind": "failed_precondition", "params": [], "reasons": [] },
   { "code": "RUN007", "name": "RunInProgress", "kind": "failed_precondition", "params": ["run"], "reasons": [] },
   { "code": "RUN008", "name": "RunIdempotencyConflict", "kind": "invalid", "params": [], "reasons": [] },
-  { "code": "THR001", "name": "ThreadNotFound", "kind": "not_found", "params": [], "reasons": [] }
+  { "code": "THR001", "name": "ThreadNotFound", "kind": "not_found", "params": [], "reasons": [] },
+  { "code": "CHN001", "name": "ConnectionNotFound", "kind": "not_found", "params": [], "reasons": [] },
+  { "code": "CHN002", "name": "ConnectionInvalid", "kind": "invalid", "params": ["field"], "reasons": [] },
+  { "code": "CHN003", "name": "ConnectionSecretRequired", "kind": "invalid", "params": [], "reasons": [] },
+  { "code": "CHN004", "name": "ConnectionSecretsUnavailable", "kind": "failed_precondition", "params": [], "reasons": [] },
+  { "code": "CHN005", "name": "ConnectionProviderUnavailable", "kind": "failed_precondition", "params": [], "reasons": [] },
+  { "code": "CHN006", "name": "ConnectionWebhookURLUnavailable", "kind": "failed_precondition", "params": [], "reasons": [] }
 ]

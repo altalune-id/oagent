@@ -35,10 +35,11 @@ describe('validateRequest', () => {
     expect(result).toEqual({ ok: false, fields: ['agent.model.proxy'] });
   });
 
-  it('refuses another contract version', () => {
-    expect(CONTRACT_VERSION).toBe(1);
-    const result = validateRequest({ ...golden('plain_reply.request.json'), contractVersion: 2 });
-    expect(result).toEqual({ ok: false, fields: ['contractVersion'] });
+  it('accepts contract versions 1 and 2 during the rollout and refuses any other', () => {
+    expect(CONTRACT_VERSION).toBe(2);
+    expect(validateRequest({ ...golden('plain_reply.request.json'), contractVersion: 1 }).ok).toBe(true);
+    expect(validateRequest({ ...golden('plain_reply.request.json'), contractVersion: 2 }).ok).toBe(true);
+    expect(validateRequest({ ...golden('plain_reply.request.json'), contractVersion: 3 })).toEqual({ ok: false, fields: ['contractVersion'] });
   });
 
   it('reports field paths and never the values', () => {

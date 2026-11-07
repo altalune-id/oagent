@@ -131,11 +131,11 @@ func RegisterThreadServiceTools(reg *mcp.Registry, h threadv1connect.ThreadServi
 	}, h)
 	reg.Register(mcp.ToolSpec{
 		Name:        RunListToolName,
-		Description: "List a thread's runs, newest first: status, attempt, agent version, token usage, cost and timing. Pages hold 50 runs unless page_size says otherwise, at most 200; pass next_page_token back as page_token for the next page.",
+		Description: "List runs newest first, of one thread (thread_id) or of one agent across its threads (agent_id with project_id): status, attempt, agent version, token usage, cost and timing, each with its thread. Pages hold 50 runs unless page_size says otherwise, at most 200; pass next_page_token back as page_token for the next page.",
 		Scopes:      permissionsFor(threadv1connect.ThreadServiceListRunsProcedure),
 		Mutation:    false,
 		Destructive: false,
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"threadId":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"},"pageToken":{"type":"string","maxLength":256},"pageSize":{"type":"integer"}},"required":["threadId"],"additionalProperties":false}`),
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"threadId":{"type":"string","pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"},"pageToken":{"type":"string","maxLength":256},"pageSize":{"type":"integer"},"agentId":{"type":"string","pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"},"projectId":{"type":"string","pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"}},"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {
 				input = json.RawMessage(`{}`)

@@ -22,19 +22,21 @@ type lookup struct {
 func lookups() map[string]lookup {
 	orgColumns := []string{"id", "public_id", "slug", "name", "created_by", "created_at", "updated_at", "is_system"}
 	return map[string]lookup{
-		"list_org_ids()":                            {"list_org_ids()", []string{"id", "created_at"}},
-		"resolve_system_org()":                      {"resolve_system_org()", orgColumns},
-		"resolve_org_by_slug(text)":                 {"resolve_org_by_slug('x')", orgColumns},
-		"resolve_org_by_public_id(text)":            {"resolve_org_by_public_id('x')", orgColumns},
-		"resolve_invite_by_token_hash(text)":        {"resolve_invite_by_token_hash('x')", []string{"id", "public_id", "org_id", "email", "role", "draft", "invited_by", "expires_at", "accepted_at", "accepted_by", "revoked_at", "created_at", "updated_at"}},
-		"resolve_project_by_public_id(text)":        {"resolve_project_by_public_id('x')", []string{"id", "org_id"}},
-		"resolve_agent_by_public_id(text)":          {"resolve_agent_by_public_id('x')", []string{"id", "org_id", "project_id"}},
-		"resolve_mcp_server_by_public_id(text)":     {"resolve_mcp_server_by_public_id('x')", []string{"id", "org_id", "project_id"}},
-		"resolve_model_provider_by_public_id(text)": {"resolve_model_provider_by_public_id('x')", []string{"id", "org_id", "project_id"}},
-		"resolve_thread_by_public_id(text)":         {"resolve_thread_by_public_id('x')", []string{"id", "org_id", "project_id", "agent_id"}},
-		"resolve_run_by_public_id(text)":            {"resolve_run_by_public_id('x')", []string{"id", "org_id", "project_id", "agent_id"}},
-		"resolve_invite_by_public_id(text)":         {"resolve_invite_by_public_id('x')", []string{"id", "public_id", "org_id", "email", "role", "draft", "invited_by", "expires_at", "accepted_at", "accepted_by", "revoked_at", "created_at", "updated_at"}},
-		"resolve_api_key_by_secret_hash(bytea)":     {"resolve_api_key_by_secret_hash('\\x00'::bytea)", []string{"id", "org_id", "project_id", "kind", "all_projects", "project_ids", "name", "secret_hint", "scopes", "resource_ids", "created_by", "created_at", "expires_at", "revoked_at", "last_used_at"}},
+		"list_org_ids()":                                {"list_org_ids()", []string{"id", "created_at"}},
+		"resolve_system_org()":                          {"resolve_system_org()", orgColumns},
+		"resolve_org_by_slug(text)":                     {"resolve_org_by_slug('x')", orgColumns},
+		"resolve_org_by_public_id(text)":                {"resolve_org_by_public_id('x')", orgColumns},
+		"resolve_invite_by_token_hash(text)":            {"resolve_invite_by_token_hash('x')", []string{"id", "public_id", "org_id", "email", "role", "draft", "invited_by", "expires_at", "accepted_at", "accepted_by", "revoked_at", "created_at", "updated_at"}},
+		"resolve_project_by_public_id(text)":            {"resolve_project_by_public_id('x')", []string{"id", "org_id"}},
+		"resolve_agent_by_public_id(text)":              {"resolve_agent_by_public_id('x')", []string{"id", "org_id", "project_id"}},
+		"resolve_mcp_server_by_public_id(text)":         {"resolve_mcp_server_by_public_id('x')", []string{"id", "org_id", "project_id"}},
+		"resolve_model_provider_by_public_id(text)":     {"resolve_model_provider_by_public_id('x')", []string{"id", "org_id", "project_id"}},
+		"resolve_thread_by_public_id(text)":             {"resolve_thread_by_public_id('x')", []string{"id", "org_id", "project_id", "agent_id"}},
+		"resolve_run_by_public_id(text)":                {"resolve_run_by_public_id('x')", []string{"id", "org_id", "project_id", "agent_id"}},
+		"resolve_channel_connection_by_public_id(text)": {"resolve_channel_connection_by_public_id('x')", []string{"id", "org_id", "project_id", "agent_id", "provider", "device_id", "status", "secured"}},
+		"resolve_end_user_by_public_id(text)":           {"resolve_end_user_by_public_id('x')", []string{"id", "org_id", "project_id"}},
+		"resolve_invite_by_public_id(text)":             {"resolve_invite_by_public_id('x')", []string{"id", "public_id", "org_id", "email", "role", "draft", "invited_by", "expires_at", "accepted_at", "accepted_by", "revoked_at", "created_at", "updated_at"}},
+		"resolve_api_key_by_secret_hash(bytea)":         {"resolve_api_key_by_secret_hash('\\x00'::bytea)", []string{"id", "org_id", "project_id", "kind", "all_projects", "project_ids", "name", "secret_hint", "scopes", "resource_ids", "created_by", "created_at", "expires_at", "revoked_at", "last_used_at"}},
 	}
 }
 

@@ -59,7 +59,7 @@ function shown(error: unknown) {
 </script>
 
 <template>
-  <AppShell v-model:open="ui.navOpen" :close-label="t('nav.close_menu')" full breakpoint="lg" :rail="!!agentSlug && ui.rail">
+  <AppShell v-model:open="ui.navOpen" full breakpoint="lg" :rail="!!agentSlug && ui.rail">
     <div v-if="showsBanner(project?.environment)" role="note" class="flex items-center gap-2 bg-warning px-4 py-1 text-ui font-medium text-warning-content" data-testid="environment-banner">
       <Icon name="lucide:flask-conical" size="16" class="shrink-0" aria-hidden="true" />
       <span>{{ t('environment.banner', { env: t(environmentLabelKey(project?.environment)) }) }}</span>

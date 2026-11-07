@@ -289,3 +289,172 @@ func TestTurnRunner_HeartbeatErrorsCancelBeforeTheLeaseExpires(t *testing.T) {
 		assert.NotNil(t, got)
 	})
 }
+
+type quietWindows struct {
+	mu       sync.Mutex
+	w, wmax  time.Duration
+	arrivals []time.Time
+}
+
+func (q *quietWindows) arrive() {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.arrivals = append(q.arrivals, time.Now())
+}
+
+func (q *quietWindows) clear() {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.arrivals = nil
+}
+
+func (q *quietWindows) QuietWait(_ context.Context, _ uuid.UUID, now time.Time) (time.Duration, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if len(q.arrivals) == 0 {
+		return 0, nil
+	}
+	return run.QuietWait(now, q.arrivals[0], q.arrivals[len(q.arrivals)-1], q.w, q.wmax), nil
+}
+
+type drainExec struct {
+	countingExec
+	q *quietWindows
+}
+
+func (e *drainExec) Execute(ctx context.Context, id uuid.UUID, token string) (*run.Run, error) {
+	e.q.clear()
+	return e.countingExec.Execute(ctx, id, token)
+}
+
+func (e *drainExec) count() int {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.calls
+}
+
+func TestQuietWait(t *testing.T) {
+	t0 := time.Date(2026, 9, 28, 10, 0, 0, 0, time.UTC)
+	assert.Equal(t, 3*time.Second, run.QuietWait(t0, t0, t0, 3*time.Second, 10*time.Second))
+	assert.Equal(t, time.Second, run.QuietWait(t0.Add(2*time.Second), t0, t0, 3*time.Second, 10*time.Second))
+	assert.Equal(t, time.Second, run.QuietWait(t0.Add(9*time.Second), t0, t0.Add(8*time.Second), 3*time.Second, 10*time.Second), "the cap wins")
+	assert.Zero(t, run.QuietWait(t0.Add(10*time.Second), t0, t0.Add(9*time.Second), 3*time.Second, 10*time.Second))
+	assert.Zero(t, run.QuietWait(t0, t0, t0, 0, 0), "an API thread never waits")
+}
+
+func TestRunner_QuietWindow(t *testing.T) {
+	t.Run("no turn before W", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			f := newSvc(t)
+			q := &quietWindows{w: 3 * time.Second, wmax: 10 * time.Second}
+			exec := &drainExec{q: q}
+			r := run.NewRunner(exec, f.store, runnerOpts()).WithWindows(q)
+			stop := startRunner(t, r)
+			defer stop()
+			q.arrive()
+			require.True(t, r.Offer(f.kick()))
+			time.Sleep(2900 * time.Millisecond)
+			synctest.Wait()
+			assert.Zero(t, exec.count(), "the window is still open")
+			assert.Empty(t, f.store.LeaseOwner(f.thread), "the lease is released while waiting")
+			time.Sleep(200 * time.Millisecond)
+			synctest.Wait()
+			assert.Equal(t, 1, exec.count(), "one turn once the thread is quiet")
+		})
+	})
+	t.Run("one turn by Wmax", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			f := newSvc(t)
+			q := &quietWindows{w: 3 * time.Second, wmax: 10 * time.Second}
+			exec := &drainExec{q: q}
+			r := run.NewRunner(exec, f.store, runnerOpts()).WithWindows(q)
+			stop := startRunner(t, r)
+			defer stop()
+			for range 5 {
+				q.arrive()
+				r.Offer(f.kick())
+				time.Sleep(1900 * time.Millisecond)
+				synctest.Wait()
+				assert.Zero(t, exec.count(), "a steady stream keeps the window open")
+				time.Sleep(100 * time.Millisecond)
+			}
+			synctest.Wait()
+			synctest.Wait()
+			assert.Equal(t, 1, exec.count(), "the oldest message never waits past Wmax")
+		})
+	})
+	t.Run("timers stop with Run", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			f := newSvc(t)
+			q := &quietWindows{w: 3 * time.Second, wmax: 10 * time.Second}
+			exec := &drainExec{q: q}
+			r := run.NewRunner(exec, f.store, runnerOpts()).WithWindows(q)
+			stop := startRunner(t, r)
+			q.arrive()
+			require.True(t, r.Offer(f.kick()))
+			time.Sleep(time.Second)
+			synctest.Wait()
+			stop()
+			time.Sleep(time.Second)
+			again := startRunner(t, r)
+			time.Sleep(5 * time.Second)
+			synctest.Wait()
+			again()
+			assert.Zero(t, exec.count(), "a timer from the stopped Run never kicks")
+		})
+	})
+}
+
+type replies struct {
+	mu   sync.Mutex
+	runs []uuid.UUID
+	err  error
+}
+
+func (s *replies) Send(_ context.Context, runID uuid.UUID) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.runs = append(s.runs, runID)
+	return s.err
+}
+
+func (s *replies) sent() []uuid.UUID {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]uuid.UUID(nil), s.runs...)
+}
+
+func TestTurnRunner_SendsTheDueReplyAfterSettle(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newSvc(t)
+		_, conn := f.channel(t, "dm", true)
+		f.withTexts(conn)
+		f.say(t, "halo")
+		f.rt.Replies = append(f.rt.Replies, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+		sender := &replies{err: assert.AnError}
+		r := run.NewRunner(f.svc, f.store, runnerOpts()).WithReplies(sender)
+		stop := startRunner(t, r)
+		require.True(t, r.Offer(f.kick()))
+		done := f.waitRun(t, func(r *run.Run) bool { return r.Status == run.StatusCompleted })
+		synctest.Wait()
+		stop()
+		assert.Equal(t, []uuid.UUID{done.ID}, sender.sent(), "the runner sends right after the settle")
+		assert.Empty(t, f.store.LeaseOwner(f.thread), "a failed send leaves the reply to the job")
+	})
+}
+
+func TestTurnRunner_APIThreadSendsNoReply(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newSvc(t)
+		f.say(t, "halo")
+		f.rt.Replies = append(f.rt.Replies, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+		sender := &replies{}
+		r := run.NewRunner(f.svc, f.store, runnerOpts()).WithReplies(sender)
+		stop := startRunner(t, r)
+		require.True(t, r.Offer(f.kick()))
+		f.waitRun(t, func(r *run.Run) bool { return r.Status == run.StatusCompleted })
+		synctest.Wait()
+		stop()
+		assert.Empty(t, sender.sent())
+	})
+}

@@ -14,12 +14,17 @@ import (
 type postgresStore struct {
 	pool          db.Pool
 	maxPerProject int
+	maxAge        time.Duration
 	threads       *entity.Threads
 	runs          *entity.Runs
 	messages      *entity.Messages
+	conns         *entity.ChannelConnections
+	identities    *entity.EndUserIdentities
 	resolveThread string
 	resolveRun    string
 }
+
+var _ Windows = (*postgresStore)(nil)
 
 // NewStore builds the Postgres store over pool.
 func NewStore(pool db.Pool, schema, tablePrefix string) *postgresStore {
@@ -29,9 +34,12 @@ func NewStore(pool db.Pool, schema, tablePrefix string) *postgresStore {
 	return &postgresStore{
 		pool:          pool,
 		maxPerProject: DefaultMaxConcurrentPerProject,
+		maxAge:        DefaultMaxMessageAge,
 		threads:       entity.NewThreads(schema, tablePrefix),
 		runs:          entity.NewRuns(schema, tablePrefix),
 		messages:      entity.NewMessages(schema, tablePrefix),
+		conns:         entity.NewChannelConnections(schema, tablePrefix),
+		identities:    entity.NewEndUserIdentities(schema, tablePrefix),
 		resolveThread: resolveSQL(schema, tablePrefix, "thread"),
 		resolveRun:    resolveSQL(schema, tablePrefix, "run"),
 	}
@@ -41,6 +49,14 @@ func NewStore(pool db.Pool, schema, tablePrefix string) *postgresStore {
 func (s *postgresStore) WithMaxConcurrentPerProject(n int) *postgresStore {
 	if n > 0 {
 		s.maxPerProject = n
+	}
+	return s
+}
+
+// WithMaxMessageAge skips channel messages older than d when a turn takes them; d below 1 keeps the default.
+func (s *postgresStore) WithMaxMessageAge(d time.Duration) *postgresStore {
+	if d > 0 {
+		s.maxAge = d
 	}
 	return s
 }
@@ -55,6 +71,7 @@ type runRow struct {
 	Status                string     `alias:"runs.status"`
 	IdempotencyKey        *string    `alias:"runs.idempotency_key"`
 	Attempt               int32      `alias:"runs.attempt"`
+	IsGroup               bool       `alias:"runs.is_group"`
 	InputTokens           int64      `alias:"runs.input_tokens"`
 	OutputTokens          int64      `alias:"runs.output_tokens"`
 	CacheReadTokens       int64      `alias:"runs.cache_read_tokens"`
@@ -73,7 +90,7 @@ type runRow struct {
 func (r *runRow) toRun() *Run {
 	out := &Run{
 		ID: r.ID, PublicID: r.PublicID, OrgID: r.OrgID, ProjectID: r.ProjectID, ThreadID: r.ThreadID,
-		AgentVersionID: r.AgentVersionID, Status: Status(r.Status), Attempt: r.Attempt,
+		AgentVersionID: r.AgentVersionID, Status: Status(r.Status), Attempt: r.Attempt, Group: r.IsGroup,
 		Usage: Usage{
 			InputTokens: r.InputTokens, OutputTokens: r.OutputTokens, CacheReadTokens: r.CacheReadTokens,
 			CacheWriteTokens: r.CacheWriteTokens, Estimated: r.UsageEstimated,
@@ -113,6 +130,8 @@ type messageRow struct {
 	ToolCallID        *string    `alias:"messages.tool_call_id"`
 	CreatedAt         time.Time  `alias:"messages.created_at"`
 	RequestHash       []byte     `alias:"messages.request_hash"`
+	ChannelTime       *time.Time `alias:"messages.channel_time"`
+	SkipReason        *string    `alias:"messages.skip_reason"`
 }
 
 func (r *messageRow) toMessage() Message {
@@ -126,6 +145,13 @@ func (r *messageRow) toMessage() Message {
 	}
 	if r.ToolCallID != nil {
 		m.ToolCallID = *r.ToolCallID
+	}
+	if r.ChannelTime != nil {
+		at := r.ChannelTime.UTC()
+		m.ChannelTime = &at
+	}
+	if r.SkipReason != nil {
+		m.SkipReason = *r.SkipReason
 	}
 	return m
 }

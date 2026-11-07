@@ -10,19 +10,26 @@ import { useDates } from '#base/composables/useDates';
 import { useAgentPage } from '~/components/agent/useAgentPage';
 import { shownName } from '~/components/enduser/forget';
 import PreviewNote from '~/components/layout/PreviewNote.vue';
-import { runStatuses, runStatusTone } from '~/components/thread/conversation';
+import { runDetailText, runStatuses, runStatusTone } from '~/components/thread/conversation';
 import { useUnits } from '~/composables/useUnits';
 import { useThreadsStore } from '~/stores/threads';
 
-const { t } = useI18n();
-const runDetail = (r: RunSummary) => t(r.detail!.key, r.personDeleted ? { ...r.detail!.params, name: shownName('', true, t) } : r.detail!.params ?? {});
+const { t, te } = useI18n();
+const runDetail = (r: RunSummary) => runDetailText(r.personDeleted ? { ...r.detail!, params: { ...r.detail!.params, name: shownName('', true, t) } } : r.detail, t, te);
 const { when } = useDates();
 const { money, seconds, count } = useUnits();
 const { agent, base, usesSample } = await useAgentPage();
 const store = useThreadsStore();
-void store.ensureLoaded(agent.value.id, usesSample.value);
+void store.loadAgentRuns(agent.value.id, usesSample.value);
 
 const status = ref<RunStatus | ''>('');
+
+async function retry() {
+  if (store.error) {
+    await store.load(agent.value.id, usesSample.value);
+  }
+  await store.loadAgentRuns(agent.value.id, usesSample.value);
+}
 const rows = computed(() => store.runs.filter(r => !status.value || r.status === status.value));
 
 const columns = computed<Column[]>(() => [
@@ -40,12 +47,12 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.runs')} · OAge
 
 <template>
   <div class="flex flex-col gap-4">
-    <PageHeader :title="t('agent.runs')" :description="t('run.list_hint')" :preview="t('preview.badge')">
-      <template #status>
+    <PageHeader :title="t('agent.runs')" :description="t('run.list_hint')" :preview="usesSample ? t('preview.badge') : ''">
+      <template v-if="usesSample" #status>
         <PreviewNote :text="t('run.preview_note')" />
       </template>
     </PageHeader>
-    <LoadError v-if="store.error" :error="store.error" :busy="store.loading" :retry-label="t('common.retry')" @retry="store.load(agent.id, usesSample)" />
+    <LoadError v-if="store.error || store.runsError" :error="(store.error ?? store.runsError)!" :busy="store.loading || store.runsLoading" :retry-label="t('common.retry')" @retry="retry()" />
     <template v-else>
       <label class="flex flex-col gap-1 self-start">
         <span class="label text-xs text-base-content/70">{{ t('run.status') }}</span>
@@ -58,7 +65,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.runs')} · OAge
           </option>
         </select>
       </label>
-      <DataTable stacked :columns="columns" :rows="rows" row-key="id" :caption="t('run.samples_caption')" :loading="store.loading">
+      <DataTable stacked :columns="columns" :rows="rows" row-key="id" :caption="usesSample ? t('run.samples_caption') : t('run.caption')" :loading="store.loading || store.runsLoading">
         <template #empty>
           <EmptyState icon="lucide:list-tree" :title="status ? t('runs.no_match') : t('runs.empty')" />
         </template>
@@ -69,7 +76,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.runs')} · OAge
         </template>
         <template #cell-threadTitle="{ row }">
           <NuxtLink :to="`${base}/threads/${row.threadId}`" class="link link-hover">
-            {{ row.threadTitle }}
+            {{ row.threadTitle || t('runs.thread_untitled') }}
           </NuxtLink>
         </template>
         <template #cell-status="{ row }">
@@ -85,7 +92,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.runs')} · OAge
           {{ count(row.tokens) }}
         </template>
         <template #cell-costCents="{ row }">
-          {{ money(row.costCents) }}
+          {{ row.unpriced ? t('thread.unpriced') : money(row.costCents) }}
         </template>
       </DataTable>
     </template>

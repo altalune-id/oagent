@@ -675,3 +675,76 @@ func TestStartRun_FakeRecordsTheIdempotencyKey(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, found)
 }
+
+type names map[uuid.UUID]string
+
+func (n names) DisplayName(_ context.Context, id uuid.UUID) (string, error) { return n[id], nil }
+
+func (f *svcFixture) sayAs(t *testing.T, text string, speaker uuid.UUID) {
+	t.Helper()
+	m := userMsg(text, "")
+	m.SpeakerID = &speaker
+	_, err := f.store.AppendMessage(f.ctx, f.thread, m)
+	require.NoError(t, err)
+}
+
+func inputContent(t *testing.T, req runtime.TurnRequest) string {
+	t.Helper()
+	var body struct {
+		Content string `json:"content"`
+	}
+	require.NoError(t, json.Unmarshal(req.Input.Message, &body))
+	return body.Content
+}
+
+func TestRun_GroupSpeakerPrefixesInOrder(t *testing.T) {
+	f := newSvc(t)
+	f.store.Kinds = map[uuid.UUID]string{f.thread: "group"}
+	budi, unnamed := uuid.New(), uuid.New()
+	f.svc.WithNames(names{budi: "Budi"})
+	f.sayAs(t, "stok kopi?", budi)
+	f.sayAs(t, "saya juga", unnamed)
+	r := f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	assert.Equal(t, "[Budi] stok kopi?\n\n[member] saya juga", inputContent(t, f.rt.LastRequest()), "each line names its speaker, in order")
+	assert.True(t, r.Group, "the run row marks the group")
+
+	f.sayAs(t, "satu lagi", budi)
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	assert.Equal(t, "[Budi] satu lagi", inputContent(t, f.rt.LastRequest()), "a lone group line is named too")
+}
+
+func TestRun_GroupRunHasNoMemories(t *testing.T) {
+	f := newSvc(t)
+	f.store.Kinds = map[uuid.UUID]string{f.thread: "dm"}
+	f.say(t, "hi")
+	r := f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	assert.False(t, r.Group, "a DM run is not a group run")
+	assert.Equal(t, "hi", inputContent(t, f.rt.LastRequest()), "a DM line has no speaker prefix")
+	f.store.Kinds[f.thread] = "group"
+	f.say(t, "halo")
+	r = f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	assert.True(t, r.Group, "memories are withheld from runs this flag marks")
+}
+
+func TestRun_LongMessageCutWithNote(t *testing.T) {
+	f := newSvc(t)
+	f.say(t, strings.Repeat("é", 4001))
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	got := inputContent(t, f.rt.LastRequest())
+	assert.Equal(t, strings.Repeat("é", 4000)+" [message cut]", got)
+	f.say(t, strings.Repeat("a", 4000))
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	assert.Equal(t, strings.Repeat("a", 4000), inputContent(t, f.rt.LastRequest()), "4,000 runes fit")
+}
+
+func TestRun_ChannelRunNeverCarriesGatedTool(t *testing.T) {
+	for _, kind := range []string{"dm", "group"} {
+		f := newSvc(t)
+		f.store.Kinds = map[uuid.UUID]string{f.thread: kind}
+		f.say(t, "hapus semua")
+		f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+		req := f.rt.LastRequest()
+		require.Len(t, req.MCPServers, 1, kind)
+		assert.Equal(t, []string{"record_expense"}, req.MCPServers[0].AllowedTools, "%s: a tool that needs approval never reaches a channel run", kind)
+	}
+}

@@ -159,7 +159,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
           <span v-if="!draft.loadError.value">{{ liveLine }}</span>
         </p>
       </div>
-      <div v-if="canEdit" class="flex items-center gap-2">
+      <div v-if="canEdit" class="flex flex-wrap items-center gap-2">
         <AppButton variant="plain" size="sm" :disabled="!loaded" @click="publishOpen = true">
           <Icon name="lucide:git-compare" size="16" aria-hidden="true" />
           {{ t('configure.view_changes') }}

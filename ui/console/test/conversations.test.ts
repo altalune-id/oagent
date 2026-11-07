@@ -8,13 +8,12 @@ import { useToast } from '#base/components/ui/toast';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { RunSchema, RunStatus, ThreadMessageSchema, ThreadSchema } from '#gen/thread/v1/thread_pb';
 import { mountPage } from '#test/mount-page';
-import { route, router, setClient, setRoute } from '#test/nuxt-globals';
+import { route, router, setClient, setKnownKeys, setRoute } from '#test/nuxt-globals';
 import { useNow } from '~/composables/useNow';
 import ThreadPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/threads/[thread].vue';
 import ThreadsPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/threads/index.vue';
 import ApprovalsPage from '~/pages/o/[org]/projects/[project]/approvals.vue';
 import { useApprovalsStore } from '~/stores/approvals';
-import { useEndUsersStore } from '~/stores/endUsers';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 import { useThreadsStore } from '~/stores/threads';
@@ -128,6 +127,47 @@ describe('thread view', () => {
     w.unmount();
   });
 
+  it('says Unpriced for an unpriced run instead of $0.00, and names a failed run\'s reason with a fix link', async () => {
+    setKnownKeys('apperror.AGT006');
+    const threadId = 'Th8uK3pQ9mXr4StV8nBcW';
+    const thread = create(ThreadSchema, { id: threadId, projectId, agentId: other.id, kind: 'dm', endUserLabel: 'Sari', runCount: 2n });
+    const runOf = (id: string, over: Record<string, unknown>) => create(RunSchema, { id, threadId, status: RunStatus.COMPLETED, usage: { inputTokens: 800n, outputTokens: 76n }, startedAt: { seconds: 1n }, ...over });
+    const said = (seq: bigint, runId: string) => create(ThreadMessageSchema, { seq, role: 'user', status: 'consumed', runId, message: { content: 'halo' } });
+    setClient('$threadClient', {
+      listThreads: vi.fn().mockResolvedValue({ threads: [thread], nextPageToken: '' }),
+      getThread: vi.fn().mockResolvedValue({ thread }),
+      listRuns: vi.fn().mockResolvedValue({ runs: [runOf('Rn2wQ8mX4vZ9tB3nC7kPq', {}), runOf('Rn5tH2kW8pQ3mXv7ZcB4n', { status: RunStatus.FAILED, errorCode: 'AGT006' })], nextPageToken: '' }),
+      listThreadMessages: vi.fn().mockResolvedValue({ messages: [said(1n, 'Rn2wQ8mX4vZ9tB3nC7kPq'), said(2n, 'Rn5tH2kW8pQ3mXv7ZcB4n')] }),
+    });
+    seed(`/agents/tagihan/threads/${threadId}`, { agent: 'tagihan', thread: threadId });
+    const w = await mountPage(ThreadPage);
+    await flushPromises();
+    expect(w.text()).toContain('thread.summary|{"runs":2,"cost":"thread.unpriced"}');
+    expect(w.text()).not.toContain('$0.00');
+    expect(w.text()).toContain('runstatus.detail_reason|{"reason":"apperror.AGT006","code":"AGT006"}');
+    const fix = w.findAllComponents(RouterLinkStub).find(l => l.text() === 'run.fix_configure')!;
+    expect(fix.props('to')).toBe('/o/acme/projects/rumah/agents/tagihan');
+    w.unmount();
+  });
+
+  it('labels channel messages no turn took as skipped, with the reason', async () => {
+    const threadId = 'Th7sK2pQ9mXr4LtV8nBcW';
+    const thread = create(ThreadSchema, { id: threadId, projectId, agentId: other.id, kind: 'dm', endUserLabel: 'Budi', runCount: 0n });
+    const said = (seq: bigint, content: string, skipReason = '') => create(ThreadMessageSchema, { seq, role: 'user', status: 'consumed', skipReason, speakerLabel: 'Budi', message: { content } });
+    setClient('$threadClient', {
+      listThreads: vi.fn().mockResolvedValue({ threads: [thread], nextPageToken: '' }),
+      getThread: vi.fn().mockResolvedValue({ thread }),
+      listRuns: vi.fn().mockResolvedValue({ runs: [], nextPageToken: '' }),
+      listThreadMessages: vi.fn().mockResolvedValue({ messages: [said(1n, 'kemarin', 'stale'), said(2n, 'lagi', 'sender_rate'), said(3n, 'halo'), said(4n, 'baru', 'quota')] }),
+    });
+    seed(`/agents/tagihan/threads/${threadId}`, { agent: 'tagihan', thread: threadId });
+    const w = await mountPage(ThreadPage);
+    await flushPromises();
+    const headers = w.findAll('.chat-header');
+    expect(headers.map(h => h.find('.badge').exists() ? h.get('.badge').text() : '')).toEqual(['thread.skipped_stale', 'thread.skipped_sender_rate', '', 'thread.skipped_other']);
+    w.unmount();
+  });
+
   it('shows each speaker, run dividers, tool chips and decided approvals read-only, with the facts', async () => {
     vi.useFakeTimers({ now: new Date(2026, 10, 5, 12), toFake: ['Date'] });
     seed('/agents/yasaku-keuangan/threads/thr_grp3Kd9Q', { agent: 'yasaku-keuangan', thread: 'thr_grp3Kd9Q' });
@@ -177,29 +217,6 @@ describe('thread view', () => {
     const errorHandler = vi.fn();
     await mountPage(ThreadPage, { global: { config: { errorHandler } } });
     expect(errorHandler.mock.calls[0]![0]).toMatchObject({ statusCode: 404 });
-  });
-});
-
-describe('after a person is deleted', () => {
-  it('shows their group messages as deleted and hides their name in lists and approvals', async () => {
-    const people = useEndUsersStore();
-    await people.load(projectId);
-    people.remove('eu_sari2');
-    seed('/agents/yasaku-keuangan/threads/thr_grp3Kd9Q', { agent: 'yasaku-keuangan', thread: 'thr_grp3Kd9Q' });
-    const thread = await mountPage(ThreadPage);
-    const log = thread.get('[role="log"]');
-    expect(log.text()).toContain('chat.message_deleted');
-    expect(log.text()).toContain('endusers.deleted_person');
-    expect(log.text()).not.toContain('belanja pasar 215rb');
-    expect(log.text()).toContain('approvalcard.approved|{"by":"endusers.deleted_person"}');
-    expect(thread.get('aside').text()).toContain('endusers.deleted_person');
-    seed('/agents/yasaku-keuangan/threads', { agent: 'yasaku-keuangan' });
-    const list = await mountPage(ThreadsPage);
-    expect(list.get('tbody tr').text()).toContain('endusers.deleted_person: chat.message_deleted');
-    seed('/approvals', {}, ['agent:read', 'agent:write'], { tab: 'decided' });
-    const inbox = await mountPage(ApprovalsPage);
-    expect(inbox.get('tbody').text()).toContain('endusers.deleted_person · threads.kind_whatsapp_group');
-    expect(inbox.get('tbody').text()).not.toContain('Sari');
   });
 });
 

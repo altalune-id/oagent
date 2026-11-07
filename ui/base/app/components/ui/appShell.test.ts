@@ -24,12 +24,13 @@ afterEach(() => {
 });
 
 describe('appShell', () => {
-  it('is a daisyUI drawer that stays open from md up, with a labelled overlay tied to the toggle', () => {
+  it('is a daisyUI drawer that stays open from md up, with an overlay tied to the toggle and hidden from screen readers, which close it with Escape', () => {
     const w = render();
     expect(w.classes()).toEqual(expect.arrayContaining(['drawer', 'md:drawer-open']));
     const toggle = w.get('input.drawer-toggle');
     expect(w.get('label.drawer-overlay').attributes('for')).toBe(toggle.attributes('id'));
-    expect(w.get('label.drawer-overlay').attributes('aria-label')).toBe('Close menu');
+    expect(w.get('label.drawer-overlay').attributes('aria-hidden')).toBe('true');
+    expect(w.get('label.drawer-overlay').attributes('aria-label')).toBeUndefined();
     expect(w.get('.drawer-side').attributes('id')).toBe('app-sidebar');
     w.unmount();
   });

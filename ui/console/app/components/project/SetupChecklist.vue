@@ -10,9 +10,6 @@ const done = computed(() => steps.filter(s => s.state === 'done').length);
 
 <template>
   <Section id="setup" :title="t('setup.title')" :description="t('setup.progress', { done, total: steps.length })" flush class="max-w-2xl" data-testid="setup-checklist">
-    <template #actions>
-      <span class="badge badge-info badge-soft text-base-content badge-sm">{{ t('preview.badge') }}</span>
-    </template>
     <div class="border-b border-base-300 px-4 py-3">
       <progress class="progress block w-full" :value="done" :max="steps.length" :aria-label="t('setup.title')" :aria-valuetext="t('setup.progress', { done, total: steps.length })" />
     </div>

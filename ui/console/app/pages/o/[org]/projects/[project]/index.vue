@@ -14,7 +14,7 @@ import { useMcpServersStore } from '~/stores/mcpServers';
 import { useModelProvidersStore } from '~/stores/modelProviders';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
-import { useTryItStore } from '~/stores/tryIt';
+import { useThreadsStore } from '~/stores/threads';
 
 const route = useRoute();
 const { t } = useI18n();
@@ -36,15 +36,21 @@ if (!project.value) {
 await Promise.all([agents.ensureLoaded(project.value.id), providers.ensureLoaded(project.value.id), mcpServers.ensureLoaded(project.value.id)]);
 
 const items = computed(() => (project.value ? agents.forProject(project.value.id) : []));
-const tryIt = useTryItStore();
+const threads = useThreadsStore();
 const channels = useChannelsStore();
+void channels.loadProject(project.value.id);
+watch(() => items.value[0]?.id, (id) => {
+  if (id) {
+    void threads.checkHasThreads(project.value!.id, id);
+  }
+}, { immediate: true });
 function progressOf(agent: Agent | undefined): SetupProgress {
   if (!agent) {
     return { agentConfigured: false, tried: false, published: false, whatsappConnected: false };
   }
   return {
     agentConfigured: !!agent.providerId,
-    tried: tryIt.tried.includes(agent.id),
+    tried: !!threads.hasThreads[agent.id],
     published: !!agent.publishedVersion && !agent.unpublishedChanges,
     whatsappConnected: channels.list(agent.id).some(c => c.status === 'connected'),
   };

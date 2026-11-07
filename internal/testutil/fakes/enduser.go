@@ -96,3 +96,58 @@ func (f *EndUserStore) IdentitiesOf(_ context.Context, endUserID uuid.UUID) ([]e
 	})
 	return out, nil
 }
+
+// SetDisplayName implements enduser.Store.
+func (f *EndUserStore) SetDisplayName(_ context.Context, id uuid.UUID, name string) error {
+	if f.Err != nil {
+		return f.Err
+	}
+	e, ok := f.Users[id]
+	if !ok {
+		return &enduser.NotFoundError{ID: id.String()}
+	}
+	e.DisplayName = name
+	return nil
+}
+
+// IdentitiesOfMany implements enduser.Store.
+func (f *EndUserStore) IdentitiesOfMany(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID][]enduser.Identity, error) {
+	out := map[uuid.UUID][]enduser.Identity{}
+	for _, id := range ids {
+		got, err := f.IdentitiesOf(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = got
+	}
+	return out, nil
+}
+
+// Resolve implements enduser.Store.
+func (f *EndUserStore) Resolve(_ context.Context, publicID string) (enduser.Ref, error) {
+	if f.Err != nil {
+		return enduser.Ref{}, f.Err
+	}
+	for _, e := range f.Users {
+		if e.PublicID == publicID {
+			return enduser.Ref{ID: e.ID, OrgID: e.OrgID, ProjectID: e.ProjectID}, nil
+		}
+	}
+	return enduser.Ref{}, &enduser.NotFoundError{ID: publicID}
+}
+
+// List implements enduser.Store; it ignores the query and cursor.
+func (f *EndUserStore) List(_ context.Context, projectID uuid.UUID, _ string, _ enduser.Cursor, limit int) ([]*enduser.EndUser, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	var out []*enduser.EndUser
+	for _, e := range f.Users {
+		if e.ProjectID == projectID {
+			cp := *e
+			out = append(out, &cp)
+		}
+	}
+	slices.SortFunc(out, func(a, b *enduser.EndUser) int { return b.CreatedAt.Compare(a.CreatedAt) })
+	return out[:min(len(out), max(limit, 1))], nil
+}

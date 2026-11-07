@@ -1,5 +1,5 @@
 import type { AgentStreamEvent, ContentBlockData, InterruptResponseContentData, JSONValue, MessageData, Model, Snapshot, ToolResultBlockData } from '@strands-agents/sdk';
-import type { TurnRequest } from '../http/contract.ts';
+import type { ImageMime, TurnRequest } from '../http/contract.ts';
 import type { Logger } from '../log.ts';
 import type { McpTurn, Note } from '../mcp/clients.ts';
 import type { TurnUsage } from './limits.ts';
@@ -15,7 +15,7 @@ import {
 } from '@strands-agents/sdk';
 import { OpenAIModel } from '@strands-agents/sdk/models/openai';
 
-import { TurnRefusedError } from '../http/contract.ts';
+import { inputParts, TurnRefusedError } from '../http/contract.ts';
 import { openMcpServers } from '../mcp/clients.ts';
 import { BUDGET_REFUSAL, LIMIT_REPLY, overBudget, stepLimit, UsageMeter } from './limits.ts';
 import { cleanSnapshot, SDK_VERSION, tagsMatch } from './snapshot.ts';
@@ -53,6 +53,26 @@ export interface TurnDeps {
 }
 
 type AgUiMessage = TurnRequest['history'][number];
+
+const FORMAT: Record<ImageMime, 'jpeg' | 'png' | 'webp'> = { 'image/jpeg': 'jpeg', 'image/png': 'png', 'image/webp': 'webp' };
+
+const IMAGE_REFUSAL_STATUSES = new Set([400, 413, 415, 422]);
+
+function httpStatusOf(error: unknown): number | undefined {
+  for (let e: unknown = error, depth = 0; e && typeof e === 'object' && depth < 5; e = (e as { cause?: unknown }).cause, depth++) {
+    const status = (e as { status?: unknown }).status;
+    if (typeof status === 'number') {
+      return status;
+    }
+  }
+  return undefined;
+}
+
+function imageRefused(request: TurnRequest, error: unknown): boolean {
+  const status = httpStatusOf(error);
+  const hasImage = inputParts(request).some(p => 'image' in p);
+  return hasImage && status !== undefined && IMAGE_REFUSAL_STATUSES.has(status);
+}
 
 function textOf(content: unknown): string {
   if (typeof content === 'string') {
@@ -113,7 +133,7 @@ export function checkSnapshot(request: TurnRequest): void {
 
 function inputOf(request: TurnRequest): ContentBlockData[] | InterruptResponseContentData[] {
   if (request.input.kind === 'message') {
-    return [{ text: textOf(request.input.message.content) }];
+    return inputParts(request).map(p => ('text' in p ? { text: p.text } : { image: { format: FORMAT[p.image.mime], source: { bytes: new Uint8Array(p.image.bytes) } } }));
   }
   if (request.input.kind === 'continue') {
     return [];
@@ -240,7 +260,7 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
   } catch (error) {
     meter.closeFailedCall();
     deps.log.error('turn failed', { run: request.ids.run, error });
-    return outcome('failed', 'error', { error: { code: 'model_error' } });
+    return outcome('failed', 'error', { error: { code: imageRefused(request, error) ? 'image_unsupported' : 'model_error' } });
   } finally {
     await mcp.close();
   }

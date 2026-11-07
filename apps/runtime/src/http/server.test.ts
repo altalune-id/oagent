@@ -42,6 +42,12 @@ afterEach(() => {
   }
 });
 
+describe('body cap', () => {
+  it('allows 24 MiB, room for three 5 MiB images in base64 plus the rest of the turn', () => {
+    expect(MAX_BODY_BYTES).toBe(24 * 1024 * 1024);
+  });
+});
+
 describe('loadConfig', () => {
   it('needs a token of at least 32 bytes', () => {
     expect(() => loadConfig({})).toThrow('RUNTIME_TOKEN');
@@ -111,7 +117,7 @@ describe('runtime server', () => {
     const bad = await turn(base, { body: '{' });
     expect(bad.status).toBe(400);
     expect(await bad.json()).toEqual({ error: 'invalid_json' });
-    const wrong = await turn(base, { body: JSON.stringify({ ...JSON.parse(goldenBody), contractVersion: 2 }) });
+    const wrong = await turn(base, { body: JSON.stringify({ ...JSON.parse(goldenBody), contractVersion: 3 }) });
     expect(wrong.status).toBe(400);
     expect(await wrong.json()).toEqual({ error: 'invalid_request', fields: ['contractVersion'] });
   });

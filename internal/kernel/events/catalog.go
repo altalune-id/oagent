@@ -17,6 +17,10 @@ const (
 	RunCompleted Type = "run.completed"
 	RunFailed    Type = "run.failed"
 
+	ChannelConnectionCreated Type = "channel.connection.created"
+	ChannelConnectionUpdated Type = "channel.connection.updated"
+	ChannelConnectionDeleted Type = "channel.connection.deleted"
+
 	WebhookPing Type = "webhook.ping"
 )
 
@@ -40,6 +44,9 @@ func All() []Spec {
 		{Type: MemberAdded, Version: 1, Subscribable: true, OrgWide: true},
 		{Type: RunCompleted, Version: 1, Subscribable: true},
 		{Type: RunFailed, Version: 1, Subscribable: true},
+		{Type: ChannelConnectionCreated, Version: 1, Subscribable: true},
+		{Type: ChannelConnectionUpdated, Version: 1, Subscribable: true},
+		{Type: ChannelConnectionDeleted, Version: 1, Subscribable: true},
 		{Type: WebhookPing, Version: 1},
 	}
 }
@@ -97,6 +104,18 @@ func CheckPayload(t Type, data any) error {
 		}
 	case RunFailed:
 		if _, ok := data.(RunFailedV1); !ok {
+			return &PayloadMismatchError{Type: t, Data: data}
+		}
+	case ChannelConnectionCreated:
+		if _, ok := data.(ChannelConnectionCreatedV1); !ok {
+			return &PayloadMismatchError{Type: t, Data: data}
+		}
+	case ChannelConnectionUpdated:
+		if _, ok := data.(ChannelConnectionUpdatedV1); !ok {
+			return &PayloadMismatchError{Type: t, Data: data}
+		}
+	case ChannelConnectionDeleted:
+		if _, ok := data.(ChannelConnectionDeletedV1); !ok {
 			return &PayloadMismatchError{Type: t, Data: data}
 		}
 	case WebhookPing:

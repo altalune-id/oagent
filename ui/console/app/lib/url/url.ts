@@ -1,4 +1,4 @@
-// isHttpsUrl reports whether a value is a full https URL, the only scheme secrets are sent to.
-export function isHttpsUrl(value: string): boolean {
-  return URL.canParse(value) && new URL(value).protocol === 'https:';
+// isWebUrl reports whether a value is a full http or https URL; the server decides whether http is allowed.
+export function isWebUrl(value: string): boolean {
+  return URL.canParse(value) && ['https:', 'http:'].includes(new URL(value).protocol) && !!new URL(value).host;
 }

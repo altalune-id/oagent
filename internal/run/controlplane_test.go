@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	enduserv1 "altalune.id/oagent/gen/go/enduser/v1"
 	threadv1 "altalune.id/oagent/gen/go/thread/v1"
 	"altalune.id/oagent/internal/enduser"
 	"altalune.id/oagent/internal/kernel/session"
@@ -29,6 +30,7 @@ type cpWorld struct {
 	projectPub, agentPub, tPub string
 	running                    *run.Run
 	phone                      enduser.Identity
+	people                     *enduser.Service
 }
 
 func newCPWorld(t *testing.T) *cpWorld {
@@ -60,7 +62,8 @@ func newCPWorld(t *testing.T) *cpWorld {
 	svc := run.NewService(w.store, fakes.Transactor{}, nil).WithAgents(&fakes.RunAgents{Versions: map[uuid.UUID]*run.AgentVersion{
 		version: {ID: version, AgentID: w.agent, Version: 3},
 	}})
-	w.cp = run.NewControlPlane(svc, w.refs, people)
+	w.people = people
+	w.cp = run.NewControlPlane(svc, w.refs, peopleOf{people})
 	return w
 }
 
@@ -121,11 +124,16 @@ func TestListThreads_NoPhoneInLabel(t *testing.T) {
 	ctx := member(w.org)
 	list, err := w.cp.ListThreads(ctx, connect.NewRequest(&threadv1.ListThreadsRequest{ProjectId: w.projectPub}))
 	require.NoError(t, err)
-	label := list.Msg.GetThreads()[0].GetEndUserLabel()
-	assert.Equal(t, "wa_phone …90", label)
+	th := list.Msg.GetThreads()[0]
+	assert.Equal(t, "…90", th.GetEndUserLabel(), "a masked hint, never the raw kind")
+	assert.Equal(t, enduserv1.IdentityKind_IDENTITY_KIND_WA_PHONE, th.GetEndUserIdentityKind())
+	assert.Equal(t, "90", th.GetEndUserIdentityHint())
 	msgs, err := w.cp.ListThreadMessages(ctx, connect.NewRequest(&threadv1.ListThreadMessagesRequest{ThreadId: w.tPub}))
 	require.NoError(t, err)
-	assert.Equal(t, "wa_phone …90", msgs.Msg.GetMessages()[0].GetSpeakerLabel())
+	first := msgs.Msg.GetMessages()[0]
+	assert.Equal(t, "…90", first.GetSpeakerLabel())
+	assert.Equal(t, enduserv1.IdentityKind_IDENTITY_KIND_WA_PHONE, first.GetSpeakerIdentityKind())
+	assert.Equal(t, "90", first.GetSpeakerIdentityHint())
 	for _, b := range []string{protojson.Format(list.Msg), protojson.Format(msgs.Msg)} {
 		assert.NotContains(t, b, w.phone.Value)
 		assert.NotContains(t, b, "1234567890")
@@ -214,4 +222,90 @@ func TestAGUIBody_KeepsOnlyAGUIFieldsAndNeverLeaksWhatItCannotRead(t *testing.T)
 	for _, bad := range []string{`not json`, `["raw","secret"]`, `"secret"`, ``} {
 		assert.Equal(t, `{}`, string(run.Message{Body: json.RawMessage(bad)}.AGUIBody()), "%q", bad)
 	}
+}
+
+func TestListThreadMessages_SkippedMessageCarriesItsReason(t *testing.T) {
+	w := newCPWorld(t)
+	require.NotEmpty(t, w.store.Messages)
+	w.store.Messages[0].Status, w.store.Messages[0].SkipReason = run.MessageConsumed, run.SkipStale
+	msgs, err := w.cp.ListThreadMessages(member(w.org), connect.NewRequest(&threadv1.ListThreadMessagesRequest{ThreadId: w.tPub}))
+	require.NoError(t, err)
+	got := msgs.Msg.GetMessages()
+	require.NotEmpty(t, got)
+	assert.Equal(t, "consumed", got[0].GetStatus())
+	assert.Equal(t, "stale", got[0].GetSkipReason(), "the thread viewer labels a skipped message with its reason")
+	for _, m := range got[1:] {
+		assert.Empty(t, m.GetSkipReason(), "a message that was not skipped has no reason")
+	}
+}
+
+type peopleOf struct{ users *enduser.Service }
+
+func (p peopleOf) Person(ctx context.Context, id uuid.UUID) (run.Person, error) {
+	n, err := p.users.Name(ctx, id)
+	return run.Person{DisplayName: n.DisplayName, Kind: enduser.KindProto(n.Kind), Hint: n.Hint, Label: n.Label()}, err
+}
+
+func TestThreadLabels_PreferTheDisplayName(t *testing.T) {
+	w := newCPWorld(t)
+	ctx := member(w.org)
+	who := w.store.Actors[w.thrd]
+	require.NoError(t, w.people.SetDisplayName(tenant.Into(context.Background(), tenant.Context{OrgID: w.org, ProjectID: w.project}), who, "Sari Wulandari"))
+	got, err := w.cp.GetThread(ctx, connect.NewRequest(&threadv1.GetThreadRequest{ThreadId: w.tPub}))
+	require.NoError(t, err)
+	th := got.Msg.GetThread()
+	assert.Equal(t, "Sari Wulandari", th.GetEndUserLabel(), "a person's name is what admins expect")
+	assert.Equal(t, "Sari Wulandari", th.GetEndUserDisplayName())
+	assert.Equal(t, "90", th.GetEndUserIdentityHint())
+	msgs, err := w.cp.ListThreadMessages(ctx, connect.NewRequest(&threadv1.ListThreadMessagesRequest{ThreadId: w.tPub}))
+	require.NoError(t, err)
+	assert.Equal(t, "Sari Wulandari", msgs.Msg.GetMessages()[0].GetSpeakerDisplayName())
+	for _, b := range []string{protojson.Format(got.Msg), protojson.Format(msgs.Msg)} {
+		assert.NotContains(t, b, w.phone.Value)
+		assert.NotContains(t, b, "wa_phone", "no raw kind in a label")
+	}
+}
+
+func TestListRuns_ByAgentAcrossItsThreads(t *testing.T) {
+	w := newCPWorld(t)
+	other := uuid.New()
+	w.store.AddAgentThread(other, w.org, w.project, w.agent)
+	w.store.PublicIDs[other] = "tHREADtwo" + uuid.NewString()[:12]
+	second := run.New(w.org, w.project, other, w.running.AgentVersionID, time.Now().Add(time.Second))
+	w.store.Runs[second.ID] = second
+	stranger := uuid.New()
+	w.store.AddAgentThread(stranger, w.org, w.project, uuid.New())
+	foreign := run.New(w.org, w.project, stranger, w.running.AgentVersionID, time.Now())
+	w.store.Runs[foreign.ID] = foreign
+
+	got, err := w.cp.ListRuns(member(w.org), connect.NewRequest(&threadv1.ListRunsRequest{AgentId: w.agentPub, ProjectId: w.projectPub}))
+	require.NoError(t, err)
+	runs := got.Msg.GetRuns()
+	require.Len(t, runs, 2, "only this agent's runs")
+	assert.Equal(t, second.PublicID, runs[0].GetId(), "newest first")
+	assert.Equal(t, w.store.PublicIDs[other], runs[0].GetThreadId(), "each run names its thread")
+	assert.Equal(t, w.tPub, runs[1].GetThreadId())
+
+	page, err := w.cp.ListRuns(member(w.org), connect.NewRequest(&threadv1.ListRunsRequest{AgentId: w.agentPub, ProjectId: w.projectPub, PageSize: 1}))
+	require.NoError(t, err)
+	require.Len(t, page.Msg.GetRuns(), 1)
+	next, err := w.cp.ListRuns(member(w.org), connect.NewRequest(&threadv1.ListRunsRequest{AgentId: w.agentPub, ProjectId: w.projectPub, PageSize: 1, PageToken: page.Msg.GetNextPageToken()}))
+	require.NoError(t, err)
+	require.Len(t, next.Msg.GetRuns(), 1)
+	assert.Equal(t, w.running.PublicID, next.Msg.GetRuns()[0].GetId())
+}
+
+func TestListRuns_AgentOutOfReachIsNotFound(t *testing.T) {
+	w := newCPWorld(t)
+	for name, ctx := range map[string]context.Context{
+		"member of another org": member(uuid.New()),
+		"key of another agent": session.PrincipalInto(context.Background(), session.Principal{
+			Source: session.SourceAPIKey, ActiveOrgID: w.org, ProjectIDs: []uuid.UUID{w.project}, ResourceIDs: []uuid.UUID{uuid.New()},
+		}),
+	} {
+		_, err := w.cp.ListRuns(ctx, connect.NewRequest(&threadv1.ListRunsRequest{AgentId: w.agentPub, ProjectId: w.projectPub}))
+		assert.True(t, run.IsThreadNotFoundError(err) || run.IsNotFoundError(err), "%s: %v", name, err)
+	}
+	_, err := w.cp.ListRuns(member(w.org), connect.NewRequest(&threadv1.ListRunsRequest{AgentId: "unknwnunknwnunknwnabc", ProjectId: w.projectPub}))
+	assert.True(t, run.IsThreadNotFoundError(err) || run.IsNotFoundError(err), "an unknown agent: %v", err)
 }

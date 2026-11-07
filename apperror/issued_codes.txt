@@ -90,3 +90,9 @@ RUN006 RunRuntimeFailed
 RUN007 RunInProgress
 RUN008 RunIdempotencyConflict
 THR001 ThreadNotFound
+CHN001 ConnectionNotFound
+CHN002 ConnectionInvalid
+CHN003 ConnectionSecretRequired
+CHN004 ConnectionSecretsUnavailable
+CHN005 ConnectionProviderUnavailable
+CHN006 ConnectionWebhookURLUnavailable

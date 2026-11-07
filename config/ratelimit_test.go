@@ -37,6 +37,7 @@ func TestLoad_RateLimitFromEnv(t *testing.T) {
 	setRequiredEnv(t)
 	t.Setenv("OAGENT_RATE_LIMIT_AUTH_ENABLED", "false")
 	t.Setenv("OAGENT_RATE_LIMIT_DATA_PLANE_ENABLED", "false")
+	t.Setenv("OAGENT_RATE_LIMIT_INGEST_ENABLED", "false")
 	t.Setenv("OAGENT_RATE_LIMIT_MAX_KEYS", "500")
 	t.Setenv("OAGENT_RATE_LIMIT_DRIVER", "memory")
 	t.Setenv("OAGENT_HTTP_TRUSTED_PROXY_HOPS", "2")
@@ -81,6 +82,7 @@ func TestValidate_RateLimit(t *testing.T) {
 				c.RateLimit.MaxKeys = 0
 				c.RateLimit.Auth.Enabled = false
 				c.RateLimit.DataPlane.Enabled = false
+				c.RateLimit.Ingest.Enabled = false
 			},
 			check: func(t *testing.T, err error) { assert.NoError(t, err) },
 		},

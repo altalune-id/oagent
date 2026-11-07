@@ -2,11 +2,14 @@ package run
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -36,7 +39,7 @@ func (s *Service) request(ctx context.Context, t *turn) (runtime.TurnRequest, []
 		return req, nil, err
 	}
 	req.MCPServers = servers
-	if req.Input, err = input(t.taken); err != nil {
+	if req.Input, err = input(t.taken, s.speaker(ctx, t), s.photo(ctx, t)); err != nil {
 		return req, nil, err
 	}
 	stored, err := s.store.StoredResults(ctx, r.ID)
@@ -141,8 +144,119 @@ type agUIMessage struct {
 	} `json:"toolCalls,omitempty"`
 }
 
-func input(taken []Message) (runtime.TurnInput, error) {
-	var users []agUIMessage
+func (s *Service) speaker(ctx context.Context, t *turn) func(*uuid.UUID) string {
+	if t.thread.Kind != threadKindGroup {
+		return nil
+	}
+	return func(id *uuid.UUID) string {
+		if id == nil || s.names == nil {
+			return "member"
+		}
+		name, err := s.names.DisplayName(ctx, *id)
+		if err != nil {
+			s.log.WarnContext(ctx, "run: speaker name", "thread", t.thread.ID.String(), "err", err.Error())
+		}
+		if name == "" {
+			return "member"
+		}
+		return name
+	}
+}
+
+type imageSource struct {
+	Type     string `json:"type"`
+	Value    string `json:"value"`
+	MimeType string `json:"mimeType"`
+}
+
+type contentPart struct {
+	Type   string       `json:"type"`
+	Text   string       `json:"text,omitempty"`
+	Source *imageSource `json:"source,omitempty"`
+	ID     string       `json:"id,omitempty"`
+}
+
+func userParts(content json.RawMessage) ([]contentPart, error) {
+	var text string
+	if json.Unmarshal(content, &text) == nil {
+		return []contentPart{{Type: "text", Text: text}}, nil
+	}
+	var parts []contentPart
+	err := json.Unmarshal(content, &parts)
+	return parts, err
+}
+
+type setReply struct{ voice, photoUnreadable bool }
+
+type userMeta struct {
+	Content json.RawMessage `json:"content"`
+	Channel struct {
+		Voice bool `json:"voice"`
+	} `json:"channel"`
+}
+
+func voiceOnly(taken []Message) bool {
+	n := 0
+	for _, m := range taken {
+		if m.Role != RoleUser {
+			continue
+		}
+		var u userMeta
+		if json.Unmarshal(m.Body, &u) != nil || !u.Channel.Voice {
+			return false
+		}
+		n++
+	}
+	return n > 0
+}
+
+func setReplies(taken []Message, kind string, vision bool) setReply {
+	out := setReply{voice: kind != threadKindGroup && voiceOnly(taken)}
+	if vision {
+		return out
+	}
+	for _, m := range taken {
+		var u userMeta
+		if m.Role != RoleUser || json.Unmarshal(m.Body, &u) != nil {
+			continue
+		}
+		parts, err := userParts(u.Content)
+		if err == nil && slices.ContainsFunc(parts, func(p contentPart) bool { return p.Type == "image" }) {
+			out.photoUnreadable = true
+			return out
+		}
+	}
+	return out
+}
+
+func (s *Service) photo(ctx context.Context, t *turn) func(contentPart) (contentPart, bool) {
+	conn := t.thread.ConnectionID
+	if s.media == nil || conn == uuid.Nil || !t.model.Vision {
+		return nil
+	}
+	return func(p contentPart) (contentPart, bool) {
+		if p.Source == nil {
+			return contentPart{}, false
+		}
+		data, mime, err := s.media.Fetch(ctx, conn, p.ID, p.Source.MimeType, maxImageBytes)
+		if err == nil && len(data) > maxImageBytes {
+			err = errors.New("over the size cap")
+		}
+		if err != nil {
+			s.log.WarnContext(ctx, "run: photo not read", "run", t.run.PublicID, "err", err.Error())
+			return contentPart{}, false
+		}
+		src := &imageSource{Type: "data", Value: base64.StdEncoding.EncodeToString(data), MimeType: mime}
+		return contentPart{Type: "image", Source: src}, true
+	}
+}
+
+func input(
+	taken []Message, speaker func(*uuid.UUID) string, photo func(contentPart) (contentPart, bool),
+) (runtime.TurnInput, error) {
+	var out []contentPart
+	var lastID string
+	read, sent := 0, false
 	for _, m := range taken {
 		if m.Role != RoleUser {
 			continue
@@ -151,25 +265,58 @@ func input(taken []Message) (runtime.TurnInput, error) {
 		if err := json.Unmarshal(m.Body, &u); err != nil {
 			return runtime.TurnInput{}, fmt.Errorf("run: user message %d: %w", m.Seq, err)
 		}
-		users = append(users, u)
+		parts, err := userParts(u.Content)
+		if err != nil {
+			return runtime.TurnInput{}, fmt.Errorf("run: user message %d content: %w", m.Seq, err)
+		}
+		lastID = u.ID
+		var texts []string
+		var images []contentPart
+		for _, p := range parts {
+			switch {
+			case p.Type == "text":
+				texts = append(texts, p.Text)
+			case p.Type == "image" && photo != nil && read < turnMaxImages:
+				read++
+				if filled, ok := photo(p); ok {
+					images = append(images, filled)
+					continue
+				}
+				texts = append(texts, notePhotoUnread)
+			case p.Type == "image":
+				texts = append(texts, notePhotoUnread)
+			}
+		}
+		line := cutLong(strings.Join(texts, "\n"))
+		if speaker != nil {
+			line = strings.TrimSpace("[" + speaker(m.SpeakerID) + "] " + line)
+		}
+		if line != "" {
+			out = append(out, contentPart{Type: "text", Text: line})
+		}
+		out = append(out, images...)
+		sent = sent || len(images) > 0
 	}
-	if len(users) == 0 {
+	if lastID == "" {
 		return runtime.TurnInput{}, errors.New("run: the turn has no user message")
 	}
-	if len(users) == 1 {
-		body, err := json.Marshal(map[string]json.RawMessage{"id": quote(users[0].ID), "role": quote("user"), "content": users[0].Content})
-		return runtime.TurnInput{Kind: "message", Message: body}, err
-	}
-	parts := make([]string, 0, len(users))
-	for _, u := range users {
-		var text string
-		if json.Unmarshal(u.Content, &text) != nil {
-			text = string(u.Content)
+	var content any = out
+	if !sent {
+		lines := make([]string, len(out))
+		for i, p := range out {
+			lines[i] = p.Text
 		}
-		parts = append(parts, text)
+		content = strings.Join(lines, "\n\n")
 	}
-	body, err := json.Marshal(map[string]string{"id": users[len(users)-1].ID, "role": "user", "content": strings.Join(parts, "\n\n")})
+	body, err := json.Marshal(map[string]any{"id": lastID, "role": "user", "content": content})
 	return runtime.TurnInput{Kind: "message", Message: body}, err
+}
+
+func cutLong(text string) string {
+	if utf8.RuneCountInString(text) <= maxMessageRunes {
+		return text
+	}
+	return string([]rune(text)[:maxMessageRunes]) + " [message cut]"
 }
 
 func quote(s string) json.RawMessage {
@@ -197,6 +344,13 @@ func rebuild(msgs []Message) []json.RawMessage {
 		for _, c := range am.ToolCalls {
 			asked = append(asked, c.ID)
 		}
+		if m.Role == RoleUser {
+			if text, ok := photoNotes(am.Content); ok {
+				body, _ := json.Marshal(map[string]string{"id": am.ID, "role": "user", "content": text})
+				out = append(out, body)
+				continue
+			}
+		}
 		out = append(out, m.Body)
 	}
 	for _, id := range asked {
@@ -207,6 +361,21 @@ func rebuild(msgs []Message) []json.RawMessage {
 		out = append(out, body)
 	}
 	return out
+}
+
+func photoNotes(content json.RawMessage) (string, bool) {
+	var parts []contentPart
+	if json.Unmarshal(content, &parts) != nil {
+		return "", false
+	}
+	texts := make([]string, len(parts))
+	for i, p := range parts {
+		texts[i] = p.Text
+		if p.Type == "image" {
+			texts[i] = notePhoto
+		}
+	}
+	return strings.Join(texts, "\n"), true
 }
 
 type strandsResult struct {
@@ -342,6 +511,7 @@ func add(a, b Usage) Usage {
 
 func (s *Service) finish(ctx context.Context, t *turn, term *runtime.Terminal) (*Run, error) {
 	to, code := terminalStatus(term)
+	t.imageRefused = term.Error != nil && term.Error.Code == imageUnsupported
 	if err := t.run.Move(to, time.Now()); err != nil {
 		return nil, s.errOrReport(ctx, "run: finish", err)
 	}

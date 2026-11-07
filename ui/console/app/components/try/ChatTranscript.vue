@@ -4,7 +4,7 @@ import AppButton from '#base/components/ui/AppButton.vue';
 import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import ApprovalCard from '~/components/approval/ApprovalCard.vue';
 import { shownName } from '~/components/enduser/forget';
-import { runStatusTone } from '~/components/thread/conversation';
+import { runDetailText, runFix, runStatusTone } from '~/components/thread/conversation';
 import { useUnits } from '~/composables/useUnits';
 import { chatTime, dayBreaks } from './chatTime';
 
@@ -19,7 +19,8 @@ const { items, agentName, youName, viewer = 'person', readOnly = false, busy = f
 }>();
 const emit = defineEmits<{ approve: [], reject: [reason: string], retry: [], reload: [] }>();
 
-const { t, locale } = useI18n();
+const { t, te, locale } = useI18n();
+const agentBase = computed(() => runBase.replace(/\/runs$/, ''));
 const time = (d: Date) => chatTime(d, locale.value);
 const days = computed(() => dayBreaks(items.map(i => ({ id: i.id, at: 'at' in i ? i.at : undefined })), locale.value, t('chat.today')));
 const { cost, costTitle, seconds, count } = useUnits();
@@ -45,6 +46,7 @@ function pretty(value: unknown) {
         <div class="chat-header text-xs">
           {{ item.deleted ? shownName('', true, t) : item.speaker ?? youName }}
           <time :datetime="item.at.toISOString()" class="text-base-content/70">{{ time(item.at) }}</time>
+          <span v-if="item.skipped" class="badge badge-ghost badge-sm text-base-content">{{ t(`thread.skipped_${item.skipped}`) }}</span>
         </div>
         <div class="chat-bubble text-base-content text-ui" :class="side.userBubble">
           <img v-if="item.photo" :src="item.photo.url" :alt="t('try.photo_alt')" class="mb-2 size-32 rounded-box object-cover">
@@ -86,11 +88,12 @@ function pretty(value: unknown) {
       </div>
 
       <details v-else-if="item.kind === 'tool'" :class="side.self">
-        <summary class="badge badge-sm badge-soft text-base-content cursor-pointer gap-1.5" :aria-label="t('try.tool_chip', { tool: item.name, state: t(`try.tool_${item.state}`) })">
+        <summary class="badge badge-sm badge-soft text-base-content cursor-pointer gap-1.5">
           <span v-if="item.state === 'running'" class="loading loading-spinner loading-xs" aria-hidden="true" />
           <Icon v-else :name="toolIcon[item.state]" size="12" :class="{ 'text-error': item.state === 'failed', 'text-success': item.state === 'done', 'text-warning': item.state === 'awaiting' }" aria-hidden="true" />
-          <span class="font-mono">{{ item.name }}</span>
+          <span class="font-mono">{{ item.name }}</span>{{ ' ' }}
           <span class="text-base-content/70">{{ t(`try.tool_${item.state}`) }}</span>
+          <span class="sr-only">{{ t('try.tool_chip_hint') }}</span>
         </summary>
         <div class="mt-2 flex max-w-xl flex-col gap-2 rounded-box border border-base-300 bg-base-100 p-3 text-xs">
           <p class="font-semibold">
@@ -109,14 +112,25 @@ function pretty(value: unknown) {
         </div>
       </details>
 
-      <div v-else-if="item.kind === 'run'" class="flex items-center gap-3 text-xs">
-        <span class="h-px flex-1 bg-base-300" aria-hidden="true" />
-        <NuxtLink :to="`${runBase}/${item.run.id}`" class="link link-hover flex max-w-[85%] flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center text-base-content/70">
-          <span class="whitespace-nowrap">{{ t('thread.run') }} <span class="font-mono">{{ item.run.id }}</span></span>
-          <StatusLabel :tone="runStatusTone[item.run.status]" :label="t(`runstatus.${item.run.status}`)" class="text-xs whitespace-nowrap" />
-          <span class="whitespace-nowrap">{{ seconds(item.run.seconds) }} · {{ t(item.run.estimated ? 'thread.tokens_estimated' : 'thread.tokens', { n: count(item.run.tokens) }) }} · <span v-if="item.run.unpriced">{{ t('thread.unpriced') }}</span><span v-else :title="costTitle(item.run.costCents)">{{ cost(item.run.costCents) }}</span></span>
-        </NuxtLink>
-        <span class="h-px flex-1 bg-base-300" aria-hidden="true" />
+      <div v-else-if="item.kind === 'run'" class="flex flex-col gap-1">
+        <div class="flex items-center gap-3 text-xs">
+          <span class="h-px flex-1 bg-base-300" aria-hidden="true" />
+          <NuxtLink :to="`${runBase}/${item.run.id}`" class="link link-hover flex max-w-[85%] flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center text-base-content/70">
+            <span class="whitespace-nowrap">{{ t('thread.run') }} <span class="font-mono">{{ item.run.id }}</span></span>
+            <StatusLabel :tone="runStatusTone[item.run.status]" :label="t(`runstatus.${item.run.status}`)" class="text-xs whitespace-nowrap" />
+            <span class="whitespace-nowrap">{{ seconds(item.run.seconds) }} · {{ t(item.run.estimated ? 'thread.tokens_estimated' : 'thread.tokens', { n: count(item.run.tokens) }) }} · <span v-if="item.run.unpriced">{{ t('thread.unpriced') }}</span><span v-else :title="costTitle(item.run.costCents)">{{ cost(item.run.costCents) }}</span></span>
+          </NuxtLink>
+          <span class="h-px flex-1 bg-base-300" aria-hidden="true" />
+        </div>
+        <p v-if="item.run.detail && item.run.status === 'failed'" class="text-center text-xs text-base-content/70">
+          {{ runDetailText(item.run.detail, t, te) }}
+          <template v-if="runBase && runFix(item.run.detail, agentBase)">
+            ·
+            <NuxtLink :to="runFix(item.run.detail, agentBase)!.to" class="link">
+              {{ t(runFix(item.run.detail, agentBase)!.labelKey) }}
+            </NuxtLink>
+          </template>
+        </p>
       </div>
 
       <div v-else-if="item.kind === 'approval'" class="w-full max-w-xl" :class="side.self">

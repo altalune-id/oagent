@@ -14,8 +14,10 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/channel"
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/testutil/fakes"
 )
 
 func testLogger() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
@@ -27,6 +29,23 @@ func TestBuildScheduler(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, r.Jobs(), 1)
 	assert.Equal(t, "session-sweep", r.Jobs()[0].Name)
+}
+
+func TestBuildScheduler_ChannelJobs(t *testing.T) {
+	k := kernel.Kernel{Meter: noopmetric.NewMeterProvider().Meter("test"), Reporter: apperror.NewReporter(nil, false)}
+	refs := fakes.NewPublicIDs()
+	svcs := &Services{
+		Sessions:       session.NewMemoryStore(),
+		Channels:       channel.NewService(&fakes.ChannelStore{}, fakes.Transactor{}, refs, nil),
+		ChannelReplier: channel.NewReplier(nil, nil, nil, nil),
+	}
+	r, err := buildScheduler(k, config.Config{Scheduler: config.SchedulerConfig{Enabled: true}}, svcs, testLogger())
+	require.NoError(t, err)
+	var names []string
+	for _, j := range r.Jobs() {
+		names = append(names, j.Name)
+	}
+	assert.ElementsMatch(t, []string{"session-sweep", "ingest-prune", "channel-reply"}, names)
 }
 
 func TestSchedulerConfig(t *testing.T) {

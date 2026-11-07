@@ -58,10 +58,24 @@ func TestBuiltinPermissions_MemberKeyCanRunAgents(t *testing.T) {
 
 func TestBuiltinPermissions_NoRoleLosesAccess(t *testing.T) {
 	before := map[Role][]string{
-		RoleAdmin:  {scope.OrgRead, "project:*", "agent:*", "webhook:*", "member:*", "apikey:*"},
-		RoleMember: {scope.OrgRead, scope.ProjectRead, "agent:*", "webhook:*", scope.MemberRead, scope.ApikeyRead},
+		RoleOwner: {"*"},
+		RoleAdmin: {
+			scope.OrgRead, "project:*", "agent:*", "webhook:*", "member:*", "apikey:*", "provider:*", "mcpserver:*", "run:*", scope.ThreadRead,
+		},
+		RoleMember: {
+			scope.OrgRead, scope.ProjectRead, "agent:*", "webhook:*", scope.MemberRead, scope.ApikeyRead,
+			scope.ProviderRead, scope.McpserverRead, "run:*", scope.ThreadRead,
+		},
 	}
 	for r, old := range before {
 		assert.True(t, scope.Covers(BuiltinPermissions(r), old), "%s keeps every right it had", r)
 	}
+}
+
+func TestBuiltinPermissions_Channels(t *testing.T) {
+	admin, m := BuiltinPermissions(RoleAdmin), BuiltinPermissions(RoleMember)
+	assert.True(t, scope.Covers(admin, []string{scope.ChannelRead, scope.ChannelWrite}), "an admin manages channel connections")
+	assert.True(t, scope.Grants(m, scope.ChannelRead), "a member sees channel connections")
+	assert.False(t, scope.Grants(m, scope.ChannelWrite), "a member never changes one")
+	assert.True(t, scope.Covers(BuiltinPermissions(RoleOwner), []string{scope.ChannelRead, scope.ChannelWrite}))
 }

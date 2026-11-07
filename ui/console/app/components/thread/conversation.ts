@@ -1,5 +1,5 @@
 import type { StatusTone } from '#base/components/ui/types';
-import type { RunStatus, ThreadKind, ThreadSummary } from '~/stores/threads';
+import type { RunStatus, RunSummary, ThreadKind, ThreadSummary } from '~/stores/threads';
 
 export type ChannelFilter = 'whatsapp' | 'api' | 'try';
 
@@ -56,4 +56,35 @@ export function filterThreads<T extends ThreadSummary>(threads: T[], filter: Thr
   return threads.filter(t => (!filter.channel || channelOf(t.kind) === filter.channel)
     && (!filter.status || t.status === filter.status)
     && (!q || `${t.title} ${t.lastSpeaker} ${t.lastText}`.toLowerCase().includes(q)));
+}
+
+type Translate = (key: string, params?: Record<string, unknown>) => string;
+
+export interface RunFix {
+  to: string;
+  labelKey: string;
+}
+
+// runDetailText says why a run ended in plain words: an error code becomes its app error text with the code kept for support.
+export function runDetailText(detail: RunSummary['detail'], t: Translate, exists: (key: string) => boolean): string {
+  if (!detail) {
+    return '';
+  }
+  const code = detail.params?.code;
+  if (detail.key === 'runstatus.detail_error' && code && exists(`apperror.${code}`)) {
+    return t('runstatus.detail_reason', { reason: t(`apperror.${code}`), code });
+  }
+  return t(detail.key, detail.params ?? {});
+}
+
+// runFix links a failed run to the page that fixes its cause, when there is one; agentBase is the agent's console path.
+export function runFix(detail: RunSummary['detail'], agentBase: string): RunFix | undefined {
+  const code = detail?.key === 'runstatus.detail_error' ? detail.params?.code ?? '' : '';
+  if (code === 'AGT006') {
+    return { to: agentBase, labelKey: 'run.fix_configure' };
+  }
+  if (code.startsWith('PRV')) {
+    return { to: `${agentBase.replace(/\/agents\/[^/]+$/, '')}/settings/model-providers`, labelKey: 'run.fix_providers' };
+  }
+  return undefined;
 }

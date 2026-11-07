@@ -12,6 +12,8 @@ import (
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
+	channelv1connect "altalune.id/oagent/gen/go/channel/v1/channelv1connect"
+	enduserv1connect "altalune.id/oagent/gen/go/enduser/v1/enduserv1connect"
 	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
 	mcpserverv1connect "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1connect"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
@@ -23,6 +25,8 @@ import (
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/auth"
+	"altalune.id/oagent/internal/channel"
+	"altalune.id/oagent/internal/enduser"
 	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/mcpserver"
 	"altalune.id/oagent/internal/modelprovider"
@@ -53,14 +57,20 @@ type Services struct {
 	Webhooks       *webhook.Service
 	ModelProviders *modelprovider.Service
 	MCPServers     *mcpserver.Service
+	Channels       *channel.Service
+	// ChannelOptions are the server settings the channel API reports.
+	ChannelOptions channel.ControlPlaneOptions
 	Runs           *run.Service
-	// EndUsers labels end users for the thread viewer, without their identity values.
-	EndUsers run.Labels
-	Users    *user.Service
-	Members  *member.Service
-	Invites  *invite.Service
-	Auth     *auth.Service
-	Refs     Refs
+	// EndUsers names end users for the thread viewer, without their identity values.
+	EndUsers run.People
+	// People and PeopleActivity serve the end-user read API.
+	People         *enduser.Service
+	PeopleActivity enduser.Activity
+	Users          *user.Service
+	Members        *member.Service
+	Invites        *invite.Service
+	Auth           *auth.Service
+	Refs           Refs
 	// Passwords is true when console password sign-in is on.
 	Passwords bool
 }
@@ -74,6 +84,8 @@ type Refs interface {
 	webhook.Refs
 	modelprovider.Refs
 	mcpserver.Refs
+	channel.Refs
+	enduser.Refs
 	run.Refs
 	member.Refs
 	auth.PublicIDs
@@ -98,6 +110,8 @@ type Server struct {
 
 	ModelProviderSvc *modelprovider.ModelProviderService
 	MCPServerSvc     *mcpserver.McpServerService
+	ChannelSvc       *channel.ChannelService
+	EndUserSvc       *enduser.EndUserService
 	ThreadSvc        *run.ThreadService
 
 	OpenAPIEnabled   bool
@@ -141,6 +155,12 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 	if svcs.MCPServers != nil {
 		s.MCPServerSvc = mcpserver.NewControlPlane(svcs.MCPServers, svcs.Refs)
 	}
+	if svcs.Channels != nil {
+		s.ChannelSvc = channel.NewControlPlane(svcs.Channels, svcs.Refs, svcs.ChannelOptions)
+	}
+	if svcs.People != nil && svcs.PeopleActivity != nil {
+		s.EndUserSvc = enduser.NewControlPlane(svcs.People, svcs.Refs, svcs.PeopleActivity)
+	}
 	if svcs.Runs != nil && svcs.EndUsers != nil {
 		s.ThreadSvc = run.NewControlPlane(svcs.Runs, svcs.Refs, svcs.EndUsers)
 	}
@@ -180,6 +200,14 @@ func (s *Server) Handler(basePath string) http.Handler {
 	if s.MCPServerSvc != nil {
 		mcpPath, mcpHandler := mcpserverv1connect.NewMcpServerServiceHandler(s.MCPServerSvc, s.handlerOptions()...)
 		inner.Handle(mcpPath, mcpHandler)
+	}
+	if s.ChannelSvc != nil {
+		channelPath, channelHandler := channelv1connect.NewChannelServiceHandler(s.ChannelSvc, s.handlerOptions()...)
+		inner.Handle(channelPath, channelHandler)
+	}
+	if s.EndUserSvc != nil {
+		peoplePath, peopleHandler := enduserv1connect.NewEndUserServiceHandler(s.EndUserSvc, s.handlerOptions()...)
+		inner.Handle(peoplePath, peopleHandler)
 	}
 	if s.ThreadSvc != nil {
 		threadPath, threadHandler := threadv1connect.NewThreadServiceHandler(s.ThreadSvc, s.handlerOptions()...)

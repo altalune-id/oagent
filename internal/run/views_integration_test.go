@@ -152,3 +152,141 @@ func TestStore_LateRunScopedCancelLeavesTheNextRunAlone(t *testing.T) {
 	assert.True(t, run.IsThreadNotFoundError(f.store.RequestCancel(ctx, uuid.New(), b.ID)))
 	assert.True(t, run.IsThreadNotFoundError(f.store.RequestCancel(in(f.seed(t).org), thread, b.ID)), "another tenant")
 }
+
+func (f *pgFixture) channelThread(t *testing.T, s scope, key string) uuid.UUID {
+	t.Helper()
+	conn, id := uuid.New(), uuid.New()
+	f.exec(t, `INSERT INTO `+f.schema+`.channel_connections (id, public_id, org_id, project_id, agent_id, provider, status, base_url, openwa_org, openwa_project, device_id,
+		signing_secret_primary_sealed, device_key_sealed, reply_failure, reply_voice, reply_photo_unreadable, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, 'openwa', 'active', 'https://wa.example.com', 'acme', 'main', 'dev_1', '\x01', '\x02', 'f', 'v', 'p', now(), now())`,
+		conn, "c"+conn.String()[:12], s.org, s.project, s.agent)
+	f.exec(t, `INSERT INTO `+f.schema+`.threads (id, public_id, org_id, project_id, agent_id, kind, external_key, connection_id, reply_via, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, 'dm', $6, $7, 'wa_phone', now(), now())`, id, "t"+id.String()[:12], s.org, s.project, s.agent, key, conn)
+	return id
+}
+
+func TestStore_APIThreadLookupsSeeOnlyAPIThreads(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	ctx := in(s.org)
+	channel := f.channelThread(t, s, "cht_Gr5Tn8Vc1Hs6Jq0b")
+	_, err := f.store.ThreadByExternalKey(ctx, s.agent, "cht_Gr5Tn8Vc1Hs6Jq0b")
+	assert.True(t, run.IsThreadNotFoundError(err), "a WhatsApp thread is never an API client's thread: %v", err)
+
+	actor := uuid.New()
+	f.exec(t, `INSERT INTO `+f.schema+`.end_users (id, public_id, org_id, project_id, created_at, updated_at) VALUES ($1, $2, $3, $4, now(), now())`,
+		actor, "e"+actor.String()[:12], s.org, s.project)
+	th, err := f.store.UpsertAPIThread(ctx, s.project, s.agent, "cht_Gr5Tn8Vc1Hs6Jq0b", actor)
+	require.NoError(t, err)
+	assert.NotEqual(t, channel, th.ID, "the API client gets its own thread with the same key")
+	assert.Equal(t, "api", th.Kind)
+	got, err := f.store.ThreadByExternalKey(ctx, s.agent, "cht_Gr5Tn8Vc1Hs6Jq0b")
+	require.NoError(t, err)
+	assert.Equal(t, th.ID, got.ID)
+}
+
+func TestStore_AppendChannelMessage(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	ctx := in(s.org)
+	conn := uuid.New()
+	f.exec(t, `INSERT INTO `+f.schema+`.channel_connections (id, public_id, org_id, project_id, agent_id, provider, status, base_url, openwa_org, openwa_project, device_id,
+		signing_secret_primary_sealed, device_key_sealed, reply_failure, reply_voice, reply_photo_unreadable, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, 'openwa', 'active', 'https://wa.example.com', 'acme', 'main', 'dev_1', '\x01', '\x02', 'f', 'v', 'p', now(), now())`,
+		conn, "c"+conn.String()[:12], s.org, s.project, s.agent)
+	person := uuid.New()
+	f.exec(t, `INSERT INTO `+f.schema+`.end_users (id, public_id, org_id, project_id, created_at, updated_at) VALUES ($1, $2, $3, $4, now(), now())`,
+		person, "e"+person.String()[:12], s.org, s.project)
+	at := time.Date(2026, 9, 28, 10, 15, 0, 0, time.UTC)
+	msg := func(ext string) run.ChannelMessage {
+		return run.ChannelMessage{
+			ProjectID: s.project, AgentID: s.agent, ConnectionID: conn, ChatKey: "cht_Dm4Kp7Wx2Rt9Ya1c", Kind: "dm", ReplyVia: "wa_phone", Actor: person,
+			Message:   run.Message{Body: []byte(`{"id":"m","role":"user","content":"hi"}`), SpeakerID: &person, ExternalMessageID: ext, ChannelTime: &at},
+			SenderCap: 2,
+		}
+	}
+	first, err := f.store.AppendChannelMessage(ctx, msg("msg_1"))
+	require.NoError(t, err)
+	assert.True(t, first.Pending)
+	again, err := f.store.AppendChannelMessage(ctx, msg("msg_1"))
+	require.NoError(t, err)
+	assert.Equal(t, run.ChannelAppend{ThreadID: first.ThreadID, Duplicate: true}, again, "a known message is a no-op")
+	second, err := f.store.AppendChannelMessage(ctx, msg("msg_2"))
+	require.NoError(t, err)
+	assert.True(t, second.Pending)
+	third, err := f.store.AppendChannelMessage(ctx, msg("msg_3"))
+	require.NoError(t, err)
+	assert.Equal(t, first.ThreadID, third.ThreadID)
+	assert.False(t, third.Pending, "past the sender cap the message is stored skipped")
+	var status, skip string
+	var channelTime time.Time
+	require.NoError(t, f.admin.QueryRowContext(t.Context(), `SELECT status, skip_reason, channel_time FROM `+f.schema+`.messages WHERE external_message_id = 'msg_3'`).
+		Scan(&status, &skip, &channelTime))
+	assert.Equal(t, "consumed", status)
+	assert.Equal(t, run.SkipSenderRate, skip)
+	assert.True(t, at.Equal(channelTime))
+
+	f.exec(t, `DELETE FROM `+f.schema+`.channel_connections WHERE id = $1`, conn)
+	_, err = f.store.AppendChannelMessage(ctx, msg("msg_4"))
+	require.Error(t, err, "a deleted connection takes nothing")
+	var detached int
+	require.NoError(t, f.admin.QueryRowContext(t.Context(), `SELECT count(*) FROM `+f.schema+`.messages WHERE thread_id = $1`, first.ThreadID).Scan(&detached))
+	assert.Equal(t, 3, detached, "the detached thread keeps its history and gets nothing new")
+
+	_, err = f.store.AppendChannelMessage(context.Background(), msg("msg_5"))
+	require.Error(t, err, "no tenant, no write")
+}
+
+func TestStore_ListAgentRunsAcrossThreads(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	ctx := in(s.org)
+	var ids []uuid.UUID
+	for i, thread := range []uuid.UUID{f.thread(t, s), f.thread(t, s)} {
+		f.say(t, s, thread)
+		r := f.startRun(t, s, thread)
+		f.exec(t, `UPDATE `+f.schema+`.runs SET started_at = now() - make_interval(secs => $2) WHERE id = $1`, r.ID, 100-i)
+		ids = append(ids, r.ID)
+	}
+	got, err := f.store.ListAgentRuns(ctx, s.agent, run.Cursor{}, 10)
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	assert.Equal(t, []uuid.UUID{ids[1], ids[0]}, []uuid.UUID{got[0].ID, got[1].ID}, "newest first across the agent's threads")
+	page, err := f.store.ListAgentRuns(ctx, s.agent, run.Cursor{At: got[0].StartedAt, PublicID: got[0].PublicID}, 10)
+	require.NoError(t, err)
+	require.Len(t, page, 1)
+	none, err := f.store.ListAgentRuns(ctx, uuid.New(), run.Cursor{}, 10)
+	require.NoError(t, err)
+	assert.Empty(t, none, "another agent's runs never show")
+}
+
+func TestStore_EndUserActivityAndThreads(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	ctx := in(s.org)
+	dm := f.chat(t, s, "dm")
+	dmThread := f.arrive(t, dm, "wamid-1", "halo", time.Now())
+	group := f.chat(t, s, "group")
+	group.person = dm.person
+	groupThread := f.arrive(t, group, "wamid-2", "@bot stok?", time.Now())
+	stranger := f.endUser(t, s)
+
+	seen, err := f.store.EndUserActivity(ctx, []uuid.UUID{dm.person, stranger})
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), seen[dm.person].Threads, "the DM it owns and the group it wrote in")
+	assert.False(t, seen[dm.person].LastSeen.IsZero())
+	assert.Zero(t, seen[stranger].Threads, "a person who never wrote has no threads")
+
+	threads, err := f.store.EndUserThreads(ctx, dm.person)
+	require.NoError(t, err)
+	var ids []uuid.UUID
+	for _, th := range threads {
+		ids = append(ids, th.ID)
+		assert.Equal(t, s.agent, th.AgentID)
+		assert.NotEmpty(t, th.PublicID)
+	}
+	assert.ElementsMatch(t, []uuid.UUID{dmThread, groupThread}, ids)
+	none, err := f.store.EndUserThreads(in(f.seed(t).org), dm.person)
+	require.NoError(t, err)
+	assert.Empty(t, none, "another org sees nothing")
+}

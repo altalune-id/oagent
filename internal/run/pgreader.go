@@ -152,6 +152,7 @@ type threadRow struct {
 	ExternalKey string     `alias:"threads.external_key"`
 	Cancel      bool       `alias:"threads.cancel_requested"`
 	Actor       *uuid.UUID `alias:"threads.actor_end_user_id"`
+	Conn        *uuid.UUID `alias:"threads.connection_id"`
 }
 
 func (r *threadRow) toThread() *Thread {
@@ -162,13 +163,16 @@ func (r *threadRow) toThread() *Thread {
 	if r.Actor != nil {
 		th.ActorEndUserID = *r.Actor
 	}
+	if r.Conn != nil {
+		th.ConnectionID = *r.Conn
+	}
 	return th
 }
 
 func (s *postgresStore) threadColumns() postgres.ProjectionList {
 	t := s.threads
 	return postgres.ProjectionList{
-		t.ID, t.PublicID, t.OrgID, t.ProjectID, t.AgentID, t.Kind, t.ExternalKey, t.CancelRequested, t.ActorEndUserID,
+		t.ID, t.PublicID, t.OrgID, t.ProjectID, t.AgentID, t.Kind, t.ExternalKey, t.CancelRequested, t.ActorEndUserID, t.ConnectionID,
 	}
 }
 
@@ -191,6 +195,7 @@ func (s *postgresStore) threadByExternalKey(
 	stmt := postgres.SELECT(s.threadColumns()).FROM(t).
 		WHERE(t.AgentID.EQ(postgres.UUID(agentID)).
 			AND(t.ExternalKey.EQ(postgres.String(externalKey))).
+			AND(t.Kind.EQ(postgres.String(threadKindAPI))).
 			AND(t.OrgID.EQ(postgres.UUID(orgID)))).
 		LIMIT(1)
 	var row threadRow
@@ -462,4 +467,270 @@ func (s *postgresStore) ListRuns(ctx context.Context, threadID uuid.UUID, after 
 		out[i] = *rows[i].toRun()
 	}
 	return out, nil
+}
+
+// ListAgentRuns lists the runs of agentID's threads in the bound org, newest first, after the cursor.
+func (s *postgresStore) ListAgentRuns(ctx context.Context, agentID uuid.UUID, after Cursor, limit int) ([]Run, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	r, t := s.runs, s.threads
+	where := t.AgentID.EQ(postgres.UUID(agentID)).AND(r.OrgID.EQ(postgres.UUID(tc.OrgID)))
+	if !after.At.IsZero() {
+		where = where.AND(postgres.ROW(r.StartedAt, r.PublicID).LT(postgres.ROW(postgres.TimestampzT(after.At), postgres.String(after.PublicID))))
+	}
+	stmt := postgres.SELECT(r.AllColumns).FROM(r.INNER_JOIN(t, t.ID.EQ(r.ThreadID))).WHERE(where).
+		ORDER_BY(r.StartedAt.DESC(), r.PublicID.DESC()).LIMIT(int64(max(limit, 1)))
+	var rows []runRow
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
+		return nil, fmt.Errorf("run.postgres: ListAgentRuns: %w", err)
+	}
+	out := make([]Run, len(rows))
+	for i := range rows {
+		out[i] = *rows[i].toRun()
+	}
+	return out, nil
+}
+
+// QuietWait is how much longer a channel thread's turn waits for its connection's quiet window; an API thread never waits.
+func (s *postgresStore) QuietWait(ctx context.Context, threadID uuid.UUID, now time.Time) (time.Duration, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return 0, err
+	}
+	t, c, m := s.threads, s.conns, s.messages
+	stmt := postgres.SELECT(c.QuietWindowMS, c.QuietMaxMS,
+		postgres.MIN(m.CreatedAt).AS("pending.oldest"), postgres.MAX(m.CreatedAt).AS("pending.newest")).
+		FROM(t.INNER_JOIN(c, c.ID.EQ(t.ConnectionID)).
+			INNER_JOIN(m, m.ThreadID.EQ(t.ID).AND(m.Status.EQ(postgres.String(string(MessagePending)))))).
+		WHERE(t.ID.EQ(postgres.UUID(threadID)).AND(t.OrgID.EQ(postgres.UUID(tc.OrgID)))).
+		GROUP_BY(c.QuietWindowMS, c.QuietMaxMS)
+	var row struct {
+		Window int64     `alias:"channel_connections.quiet_window_ms"`
+		Max    int64     `alias:"channel_connections.quiet_max_ms"`
+		Oldest time.Time `alias:"pending.oldest"`
+		Newest time.Time `alias:"pending.newest"`
+	}
+	err = db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) })
+	if db.IsNoRows(err) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("run.postgres: QuietWait: %w", err)
+	}
+	return QuietWait(now, row.Oldest, row.Newest, time.Duration(row.Window)*time.Millisecond, time.Duration(row.Max)*time.Millisecond), nil
+}
+
+// ReplyTexts reads a channel connection's set replies.
+func (s *postgresStore) ReplyTexts(ctx context.Context, connectionID uuid.UUID) (ReplyTexts, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return ReplyTexts{}, err
+	}
+	c := s.conns
+	stmt := postgres.SELECT(c.ReplyFailure, c.ReplyVoice, c.ReplyPhotoUnreadable).FROM(c).
+		WHERE(c.ID.EQ(postgres.UUID(connectionID)).AND(c.OrgID.EQ(postgres.UUID(tc.OrgID))))
+	var row struct {
+		Failure string `alias:"channel_connections.reply_failure"`
+		Voice   string `alias:"channel_connections.reply_voice"`
+		Photo   string `alias:"channel_connections.reply_photo_unreadable"`
+	}
+	err = db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) })
+	if db.IsNoRows(err) {
+		return ReplyTexts{}, &NotFoundError{ID: connectionID.String()}
+	}
+	if err != nil {
+		return ReplyTexts{}, fmt.Errorf("run.postgres: ReplyTexts: %w", err)
+	}
+	return ReplyTexts{Failure: row.Failure, Voice: row.Voice, PhotoUnreadable: row.Photo}, nil
+}
+
+// ReplyJob reads what sending a run's reply needs: the thread's address, the last stored assistant text and the progress.
+func (s *postgresStore) ReplyJob(ctx context.Context, runID uuid.UUID) (*ReplyJob, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	r, t, m, i := s.runs, s.threads, s.messages, s.identities
+	head := postgres.SELECT(r.PublicID, r.ReplyState, r.ReplyPartsSent, r.ReplyAttempts, r.EndedAt,
+		t.ConnectionID, t.Kind, t.ChannelAddress, i.Value).
+		FROM(r.INNER_JOIN(t, t.ID.EQ(r.ThreadID)).
+			LEFT_JOIN(i, i.EndUserID.EQ(t.ActorEndUserID).AND(i.Kind.EQ(t.ReplyVia)).AND(i.OrgID.EQ(t.OrgID)))).
+		WHERE(r.ID.EQ(postgres.UUID(runID)).AND(r.OrgID.EQ(postgres.UUID(tc.OrgID))))
+	var row struct {
+		PublicID string     `alias:"runs.public_id"`
+		State    *string    `alias:"runs.reply_state"`
+		Parts    int        `alias:"runs.reply_parts_sent"`
+		Attempts int        `alias:"runs.reply_attempts"`
+		EndedAt  *time.Time `alias:"runs.ended_at"`
+		Conn     *uuid.UUID `alias:"threads.connection_id"`
+		Kind     string     `alias:"threads.kind"`
+		Address  *string    `alias:"threads.channel_address"`
+		Identity *string    `alias:"end_user_identities.value"`
+	}
+	msgs := postgres.SELECT(m.AllColumns).FROM(m).
+		WHERE(m.RunID.EQ(postgres.UUID(runID)).AND(m.OrgID.EQ(postgres.UUID(tc.OrgID)))).
+		ORDER_BY(m.Seq.ASC())
+	var rows []messageRow
+	err = db.Read(ctx, s.pool, func(q qrm.DB) error {
+		if err := head.QueryContext(ctx, q, &row); err != nil {
+			return err
+		}
+		if err := msgs.QueryContext(ctx, q, &rows); err != nil && !db.IsNoRows(err) {
+			return err
+		}
+		return nil
+	})
+	if db.IsNoRows(err) {
+		return nil, &NotFoundError{ID: runID.String()}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("run.postgres: ReplyJob: %w", err)
+	}
+	job := &ReplyJob{RunID: runID, RunPublicID: row.PublicID, Kind: row.Kind, PartsSent: row.Parts, Attempts: row.Attempts}
+	job.State = deref(row.State)
+	if row.Conn != nil {
+		job.ConnectionID = *row.Conn
+	}
+	if row.EndedAt != nil {
+		job.EndedAt = *row.EndedAt
+	}
+	job.To = deref(row.Identity)
+	all := toMessages(rows)
+	if row.Kind == threadKindGroup {
+		job.To = deref(row.Address)
+		for _, msg := range all {
+			if msg.Role == RoleUser && msg.ExternalMessageID != "" {
+				job.QuoteID = msg.ExternalMessageID
+			}
+		}
+	}
+	job.Text, _ = LastText(all)
+	return job, nil
+}
+
+// DueReplies lists runs whose due reply's next try is at or before now, oldest first.
+func (s *postgresStore) DueReplies(ctx context.Context, now time.Time, limit int) ([]uuid.UUID, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	r := s.runs
+	stmt := postgres.SELECT(r.ID).FROM(r).
+		WHERE(r.OrgID.EQ(postgres.UUID(tc.OrgID)).
+			AND(r.ReplyState.EQ(postgres.String(ReplyDue))).
+			AND(r.ReplyNextAt.LT_EQ(postgres.TimestampzT(now.UTC())))).
+		ORDER_BY(r.ReplyNextAt.ASC()).
+		LIMIT(int64(max(limit, 1)))
+	var rows []struct {
+		ID uuid.UUID `alias:"runs.id"`
+	}
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
+		return nil, fmt.Errorf("run.postgres: DueReplies: %w", err)
+	}
+	out := make([]uuid.UUID, len(rows))
+	for i, row := range rows {
+		out[i] = row.ID
+	}
+	return out, nil
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// EndUserActivity reads, for each of endUserIDs in the bound org, the last message it wrote and the threads it owns or wrote in.
+func (s *postgresStore) EndUserActivity(ctx context.Context, endUserIDs []uuid.UUID) (map[uuid.UUID]EndUserActivity, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]EndUserActivity, len(endUserIDs))
+	if len(endUserIDs) == 0 {
+		return out, nil
+	}
+	ids := make([]postgres.Expression, len(endUserIDs))
+	for i, id := range endUserIDs {
+		ids[i] = postgres.UUID(id)
+	}
+	m, t := s.messages, s.threads
+	wrote := postgres.SELECT(m.SpeakerID, m.ThreadID, postgres.MAX(m.CreatedAt).AS("wrote.at")).FROM(m).
+		WHERE(m.OrgID.EQ(postgres.UUID(tc.OrgID)).AND(m.SpeakerID.IN(ids...))).GROUP_BY(m.SpeakerID, m.ThreadID)
+	owns := postgres.SELECT(t.ActorEndUserID, t.ID).FROM(t).WHERE(t.OrgID.EQ(postgres.UUID(tc.OrgID)).AND(t.ActorEndUserID.IN(ids...)))
+	var wroteRows []struct {
+		Speaker uuid.UUID `alias:"messages.speaker_id"`
+		Thread  uuid.UUID `alias:"messages.thread_id"`
+		At      time.Time `alias:"wrote.at"`
+	}
+	var ownRows []struct {
+		Actor  uuid.UUID `alias:"threads.actor_end_user_id"`
+		Thread uuid.UUID `alias:"threads.id"`
+	}
+	err = db.Read(ctx, s.pool, func(q qrm.DB) error {
+		if err := wrote.QueryContext(ctx, q, &wroteRows); err != nil && !db.IsNoRows(err) {
+			return err
+		}
+		if err := owns.QueryContext(ctx, q, &ownRows); err != nil && !db.IsNoRows(err) {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("run.postgres: EndUserActivity: %w", err)
+	}
+	threads := map[uuid.UUID]map[uuid.UUID]bool{}
+	add := func(who, thread uuid.UUID) {
+		if threads[who] == nil {
+			threads[who] = map[uuid.UUID]bool{}
+		}
+		threads[who][thread] = true
+	}
+	for _, r := range wroteRows {
+		add(r.Speaker, r.Thread)
+		a := out[r.Speaker]
+		a.LastSeen = maxTime(a.LastSeen, r.At)
+		out[r.Speaker] = a
+	}
+	for _, r := range ownRows {
+		add(r.Actor, r.Thread)
+	}
+	for who, set := range threads {
+		a := out[who]
+		a.Threads = int64(len(set))
+		out[who] = a
+	}
+	return out, nil
+}
+
+// EndUserThreads lists the threads in the bound org that endUserID owns or wrote in, newest activity first.
+func (s *postgresStore) EndUserThreads(ctx context.Context, endUserID uuid.UUID) ([]ThreadSummary, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	m, t := s.messages, s.threads
+	wrote := postgres.SELECT(m.ThreadID).FROM(m).WHERE(m.OrgID.EQ(postgres.UUID(tc.OrgID)).AND(m.SpeakerID.EQ(postgres.UUID(endUserID))))
+	stmt := postgres.SELECT(append(s.threadColumns(), t.UpdatedAt)).FROM(t).
+		WHERE(t.OrgID.EQ(postgres.UUID(tc.OrgID)).AND(t.ActorEndUserID.EQ(postgres.UUID(endUserID)).OR(t.ID.IN(wrote)))).
+		ORDER_BY(t.UpdatedAt.DESC(), t.PublicID.DESC())
+	var rows []summaryRow
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
+		return nil, fmt.Errorf("run.postgres: EndUserThreads: %w", err)
+	}
+	out := make([]ThreadSummary, len(rows))
+	for i := range rows {
+		out[i] = rows[i].toSummary()
+	}
+	return out, nil
+}
+
+func maxTime(a, b time.Time) time.Time {
+	if b.After(a) {
+		return b
+	}
+	return a
 }
