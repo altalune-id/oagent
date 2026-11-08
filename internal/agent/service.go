@@ -202,16 +202,7 @@ func (s *Service) Publish(ctx context.Context, id, by uuid.UUID) (a *Agent, v *V
 		if a, err = s.store.LockForPublish(ctx, id); err != nil {
 			return err
 		}
-		if a.Draft.Legacy() {
-			return &NeedsRepublishError{}
-		}
-		if s.locker == nil {
-			return errNoLocker
-		}
-		if err := s.locker.LockShared(ctx, []uuid.UUID{a.Draft.ProviderID}, a.Draft.ServerIDs()); err != nil {
-			return err
-		}
-		if err := s.checkReferences(ctx, a.ProjectID, a.Draft, true); err != nil {
+		if err := s.publishable(ctx, a); err != nil {
 			return err
 		}
 		latest, err := s.store.LatestVersion(ctx, id)
@@ -232,6 +223,43 @@ func (s *Service) Publish(ctx context.Context, id, by uuid.UUID) (a *Agent, v *V
 		return nil, nil, false, s.errOrReport(ctx, "agent: publish", err)
 	}
 	return a, v, created, nil
+}
+
+// DraftVersion pins the draft as a draft version by person by for a Try it run, refused like Publish; an unchanged draft reuses its row.
+func (s *Service) DraftVersion(ctx context.Context, id, by uuid.UUID) (*Version, error) {
+	var v *Version
+	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
+		a, err := s.store.ByID(ctx, id)
+		if err != nil {
+			return err
+		}
+		if err := s.publishable(ctx, a); err != nil {
+			return err
+		}
+		draft, err := a.DraftVersion(by, time.Now().UTC())
+		if err != nil {
+			return err
+		}
+		v, err = s.store.UpsertDraftVersion(ctx, draft)
+		return err
+	})
+	if err != nil {
+		return nil, s.errOrReport(ctx, "agent: draft version", err)
+	}
+	return v, nil
+}
+
+func (s *Service) publishable(ctx context.Context, a *Agent) error {
+	if a.Draft.Legacy() {
+		return &NeedsRepublishError{}
+	}
+	if s.locker == nil {
+		return errNoLocker
+	}
+	if err := s.locker.LockShared(ctx, []uuid.UUID{a.Draft.ProviderID}, a.Draft.ServerIDs()); err != nil {
+		return err
+	}
+	return s.checkReferences(ctx, a.ProjectID, a.Draft, true)
 }
 
 func (s *Service) checkReferences(ctx context.Context, projectID uuid.UUID, cfg Config, publishing bool) error {

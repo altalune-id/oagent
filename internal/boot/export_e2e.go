@@ -58,6 +58,13 @@ func BuildDataPlane(cfg config.Config, svcs *Services, lims Limiters, unexpected
 	return buildDataPlane(cfg, svcs, lims, unexpected, log)
 }
 
+// BuildConsoleTry wraps buildConsoleTry for the end-to-end tests.
+func BuildConsoleTry(
+	cfg config.Config, svcs *Services, lims Limiters, unexpected apperror.UnexpectedFunc, log *slog.Logger,
+) map[string]http.Handler {
+	return buildConsoleTry(cfg, svcs, lims, unexpected, log)
+}
+
 // RunAgents wraps the run graph's agent adapter.
 func RunAgents(s agent.Store) run.Agents { return runAgents{store: s} }
 

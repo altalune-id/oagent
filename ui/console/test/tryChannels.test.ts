@@ -9,12 +9,12 @@ import { connectionPB, fakeChannelClient } from '~~/test/fixtures/channels';
 import { fakeRuntimeClients } from '~~/test/fixtures/runtime';
 import { useToast } from '#base/components/ui/toast';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
+import { RunSchema, RunStatus } from '#gen/thread/v1/thread_pb';
 import { mountPage } from '#test/mount-page';
-import { runtimeConfig, setClient, setRoute } from '#test/nuxt-globals';
+import { runtimeConfig, setClient, setKnownKeys, setRoute } from '#test/nuxt-globals';
 import ChannelsPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/channels.vue';
 import TryPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/try.vue';
 import { useChannelsStore } from '~/stores/channels';
-import { useModelProvidersStore } from '~/stores/modelProviders';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 
@@ -38,6 +38,7 @@ function seed(agent: Record<string, unknown> = yasaku, permissions = ['agent:rea
 const button = (w: Awaited<ReturnType<typeof mountPage>>, text: string) => w.findAll('button').find(b => b.text().includes(text))!;
 
 beforeEach(() => {
+  localStorage.clear();
   setActivePinia(createPinia());
   fakeRuntimeClients();
   vi.stubGlobal('definePageMeta', vi.fn());
@@ -45,10 +46,48 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe('try it page', () => {
-  it('starts empty with suggestions, a disabled live tab and the run pane', async () => {
+  const runId = 'Rn2wQ8mX4vZ9tB3nC7kPq';
+  const events = [
+    { type: 'RUN_STARTED', runId },
+    { type: 'TOOL_CALL_START', toolCallId: 'c1', toolCallName: 'yasaku__list_wallets' },
+    { type: 'TOOL_CALL_ARGS', toolCallId: 'c1', delta: '{}' },
+    { type: 'TOOL_CALL_RESULT', toolCallId: 'c1', content: '[]' },
+    { type: 'TEXT_MESSAGE_CONTENT', messageId: 'm1', delta: 'Siap, sudah saya catat.' },
+    { type: 'TEXT_MESSAGE_END', messageId: 'm1' },
+    { type: 'RUN_FINISHED', runId },
+  ];
+
+  function streamOf(list: Record<string, unknown>[], open = false) {
+    let push: (e: Record<string, unknown>) => void = () => {};
+    const body = new ReadableStream<Uint8Array>({
+      start(c) {
+        const send = (e: Record<string, unknown>) => c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(e)}\n\n`));
+        list.forEach(send);
+        push = (e) => {
+          send(e);
+          c.close();
+        };
+        if (!open) {
+          c.close();
+        }
+      },
+    });
+    return { body, push: (e: Record<string, unknown>) => push(e) };
+  }
+
+  function routes(run: () => { ok: boolean, status?: number, body?: unknown, json?: () => Promise<unknown> }) {
+    const fetcher = vi.fn(async (url: string) => (url.endsWith('/cancel') ? { ok: true, status: 202, json: async () => ({}) } : run()));
+    vi.stubGlobal('fetch', fetcher);
+    const getRun = vi.fn().mockResolvedValue({ run: create(RunSchema, { id: runId, threadId: 'Th7sK2pQ9mXr4StV8nBcW', status: RunStatus.COMPLETED, agentVersionKind: 'draft', usage: { inputTokens: 300n, outputTokens: 12n }, costMicros: 4200n }) });
+    setClient('$threadClient', { getRun });
+    return { fetcher, getRun };
+  }
+
+  it('starts empty on the draft, with no sample prompts, scenarios, photo button or preview badge', async () => {
     seed();
     const w = await mountPage(TryPage);
     expect(w.get('h1').text()).toBe('try.title');
@@ -58,87 +97,95 @@ describe('try it page', () => {
     expect(tabs[1]!.get('input').attributes('disabled')).toBeDefined();
     expect(tabs[1]!.classes()).toContain('tab-disabled');
     expect(w.text()).toContain('try.live_legacy_hint|{"n":4}');
-    expect(w.findAll('li button').map(b => b.text())).toContain('beli kopi kenangan 40rb pakai cash');
     expect(w.get('aside').text()).toContain('try.phase_idle');
-    expect(w.text()).not.toContain('try.no_vision');
+    expect(w.findAll('li button')).toHaveLength(0);
+    expect(w.find('aside select').exists()).toBe(false);
+    expect(w.find('input[type="file"]').exists()).toBe(false);
+    expect(w.text()).not.toContain('preview.badge');
+    const summary = w.get('details summary');
+    expect([summary.attributes('role'), summary.find('[role="status"]').exists()]).toEqual([undefined, true]);
   });
 
-  it('plays the sample chat from a suggestion through the approval card', async () => {
-    vi.useFakeTimers();
+  it('sends with Enter to the console Try it route and streams the reply, then shows the draft run and its usage', async () => {
     seed();
-    const w = await mountPage(TryPage);
-    await w.findAll('li button')[0]!.trigger('click');
-    await vi.runAllTimersAsync();
-    await flushPromises();
-    expect(w.get('[role="log"]').text()).toContain('beli kopi kenangan 40rb pakai cash');
-    const card = w.get('[role="log"] section');
-    expect(card.get('h3').text()).toBe('Simpan Rp40.000 dari Cash?');
-    expect(card.findAll('dt').map(d => d.text())).toEqual(['Jumlah', 'Kategori', 'Dompet', 'Tanggal']);
-    const approve = card.findAll('button').find(b => b.text().includes('approvalcard.approve_run'))!;
-    expect(approve.text()).toContain('record_expense');
-    expect(approve.attributes('aria-describedby')).toBe(card.get('dl').attributes('id'));
-    expect(w.get('aside').text()).toContain('runstatus.awaiting_approval');
-    expect(w.findAll('aside tbody tr').map(r => r.findAll('td')[1]!.text())).toEqual(['try.tool_done', 'try.tool_preview', 'try.tool_awaiting']);
-    await approve.trigger('click');
-    await vi.runAllTimersAsync();
-    await flushPromises();
-    expect(w.get('[role="log"]').text()).toContain('Tersimpan: Kopi Kenangan Rp40.000 dari Cash.');
-    expect(card.text()).toContain('approvalcard.approved|{"by":"Budi"} · approvalcard.via_try');
-    expect(w.get('aside').text()).toContain('runstatus.completed');
-    await button(w, 'try.new_chat').trigger('click');
-    expect(w.text()).toContain('try.empty');
-  });
-
-  it('rejects with a reason, sends with Enter and keeps Shift+Enter for a new line', async () => {
-    vi.useFakeTimers();
-    seed();
+    const { fetcher, getRun } = routes(() => ({ ok: true, status: 200, body: streamOf(events).body }));
     const w = await mountPage(TryPage);
     const box = w.get('textarea');
-    await box.setValue('Transfer 500rb dari BCA ke Cash');
+    await box.setValue('beli kopi 40rb');
     await box.trigger('keydown', { key: 'Enter', shiftKey: true });
-    expect(w.text()).toContain('try.empty');
+    expect(fetcher).not.toHaveBeenCalled();
     await box.trigger('keydown', { key: 'Enter' });
-    await vi.runAllTimersAsync();
-    await flushPromises();
-    const card = w.get('[role="log"] section');
-    await button(w, 'approvalcard.reject').trigger('click');
-    await card.get('input').setValue('salah');
-    await card.findAll('button').find(b => b.text() === 'approvalcard.reject_send')!.trigger('click');
-    await vi.runAllTimersAsync();
-    await flushPromises();
-    expect(card.text()).toContain('“salah”');
-    expect(w.get('[role="log"]').text()).toContain('Oke, transfernya tidak saya catat.');
+    await vi.waitFor(() => expect(w.get('aside').text()).toContain('runstatus.completed'));
+    const [url, init] = fetcher.mock.calls[0]! as unknown as [string, RequestInit];
+    expect([url, init.method, init.credentials]).toEqual([`/console/agents/${yasaku.id}/try/runs`, 'POST', 'same-origin']);
+    expect(JSON.parse(init.body as string).messages[0]).toMatchObject({ role: 'user', content: 'beli kopi 40rb' });
+    const log = w.get('[role="log"]');
+    expect(log.text()).toContain('beli kopi 40rb');
+    expect(log.text()).toContain('Siap, sudah saya catat.');
+    expect(log.text()).toContain('yasaku__list_wallets');
+    expect(log.get('.badge-ghost').text()).toBe('run.draft');
+    expect(getRun).toHaveBeenCalledWith({ runId });
+    expect(w.get('aside').text()).toContain('312');
+    expect(w.findAll('aside tbody tr').map(r => r.findAll('td')[1]!.text())).toEqual(['try.tool_done']);
+    expect(w.get('[data-testid="draft-note"]').text()).toBe('try.empty');
+    await button(w, 'try.new_chat').trigger('click');
+    expect(w.text()).toContain('try.empty');
+    expect(w.find('[data-testid="draft-note"]').exists()).toBe(false);
   });
 
-  it('shows Stop while replying, then Retry after a model failure', async () => {
-    vi.useFakeTimers();
+  it('reopens the last Try it conversation when you come back, and New chat starts and remembers a fresh one', async () => {
     seed();
+    localStorage.setItem(`oagent_try_thread:${yasaku.id}`, 'thread-old');
+    const { fetcher } = routes(() => ({ ok: true, status: 200, json: async () => ({ messages: [{ seq: 1, message: { role: 'user', content: 'beli kopi' } }, { seq: 2, message: { role: 'assistant', content: 'Sudah dicatat.' } }], next_after: 2 }) }));
     const w = await mountPage(TryPage);
-    await w.get('aside select').setValue('model_fails');
-    await w.get('textarea').setValue('Pengeluaran makan bulan ini berapa?');
+    await vi.waitFor(() => expect(w.find('[role="log"]').exists()).toBe(true));
+    expect(fetcher.mock.calls[0]![0]).toBe(`/console/agents/${yasaku.id}/try/threads/thread-old/messages?after=0&limit=200`);
+    expect(w.get('[role="log"]').text()).toContain('Sudah dicatat.');
+    expect(w.findAll('[role="log"] time')).toHaveLength(0);
+    await button(w, 'try.new_chat').trigger('click');
+    expect(w.text()).toContain('try.empty');
+    expect(localStorage.getItem(`oagent_try_thread:${yasaku.id}`)).toBe('');
+  });
+
+  it('shows Stop while replying, Stopping after it, and Stopped by you only once the run says cancelled', async () => {
+    seed();
+    const s = streamOf([{ type: 'RUN_STARTED', runId }], true);
+    const { fetcher, getRun } = routes(() => ({ ok: true, status: 200, body: s.body }));
+    getRun.mockResolvedValue({ run: create(RunSchema, { id: runId, status: RunStatus.CANCELLED, agentVersionKind: 'draft' }) });
+    const w = await mountPage(TryPage);
+    await w.get('textarea').setValue('halo');
     await w.get('form').trigger('submit');
-    expect(button(w, 'try.stop').exists()).toBe(true);
+    await vi.waitFor(() => expect(button(w, 'try.stop')?.exists()).toBe(true));
     expect(w.get('textarea').attributes('placeholder')).toBe('try.replying');
-    await vi.runAllTimersAsync();
+    await new Promise(r => setTimeout(r, 0));
+    await button(w, 'try.stop').trigger('click');
     await flushPromises();
-    expect(w.text()).toContain('try.model_failed');
-    await button(w, 'common.retry').trigger('click');
-    await vi.runAllTimersAsync();
-    await flushPromises();
-    expect(w.get('[role="log"]').text()).toContain('Rp1.240.000');
+    expect(fetcher.mock.calls.map(c => c[0])).toContain(`/console/agents/${yasaku.id}/try/runs/${runId}/cancel`);
+    expect(button(w, 'try.phase_stopping').attributes('disabled')).toBeDefined();
+    expect(w.text()).not.toContain('try.stopped');
+    s.push({ type: 'RUN_ERROR', code: 'cancelled' });
+    await vi.waitFor(() => expect(w.text()).toContain('try.stopped'));
   });
 
-  it('refuses a big photo and notes when the model cannot read photos', async () => {
+  it('shows a refused turn as the app error, and Retry after a failed run', async () => {
     seed();
+    setKnownKeys('apperror.RUN007');
+    const refusal = { ok: false, status: 429, json: async () => ({ code: 'RUN007', message: 'busy', request_id: 'req1' }) };
+    const failed = [{ type: 'RUN_STARTED', runId }, { type: 'RUN_ERROR', code: 'runtime_error' }];
+    const replies = [() => refusal, () => ({ ok: true, status: 200, body: streamOf(failed).body }), () => ({ ok: true, status: 200, body: streamOf(events).body })];
+    const { getRun } = routes(() => replies.shift()!());
+    getRun.mockResolvedValueOnce({ run: create(RunSchema, { id: runId, status: RunStatus.FAILED, errorCode: 'RUN004', agentVersionKind: 'draft' }) });
     const w = await mountPage(TryPage);
-    const input = w.get('input[type="file"]');
-    Object.defineProperty(input.element, 'files', { value: [{ name: 'big.jpg', size: 6 * 1024 * 1024, type: 'image/jpeg' }] });
-    await input.trigger('change');
-    expect(w.text()).toContain('try.photo_too_big');
-    useModelProvidersStore().items[0]!.models[0]!.vision = false;
-    await flushPromises();
-    expect(w.text()).toContain('try.no_vision');
-    expect(w.get('button[aria-label="try.attach"]').attributes('disabled')).toBeDefined();
+    await w.get('textarea').setValue('halo');
+    await w.get('form').trigger('submit');
+    await vi.waitFor(() => expect(w.text()).toContain('apperror.RUN007'));
+    expect(w.get('aside').text()).toContain('runstatus.failed');
+    await w.get('textarea').setValue('halo lagi');
+    await w.get('form').trigger('submit');
+    await vi.waitFor(() => expect(w.text()).toContain('try.model_failed'));
+    expect(w.text()).not.toContain('apperror.RUN007');
+    await button(w, 'common.retry').trigger('click');
+    await vi.waitFor(() => expect(w.get('[role="log"]').text()).toContain('Siap, sudah saya catat.'));
   });
 
   it('says why the draft cannot run instead of chatting', async () => {

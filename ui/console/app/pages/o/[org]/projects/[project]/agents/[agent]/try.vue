@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import AppButton from '#base/components/ui/AppButton.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
 import LoadError from '#base/components/ui/LoadError.vue';
 import StatusLabel from '#base/components/ui/StatusLabel.vue';
-import { chosenModel, publishBlockers } from '~/components/agent/configure/runtime';
+import { useErrorMessage } from '#base/composables/useErrorMessage';
+import { publishBlockers } from '~/components/agent/configure/runtime';
 import { useAgentDraft } from '~/components/agent/configure/useAgentDraft';
 import { useAgentPage } from '~/components/agent/useAgentPage';
 import ChatTranscript from '~/components/try/ChatTranscript.vue';
 import { phaseLabel } from '~/components/try/phase';
 import TryRunPane from '~/components/try/TryRunPane.vue';
-import { useTryChat } from '~/components/try/useTryChat';
+import { tryApi, useTryChat } from '~/components/try/useTryChat';
 import { useUnits } from '~/composables/useUnits';
-import { useAuthStore } from '~/stores/auth';
-import { useTryItStore } from '~/stores/tryIt';
 
 definePageMeta({ bleed: true });
 
 const { t } = useI18n();
-const { count, money } = useUnits();
+const { count, cost } = useUnits();
 const { agent, providers, servers, base } = await useAgentPage();
 const draft = useAgentDraft(agent.value.id, { provider: id => providers.items.find(p => p.id === id)?.name ?? '—', server: id => servers.items.find(s => s.id === id)?.name ?? id });
 await draft.load();
@@ -24,18 +24,31 @@ await draft.load();
 const uid = useId();
 const tab = ref<'draft' | 'live'>('draft');
 const text = ref('');
-const fileInput = ref<HTMLInputElement>();
 const current = computed(() => draft.state.value?.publishedVersion ?? 0);
 const blockers = computed(() => publishBlockers(draft.config.value, { providers: providers.items, servers: servers.items }));
-const model = computed(() => chosenModel(draft.config.value, providers.items).model);
-const vision = computed(() => !!model.value?.vision);
 
-const auth = useAuthStore();
-const tryIt = useTryItStore();
-const chat = useTryChat({ maxSteps: () => draft.config.value.maxSteps, maxCostCents: () => draft.config.value.maxCostCents, money, decider: () => auth.me?.name ?? '' });
-const { items, phase, scenario, steps, tokens, costCents, photo, photoProblem, busy, toolCalls } = chat;
+const { $threadClient } = useNuxtApp();
+const errorMessage = useErrorMessage();
+const memoryKey = `oagent_try_thread:${agent.value.id}`;
+const memory = {
+  get: () => {
+    try {
+      return localStorage.getItem(memoryKey);
+    } catch {
+      return null;
+    }
+  },
+  set: (id: string) => {
+    try {
+      localStorage.setItem(memoryKey, id);
+    } catch {}
+  },
+};
+const chat = useTryChat(tryApi(useRuntimeConfig().app.baseURL, agent.value.id, async runId => (await $threadClient.getRun({ runId })).run), undefined, memory);
+onMounted(() => void chat.restore());
+const { items, phase, tokens, costCents, busy, canStop, toolCalls } = chat;
 const status = computed(() => phaseLabel(phase.value));
-const stepsText = computed(() => (draft.config.value.maxSteps ? t('run.steps_of', { n: steps.value, max: draft.config.value.maxSteps }) : count(steps.value)));
+const shownError = computed(() => (chat.error.value ? errorMessage(chat.error.value, 'try.run_refused') : null));
 
 function send() {
   const message = text.value;
@@ -50,15 +63,6 @@ function onKey(event: KeyboardEvent) {
   }
 }
 
-function onFile(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (file) {
-    chat.attach(file);
-  }
-  input.value = '';
-}
-
 useHead({ title: () => `${agent.value?.name ?? ''} · ${t('try.title')} · OAgent` });
 </script>
 
@@ -70,7 +74,6 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('try.title')} · OAgen
           <h1 class="text-xl font-semibold">
             {{ t('try.title') }}
           </h1>
-          <span class="badge badge-info badge-soft text-base-content badge-sm">{{ t('preview.badge') }}</span>
         </div>
         <p class="text-ui text-base-content/70">
           {{ t('try.subtitle', { name: agent.name }) }}
@@ -125,12 +128,12 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('try.title')} · OAgen
     <div v-else class="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)]">
       <div class="flex min-h-[calc(100dvh-10rem)] min-w-0 flex-col xl:min-h-0">
         <details class="collapse-arrow collapse rounded-none border-b border-base-300 bg-base-200 xl:hidden">
-          <summary class="collapse-title flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-ui" role="status">
+          <summary class="collapse-title flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-ui">
             <span class="font-semibold">{{ t('try.this_run') }}</span>
-            <StatusLabel :tone="status.tone" :label="t(status.key)" :detail="`${stepsText} · ${money(costCents)}`" />
+            <span role="status"><StatusLabel :tone="status.tone" :label="t(status.key)" :detail="`${count(tokens)} · ${cost(costCents)}`" /></span>
           </summary>
           <div class="collapse-content">
-            <TryRunPane v-model:scenario="scenario" :steps-text="stepsText" :tokens="count(tokens)" :cost="money(costCents)" :model="draft.config.value.model || '—'" :tool-calls="toolCalls" :busy="busy" />
+            <TryRunPane :tokens="count(tokens)" :cost="cost(costCents)" :model="draft.config.value.model || '—'" :tool-calls="toolCalls" />
           </div>
         </details>
         <div class="flex-1 p-4 lg:p-6">
@@ -138,59 +141,30 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('try.title')} · OAgen
             <p class="text-ui text-base-content/70">
               {{ t('try.empty') }}
             </p>
-            <ul class="flex flex-wrap gap-2" :aria-label="t('try.suggestions')">
-              <li v-for="p in tryIt.prompts" :key="p">
-                <AppButton variant="outline" size="sm" @click="text = p; send()">
-                  {{ p }}
-                </AppButton>
-              </li>
-            </ul>
           </div>
           <ChatTranscript
             v-else
             viewer="person" :items="items" :agent-name="agent.name" :you-name="t('try.you')" :busy="busy"
-            @approve="chat.decide(true)" @reject="chat.decide(false, $event)" @retry="chat.retry()" @reload="chat.reload()"
+            :run-base="`${base}/runs`" @retry="chat.retry()" @reload="chat.reload()"
           />
         </div>
 
         <form class="sticky bottom-0 flex flex-col gap-2 border-t border-base-300 bg-base-100 p-4 lg:px-6" @submit.prevent="send()">
-          <div v-if="photo" class="flex items-center gap-2">
-            <span class="badge badge-sm badge-ghost gap-1.5">
-              <img :src="photo.url" :alt="t('try.photo_alt')" class="size-4 rounded-sm object-cover">
-              {{ photo.name }}
-            </span>
-            <AppButton variant="ghost" size="xs" square :aria-label="t('try.remove_photo')" :title="t('try.remove_photo')" @click="chat.detach()">
-              <Icon name="lucide:x" size="14" aria-hidden="true" />
-            </AppButton>
-          </div>
-          <p v-if="photoProblem" role="alert" class="flex items-center gap-1.5 text-xs text-base-content">
-            <Icon name="lucide:circle-alert" size="14" class="shrink-0 text-error" aria-hidden="true" />
-            {{ t(photoProblem) }}
-          </p>
+          <ErrorText :error="shownError" />
           <div class="flex items-end gap-2">
             <label class="min-w-0 flex-1">
               <span class="sr-only">{{ t('try.message') }}</span>
               <textarea
                 v-model="text" rows="1" class="textarea textarea-sm field-sizing-content max-h-40 min-h-0 w-full text-ui"
-                :placeholder="busy ? t('try.replying') : t('try.placeholder')" :disabled="busy || phase === 'awaiting'" :aria-describedby="`${uid}-keys`"
+                :placeholder="busy ? t('try.replying') : t('try.placeholder')" :disabled="busy" :aria-describedby="`${uid}-keys`"
                 @keydown="onKey"
               />
             </label>
-            <label class="hidden">
-              {{ t('try.attach') }}
-              <input ref="fileInput" type="file" accept="image/jpeg,image/png,image/webp" tabindex="-1" @change="onFile">
-            </label>
-            <AppButton
-              variant="ghost" size="sm" square :disabled="!vision || busy" :aria-label="t('try.attach')" :title="t('try.attach')"
-              :aria-describedby="vision ? undefined : `${uid}-vision`" @click="fileInput?.click()"
-            >
-              <Icon name="lucide:image-plus" size="16" aria-hidden="true" />
-            </AppButton>
-            <AppButton v-if="busy" variant="outline" size="sm" @click="chat.stop()">
+            <AppButton v-if="busy" variant="outline" size="sm" :disabled="!canStop" @click="chat.stop()">
               <Icon name="lucide:square" size="14" aria-hidden="true" />
-              {{ t('try.stop') }}
+              {{ phase === 'stopping' ? t('try.phase_stopping') : t('try.stop') }}
             </AppButton>
-            <AppButton v-else type="submit" size="sm" :disabled="!text.trim() || phase === 'awaiting'">
+            <AppButton v-else type="submit" size="sm" :disabled="!text.trim()">
               <Icon name="lucide:send" size="16" aria-hidden="true" />
               {{ t('try.send') }}
             </AppButton>
@@ -199,11 +173,9 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('try.title')} · OAgen
             <kbd class="kbd kbd-xs">Enter</kbd> {{ t('try.keys_send') }}
             <kbd class="kbd kbd-xs">Shift</kbd>+<kbd class="kbd kbd-xs">Enter</kbd> {{ t('try.keys_newline') }}
           </p>
-          <p v-if="!vision" :id="`${uid}-vision`" role="note" class="text-xs text-base-content/70">
-            {{ t('try.no_vision', { model: draft.config.value.model || '—' }) }}
-            <NuxtLink :to="`${base}#configure-model`" class="link">
-              {{ t('try.pick_vision') }}
-            </NuxtLink>
+          <p v-if="items.length" class="flex items-center gap-1.5 text-xs text-base-content/70" data-testid="draft-note">
+            <Icon name="lucide:flask-conical" size="12" class="shrink-0" aria-hidden="true" />
+            {{ t('try.empty') }}
           </p>
         </form>
       </div>
@@ -216,7 +188,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('try.title')} · OAgen
             </h2>
             <StatusLabel :tone="status.tone" :label="t(status.key)" />
           </div>
-          <TryRunPane v-model:scenario="scenario" :steps-text="stepsText" :tokens="count(tokens)" :cost="money(costCents)" :model="draft.config.value.model || '—'" :tool-calls="toolCalls" :busy="busy" />
+          <TryRunPane :tokens="count(tokens)" :cost="cost(costCents)" :model="draft.config.value.model || '—'" :tool-calls="toolCalls" />
         </div>
       </aside>
     </div>

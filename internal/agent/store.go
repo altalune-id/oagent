@@ -17,11 +17,11 @@ type Reader interface {
 	ByID(ctx context.Context, id uuid.UUID) (*Agent, error)
 	Resolve(ctx context.Context, publicID string) (Ref, error)
 	List(ctx context.Context, projectID uuid.UUID) ([]*Agent, error)
-	// Versions returns up to limit of the agent's versions, newest first.
+	// Versions returns up to limit of the agent's published versions, newest first.
 	Versions(ctx context.Context, agentID uuid.UUID, limit int) ([]*Version, error)
-	// LatestVersion returns the agent's newest version, or nil before the first publish.
+	// LatestVersion returns the agent's newest published version, or nil before the first publish.
 	LatestVersion(ctx context.Context, agentID uuid.UUID) (*Version, error)
-	// VersionByID loads one version of the org on ctx; a run resumes on the version it was pinned to.
+	// VersionByID loads one version of the org on ctx, published or draft; a run resumes on the version it was pinned to.
 	VersionByID(ctx context.Context, id uuid.UUID) (*Version, error)
 	// ProviderUse reports how the latest published versions in the org on ctx use a model provider; drafts never count.
 	ProviderUse(ctx context.Context, providerID uuid.UUID) (ProviderUsage, error)
@@ -46,4 +46,6 @@ type Writer interface {
 	// LockForPublish loads the agent and locks its row until the unit of work on ctx ends.
 	LockForPublish(ctx context.Context, id uuid.UUID) (*Agent, error)
 	InsertVersion(ctx context.Context, v *Version) error
+	// UpsertDraftVersion stores draft v unless the agent already has a draft with its hash, and returns the stored row.
+	UpsertDraftVersion(ctx context.Context, v *Version) (*Version, error)
 }

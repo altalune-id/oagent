@@ -44,11 +44,11 @@ func ThreadServiceToolNames() []string {
 func RegisterThreadServiceTools(reg *mcp.Registry, h threadv1connect.ThreadServiceHandler, permissionsFor func(string) []string, validate func(proto.Message) error) {
 	reg.Register(mcp.ToolSpec{
 		Name:        ThreadListToolName,
-		Description: "List a project's conversation threads, newest activity first, optionally of one agent: each with its kind, the end user's masked label, its last activity and the status of its open run. Pages hold 50 threads unless page_size says otherwise, at most 200; pass next_page_token back as page_token for the next page.",
+		Description: "List a project's conversation threads, newest activity first, optionally of one agent or one kind (dm, group, api or try): each with its kind, the end user's masked label, its last activity and the status of its open run. Pages hold 50 threads unless page_size says otherwise, at most 200; pass next_page_token back as page_token for the next page.",
 		Scopes:      permissionsFor(threadv1connect.ThreadServiceListThreadsProcedure),
 		Mutation:    false,
 		Destructive: false,
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"projectId":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"},"agentId":{"type":"string","pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"},"pageToken":{"type":"string","maxLength":256},"pageSize":{"type":"integer"}},"required":["projectId"],"additionalProperties":false}`),
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"projectId":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"},"agentId":{"type":"string","pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"},"pageToken":{"type":"string","maxLength":256},"pageSize":{"type":"integer"},"kind":{"type":"string","enum":["dm","group","api","try"]}},"required":["projectId"],"additionalProperties":false}`),
 		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
 			if len(input) == 0 {
 				input = json.RawMessage(`{}`)

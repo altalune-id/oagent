@@ -83,7 +83,12 @@ func (h *Handler) boundRun(c caller, r *http.Request) (*run.Run, *run.Thread, er
 	if err != nil {
 		return nil, nil, err
 	}
-	found, err := h.d.Store.RunByPublicID(c.ctx, r.PathValue("run"))
+	return h.actorRun(c, actor, r.PathValue("run"), "")
+}
+
+// SECURITY: a run on another actor's thread, or on a thread of another kind when kind is set, reads as not found.
+func (h *Handler) actorRun(c caller, actor, runID, kind string) (*run.Run, *run.Thread, error) {
+	found, err := h.d.Store.RunByPublicID(c.ctx, runID)
 	if err != nil {
 		if run.IsNotFoundError(err) {
 			return nil, nil, errRunNotFound
@@ -99,6 +104,9 @@ func (h *Handler) boundRun(c caller, r *http.Request) (*run.Run, *run.Thread, er
 			return nil, nil, errRunNotFound
 		}
 		return nil, nil, err
+	}
+	if kind != "" && th.Kind != kind {
+		return nil, nil, errRunNotFound
 	}
 	return found, th, nil
 }
@@ -128,15 +136,20 @@ func (h *Handler) cancelRun(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, r, err)
 		return
 	}
+	h.cancel(w, r, c, found, th)
+}
+
+func (h *Handler) cancel(w http.ResponseWriter, r *http.Request, c caller, found *run.Run, th *run.Thread) {
 	if err := h.d.Canceller.Cancel(c.ctx, found.ID); err != nil {
 		h.writeError(w, r, err)
 		return
 	}
-	if found, err = h.d.Store.RunByID(c.ctx, found.ID); err != nil {
+	settled, err := h.d.Store.RunByID(c.ctx, found.ID)
+	if err != nil {
 		h.writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, viewOf(found, th.ExternalKey))
+	writeJSON(w, http.StatusAccepted, viewOf(settled, th.ExternalKey))
 }
 
 type messageView struct {
@@ -167,6 +180,12 @@ func (h *Handler) getMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	th, err := h.d.Store.ThreadByExternalKey(c.ctx, c.agent.ID, r.PathValue("thread"))
+	h.messages(w, r, c, actor, th, err, after, limit)
+}
+
+func (h *Handler) messages(
+	w http.ResponseWriter, r *http.Request, c caller, actor string, th *run.Thread, err error, after int64, limit int,
+) {
 	if err == nil {
 		err = h.boundThread(c, actor, th)
 	}

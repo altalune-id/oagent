@@ -104,6 +104,7 @@ func TestThreadService_ReadsByPublicID(t *testing.T) {
 	assert.Equal(t, w.running.PublicID, r.GetId())
 	assert.Equal(t, w.tPub, r.GetThreadId())
 	assert.Equal(t, int32(3), r.GetAgentVersion())
+	assert.Equal(t, "published", r.GetAgentVersionKind())
 	assert.Nil(t, r.CostMicros, "unpriced")
 	assert.Nil(t, r.LatencyMs, "still running")
 
@@ -308,4 +309,45 @@ func TestListRuns_AgentOutOfReachIsNotFound(t *testing.T) {
 	}
 	_, err := w.cp.ListRuns(member(w.org), connect.NewRequest(&threadv1.ListRunsRequest{AgentId: "unknwnunknwnunknwnabc", ProjectId: w.projectPub}))
 	assert.True(t, run.IsThreadNotFoundError(err) || run.IsNotFoundError(err), "an unknown agent: %v", err)
+}
+
+func TestListThreads_FiltersByKind(t *testing.T) {
+	w := newCPWorld(t)
+	try := uuid.New()
+	w.store.AddAgentThread(try, w.org, w.project, w.agent)
+	w.store.PublicIDs[try] = "tTRYpub" + uuid.NewString()[:14]
+	w.store.Kinds = map[uuid.UUID]string{try: "try"}
+	ctx := member(w.org)
+	for kind, want := range map[string][]string{"try": {w.store.PublicIDs[try]}, "api": {w.tPub}, "dm": nil} {
+		list, err := w.cp.ListThreads(ctx, connect.NewRequest(&threadv1.ListThreadsRequest{ProjectId: w.projectPub, Kind: kind}))
+		require.NoError(t, err)
+		var got []string
+		for _, th := range list.Msg.GetThreads() {
+			got = append(got, th.GetId())
+			assert.Equal(t, kind, th.GetKind())
+		}
+		assert.Equal(t, want, got, kind)
+	}
+	all, err := w.cp.ListThreads(ctx, connect.NewRequest(&threadv1.ListThreadsRequest{ProjectId: w.projectPub}))
+	require.NoError(t, err)
+	assert.Len(t, all.Msg.GetThreads(), 2, "no kind keeps every kind")
+}
+
+func TestRunView_NamesADraftRun(t *testing.T) {
+	w := newCPWorld(t)
+	draft := uuid.New()
+	tried := run.New(w.org, w.project, w.thrd, draft, time.Now())
+	w.store.Runs = map[uuid.UUID]*run.Run{tried.ID: tried}
+	svc := run.NewService(w.store, fakes.Transactor{}, nil).WithAgents(&fakes.RunAgents{Versions: map[uuid.UUID]*run.AgentVersion{
+		draft: {ID: draft, AgentID: w.agent, Draft: true},
+	}})
+	cp := run.NewControlPlane(svc, w.refs, peopleOf{w.people})
+	one, err := cp.GetRun(member(w.org), connect.NewRequest(&threadv1.GetRunRequest{RunId: tried.PublicID}))
+	require.NoError(t, err)
+	assert.Equal(t, "draft", one.Msg.GetRun().GetAgentVersionKind())
+	assert.Zero(t, one.Msg.GetRun().GetAgentVersion(), "a draft has no number")
+	runs, err := cp.ListRuns(member(w.org), connect.NewRequest(&threadv1.ListRunsRequest{ThreadId: w.tPub}))
+	require.NoError(t, err)
+	require.Len(t, runs.Msg.GetRuns(), 1)
+	assert.Equal(t, "draft", runs.Msg.GetRuns()[0].GetAgentVersionKind())
 }

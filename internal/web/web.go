@@ -23,9 +23,11 @@ type ServerOpts struct {
 	Ingest     http.Handler // optional signed provider deliveries mounted at BasePath+"/hooks", with no session or CSRF check
 	MCPHandler http.Handler // optional MCP surface mounted at BasePath+"/mcp"
 	Console    http.Handler // optional console SPA mounted at BasePath+"/console"
-	Routes     []Registrar  // optional server-rendered routes; their mux also answers every unknown path
-	NotFound   http.Handler // optional page for paths no route claims; a wrong method on a real route keeps its 405
-	Probes     Registrar    // optional /healthz and /readyz, mounted with no gate, session or CSRF check
+	// ConsoleRoutes are optional "METHOD /path" routes under BasePath+"/console", behind the cross-origin check, the session and its gate.
+	ConsoleRoutes map[string]http.Handler
+	Routes        []Registrar  // optional server-rendered routes; their mux also answers every unknown path
+	NotFound      http.Handler // optional page for paths no route claims; a wrong method on a real route keeps its 405
+	Probes        Registrar    // optional /healthz and /readyz, mounted with no gate, session or CSRF check
 
 	ResourceMetadata map[string]http.Handler // optional RFC 9728 documents by path, mounted like Probes
 
@@ -76,6 +78,10 @@ func NewServer(opts ServerOpts) http.Handler {
 			spa = opts.ConsoleGate(spa)
 		}
 		outer.Handle(console+"/", withSession(spa))
+	}
+	for pattern, h := range opts.ConsoleRoutes {
+		method, path, _ := strings.Cut(pattern, " ")
+		outer.Handle(method+" "+layout.Path(opts.BasePath, "/console")+path, middleware.NoStore(cop.Handler(withSession(h))))
 	}
 	static := layout.Path(opts.BasePath, "/static") + "/"
 	outer.Handle("GET "+static, staticHandler(static, loadStatic))

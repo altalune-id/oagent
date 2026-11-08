@@ -26,6 +26,7 @@ export interface RunSummary {
   costCents: number;
   unpriced?: boolean;
   estimated?: boolean;
+  draft?: boolean;
 }
 
 export interface RunView {
@@ -47,8 +48,8 @@ export interface Photo {
 export type SkipReason = 'stale' | 'sender_rate' | 'other';
 
 export type TranscriptItem
-  = | { id: number, kind: 'user', text: string, speaker?: string, speakerId?: string, photo?: Photo, photoPlaceholder?: boolean, deleted?: boolean, skipped?: SkipReason, at: Date }
-    | { id: number, kind: 'agent', text: string, streaming: boolean, failed?: boolean, at: Date }
+  = | { id: number, kind: 'user', text: string, speaker?: string, speakerId?: string, photo?: Photo, photoPlaceholder?: boolean, deleted?: boolean, skipped?: SkipReason, at?: Date }
+    | { id: number, kind: 'agent', text: string, streaming: boolean, failed?: boolean, at?: Date }
     | { id: number, kind: 'tool', name: string, args: Record<string, unknown>, result?: unknown, state: ToolState }
     | { id: number, kind: 'approval', approval: ApprovalRequest }
     | { id: number, kind: 'notice', key: string, params?: Record<string, string> }
@@ -285,10 +286,10 @@ export const useThreadsStore = defineStore('threads', () => {
     }
   }
 
-  // checkHasThreads records whether an agent has any conversation yet, for the setup steps; a failure counts as none.
+  // checkHasThreads records whether someone has tried the agent in the console yet, for the setup steps; a failure counts as none.
   async function checkHasThreads(projectId: string, agentId: string) {
     try {
-      const res = await client.listThreads({ projectId, agentId, pageSize: 1 });
+      const res = await client.listThreads({ projectId, agentId, kind: 'try', pageSize: 1 });
       hasThreads.value = { ...hasThreads.value, [agentId]: res.threads.length > 0 };
     } catch {
       hasThreads.value = { ...hasThreads.value, [agentId]: false };

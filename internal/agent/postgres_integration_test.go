@@ -541,3 +541,88 @@ func TestPostgres_VersionByIDIsTenantScoped(t *testing.T) {
 	_, err = f.store.VersionByID(in(otherOrg), latest.ID)
 	assert.True(t, agent.IsNotFoundError(err), "another tenant does not see it")
 }
+
+func (f *pgFixture) draft(t *testing.T, ctx context.Context, a *agent.Agent, cfg agent.Config) *agent.Version {
+	t.Helper()
+	require.NoError(t, a.SetDraft(cfg, time.Now()))
+	require.NoError(t, f.store.SaveDraft(ctx, a))
+	v, err := a.DraftVersion(uuid.Nil, time.Now().UTC())
+	require.NoError(t, err)
+	got, err := f.store.UpsertDraftVersion(ctx, v)
+	require.NoError(t, err)
+	return got
+}
+
+func TestPostgres_DraftVersionsAreDedupedByConfig(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
+	a := newAgent(t, orgID, projectID, "drafts")
+	require.NoError(t, f.store.Save(ctx, a))
+	cfg := agent.Config{ProviderID: uuid.New(), Model: "m", Instructions: "try me"}
+
+	first := f.draft(t, ctx, a, cfg)
+	assert.Equal(t, agent.VersionDraft, first.Kind)
+	assert.Zero(t, first.Version, "a draft has no number")
+	again := f.draft(t, ctx, a, cfg)
+	assert.Equal(t, first.ID, again.ID, "the same draft config reuses its row")
+	edited := f.draft(t, ctx, a, agent.Config{ProviderID: cfg.ProviderID, Model: "m", Instructions: "edited"})
+	assert.NotEqual(t, first.ID, edited.ID, "an edited draft gets a new row")
+
+	got, err := f.store.VersionByID(ctx, first.ID)
+	require.NoError(t, err)
+	assert.Equal(t, agent.VersionDraft, got.Kind, "VersionByID reads drafts: a try run resumes on its pin")
+	assert.Equal(t, "try me", got.Config.Instructions)
+	other := newAgent(t, orgID, projectID, "other")
+	require.NoError(t, f.store.Save(ctx, other))
+	assert.NotEqual(t, first.ID, f.draft(t, ctx, other, cfg).ID, "the hash is per agent")
+}
+
+func TestPostgres_PublishedReadersIgnoreDrafts(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
+	provider, server := uuid.New(), uuid.New()
+	a := newAgent(t, orgID, projectID, "mixed")
+	require.NoError(t, f.store.Save(ctx, a))
+	f.publish(t, ctx, a, agent.Config{ProviderID: provider, Model: "v1"})
+	f.draft(t, ctx, a, agent.Config{ProviderID: provider, Model: "draft", MaxCostCents: 7,
+		MCPServers: []agent.MCPGrant{{ServerID: server, Tools: []agent.Tool{{Name: "t"}}}}})
+
+	latest, err := f.store.LatestVersion(ctx, a.ID)
+	require.NoError(t, err)
+	assert.Equal(t, int32(1), latest.Version, "Latest never returns a draft, though NULL sorts first in DESC")
+	assert.Equal(t, agent.VersionPublished, latest.Kind)
+	list, err := f.store.Versions(ctx, a.ID, 10)
+	require.NoError(t, err)
+	require.Len(t, list, 1, "the version list has no drafts")
+	use, err := f.store.ProviderUse(ctx, provider)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]bool{"v1": false}, use.Models, "a draft row is not a model in use")
+	inUse, err := f.store.MCPServerInUse(ctx, server)
+	require.NoError(t, err)
+	assert.False(t, inUse, "a draft row's grant is not a server in use")
+
+	f.publish(t, ctx, a, agent.Config{ProviderID: provider, Model: "v2"})
+	latest, err = f.store.LatestVersion(ctx, a.ID)
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), latest.Version, "publish numbering skips drafts")
+}
+
+func TestPostgres_VersionKindShape(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	a := newAgent(t, orgID, projectID, "shape")
+	require.NoError(t, f.store.Save(in(orgID), a))
+	insert := func(kind string, version any, hash any) error {
+		_, err := f.sqlDB.ExecContext(t.Context(), `INSERT INTO agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at, kind, config_hash) VALUES ($1, $2, $3, $4, $5, $6, '{}', now(), $7, $8)`,
+			uuid.New(), nanoid.MustNew(21), orgID, projectID, a.ID, version, kind, hash)
+		return err
+	}
+	assert.Equal(t, "23514", pgCode(insert("draft", 3, []byte{1})), "a draft has no number")
+	assert.Equal(t, "23514", pgCode(insert("published", nil, nil)), "a published version has one")
+	assert.Equal(t, "23514", pgCode(insert("draft", nil, nil)), "a draft has a config hash")
+	assert.Equal(t, "23514", pgCode(insert("other", 1, nil)))
+	require.NoError(t, insert("draft", nil, []byte{2}))
+	assert.Equal(t, "23505", pgCode(insert("draft", nil, []byte{2})), "one draft row per agent and hash")
+}

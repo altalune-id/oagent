@@ -59,7 +59,7 @@ export function toThread(th: ThreadPB, t: Translate): ThreadDetail {
   const label = wireLabel({ displayName: th.endUserDisplayName, identityKind: th.endUserIdentityKind, identityHint: th.endUserIdentityHint }, th.endUserLabel, t);
   return {
     id: th.id,
-    title: label || t(`threads.kind_${threadKind(th.kind)}`),
+    title: th.kind === 'try' ? t('try.title') : label || t(`threads.kind_${threadKind(th.kind)}`),
     kind: threadKind(th.kind),
     people: label ? [{ name: label }] : [],
     lastSpeaker: '',
@@ -90,6 +90,7 @@ export function toRunSummary(r: RunPB, threadTitle: string): RunSummary {
     costCents: r.costMicros === undefined ? 0 : Number(r.costMicros) / 10_000,
     unpriced: r.costMicros === undefined,
     estimated: !!u?.estimated,
+    draft: r.agentVersionKind === 'draft',
   };
 }
 

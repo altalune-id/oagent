@@ -34,7 +34,7 @@ func (s *postgresStore) Versions(ctx context.Context, agentID uuid.UUID, limit i
 	return s.selectVersions(ctx, "Versions", agentID, int64(max(limit, 1)))
 }
 
-// LatestVersion returns the agent's newest version, or nil before the first publish.
+// LatestVersion returns the agent's newest published version, or nil before the first publish.
 func (s *postgresStore) LatestVersion(ctx context.Context, agentID uuid.UUID) (*Version, error) {
 	vs, err := s.selectVersions(ctx, "LatestVersion", agentID, 1)
 	if err != nil || len(vs) == 0 {
@@ -66,7 +66,7 @@ func (s *postgresStore) VersionByID(ctx context.Context, id uuid.UUID) (*Version
 func (s *postgresStore) selectVersions(ctx context.Context, op string, agentID uuid.UUID, limit int64) ([]*Version, error) {
 	stmt := postgres.SELECT(s.versions.AllColumns).
 		FROM(s.versions).
-		WHERE(s.versions.AgentID.EQ(postgres.UUID(agentID))).
+		WHERE(s.versions.AgentID.EQ(postgres.UUID(agentID)).AND(s.versions.Kind.EQ(postgres.String(string(VersionPublished))))).
 		ORDER_BY(s.versions.Version.DESC())
 	if limit > 0 {
 		stmt = stmt.LIMIT(limit)

@@ -26,6 +26,7 @@ import (
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
+	threadv1 "altalune.id/oagent/gen/go/thread/v1"
 	"altalune.id/oagent/internal/kernel/session"
 )
 
@@ -162,6 +163,16 @@ func TestValidate_BoundsTheVersionsLimit(t *testing.T) {
 	}
 	for _, limit := range []int32{-1, 101} {
 		assert.Error(t, v.Validate(&agentv1.ListAgentVersionsRequest{AgentId: "abcdefghjkmnpqrstuvwx", Limit: limit}), limit)
+	}
+}
+
+func TestValidate_ThreadKindFilter(t *testing.T) {
+	v := newTestValidator(t)
+	for _, kind := range []string{"", "dm", "group", "api", "try"} {
+		assert.NoError(t, v.Validate(&threadv1.ListThreadsRequest{ProjectId: "abcdefghjkmnpqrstuvwx", Kind: kind}), kind)
+	}
+	for _, kind := range []string{"TRY", "widget", " api"} {
+		assert.Error(t, v.Validate(&threadv1.ListThreadsRequest{ProjectId: "abcdefghjkmnpqrstuvwx", Kind: kind}), kind)
 	}
 }
 

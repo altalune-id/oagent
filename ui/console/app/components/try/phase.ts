@@ -6,7 +6,7 @@ const labels: Record<Phase, { key: string, tone: StatusTone }> = {
   thinking: { key: 'runstatus.running', tone: 'info' },
   streaming: { key: 'runstatus.running', tone: 'info' },
   tool: { key: 'runstatus.running', tone: 'info' },
-  awaiting: { key: 'runstatus.awaiting_approval', tone: 'warning' },
+  stopping: { key: 'try.phase_stopping', tone: 'info' },
   completed: { key: 'runstatus.completed', tone: 'success' },
   failed: { key: 'runstatus.failed', tone: 'error' },
   cancelled: { key: 'runstatus.cancelled', tone: 'neutral' },

@@ -130,13 +130,22 @@ func (s *postgresStore) Thread(ctx context.Context, threadID uuid.UUID) (*Thread
 
 // ThreadByExternalKey loads the thread of agentID that its channel calls externalKey.
 func (s *postgresStore) ThreadByExternalKey(ctx context.Context, agentID uuid.UUID, externalKey string) (*Thread, error) {
+	return s.readThreadByKey(ctx, threadKindAPI, agentID, externalKey)
+}
+
+// TryThreadByExternalKey loads agentID's Try it thread keyed externalKey in the org on ctx.
+func (s *postgresStore) TryThreadByExternalKey(ctx context.Context, agentID uuid.UUID, externalKey string) (*Thread, error) {
+	return s.readThreadByKey(ctx, threadKindTry, agentID, externalKey)
+}
+
+func (s *postgresStore) readThreadByKey(ctx context.Context, kind string, agentID uuid.UUID, externalKey string) (*Thread, error) {
 	tc, err := tenant.From(ctx)
 	if err != nil {
 		return nil, err
 	}
 	var th *Thread
 	err = db.Read(ctx, s.pool, func(q qrm.DB) error {
-		th, err = s.threadByExternalKey(ctx, q, tc.OrgID, agentID, externalKey)
+		th, err = s.threadByExternalKey(ctx, q, kind, tc.OrgID, agentID, externalKey)
 		return err
 	})
 	return th, err
@@ -189,13 +198,13 @@ func (s *postgresStore) oneThread(ctx context.Context, name string, where postgr
 }
 
 func (s *postgresStore) threadByExternalKey(
-	ctx context.Context, q qrm.Queryable, orgID, agentID uuid.UUID, externalKey string,
+	ctx context.Context, q qrm.Queryable, kind string, orgID, agentID uuid.UUID, externalKey string,
 ) (*Thread, error) {
 	t := s.threads
 	stmt := postgres.SELECT(s.threadColumns()).FROM(t).
 		WHERE(t.AgentID.EQ(postgres.UUID(agentID)).
 			AND(t.ExternalKey.EQ(postgres.String(externalKey))).
-			AND(t.Kind.EQ(postgres.String(threadKindAPI))).
+			AND(t.Kind.EQ(postgres.String(kind))).
 			AND(t.OrgID.EQ(postgres.UUID(orgID)))).
 		LIMIT(1)
 	var row threadRow
@@ -390,16 +399,21 @@ func (s *postgresStore) summaries(ctx context.Context, where postgres.BoolExpres
 	return rows, nil
 }
 
-// ListThreads lists a project's threads, newest activity first, optionally of one agent only.
-func (s *postgresStore) ListThreads(ctx context.Context, projectID, agentID uuid.UUID, after Cursor, limit int) ([]ThreadSummary, error) {
+// ListThreads lists a project's threads matching filter, newest activity first.
+func (s *postgresStore) ListThreads(
+	ctx context.Context, projectID uuid.UUID, filter ThreadFilter, after Cursor, limit int,
+) ([]ThreadSummary, error) {
 	tc, err := tenant.From(ctx)
 	if err != nil {
 		return nil, err
 	}
 	t := s.threads
 	where := t.OrgID.EQ(postgres.UUID(tc.OrgID)).AND(t.ProjectID.EQ(postgres.UUID(projectID)))
-	if agentID != uuid.Nil {
-		where = where.AND(t.AgentID.EQ(postgres.UUID(agentID)))
+	if filter.AgentID != uuid.Nil {
+		where = where.AND(t.AgentID.EQ(postgres.UUID(filter.AgentID)))
+	}
+	if filter.Kind != "" {
+		where = where.AND(t.Kind.EQ(postgres.String(filter.Kind)))
 	}
 	if !after.At.IsZero() {
 		where = where.AND(postgres.ROW(t.UpdatedAt, t.PublicID).LT(postgres.ROW(postgres.TimestampzT(after.At), postgres.String(after.PublicID))))

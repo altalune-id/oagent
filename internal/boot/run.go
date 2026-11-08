@@ -34,7 +34,7 @@ func buildRun(k kernel.Kernel, cfg config.Config, s *Services, limiter ratelimit
 		WithMaxConcurrentPerProject(cfg.Run.MaxConcurrentPerProject).
 		WithMaxMessageAge(cfg.Channel.MaxMessageAge)
 	svc := run.NewService(store, db.NewTransactor(k.Pool), k.Reporter.Unexpected).
-		WithAgents(runAgents{store: s.AgentStore}).
+		WithAgents(runAgents{store: s.AgentStore, agents: s.Agents}).
 		WithProviders(runProviders{providers: s.ModelProviders}).
 		WithMCPServers(runServers{servers: s.MCPServers}).
 		WithSnapshots(snapshotstore.NewPostgres(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)).
@@ -85,7 +85,10 @@ func buildRuntime(c config.RuntimeConfig) (runtime.Runtime, error) {
 	}
 }
 
-type runAgents struct{ store agent.Store }
+type runAgents struct {
+	store  agent.Store
+	agents *agent.Service
+}
 
 func (a runAgents) Version(ctx context.Context, id uuid.UUID) (*run.AgentVersion, error) {
 	v, err := a.store.VersionByID(ctx, id)
@@ -103,6 +106,14 @@ func (a runAgents) Latest(ctx context.Context, agentID uuid.UUID) (*run.AgentVer
 	return a.pinned(ctx, v)
 }
 
+func (a runAgents) Draft(ctx context.Context, agentID uuid.UUID) (*run.AgentVersion, error) {
+	v, err := a.agents.DraftVersion(ctx, agentID, uuid.Nil)
+	if err != nil {
+		return nil, err
+	}
+	return a.pinned(ctx, v)
+}
+
 func (a runAgents) pinned(ctx context.Context, v *agent.Version) (*run.AgentVersion, error) {
 	ag, err := a.store.ByID(ctx, v.AgentID)
 	if err != nil {
@@ -110,7 +121,7 @@ func (a runAgents) pinned(ctx context.Context, v *agent.Version) (*run.AgentVers
 	}
 	c := v.Config
 	out := &run.AgentVersion{
-		ID: v.ID, AgentID: v.AgentID, AgentPublicID: ag.PublicID, Version: v.Version, Legacy: c.Legacy(),
+		ID: v.ID, AgentID: v.AgentID, AgentPublicID: ag.PublicID, Version: v.Version, Draft: v.Kind == agent.VersionDraft, Legacy: c.Legacy(),
 		Instructions: c.Instructions, Model: c.Model, Temperature: c.Temperature, MaxSteps: c.MaxSteps,
 		MaxCostCents: c.MaxCostCents, ProviderID: c.ProviderID,
 	}

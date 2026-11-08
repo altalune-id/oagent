@@ -26,11 +26,18 @@ type Service struct {
 	unexpected apperror.UnexpectedFunc
 	log        *slog.Logger
 	hints      KeyHints
+	members    Members
 }
 
 // WithKeyHints labels an end user that is an API key by the key's hint.
 func (s *Service) WithKeyHints(h KeyHints) *Service {
 	s.hints = h
+	return s
+}
+
+// WithMembers labels an end user that is a member (console Try it or a personal key) by the member's name.
+func (s *Service) WithMembers(m Members) *Service {
+	s.members = m
 	return s
 }
 
@@ -242,6 +249,11 @@ func (s *Service) Names(ctx context.Context, users []*EndUser) (map[uuid.UUID]Na
 					}
 				}
 			}
+			if who, ok := personActor(all[e.ID][0]); ok && n.DisplayName == "" && s.members != nil {
+				if n.DisplayName, err = s.members.MemberName(ctx, who); err != nil {
+					return nil, s.errOrReport(ctx, "enduser: member name", err)
+				}
+			}
 		}
 		out[e.ID] = n
 	}
@@ -281,3 +293,10 @@ func parseKeyID(raw string) (uuid.UUID, bool) {
 }
 
 const keyActorPrefix = "key:"
+
+func personActor(id Identity) (string, bool) {
+	who, ok := strings.CutPrefix(id.Value, personActorPrefix)
+	return who, ok && id.Kind == KindAPIUser && who != ""
+}
+
+const personActorPrefix = "person:"

@@ -207,3 +207,61 @@ func TestCancel_ClaimedPathOnlySettlesTheRunAskedFor(t *testing.T) {
 	}
 	assert.Empty(t, pub.Events())
 }
+
+func TestTryRun_PinsTheDraftAndEmitsNoWebhook(t *testing.T) {
+	f := newSvc(t)
+	pub := &fakes.Publisher{}
+	f.svc.WithPublisher(pub)
+	f.store.Kinds = map[uuid.UUID]string{f.thread: "try"}
+	draft := *f.version
+	draft.ID, draft.Version, draft.Draft, draft.Instructions = uuid.New(), 0, true, "The unpublished draft."
+	f.agents.Drafts = map[uuid.UUID]*run.AgentVersion{f.agentID: &draft}
+	f.agents.Versions[draft.ID] = &draft
+	f.say(t, "hello")
+	r := f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	assert.Equal(t, draft.ID, r.AgentVersionID, "a try run is pinned to the draft, not the published version")
+	require.NotEmpty(t, f.rt.Requests)
+	assert.Equal(t, "The unpublished draft.", f.rt.Requests[0].Agent.Instructions)
+	assert.Equal(t, run.StatusCompleted, r.Status)
+	assert.Empty(t, pub.Events(), "a try run sends no webhook")
+	assert.Positive(t, r.Usage.InputTokens, "its usage is recorded like any run")
+}
+
+func TestTryRun_WaitsWithoutAPinnableDraft(t *testing.T) {
+	f := newSvc(t)
+	f.store.Kinds = map[uuid.UUID]string{f.thread: "try"}
+	f.agents.DraftErr = assertErr{}
+	f.say(t, "hello")
+	token := f.claim(t)
+	_, err := f.svc.Execute(f.ctx, f.thread, token)
+	require.Error(t, err)
+	assert.Empty(t, f.store.Runs, "no run starts on a draft that can't be pinned")
+}
+
+func TestTryRun_KeepsItsDraftRowWhenTheDraftIsEdited(t *testing.T) {
+	f := newSvc(t)
+	f.store.Kinds = map[uuid.UUID]string{f.thread: "try"}
+	draftA, draftB := *f.version, *f.version
+	draftA.ID, draftA.Version, draftA.Draft, draftA.Instructions = uuid.New(), 0, true, "Draft A."
+	draftB.ID, draftB.Version, draftB.Draft, draftB.Instructions = uuid.New(), 0, true, "Draft B."
+	f.agents.Versions[draftA.ID], f.agents.Versions[draftB.ID] = &draftA, &draftB
+	f.agents.Drafts = map[uuid.UUID]*run.AgentVersion{f.agentID: &draftA}
+
+	f.say(t, "record lunch")
+	paused := f.execute(t, fakes.RuntimeReply{Stream: cut(stream(t, "tool_call"))})
+	require.Equal(t, run.StatusInterrupted, paused.Status)
+	assert.Equal(t, draftA.ID, paused.AgentVersionID)
+
+	f.agents.Drafts[f.agentID] = &draftB
+	resumed := f.execute(t, fakes.RuntimeReply{Stream: stream(t, "tool_call")})
+	assert.Equal(t, paused.ID, resumed.ID, "the same run resumes")
+	assert.Equal(t, draftA.ID, resumed.AgentVersionID, "a paused try run keeps the draft row it started on")
+	assert.Equal(t, "Draft A.", f.rt.LastRequest().Agent.Instructions, "and resumes on that row's config, not the edited draft")
+	require.Equal(t, run.StatusCompleted, resumed.Status)
+
+	f.say(t, "and dinner")
+	next := f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	assert.NotEqual(t, paused.ID, next.ID)
+	assert.Equal(t, draftB.ID, next.AgentVersionID, "a new try run pins the edited draft")
+	assert.Equal(t, "Draft B.", f.rt.LastRequest().Agent.Instructions)
+}

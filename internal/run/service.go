@@ -304,8 +304,8 @@ func (s *Service) open(ctx context.Context, th *Thread, token string, obs Observ
 	if err != nil || !pending {
 		return nil, nil, s.errOrReport(ctx, "run: pending", err)
 	}
-	if t.version, err = s.agents.Latest(ctx, th.AgentID); err != nil {
-		return nil, nil, s.errOrReport(ctx, "run: latest version", err)
+	if t.version, err = s.pin(ctx, th); err != nil {
+		return nil, nil, s.errOrReport(ctx, "run: pin version", err)
 	}
 	if t.version == nil {
 		s.log.DebugContext(ctx, "run: the agent has no published version; the messages wait", "thread", th.ID.String())
@@ -329,6 +329,13 @@ func (s *Service) open(ctx context.Context, th *Thread, token string, obs Observ
 		return nil, nil, s.errOrReport(ctx, "run: start", err)
 	}
 	return t, nil, nil
+}
+
+func (s *Service) pin(ctx context.Context, th *Thread) (*AgentVersion, error) {
+	if th.Kind == threadKindTry {
+		return s.agents.Draft(ctx, th.AgentID)
+	}
+	return s.agents.Latest(ctx, th.AgentID)
 }
 
 func (s *Service) charge(ctx context.Context, t *turn) error {
@@ -443,7 +450,7 @@ func EventFor(s Status) events.Type {
 func (s *Service) emit(ctx context.Context, t *turn, u Usage) error {
 	r := t.run
 	kind := EventFor(r.Status)
-	if kind == "" || s.publisher == nil {
+	if kind == "" || s.publisher == nil || t.thread.Kind == threadKindTry {
 		return nil
 	}
 	payload := events.RunSettledV1{
@@ -495,9 +502,11 @@ func (s *Service) ResolveRun(ctx context.Context, publicID string) (Ref, error) 
 	return ref, s.errOrReport(ctx, "run: resolve run", err)
 }
 
-// ListThreads lists a project's threads, newest activity first; agentID uuid.Nil means every agent.
-func (s *Service) ListThreads(ctx context.Context, projectID, agentID uuid.UUID, after Cursor, limit int) ([]ThreadSummary, error) {
-	out, err := s.store.ListThreads(ctx, projectID, agentID, after, limit)
+// ListThreads lists a project's threads matching filter, newest activity first.
+func (s *Service) ListThreads(
+	ctx context.Context, projectID uuid.UUID, filter ThreadFilter, after Cursor, limit int,
+) ([]ThreadSummary, error) {
+	out, err := s.store.ListThreads(ctx, projectID, filter, after, limit)
 	return out, s.errOrReport(ctx, "run: list threads", err)
 }
 
@@ -534,11 +543,11 @@ func (s *Service) Run(ctx context.Context, id uuid.UUID) (*Run, error) {
 	return out, s.errOrReport(ctx, "run: get run", err)
 }
 
-// AgentVersion is the number of the agent version a run is pinned to.
-func (s *Service) AgentVersion(ctx context.Context, versionID uuid.UUID) (int32, error) {
+// AgentVersion is the number of the agent version a run is pinned to, and whether it is a draft (number 0).
+func (s *Service) AgentVersion(ctx context.Context, versionID uuid.UUID) (number int32, draft bool, err error) {
 	v, err := s.agents.Version(ctx, versionID)
 	if err != nil {
-		return 0, s.errOrReport(ctx, "run: agent version", err)
+		return 0, false, s.errOrReport(ctx, "run: agent version", err)
 	}
-	return v.Version, nil
+	return v.Version, v.Draft, nil
 }

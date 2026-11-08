@@ -19,12 +19,13 @@ type Reader interface {
 	History(ctx context.Context, threadID, exceptRun uuid.UUID) ([]Message, error)
 	HasPending(ctx context.Context, threadID uuid.UUID) (bool, error)
 	ThreadByExternalKey(ctx context.Context, agentID uuid.UUID, externalKey string) (*Thread, error)
+	TryThreadByExternalKey(ctx context.Context, agentID uuid.UUID, externalKey string) (*Thread, error)
 	RunByPublicID(ctx context.Context, publicID string) (*Run, error)
 	RunByID(ctx context.Context, id uuid.UUID) (*Run, error)
 	ThreadMessages(ctx context.Context, threadID uuid.UUID, afterSeq int64, limit int) ([]Message, error)
 	ResolveThread(ctx context.Context, publicID string) (Ref, error)
 	ResolveRun(ctx context.Context, publicID string) (Ref, error)
-	ListThreads(ctx context.Context, projectID, agentID uuid.UUID, after Cursor, limit int) ([]ThreadSummary, error)
+	ListThreads(ctx context.Context, projectID uuid.UUID, filter ThreadFilter, after Cursor, limit int) ([]ThreadSummary, error)
 	ThreadSummary(ctx context.Context, threadID uuid.UUID) (*ThreadSummary, error)
 	ListRuns(ctx context.Context, threadID uuid.UUID, after Cursor, limit int) ([]Run, error)
 	ListAgentRuns(ctx context.Context, agentID uuid.UUID, after Cursor, limit int) ([]Run, error)
@@ -46,6 +47,8 @@ type Writer interface {
 	Claim(ctx context.Context, threadID uuid.UUID, token string, ttl time.Duration) (ClaimResult, error)
 	ClaimAndAppend(ctx context.Context, threadID uuid.UUID, token string, ttl time.Duration, m Message) (ClaimResult, int64, error)
 	UpsertAPIThread(ctx context.Context, projectID, agentID uuid.UUID, externalKey string, actor uuid.UUID) (*Thread, error)
+	// UpsertTryThread is UpsertAPIThread for a console Try it thread, kept apart from API threads with the same key.
+	UpsertTryThread(ctx context.Context, projectID, agentID uuid.UUID, externalKey string, actor uuid.UUID) (*Thread, error)
 	Heartbeat(ctx context.Context, threadID uuid.UUID, token string, ttl time.Duration) (cancel bool, err error)
 	Release(ctx context.Context, threadID uuid.UUID, token string) error
 	StartRun(ctx context.Context, token string, r *Run) ([]Message, error)

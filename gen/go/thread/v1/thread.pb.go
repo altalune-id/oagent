@@ -101,7 +101,7 @@ type Thread struct {
 	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ProjectId string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	AgentId   string                 `protobuf:"bytes,3,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
-	// kind is dm, group or api.
+	// kind is dm, group, api or try (a console Try it conversation).
 	Kind string `protobuf:"bytes,4,opt,name=kind,proto3" json:"kind,omitempty"`
 	// end_user_label is the display name, else the masked hint ("…90"); never a phone number or LID. Prefer the structured end_user_* fields.
 	EndUserLabel        string                 `protobuf:"bytes,5,opt,name=end_user_label,json=endUserLabel,proto3" json:"end_user_label,omitempty"`
@@ -455,11 +455,13 @@ type Run struct {
 	CostMicros   *int64                 `protobuf:"varint,7,opt,name=cost_micros,json=costMicros,proto3,oneof" json:"cost_micros,omitempty"`
 	LatencyMs    *int64                 `protobuf:"varint,8,opt,name=latency_ms,json=latencyMs,proto3,oneof" json:"latency_ms,omitempty"`
 	// error_code is the error code of a run that failed.
-	ErrorCode     string                 `protobuf:"bytes,9,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
-	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
-	EndedAt       *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=ended_at,json=endedAt,proto3" json:"ended_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ErrorCode string                 `protobuf:"bytes,9,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
+	StartedAt *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	EndedAt   *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=ended_at,json=endedAt,proto3" json:"ended_at,omitempty"`
+	// agent_version_kind is published, or draft for a console Try it run on the unpublished draft (agent_version is then 0).
+	AgentVersionKind string `protobuf:"bytes,12,opt,name=agent_version_kind,json=agentVersionKind,proto3" json:"agent_version_kind,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Run) Reset() {
@@ -569,12 +571,20 @@ func (x *Run) GetEndedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Run) GetAgentVersionKind() string {
+	if x != nil {
+		return x.AgentVersionKind
+	}
+	return ""
+}
+
 type ListThreadsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	AgentId       string                 `protobuf:"bytes,2,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
 	PageToken     string                 `protobuf:"bytes,3,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
 	PageSize      int32                  `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	Kind          string                 `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -635,6 +645,13 @@ func (x *ListThreadsRequest) GetPageSize() int32 {
 		return x.PageSize
 	}
 	return 0
+}
+
+func (x *ListThreadsRequest) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
 }
 
 type ListThreadsResponse struct {
@@ -1239,7 +1256,7 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\routput_tokens\x18\x02 \x01(\x03R\foutputTokens\x12*\n" +
 	"\x11cache_read_tokens\x18\x03 \x01(\x03R\x0fcacheReadTokens\x12,\n" +
 	"\x12cache_write_tokens\x18\x04 \x01(\x03R\x10cacheWriteTokens\x12\x1c\n" +
-	"\testimated\x18\x05 \x01(\bR\testimated\"\xc1\x03\n" +
+	"\testimated\x18\x05 \x01(\bR\testimated\"\xef\x03\n" +
 	"\x03Run\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12,\n" +
@@ -1256,9 +1273,10 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\n" +
 	"started_at\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x125\n" +
-	"\bended_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\aendedAtB\x0e\n" +
+	"\bended_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\x12,\n" +
+	"\x12agent_version_kind\x18\f \x01(\tR\x10agentVersionKindB\x0e\n" +
 	"\f_cost_microsB\r\n" +
-	"\v_latency_ms\"\xb9\x01\n" +
+	"\v_latency_ms\"\xec\x01\n" +
 	"\x12ListThreadsRequest\x12+\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\x12$\n" +
@@ -1266,7 +1284,8 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\n" +
 	"page_token\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\tpageToken\x12'\n" +
 	"\tpage_size\x18\x04 \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\xc8\x01(\x00R\bpageSize\"j\n" +
+	"\xbaH\a\x1a\x05\x18\xc8\x01(\x00R\bpageSize\x121\n" +
+	"\x04kind\x18\x05 \x01(\tB\x1d\xbaH\x1a\xd8\x01\x01r\x15R\x02dmR\x05groupR\x03apiR\x03tryR\x04kind\"j\n" +
 	"\x13ListThreadsResponse\x12+\n" +
 	"\athreads\x18\x01 \x03(\v2\x11.thread.v1.ThreadR\athreads\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"=\n" +
@@ -1312,10 +1331,10 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\x14RUN_STATUS_CANCELLED\x10\x05\x12\x1a\n" +
 	"\x16RUN_STATUS_INTERRUPTED\x10\x06\x12\x1c\n" +
 	"\x18RUN_STATUS_LIMIT_REACHED\x10\a\x12\x16\n" +
-	"\x12RUN_STATUS_EXPIRED\x10\b2\x8f\x0e\n" +
-	"\rThreadService\x12\xa8\x03\n" +
-	"\vListThreads\x12\x1d.thread.v1.ListThreadsRequest\x1a\x1e.thread.v1.ListThreadsResponse\"\xd9\x02\xca\xf3\x18\xd4\x02\n" +
-	"\vthread_list\x12\xb8\x02List a project's conversation threads, newest activity first, optionally of one agent: each with its kind, the end user's masked label, its last activity and the status of its open run. Pages hold 50 threads unless page_size says otherwise, at most 200; pass next_page_token back as page_token for the next page.\x1a\n" +
+	"\x12RUN_STATUS_EXPIRED\x10\b2\xb3\x0e\n" +
+	"\rThreadService\x12\xcc\x03\n" +
+	"\vListThreads\x12\x1d.thread.v1.ListThreadsRequest\x1a\x1e.thread.v1.ListThreadsResponse\"\xfd\x02\xca\xf3\x18\xf8\x02\n" +
+	"\vthread_list\x12\xdc\x02List a project's conversation threads, newest activity first, optionally of one agent or one kind (dm, group, api or try): each with its kind, the end user's masked label, its last activity and the status of its open run. Pages hold 50 threads unless page_size says otherwise, at most 200; pass next_page_token back as page_token for the next page.\x1a\n" +
 	"project_id\x12\xa6\x01\n" +
 	"\tGetThread\x12\x1b.thread.v1.GetThreadRequest\x1a\x1c.thread.v1.GetThreadResponse\"^\xca\xf3\x18Z\n" +
 	"\n" +

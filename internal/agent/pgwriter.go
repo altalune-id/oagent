@@ -86,12 +86,49 @@ func (s *postgresStore) InsertVersion(ctx context.Context, v *Version) error {
 	if v.CreatedBy.Valid {
 		by = postgres.UUID(v.CreatedBy.UUID)
 	}
-	stmt := s.versions.INSERT(s.versions.AllColumns).
-		VALUES(v.ID, v.PublicID, v.OrgID, v.ProjectID, v.AgentID, v.Version, cfg, by, v.CreatedAt.UTC())
-	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { _, err := stmt.ExecContext(ctx, q); return err }); err != nil {
+	insert := s.insertVersion(v, cfg, by)
+	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { _, err := insert.ExecContext(ctx, q); return err }); err != nil {
 		return fmt.Errorf("agent.postgres: InsertVersion: %w", err)
 	}
 	return nil
+}
+
+func (s *postgresStore) insertVersion(v *Version, cfg postgres.StringExpression, by postgres.Expression) postgres.InsertStatement {
+	var number, hash postgres.Expression = postgres.Int32(v.Version), entity.NullBytea()
+	if v.Kind == VersionDraft {
+		number, hash = postgres.NULL, postgres.Bytea(v.ConfigHash)
+	}
+	return s.versions.INSERT(s.versions.AllColumns).
+		VALUES(v.ID, v.PublicID, v.OrgID, v.ProjectID, v.AgentID, number, cfg, by, v.CreatedAt.UTC(), string(v.Kind), hash)
+}
+
+// UpsertDraftVersion stores draft v unless the agent already has a draft with its hash, then reads the stored row.
+func (s *postgresStore) UpsertDraftVersion(ctx context.Context, v *Version) (*Version, error) {
+	cfg, err := jsonb(v.Config)
+	if err != nil {
+		return nil, fmt.Errorf("agent.postgres: UpsertDraftVersion: %w", err)
+	}
+	by := entity.NullUUID()
+	if v.CreatedBy.Valid {
+		by = postgres.UUID(v.CreatedBy.UUID)
+	}
+	t := s.versions
+	draft := t.Kind.EQ(postgres.String(string(VersionDraft)))
+	insert := s.insertVersion(v, cfg, by).ON_CONFLICT(t.AgentID, t.ConfigHash).WHERE(draft).DO_NOTHING()
+	sel := postgres.SELECT(t.AllColumns).FROM(t).WHERE(
+		t.AgentID.EQ(postgres.UUID(v.AgentID)).AND(draft).AND(t.ConfigHash.EQ(postgres.Bytea(v.ConfigHash))),
+	)
+	var row versionRow
+	err = db.Write(ctx, s.pool, func(q qrm.DB) error {
+		if _, err := insert.ExecContext(ctx, q); err != nil {
+			return err
+		}
+		return sel.QueryContext(ctx, q, &row)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("agent.postgres: UpsertDraftVersion: %w", err)
+	}
+	return row.toVersion()
 }
 
 // SaveDraft writes the draft config and its edit time only, so a concurrent publish keeps its version.

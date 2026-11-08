@@ -93,6 +93,8 @@ type plane struct {
 	runner         *run.Runner
 	svc            *run.Service
 	eu             *endUsers
+	agents         *fakes.RunAgents
+	handler        *dataplane.Handler
 	org, project   uuid.UUID
 	agent, version uuid.UUID
 	runtimeReady   bool
@@ -112,11 +114,12 @@ func newPlane(t *testing.T, maxConcurrent int, opts ...func(*dataplane.Deps)) *p
 		agent: uuid.New(), version: uuid.New(), runtimeReady: true, eu: &endUsers{},
 	}
 	provider := uuid.New()
+	p.agents = &fakes.RunAgents{Versions: map[uuid.UUID]*run.AgentVersion{p.version: {
+		ID: p.version, AgentID: p.agent, AgentPublicID: "AGENTpub", Version: 1, Model: "gpt-4o", ProviderID: provider,
+	}}}
 	p.svc = run.NewService(p.store, fakes.Transactor{}, apperror.NewReporter(nil, false).Unexpected).
 		WithRuntime(p.rt).
-		WithAgents(&fakes.RunAgents{Versions: map[uuid.UUID]*run.AgentVersion{p.version: {
-			ID: p.version, AgentID: p.agent, AgentPublicID: "AGENTpub", Version: 1, Model: "gpt-4o", ProviderID: provider,
-		}}}).
+		WithAgents(p.agents).
 		WithProviders(&fakes.RunProviders{Models: map[uuid.UUID]map[string]run.ResolvedModel{provider: {
 			"gpt-4o": {BaseURL: "https://llm.example.com/v1", APIKey: "sk-test"},
 		}}}).
@@ -163,6 +166,7 @@ func newPlane(t *testing.T, maxConcurrent int, opts ...func(*dataplane.Deps)) *p
 		o(&deps)
 	}
 	h := dataplane.New(deps)
+	p.handler = h
 	mux := http.NewServeMux()
 	h.Register(mux, "")
 	p.srv = httptest.NewServer(mux)

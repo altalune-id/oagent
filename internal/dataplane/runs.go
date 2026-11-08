@@ -59,7 +59,10 @@ func (h *Handler) authorize(r *http.Request, permission string) (caller, error) 
 	if err := h.d.Limits.key(r.Context(), p.KeyID.String()); err != nil {
 		return caller{}, err
 	}
-	ctx := session.PrincipalInto(r.Context(), p)
+	return h.reachAgent(session.PrincipalInto(r.Context(), p), r, p, permission)
+}
+
+func (h *Handler) reachAgent(ctx context.Context, r *http.Request, p session.Principal, permission string) (caller, error) {
 	ref, found, err := h.d.Agents.Resolve(ctx, r.PathValue("agent"))
 	if err != nil {
 		return caller{}, err
@@ -86,10 +89,7 @@ func (h *Handler) postRuns(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, r, err)
 		return
 	}
-	// NOTE: net/http clears the read deadline once the body hits EOF; this keeps a stream past ReadTimeout even if that changes.
-	if err := http.NewResponseController(w).SetReadDeadline(time.Time{}); err != nil && !errors.Is(err, http.ErrNotSupported) {
-		h.d.Log.DebugContext(r.Context(), "dataplane: clear read deadline", "err", err.Error())
-	}
+	h.keepReading(w, r)
 	actor, err := h.actorValue(c.ctx, r, c.principal)
 	if err != nil {
 		h.writeError(w, r, err)
@@ -106,8 +106,19 @@ func (h *Handler) postRuns(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, r, err)
 		return
 	}
+	h.relay(w, r, stream, in.ThreadID)
+}
+
+// NOTE: net/http clears the read deadline once the body hits EOF; this keeps a stream past ReadTimeout even if that changes.
+func (h *Handler) keepReading(w http.ResponseWriter, r *http.Request) {
+	if err := http.NewResponseController(w).SetReadDeadline(time.Time{}); err != nil && !errors.Is(err, http.ErrNotSupported) {
+		h.d.Log.DebugContext(r.Context(), "dataplane: clear read deadline", "err", err.Error())
+	}
+}
+
+func (h *Handler) relay(w http.ResponseWriter, r *http.Request, stream *run.Sink, threadID string) {
 	streamHeaders(w)
-	if err := Relay(r.Context(), stream.Events(), NewSSEWriter(w), IDMap{ThreadID: in.ThreadID}, nil); err != nil {
+	if err := Relay(r.Context(), stream.Events(), NewSSEWriter(w), IDMap{ThreadID: threadID}, nil); err != nil {
 		h.d.Log.DebugContext(r.Context(), "dataplane: stream ended early; the run goes on", "err", err.Error())
 	}
 }
@@ -126,6 +137,12 @@ func (h *Handler) start(c caller, r *http.Request, in turnInput, actor string) (
 			return nil, err
 		}
 	}
+	return h.open(c, in, actor, key, h.d.Store.UpsertAPIThread)
+}
+
+type upsertThread func(ctx context.Context, projectID, agentID uuid.UUID, externalKey string, actor uuid.UUID) (*run.Thread, error)
+
+func (h *Handler) open(c caller, in turnInput, actor, key string, upsert upsertThread) (*run.Sink, error) {
 	if !h.d.RuntimeReady() {
 		return nil, retryLater(http.StatusServiceUnavailable, errNoRuntime)
 	}
@@ -149,7 +166,7 @@ func (h *Handler) start(c caller, r *http.Request, in turnInput, actor string) (
 	if err != nil {
 		return nil, err
 	}
-	thread, err := h.d.Store.UpsertAPIThread(c.ctx, c.agent.ProjectID, c.agent.ID, in.ThreadID, endUser)
+	thread, err := upsert(c.ctx, c.agent.ProjectID, c.agent.ID, in.ThreadID, endUser)
 	if err != nil {
 		return nil, err
 	}

@@ -82,7 +82,7 @@ func rlsInserts() []rlsInsert {
 			return []any{tn.agent, "a" + id()[:12], tn.org, tn.project, "a" + id()[:12], now}
 		}},
 		{"agent_versions", func(s string) string {
-			return `INSERT INTO ` + s + `.agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at) VALUES ($1, $2, $3, $4, $5, 1, '{}', $6)`
+			return `INSERT INTO ` + s + `.agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at, kind) VALUES ($1, $2, $3, $4, $5, 1, '{}', $6, 'published')`
 		}, func(tn rlsTenant, _ string) []any {
 			return []any{tn.version, "v" + id()[:12], tn.org, tn.project, tn.agent, now}
 		}},

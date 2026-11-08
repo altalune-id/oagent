@@ -635,6 +635,14 @@ components:
           maximum: 200
           minimum: 0
           format: int32
+        kind:
+          type: string
+          title: kind
+          enum:
+            - dm
+            - group
+            - api
+            - try
       title: ListThreadsRequest
       required:
         - projectId
@@ -700,6 +708,10 @@ components:
         endedAt:
           title: ended_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
+        agentVersionKind:
+          type: string
+          title: agent_version_kind
+          description: agent_version_kind is published, or draft for a console Try it run on the unpublished draft (agent_version is then 0).
       title: Run
       additionalProperties: false
       description: Run is one agent turn on a thread; cost_micros is unset when the run is unpriced, latency_ms and ended_at while it runs.
@@ -732,7 +744,7 @@ components:
         kind:
           type: string
           title: kind
-          description: kind is dm, group or api.
+          description: kind is dm, group, api or try (a console Try it conversation).
         endUserLabel:
           type: string
           title: end_user_label

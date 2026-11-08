@@ -1,306 +1,391 @@
-import type { Photo, TranscriptItem } from '~/stores/threads';
-import type { ChatScript, ChatStep } from '~/stores/tryIt';
+import type { AgUiEvent } from '#base/lib/agui/sse';
+import type { Run as RunPB } from '#gen/thread/v1/thread_pb';
+import type { RunStatus, RunSummary, TranscriptItem } from '~/stores/threads';
+import { Code, ConnectError } from '@connectrpc/connect';
 import { getCurrentScope, onScopeDispose } from 'vue';
-import { decideApproval } from '~/components/approval/decision';
-import { useTryItStore } from '~/stores/tryIt';
+import { readEvents } from '#base/lib/agui/sse';
+import { ErrorDetailSchema } from '#gen/apperror/v1/error_pb';
+import { toRunSummary } from '~/components/thread/fromWire';
 
-export type Scenario = 'normal' | 'model_fails' | 'tool_fails' | 'cost_limit' | 'dropped';
-export type Phase = 'idle' | 'thinking' | 'streaming' | 'tool' | 'awaiting' | 'completed' | 'failed' | 'cancelled' | 'limit' | 'dropped';
-export type { Photo, ToolState } from '~/stores/threads';
+export type Phase = 'idle' | 'thinking' | 'streaming' | 'tool' | 'stopping' | 'completed' | 'failed' | 'cancelled' | 'limit' | 'dropped';
+export type { ToolState } from '~/stores/threads';
 export type ChatItem = TranscriptItem;
 
 type NewItem<T> = T extends ChatItem ? Omit<T, 'id'> : never;
+type AgentItem = Extract<ChatItem, { kind: 'agent' }>;
+type ToolItem = Extract<ChatItem, { kind: 'tool' }>;
 
-export const maxPhotoBytes = 5 * 1024 * 1024;
-export const photoTypes = ['image/jpeg', 'image/png', 'image/webp'];
-export const scenarios: Scenario[] = ['normal', 'model_fails', 'tool_fails', 'cost_limit', 'dropped'];
+export interface RunBody {
+  threadId: string;
+  messages: { id: string, role: 'user', content: string }[];
+}
 
-// photoError returns the text key that refuses a file as a chat photo, or '' when it is fine.
-export function photoError(file: { size: number, type: string }): string {
-  if (!photoTypes.includes(file.type)) {
-    return 'try.photo_type';
+export interface StoredMessage {
+  seq: number;
+  message: Record<string, unknown>;
+}
+
+export interface MessagesPage {
+  messages: StoredMessage[];
+  next_after: number;
+}
+
+export interface ThreadMemory {
+  get: () => string | null;
+  set: (threadId: string) => void;
+}
+
+export interface TryApi {
+  run: (body: RunBody, signal: AbortSignal) => Promise<ReadableStream<Uint8Array>>;
+  cancel: (runId: string) => Promise<void>;
+  messages: (threadId: string, after: number) => Promise<MessagesPage>;
+  getRun: (runId: string) => Promise<RunPB | undefined>;
+}
+
+// envelopeError turns the data plane's JSON error into a ConnectError with the app error detail, so it shows like any RPC error.
+export async function envelopeError(res: Response): Promise<ConnectError> {
+  let body: { code?: string, message?: string, request_id?: string, meta?: Record<string, string> } = {};
+  try {
+    body = await res.json();
+  } catch {
+    body = {};
   }
-  return file.size > maxPhotoBytes ? 'try.photo_too_big' : '';
+  const details = body.code ? [{ desc: ErrorDetailSchema, value: { code: body.code, requestId: body.request_id ?? '', meta: body.meta ?? {} } }] : [];
+  return new ConnectError(body.message ?? res.statusText, Code.Unknown, undefined, details);
 }
 
-export interface TryTiming {
-  think: number;
-  tool: number;
-  tick: number;
-  chars: number;
+// tryApi calls the console Try it routes for one agent with the session cookie.
+export function tryApi(consoleBase: string, agentId: string, getRun: TryApi['getRun'], fetcher: typeof fetch = (...a) => fetch(...a)): TryApi {
+  const root = `${consoleBase.replace(/\/$/, '')}/agents/${encodeURIComponent(agentId)}/try`;
+  async function call(path: string, init: RequestInit = {}) {
+    const res = await fetcher(root + path, { credentials: 'same-origin', ...init });
+    if (!res.ok) {
+      throw await envelopeError(res);
+    }
+    return res;
+  }
+  return {
+    run: async (body, signal) => (await call('/runs', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' }, body: JSON.stringify(body), signal })).body!,
+    cancel: async (runId) => {
+      await call(`/runs/${encodeURIComponent(runId)}/cancel`, { method: 'POST' });
+    },
+    messages: async (threadId, after) => (await call(`/threads/${encodeURIComponent(threadId)}/messages?after=${after}&limit=200`)).json(),
+    getRun,
+  };
 }
 
-const defaultTiming: TryTiming = { think: 700, tool: 600, tick: 30, chars: 4 };
+const phaseOf: Partial<Record<RunStatus, Phase>> = { failed: 'failed', cancelled: 'cancelled', limit_reached: 'limit', interrupted: 'failed', expired: 'failed' };
 
-// useTryChat plays the sample agent replies a run would stream, with tools, approvals and the failure cases, until the runtime exists.
-export interface TryLimits {
-  maxSteps: () => number;
-  maxCostCents: () => number;
-  money: (cents: number) => string;
-  decider?: () => string;
+function textOf(content: unknown): string {
+  if (typeof content === 'string') {
+    return content;
+  }
+  return Array.isArray(content) ? content.map(p => (p?.type === 'text' ? String(p.text ?? '') : '')).join('') : '';
 }
 
-export function useTryChat(limits: TryLimits, timing: TryTiming = defaultTiming, scriptFor?: (prompt: string) => ChatScript) {
-  const scripted = scriptFor ?? useTryItStore().script;
+function jsonOf(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+}
+
+function argsOf(raw: string): Record<string, unknown> {
+  const v = jsonOf(raw);
+  return v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {};
+}
+
+// useTryChat runs a Try it conversation on the agent's draft: it streams each turn's AG-UI events into the transcript and reads the run's usage when it ends.
+export function useTryChat(api: TryApi, newId: () => string = () => crypto.randomUUID(), memory?: ThreadMemory) {
   const items = ref<ChatItem[]>([]);
   const phase = ref<Phase>('idle');
-  const scenario = ref<Scenario>('normal');
-  const steps = ref(0);
   const tokens = ref(0);
   const costCents = ref(0);
-  const photo = ref<Photo | null>(null);
-  const photoProblem = ref('');
+  const error = ref<unknown>(null);
+  const threadId = ref(memory?.get() || newId());
   let nextId = 1;
-  let run = 0;
-  const timers = new Map<ReturnType<typeof setTimeout>, () => void>();
-  const photoUrls = new Set<string>();
-  let script: ChatScript | null = null;
-  let pending: ChatStep[] = [];
-  let lastPrompt = '';
+  let turn = 0;
+  const runId = ref('');
+  let stopping = false;
+  let controller: AbortController | null = null;
+  let last: { id: string, text: string } | null = null;
+  const bubbles = new Map<string, AgentItem>();
+  const calls = new Map<string, { chip: ToolItem, raw: string }>();
 
-  const busy = computed(() => ['thinking', 'streaming', 'tool'].includes(phase.value));
-  const toolCalls = computed(() => items.value.filter((i): i is Extract<ChatItem, { kind: 'tool' }> => i.kind === 'tool'));
-  const awaiting = computed(() => items.value.find((i): i is Extract<ChatItem, { kind: 'approval' }> => i.kind === 'approval' && i.approval.status === 'pending'));
+  const busy = computed(() => ['thinking', 'streaming', 'tool', 'stopping'].includes(phase.value));
+  const canStop = computed(() => !!runId.value && ['thinking', 'streaming', 'tool'].includes(phase.value));
+
+  function setPhase(next: Phase) {
+    if (!stopping) {
+      phase.value = next;
+    }
+  }
+  const toolCalls = computed(() => items.value.filter((i): i is ToolItem => i.kind === 'tool'));
 
   function push<T extends ChatItem = ChatItem>(item: NewItem<T>): T {
-    const added = { ...item, id: nextId++ } as unknown as T;
-    items.value.push(added);
+    items.value.push({ ...item, id: nextId++ } as unknown as ChatItem);
     return items.value.at(-1) as T;
   }
 
-  async function wait(ms: number, mine: number) {
-    await new Promise<void>((resolve) => {
-      const id = setTimeout(() => {
-        timers.delete(id);
-        resolve();
-      }, ms);
-      timers.set(id, resolve);
-    });
-    return mine === run;
-  }
-
-  function cancelTimers() {
-    run++;
-    for (const [id, resolve] of timers) {
-      clearTimeout(id);
-      resolve();
+  function bubble(messageId: string) {
+    let b = bubbles.get(messageId);
+    if (!b) {
+      b = push<AgentItem>({ kind: 'agent', text: '', streaming: true, at: new Date() });
+      bubbles.set(messageId, b);
     }
-    timers.clear();
+    return b;
   }
 
-  function dropPending() {
-    if (photo.value) {
-      URL.revokeObjectURL(photo.value.url);
-      photoUrls.delete(photo.value.url);
-    }
-    photo.value = null;
-  }
-
-  function revokeAll() {
-    photoUrls.forEach(url => URL.revokeObjectURL(url));
-    photoUrls.clear();
-    photo.value = null;
-  }
-
-  function count() {
-    steps.value++;
-    tokens.value += script?.tokensPerStep ?? 0;
-    costCents.value = Math.round((costCents.value + (script?.centsPerStep ?? 0)) * 10) / 10;
-  }
-
-  function stopAtLimit(on: 'cost' | 'steps') {
-    const cap = limits.maxCostCents();
-    phase.value = 'limit';
-    if (on === 'cost' && cap > 0) {
-      costCents.value = Math.max(costCents.value, cap);
-      push({ kind: 'notice', key: 'try.limit_cost', params: { cap: limits.money(cap) } });
-    } else {
-      push({ kind: 'notice', key: 'try.limit_steps', params: { n: String(limits.maxSteps() || steps.value) } });
+  function apply(e: AgUiEvent) {
+    switch (e.type) {
+      case 'RUN_STARTED':
+        runId.value = String(e.runId ?? '');
+        break;
+      case 'TEXT_MESSAGE_START':
+      case 'TEXT_MESSAGE_CONTENT':
+        bubble(String(e.messageId)).text += String(e.delta ?? '');
+        setPhase('streaming');
+        break;
+      case 'TEXT_MESSAGE_END':
+        bubble(String(e.messageId)).streaming = false;
+        break;
+      case 'TOOL_CALL_START':
+        calls.set(String(e.toolCallId), { chip: push<ToolItem>({ kind: 'tool', name: String(e.toolCallName ?? ''), args: {}, state: 'running' }), raw: '' });
+        setPhase('tool');
+        break;
+      case 'TOOL_CALL_ARGS': {
+        const call = calls.get(String(e.toolCallId));
+        if (call) {
+          call.raw += String(e.delta ?? '');
+          call.chip.args = argsOf(call.raw);
+        }
+        break;
+      }
+      case 'TOOL_CALL_RESULT': {
+        const call = calls.get(String(e.toolCallId));
+        if (call) {
+          call.chip.result = jsonOf(String(e.content ?? ''));
+          call.chip.state = 'done';
+        }
+        break;
+      }
     }
   }
 
-  function overSteps() {
-    const max = limits.maxSteps();
-    return max > 0 && steps.value >= max;
-  }
-
-  async function streamText(text: string, mine: number, dropAt = -1) {
-    const bubble = push<Extract<ChatItem, { kind: 'agent' }>>({ kind: 'agent', text: '', streaming: true, at: new Date() });
-    phase.value = 'streaming';
-    while (bubble.text.length < text.length) {
-      if (!(await wait(timing.tick, mine))) {
-        bubble.streaming = false;
-        return false;
+  function settleStreaming(failed: boolean) {
+    for (const i of items.value) {
+      if (i.kind === 'agent' && i.streaming) {
+        i.streaming = false;
       }
-      bubble.text = text.slice(0, bubble.text.length + timing.chars);
-      if (dropAt >= 0 && bubble.text.length >= dropAt) {
-        bubble.streaming = false;
-        phase.value = 'dropped';
-        pending = [{ kind: 'text', text: text.slice(bubble.text.length) }];
-        push({ kind: 'notice', key: 'try.dropped' });
-        return false;
+      if (failed && i.kind === 'tool' && i.state === 'running') {
+        i.state = 'failed';
       }
     }
-    bubble.streaming = false;
-    return true;
   }
 
-  function gatedChip(name: string) {
-    return items.value.find((i): i is Extract<ChatItem, { kind: 'tool' }> => i.kind === 'tool' && i.state === 'awaiting' && i.name === name);
+  async function settle(fallback: Phase) {
+    let run: RunSummary | undefined;
+    try {
+      const got = runId.value ? await api.getRun(runId.value) : undefined;
+      run = got ? toRunSummary(got, '') : undefined;
+    } catch {
+      run = undefined;
+    }
+    if (run?.status === 'running') {
+      run = undefined;
+    }
+    const asked = stopping;
+    stopping = false;
+    phase.value = run ? (phaseOf[run.status] ?? 'completed') : fallback;
+    if (phase.value === 'cancelled' && asked) {
+      push({ kind: 'notice', key: 'try.stopped' });
+    }
+    if (phase.value === 'dropped') {
+      push({ kind: 'notice', key: 'try.dropped' });
+      return;
+    }
+    settleStreaming(phase.value !== 'completed');
+    if (phase.value === 'failed') {
+      push({ kind: 'agent', text: '', streaming: false, failed: true, at: new Date() });
+    }
+    if (run) {
+      tokens.value += run.tokens;
+      costCents.value = Math.round((costCents.value + run.costCents) * 10_000) / 10_000;
+      push({ kind: 'run', run });
+    }
   }
 
-  function moveLast<T extends ChatItem>(item: T): T {
-    items.value = [...items.value.filter(i => i.id !== item.id), item];
-    return items.value.at(-1) as T;
-  }
-
-  async function play(list: ChatStep[], mine: number) {
-    let failedTool = scenario.value === 'tool_fails';
-    for (let i = 0; i < list.length; i++) {
-      const step = list[i]!;
-      if (overSteps()) {
-        stopAtLimit('steps');
-        return;
-      }
-      phase.value = 'thinking';
-      if (!(await wait(timing.think, mine))) {
-        return;
-      }
-      if (scenario.value === 'model_fails') {
-        phase.value = 'failed';
-        push({ kind: 'agent', text: '', streaming: false, failed: true, at: new Date() });
-        return;
-      }
-      count();
-      if (step.kind === 'tool') {
-        phase.value = 'tool';
-        const gated = gatedChip(step.name);
-        const chip = gated ? moveLast(gated) : push<Extract<ChatItem, { kind: 'tool' }>>({ kind: 'tool', name: step.name, args: step.args, state: 'running' });
-        chip.state = 'running';
-        if (!(await wait(timing.tool, mine))) {
-          chip.state = 'failed';
+  async function stream(message: { id: string, text: string }) {
+    const mine = ++turn;
+    phase.value = 'thinking';
+    error.value = null;
+    runId.value = '';
+    stopping = false;
+    bubbles.clear();
+    calls.clear();
+    controller = new AbortController();
+    let end = '';
+    try {
+      const body = await api.run({ threadId: threadId.value, messages: [{ id: message.id, role: 'user', content: message.text }] }, controller.signal);
+      for await (const e of readEvents(body)) {
+        if (mine !== turn) {
           return;
         }
-        chip.state = failedTool ? 'failed' : step.preview ? 'preview' : 'done';
-        chip.result = failedTool ? undefined : step.result;
-        failedTool = false;
-      } else if (step.kind === 'approval') {
-        push({ kind: 'tool', name: step.approval.tool, args: step.approval.raw, state: 'awaiting' });
-        push({ kind: 'approval', approval: { ...step.approval } });
-        phase.value = 'awaiting';
-        return;
-      } else if (!(await streamText(step.text, mine, scenario.value === 'dropped' ? Math.floor(step.text.length / 2) : -1))) {
+        apply(e);
+        if (e.type === 'RUN_FINISHED') {
+          end = 'finished';
+        } else if (e.type === 'RUN_ERROR') {
+          end = String(e.code ?? 'error');
+        }
+      }
+    } catch (e) {
+      if (mine !== turn) {
         return;
       }
-      if (scenario.value === 'cost_limit') {
-        stopAtLimit('cost');
+      if (!runId.value) {
+        phase.value = 'failed';
+        error.value = e;
         return;
       }
     }
-    phase.value = 'completed';
+    if (mine !== turn) {
+      return;
+    }
+    if (!end || end === 'detached') {
+      stopping = false;
+      settleStreaming(false);
+      phase.value = 'dropped';
+      push({ kind: 'notice', key: 'try.dropped' });
+      return;
+    }
+    await settle(end === 'finished' ? 'completed' : end === 'cancelled' ? 'cancelled' : 'failed');
   }
 
   function send(text: string) {
     const prompt = text.trim();
-    if (!prompt || busy.value || phase.value === 'awaiting') {
+    if (!prompt || busy.value) {
       return Promise.resolve();
     }
-    lastPrompt = prompt;
-    push({ kind: 'user', text: prompt, photo: photo.value ?? undefined, at: new Date() });
-    photo.value = null;
-    script = scripted(prompt);
-    return play(script.steps, ++run);
-  }
-
-  function decide(approve: boolean, reason = '') {
-    const item = awaiting.value;
-    const decided = item && decideApproval(item.approval, approve, limits.decider?.() ?? '', { channel: 'try' }, reason);
-    if (!item || !decided || !script) {
-      return Promise.resolve();
-    }
-    item.approval = decided;
-    const chip = gatedChip(item.approval.tool);
-    if (chip && !approve) {
-      chip.state = 'rejected';
-    }
-    return play(approve ? script.afterApprove : script.afterReject, ++run);
-  }
-
-  function stop() {
-    if (!busy.value) {
-      return;
-    }
-    cancelTimers();
-    items.value.filter(i => i.kind === 'agent' && i.streaming).forEach((i) => {
-      (i as Extract<ChatItem, { kind: 'agent' }>).streaming = false;
-    });
-    items.value.filter(i => i.kind === 'tool' && i.state === 'running').forEach((i) => {
-      (i as Extract<ChatItem, { kind: 'tool' }>).state = 'failed';
-    });
-    phase.value = 'cancelled';
-    push({ kind: 'notice', key: 'try.stopped' });
-  }
-
-  function reload() {
-    const rest = pending;
-    pending = [];
-    for (const step of rest) {
-      if (step.kind === 'text') {
-        const last = [...items.value].reverse().find((i): i is Extract<ChatItem, { kind: 'agent' }> => i.kind === 'agent');
-        if (last) {
-          last.text += step.text;
-        }
-      }
-    }
-    items.value = items.value.filter(i => !(i.kind === 'notice' && i.key === 'try.dropped'));
-    phase.value = 'completed';
+    last = { id: newId(), text: prompt };
+    memory?.set(threadId.value);
+    push({ kind: 'user', text: prompt, at: new Date() });
+    return stream(last);
   }
 
   function retry() {
-    if (phase.value !== 'failed' || !lastPrompt) {
+    if (phase.value !== 'failed' || !last) {
       return Promise.resolve();
     }
     items.value = items.value.filter(i => !(i.kind === 'agent' && i.failed));
-    scenario.value = 'normal';
-    script = scripted(lastPrompt);
-    return play(script.steps, ++run);
+    last = { id: newId(), text: last.text };
+    return stream(last);
   }
 
-  function newChat() {
-    cancelTimers();
-    revokeAll();
-    items.value = [];
-    phase.value = 'idle';
-    steps.value = 0;
-    tokens.value = 0;
-    costCents.value = 0;
-    photo.value = null;
-    photoProblem.value = '';
-    pending = [];
-  }
-
-  function attach(file: File) {
-    const problem = photoError(file);
-    photoProblem.value = problem;
-    if (!problem) {
-      dropPending();
-      const url = URL.createObjectURL(file);
-      photoUrls.add(url);
-      photo.value = { name: file.name, url };
+  // stop asks the server to cancel and shows "stopping"; the run's own final status decides what the chat says.
+  async function stop() {
+    if (!canStop.value) {
+      return;
+    }
+    const before = phase.value;
+    stopping = true;
+    phase.value = 'stopping';
+    try {
+      await api.cancel(runId.value);
+    } catch (e) {
+      stopping = false;
+      phase.value = before;
+      error.value = e;
     }
   }
 
-  function detach() {
-    dropPending();
-    photoProblem.value = '';
+  async function stored(): Promise<Record<string, unknown>[]> {
+    const all: StoredMessage[] = [];
+    for (let after = 0; ;) {
+      const page = await api.messages(threadId.value, after);
+      all.push(...page.messages);
+      if (!page.messages.length || page.next_after <= after) {
+        break;
+      }
+      after = page.next_after;
+    }
+    return all.sort((a, b) => a.seq - b.seq).map(m => m.message);
+  }
+
+  function appendStored(messages: Record<string, unknown>[], at?: Date) {
+    bubbles.clear();
+    calls.clear();
+    for (const m of messages) {
+      if (m.role === 'user') {
+        push({ kind: 'user', text: textOf(m.content), at });
+      } else if (m.role === 'assistant') {
+        const text = textOf(m.content);
+        if (text) {
+          push({ kind: 'agent', text, streaming: false, at });
+        }
+        for (const c of Array.isArray(m.toolCalls) ? m.toolCalls as { id?: unknown, function?: { name?: unknown, arguments?: unknown } }[] : []) {
+          calls.set(String(c.id), { chip: push<ToolItem>({ kind: 'tool', name: String(c.function?.name ?? ''), args: argsOf(String(c.function?.arguments ?? '')), state: 'running' }), raw: '' });
+        }
+      } else if (m.role === 'tool') {
+        const call = calls.get(String(m.toolCallId));
+        if (call) {
+          call.chip.result = jsonOf(textOf(m.content));
+          call.chip.state = 'done';
+        }
+      }
+    }
+  }
+
+  async function reload() {
+    let messages: Record<string, unknown>[];
+    try {
+      messages = await stored();
+    } catch (e) {
+      error.value = e;
+      return;
+    }
+    const kept = items.value.filter(i => !(i.kind === 'notice' && i.key === 'try.dropped'));
+    items.value = kept.slice(0, kept.findLastIndex(i => i.kind === 'user') + 1);
+    appendStored(messages.slice(messages.findLastIndex(m => m.role === 'user') + 1), new Date());
+    // shortcut: a run still going after the reload stays "dropped" with Reload; poll GetRun if that proves common.
+    await settle('dropped');
+  }
+
+  // restore shows the remembered Try it conversation again, without times since stored messages carry none; a missing one starts fresh.
+  async function restore() {
+    if (!memory?.get() || items.value.length) {
+      return;
+    }
+    try {
+      appendStored(await stored());
+    } catch {
+      items.value = [];
+    }
+  }
+
+  function newChat() {
+    turn++;
+    controller?.abort();
+    items.value = [];
+    phase.value = 'idle';
+    tokens.value = 0;
+    costCents.value = 0;
+    error.value = null;
+    threadId.value = newId();
+    memory?.set('');
+    runId.value = '';
+    stopping = false;
+    last = null;
+    bubbles.clear();
+    calls.clear();
   }
 
   if (getCurrentScope()) {
     onScopeDispose(() => {
-      cancelTimers();
-      revokeAll();
+      turn++;
+      controller?.abort();
     });
   }
 
-  return { items, phase, scenario, steps, tokens, costCents, photo, photoProblem, busy, toolCalls, awaiting, send, decide, stop, reload, retry, newChat, attach, detach };
+  return { items, phase, tokens, costCents, error, threadId, busy, canStop, toolCalls, send, retry, stop, reload, restore, newChat };
 }

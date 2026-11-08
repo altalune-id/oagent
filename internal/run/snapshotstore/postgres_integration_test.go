@@ -32,7 +32,7 @@ func TestPostgres_Contract(t *testing.T) {
 					{`INSERT INTO ` + p + `orgs (id, public_id, slug, name, created_at, updated_at) VALUES ($1, $2, $2, 'O', now(), now())`, []any{org, "o" + org.String()[:12]}},
 					{`INSERT INTO ` + p + `projects (id, public_id, org_id, slug, name, created_at, updated_at) VALUES ($1, $2, $3, 'p', 'P', now(), now())`, []any{project, "p" + project.String()[:12], org}},
 					{`INSERT INTO ` + p + `agents (id, public_id, org_id, project_id, slug, name, created_at, updated_at) VALUES ($1, $2, $3, $4, 'a', 'A', now(), now())`, []any{agent, "a" + agent.String()[:12], org, project}},
-					{`INSERT INTO ` + p + `agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at) VALUES ($1, $2, $3, $4, $5, 1, '{}', now())`, []any{version, "v" + version.String()[:12], org, project, agent}},
+					{`INSERT INTO ` + p + `agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at, kind) VALUES ($1, $2, $3, $4, $5, 1, '{}', now(), 'published')`, []any{version, "v" + version.String()[:12], org, project, agent}},
 					{`INSERT INTO ` + p + `threads (id, public_id, org_id, project_id, agent_id, kind, external_key, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, 'api', 'k', now(), now())`, []any{thread, "t" + thread.String()[:12], org, project, agent}},
 				} {
 					_, err := admin.ExecContext(t.Context(), q.sql, q.args...)

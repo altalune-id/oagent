@@ -134,6 +134,7 @@ type Thread struct {
 const (
 	threadKindAPI   = "api"
 	threadKindGroup = "group"
+	threadKindTry   = "try"
 )
 
 // ClaimResult says whether a claim won the lease, and why not.
@@ -164,6 +165,12 @@ func IdempotencyKeyOf(msgs []Message) string {
 
 // Ref is what a thread or run public id resolves to, read before any tenant-scoped read for the reach check; AgentID is the thread's.
 type Ref struct{ ID, OrgID, ProjectID, AgentID uuid.UUID }
+
+// ThreadFilter narrows ListThreads; a zero field keeps every agent or kind.
+type ThreadFilter struct {
+	AgentID uuid.UUID
+	Kind    string
+}
 
 // Cursor marks where a newest-first page ended; the zero value starts at the newest.
 type Cursor struct {

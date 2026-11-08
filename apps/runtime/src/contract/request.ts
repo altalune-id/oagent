@@ -53,7 +53,7 @@ const TurnRequestShape = z.strictObject({
     run: z.string().min(1),
     thread: z.string().min(1),
     agent: z.string().min(1),
-    agentVersion: z.number().int().positive(),
+    agentVersion: z.number().int().nonnegative(),
     attempt: z.number().int().positive(),
     project: z.string().min(1),
   }),

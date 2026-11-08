@@ -225,3 +225,49 @@ func TestService_PublishWithoutALockerFailsClosed(t *testing.T) {
 	assert.Equal(t, apperror.CodeUnexpected, ae.Code(), "an unlocked publish never happens")
 	assert.Empty(t, f.store.Published)
 }
+
+func TestService_DraftVersionHasPublishBlockers(t *testing.T) {
+	for name, edit := range map[string]func(*grantsFixture, *agent.Config){
+		"legacy":           func(_ *grantsFixture, c *agent.Config) { c.ProviderID = uuid.Nil },
+		"no model":         func(_ *grantsFixture, c *agent.Config) { c.Model = "" },
+		"capped unpriced":  func(_ *grantsFixture, c *agent.Config) { c.Model = "free" },
+		"server gone":      func(f *grantsFixture, _ *agent.Config) { delete(f.grants.Servers, f.server) },
+		"provider unknown": func(f *grantsFixture, _ *agent.Config) { delete(f.grants.Providers, f.provider) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newGrantsFixture(t)
+			c := f.config()
+			f.agent.Draft = c
+			edit(f, &f.agent.Draft)
+			_, _, _, publishErr := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+			require.Error(t, publishErr)
+			_, err := f.svc.DraftVersion(context.Background(), f.agent.ID, uuid.Nil)
+			require.Error(t, err)
+			want, _ := apperror.AsAppError(publishErr)
+			got, ok := apperror.AsAppError(err)
+			require.True(t, ok, "got %v", err)
+			assert.Equal(t, want.Code(), got.Code(), "the same AGT code as publish")
+			assert.Equal(t, want.Meta(), got.Meta(), "and the same field")
+			assert.Empty(t, f.store.Drafts, "a refused try run pins nothing")
+		})
+	}
+}
+
+func TestService_DraftVersionPinsAndReusesTheDraft(t *testing.T) {
+	f := newGrantsFixture(t)
+	_, err := f.svc.UpdateDraft(context.Background(), f.agent.ID, f.config())
+	require.NoError(t, err)
+	by := uuid.New()
+	calls := f.tx.Calls
+	v, err := f.svc.DraftVersion(context.Background(), f.agent.ID, by)
+	require.NoError(t, err)
+	assert.Equal(t, calls+1, f.tx.Calls, "one unit of work")
+	assert.Len(t, f.grants.Locked, 1, "the references stay locked while the draft is pinned")
+	assert.Equal(t, agent.VersionDraft, v.Kind)
+	assert.Equal(t, f.config(), v.Config)
+	assert.Equal(t, by, v.CreatedBy.UUID)
+	assert.Empty(t, f.store.Published, "a draft pin is never a published version")
+	again, err := f.svc.DraftVersion(context.Background(), f.agent.ID, by)
+	require.NoError(t, err)
+	assert.Equal(t, v.ID, again.ID, "an unchanged draft reuses its row")
+}

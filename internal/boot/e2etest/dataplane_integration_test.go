@@ -39,6 +39,15 @@ type dpStack struct {
 	url, key, agentPub string
 	// second is another instance over the same database, with its own runner.
 	second string
+
+	cfg      config.Config
+	k        kernel.Kernel
+	svcs     *boot.Services
+	lims     boot.Limiters
+	in       context.Context
+	org      uuid.UUID
+	agentID  uuid.UUID
+	provider uuid.UUID
 }
 
 func newDPStack(t *testing.T, rt *runtimetest.Runtime) *dpStack {
@@ -111,7 +120,10 @@ func newDPStack(t *testing.T, rt *runtimetest.Runtime) *dpStack {
 		<-done
 		<-otherDone
 	})
-	return &dpStack{url: srv.URL, key: key, agentPub: a.PublicID, second: srv2.URL}
+	return &dpStack{
+		url: srv.URL, key: key, agentPub: a.PublicID, second: srv2.URL,
+		cfg: cfg, k: k, svcs: svcs, lims: lims, in: in, org: o.ID, agentID: a.ID, provider: provider.ID,
+	}
 }
 
 func (s *dpStack) do(ctx context.Context, t *testing.T, method, path, body string) *http.Response {

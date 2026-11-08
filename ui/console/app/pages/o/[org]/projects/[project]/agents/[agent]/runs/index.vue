@@ -17,7 +17,7 @@ import { useThreadsStore } from '~/stores/threads';
 const { t, te } = useI18n();
 const runDetail = (r: RunSummary) => runDetailText(r.personDeleted ? { ...r.detail!, params: { ...r.detail!.params, name: shownName('', true, t) } } : r.detail, t, te);
 const { when } = useDates();
-const { money, seconds, count } = useUnits();
+const { cost, costTitle, seconds, count } = useUnits();
 const { agent, base, usesSample } = await useAgentPage();
 const store = useThreadsStore();
 void store.loadAgentRuns(agent.value.id, usesSample.value);
@@ -73,6 +73,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.runs')} · OAge
           <NuxtLink :to="`${base}/runs/${row.id}`" class="link link-hover">
             {{ row.id }}
           </NuxtLink>
+          <span v-if="row.draft" class="badge badge-sm badge-ghost ms-2 font-sans text-base-content">{{ t('run.draft') }}</span>
         </template>
         <template #cell-threadTitle="{ row }">
           <NuxtLink :to="`${base}/threads/${row.threadId}`" class="link link-hover">
@@ -92,7 +93,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.runs')} · OAge
           {{ count(row.tokens) }}
         </template>
         <template #cell-costCents="{ row }">
-          {{ row.unpriced ? t('thread.unpriced') : money(row.costCents) }}
+          <span v-if="row.unpriced">{{ t('thread.unpriced') }}</span><span v-else :title="costTitle(row.costCents)">{{ cost(row.costCents) }}</span>
         </template>
       </DataTable>
     </template>
