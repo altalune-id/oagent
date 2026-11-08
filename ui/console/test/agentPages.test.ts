@@ -341,7 +341,7 @@ describe('configure page', () => {
     const w = await mountPage(ConfigurePage, { attachTo: document.body });
     const tools = w.get('#configure-tools');
     expect(tools.get('summary .sr-only').text()).toBe('grants.collapse_label|{"server":"yasaku","on":7,"total":13}');
-    expect(tools.findAll('details').map(d => (d.element as HTMLDetailsElement).open)).toEqual([true, false]);
+    expect(tools.findAll('details').map(d => (d.element as HTMLDetailsElement).open)).toEqual([false, false]);
     expect(tools.text()).toContain('mcptools.not_grantable');
     expect(runtimeClients.server.listMcpServerTools.mock.calls.map(c => c[0].id)).toEqual([yasakuServer]);
     const untrusted = tools.findAll('.collapse')[1]!;

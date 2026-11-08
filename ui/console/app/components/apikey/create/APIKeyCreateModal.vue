@@ -5,6 +5,8 @@ import AppModal from '#base/components/ui/AppModal.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
 import FieldError from '#base/components/ui/FieldError.vue';
 import SecretField from '#base/components/ui/SecretField.vue';
+import { selectAllState, withAll } from '#base/components/ui/selectAll';
+import SelectAllCheckbox from '#base/components/ui/SelectAllCheckbox.vue';
 import { useScopeLabel } from '#base/composables/useScopeLabel';
 import { useProjectsStore } from '~/stores/projects';
 import { useAPIKeyCreate } from './useAPIKeyCreate';
@@ -19,7 +21,17 @@ const create = useAPIKeyCreate(orgId);
 const { open, kind, name, scopes: selectedScopes, allProjects, projectId, projectIds, expiresInHours, busy, error, fieldErrors, plaintext } = create;
 
 const availableScopes = computed(() => scopes.filter(s => !s.holder && (kind.value === 'org' || s.level === 'project')));
+const scopeNames = computed(() => availableScopes.value.map(s => s.name));
+const scopeState = computed(() => selectAllState(scopeNames.value.filter(n => selectedScopes.value.includes(n)).length, scopeNames.value.length));
 const orgProjects = computed(() => projects.forOrg(orgId));
+
+watch(scopeNames, (names) => {
+  selectedScopes.value = selectedScopes.value.filter(s => names.includes(s));
+});
+
+function setAllScopes(on: boolean) {
+  selectedScopes.value = withAll(selectedScopes.value, scopeNames.value, on);
+}
 
 const expiryOptions = computed(() => [
   { value: 168, label: t('apikeys.days_7') },
@@ -96,6 +108,7 @@ const expiryOptions = computed(() => [
         <legend class="fieldset-legend text-ui">
           {{ t('apikeys.scopes') }}
         </legend>
+        <SelectAllCheckbox size="xs" :state="scopeState" :label="t('apikeys.select_all_scopes')" :disabled="busy" @change="setAllScopes" />
         <div class="grid grid-cols-2 gap-1">
           <label v-for="s in availableScopes" :key="s.name" class="flex items-center gap-2 text-ui">
             <input v-model="selectedScopes" type="checkbox" :value="s.name" class="checkbox checkbox-xs rounded-sm" :disabled="busy">{{ scopeLabel(s.name) }}
