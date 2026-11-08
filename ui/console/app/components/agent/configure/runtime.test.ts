@@ -9,6 +9,7 @@ import {
   chosenModel,
   costCapError,
   grantFor,
+  grantState,
   helperCapError,
   missingServers,
   parseDollars,
@@ -16,6 +17,7 @@ import {
   publishBlockers,
   readsPrivateData,
   readySources,
+  withAllGrants,
   withApproval,
   withGrant,
   withoutGrant,
@@ -26,6 +28,47 @@ const [yasaku, tagihan] = fixtureServers() as [McpServer, McpServer];
 const tool = (name: string) => yasaku.tools.find(t => t.name === name)!;
 const ctx = { providers, servers: [yasaku, tagihan] };
 const ready = (over: Partial<AgentConfig> = {}): AgentConfig => ({ ...emptyConfig(), providerId: 'Pv6tQm2ZxR8wKp3VbNc4K', model: 'openai/gpt-4.1-mini', ...over });
+
+describe('select all tools of a server', () => {
+  const odd = { ...yasaku.tools[0]!, name: 'odd.name', grantable: false };
+  const server = { ...yasaku, tools: [...yasaku.tools, odd] };
+  const grantable = server.tools.filter(t => t.grantable).map(t => t.name).sort();
+
+  it('starts with none on', () => {
+    expect(grantState(emptyConfig(), server)).toBe('none');
+  });
+
+  it('turns every grantable tool on, never one that cannot be granted', () => {
+    const all = withAllGrants(emptyConfig(), server, server.tools, true);
+    expect(all.grants.find(g => g.serverId === server.id)!.tools.map(t => t.name).sort()).toEqual(grantable);
+    expect(grantFor(all, server.id, 'odd.name')).toBeUndefined();
+    expect(grantState(all, server)).toBe('all');
+  });
+
+  it('is partial with some on, and select all keeps the approval already set on those', () => {
+    const first = server.tools.find(t => t.grantable)!;
+    const some = withApproval(withGrant(emptyConfig(), server, first, true), server.id, first.name, !first.requireApproval);
+    expect(grantState(some, server)).toBe('some');
+    const all = withAllGrants(some, server, server.tools, true);
+    expect(grantState(all, server)).toBe('all');
+    expect(grantFor(all, server.id, first.name)!.requireApproval).toBe(!first.requireApproval);
+  });
+
+  it('turns them all off without touching another server', () => {
+    const both = withGrant(withAllGrants(emptyConfig(), server, server.tools, true), tagihan, tagihan.tools[0]!, true);
+    const off = withAllGrants(both, server, server.tools, false);
+    expect(grantState(off, server)).toBe('none');
+    expect(grantFor(off, tagihan.id, tagihan.tools[0]!.name)).toBeDefined();
+  });
+
+  it('acts only on the shown tools, leaving the hidden ones as they were', () => {
+    const [a, b] = server.tools.filter(t => t.grantable);
+    const on = withAllGrants(withGrant(emptyConfig(), server, b!, true), server, [a!], true);
+    expect(grantState(on, server, [a!])).toBe('all');
+    const off = withAllGrants(on, server, [a!], false);
+    expect([!!grantFor(off, server.id, a!.name), !!grantFor(off, server.id, b!.name)]).toEqual([false, true]);
+  });
+});
 
 describe('grants', () => {
   it('turns a tool on with the server\'s suggested approval, then off, dropping an empty server', () => {

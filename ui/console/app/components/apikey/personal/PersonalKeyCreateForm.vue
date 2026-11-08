@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { ShownError } from '#base/lib/apperror/message';
-import { useId } from 'vue';
+import { computed, useId } from 'vue';
 import AppButton from '#base/components/ui/AppButton.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
+import { selectAllState, withAll } from '#base/components/ui/selectAll';
+import SelectAllCheckbox from '#base/components/ui/SelectAllCheckbox.vue';
 
 export interface PersonalKeyCreateLabels {
   name: string;
@@ -12,12 +14,13 @@ export interface PersonalKeyCreateLabels {
   allProjects: string;
   selectProjects: string;
   scopes: string;
+  selectAllScopes: string;
   scopesHelp: string;
   create: string;
   creating: string;
 }
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   expiryOptions: { days: number, label: string }[],
   projects: { id: string, name: string }[],
   scopeOptions: { name: string, label: string }[],
@@ -37,6 +40,7 @@ withDefaults(defineProps<{
     allProjects: 'All projects',
     selectProjects: 'Only select projects',
     scopes: 'Scopes',
+    selectAllScopes: 'Select all scopes',
     scopesHelp: 'Pick only what the script or client needs. You can grant only what your role allows.',
     create: 'Create',
     creating: 'Creating…',
@@ -50,6 +54,13 @@ const expiresInDays = defineModel<number>('expiresInDays', { default: 30 });
 const allProjects = defineModel<boolean>('allProjects', { default: true });
 const projectIds = defineModel<string[]>('projectIds', { default: () => [] });
 const scopes = defineModel<string[]>('scopes', { default: () => [] });
+
+const scopeNames = computed(() => props.scopeOptions.map(s => s.name));
+const scopeState = computed(() => selectAllState(scopeNames.value.filter(n => scopes.value.includes(n)).length, scopeNames.value.length));
+
+function setAllScopes(on: boolean) {
+  scopes.value = withAll(scopes.value, scopeNames.value, on);
+}
 
 const id = useId();
 const ids = {
@@ -103,6 +114,7 @@ const ids = {
       <legend class="fieldset-legend text-ui">
         {{ labels.scopes }}
       </legend>
+      <SelectAllCheckbox size="xs" :state="scopeState" :label="labels.selectAllScopes" :disabled="busy" @change="setAllScopes" />
       <div class="grid gap-1 sm:grid-cols-2">
         <label v-for="s in scopeOptions" :key="s.name" class="flex items-center gap-2 text-ui">
           <input v-model="scopes" type="checkbox" :value="s.name" class="checkbox checkbox-xs rounded-sm" :disabled="busy">

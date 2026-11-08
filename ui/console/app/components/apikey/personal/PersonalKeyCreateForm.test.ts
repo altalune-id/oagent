@@ -23,7 +23,7 @@ describe('the personal key create form', () => {
   it('labels each checkbox and radio by wrapping it in its label', () => {
     const w = mount(PersonalKeyCreateForm, { props });
     const choices = w.findAll('input[type="checkbox"], input[type="radio"]');
-    expect(choices.length).toBe(4);
+    expect(choices.length).toBe(5);
     expect(choices.every(c => c.element.closest('label') !== null)).toBe(true);
   });
 

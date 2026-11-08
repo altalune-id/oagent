@@ -1,8 +1,10 @@
+import type { SelectAllState } from '#base/components/ui/selectAll';
 import type { AgentConfig, AgentToolConfig } from './agentConfig';
 import type { AgentRuntimeConfig } from '~/stores/agentRuntime';
 import type { KnowledgeSource } from '~/stores/knowledge';
 import type { McpServer, McpTool } from '~/stores/mcpServers';
 import type { ModelProvider, ProviderModel } from '~/stores/modelProviders';
+import { selectAllState } from '#base/components/ui/selectAll';
 import { hasPrice } from '~/components/provider/useProviderForm';
 
 export type BlockerTarget = 'model' | 'tools' | 'limits';
@@ -43,6 +45,17 @@ export function withGrant(config: AgentConfig, server: McpServer, tool: McpTool,
   const tools = on ? [...rest, { name: tool.name, requireApproval: tool.requireApproval }] : rest;
   const others = config.grants.filter(g => g.serverId !== server.id);
   return { ...config, grants: tools.length ? [...others, { ...grant, tools }] : others };
+}
+
+// grantState says whether all, some or none of the given grantable tools of a server are on.
+export function grantState(config: AgentConfig, server: McpServer, tools: McpTool[] = server.tools): SelectAllState {
+  const grantable = tools.filter(t => t.grantable);
+  return selectAllState(grantable.filter(t => grantFor(config, server.id, t.name)).length, grantable.length);
+}
+
+// withAllGrants turns the given grantable tools of a server on, keeping the approval of tools already on, or turns them off.
+export function withAllGrants(config: AgentConfig, server: McpServer, tools: McpTool[], on: boolean): AgentConfig {
+  return tools.filter(t => t.grantable && !grantFor(config, server.id, t.name) === on).reduce((c, t) => withGrant(c, server, t, on), config);
 }
 
 // withApproval sets whether one granted tool needs a person's approval.

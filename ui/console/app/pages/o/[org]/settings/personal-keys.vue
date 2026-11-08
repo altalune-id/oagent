@@ -29,6 +29,7 @@ const formLabels = computed(() => ({
   allProjects: t('apikeys.all_projects'),
   selectProjects: t('apikeys.select_projects'),
   scopes: t('apikeys.scopes'),
+  selectAllScopes: t('apikeys.select_all_scopes'),
   scopesHelp: t('apikeys.scopes_help'),
   create: t('common.create'),
   creating: t('common.creating'),
