@@ -10,7 +10,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/a-h/templ v0.3.1070
 	github.com/altalune-id/oauthrs v0.0.0-20261030070826-6e5063f3b6ca
-	github.com/altalune-id/oidcrp v0.0.0-20261030070618-63bfc891ff35
+	github.com/altalune-id/oidcrp v0.0.0-20261108123405-e90a01e13de7
 	github.com/exaring/otelpgx v0.13.0
 	github.com/go-jet/jet/v2 v2.16.1
 	github.com/go-jose/go-jose/v4 v4.1.6
