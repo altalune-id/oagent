@@ -69,6 +69,14 @@ describe('validateRequest', () => {
     expect(validateRequest(req).ok).toBe(true);
   });
 
+  it('accepts agentVersion 0 for a draft pin and refuses a negative one', () => {
+    const req = golden('plain_reply.request.json');
+    (req.ids as { agentVersion: number }).agentVersion = 0;
+    expect(validateRequest(req).ok).toBe(true);
+    (req.ids as { agentVersion: number }).agentVersion = -1;
+    expect(validateRequest(req)).toEqual({ ok: false, fields: ['ids.agentVersion'] });
+  });
+
   it('accepts maxSteps 0 as the runtime default and refuses a negative one', () => {
     const req = golden('plain_reply.request.json');
     (req.agent as { maxSteps: number }).maxSteps = 0;

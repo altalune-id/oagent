@@ -65,7 +65,7 @@ describe('project overview', () => {
     const w = await mountPage(Overview);
     const steps = w.findAll('[data-testid="setup-checklist"] li');
     expect(steps.map(s => s.text().includes('setup.done'))).toEqual([true, true, true, true, true, true]);
-    expect(listThreads).toHaveBeenCalledWith({ projectId, agentId: 'A1', pageSize: 1 });
+    expect(listThreads).toHaveBeenCalledWith({ projectId, agentId: 'A1', kind: 'try', pageSize: 1 });
     expect(w.find('[data-testid="setup-checklist"] .badge').exists()).toBe(false);
   });
 

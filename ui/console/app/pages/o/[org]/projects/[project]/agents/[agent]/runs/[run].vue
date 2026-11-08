@@ -15,7 +15,7 @@ definePageMeta({ bleed: true });
 const { t, te } = useI18n();
 const route = useRoute();
 const { moment } = useDates();
-const { money, seconds, count } = useUnits();
+const { cost, costTitle, seconds, count } = useUnits();
 const { agent, base } = await useAgentPage();
 const store = useThreadsStore();
 const runId = computed(() => route.params.run as string);
@@ -51,7 +51,7 @@ useHead({ title: () => `${t('run.title', { id: runId.value })} · OAgent` });
           {{ t('run.heading') }} <span class="font-mono text-base font-medium break-all">{{ run.id }}</span>
         </h1>
         <p class="text-ui text-base-content/70">
-          {{ t('run.started_live', { version: view.agentVersion, at: moment(run.startedAt) }) }}<template v-if="view.attempt > 1">
+          {{ run.draft ? t('run.started_draft', { at: moment(run.startedAt) }) : t('run.started_live', { version: view.agentVersion, at: moment(run.startedAt) }) }}<template v-if="view.attempt > 1">
             · {{ t('run.attempt', { n: view.attempt }) }}
           </template>
           ·
@@ -90,7 +90,7 @@ useHead({ title: () => `${t('run.title', { id: runId.value })} · OAgent` });
             {{ t('run.cost') }}
           </dt>
           <dd class="font-medium tabular-nums">
-            {{ run.unpriced ? t('thread.unpriced') : money(run.costCents) }}
+            <span v-if="run.unpriced">{{ t('thread.unpriced') }}</span><span v-else :title="costTitle(run.costCents)">{{ cost(run.costCents) }}</span>
           </dd>
         </div>
       </dl>

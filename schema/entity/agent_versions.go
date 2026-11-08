@@ -16,6 +16,9 @@ type AgentVersions struct {
 	Config    postgres.ColumnString
 	CreatedBy postgres.ColumnString
 	CreatedAt postgres.ColumnTimestampz
+	// Kind is published or draft; a draft has no Version and has a ConfigHash.
+	Kind       postgres.ColumnString
+	ConfigHash postgres.ColumnBytea
 
 	AllColumns postgres.ColumnList
 }
@@ -26,16 +29,18 @@ func NewAgentVersions(schema, tablePrefix string) *AgentVersions {
 		schema = "public"
 	}
 	var (
-		id        = postgres.StringColumn("id")
-		publicID  = postgres.StringColumn("public_id")
-		orgID     = postgres.StringColumn("org_id")
-		projectID = postgres.StringColumn("project_id")
-		agentID   = postgres.StringColumn("agent_id")
-		version   = postgres.IntegerColumn("version")
-		config    = postgres.StringColumn("config")
-		createdBy = postgres.StringColumn("created_by")
-		createdAt = postgres.TimestampzColumn("created_at")
-		all       = postgres.ColumnList{id, publicID, orgID, projectID, agentID, version, config, createdBy, createdAt}
+		id         = postgres.StringColumn("id")
+		publicID   = postgres.StringColumn("public_id")
+		orgID      = postgres.StringColumn("org_id")
+		projectID  = postgres.StringColumn("project_id")
+		agentID    = postgres.StringColumn("agent_id")
+		version    = postgres.IntegerColumn("version")
+		config     = postgres.StringColumn("config")
+		createdBy  = postgres.StringColumn("created_by")
+		createdAt  = postgres.TimestampzColumn("created_at")
+		kind       = postgres.StringColumn("kind")
+		configHash = postgres.ByteaColumn("config_hash")
+		all        = postgres.ColumnList{id, publicID, orgID, projectID, agentID, version, config, createdBy, createdAt, kind, configHash}
 	)
 	return &AgentVersions{
 		Table:      postgres.NewTable(schema, tablePrefix+"agent_versions", "agent_versions", all...),
@@ -48,6 +53,8 @@ func NewAgentVersions(schema, tablePrefix string) *AgentVersions {
 		Config:     config,
 		CreatedBy:  createdBy,
 		CreatedAt:  createdAt,
+		Kind:       kind,
+		ConfigHash: configHash,
 		AllColumns: all,
 	}
 }

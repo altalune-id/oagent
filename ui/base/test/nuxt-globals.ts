@@ -23,7 +23,7 @@ export const setLocale = vi.fn(async (code: string) => {
   locale.value = code;
 });
 
-export const runtimeConfig: { public: Record<string, string> } = { public: { apiUrl: '', appVersion: '' } };
+export const runtimeConfig: { public: Record<string, string>, app: { baseURL: string } } = { public: { apiUrl: '', appVersion: '' }, app: { baseURL: '/console/' } };
 
 export const route = reactive({ path: '/', fullPath: '/', params: {} as Record<string, string>, query: {} as Record<string, string>, meta: {} as Record<string, unknown>, hash: '' });
 
@@ -142,6 +142,7 @@ beforeEach(() => {
   known = new Set();
   states = new Map();
   runtimeConfig.public = { apiUrl: '', appVersion: '' };
+  runtimeConfig.app = { baseURL: '/console/' };
   setRoute({});
   useHead.mockClear();
   locale.value = 'en-US';

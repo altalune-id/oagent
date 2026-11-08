@@ -39,3 +39,36 @@ func TestCrossOriginProtection_APIAndPagesNotMCP(t *testing.T) {
 type loginRoute struct{ h http.Handler }
 
 func (l loginRoute) Register(mux *http.ServeMux) { mux.Handle("POST /login", l.h) }
+
+func TestConsoleRoutes_BehindCrossOriginAndSessionNotTheSPA(t *testing.T) {
+	route := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Session", r.Header.Get("X-Session-Seen"))
+		w.WriteHeader(http.StatusTeapot)
+	})
+	spa := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	sessioned := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.Header.Set("X-Session-Seen", "yes")
+			next.ServeHTTP(w, r)
+		})
+	}
+	srv := NewServer(ServerOpts{
+		Console: spa, Session: sessioned, BasePath: "/app",
+		ConsoleRoutes: map[string]http.Handler{"POST /agents/{agent}/try/runs": route},
+	})
+	do := func(method, path string, headers map[string]string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, nil)
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, req)
+		return rec
+	}
+	same := do(http.MethodPost, "/app/console/agents/A1/try/runs", map[string]string{"Sec-Fetch-Site": "same-origin"})
+	assert.Equal(t, http.StatusTeapot, same.Code)
+	assert.Equal(t, "yes", same.Header().Get("X-Session"), "the session chain runs first")
+	assert.Equal(t, http.StatusForbidden, do(http.MethodPost, "/app/console/agents/A1/try/runs", map[string]string{"Sec-Fetch-Site": "cross-site"}).Code,
+		"a cross-site POST is refused")
+	assert.Equal(t, http.StatusOK, do(http.MethodGet, "/app/console/agents/A1", nil).Code, "every other console path is still the SPA")
+}

@@ -37,6 +37,10 @@ func (l Limits) key(ctx context.Context, keyID string) error {
 }
 
 // SECURITY: a limiter that cannot count fails closed with a 503, never letting the call through.
+func (l Limits) person(ctx context.Context, userID string) error {
+	return l.allow(ctx, l.PerKey, "user:"+userID)
+}
+
 func (l Limits) allow(ctx context.Context, rule ratelimit.Rule, subject string) error {
 	if l.Limiter == nil || rule.Name == "" {
 		return nil

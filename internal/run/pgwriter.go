@@ -358,6 +358,19 @@ func (s *postgresStore) messageByExternalID(
 func (s *postgresStore) UpsertAPIThread(
 	ctx context.Context, projectID, agentID uuid.UUID, externalKey string, actor uuid.UUID,
 ) (*Thread, error) {
+	return s.upsertBoundThread(ctx, threadKindAPI, projectID, agentID, externalKey, actor)
+}
+
+// UpsertTryThread returns agentID's Try it thread keyed externalKey, created bound to actor; another actor is a *ThreadActorMismatchError.
+func (s *postgresStore) UpsertTryThread(
+	ctx context.Context, projectID, agentID uuid.UUID, externalKey string, actor uuid.UUID,
+) (*Thread, error) {
+	return s.upsertBoundThread(ctx, threadKindTry, projectID, agentID, externalKey, actor)
+}
+
+func (s *postgresStore) upsertBoundThread(
+	ctx context.Context, kind string, projectID, agentID uuid.UUID, externalKey string, actor uuid.UUID,
+) (*Thread, error) {
 	tc, err := tenant.From(ctx)
 	if err != nil {
 		return nil, err
@@ -371,19 +384,19 @@ func (s *postgresStore) UpsertAPIThread(
 		t := s.threads
 		now := time.Now().UTC()
 		insert := t.INSERT(t.ID, t.PublicID, t.OrgID, t.ProjectID, t.AgentID, t.Kind, t.ExternalKey, t.ActorEndUserID, t.CreatedAt, t.UpdatedAt).
-			VALUES(uuid.Must(uuid.NewV7()), nanoid.MustNew(21), tc.OrgID, projectID, agentID, threadKindAPI, externalKey, actor, now, now).
-			ON_CONFLICT(t.AgentID, t.ExternalKey).WHERE(postgres.RawBool("kind = 'api'")).DO_NOTHING()
+			VALUES(uuid.Must(uuid.NewV7()), nanoid.MustNew(21), tc.OrgID, projectID, agentID, kind, externalKey, actor, now, now).
+			ON_CONFLICT(t.AgentID, t.ExternalKey).WHERE(t.Kind.EQ(postgres.String(kind))).DO_NOTHING()
 		if _, err := insert.ExecContext(ctx, tx); err != nil {
-			return fmt.Errorf("run.postgres: UpsertAPIThread: %w", err)
+			return fmt.Errorf("run.postgres: upsert %s thread: %w", kind, err)
 		}
-		th, err = s.threadByExternalKey(ctx, tx, tc.OrgID, agentID, externalKey)
+		th, err = s.threadByExternalKey(ctx, tx, kind, tc.OrgID, agentID, externalKey)
 		return err
 	})
 	if err != nil {
 		return nil, err
 	}
 	// SECURITY: an orphaned thread (its actor deleted) is bound to nobody, so it answers not found to everyone.
-	if th.ActorEndUserID == uuid.Nil || th.ActorEndUserID != actor || th.Kind != threadKindAPI {
+	if th.ActorEndUserID == uuid.Nil || th.ActorEndUserID != actor || th.Kind != kind {
 		return nil, &ThreadActorMismatchError{ThreadID: th.ID.String()}
 	}
 	return th, nil

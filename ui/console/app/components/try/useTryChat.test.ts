@@ -1,240 +1,332 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
+import type { MessagesPage, TryApi } from './useTryChat';
+import { create } from '@bufbuild/protobuf';
+import { describe, expect, it, vi } from 'vitest';
 import { effectScope } from 'vue';
-import { sampleChatScript } from '~/preview/samples';
+import { errorCode, errorMeta } from '#base/lib/apperror/message';
+import { RunSchema, RunStatus } from '#gen/thread/v1/thread_pb';
 import { phaseLabel } from './phase';
-import { maxPhotoBytes, photoError, scenarios, useTryChat } from './useTryChat';
+import { envelopeError, tryApi, useTryChat } from './useTryChat';
 
-const timing = { think: 10, tool: 10, tick: 1, chars: 50 };
-const usd = (cents: number) => `usd:${cents}`;
+const runId = 'Rn2wQ8mX4vZ9tB3nC7kPq';
 
-function make(maxCostCents = 20, maxSteps = 12) {
-  return useTryChat({ maxSteps: () => maxSteps, maxCostCents: () => maxCostCents, money: usd, decider: () => 'Budi' }, timing, sampleChatScript);
+function sse(events: Record<string, unknown>[], open = false) {
+  const text = events.map(e => `data: ${JSON.stringify(e)}\n\n`).join('');
+  let push: ((e: Record<string, unknown>) => void) | undefined;
+  let close: (() => void) | undefined;
+  const body = new ReadableStream<Uint8Array>({
+    start(c) {
+      c.enqueue(new TextEncoder().encode(text));
+      push = e => c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(e)}\n\n`));
+      close = () => c.close();
+      if (!open) {
+        c.close();
+      }
+    },
+  });
+  return { body, push: (e: Record<string, unknown>) => push!(e), close: () => close!() };
 }
 
-const kinds = (chat: ReturnType<typeof make>) => chat.items.value.map(i => i.kind);
+function reply(text: string) {
+  return [
+    { type: 'RUN_STARTED', runId },
+    { type: 'TOOL_CALL_START', toolCallId: 'c1', toolCallName: 'yasaku__list_wallets' },
+    { type: 'TOOL_CALL_ARGS', toolCallId: 'c1', delta: '{"limit":' },
+    { type: 'TOOL_CALL_ARGS', toolCallId: 'c1', delta: '3}' },
+    { type: 'TOOL_CALL_END', toolCallId: 'c1' },
+    { type: 'TOOL_CALL_RESULT', toolCallId: 'c1', content: '[{"name":"Cash"}]' },
+    { type: 'TEXT_MESSAGE_START', messageId: 'm1' },
+    { type: 'TEXT_MESSAGE_CONTENT', messageId: 'm1', delta: text.slice(0, 4) },
+    { type: 'TEXT_MESSAGE_CONTENT', messageId: 'm1', delta: text.slice(4) },
+    { type: 'TEXT_MESSAGE_END', messageId: 'm1' },
+    { type: 'RUN_FINISHED', runId },
+  ];
+}
 
-describe('useTryChat', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
+const runPB = (status = RunStatus.COMPLETED, over = {}) => create(RunSchema, { id: runId, threadId: 'Th7sK2pQ9mXr4StV8nBcW', status, agentVersionKind: 'draft', usage: { inputTokens: 100n, outputTokens: 20n }, costMicros: 1500n, ...over });
+
+type FakeApi = { [K in keyof TryApi]: Mock<TryApi[K]> };
+
+function fake(over: Partial<Record<keyof TryApi, Mock>> = {}) {
+  const api = {
+    run: vi.fn<TryApi['run']>().mockImplementation(async () => sse(reply('Siap, dicatat.')).body),
+    cancel: vi.fn<TryApi['cancel']>().mockResolvedValue(),
+    messages: vi.fn<TryApi['messages']>().mockResolvedValue({ messages: [], next_after: 0 }),
+    getRun: vi.fn<TryApi['getRun']>().mockResolvedValue(runPB()),
+    ...over,
+  } as FakeApi;
+  let n = 0;
+  const chat = useTryChat(api, () => `id-${++n}`);
+  return { api, chat };
+}
+
+describe('try chat', () => {
+  it('streams a turn into the transcript: the person, the tool call and the reply, then the run row with its usage', async () => {
+    const { api, chat } = fake();
+    expect(chat.threadId.value).toBe('id-1');
+    await chat.send('  catat kopi 40rb  ');
+    expect(api.run.mock.calls[0]![0]).toEqual({ threadId: 'id-1', messages: [{ id: 'id-2', role: 'user', content: 'catat kopi 40rb' }] });
+    expect(chat.items.value.map(i => i.kind)).toEqual(['user', 'tool', 'agent', 'run']);
+    const [, tool, agent, run] = chat.items.value;
+    expect(tool).toMatchObject({ name: 'yasaku__list_wallets', args: { limit: 3 }, result: [{ name: 'Cash' }], state: 'done' });
+    expect(agent).toMatchObject({ text: 'Siap, dicatat.', streaming: false });
+    expect(run).toMatchObject({ run: { id: runId, draft: true, tokens: 120, costCents: 0.15 } });
+    expect(api.getRun).toHaveBeenCalledWith(runId);
+    expect([chat.phase.value, chat.tokens.value, chat.costCents.value, chat.busy.value]).toEqual(['completed', 120, 0.15, false]);
+    expect(chat.toolCalls.value).toHaveLength(1);
+    await chat.send('lagi');
+    expect([chat.tokens.value, chat.costCents.value]).toEqual([240, 0.3]);
+    expect(chat.items.value.filter(i => i.kind === 'agent').map(i => i.kind === 'agent' && i.text)).toEqual(['Siap, dicatat.', 'Siap, dicatat.']);
+    expect(chat.toolCalls.value).toHaveLength(2);
+    expect(api.run.mock.calls[1]![0].threadId).toBe('id-1');
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('plays the coffee expense up to the approval, then saves it on Approve', async () => {
-    const chat = make();
-    const run = chat.send('beli kopi kenangan 40rb pakai cash');
-    expect(chat.phase.value).toBe('thinking');
-    expect(chat.busy.value).toBe(true);
-    await vi.runAllTimersAsync();
-    await run;
-    expect(kinds(chat)).toEqual(['user', 'tool', 'tool', 'tool', 'approval']);
-    expect(chat.phase.value).toBe('awaiting');
-    expect(chat.awaiting.value?.approval.title).toBe('Simpan Rp40.000 dari Cash?');
-    expect(chat.toolCalls.value.map(c => [c.name, c.state])).toEqual([['yasaku__list_wallets', 'done'], ['yasaku__record_expense', 'preview'], ['yasaku__record_expense', 'awaiting']]);
-    expect(chat.steps.value).toBe(3);
-    expect(chat.tokens.value).toBe(3 * 812);
-    const approved = chat.decide(true);
-    await vi.runAllTimersAsync();
-    await approved;
-    expect(chat.phase.value).toBe('completed');
-    expect(kinds(chat)).toEqual(['user', 'tool', 'tool', 'approval', 'tool', 'agent']);
-    expect(chat.toolCalls.value.map(c => c.state)).toEqual(['done', 'preview', 'done']);
-    const executed = chat.items.value[4]!;
-    expect(executed.kind === 'tool' && [executed.name, executed.state]).toEqual(['yasaku__record_expense', 'done']);
-    const card = chat.items.value[3]!;
-    expect(card.kind === 'approval' && card.approval).toMatchObject({ status: 'approved', decidedBy: 'Budi', decidedVia: { channel: 'try' } });
-    const reply = chat.items.value.at(-1)!;
-    expect(reply.kind === 'agent' && reply.text).toBe('Tersimpan: Kopi Kenangan Rp40.000 dari Cash. Sisa saldo Cash Rp1.210.000.');
-    expect(chat.costCents.value).toBe(2);
-    expect(await chat.decide(true)).toBeUndefined();
-  });
-
-  it('sends the rejection reason back and ignores sends while waiting or empty', async () => {
-    const chat = make();
-    void chat.send('Transfer 500rb dari BCA ke Cash');
-    await vi.runAllTimersAsync();
-    await chat.send('more');
+  it('shows the phase while it streams, and ignores a blank message or one sent while busy', async () => {
+    const s = sse([{ type: 'RUN_STARTED', runId }], true);
+    const { api, chat } = fake({ run: vi.fn().mockResolvedValue(s.body) });
     await chat.send('   ');
-    expect(kinds(chat)).toEqual(['user', 'tool', 'tool', 'tool', 'approval']);
-    void chat.decide(false, ' salah dompet ');
-    await vi.runAllTimersAsync();
-    expect(chat.toolCalls.value.map(c => c.state)).toEqual(['done', 'preview', 'rejected']);
-    const card = chat.items.value[4]!;
-    expect(card.kind === 'approval' && [card.approval.status, card.approval.reason]).toEqual(['rejected', 'salah dompet']);
-    const reply = chat.items.value.at(-1)!;
-    expect(reply.kind === 'agent' && reply.text).toBe('Oke, transfernya tidak saya catat.');
-  });
-
-  it('answers a report question without an approval', async () => {
-    const chat = make();
-    void chat.send('Pengeluaran makan bulan ini berapa?');
-    await vi.runAllTimersAsync();
-    expect(kinds(chat)).toEqual(['user', 'tool', 'agent']);
+    expect(api.run).not.toHaveBeenCalled();
+    const sent = chat.send('halo');
+    await vi.waitFor(() => expect(chat.phase.value).toBe('thinking'));
+    s.push({ type: 'TOOL_CALL_START', toolCallId: 'c1', toolCallName: 't' });
+    await vi.waitFor(() => expect(chat.phase.value).toBe('tool'));
+    s.push({ type: 'TEXT_MESSAGE_CONTENT', messageId: 'm1', delta: 'Ha' });
+    await vi.waitFor(() => expect(chat.phase.value).toBe('streaming'));
+    expect(chat.items.value.at(-1)).toMatchObject({ kind: 'agent', text: 'Ha', streaming: true });
+    await chat.send('again');
+    expect(api.run).toHaveBeenCalledTimes(1);
+    s.push({ type: 'RUN_FINISHED', runId });
+    s.close();
+    await sent;
     expect(chat.phase.value).toBe('completed');
   });
 
-  it('shows a failed model call with Retry, which plays the normal reply', async () => {
-    const chat = make();
-    chat.scenario.value = 'model_fails';
-    void chat.send('Pengeluaran makan bulan ini berapa?');
-    await vi.runAllTimersAsync();
+  it('shows a refused turn as an error with no run, and Retry sends it again under a new message id', async () => {
+    const refused = new Error('refused');
+    const { api, chat } = fake({ run: vi.fn().mockRejectedValueOnce(refused).mockImplementation(async () => sse(reply('ok')).body) });
+    await chat.send('halo');
+    expect([chat.phase.value, chat.error.value]).toEqual(['failed', refused]);
+    expect(chat.items.value.map(i => i.kind)).toEqual(['user']);
+    await chat.retry();
+    expect(api.run.mock.calls[1]![0].messages[0]).toEqual({ id: 'id-3', role: 'user', content: 'halo' });
+    expect(chat.error.value).toBeNull();
+    expect(chat.items.value.filter(i => i.kind === 'user')).toHaveLength(1);
+    expect(chat.phase.value).toBe('completed');
+  });
+
+  it('marks a failed run with the failed bubble and its run row, and Retry clears the bubble', async () => {
+    const failing = [{ type: 'RUN_STARTED', runId }, { type: 'TOOL_CALL_START', toolCallId: 'c1', toolCallName: 't' }, { type: 'RUN_ERROR', code: 'runtime_error' }];
+    const { chat } = fake({ run: vi.fn().mockResolvedValueOnce(sse(failing).body).mockImplementation(async () => sse(reply('ok')).body), getRun: vi.fn().mockResolvedValueOnce(runPB(RunStatus.FAILED, { errorCode: 'RUN004' })).mockResolvedValue(runPB()) });
+    await chat.send('halo');
     expect(chat.phase.value).toBe('failed');
-    expect(chat.items.value.at(-1)).toMatchObject({ kind: 'agent', failed: true });
-    void chat.retry();
-    await vi.runAllTimersAsync();
-    expect(chat.scenario.value).toBe('normal');
-    expect(kinds(chat)).toEqual(['user', 'tool', 'agent']);
-    expect(await chat.retry()).toBeUndefined();
-  });
-
-  it('marks a failed tool and goes on', async () => {
-    const chat = make();
-    chat.scenario.value = 'tool_fails';
-    void chat.send('Pengeluaran makan bulan ini berapa?');
-    await vi.runAllTimersAsync();
-    expect(chat.toolCalls.value.map(c => c.state)).toEqual(['failed']);
+    expect(chat.items.value.map(i => (i.kind === 'agent' ? `agent:${!!i.failed}` : i.kind === 'tool' ? `tool:${i.state}` : i.kind))).toEqual(['user', 'tool:failed', 'agent:true', 'run']);
+    await chat.retry();
+    expect(chat.items.value.some(i => i.kind === 'agent' && i.failed)).toBe(false);
+    expect(chat.phase.value).toBe('completed');
+    await chat.retry();
     expect(chat.phase.value).toBe('completed');
   });
 
-  it('stops at the cost cap, or at the step cap when there is no cost cap', async () => {
-    const chat = make(20);
-    chat.scenario.value = 'cost_limit';
-    void chat.send('Pengeluaran makan bulan ini berapa?');
-    await vi.runAllTimersAsync();
-    expect(chat.phase.value).toBe('limit');
-    expect(chat.items.value.at(-1)).toMatchObject({ kind: 'notice', key: 'try.limit_cost', params: { cap: 'usd:20' } });
-    expect(chat.costCents.value).toBe(20);
-    const steps = make(0, 12);
-    steps.scenario.value = 'cost_limit';
-    void steps.send('Pengeluaran makan bulan ini berapa?');
-    await vi.runAllTimersAsync();
-    expect(steps.items.value.at(-1)).toMatchObject({ key: 'try.limit_steps', params: { n: '12' } });
+  it('names a stopped run and one that hit its limit by the run status, falling back to the event when GetRun fails', async () => {
+    const cancelled = [{ type: 'RUN_STARTED', runId }, { type: 'RUN_ERROR', code: 'cancelled' }];
+    const a = fake({ run: vi.fn().mockResolvedValue(sse(cancelled).body), getRun: vi.fn().mockResolvedValue(runPB(RunStatus.CANCELLED)) });
+    await a.chat.send('halo');
+    expect([a.chat.phase.value, a.chat.items.value.some(i => i.kind === 'notice' && i.key === 'try.stopped')]).toEqual(['cancelled', false]);
+    const b = fake({ getRun: vi.fn().mockResolvedValue(runPB(RunStatus.LIMIT_REACHED)) });
+    await b.chat.send('halo');
+    expect(b.chat.phase.value).toBe('limit');
+    const c = fake({ run: vi.fn().mockResolvedValue(sse(cancelled).body), getRun: vi.fn().mockRejectedValue(new Error('offline')) });
+    await c.chat.send('halo');
+    expect([c.chat.phase.value, c.chat.items.value.some(i => i.kind === 'run')]).toEqual(['cancelled', false]);
+    expect(phaseLabel('limit').key).toBe('runstatus.limit_reached');
   });
 
-  it('stops a normal reply once it reaches the step cap', async () => {
-    const chat = make(0, 1);
-    void chat.send('beli kopi kenangan 40rb pakai cash');
-    await vi.runAllTimersAsync();
-    expect(chat.steps.value).toBe(1);
-    expect(chat.phase.value).toBe('limit');
-    expect(chat.items.value.at(-1)).toMatchObject({ kind: 'notice', key: 'try.limit_steps', params: { n: '1' } });
+  it('shows Stopping after Stop, and settles on the run\'s real outcome: completed keeps the reply and says nothing about stopping', async () => {
+    const s = sse([{ type: 'RUN_STARTED', runId }], true);
+    const { api, chat } = fake({ run: vi.fn().mockResolvedValue(s.body) });
+    const sent = chat.send('halo');
+    await vi.waitFor(() => expect(chat.canStop.value).toBe(true));
+    await chat.stop();
+    expect(api.cancel).toHaveBeenCalledWith(runId);
+    expect([chat.phase.value, chat.busy.value, chat.canStop.value]).toEqual(['stopping', true, false]);
+    s.push({ type: 'TEXT_MESSAGE_CONTENT', messageId: 'm1', delta: 'Siap.' });
+    await vi.waitFor(() => expect(chat.items.value.some(i => i.kind === 'agent')).toBe(true));
+    expect(chat.phase.value).toBe('stopping');
+    s.push({ type: 'RUN_FINISHED', runId });
+    s.close();
+    await sent;
+    expect(chat.phase.value).toBe('completed');
+    expect(chat.items.value.some(i => i.kind === 'notice' && i.key === 'try.stopped')).toBe(false);
+    expect(chat.items.value.find(i => i.kind === 'agent')).toMatchObject({ text: 'Siap.' });
   });
 
-  it('notes a dropped stream and finishes the reply on Reload', async () => {
-    const chat = useTryChat({ maxSteps: () => 0, maxCostCents: () => 0, money: usd }, { ...timing, chars: 5 }, sampleChatScript);
-    chat.scenario.value = 'dropped';
-    void chat.send('Pengeluaran makan bulan ini berapa?');
-    await vi.runAllTimersAsync();
+  it('says Stopped by you only when the run itself ended cancelled', async () => {
+    const s = sse([{ type: 'RUN_STARTED', runId }], true);
+    const { chat } = fake({ run: vi.fn().mockResolvedValue(s.body), getRun: vi.fn().mockResolvedValue(runPB(RunStatus.CANCELLED)) });
+    const sent = chat.send('halo');
+    await vi.waitFor(() => expect(chat.canStop.value).toBe(true));
+    await chat.stop();
+    s.push({ type: 'RUN_ERROR', code: 'cancelled' });
+    s.close();
+    await sent;
+    expect(chat.phase.value).toBe('cancelled');
+    expect(chat.items.value.filter(i => i.kind === 'notice').map(i => i.kind === 'notice' && i.key)).toEqual(['try.stopped']);
+  });
+
+  it('cannot stop before the run has started, and a failed cancel keeps the run going with the error shown', async () => {
+    const pending = fake({ run: vi.fn(() => new Promise<ReadableStream<Uint8Array>>(() => {})) });
+    void pending.chat.send('halo');
+    expect([pending.chat.busy.value, pending.chat.canStop.value]).toEqual([true, false]);
+    await pending.chat.stop();
+    expect([pending.api.cancel.mock.calls.length, pending.chat.phase.value]).toEqual([0, 'thinking']);
+
+    const s = sse([{ type: 'RUN_STARTED', runId }, { type: 'TEXT_MESSAGE_CONTENT', messageId: 'm1', delta: 'a' }], true);
+    const offline = new Error('offline');
+    const failing = fake({ run: vi.fn().mockResolvedValue(s.body), cancel: vi.fn().mockRejectedValue(offline) });
+    void failing.chat.send('halo');
+    await vi.waitFor(() => expect(failing.chat.phase.value).toBe('streaming'));
+    await failing.chat.stop();
+    expect([failing.chat.phase.value, failing.chat.error.value, failing.chat.canStop.value]).toEqual(['streaming', offline, true]);
+  });
+
+  it('says the stream dropped, and Reload rebuilds the reply from the stored messages and reads the run', async () => {
+    const dropped = [{ type: 'RUN_STARTED', runId }, { type: 'TEXT_MESSAGE_CONTENT', messageId: 'm1', delta: 'Sia' }];
+    const pages: MessagesPage[] = [
+      { messages: [{ seq: 2, message: { role: 'assistant', content: '', toolCalls: [{ id: 'c1', function: { name: 'yasaku__list_wallets', arguments: '{"limit":3}' } }] } }, { seq: 1, message: { role: 'user', content: 'halo' } }], next_after: 2 },
+      { messages: [{ seq: 3, message: { role: 'tool', toolCallId: 'c1', content: [{ type: 'text', text: '[1]' }] } }, { seq: 4, message: { role: 'assistant', content: 'Siap.' } }], next_after: 4 },
+      { messages: [], next_after: 4 },
+    ];
+    const messages = vi.fn<TryApi['messages']>();
+    pages.forEach(p => messages.mockResolvedValueOnce(p));
+    const { chat } = fake({ run: vi.fn().mockResolvedValue(sse(dropped).body), messages });
+    await chat.send('halo');
     expect(chat.phase.value).toBe('dropped');
     expect(chat.items.value.at(-1)).toMatchObject({ kind: 'notice', key: 'try.dropped' });
-    chat.reload();
+    await chat.reload();
+    expect(messages.mock.calls.map(c => c[1])).toEqual([0, 2, 4]);
+    expect(chat.items.value.map(i => i.kind)).toEqual(['user', 'tool', 'agent', 'run']);
+    expect(chat.items.value[1]).toMatchObject({ args: { limit: 3 }, result: [1], state: 'done' });
+    expect(chat.items.value[2]).toMatchObject({ text: 'Siap.' });
     expect(chat.phase.value).toBe('completed');
-    const reply = chat.items.value.at(-1)!;
-    expect(reply.kind === 'agent' && reply.text).toBe(sampleChatScript('makan').steps[1]!.kind === 'text' ? (sampleChatScript('makan').steps[1] as { text: string }).text : '');
   });
 
-  it('stops a reply on request and starts over on New chat', async () => {
-    const chat = make();
-    void chat.send('beli kopi');
-    await vi.advanceTimersByTimeAsync(15);
-    expect(chat.toolCalls.value.map(c => c.state)).toEqual(['running']);
-    chat.stop();
-    expect(chat.phase.value).toBe('cancelled');
-    expect(chat.toolCalls.value.map(c => c.state)).toEqual(['failed']);
-    expect(chat.items.value.at(-1)).toMatchObject({ kind: 'notice', key: 'try.stopped' });
-    await vi.runAllTimersAsync();
-    expect(chat.phase.value).toBe('cancelled');
-    chat.stop();
+  it('keeps a still-running run dropped after Reload, and shows a failed reload as an error', async () => {
+    const dropped = [{ type: 'RUN_STARTED', runId }, { type: 'RUN_ERROR', code: 'detached' }];
+    const { chat } = fake({ run: vi.fn().mockResolvedValue(sse(dropped).body), getRun: vi.fn().mockResolvedValue(runPB(RunStatus.RUNNING)), messages: vi.fn().mockResolvedValueOnce({ messages: [], next_after: 0 }).mockRejectedValueOnce(new Error('offline')) });
+    await chat.send('halo');
+    await chat.reload();
+    expect(chat.phase.value).toBe('dropped');
+    expect(chat.items.value.map(i => i.kind)).toEqual(['user', 'notice']);
+    await chat.reload();
+    expect(chat.error.value).toEqual(new Error('offline'));
+  });
+
+  it('starts a new chat on a new thread and drops what the old stream still sends', async () => {
+    const s = sse([{ type: 'RUN_STARTED', runId }], true);
+    const { chat } = fake({ run: vi.fn().mockResolvedValue(s.body) });
+    const sent = chat.send('halo');
+    await vi.waitFor(() => expect(chat.busy.value).toBe(true));
     chat.newChat();
-    expect([chat.items.value, chat.phase.value, chat.steps.value, chat.tokens.value, chat.costCents.value]).toEqual([[], 'idle', 0, 0, 0]);
+    s.push({ type: 'TEXT_MESSAGE_CONTENT', messageId: 'm1', delta: 'late' });
+    s.close();
+    await sent;
+    expect([chat.items.value.length, chat.phase.value, chat.threadId.value]).toEqual([0, 'idle', 'id-3']);
   });
 
-  it('changes nothing after its scope ends mid-stream, and a stopped stream never resumes', async () => {
+  it('stops listening when its scope ends', async () => {
+    const s = sse([{ type: 'RUN_STARTED', runId }], true);
     const scope = effectScope();
-    const chat = scope.run(() => useTryChat({ maxSteps: () => 0, maxCostCents: () => 0, money: usd }, { ...timing, chars: 1 }, sampleChatScript))!;
-    void chat.send('Pengeluaran makan bulan ini berapa?');
-    await vi.advanceTimersByTimeAsync(40);
-    const bubble = chat.items.value.find(i => i.kind === 'agent')!;
-    const text = bubble.kind === 'agent' ? bubble.text : '';
+    const { chat } = scope.run(() => fake({ run: vi.fn().mockResolvedValue(s.body) }))!;
+    const sent = chat.send('halo');
+    await vi.waitFor(() => expect(chat.busy.value).toBe(true));
     scope.stop();
-    expect(vi.getTimerCount()).toBe(0);
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(bubble.kind === 'agent' && bubble.text).toBe(text);
-    const again = make();
-    void again.send('Pengeluaran makan bulan ini berapa?');
-    await vi.advanceTimersByTimeAsync(40);
-    again.stop();
-    const items = JSON.stringify(again.items.value);
-    await vi.runAllTimersAsync();
-    expect(JSON.stringify(again.items.value)).toBe(items);
-  });
-
-  it('stops a streaming bubble', async () => {
-    const chat = useTryChat({ maxSteps: () => 0, maxCostCents: () => 0, money: usd }, { ...timing, chars: 1 }, sampleChatScript);
-    void chat.send('Pengeluaran makan bulan ini berapa?');
-    await vi.advanceTimersByTimeAsync(40);
-    expect(chat.phase.value).toBe('streaming');
-    chat.stop();
-    const bubble = chat.items.value.find(i => i.kind === 'agent')!;
-    expect(bubble.kind === 'agent' && bubble.streaming).toBe(false);
-    await vi.runAllTimersAsync();
-    expect(chat.phase.value).toBe('cancelled');
-  });
-
-  it('revokes photo URLs on re-attach, detach, New chat and when its scope ends', () => {
-    let n = 0;
-    const createObjectURL = vi.fn(() => `blob:${++n}`);
-    const revokeObjectURL = vi.fn();
-    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL }));
-    const scope = effectScope();
-    const chat = scope.run(() => make())!;
-    const jpg = (name: string) => ({ name, size: 10, type: 'image/jpeg' }) as File;
-    chat.attach(jpg('a.jpg'));
-    chat.attach(jpg('b.jpg'));
-    expect(revokeObjectURL).toHaveBeenLastCalledWith('blob:1');
-    chat.detach();
-    expect(revokeObjectURL).toHaveBeenLastCalledWith('blob:2');
-    chat.attach(jpg('c.jpg'));
-    void chat.send('struk');
-    chat.newChat();
-    expect(revokeObjectURL).toHaveBeenLastCalledWith('blob:3');
-    chat.attach(jpg('d.jpg'));
-    scope.stop();
-    expect(revokeObjectURL).toHaveBeenLastCalledWith('blob:4');
-    vi.unstubAllGlobals();
-  });
-
-  it('attaches one allowed photo to the next message and refuses others', async () => {
-    const createObjectURL = vi.fn().mockReturnValue('blob:receipt');
-    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }));
-    const chat = make();
-    chat.attach({ name: 'struk.pdf', size: 10, type: 'application/pdf' } as File);
-    expect(chat.photoProblem.value).toBe('try.photo_type');
-    chat.attach({ name: 'big.jpg', size: maxPhotoBytes + 1, type: 'image/jpeg' } as File);
-    expect(chat.photoProblem.value).toBe('try.photo_too_big');
-    chat.attach({ name: 'struk.jpg', size: 1000, type: 'image/jpeg' } as File);
-    expect(chat.photo.value).toEqual({ name: 'struk.jpg', url: 'blob:receipt' });
-    void chat.send('ini struknya');
-    expect(chat.items.value[0]).toMatchObject({ kind: 'user', photo: { name: 'struk.jpg' } });
-    expect(chat.photo.value).toBeNull();
-    chat.attach({ name: 'b.png', size: 1, type: 'image/png' } as File);
-    chat.detach();
-    expect([chat.photo.value, chat.photoProblem.value]).toEqual([null, '']);
-    await vi.runAllTimersAsync();
+    s.push({ type: 'TEXT_MESSAGE_CONTENT', messageId: 'm1', delta: 'late' });
+    s.close();
+    await sent;
+    expect(chat.items.value.some(i => i.kind === 'agent')).toBe(false);
   });
 });
 
-describe('try helpers', () => {
-  it('refuses photos by type and size', () => {
-    expect(photoError({ size: 1, type: 'image/webp' })).toBe('');
-    expect(photoError({ size: maxPhotoBytes, type: 'image/png' })).toBe('');
+describe('try chat memory', () => {
+  const stored: MessagesPage = { messages: [
+    { seq: 1, message: { role: 'user', content: 'halo' } },
+    { seq: 2, message: { role: 'assistant', content: '', toolCalls: [{ id: 'c1', function: { name: 'yasaku__list_wallets', arguments: '{}' } }] } },
+    { seq: 3, message: { role: 'tool', toolCallId: 'c1', content: '[1]' } },
+    { seq: 4, message: { role: 'assistant', content: 'Siap.' } },
+  ], next_after: 4 };
+
+  function remembered(id: string | null) {
+    let kept = id;
+    return { get: vi.fn(() => kept), set: vi.fn((v: string) => {
+      kept = v;
+    }) };
+  }
+
+  it('restores the remembered conversation without times, then keeps talking on the same thread', async () => {
+    const memory = remembered('thread-old');
+    const messages = vi.fn<TryApi['messages']>().mockResolvedValueOnce(stored).mockResolvedValue({ messages: [], next_after: 4 });
+    const api = { run: vi.fn().mockImplementation(async () => sse(reply('ok')).body), cancel: vi.fn(), messages, getRun: vi.fn().mockResolvedValue(runPB()) } as unknown as TryApi;
+    const chat = useTryChat(api, () => 'new-id', memory);
+    expect(chat.threadId.value).toBe('thread-old');
+    await chat.restore();
+    expect(messages.mock.calls[0]).toEqual(['thread-old', 0]);
+    expect(chat.items.value.map(i => i.kind)).toEqual(['user', 'tool', 'agent']);
+    expect(chat.items.value[0]).toMatchObject({ text: 'halo', at: undefined });
+    expect(chat.items.value[1]).toMatchObject({ result: [1], state: 'done' });
+    expect(chat.phase.value).toBe('idle');
+    await chat.restore();
+    expect(messages).toHaveBeenCalledTimes(2);
+    await chat.send('lagi');
+    expect((api.run as ReturnType<typeof vi.fn>).mock.calls[0]![0].threadId).toBe('thread-old');
   });
 
-  it('names every scenario and phase', () => {
-    expect(scenarios).toHaveLength(5);
-    expect(phaseLabel('awaiting')).toEqual({ key: 'runstatus.awaiting_approval', tone: 'warning' });
-    expect(phaseLabel('dropped').tone).toBe('warning');
+  it('starts fresh with nothing remembered or when the remembered thread cannot be read, and New chat remembers the new thread', async () => {
+    const none = remembered(null);
+    const api = { run: vi.fn().mockImplementation(async () => sse(reply('ok')).body), cancel: vi.fn(), messages: vi.fn().mockRejectedValue(new Error('gone')), getRun: vi.fn().mockResolvedValue(runPB()) } as unknown as TryApi;
+    let n = 0;
+    const chat = useTryChat(api, () => `id-${++n}`, none);
+    await chat.restore();
+    expect(api.messages).not.toHaveBeenCalled();
+    await chat.send('halo');
+    expect(none.set).toHaveBeenLastCalledWith('id-1');
+    chat.newChat();
+    expect(none.set).toHaveBeenLastCalledWith('');
+    await chat.send('baru');
+    expect(none.set).toHaveBeenLastCalledWith('id-3');
+    const gone = useTryChat(api, () => 'x', remembered('thread-gone'));
+    await gone.restore();
+    expect([gone.items.value.length, gone.error.value]).toEqual([0, null]);
+  });
+});
+
+describe('try api', () => {
+  const ok = (body: unknown = {}) => ({ ok: true, status: 200, body: 'stream', json: async () => body }) as unknown as Response;
+
+  it('calls the console routes with the session cookie, and the run asks for an event stream', async () => {
+    const fetcher = vi.fn().mockResolvedValue(ok({ messages: [], next_after: 0 }));
+    const getRun = vi.fn();
+    const api = tryApi('/base/console/', 'Ag 1', getRun, fetcher);
+    const signal = new AbortController().signal;
+    expect(await api.run({ threadId: 't', messages: [] }, signal)).toBe('stream');
+    await api.cancel('R/1');
+    await api.messages('t 1', 4);
+    expect(fetcher.mock.calls.map(c => [c[0], c[1].method ?? 'GET', c[1].credentials])).toEqual([
+      ['/base/console/agents/Ag%201/try/runs', 'POST', 'same-origin'],
+      ['/base/console/agents/Ag%201/try/runs/R%2F1/cancel', 'POST', 'same-origin'],
+      ['/base/console/agents/Ag%201/try/threads/t%201/messages?after=4&limit=200', 'GET', 'same-origin'],
+    ]);
+    expect(fetcher.mock.calls[0]![1]).toMatchObject({ headers: { 'Accept': 'text/event-stream', 'Content-Type': 'application/json' }, body: '{"threadId":"t","messages":[]}', signal });
+    expect(api.getRun).toBe(getRun);
+  });
+
+  it('turns a refused call into an app error with its code and meta, or a bare one when the body is not JSON', async () => {
+    const refusal = { ok: false, status: 400, statusText: 'Bad Request', json: async () => ({ code: 'AGT007', message: 'no model', request_id: 'req1', meta: { field: 'model' } }) } as unknown as Response;
+    const api = tryApi('/console', 'a', vi.fn(), vi.fn().mockResolvedValue(refusal));
+    const err = await api.cancel('r').catch(e => e);
+    expect([errorCode(err), errorMeta(err)]).toEqual(['AGT007', { field: 'model' }]);
+    const bare = await envelopeError({ statusText: 'Bad Gateway', json: async () => {
+      throw new Error('html');
+    } } as unknown as Response);
+    expect([errorCode(bare), bare.rawMessage]).toEqual(['', 'Bad Gateway']);
   });
 });

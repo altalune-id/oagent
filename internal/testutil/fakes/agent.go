@@ -1,6 +1,7 @@
 package fakes
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/google/uuid"
@@ -19,6 +20,8 @@ type AgentStore struct {
 	Deleted  uuid.UUID
 	// Published holds the inserted versions, newest first.
 	Published []*agent.Version
+	// Drafts holds the draft versions UpsertDraftVersion stored.
+	Drafts []*agent.Version
 	// Usage and ServerInUse answer the usage queries.
 	Usage       agent.ProviderUsage
 	ServerInUse bool
@@ -62,12 +65,26 @@ func (f *AgentStore) VersionByID(_ context.Context, id uuid.UUID) (*agent.Versio
 	if f.Err != nil {
 		return nil, f.Err
 	}
-	for _, v := range f.Published {
+	for _, v := range append(f.Published, f.Drafts...) {
 		if v.ID == id {
 			return v, nil
 		}
 	}
 	return nil, &agent.NotFoundError{ID: id.String()}
+}
+
+// UpsertDraftVersion implements agent.Store; a draft with the same agent and hash is returned instead of stored.
+func (f *AgentStore) UpsertDraftVersion(_ context.Context, v *agent.Version) (*agent.Version, error) {
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	for _, d := range f.Drafts {
+		if d.AgentID == v.AgentID && bytes.Equal(d.ConfigHash, v.ConfigHash) {
+			return d, nil
+		}
+	}
+	f.Drafts = append(f.Drafts, v)
+	return v, nil
 }
 
 var _ agent.Store = (*AgentStore)(nil)

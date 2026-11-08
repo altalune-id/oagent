@@ -16,7 +16,7 @@ service ThreadService {
   rpc ListThreads(ListThreadsRequest) returns (ListThreadsResponse) {
     option (mcp.v1.tool) = {
       name: "thread_list"
-      description: "List a project's conversation threads, newest activity first, optionally of one agent: each with its kind, the end user's masked label, its last activity and the status of its open run. Pages hold 50 threads unless page_size says otherwise, at most 200; pass next_page_token back as page_token for the next page."
+      description: "List a project's conversation threads, newest activity first, optionally of one agent or one kind (dm, group, api or try): each with its kind, the end user's masked label, its last activity and the status of its open run. Pages hold 50 threads unless page_size says otherwise, at most 200; pass next_page_token back as page_token for the next page."
       required: ["project_id"]
     };
   }
@@ -76,7 +76,7 @@ message Thread {
   string id = 1;
   string project_id = 2;
   string agent_id = 3;
-  // kind is dm, group or api.
+  // kind is dm, group, api or try (a console Try it conversation).
   string kind = 4;
   // end_user_label is the display name, else the masked hint ("…90"); never a phone number or LID. Prefer the structured end_user_* fields.
   string end_user_label = 5;
@@ -131,6 +131,8 @@ message Run {
   string error_code = 9;
   google.protobuf.Timestamp started_at = 10;
   google.protobuf.Timestamp ended_at = 11;
+  // agent_version_kind is published, or draft for a console Try it run on the unpublished draft (agent_version is then 0).
+  string agent_version_kind = 12;
 }
 
 message ListThreadsRequest {
@@ -143,6 +145,12 @@ message ListThreadsRequest {
   int32 page_size = 4 [
     (buf.validate.field).int32.gte = 0,
     (buf.validate.field).int32.lte = 200
+  ];
+  string kind = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: ["dm", "group", "api", "try"]
+    }
   ];
 }
 

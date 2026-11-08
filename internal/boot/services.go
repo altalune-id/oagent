@@ -214,7 +214,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		ModelProviderStore: providerStore,
 		MCPServers:         servers,
 		EndUsers: enduser.NewService(enduser.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix), uow, k.Reporter.Unexpected).
-			WithLogger(orDiscard(k.Log)).WithKeyHints(keyHints{keys: apiKeyStore}),
+			WithLogger(orDiscard(k.Log)).WithKeyHints(keyHints{keys: apiKeyStore}).WithMembers(memberNames{users: users}),
 		MCPServerStore: serverStore,
 		Sealer:         sl,
 		MailQueue:      mailQueue,

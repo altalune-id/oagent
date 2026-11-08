@@ -47,6 +47,9 @@ func fillProbe(msg *dynamicpb.Message) {
 			if fd.Name() == "name" && msg.Descriptor().FullName() == "mcpserver.v1.CreateMcpServerRequest" {
 				msg.Set(fd, protoreflect.ValueOfString("probe-"+strconv.FormatInt(time.Now().UnixNano(), 36)))
 			}
+			if fd.Name() == "kind" && msg.Descriptor().FullName() == "thread.v1.ListThreadsRequest" {
+				msg.Set(fd, protoreflect.ValueOfString("try"))
+			}
 			if fd.Name() == "slug" {
 				msg.Set(fd, protoreflect.ValueOfString("probe-"+strconv.FormatInt(time.Now().UnixNano(), 10)))
 			}

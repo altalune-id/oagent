@@ -1,9 +1,8 @@
 import type { AgentRuntimeConfig } from '~/stores/agentRuntime';
 import type { SampleAgent } from '~/stores/agents';
-import type { ApprovalArg, ApprovalItem, ApprovalRequest } from '~/stores/approvals';
+import type { ApprovalItem, ApprovalRequest } from '~/stores/approvals';
 import type { KnowledgeSource } from '~/stores/knowledge';
 import type { RunSummary, ThreadDetail } from '~/stores/threads';
-import type { ChatScript } from '~/stores/tryIt';
 import type { WebSearchSetting } from '~/stores/webSearch';
 
 // NOTE: the only home of sample data; replace each export with the runtime and tool registry RPCs as they land.
@@ -66,74 +65,6 @@ export function sampleKnowledgeSources(): KnowledgeSource[] {
     { id: 'kns_7hTr3QwY9pKx2VcN', name: 'Promo bank', kind: 'website', url: 'https://bank.example.id/promo', status: 'crawling', chunks: 0, pagesDone: 12, pagesTotal: 40, usedBy: [], updatedAt: daysAgo(0.02) },
     { id: 'kns_1bZx6NmK4sRv8LqD', name: 'Syarat KPR', kind: 'website', url: 'https://example.id/kpr', status: 'failed', chunks: 0, failure: { reason: 'robots', path: '/kpr' }, usedBy: [], updatedAt: daysAgo(2) },
   ];
-}
-
-export const samplePrompts = ['beli kopi kenangan 40rb pakai cash', 'Pengeluaran makan bulan ini berapa?', 'Transfer 500rb dari BCA ke Cash'];
-
-function approval(id: string, tool: string, title: string, args: ApprovalArg[], raw: Record<string, unknown>): ApprovalRequest {
-  return { id, tool, title, args, raw, status: 'pending' };
-}
-
-// sampleChatScript picks the reply the preview plays for a prompt: a report question, a transfer, or by default the coffee expense.
-export function sampleChatScript(prompt: string): ChatScript {
-  const text = prompt.toLowerCase();
-  const wallets = { kind: 'tool' as const, name: 'yasaku__list_wallets', args: {}, result: [{ name: 'Cash', balance: 1250000 }, { name: 'BCA', balance: 8420000 }, { name: 'GoPay', balance: 310000 }] };
-  if (text.includes('makan') || text.includes('bulan')) {
-    return {
-      steps: [
-        { kind: 'tool', name: 'yasaku__period_report', args: { period: '2026-11', category: 'Makan & minum' }, result: { total: 1240000, count: 31 } },
-        { kind: 'text', text: 'Pengeluaran Makan & minum bulan ini Rp1.240.000 dari 31 transaksi. Paling besar: Kopi Kenangan Rp40.000.' },
-      ],
-      afterApprove: [],
-      afterReject: [],
-      tokensPerStep: 640,
-      centsPerStep: 0.3,
-    };
-  }
-  if (text.includes('transfer')) {
-    const raw = { from: 'BCA', to: 'Cash', amount: 500000, date: '2026-11-04', confirm: true };
-    return {
-      steps: [
-        wallets,
-        { kind: 'tool', name: 'yasaku__record_transfer', args: { ...raw, confirm: false }, result: { preview: 'Transfer Rp500.000 dari BCA ke Cash' }, preview: true },
-        { kind: 'approval', approval: approval('apr_tr1', 'yasaku__record_transfer', 'Transfer Rp500.000 dari BCA ke Cash?', [
-          { label: 'Jumlah', value: 'Rp500.000' },
-          { label: 'Dari', value: 'BCA' },
-          { label: 'Ke', value: 'Cash' },
-          { label: 'Tanggal', value: '4 Nov 2026' },
-          { label: 'confirm', value: 'true', mono: true, gate: true },
-        ], raw) },
-      ],
-      afterApprove: [
-        { kind: 'tool', name: 'yasaku__record_transfer', args: raw, result: { id: 'tx_8812', saved: true } },
-        { kind: 'text', text: 'Sudah: transfer Rp500.000 dari BCA ke Cash. Saldo BCA Rp7.920.000, Cash Rp1.750.000.' },
-      ],
-      afterReject: [{ kind: 'text', text: 'Oke, transfernya tidak saya catat.' }],
-      tokensPerStep: 720,
-      centsPerStep: 0.4,
-    };
-  }
-  const raw = { amount: 40000, category: 'Makan & minum', wallet: 'Cash', note: 'Kopi Kenangan', date: '2026-11-04', confirm: true };
-  return {
-    steps: [
-      wallets,
-      { kind: 'tool', name: 'yasaku__record_expense', args: { ...raw, confirm: false }, result: { preview: 'Simpan Rp40.000 dari Cash?' }, preview: true },
-      { kind: 'approval', approval: approval('apr_kp1', 'yasaku__record_expense', 'Simpan Rp40.000 dari Cash?', [
-        { label: 'Jumlah', value: 'Rp40.000' },
-        { label: 'Kategori', value: 'Makan & minum' },
-        { label: 'Dompet', value: 'Cash' },
-        { label: 'Tanggal', value: '4 Nov 2026' },
-        { label: 'confirm', value: 'true', mono: true, gate: true },
-      ], raw) },
-    ],
-    afterApprove: [
-      { kind: 'tool', name: 'yasaku__record_expense', args: raw, result: { id: 'tx_8811', saved: true } },
-      { kind: 'text', text: 'Tersimpan: Kopi Kenangan Rp40.000 dari Cash. Sisa saldo Cash Rp1.210.000.' },
-    ],
-    afterReject: [{ kind: 'text', text: 'Oke, tidak saya simpan.' }],
-    tokensPerStep: 812,
-    centsPerStep: 0.4,
-  };
 }
 
 function run(id: string): RunSummary {

@@ -15,6 +15,9 @@ var errUnknownRef = errors.New("fakes: unknown id")
 // RunAgents is an in-memory run.Agents.
 type RunAgents struct {
 	Versions map[uuid.UUID]*run.AgentVersion
+	// Drafts answers Draft by agent; DraftErr refuses every Draft.
+	Drafts   map[uuid.UUID]*run.AgentVersion
+	DraftErr error
 }
 
 var _ run.Agents = (*RunAgents)(nil)
@@ -37,6 +40,18 @@ func (f *RunAgents) Latest(_ context.Context, agentID uuid.UUID) (*run.AgentVers
 		}
 	}
 	return latest, nil
+}
+
+// Draft implements run.Agents.
+func (f *RunAgents) Draft(_ context.Context, agentID uuid.UUID) (*run.AgentVersion, error) {
+	if f.DraftErr != nil {
+		return nil, f.DraftErr
+	}
+	v, ok := f.Drafts[agentID]
+	if !ok {
+		return nil, errUnknownRef
+	}
+	return v, nil
 }
 
 // RunProviders is an in-memory run.Providers keyed by provider and model.

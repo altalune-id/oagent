@@ -33,7 +33,7 @@ func TestBindings(t *testing.T) {
 		{
 			"agent_versions",
 			func(s, p string) binding { b := entity.NewAgentVersions(s, p); return binding{b, b.AllColumns} },
-			[]string{"id", "public_id", "org_id", "project_id", "agent_id", "version", "config", "created_by", "created_at"},
+			[]string{"id", "public_id", "org_id", "project_id", "agent_id", "version", "config", "created_by", "created_at", "kind", "config_hash"},
 		},
 		{
 			"api_key_projects",

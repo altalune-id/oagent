@@ -156,6 +156,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 			basePath:   cfg.HTTP.BasePath,
 			api:        apiHandler,
 			dataPlane:  buildDataPlane(cfg, svcs, lims, k.Reporter.Unexpected, log),
+			consoleTry: buildConsoleTry(cfg, svcs, lims, k.Reporter.Unexpected, log),
 			ingest:     buildIngest(cfg, svcs, db.NewTransactor(k.Pool), lims, log),
 			console:    consoleHandler,
 			mcp:        buildMCPHandler(mcpServer, svcs, mcpResource, log),

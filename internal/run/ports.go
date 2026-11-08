@@ -16,19 +16,21 @@ type SnapshotStore interface {
 	Delete(ctx context.Context, threadID uuid.UUID) error
 }
 
-// AgentVersion is the published agent config a run is pinned to.
+// AgentVersion is the agent config a run is pinned to: a published version, or a draft for a Try it run.
 type AgentVersion struct {
 	ID, AgentID   uuid.UUID
 	AgentPublicID string
-	Version       int32
-	Legacy        bool
-	Instructions  string
-	Model         string
-	Temperature   float64
-	MaxSteps      int32
-	MaxCostCents  int32
-	ProviderID    uuid.UUID
-	MCPServers    []MCPGrant
+	// Version is 0 for a draft.
+	Version      int32
+	Draft        bool
+	Legacy       bool
+	Instructions string
+	Model        string
+	Temperature  float64
+	MaxSteps     int32
+	MaxCostCents int32
+	ProviderID   uuid.UUID
+	MCPServers   []MCPGrant
 }
 
 // MCPGrant is the tools of one MCP server a version may call.
@@ -43,11 +45,13 @@ type ToolGrant struct {
 	RequireApproval bool
 }
 
-// Agents loads published agent versions of the org on ctx.
+// Agents loads agent versions of the org on ctx.
 type Agents interface {
 	Version(ctx context.Context, versionID uuid.UUID) (*AgentVersion, error)
 	// Latest returns the agent's newest published version, or nil before the first publish.
 	Latest(ctx context.Context, agentID uuid.UUID) (*AgentVersion, error)
+	// Draft pins the agent's draft config as a draft version, refused like a publish.
+	Draft(ctx context.Context, agentID uuid.UUID) (*AgentVersion, error)
 }
 
 // ResolvedModel is how to call one model of a provider; nil Prices means unpriced. SECURITY: APIKey is an opened secret.

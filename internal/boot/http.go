@@ -259,6 +259,7 @@ type httpSurfaces struct {
 	dataPlane  http.Handler
 	ingest     http.Handler
 	console    http.Handler
+	consoleTry map[string]http.Handler
 	mcp        http.Handler
 	mcpDocs    map[string]http.Handler
 	routes     []web.Registrar
@@ -280,11 +281,13 @@ func buildHTTPHandler(s httpSurfaces) http.Handler {
 		MCPHandler: s.mcp,
 		Console:    s.console,
 		Routes:     s.routes,
-		NotFound:   notFoundPage(layout.Kit{BasePath: s.basePath, Log: s.log, Unexpected: s.unexpected, Version: web.StaticVersion}),
-		BasePath:   s.basePath,
-		Log:        s.log,
-		Unexpected: s.unexpected,
-		Probes:     s.probes,
+
+		ConsoleRoutes: s.consoleTry,
+		NotFound:      notFoundPage(layout.Kit{BasePath: s.basePath, Log: s.log, Unexpected: s.unexpected, Version: web.StaticVersion}),
+		BasePath:      s.basePath,
+		Log:           s.log,
+		Unexpected:    s.unexpected,
+		Probes:        s.probes,
 
 		ResourceMetadata: s.mcpDocs,
 

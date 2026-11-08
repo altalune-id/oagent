@@ -68,7 +68,7 @@ func (r *replyRig) dueRun(t *testing.T, texts ...string) uuid.UUID {
 	r.exec(t, `INSERT INTO {s}threads (id, public_id, org_id, project_id, agent_id, kind, external_key, connection_id, reply_via, actor_end_user_id, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, 'dm', $6, $7, 'wa_phone', $8, now(), now())`,
 		thread, "t"+thread.String()[:12], r.s.org, r.s.project, r.s.agent, "cht_"+thread.String()[:8], r.conn.ID, person)
-	r.exec(t, `INSERT INTO {s}agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at) VALUES ($1, $2, $3, $4, $5, $6, '{}', now())`,
+	r.exec(t, `INSERT INTO {s}agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at, kind) VALUES ($1, $2, $3, $4, $5, $6, '{}', now(), 'published')`,
 		version, "v"+version.String()[:12], r.s.org, r.s.project, r.s.agent, time.Now().UnixNano()%1_000_000)
 	r.exec(t, `INSERT INTO {s}runs (id, public_id, org_id, project_id, thread_id, agent_version_id, status, started_at, ended_at, created_at, updated_at, reply_state, reply_next_at)
 		VALUES ($1, $2, $3, $4, $5, $6, 'completed', now(), now(), now(), now(), 'due', now())`,

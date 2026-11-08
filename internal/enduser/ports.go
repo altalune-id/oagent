@@ -12,6 +12,11 @@ type KeyHints interface {
 	KeyHint(ctx context.Context, keyID uuid.UUID) (string, error)
 }
 
+// Members names a member by user public id for an end user that is a member; an unknown member has an empty name.
+type Members interface {
+	MemberName(ctx context.Context, userPublicID string) (string, error)
+}
+
 // Seen is when an end user last wrote and how many threads they own or wrote in.
 type Seen struct {
 	Last    time.Time

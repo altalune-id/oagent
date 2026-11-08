@@ -15,14 +15,37 @@ import (
 	"altalune.id/oagent/internal/enduser"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/run"
+	"altalune.id/oagent/internal/user"
 )
 
 // NOTE: nil when the run domain was not built, so the server answers /api/v1/ as an unknown path.
 func buildDataPlane(cfg config.Config, svcs *Services, lims limiters, unexpected apperror.UnexpectedFunc, log *slog.Logger) http.Handler {
+	h := newDataPlane(cfg, svcs, lims, unexpected, log)
+	if h == nil {
+		return nil
+	}
+	mux := http.NewServeMux()
+	h.Register(mux, cfg.HTTP.BasePath)
+	return mux
+}
+
+func buildConsoleTry(
+	cfg config.Config, svcs *Services, lims limiters, unexpected apperror.UnexpectedFunc, log *slog.Logger,
+) map[string]http.Handler {
+	h := newDataPlane(cfg, svcs, lims, unexpected, log)
+	if h == nil {
+		return nil
+	}
+	return h.TryRoutes()
+}
+
+func newDataPlane(
+	cfg config.Config, svcs *Services, lims limiters, unexpected apperror.UnexpectedFunc, log *slog.Logger,
+) *dataplane.Handler {
 	if svcs == nil || svcs.Runs == nil || svcs.RunTurns == nil || svcs.KeyAuthn == nil {
 		return nil
 	}
-	h := dataplane.New(dataplane.Deps{
+	return dataplane.New(dataplane.Deps{
 		Keys:      svcs.KeyAuthn,
 		KeyPrefix: svcs.KeyScheme.Prefix(),
 		Agents:    dataPlaneAgents{agents: svcs.Agents, store: svcs.AgentStore},
@@ -31,6 +54,7 @@ func buildDataPlane(cfg config.Config, svcs *Services, lims limiters, unexpected
 		Store:     svcs.RunStore,
 		Runner:    svcs.RunTurns,
 		Canceller: svcs.Runs,
+		Drafts:    dataPlaneDrafts{agents: svcs.Agents},
 		Limits: dataplane.Limits{
 			Limiter: lims.dataPlane, TrustedProxyHops: cfg.HTTP.TrustedProxyHops,
 			PerKey: dataplane.KeyRule(cfg.RateLimit.DataPlane.PerKeyPerMinute), PerIP: dataplane.IPRule(cfg.RateLimit.DataPlane.PerIPPerMinute),
@@ -41,9 +65,13 @@ func buildDataPlane(cfg config.Config, svcs *Services, lims limiters, unexpected
 		Unexpected:   unexpected,
 		Log:          orDiscard(log),
 	})
-	mux := http.NewServeMux()
-	h.Register(mux, cfg.HTTP.BasePath)
-	return mux
+}
+
+type dataPlaneDrafts struct{ agents *agent.Service }
+
+func (d dataPlaneDrafts) Pin(ctx context.Context, agentID, by uuid.UUID) error {
+	_, err := d.agents.DraftVersion(ctx, agentID, by)
+	return err
 }
 
 type dataPlaneAgents struct {
@@ -91,6 +119,19 @@ func (e dataPlaneEndUsers) FindAPIUser(ctx context.Context, projectID uuid.UUID,
 		return uuid.Nil, false, err
 	}
 	return u.ID, true, nil
+}
+
+type memberNames struct{ users *user.Service }
+
+func (m memberNames) MemberName(ctx context.Context, userPublicID string) (string, error) {
+	u, err := m.users.ByPublicID(ctx, userPublicID)
+	if user.IsNotFoundError(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return u.Name, nil
 }
 
 type keyHints struct{ keys apikey.Store }

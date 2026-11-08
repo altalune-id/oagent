@@ -33,7 +33,7 @@ type TurnIDs struct {
 	Project      string `json:"project"`
 }
 
-// AgentSpec is the published config a turn runs with.
+// AgentSpec is the agent config a turn runs with: a published version, or a draft for a Try it run.
 type AgentSpec struct {
 	Instructions string    `json:"instructions"`
 	Temperature  float64   `json:"temperature"`

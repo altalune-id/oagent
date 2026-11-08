@@ -46,6 +46,11 @@ type Canceller interface {
 	Cancel(ctx context.Context, runID uuid.UUID) error
 }
 
+// Drafts pins an agent's draft for a console Try it run, refused with the errors a publish gives.
+type Drafts interface {
+	Pin(ctx context.Context, agentID, by uuid.UUID) error
+}
+
 // Runner holds a turn slot for a POST and runs the lease the POST claimed on it.
 type Runner interface {
 	Reserve() (run.Slot, bool)
@@ -62,6 +67,7 @@ type Deps struct {
 	Store        run.Store
 	Runner       Runner
 	Canceller    Canceller
+	Drafts       Drafts
 	Limits       Limits
 	Rate         run.RateCap
 	RuntimeReady func() bool

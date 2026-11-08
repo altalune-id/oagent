@@ -219,13 +219,26 @@ func (f *RunStore) ClaimAndAppend(
 func (f *RunStore) UpsertAPIThread(
 	ctx context.Context, projectID, agentID uuid.UUID, externalKey string, actor uuid.UUID,
 ) (*run.Thread, error) {
+	return f.upsertBound(ctx, "api", projectID, agentID, externalKey, actor)
+}
+
+// UpsertTryThread implements run.Store.
+func (f *RunStore) UpsertTryThread(
+	ctx context.Context, projectID, agentID uuid.UUID, externalKey string, actor uuid.UUID,
+) (*run.Thread, error) {
+	return f.upsertBound(ctx, "try", projectID, agentID, externalKey, actor)
+}
+
+func (f *RunStore) upsertBound(
+	ctx context.Context, kind string, projectID, agentID uuid.UUID, externalKey string, actor uuid.UUID,
+) (*run.Thread, error) {
 	tc, err := tenant.From(ctx)
 	if err != nil {
 		return nil, err
 	}
 	f.mu.Lock()
 	for id, key := range f.ExternalKeys {
-		if key == externalKey && f.Agents[id] == agentID && f.Threads[id].OrgID == tc.OrgID {
+		if key == externalKey && f.Agents[id] == agentID && f.Threads[id].OrgID == tc.OrgID && f.kind(id) == kind {
 			f.mu.Unlock()
 			if actor == uuid.Nil || f.Actors[id] != actor {
 				return nil, &run.ThreadActorMismatchError{ThreadID: id.String()}
@@ -241,12 +254,27 @@ func (f *RunStore) UpsertAPIThread(
 		f.ExternalKeys, f.Actors = map[uuid.UUID]string{}, map[uuid.UUID]uuid.UUID{}
 	}
 	f.ExternalKeys[id], f.Actors[id] = externalKey, actor
+	if kind != "api" {
+		if f.Kinds == nil {
+			f.Kinds = map[uuid.UUID]string{}
+		}
+		f.Kinds[id] = kind
+	}
 	f.mu.Unlock()
 	return f.Thread(ctx, id)
 }
 
 // ThreadByExternalKey implements run.Store.
 func (f *RunStore) ThreadByExternalKey(ctx context.Context, agentID uuid.UUID, externalKey string) (*run.Thread, error) {
+	return f.threadByKey(ctx, "api", agentID, externalKey)
+}
+
+// TryThreadByExternalKey implements run.Store.
+func (f *RunStore) TryThreadByExternalKey(ctx context.Context, agentID uuid.UUID, externalKey string) (*run.Thread, error) {
+	return f.threadByKey(ctx, "try", agentID, externalKey)
+}
+
+func (f *RunStore) threadByKey(ctx context.Context, kind string, agentID uuid.UUID, externalKey string) (*run.Thread, error) {
 	tc, err := tenant.From(ctx)
 	if err != nil {
 		return nil, err
@@ -254,7 +282,7 @@ func (f *RunStore) ThreadByExternalKey(ctx context.Context, agentID uuid.UUID, e
 	f.mu.Lock()
 	var found uuid.UUID
 	for id, key := range f.ExternalKeys {
-		if key == externalKey && f.Agents[id] == agentID && f.Threads[id].OrgID == tc.OrgID {
+		if key == externalKey && f.Agents[id] == agentID && f.Threads[id].OrgID == tc.OrgID && f.kind(id) == kind {
 			found = id
 		}
 	}
@@ -688,7 +716,7 @@ func before(c run.Cursor, at time.Time, id string) bool {
 
 // ListThreads implements run.Store.
 func (f *RunStore) ListThreads(
-	ctx context.Context, projectID, agentID uuid.UUID, after run.Cursor, limit int,
+	ctx context.Context, projectID uuid.UUID, filter run.ThreadFilter, after run.Cursor, limit int,
 ) ([]run.ThreadSummary, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -701,7 +729,8 @@ func (f *RunStore) ListThreads(
 	}
 	var out []run.ThreadSummary
 	for id, th := range f.Threads {
-		if th.OrgID != tc.OrgID || th.ProjectID != projectID || (agentID != uuid.Nil && f.Agents[id] != agentID) {
+		if th.OrgID != tc.OrgID || th.ProjectID != projectID || (filter.AgentID != uuid.Nil && f.Agents[id] != filter.AgentID) ||
+			(filter.Kind != "" && f.kind(id) != filter.Kind) {
 			continue
 		}
 		sum := f.summary(id, th)

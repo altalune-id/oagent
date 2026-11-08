@@ -34,5 +34,5 @@ func NewStore(pool db.Pool, schema, tablePrefix string) *postgresStore {
 func latestVersions(schema, tablePrefix, contains string) string {
 	return `SELECT v.config AS "agent_versions.config" FROM ` + schema + "." + tablePrefix + `agent_versions v JOIN ` +
 		schema + "." + tablePrefix + `agents a ON a.id = v.agent_id AND a.published_version = v.version ` +
-		`WHERE v.org_id = #org AND v.config @> ` + contains
+		`WHERE v.org_id = #org AND v.kind = 'published' AND v.config @> ` + contains
 }

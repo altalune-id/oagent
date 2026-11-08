@@ -45,7 +45,7 @@ function pretty(value: unknown) {
       <div v-if="item.kind === 'user'" class="chat" :class="side.user">
         <div class="chat-header text-xs">
           {{ item.deleted ? shownName('', true, t) : item.speaker ?? youName }}
-          <time :datetime="item.at.toISOString()" class="text-base-content/70">{{ time(item.at) }}</time>
+          <time v-if="item.at" :datetime="item.at.toISOString()" class="text-base-content/70">{{ time(item.at) }}</time>
           <span v-if="item.skipped" class="badge badge-ghost badge-sm text-base-content">{{ t(`thread.skipped_${item.skipped}`) }}</span>
         </div>
         <div class="chat-bubble text-base-content text-ui" :class="side.userBubble">
@@ -67,7 +67,7 @@ function pretty(value: unknown) {
       <div v-else-if="item.kind === 'agent'" class="chat" :class="side.agent">
         <div class="chat-header text-xs">
           {{ agentName }}
-          <time :datetime="item.at.toISOString()" class="text-base-content/70">{{ time(item.at) }}</time>
+          <time v-if="item.at" :datetime="item.at.toISOString()" class="text-base-content/70">{{ time(item.at) }}</time>
         </div>
         <div v-if="item.failed" class="chat-bubble border border-error bg-base-100 text-base-content text-ui">
           <p class="flex items-start gap-1.5">
@@ -117,6 +117,7 @@ function pretty(value: unknown) {
           <span class="h-px flex-1 bg-base-300" aria-hidden="true" />
           <NuxtLink :to="`${runBase}/${item.run.id}`" class="link link-hover flex max-w-[85%] flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-center text-base-content/70">
             <span class="whitespace-nowrap">{{ t('thread.run') }} <span class="font-mono">{{ item.run.id }}</span></span>
+            <span v-if="item.run.draft" class="badge badge-xs badge-ghost text-base-content">{{ t('run.draft') }}</span>
             <StatusLabel :tone="runStatusTone[item.run.status]" :label="t(`runstatus.${item.run.status}`)" class="text-xs whitespace-nowrap" />
             <span class="whitespace-nowrap">{{ seconds(item.run.seconds) }} · {{ t(item.run.estimated ? 'thread.tokens_estimated' : 'thread.tokens', { n: count(item.run.tokens) }) }} · <span v-if="item.run.unpriced">{{ t('thread.unpriced') }}</span><span v-else :title="costTitle(item.run.costCents)">{{ cost(item.run.costCents) }}</span></span>
           </NuxtLink>

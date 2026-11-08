@@ -21,6 +21,9 @@ import (
 const (
 	defaultPageSize = 50
 	maxPageSize     = 200
+
+	versionPublished = "published"
+	versionDraft     = "draft"
 )
 
 // ThreadService implements thread.v1.ThreadService; every id it takes and returns is a public id.
@@ -53,7 +56,7 @@ func (s *ThreadService) ListThreads(
 	}
 	ctx = tenant.Into(ctx, tenant.Context{OrgID: orgID, ProjectID: projectID})
 	out := &threadv1.ListThreadsResponse{Threads: []*threadv1.Thread{}}
-	agentID := uuid.Nil
+	filter := ThreadFilter{Kind: m.GetKind()}
 	if m.GetAgentId() != "" {
 		id, found, err := s.refs.ResourceID(ctx, orgID, m.GetAgentId())
 		if err != nil {
@@ -62,14 +65,14 @@ func (s *ThreadService) ListThreads(
 		if !found {
 			return connect.NewResponse(out), nil
 		}
-		agentID = id
+		filter.AgentID = id
 	}
 	after, err := decodeCursor(m.GetPageToken())
 	if err != nil {
 		return nil, err
 	}
 	size := pageSize(m.GetPageSize())
-	rows, err := s.runs.ListThreads(ctx, projectID, agentID, after, size+1)
+	rows, err := s.runs.ListThreads(ctx, projectID, filter, after, size+1)
 	if err != nil {
 		return nil, err
 	}
@@ -340,12 +343,16 @@ func (s *ThreadService) runWithThread(ctx context.Context, r *Run) (*threadv1.Ru
 }
 
 func (s *ThreadService) runProto(ctx context.Context, r *Run, threadPub string) (*threadv1.Run, error) {
-	version, err := s.runs.AgentVersion(ctx, r.AgentVersionID)
+	version, draft, err := s.runs.AgentVersion(ctx, r.AgentVersionID)
 	if err != nil {
 		return nil, err
 	}
+	kind := versionPublished
+	if draft {
+		kind = versionDraft
+	}
 	out := &threadv1.Run{
-		Id: r.PublicID, ThreadId: threadPub, Status: statusToProto(r.Status), Attempt: r.Attempt, AgentVersion: version,
+		Id: r.PublicID, ThreadId: threadPub, Status: statusToProto(r.Status), Attempt: r.Attempt, AgentVersion: version, AgentVersionKind: kind,
 		Usage: &threadv1.Usage{
 			InputTokens: r.Usage.InputTokens, OutputTokens: r.Usage.OutputTokens,
 			CacheReadTokens: r.Usage.CacheReadTokens, CacheWriteTokens: r.Usage.CacheWriteTokens, Estimated: r.Usage.Estimated,

@@ -60,4 +60,11 @@ describe('chat transcript sides', () => {
     expect(w.text()).toContain('thread.tokens_estimated');
     expect(w.text()).toContain('thread.unpriced');
   });
+
+  it('labels a run on the unpublished draft as Draft, and only that run', () => {
+    const run = { id: 'r1', threadId: 't1', threadTitle: 'T', status: 'completed' as const, startedAt: at, seconds: 1, tokens: 10, costCents: 1, draft: true };
+    const w = mount(ChatTranscript, { props: { items: [{ id: 1, kind: 'run' as const, run }, { id: 2, kind: 'run' as const, run: { ...run, id: 'r2', draft: false } }], agentName: 'Yasaku', youName: 'You', viewer: 'agent' } });
+    const rows = w.findAll('a');
+    expect(rows.map(r => r.find('.badge').exists() && r.get('.badge').text())).toEqual(['run.draft', false]);
+  });
 });

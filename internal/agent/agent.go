@@ -2,6 +2,7 @@
 package agent
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -122,11 +123,24 @@ type Version struct {
 	OrgID     uuid.UUID
 	ProjectID uuid.UUID
 	AgentID   uuid.UUID
+	// Version is 0 for a draft.
 	Version   int32
 	Config    Config
 	CreatedBy uuid.NullUUID
 	CreatedAt time.Time
+	Kind      VersionKind
+	// ConfigHash identifies a draft's config; a published version has none.
+	ConfigHash []byte
 }
+
+// VersionKind tells a published version from a draft snapshot a Try it run is pinned to.
+type VersionKind string
+
+// The version kinds.
+const (
+	VersionPublished VersionKind = "published"
+	VersionDraft     VersionKind = "draft"
+)
 
 // Validate reports the first rule c breaks as a validation error on its config.* field.
 func (c Config) Validate() error {
@@ -242,13 +256,34 @@ func (a *Agent) Publish(latest *Version, by uuid.UUID, now time.Time) (v *Versio
 	}
 	v = &Version{
 		ID: uuid.New(), PublicID: publicID, OrgID: a.OrgID, ProjectID: a.ProjectID, AgentID: a.ID,
-		Version: next, Config: a.Draft, CreatedAt: now,
+		Version: next, Config: a.Draft, CreatedAt: now, Kind: VersionPublished,
 	}
 	if by != uuid.Nil {
 		v.CreatedBy = uuid.NullUUID{UUID: by, Valid: true}
 	}
 	a.PublishedVersion, a.PublishedAt = v.Version, &now
 	return v, true, nil
+}
+
+// DraftVersion snapshots the draft config as an unnumbered draft version by person by at now; equal configs share a hash.
+func (a *Agent) DraftVersion(by uuid.UUID, now time.Time) (*Version, error) {
+	raw, err := json.Marshal(a.Draft)
+	if err != nil {
+		return nil, fmt.Errorf("agent: draft hash: %w", err)
+	}
+	sum := sha256.Sum256(raw)
+	publicID, err := nanoid.New(21)
+	if err != nil {
+		return nil, err
+	}
+	v := &Version{
+		ID: uuid.New(), PublicID: publicID, OrgID: a.OrgID, ProjectID: a.ProjectID, AgentID: a.ID,
+		Config: a.Draft, CreatedAt: now, Kind: VersionDraft, ConfigHash: sum[:],
+	}
+	if by != uuid.Nil {
+		v.CreatedBy = uuid.NullUUID{UUID: by, Valid: true}
+	}
+	return v, nil
 }
 
 // New constructs an Agent after validating slug, name and description.
@@ -372,15 +407,17 @@ func (r *agentRow) toAgent() (*Agent, error) {
 }
 
 type versionRow struct {
-	ID        uuid.UUID     `alias:"agent_versions.id"`
-	PublicID  string        `alias:"agent_versions.public_id"`
-	OrgID     uuid.UUID     `alias:"agent_versions.org_id"`
-	ProjectID uuid.UUID     `alias:"agent_versions.project_id"`
-	AgentID   uuid.UUID     `alias:"agent_versions.agent_id"`
-	Version   int32         `alias:"agent_versions.version"`
-	Config    string        `alias:"agent_versions.config"`
-	CreatedBy uuid.NullUUID `alias:"agent_versions.created_by"`
-	CreatedAt time.Time     `alias:"agent_versions.created_at"`
+	ID         uuid.UUID     `alias:"agent_versions.id"`
+	PublicID   string        `alias:"agent_versions.public_id"`
+	OrgID      uuid.UUID     `alias:"agent_versions.org_id"`
+	ProjectID  uuid.UUID     `alias:"agent_versions.project_id"`
+	AgentID    uuid.UUID     `alias:"agent_versions.agent_id"`
+	Version    *int32        `alias:"agent_versions.version"`
+	Config     string        `alias:"agent_versions.config"`
+	CreatedBy  uuid.NullUUID `alias:"agent_versions.created_by"`
+	CreatedAt  time.Time     `alias:"agent_versions.created_at"`
+	Kind       string        `alias:"agent_versions.kind"`
+	ConfigHash []byte        `alias:"agent_versions.config_hash"`
 }
 
 func (r *versionRow) toVersion() (*Version, error) {
@@ -390,8 +427,16 @@ func (r *versionRow) toVersion() (*Version, error) {
 	}
 	return &Version{
 		ID: r.ID, PublicID: r.PublicID, OrgID: r.OrgID, ProjectID: r.ProjectID, AgentID: r.AgentID,
-		Version: r.Version, Config: cfg, CreatedBy: r.CreatedBy, CreatedAt: r.CreatedAt.UTC(),
+		Version: deref(r.Version), Config: cfg, CreatedBy: r.CreatedBy, CreatedAt: r.CreatedAt.UTC(),
+		Kind: VersionKind(r.Kind), ConfigHash: r.ConfigHash,
 	}, nil
+}
+
+func deref(n *int32) int32 {
+	if n == nil {
+		return 0
+	}
+	return *n
 }
 
 func utcPtr(t *time.Time) *time.Time {

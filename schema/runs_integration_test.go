@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/testutil/pgtest"
+	"altalune.id/oagent/migrator"
+	"altalune.id/oagent/schema"
 )
 
 type runScope struct {
@@ -29,7 +31,7 @@ func seedRunScope(t *testing.T, db *sql.DB) runScope {
 			agent, "a"+agent.String()[:8], scope[0], scope[1])
 		require.NoError(t, err)
 	}
-	_, err := db.ExecContext(ctx, `INSERT INTO agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at) VALUES ($1, $2, $3, $4, $5, 1, '{}', now())`,
+	_, err := db.ExecContext(ctx, `INSERT INTO agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at, kind) VALUES ($1, $2, $3, $4, $5, 1, '{}', now(), 'published')`,
 		s.versionA, "v"+s.versionA.String()[:8], s.orgA, s.prjA, s.agentA)
 	require.NoError(t, err)
 	_, err = db.ExecContext(ctx, `INSERT INTO end_users (id, public_id, org_id, project_id, created_at, updated_at) VALUES ($1, $2, $3, $4, now(), now())`,
@@ -84,6 +86,20 @@ func TestThreads_LeaseShapeAndKeys(t *testing.T) {
 	_, err = db.ExecContext(t.Context(), `INSERT INTO threads (id, public_id, org_id, project_id, agent_id, kind, external_key, created_at, updated_at) VALUES ($1, 'tfk', $2, $3, $4, 'api', 'k3', now(), now())`,
 		uuid.New(), s.orgA, s.prjA, s.agentB)
 	assert.Equal(t, "23503", pgCode(err), "a thread's agent is in its org and project")
+}
+
+func TestThreads_TryKindHasItsOwnKeys(t *testing.T) {
+	db, _ := pgtest.Migrated(t)
+	s := seedRunScope(t, db)
+	s.thread(t, db, "k1")
+	insert := func(pub, kind, key string) error {
+		_, err := db.ExecContext(t.Context(), `INSERT INTO threads (id, public_id, org_id, project_id, agent_id, kind, external_key, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())`,
+			uuid.New(), pub, s.orgA, s.prjA, s.agentA, kind, key)
+		return err
+	}
+	require.NoError(t, insert("ttry1", "try", "k1"), "a try thread may reuse an api thread's key")
+	assert.Equal(t, "threads_agent_try_key_key", pgConstraint(insert("ttry2", "try", "k1")), "one try thread per agent and key")
+	require.NoError(t, insert("ttry3", "try", "k2"))
 }
 
 func TestRuns_OneOpenRunPerThread(t *testing.T) {
@@ -199,4 +215,51 @@ func TestMessages_RequestHashIsOptional(t *testing.T) {
 	var hash []byte
 	require.NoError(t, db.QueryRowContext(t.Context(), `SELECT request_hash FROM messages WHERE external_message_id = 'idem:k1'`).Scan(&hash))
 	assert.Equal(t, []byte{1, 2}, hash)
+}
+
+func TestMigrations_TryDraftsKeepsExistingVersionsPublished(t *testing.T) {
+	db, schemaName := pgtest.Migrated(t)
+	s := seedRunScope(t, db)
+	cfg := migrator.Config{Schema: schemaName}
+	require.NoError(t, schema.MigrateDownTo(t.Context(), db, cfg, 25), "back to before the try drafts")
+	var n int
+	require.NoError(t, db.QueryRowContext(t.Context(), `SELECT count(*) FROM agent_versions WHERE id = $1`, s.versionA).Scan(&n))
+	require.Equal(t, 1, n, "a published version already exists, as on a live deployment")
+
+	require.NoError(t, schema.MigrateUp(t.Context(), db, cfg), "the try-drafts migration applies over existing versions")
+	var kind string
+	require.NoError(t, db.QueryRowContext(t.Context(), `SELECT kind FROM agent_versions WHERE id = $1`, s.versionA).Scan(&kind))
+	assert.Equal(t, "published", kind, "an existing version is a published one")
+
+	_, err := db.ExecContext(t.Context(), `INSERT INTO agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at) VALUES ($1, $2, $3, $4, $5, 2, '{}', now())`,
+		uuid.New(), "vnokind00000", s.orgA, s.prjA, s.agentA)
+	assert.Equal(t, "23502", pgCode(err), "a new version must still say its kind: no default is left behind")
+}
+
+func TestMigrations_TryDraftsDownDropsTryItHistory(t *testing.T) {
+	db, schemaName := pgtest.Migrated(t)
+	s := seedRunScope(t, db)
+	ctx := t.Context()
+	draft, tryThread := uuid.New(), uuid.New()
+	_, err := db.ExecContext(ctx, `INSERT INTO agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at, kind, config_hash) VALUES ($1, $2, $3, $4, $5, NULL, '{}', now(), 'draft', '\x01')`,
+		draft, "vdraft000001", s.orgA, s.prjA, s.agentA)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, `INSERT INTO threads (id, public_id, org_id, project_id, agent_id, kind, external_key, created_at, updated_at) VALUES ($1, 'ttry00000001', $2, $3, $4, 'try', 'try-1', now(), now())`,
+		tryThread, s.orgA, s.prjA, s.agentA)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, `INSERT INTO runs (id, public_id, org_id, project_id, thread_id, agent_version_id, status, started_at, created_at, updated_at) VALUES ($1, 'rtry00000001', $2, $3, $4, $5, 'completed', now(), now(), now())`,
+		uuid.New(), s.orgA, s.prjA, tryThread, draft)
+	require.NoError(t, err)
+	apiThread := s.thread(t, db, "api-1")
+
+	require.NoError(t, schema.MigrateDownTo(ctx, db, migrator.Config{Schema: schemaName}, 25), "Down works over a database with a Try it conversation")
+	count := func(q string, args ...any) int {
+		var n int
+		require.NoError(t, db.QueryRowContext(ctx, q, args...).Scan(&n))
+		return n
+	}
+	assert.Zero(t, count(`SELECT count(*) FROM threads WHERE id = $1`, tryThread), "Down drops the Try it thread and its runs")
+	assert.Zero(t, count(`SELECT count(*) FROM agent_versions WHERE id = $1`, draft), "and the draft versions")
+	assert.Equal(t, 1, count(`SELECT count(*) FROM threads WHERE id = $1`, apiThread), "other threads stay")
+	assert.Equal(t, 1, count(`SELECT count(*) FROM agent_versions WHERE id = $1`, s.versionA), "published versions stay")
 }

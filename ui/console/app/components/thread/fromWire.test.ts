@@ -11,6 +11,7 @@ const toItems = (messages: Parameters<typeof itemsOf>[0], runs: Parameters<typeo
 describe('thread wire mapping', () => {
   it('titles a thread with no person by its channel, so a group never has an empty title', () => {
     expect(threadOf(create(ThreadSchema, { id: 't', kind: 'group' }), t).title).toBe('threads.kind_whatsapp_group');
+    expect(threadOf(create(ThreadSchema, { id: 't', kind: 'try', endUserLabel: 'API user ·…9MAR', endUserIdentityKind: IdentityKind.API_USER }), t).title).toBe('try.title');
   });
 
   it('labels a person from the structured fields in the viewer\'s locale, else the server label, never a full number', () => {
@@ -42,6 +43,7 @@ describe('thread wire mapping', () => {
   it('keeps a run unpriced without cost micros, and its error code', () => {
     expect(toRunSummary(create(RunSchema, { id: 'r', status: RunStatus.FAILED, errorCode: 'RUN005' }), 'T')).toMatchObject({ status: 'failed', unpriced: true, estimated: false, tokens: 0, seconds: 0, costCents: 0, detail: { key: 'runstatus.detail_error', params: { code: 'RUN005' } }, startedAt: new Date(0) });
     expect(toRunSummary(create(RunSchema, { id: 'r', status: RunStatus.UNSPECIFIED }), 'T').status).toBe('running');
+    expect([toRunSummary(create(RunSchema, { id: 'r', agentVersionKind: 'draft' }), 'T').draft, toRunSummary(create(RunSchema, { id: 'r', agentVersionKind: 'published' }), 'T').draft]).toEqual([true, false]);
   });
 
   it('maps why a channel message was skipped, keeping an unknown reason as skipped', () => {

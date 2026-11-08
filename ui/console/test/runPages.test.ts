@@ -52,14 +52,13 @@ describe('runs page', () => {
       listThreads: vi.fn().mockResolvedValue({ threads: [create(ThreadSchema, { id: threadId, projectId, agentId: tagihan.id, kind: 'dm', endUserLabel: 'Sari', runCount: 2n })], nextPageToken: '' }),
       listRuns: vi.fn().mockResolvedValue({ runs: [
         create(RunSchema, { id: 'Rn2wQ8mX4vZ9tB3nC7kPq', threadId, status: RunStatus.COMPLETED, agentVersion: 2, usage: { inputTokens: 800n, outputTokens: 76n }, latencyMs: 2400n, costMicros: 1200n, startedAt: at(9) }),
-        create(RunSchema, { id: 'Rn5tH2kW8pQ3mXv7ZcB4n', threadId: 'Th9zZ9zZ9zZ9zZ9zZ9zZ9', status: RunStatus.FAILED, errorCode: 'RUN004', agentVersion: 2, usage: {}, startedAt: at(3) }),
+        create(RunSchema, { id: 'Rn5tH2kW8pQ3mXv7ZcB4n', threadId: 'Th9zZ9zZ9zZ9zZ9zZ9zZ9', status: RunStatus.FAILED, errorCode: 'RUN004', agentVersion: 0, agentVersionKind: 'draft', usage: {}, startedAt: at(3) }),
       ], nextPageToken: '' }),
     };
     setClient('$threadClient', c);
     const w = await mountPage(RunsPage);
     await flushPromises();
     expect(c.listRuns).toHaveBeenCalledWith({ projectId, agentId: tagihan.id, pageSize: 200 });
-    expect(w.find('.badge').exists()).toBe(false);
     expect(w.find('[role="note"]').exists()).toBe(false);
     expect(w.get('caption').text()).toBe('run.caption');
     const rows = w.findAll('tbody tr');
@@ -67,6 +66,9 @@ describe('runs page', () => {
     expect(rows[1]!.text()).toContain('runs.thread_untitled');
     expect(rows[1]!.text()).toContain('runstatus.detail_error|{"code":"RUN004"}');
     expect(rows[1]!.text()).toContain('thread.unpriced');
+    const priced = rows[0]!.get('[title]');
+    expect([priced.text(), priced.attributes('title')]).toEqual(['< $0.01', '$0.0012']);
+    expect(rows.map(r => r.findAll('.badge').map(b => b.text()))).toEqual([[], ['run.draft']]);
     const links = w.findAllComponents(RouterLinkStub).map(l => l.props('to'));
     expect(links).toEqual(expect.arrayContaining(['/o/acme/projects/rumah/agents/tagihan/runs/Rn2wQ8mX4vZ9tB3nC7kPq', `/o/acme/projects/rumah/agents/tagihan/threads/${threadId}`]));
   });
@@ -143,6 +145,14 @@ describe('run viewer', () => {
     expect(w.text()).not.toContain('preview');
     expect(w.find('.badge-info').exists()).toBe(false);
     expect(w.text()).not.toContain('run.attempt');
+  });
+
+  it('says a run on the unpublished draft ran the draft, not version 0', async () => {
+    threadClient({ getRun: vi.fn().mockResolvedValue({ run: create(RunSchema, { id: runId, threadId, status: RunStatus.COMPLETED, attempt: 1, agentVersion: 0, agentVersionKind: 'draft', usage: {}, startedAt: at(3) }) }) });
+    const w = await mountPage(RunPage);
+    await flushPromises();
+    expect(w.text()).toContain('run.started_draft|');
+    expect(w.text()).not.toContain('run.started_live');
   });
 
   it('names a retried run\'s attempt and an empty run', async () => {

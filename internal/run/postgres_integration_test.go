@@ -57,7 +57,7 @@ func (f *pgFixture) seed(t *testing.T) scope {
 	f.exec(t, `INSERT INTO `+p+`orgs (id, public_id, slug, name, created_at, updated_at) VALUES ($1, $2, $2, 'O', now(), now())`, s.org, "o"+s.org.String()[:12])
 	f.exec(t, `INSERT INTO `+p+`projects (id, public_id, org_id, slug, name, created_at, updated_at) VALUES ($1, $2, $3, 'p', 'P', now(), now())`, s.project, "p"+s.project.String()[:12], s.org)
 	f.exec(t, `INSERT INTO `+p+`agents (id, public_id, org_id, project_id, slug, name, created_at, updated_at) VALUES ($1, $2, $3, $4, 'a', 'A', now(), now())`, s.agent, "a"+s.agent.String()[:12], s.org, s.project)
-	f.exec(t, `INSERT INTO `+p+`agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at) VALUES ($1, $2, $3, $4, $5, 1, '{}', now())`, s.version, "v"+s.version.String()[:12], s.org, s.project, s.agent)
+	f.exec(t, `INSERT INTO `+p+`agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at, kind) VALUES ($1, $2, $3, $4, $5, 1, '{}', now(), 'published')`, s.version, "v"+s.version.String()[:12], s.org, s.project, s.agent)
 	return s
 }
 
@@ -766,6 +766,27 @@ func TestStore_ConcurrentIdenticalPOSTsInsertOnce(t *testing.T) {
 	}
 	assert.Equal(t, 1, claimed, "exactly one POST holds the thread")
 	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.messages WHERE thread_id = $1 AND external_message_id = 'idem:same'`, thread))
+}
+
+func TestStore_TryThreadBindsTheMemberApartFromAPIThreads(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	ctx := in(s.org)
+	member, other := f.endUser(t, s), f.endUser(t, s)
+	api, err := f.store.UpsertAPIThread(ctx, s.project, s.agent, "conv-1", member)
+	require.NoError(t, err)
+	try, err := f.store.UpsertTryThread(ctx, s.project, s.agent, "conv-1", member)
+	require.NoError(t, err)
+	assert.Equal(t, "try", try.Kind)
+	assert.NotEqual(t, api.ID, try.ID, "a try thread never resumes an API thread with the same key")
+	again, err := f.store.UpsertTryThread(ctx, s.project, s.agent, "conv-1", member)
+	require.NoError(t, err)
+	assert.Equal(t, try.ID, again.ID)
+	_, err = f.store.UpsertTryThread(ctx, s.project, s.agent, "conv-1", other)
+	assert.True(t, run.IsThreadNotFoundError(err), "another member's try thread reads as not found: %v", err)
+	got, err := f.store.ThreadByExternalKey(ctx, s.agent, "conv-1")
+	require.NoError(t, err)
+	assert.Equal(t, api.ID, got.ID, "the API lookup never returns a try thread")
 }
 
 func TestStore_APIThreadBindsFirstActor(t *testing.T) {

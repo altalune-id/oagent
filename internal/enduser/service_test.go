@@ -193,6 +193,40 @@ type keyHints map[uuid.UUID]string
 
 func (k keyHints) KeyHint(_ context.Context, id uuid.UUID) (string, error) { return k[id], nil }
 
+type members map[string]string
+
+func (m members) MemberName(_ context.Context, userPublicID string) (string, error) {
+	return m[userPublicID], nil
+}
+
+func TestName_AMemberActorShowsTheMembersName(t *testing.T) {
+	f := newFixture(t)
+	e, err := f.svc.Upsert(f.ctx, f.projectID, enduser.Identity{Kind: enduser.KindAPIUser, Value: "person:U1ada000000000000001"})
+	require.NoError(t, err)
+	before, err := f.svc.Name(f.ctx, e.ID)
+	require.NoError(t, err)
+	assert.Empty(t, before.DisplayName, "without the members port, nothing changes")
+
+	f.svc.WithMembers(members{"U1ada000000000000001": "Ada Lovelace"})
+	got, err := f.svc.Name(f.ctx, e.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "Ada Lovelace", got.DisplayName, "a console Try it or personal-key actor is named after the member")
+	assert.Equal(t, "Ada Lovelace", got.Label())
+	assert.Equal(t, enduser.KindAPIUser, got.Kind)
+
+	stranger, err := f.svc.Upsert(f.ctx, f.projectID, enduser.Identity{Kind: enduser.KindAPIUser, Value: "person:Ugone00000000000000001"})
+	require.NoError(t, err)
+	got, err = f.svc.Name(f.ctx, stranger.ID)
+	require.NoError(t, err)
+	assert.Empty(t, got.DisplayName, "a member who is gone keeps the masked label")
+
+	plain, err := f.svc.Upsert(f.ctx, f.projectID, enduser.Identity{Kind: enduser.KindAPIUser, Value: "U1ada000000000000001"})
+	require.NoError(t, err)
+	got, err = f.svc.Name(f.ctx, plain.ID)
+	require.NoError(t, err)
+	assert.Empty(t, got.DisplayName, "an integrator's own user value is never looked up as a member")
+}
+
 func TestName_AKeyActorShowsTheKeysHint(t *testing.T) {
 	f := newFixture(t)
 	keyID := uuid.New()
