@@ -338,10 +338,35 @@ func TestService_ResolveModelOpensTheKey(t *testing.T) {
 	got, err := f.svc.ResolveModel(f.ctx, p.ID, "gpt-4o")
 	require.NoError(t, err)
 	assert.Equal(t, modelprovider.Resolved{
+		Kind:    modelprovider.KindOpenAICompatible,
 		BaseURL: "https://openrouter.ai/api/v1",
 		APIKey:  apiKey,
 		Model:   modelprovider.Model{ID: "gpt-4o", Vision: true, Prices: &modelprovider.Prices{InputMicros: 2_500_000, OutputMicros: 10_000_000}},
 	}, got)
+}
+
+func TestService_ResolveModelReturnsTheKind(t *testing.T) {
+	f := newFixture(t)
+	in := input()
+	in.Kind = modelprovider.KindAnthropic
+	in.BaseURL = "https://api.anthropic.com"
+	p, err := f.svc.Create(f.ctx, uuid.New(), in, apiKey)
+	require.NoError(t, err)
+
+	got, err := f.svc.ResolveModel(f.ctx, p.ID, "gpt-4o")
+	require.NoError(t, err)
+	assert.Equal(t, modelprovider.KindAnthropic, got.Kind)
+}
+
+func TestService_UpdateKindIsRefused(t *testing.T) {
+	f := newFixture(t)
+	p := f.create(t)
+	in := input()
+	in.Kind = modelprovider.KindAnthropic
+
+	_, err := f.svc.Update(f.ctx, p.ID, in, nil)
+	assert.Equal(t, apperror.CodeValidation, codeOf(t, err))
+	assert.Equal(t, modelprovider.KindOpenAICompatible, f.store.Providers[p.ID].Kind)
 }
 
 func TestService_ResolveModelUnknownModel(t *testing.T) {

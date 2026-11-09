@@ -34,6 +34,7 @@ type Case = {
 
 const cases: Record<string, Case> = {
   plain_reply: { steps: [{ text: ['Hi, ', 'how can I help?'], usage: { inputTokens: 120, outputTokens: 9 } }] },
+  anthropic_reply: { steps: [{ text: ['Hi, ', 'how can I help?'], usage: { inputTokens: 120, outputTokens: 9 } }] },
   tool_call: { steps: [
     { toolUse: callArgs, usage: { inputTokens: 450, outputTokens: 40 } },
     { text: ['Recorded lunch: 25,000 from cash.'], usage: { inputTokens: 460, outputTokens: 24 } },

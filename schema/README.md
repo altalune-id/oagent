@@ -117,7 +117,7 @@ erDiagram
         uuid org_id FK
         uuid project_id FK "(org_id, project_id) -> projects"
         text name "unique per project"
-        text kind "openai_compatible"
+        text kind "openai_compatible or anthropic; fixed after create"
         text base_url
         bytea api_key_sealed "sealed"
         jsonb models "an array"

@@ -22,6 +22,19 @@ describe('validateRequest', () => {
     expect(result.ok ? 'ok' : result.fields).toBe('ok');
   });
 
+  it('defaults the model provider to openai_compatible and keeps anthropic', () => {
+    const plain = validateRequest(golden('plain_reply.request.json'));
+    expect(plain.ok && plain.request.agent.model.provider).toBe('openai_compatible');
+    const anthropic = validateRequest(golden('anthropic_reply.request.json'));
+    expect(anthropic.ok && anthropic.request.agent.model.provider).toBe('anthropic');
+  });
+
+  it('refuses an unknown model provider', () => {
+    const req = golden('plain_reply.request.json');
+    (req.agent as { model: Record<string, unknown> }).model.provider = 'bedrock';
+    expect(validateRequest(req)).toEqual({ ok: false, fields: ['agent.model.provider'] });
+  });
+
   it('refuses an unknown top-level field', () => {
     const result = validateRequest({ ...golden('plain_reply.request.json'), extra: true });
     expect(result).toEqual({ ok: false, fields: ['extra'] });

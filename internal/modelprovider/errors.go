@@ -197,11 +197,22 @@ func IsSecretsUnavailableError(err error) bool {
 	return ok
 }
 
+// KindChangedError reports that an update asked for another kind; a provider's kind is fixed after create.
+type KindChangedError struct{}
+
+func (*KindChangedError) Error() string { return "modelprovider: kind cannot change" }
+
+// IsKindChangedError reports whether err's tree contains a *KindChangedError.
+func IsKindChangedError(err error) bool {
+	_, ok := errors.AsType[*KindChangedError](err)
+	return ok
+}
+
 // IsExpectedError reports whether err is a typed domain error a service returns as-is.
 func IsExpectedError(err error) bool {
 	return IsNotFoundError(err) || IsAlreadyExistsError(err) || IsInvalidBaseURLError(err) ||
 		IsInvalidModelsError(err) || IsInUseError(err) || IsSecretRequiredError(err) ||
-		IsUnknownModelError(err) || IsSecretsUnavailableError(err)
+		IsUnknownModelError(err) || IsSecretsUnavailableError(err) || IsKindChangedError(err)
 }
 
 // ToAppError maps NotFoundError to its own code.
@@ -250,4 +261,9 @@ func (e *UnknownModelError) ToAppError() *apperror.AppError {
 // ToAppError maps SecretsUnavailableError to its own code.
 func (e *SecretsUnavailableError) ToAppError() *apperror.AppError {
 	return apperror.New(apperror.CodeModelProviderSecretsUnavailable, "Model provider secrets are unavailable").WithCause(e)
+}
+
+// ToAppError maps KindChangedError to a validation error on the kind field.
+func (e *KindChangedError) ToAppError() *apperror.AppError {
+	return apperror.Invalid("kind", apperror.FieldNotAllowed).WithCause(e)
 }

@@ -53,11 +53,13 @@ The platform's stop timeout must be longer than the grace period.
 | `src/contract/`   | the turn request schema shared with Go, image checks, refusals        |
 | `src/http/`       | routes, bearer check, body cap, NDJSON stream, drain                  |
 | `src/turn/`       | one agent turn: execution, AG-UI events, history, snapshot, limits    |
-| `src/models/`     | model factory, OpenAI-compatible client, client cache                 |
+| `src/models/`     | model factory, OpenAI-compatible and Anthropic clients, client caches |
 | `src/mcp/`        | per-turn MCP clients, auth headers, description and schema sanitizing |
 | `src/egress/`     | SSRF guard and guarded fetch                                          |
 
 Each folder's `index.ts` is its entry point; other folders import only that file.
+
+Anthropic turns always use adaptive thinking, so Claude Haiku 4.5 and older models are not supported: they refuse the request and the run fails.
 
 ## Develop
 

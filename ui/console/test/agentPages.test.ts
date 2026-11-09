@@ -269,6 +269,25 @@ describe('configure page', () => {
     w.unmount();
   });
 
+  it('disables the temperature for an Anthropic provider, keeps its value, and enables it again for OpenAI-compatible', async () => {
+    inProject('/agents/support', [support], 'agent:read', 'agent:write');
+    withDraft();
+    const w = await mountPage(ConfigurePage, { attachTo: document.body });
+    const range = () => w.get('#configure-model input[type="range"]');
+    const hint = () => w.get(`#${range().attributes('aria-describedby')}`);
+    const [provider] = w.findAll('#configure-model select');
+    await provider!.setValue('Pv4cLd8NwQ2xTr6YbMa9F');
+    expect(range().attributes('disabled')).toBeDefined();
+    expect(range().attributes('aria-valuetext')).toBe('configure.temperature_off');
+    expect(hint().text()).toBe('configure.temperature_unsupported');
+    expect((range().element as HTMLInputElement).value).toBe('0.2');
+    await provider!.setValue(openrouter);
+    expect(range().attributes('disabled')).toBeUndefined();
+    expect(range().attributes('aria-valuetext')).toBe('0.2');
+    expect(hint().text()).toBe('configure.temperature_hint');
+    w.unmount();
+  });
+
   it('puts an unpriced helper model\'s cap error on the helper field, and its fix focuses the helper', async () => {
     const { useModelProvidersStore } = await import('~/stores/modelProviders');
     asSample({ ...sampleDraft, helperModel: 'free-helper' });

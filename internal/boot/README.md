@@ -380,7 +380,7 @@ INFO line.
 
 - **Store:** `run.NewStore` with `run.maxConcurrentPerProject` (default 4, checked under a per-project advisory lock in `Claim`).
 - **Snapshots:** `snapshot.driver: postgres` (`run/snapshotstore`). `Settle` and the snapshot `Save` commit in one transaction.
-- **Runtime:** `runtime.driver: http` (`internal/kernel/runtime/http`) at `runtime.url` with the bearer `runtime.token`.
+- **Runtime:** `runtime.driver: http` (`internal/kernel/runtime/http`) at `runtime.url` with the bearer `runtime.token`. `wireProvider` (`run.go`) maps a provider's kind to the runtime's `Provider` field (OpenAI-compatible leaves it empty, Anthropic sends `anthropic`).
 - **Service:** the adapters `runAgents`, `runProviders` and `runServers`, the webhook publisher, `run.turnTimeout` and `run.maxAttempts`, and the rate cap (`run.maxPerMinutePerProject`). The rate cap is always counted: in the configured rate limit store when a group is on, else in an in-process memory store with its `ratelimit.janitor`.
 - **No runtime:** with `runtime.url` empty, boot logs a warning; a kicked thread is released before any run starts, its messages stay pending (a Warn per thread at most every 10 minutes), and they run once a runtime is configured. `/readyz` stays ready.
 - **Runner:** the `run-turns` worker, with `run.maxConcurrentPerInstance`, `run.leaseTTL`, `run.heartbeat`, `run.drainTimeout` and `run.turnTimeout`. The HTTP worker waits `http.shutdownGrace` (default 30 s, refused unless above `run.drainTimeout`) for open requests on shutdown, so a live data-plane stream ends with its drained turn.

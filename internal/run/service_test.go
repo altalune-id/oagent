@@ -166,6 +166,32 @@ func TestRun_GatedToolNotExposedBeforeApprovals(t *testing.T) {
 	assert.Equal(t, []uuid.UUID{f.server}, f.servers.Opened, "the gated server is never opened")
 }
 
+func TestRun_RequestCarriesTheProviderOnlyForAnthropic(t *testing.T) {
+	cases := map[string]struct {
+		provider string
+		want     string
+	}{
+		"openai-compatible omits it": {provider: "", want: `"model":{"baseUrl":`},
+		"anthropic sets it":          {provider: runtime.ProviderAnthropic, want: `"model":{"provider":"anthropic","baseUrl":`},
+	}
+	for name, tt := range cases {
+		t.Run(name, func(t *testing.T) {
+			f := newSvc(t)
+			m := f.providers.Models[f.provider]["gpt-4o"]
+			m.Provider = tt.provider
+			f.providers.Models[f.provider]["gpt-4o"] = m
+			f.say(t, "hello")
+			f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+
+			req := f.rt.LastRequest()
+			assert.Equal(t, tt.provider, req.Agent.Model.Provider)
+			raw := string(mustMarshal(t, req))
+			assert.Contains(t, raw, tt.want)
+			assert.Equal(t, tt.provider != "", strings.Contains(raw, `"provider"`))
+		})
+	}
+}
+
 func TestRun_CappedUnpricedRefused(t *testing.T) {
 	f := newSvc(t)
 	f.version.MaxCostCents = 100

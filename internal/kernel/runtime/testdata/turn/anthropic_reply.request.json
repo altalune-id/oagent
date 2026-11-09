@@ -1,0 +1,39 @@
+{
+  "contractVersion": 2,
+  "ids": {
+    "run": "Rn5Q8wYk2HhT3mVz7XcLp",
+    "thread": "t0193a2b4c5d67e8f9a0b1c2d3e4f5a6b",
+    "agent": "a0193a2b4c5d67e8f9a0b1c2d3e4f5a6c",
+    "agentVersion": 3,
+    "attempt": 1,
+    "project": "Pj4kW9sQ2mN7vB3xC8zLr"
+  },
+  "agent": {
+    "instructions": "You record expenses for the user. Be brief.",
+    "temperature": 0.2,
+    "maxSteps": 10,
+    "model": {
+      "provider": "anthropic",
+      "baseUrl": "https://api.anthropic.com",
+      "apiKey": "sk-test",
+      "modelId": "claude-sonnet-5-5",
+      "maxTokens": 1024
+    }
+  },
+  "mcpServers": [],
+  "snapshot": null,
+  "history": [],
+  "input": {
+    "kind": "message",
+    "message": {
+      "id": "msg_user_1",
+      "role": "user",
+      "content": "hello"
+    }
+  },
+  "storedResults": [],
+  "limits": {
+    "deadlineMs": 270000,
+    "budget": null
+  }
+}

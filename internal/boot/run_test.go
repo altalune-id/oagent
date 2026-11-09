@@ -11,6 +11,7 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/agent"
+	"altalune.id/oagent/internal/kernel/runtime"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/mcpserver"
 	"altalune.id/oagent/internal/modelprovider"
@@ -82,6 +83,7 @@ func TestRunProviders_ResolveWithPrices(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "https://llm.example.com/v1", m.BaseURL)
 	assert.Equal(t, "sk-live", m.APIKey)
+	assert.Empty(t, m.Provider, "an OpenAI-compatible provider sends no provider")
 	require.NotNil(t, m.Prices)
 	assert.Equal(t, run.Prices{Input: new(int64(1)), Output: new(int64(2)), CacheRead: new(int64(3)), CacheWrite: new(int64(4))}, *m.Prices)
 
@@ -90,6 +92,37 @@ func TestRunProviders_ResolveWithPrices(t *testing.T) {
 	assert.Nil(t, m.Prices, "an unpriced model has no snapshot")
 	_, err = r.ResolveModel(ctx, p.ID, "nope")
 	assert.Error(t, err)
+}
+
+func TestWireProvider_EveryKindMaps(t *testing.T) {
+	want := map[modelprovider.Kind]string{
+		modelprovider.KindOpenAICompatible: "",
+		modelprovider.KindAnthropic:        runtime.ProviderAnthropic,
+	}
+	for _, k := range modelprovider.Kinds() {
+		got, err := wireProvider(k)
+		require.NoError(t, err, k)
+		w, ok := want[k]
+		require.True(t, ok, "kind %q has no expected wire value", k)
+		assert.Equal(t, w, got, k)
+	}
+	_, err := wireProvider("bogus")
+	assert.Error(t, err)
+}
+
+func TestRunProviders_ResolveCarriesTheProvider(t *testing.T) {
+	ctx := tenant.Into(context.Background(), tenant.Context{OrgID: uuid.New()})
+	svc := modelprovider.NewService(&fakes.ModelProviderStore{}, fakes.Transactor{}, apperror.NewReporter(nil, false).Unexpected).
+		WithSealer(testSealer(t))
+	p, err := svc.Create(ctx, uuid.New(), modelprovider.Input{
+		Name: "claude", Kind: modelprovider.KindAnthropic, BaseURL: "https://api.anthropic.com",
+		Models: []modelprovider.Model{{ID: "claude-sonnet-5-5"}},
+	}, "sk-live")
+	require.NoError(t, err)
+
+	m, err := runProviders{providers: svc}.ResolveModel(ctx, p.ID, "claude-sonnet-5-5")
+	require.NoError(t, err)
+	assert.Equal(t, runtime.ProviderAnthropic, m.Provider)
 }
 
 func TestRunServers_OpenTheCredential(t *testing.T) {

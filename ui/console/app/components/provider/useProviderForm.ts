@@ -2,7 +2,7 @@ import type { ShownError } from '#base/lib/apperror/message';
 import type { ModelPrices, ModelProvider, ProviderInput, ProviderModel } from '~/stores/modelProviders';
 import { useToast } from '#base/components/ui/toast';
 import { useValidation } from '#base/composables/useValidation';
-import { CreateModelProviderRequestSchema } from '#gen/modelprovider/v1/modelprovider_pb';
+import { CreateModelProviderRequestSchema, ModelProviderKind } from '#gen/modelprovider/v1/modelprovider_pb';
 import { parseUsd, usdText } from '~/lib/money/usd';
 import { createRequest, useModelProvidersStore } from '~/stores/modelProviders';
 
@@ -10,6 +10,14 @@ export const priceKeys = ['input', 'output', 'cacheRead', 'cacheWrite'] as const
 export type PriceKey = typeof priceKeys[number];
 export const mainPriceKeys = ['input', 'output'] as const;
 export const morePriceKeys = ['cacheRead', 'cacheWrite'] as const;
+
+export const providerKinds = [ModelProviderKind.OPENAI_COMPATIBLE, ModelProviderKind.ANTHROPIC] as const;
+export const ANTHROPIC_URL = 'https://api.anthropic.com';
+
+// kindKey names the locale key of a provider kind.
+export function kindKey(kind: ModelProviderKind): string {
+  return kind === ModelProviderKind.ANTHROPIC ? 'providers.kind_anthropic' : 'providers.kind_openai_compatible';
+}
 
 const microsKeys: Record<PriceKey, keyof ModelPrices> = { input: 'inputMicros', output: 'outputMicros', cacheRead: 'cacheReadMicros', cacheWrite: 'cacheWriteMicros' };
 
@@ -85,6 +93,7 @@ export function useProviderForm(orgId: string, projectId: string) {
   const open = ref(false);
   const editing = ref<ModelProvider | null>(null);
   const name = ref('');
+  const kind = ref<ModelProviderKind>(ModelProviderKind.OPENAI_COMPATIBLE);
   const baseUrl = ref('');
   const key = ref('');
   const replacingKey = ref(false);
@@ -95,6 +104,8 @@ export function useProviderForm(orgId: string, projectId: string) {
   const busy = ref(false);
   let nextKey = 1;
 
+  const anthropic = computed(() => kind.value === ModelProviderKind.ANTHROPIC);
+  const urlV1 = computed(() => anthropic.value && /\/v1\/?$/.test(baseUrl.value.trim()));
   const urlChanged = computed(() => !!editing.value && baseUrl.value.trim() !== editing.value.baseUrl);
   const keyRequired = computed(() => !editing.value || urlChanged.value);
   const keyShown = computed(() => keyRequired.value || replacingKey.value);
@@ -113,6 +124,7 @@ export function useProviderForm(orgId: string, projectId: string) {
   function show(provider?: ModelProvider) {
     editing.value = provider ?? null;
     name.value = provider?.name ?? '';
+    kind.value = provider?.kind ?? ModelProviderKind.OPENAI_COMPATIBLE;
     baseUrl.value = provider?.baseUrl ?? '';
     key.value = '';
     replacingKey.value = false;
@@ -130,6 +142,19 @@ export function useProviderForm(orgId: string, projectId: string) {
     }
     key.value = '';
     open.value = false;
+  }
+
+  function setKind(next: ModelProviderKind) {
+    if (editing.value) {
+      return;
+    }
+    if (next === ModelProviderKind.ANTHROPIC && !baseUrl.value.trim()) {
+      baseUrl.value = ANTHROPIC_URL;
+    }
+    if (next !== ModelProviderKind.ANTHROPIC && baseUrl.value.trim() === ANTHROPIC_URL) {
+      baseUrl.value = '';
+    }
+    kind.value = next;
   }
 
   function addModel() {
@@ -151,7 +176,7 @@ export function useProviderForm(orgId: string, projectId: string) {
     }
     modelErrors.value = rows;
     keyMissing.value = keyRequired.value && !key.value.trim();
-    const out = { name: name.value, baseUrl: baseUrl.value, apiKey: key.value, models: models.value.map(rowModel) };
+    const out = { name: name.value, kind: kind.value, baseUrl: baseUrl.value, apiKey: key.value, models: models.value.map(rowModel) };
     const storedKey = 'kept';
     const shaped = validation.check(createRequest(orgId, projectId, { ...out, apiKey: out.apiKey.trim() || storedKey }));
     formError.value = Object.keys(rows).length ? null : validation.formError.value;
@@ -182,5 +207,5 @@ export function useProviderForm(orgId: string, projectId: string) {
     }
   }
 
-  return { open, editing, name, baseUrl, key, replacingKey, models, errors, modelErrors, formError, busy, urlChanged, keyRequired, keyShown, show, hide, addModel, removeModel, submit };
+  return { open, editing, name, kind, anthropic, urlV1, setKind, baseUrl, key, replacingKey, models, errors, modelErrors, formError, busy, urlChanged, keyRequired, keyShown, show, hide, addModel, removeModel, submit };
 }

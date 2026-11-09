@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { fakeRuntimeClients } from '~~/test/fixtures/runtime';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
+import { ModelProviderKind, ModelProviderSchema } from '#gen/modelprovider/v1/modelprovider_pb';
 import { mountPage } from '#test/mount-page';
 import { connectError, setClient, setKnownKeys, setRoute } from '#test/nuxt-globals';
 import McpServersPage from '~/pages/o/[org]/projects/[project]/settings/mcp-servers.vue';
@@ -43,7 +44,9 @@ describe('model providers page', () => {
     expect(clients.provider.listModelProviders).toHaveBeenCalledWith({ projectId });
     expect(w.find('[role="note"]').exists()).toBe(false);
     const rows = w.findAll('tbody tr');
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(3);
+    expect(w.findAll('thead th').map(h => h.text()).slice(0, 2)).toEqual(['common.name', 'providers.kind']);
+    expect(rows.map(r => r.findAll('td')[1]!.text())).toEqual(['providers.kind_openai_compatible', 'providers.kind_openai_compatible', 'providers.kind_anthropic']);
     expect(rows[0]!.text()).toContain('openai/gpt-4.1-mini, google/gemini-2.5-flash');
     expect(rows[0]!.text()).not.toContain('providers.no_price');
     expect(rows[1]!.text()).toContain('providers.no_price');
@@ -65,11 +68,11 @@ describe('model providers page', () => {
     };
     await remove(0).trigger('click');
     expect((await confirm()).text()).toContain('providers.in_use');
-    expect(useModelProvidersStore().items).toHaveLength(2);
+    expect(useModelProvidersStore().items).toHaveLength(3);
     await remove(1).trigger('click');
     await confirm();
     expect(clients.provider.deleteModelProvider).toHaveBeenLastCalledWith({ id: 'Pv9pHs4YvT7kMq7WcXe2B' });
-    expect(useModelProvidersStore().items.map(p => p.name)).toEqual(['OpenRouter']);
+    expect(useModelProvidersStore().items.map(p => p.name)).toEqual(['OpenRouter', 'Anthropic']);
     w.unmount();
   });
 
@@ -101,6 +104,41 @@ describe('model providers page', () => {
     await button(w, 'OpenRouter').trigger('click');
     expect(w.find('form[novalidate]').exists()).toBe(false);
     expect(w.find('dl').text()).toContain('https://openrouter.ai/api/v1');
+    expect(w.find('dl').text()).toContain('providers.kind');
+    expect(w.find('dl').text()).toContain('providers.kind_openai_compatible');
+  });
+
+  it('adds an Anthropic provider: the type fills the URL, a /v1 URL warns but still saves', async () => {
+    seed();
+    clients.provider.createModelProvider.mockImplementation(async (req: { name: string }) => ({ modelProvider: create(ModelProviderSchema, { ...req, id: 'Pv1aNt5RpQ8sWx3YcLm7D', apiKeySet: true }) }));
+    const w = await mountPage(ProvidersPage, { attachTo: document.body });
+    await button(w, 'providers.add').trigger('click');
+    const dialog = w.findAll('dialog').find(d => d.text().includes('providers.connection'))!;
+    await dialog.find('select').setValue(String(ModelProviderKind.ANTHROPIC));
+    const url = dialog.find('input[type="url"]');
+    expect((url.element as HTMLInputElement).value).toBe('https://api.anthropic.com');
+    expect(dialog.text()).toContain('providers.url_hint_anthropic');
+    expect(dialog.text()).not.toContain('providers.url_v1_warning');
+    await url.setValue('https://api.anthropic.com/v1');
+    expect(dialog.find('[role="alert"]').text()).toContain('providers.url_v1_warning');
+    await dialog.find('input[type="text"]').setValue('Claude');
+    await dialog.find('input[type="password"]').setValue('sk-ant');
+    await dialog.find('input[placeholder="claude-sonnet-5-5"]').setValue('claude-sonnet-5-5');
+    await dialog.findAll('button').find(b => b.text() === 'providers.save')!.trigger('click');
+    await flushPromises();
+    expect(clients.provider.createModelProvider).toHaveBeenCalledWith(expect.objectContaining({ kind: ModelProviderKind.ANTHROPIC, baseUrl: 'https://api.anthropic.com/v1' }));
+    w.unmount();
+  });
+
+  it('shows the type read-only with the lock hint when editing', async () => {
+    seed();
+    const w = await mountPage(ProvidersPage);
+    await button(w, 'Anthropic').trigger('click');
+    const dialog = w.findAll('dialog').find(d => d.text().includes('providers.connection'))!;
+    expect(dialog.find('select').exists()).toBe(false);
+    expect(dialog.text()).toContain('providers.kind_anthropic');
+    expect(dialog.text()).toContain('providers.kind_locked');
+    expect(dialog.text()).toContain('providers.cache_write_hint');
   });
 });
 

@@ -15,7 +15,7 @@ import { errorCode } from '#base/lib/apperror/message';
 import ProjectReadOnlyNote from '~/components/project/ProjectReadOnlyNote.vue';
 import { useProject } from '~/components/project/useProject';
 import ProviderModal from '~/components/provider/ProviderModal.vue';
-import { hasPrice, useProviderForm } from '~/components/provider/useProviderForm';
+import { hasPrice, kindKey, useProviderForm } from '~/components/provider/useProviderForm';
 import { useCan } from '~/composables/useCan';
 import { useAuthStore } from '~/stores/auth';
 import { useModelProvidersStore } from '~/stores/modelProviders';
@@ -30,6 +30,7 @@ void providers.ensureLoaded(project.value!.id);
 
 const columns = computed<Column[]>(() => [
   { key: 'name', label: t('common.name') },
+  { key: 'kind', label: t('providers.kind') },
   { key: 'baseUrl', label: t('providers.base_url'), mono: true },
   { key: 'models', label: t('providers.models') },
   { key: 'key', label: t('providers.api_key') },
@@ -76,6 +77,9 @@ await useAuthStore().load();
         <button type="button" class="link link-hover font-medium" @click="form.show(row as ModelProvider)">
           {{ row.name }}
         </button>
+      </template>
+      <template #cell-kind="{ row }">
+        {{ t(kindKey(row.kind)) }}
       </template>
       <template #cell-baseUrl="{ row }">
         <span class="block max-w-64 truncate" :title="row.baseUrl">{{ row.baseUrl }}</span>

@@ -563,6 +563,7 @@ components:
       enum:
         - MODEL_PROVIDER_KIND_UNSPECIFIED
         - MODEL_PROVIDER_KIND_OPENAI_COMPATIBLE
+        - MODEL_PROVIDER_KIND_ANTHROPIC
       description: ModelProviderKind is the wire protocol a provider speaks.
     modelprovider.v1.UpdateModelProviderRequest:
       type: object
@@ -611,7 +612,7 @@ components:
         - kind
         - baseUrl
       additionalProperties: false
-      description: UpdateModelProviderRequest replaces a provider's editable fields; leaving api_key unset keeps the stored key, which a base_url change refuses.
+      description: UpdateModelProviderRequest replaces a provider's editable fields; kind must equal the stored kind, and leaving api_key unset keeps the stored key, which a base_url change refuses.
     modelprovider.v1.UpdateModelProviderResponse:
       type: object
       properties:

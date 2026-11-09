@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@ag-ui/core": "catalog:",
+    "@anthropic-ai/sdk": "catalog:",
     "@modelcontextprotocol/client": "catalog:",
     "@strands-agents/sdk": "catalog:",
     "openai": "catalog:",

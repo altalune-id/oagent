@@ -3,10 +3,27 @@ import { z } from 'zod';
 
 export const CONTRACT_VERSION = 2;
 
+export const ModelProvider = {
+  OPENAI_COMPATIBLE: 'openai_compatible',
+  ANTHROPIC: 'anthropic',
+} as const;
+
+export const MCPAuthKind = {
+  NONE: 'none',
+  BEARER: 'bearer',
+  HEADER: 'header',
+} as const;
+
+export const ToolResultStatus = {
+  SUCCESS: 'success',
+  ERROR: 'error',
+} as const;
+
 const ms = z.number().int().positive();
 const micros = z.number().int().nonnegative();
 
 const ModelSpec = z.strictObject({
+  provider: z.enum(ModelProvider).default(ModelProvider.OPENAI_COMPATIBLE),
   baseUrl: z.string().min(1),
   apiKey: z.string().min(1),
   modelId: z.string().min(1),
@@ -14,7 +31,7 @@ const ModelSpec = z.strictObject({
 });
 
 const MCPAuth = z.strictObject({
-  kind: z.enum(['none', 'bearer', 'header']),
+  kind: z.enum(MCPAuthKind),
   header: z.string().min(1).optional(),
   value: z.string().min(1).optional(),
 });
@@ -29,7 +46,7 @@ const MCPServerSpec = z.strictObject({
 });
 
 const ToolResult = z.strictObject({
-  status: z.enum(['success', 'error']),
+  status: z.enum(ToolResultStatus),
   content: z.array(z.record(z.string(), z.unknown())),
 });
 

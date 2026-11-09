@@ -124,6 +124,30 @@ func TestStore_SaveAndRead(t *testing.T) {
 	assert.Equal(t, base, got.CreatedAt, "created_at never changes")
 }
 
+func TestStore_AnthropicKindSavesAndLoads(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
+	p := newProvider(t, orgID, projectID, "anthropic", time.Date(2026, 11, 5, 10, 0, 0, 0, time.UTC))
+	p.Kind = modelprovider.KindAnthropic
+	require.NoError(t, f.store.Save(ctx, p))
+
+	got, err := f.store.ByID(ctx, p.ID)
+	require.NoError(t, err)
+	assert.Equal(t, modelprovider.KindAnthropic, got.Kind)
+}
+
+func TestStore_UnknownKindRefused(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	p := newProvider(t, orgID, projectID, "bogus", time.Now())
+	p.Kind = "bogus"
+
+	err := f.store.Save(in(orgID), p)
+	require.Error(t, err)
+	assert.Equal(t, "23514", pgCode(err), "check violation, got %v", err)
+}
+
 func TestStore_DuplicateNameIsAlreadyExists(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)

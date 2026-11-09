@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { ClientCache } from './cache.ts';
 import { openaiClient, openaiModel } from './openai.ts';
 
-const spec = { baseUrl: 'https://llm.example.com/v1', apiKey: 'sk-test', modelId: 'gpt-4o', maxTokens: 1024 };
+const spec = { provider: 'openai_compatible' as const, baseUrl: 'https://llm.example.com/v1', apiKey: 'sk-test', modelId: 'gpt-4o', maxTokens: 1024 };
 
 describe('openaiClient', () => {
   it('reuses one client for the same project and URL whatever the model', () => {

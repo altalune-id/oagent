@@ -16,7 +16,7 @@ import (
 
 var goldenCases = []string{
 	"plain_reply", "tool_call", "mcp_server_down", "resume", "rebuild_from_history", "stored_result", "limit_reached", "cancel", "model_error", "resume_after_crash",
-	"image_input", "image_refused",
+	"image_input", "image_refused", "anthropic_reply",
 }
 
 func readGolden(t *testing.T, name string) []byte {
@@ -109,6 +109,18 @@ func TestGoldens_SecretsAreTheFakeValues(t *testing.T) {
 			}
 		}
 		assert.False(t, strings.Contains(string(readGolden(t, c+".stream.ndjson")), "sk-test"), "%s: the stream never echoes a secret", c)
+	}
+}
+
+func TestGoldens_OnlyAnthropicNamesAProvider(t *testing.T) {
+	for _, c := range goldenCases {
+		req, err := DecodeRequest(readGolden(t, c+".request.json"))
+		require.NoError(t, err, c)
+		if c == "anthropic_reply" {
+			assert.Equal(t, ProviderAnthropic, req.Agent.Model.Provider)
+			continue
+		}
+		assert.Empty(t, req.Agent.Model.Provider, "%s: an OpenAI-compatible golden omits provider", c)
 	}
 }
 

@@ -2,9 +2,10 @@ import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeRuntimeClients, providerPBs } from '~~/test/fixtures/runtime';
 import { useToast } from '#base/components/ui/toast';
+import { ModelProviderKind } from '#gen/modelprovider/v1/modelprovider_pb';
 import { connectError, setKnownKeys } from '#test/nuxt-globals';
 import { useModelProvidersStore } from '~/stores/modelProviders';
-import { hasMorePrices, hasPrice, toPrices, useProviderForm } from './useProviderForm';
+import { ANTHROPIC_URL, hasMorePrices, hasPrice, kindKey, toPrices, useProviderForm } from './useProviderForm';
 
 const orgId = 'V3StGXR8Z5jdHj6BmyT2a';
 const projectId = 'x6MH9WPWjktMwCBKHy4pF';
@@ -14,6 +15,11 @@ describe('provider helpers', () => {
   it('has a price only with prices', () => {
     expect(hasPrice({ id: 'a', vision: false, prices: { inputMicros: 0n, outputMicros: 1n, cacheReadMicros: 0n, cacheWriteMicros: 0n } })).toBe(true);
     expect(hasPrice({ id: 'a', vision: false })).toBe(false);
+  });
+
+  it('names each kind', () => {
+    expect(kindKey(ModelProviderKind.ANTHROPIC)).toBe('providers.kind_anthropic');
+    expect(kindKey(ModelProviderKind.OPENAI_COMPATIBLE)).toBe('providers.kind_openai_compatible');
   });
 
   it('opens More prices only for a row with a cache price', () => {
@@ -37,6 +43,49 @@ describe('useProviderForm', () => {
     setActivePinia(createPinia());
     clients = fakeRuntimeClients();
     await useModelProvidersStore().load(projectId);
+  });
+
+  it('fills the Anthropic URL only when empty and clears it on switch back only while it holds that default', () => {
+    const form = useProviderForm(orgId, projectId);
+    form.show();
+    expect(form.kind.value).toBe(ModelProviderKind.OPENAI_COMPATIBLE);
+    form.setKind(ModelProviderKind.ANTHROPIC);
+    expect(form.baseUrl.value).toBe(ANTHROPIC_URL);
+    form.setKind(ModelProviderKind.OPENAI_COMPATIBLE);
+    expect(form.baseUrl.value).toBe('');
+
+    form.baseUrl.value = 'https://proxy.example.com';
+    form.setKind(ModelProviderKind.ANTHROPIC);
+    expect(form.baseUrl.value).toBe('https://proxy.example.com');
+    form.baseUrl.value = 'https://api.anthropic.com/v1';
+    form.setKind(ModelProviderKind.OPENAI_COMPATIBLE);
+    expect(form.baseUrl.value).toBe('https://api.anthropic.com/v1');
+  });
+
+  it('warns about a trailing /v1 only for Anthropic', () => {
+    const form = useProviderForm(orgId, projectId);
+    form.show();
+    form.baseUrl.value = 'https://openrouter.ai/api/v1';
+    expect(form.urlV1.value).toBe(false);
+    form.setKind(ModelProviderKind.ANTHROPIC);
+    expect(form.urlV1.value).toBe(true);
+    form.baseUrl.value = ' https://api.anthropic.com/v1/ ';
+    expect(form.urlV1.value).toBe(true);
+    form.baseUrl.value = 'https://api.anthropic.com/v1beta';
+    expect(form.urlV1.value).toBe(false);
+  });
+
+  it('keeps the stored kind on edit and sends it back', async () => {
+    const store = useModelProvidersStore();
+    const anthropic = store.items.find(p => p.kind === ModelProviderKind.ANTHROPIC)!;
+    clients.provider.updateModelProvider.mockResolvedValue({ modelProvider: providerPBs()[2] });
+    const form = useProviderForm(orgId, projectId);
+    form.show(anthropic);
+    expect(form.kind.value).toBe(ModelProviderKind.ANTHROPIC);
+    form.setKind(ModelProviderKind.OPENAI_COMPATIBLE);
+    expect(form.kind.value).toBe(ModelProviderKind.ANTHROPIC);
+    expect(await form.submit()).toBe(true);
+    expect(clients.provider.updateModelProvider).toHaveBeenCalledWith(expect.objectContaining({ kind: ModelProviderKind.ANTHROPIC }));
   });
 
   it('creates a provider with a trimmed key and priced models, then clears the key', async () => {

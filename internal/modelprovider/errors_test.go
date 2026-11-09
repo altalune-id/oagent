@@ -30,6 +30,7 @@ func TestErrors_ToAppError(t *testing.T) {
 		{"secret required", &SecretRequiredError{}, apperror.CodeModelProviderSecretRequired, map[string]string{"reason": "secret_required"}},
 		{"unknown model", &UnknownModelError{Model: "gpt-9"}, apperror.CodeModelProviderUnknownModel, map[string]string{"model": "gpt-9"}},
 		{"secrets unavailable", &SecretsUnavailableError{Cause: &sealer.UnavailableError{}}, apperror.CodeModelProviderSecretsUnavailable, nil},
+		{"kind changed", &KindChangedError{}, apperror.CodeValidation, map[string]string{"field": "kind", "reason": "not_allowed"}},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -61,6 +62,7 @@ func TestErrors_Is(t *testing.T) {
 		{"secret required", IsSecretRequiredError, &SecretRequiredError{}},
 		{"unknown model", IsUnknownModelError, &UnknownModelError{}},
 		{"secrets unavailable", IsSecretsUnavailableError, unavailable},
+		{"kind changed", IsKindChangedError, &KindChangedError{}},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {

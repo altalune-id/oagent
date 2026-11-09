@@ -10,6 +10,7 @@ import AppButton from '#base/components/ui/AppButton.vue';
 import FieldError from '#base/components/ui/FieldError.vue';
 import Section from '#base/components/ui/Section.vue';
 import StatusLabel from '#base/components/ui/StatusLabel.vue';
+import { ModelProviderKind } from '#gen/modelprovider/v1/modelprovider_pb';
 import { knowledgeTone } from '~/components/knowledge/knowledge';
 import { usdText } from '~/lib/money/usd';
 import { describedBy } from '~/lib/names/names';
@@ -44,6 +45,8 @@ const sections = computed(() => [
 ]);
 
 const chosen = computed(() => chosenModel(config.value, providers));
+const temperatureOff = computed(() => chosen.value.provider?.kind === ModelProviderKind.ANTHROPIC);
+const temperatureText = computed(() => (temperatureOff.value ? t('configure.temperature_off') : config.value.temperature.toFixed(1)));
 const chatModels = computed(() => chosen.value.provider?.models ?? []);
 const allowListRequired = computed(() => readsPrivateData(config.value, runtime.value));
 const serverError = (...reasons: string[]) => (fieldError && reasons.includes(fieldError.reason) ? fieldError.message : '');
@@ -219,15 +222,15 @@ function toggleSource(id: string, on: boolean) {
               <label class="flex flex-col gap-1">
                 <span class="flex items-center justify-between">
                   <span class="label text-ui text-base-content">{{ t('configure.temperature') }}</span>
-                  <span class="text-xs tabular-nums" aria-hidden="true">{{ config.temperature.toFixed(1) }}</span>
+                  <span class="text-xs tabular-nums" aria-hidden="true">{{ temperatureText }}</span>
                 </span>
                 <input
-                  v-model.number="config.temperature" type="range" min="0" max="2" step="0.1" class="range range-xs w-full"
-                  :aria-valuetext="config.temperature.toFixed(1)" :aria-describedby="`${ids.temperature}-hint`"
+                  v-model.number="config.temperature" type="range" min="0" max="2" step="0.1" class="range range-xs w-full" :disabled="temperatureOff"
+                  :aria-valuetext="temperatureText" :aria-describedby="`${ids.temperature}-hint`"
                 >
               </label>
               <p :id="`${ids.temperature}-hint`" class="text-xs text-base-content/70">
-                {{ t('configure.temperature_hint') }}
+                {{ t(temperatureOff ? 'configure.temperature_unsupported' : 'configure.temperature_hint') }}
               </p>
             </div>
           </div>

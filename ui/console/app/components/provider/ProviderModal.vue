@@ -7,14 +7,14 @@ import FieldError from '#base/components/ui/FieldError.vue';
 import KeyValue from '#base/components/ui/KeyValue.vue';
 import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { describedBy } from '~/lib/names/names';
-import { hasMorePrices, mainPriceKeys, morePriceKeys } from './useProviderForm';
+import { hasMorePrices, kindKey, mainPriceKeys, morePriceKeys, providerKinds } from './useProviderForm';
 
 const { form, readOnly = false } = defineProps<{ form: ReturnType<typeof useProviderForm>, readOnly?: boolean }>();
 
 const { t } = useI18n();
 const id = useId();
-const ids = { name: `${id}-name`, url: `${id}-url`, urlHint: `${id}-url-hint`, key: `${id}-key`, keyHint: `${id}-key-hint`, models: `${id}-models` };
-const { open, editing, name, baseUrl, key, replacingKey, models, errors, modelErrors, formError, busy, urlChanged, keyShown, keyRequired } = form;
+const ids = { kindHint: `${id}-kind-hint`, name: `${id}-name`, url: `${id}-url`, urlHint: `${id}-url-hint`, key: `${id}-key`, keyHint: `${id}-key-hint`, models: `${id}-models` };
+const { open, editing, name, kind, anthropic, urlV1, baseUrl, key, replacingKey, models, errors, modelErrors, formError, busy, urlChanged, keyShown, keyRequired } = form;
 
 const openPrices = ref(new Set<number>());
 watch(open, (shown) => {
@@ -23,11 +23,20 @@ watch(open, (shown) => {
   }
 }, { immediate: true });
 
+const placeholders = computed(() => (anthropic.value
+  ? { name: 'Anthropic', url: 'https://api.anthropic.com', model: 'claude-sonnet-5-5' }
+  : { name: 'OpenRouter', url: 'https://openrouter.ai/api/v1', model: 'openai/gpt-4.1-mini' }));
+
+function pickKind(event: Event) {
+  form.setKind(Number((event.target as HTMLSelectElement).value));
+}
+
 const title = computed(() => (editing.value ? editing.value.name : t('providers.add')));
 const priceLabels = computed(() => ({ input: t('providers.price_input'), output: t('providers.price_output'), cacheRead: t('providers.price_cache_read'), cacheWrite: t('providers.price_cache_write') }));
 const facts = computed(() => editing.value
   ? [
       { label: t('common.name'), value: editing.value.name },
+      { label: t('providers.kind'), value: t(kindKey(editing.value.kind)) },
       { label: t('providers.base_url'), value: editing.value.baseUrl, mono: true },
       { label: t('providers.api_key'), value: editing.value.keySet ? t('providers.key_set') : t('providers.key_missing') },
       { label: t('providers.models'), value: editing.value.models.map(m => m.id).join(', '), mono: true },
@@ -43,20 +52,40 @@ const facts = computed(() => editing.value
         <legend class="fieldset-legend text-ui">
           {{ t('providers.connection') }}
         </legend>
+        <div v-if="editing" class="flex flex-col gap-1">
+          <span class="label text-ui text-base-content">{{ t('providers.kind') }}</span>
+          <span class="text-ui">{{ t(kindKey(kind)) }}</span>
+          <p :id="ids.kindHint" class="label whitespace-normal text-xs text-base-content/70">
+            {{ t('providers.kind_locked') }}
+          </p>
+        </div>
+        <label v-else class="flex flex-col gap-1">
+          <span class="label text-ui text-base-content">{{ t('providers.kind') }}</span>
+          <select class="select select-sm w-full text-ui" :value="kind" @change="pickKind">
+            <option v-for="k in providerKinds" :key="k" :value="k">
+              {{ t(kindKey(k)) }}
+            </option>
+          </select>
+        </label>
+
         <label class="flex flex-col gap-1">
           <span class="label text-ui text-base-content">{{ t('common.name') }}</span>
-          <input v-model="name" type="text" class="input input-sm w-full text-ui" :class="{ 'input-error': errors.name }" placeholder="OpenRouter" :aria-invalid="!!errors.name" :aria-describedby="describedBy(!!errors.name && `${ids.name}-err`)">
+          <input v-model="name" type="text" class="input input-sm w-full text-ui" :class="{ 'input-error': errors.name }" :placeholder="placeholders.name" :aria-invalid="!!errors.name" :aria-describedby="describedBy(!!errors.name && `${ids.name}-err`)">
         </label>
         <FieldError :id="`${ids.name}-err`" :message="errors.name" />
 
         <label class="flex flex-col gap-1">
           <span class="label text-ui text-base-content">{{ t('providers.base_url') }}</span>
-          <input v-model="baseUrl" type="url" class="input input-sm w-full font-mono text-xs" :class="{ 'input-error': errors.baseUrl }" placeholder="https://openrouter.ai/api/v1" :aria-invalid="!!errors.baseUrl" :aria-describedby="describedBy(ids.urlHint, !!errors.baseUrl && `${ids.url}-err`)">
+          <input v-model="baseUrl" type="url" class="input input-sm w-full font-mono text-xs" :class="{ 'input-error': errors.baseUrl }" :placeholder="placeholders.url" :aria-invalid="!!errors.baseUrl" :aria-describedby="describedBy(ids.urlHint, !!errors.baseUrl && `${ids.url}-err`)">
         </label>
         <p :id="ids.urlHint" class="label text-xs text-base-content/70">
-          {{ t('providers.url_hint') }}
+          {{ t(anthropic ? 'providers.url_hint_anthropic' : 'providers.url_hint') }}
         </p>
         <FieldError :id="`${ids.url}-err`" :message="errors.baseUrl" />
+        <div v-if="urlV1" role="alert" class="alert alert-warning alert-soft text-base-content text-ui">
+          <Icon name="lucide:triangle-alert" size="16" class="shrink-0" aria-hidden="true" />
+          <span>{{ t('providers.url_v1_warning') }}</span>
+        </div>
         <div v-if="urlChanged" role="alert" class="alert alert-warning alert-soft text-base-content text-ui">
           <Icon name="lucide:triangle-alert" size="16" class="shrink-0" aria-hidden="true" />
           <span>{{ t('providers.url_changed_key') }}</span>
@@ -85,7 +114,7 @@ const facts = computed(() => editing.value
           {{ t('providers.models') }}
         </legend>
         <p class="text-xs text-base-content/70">
-          {{ t('providers.models_hint') }}
+          {{ t(anthropic ? 'providers.models_hint_anthropic' : 'providers.models_hint') }}
         </p>
         <FieldError :id="`${ids.models}-err`" :message="errors.models" />
         <ul class="flex flex-col gap-2">
@@ -93,7 +122,7 @@ const facts = computed(() => editing.value
             <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
               <label class="flex min-w-0 flex-1 flex-col gap-1">
                 <span class="label text-xs text-base-content">{{ t('providers.model_id') }}</span>
-                <input v-model="m.id" type="text" class="input input-sm w-full font-mono text-xs" :class="{ 'input-error': modelErrors[m.key] }" placeholder="openai/gpt-4.1-mini" :aria-invalid="!!modelErrors[m.key]" :aria-describedby="describedBy(!!modelErrors[m.key] && `${ids.models}-${m.key}`)">
+                <input v-model="m.id" type="text" class="input input-sm w-full font-mono text-xs" :class="{ 'input-error': modelErrors[m.key] }" :placeholder="placeholders.model" :aria-invalid="!!modelErrors[m.key]" :aria-describedby="describedBy(!!modelErrors[m.key] && `${ids.models}-${m.key}`)">
               </label>
               <div class="flex flex-wrap items-end gap-2">
                 <label v-for="k in mainPriceKeys" :key="k" class="flex w-28 flex-col gap-1">
@@ -131,6 +160,9 @@ const facts = computed(() => editing.value
         </ul>
         <p class="text-xs text-base-content/70">
           {{ t('providers.price_unit') }}
+        </p>
+        <p v-if="anthropic" class="text-xs text-base-content/70">
+          {{ t('providers.cache_write_hint') }}
         </p>
         <div>
           <AppButton variant="ghost" size="sm" @click="form.addModel()">
