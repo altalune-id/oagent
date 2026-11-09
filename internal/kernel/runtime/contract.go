@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-// ContractVersion is the turn contract version both sides speak; a change to any type here bumps it.
+// ContractVersion is the turn contract version; a breaking change bumps it, an optional field old peers refuse only when set does not.
 const ContractVersion = 2
 
 // TurnRequest is the body of POST /turn. SECURITY: it carries provider and MCP secrets; never log or trace it.
@@ -41,8 +41,12 @@ type AgentSpec struct {
 	Model        ModelSpec `json:"model"`
 }
 
-// ModelSpec is the OpenAI-compatible endpoint and model of a turn.
+// ProviderAnthropic is the ModelSpec provider of an Anthropic Messages API endpoint.
+const ProviderAnthropic = "anthropic"
+
+// ModelSpec is the model endpoint of a turn; an empty Provider means OpenAI-compatible.
 type ModelSpec struct {
+	Provider  string `json:"provider,omitempty"`
 	BaseURL   string `json:"baseUrl"`
 	APIKey    string `json:"apiKey"`
 	ModelID   string `json:"modelId"`

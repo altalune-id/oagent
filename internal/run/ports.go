@@ -56,6 +56,8 @@ type Agents interface {
 
 // ResolvedModel is how to call one model of a provider; nil Prices means unpriced. SECURITY: APIKey is an opened secret.
 type ResolvedModel struct {
+	// Provider is the runtime.ModelSpec provider; empty means OpenAI-compatible.
+	Provider        string
 	BaseURL, APIKey string
 	Prices          *Prices
 	// Vision means the model reads images.

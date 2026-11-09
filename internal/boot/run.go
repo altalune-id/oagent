@@ -142,7 +142,11 @@ func (p runProviders) ResolveModel(ctx context.Context, providerID uuid.UUID, mo
 	if err != nil {
 		return run.ResolvedModel{}, err
 	}
-	out := run.ResolvedModel{BaseURL: r.BaseURL, APIKey: r.APIKey, Vision: r.Model.Vision}
+	provider, err := wireProvider(r.Kind)
+	if err != nil {
+		return run.ResolvedModel{}, err
+	}
+	out := run.ResolvedModel{Provider: provider, BaseURL: r.BaseURL, APIKey: r.APIKey, Vision: r.Model.Vision}
 	if pr := r.Model.Prices; pr != nil {
 		out.Prices = &run.Prices{
 			Input: new(pr.InputMicros), Output: new(pr.OutputMicros),
@@ -150,6 +154,17 @@ func (p runProviders) ResolveModel(ctx context.Context, providerID uuid.UUID, mo
 		}
 	}
 	return out, nil
+}
+
+func wireProvider(k modelprovider.Kind) (string, error) {
+	switch k {
+	case modelprovider.KindOpenAICompatible:
+		return "", nil
+	case modelprovider.KindAnthropic:
+		return runtime.ProviderAnthropic, nil
+	default:
+		return "", fmt.Errorf("boot: unknown model provider kind %q", k)
+	}
 }
 
 type runServers struct{ servers *mcpserver.Service }

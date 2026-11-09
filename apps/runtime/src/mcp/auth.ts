@@ -1,3 +1,4 @@
+import type { TurnRequest } from '../contract/index.ts';
 import type { Credential } from '../egress/index.ts';
 
 const HEADER_NAME = /^[!#$%&'*+.^`|~\w-]+$/;
@@ -19,11 +20,7 @@ export const RESERVED_HEADERS = new Set([
   'expect',
 ]);
 
-export type McpAuth = {
-  kind: 'none' | 'bearer' | 'header',
-  header?: string,
-  value?: string,
-};
+export type McpAuth = TurnRequest['mcpServers'][number]['auth'];
 
 export function credential(auth: McpAuth): Credential | undefined {
   if (auth.kind === 'bearer') {

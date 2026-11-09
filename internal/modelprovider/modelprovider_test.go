@@ -96,6 +96,19 @@ func TestNew_Invalid(t *testing.T) {
 	}
 }
 
+func TestKinds(t *testing.T) {
+	assert.Equal(t, []Kind{KindOpenAICompatible, KindAnthropic}, Kinds())
+}
+
+func TestNew_KeepsAnthropicKind(t *testing.T) {
+	in := validInput()
+	in.Kind = KindAnthropic
+	in.BaseURL = "https://api.anthropic.com"
+	p, err := New(uuid.New(), uuid.New(), in, time.Now())
+	require.NoError(t, err)
+	assert.Equal(t, KindAnthropic, p.Kind)
+}
+
 func TestNew_AllowInsecureURL(t *testing.T) {
 	in := validInput()
 	in.BaseURL = "http://127.0.0.1:11434/v1"
@@ -153,6 +166,21 @@ func TestUpdate_InvalidLeavesProviderUnchanged(t *testing.T) {
 	in.BaseURL = "http://llm.example.com"
 	changed, err := p.Update(in, created.Add(time.Hour))
 	assert.True(t, IsInvalidBaseURLError(err))
+	assert.False(t, changed)
+	assert.Equal(t, before, *p)
+}
+
+func TestUpdate_KindChangeLeavesProviderUnchanged(t *testing.T) {
+	created := time.Date(2026, 11, 5, 10, 0, 0, 0, time.UTC)
+	p, err := New(uuid.New(), uuid.New(), validInput(), created)
+	require.NoError(t, err)
+	before := *p
+
+	in := validInput()
+	in.Name = "renamed"
+	in.Kind = KindAnthropic
+	changed, err := p.Update(in, created.Add(time.Hour))
+	assert.True(t, IsKindChangedError(err), "got %v", err)
 	assert.False(t, changed)
 	assert.Equal(t, before, *p)
 }

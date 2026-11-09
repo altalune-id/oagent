@@ -27,7 +27,7 @@ func (s *Service) request(ctx context.Context, t *turn) (runtime.TurnRequest, []
 		},
 		Agent: runtime.AgentSpec{
 			Instructions: v.Instructions, Temperature: v.Temperature, MaxSteps: v.MaxSteps,
-			Model: runtime.ModelSpec{BaseURL: t.model.BaseURL, APIKey: t.model.APIKey, ModelID: v.Model},
+			Model: runtime.ModelSpec{Provider: t.model.Provider, BaseURL: t.model.BaseURL, APIKey: t.model.APIKey, ModelID: v.Model},
 		},
 		MCPServers:    []runtime.MCPServerSpec{},
 		History:       []json.RawMessage{},

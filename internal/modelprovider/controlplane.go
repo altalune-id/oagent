@@ -196,17 +196,25 @@ func inputFromProto(name string, kind modelproviderv1.ModelProviderKind, baseURL
 }
 
 func kindFromProto(k modelproviderv1.ModelProviderKind) Kind {
-	if k == modelproviderv1.ModelProviderKind_MODEL_PROVIDER_KIND_OPENAI_COMPATIBLE {
+	switch k {
+	case modelproviderv1.ModelProviderKind_MODEL_PROVIDER_KIND_OPENAI_COMPATIBLE:
 		return KindOpenAICompatible
+	case modelproviderv1.ModelProviderKind_MODEL_PROVIDER_KIND_ANTHROPIC:
+		return KindAnthropic
+	default:
+		return ""
 	}
-	return ""
 }
 
 func kindToProto(k Kind) modelproviderv1.ModelProviderKind {
-	if k == KindOpenAICompatible {
+	switch k {
+	case KindOpenAICompatible:
 		return modelproviderv1.ModelProviderKind_MODEL_PROVIDER_KIND_OPENAI_COMPATIBLE
+	case KindAnthropic:
+		return modelproviderv1.ModelProviderKind_MODEL_PROVIDER_KIND_ANTHROPIC
+	default:
+		return modelproviderv1.ModelProviderKind_MODEL_PROVIDER_KIND_UNSPECIFIED
 	}
-	return modelproviderv1.ModelProviderKind_MODEL_PROVIDER_KIND_UNSPECIFIED
 }
 
 // SECURITY: the sealed key never leaves the server; the wire carries only whether one is set.

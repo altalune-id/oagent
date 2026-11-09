@@ -31,6 +31,7 @@ type ModelProviderKind int32
 const (
 	ModelProviderKind_MODEL_PROVIDER_KIND_UNSPECIFIED       ModelProviderKind = 0
 	ModelProviderKind_MODEL_PROVIDER_KIND_OPENAI_COMPATIBLE ModelProviderKind = 1
+	ModelProviderKind_MODEL_PROVIDER_KIND_ANTHROPIC         ModelProviderKind = 2
 )
 
 // Enum value maps for ModelProviderKind.
@@ -38,10 +39,12 @@ var (
 	ModelProviderKind_name = map[int32]string{
 		0: "MODEL_PROVIDER_KIND_UNSPECIFIED",
 		1: "MODEL_PROVIDER_KIND_OPENAI_COMPATIBLE",
+		2: "MODEL_PROVIDER_KIND_ANTHROPIC",
 	}
 	ModelProviderKind_value = map[string]int32{
 		"MODEL_PROVIDER_KIND_UNSPECIFIED":       0,
 		"MODEL_PROVIDER_KIND_OPENAI_COMPATIBLE": 1,
+		"MODEL_PROVIDER_KIND_ANTHROPIC":         2,
 	}
 )
 
@@ -633,7 +636,7 @@ func (x *ListModelProvidersResponse) GetModelProviders() []*ModelProvider {
 	return nil
 }
 
-// UpdateModelProviderRequest replaces a provider's editable fields; leaving api_key unset keeps the stored key, which a base_url change refuses.
+// UpdateModelProviderRequest replaces a provider's editable fields; kind must equal the stored kind, and leaving api_key unset keeps the stored key, which a base_url change refuses.
 type UpdateModelProviderRequest struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	Id      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -915,10 +918,11 @@ const file_modelprovider_v1_modelprovider_proto_rawDesc = "" +
 	"\x0emodel_provider\x18\x01 \x01(\v2\x1f.modelprovider.v1.ModelProviderR\rmodelProvider\":\n" +
 	"\x1aDeleteModelProviderRequest\x12\x1c\n" +
 	"\x02id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\"\x1d\n" +
-	"\x1bDeleteModelProviderResponse*c\n" +
+	"\x1bDeleteModelProviderResponse*\x86\x01\n" +
 	"\x11ModelProviderKind\x12#\n" +
 	"\x1fMODEL_PROVIDER_KIND_UNSPECIFIED\x10\x00\x12)\n" +
-	"%MODEL_PROVIDER_KIND_OPENAI_COMPATIBLE\x10\x012\xc6\t\n" +
+	"%MODEL_PROVIDER_KIND_OPENAI_COMPATIBLE\x10\x01\x12!\n" +
+	"\x1dMODEL_PROVIDER_KIND_ANTHROPIC\x10\x022\xc6\t\n" +
 	"\x14ModelProviderService\x12r\n" +
 	"\x13CreateModelProvider\x12,.modelprovider.v1.CreateModelProviderRequest\x1a-.modelprovider.v1.CreateModelProviderResponse\x12\xfd\x02\n" +
 	"\x10GetModelProvider\x12).modelprovider.v1.GetModelProviderRequest\x1a*.modelprovider.v1.GetModelProviderResponse\"\x91\x02\xca\xf3\x18\x8c\x02\n" +

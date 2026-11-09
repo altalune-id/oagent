@@ -131,6 +131,43 @@ func TestModelProviderService_GetUpdateListDelete(t *testing.T) {
 	assert.Empty(t, f.store.Providers)
 }
 
+func TestModelProviderService_EveryProtoKindRoundTrips(t *testing.T) {
+	assert.Len(t, modelprovider.Kinds(), len(modelproviderv1.ModelProviderKind_name)-1, "every domain kind has a proto value")
+	for value, name := range modelproviderv1.ModelProviderKind_name {
+		kind := modelproviderv1.ModelProviderKind(value)
+		if kind == modelproviderv1.ModelProviderKind_MODEL_PROVIDER_KIND_UNSPECIFIED {
+			continue
+		}
+		t.Run(name, func(t *testing.T) {
+			f := newCPFixture(t)
+			req := createRequest(f.orgPub, f.projectPub)
+			req.Kind = kind
+			created, err := f.client.CreateModelProvider(context.Background(), connect.NewRequest(req))
+			require.NoError(t, err)
+			assert.Equal(t, kind, created.Msg.GetModelProvider().GetKind())
+			for _, p := range f.store.Providers {
+				assert.Contains(t, modelprovider.Kinds(), p.Kind)
+			}
+		})
+	}
+}
+
+func TestModelProviderService_UpdateWithAnotherKindIsRefused(t *testing.T) {
+	f := newCPFixture(t)
+	ctx := context.Background()
+	created, err := f.client.CreateModelProvider(ctx, connect.NewRequest(createRequest(f.orgPub, f.projectPub)))
+	require.NoError(t, err)
+
+	_, err = f.cp.UpdateModelProvider(fakes.OperatorContext(ctx), connect.NewRequest(&modelproviderv1.UpdateModelProviderRequest{
+		Id: created.Msg.GetModelProvider().GetId(), Name: "openrouter",
+		Kind:    modelproviderv1.ModelProviderKind_MODEL_PROVIDER_KIND_ANTHROPIC,
+		BaseUrl: "https://openrouter.ai/api/v1", Models: []*modelproviderv1.Model{{Id: "gpt-4o"}},
+	}))
+	assert.Equal(t, apperror.CodeValidation, codeOf(t, err))
+	assert.Equal(t, string(apperror.FieldNotAllowed), reasonOf(t, err))
+	assert.True(t, modelprovider.IsKindChangedError(err), "the refusal names the kind field, got %v", err)
+}
+
 func TestModelProviderService_GetWithAnotherIDIsNotFound(t *testing.T) {
 	f := newCPFixture(t)
 	ctx := context.Background()

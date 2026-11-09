@@ -45,6 +45,7 @@ service ModelProviderService {
 enum ModelProviderKind {
   MODEL_PROVIDER_KIND_UNSPECIFIED = 0;
   MODEL_PROVIDER_KIND_OPENAI_COMPATIBLE = 1;
+  MODEL_PROVIDER_KIND_ANTHROPIC = 2;
 }
 
 // ModelPrices are integer micro-USD per 1M tokens, per token class, in the platform currency USD. Cost micros are ceil(tokens x price / 1 000 000) per class, summed; cents are ceil(micros / 10 000).
@@ -142,7 +143,7 @@ message ListModelProvidersResponse {
   repeated ModelProvider model_providers = 1;
 }
 
-// UpdateModelProviderRequest replaces a provider's editable fields; leaving api_key unset keeps the stored key, which a base_url change refuses.
+// UpdateModelProviderRequest replaces a provider's editable fields; kind must equal the stored kind, and leaving api_key unset keeps the stored key, which a base_url change refuses.
 message UpdateModelProviderRequest {
   string id = 1 [
     (buf.validate.field).required = true,

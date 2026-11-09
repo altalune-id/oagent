@@ -29,6 +29,7 @@ type Service struct {
 
 // Resolved is what a run needs to call one model of a provider.
 type Resolved struct {
+	Kind            Kind
 	BaseURL, APIKey string
 	Model           Model
 }
@@ -220,7 +221,7 @@ func (s *Service) ResolveModel(ctx context.Context, id uuid.UUID, model string) 
 	if err != nil {
 		return Resolved{}, s.errOrReport(ctx, "modelprovider: resolve model open", secretsErr(err))
 	}
-	return Resolved{BaseURL: p.BaseURL, APIKey: key, Model: m}, nil
+	return Resolved{Kind: p.Kind, BaseURL: p.BaseURL, APIKey: key, Model: m}, nil
 }
 
 func (s *Service) seal(p *Provider, apiKey string) error {

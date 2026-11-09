@@ -29,6 +29,7 @@ export function providerPBs() {
       ],
     }),
     create(ModelProviderSchema, { id: 'Pv9pHs4YvT7kMq7WcXe2B', orgId, projectId, name: 'Groq', kind: ModelProviderKind.OPENAI_COMPATIBLE, baseUrl: 'https://api.groq.com/openai/v1', apiKeySet: true, models: [{ id: 'llama-3.3-70b-versatile', vision: false }] }),
+    create(ModelProviderSchema, { id: 'Pv4cLd8NwQ2xTr6YbMa9F', orgId, projectId, name: 'Anthropic', kind: ModelProviderKind.ANTHROPIC, baseUrl: 'https://api.anthropic.com', apiKeySet: true, models: [{ id: 'claude-sonnet-5-5', vision: true, prices: prices(3, 15, 0.3) }] }),
   ];
 }
 

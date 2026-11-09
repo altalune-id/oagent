@@ -21,8 +21,14 @@ const MaxModels = 64
 // Kind names the wire protocol a provider speaks.
 type Kind string
 
-// KindOpenAICompatible is a provider that speaks the OpenAI chat completions API.
-const KindOpenAICompatible Kind = "openai_compatible"
+// The provider kinds.
+const (
+	KindOpenAICompatible Kind = "openai_compatible"
+	KindAnthropic        Kind = "anthropic"
+)
+
+// Kinds returns every provider kind.
+func Kinds() []Kind { return []Kind{KindOpenAICompatible, KindAnthropic} }
 
 // Prices are micro-USD per 1M tokens, per token class.
 type Prices struct {
@@ -106,15 +112,17 @@ func New(orgID, projectID uuid.UUID, in Input, now time.Time, opts ...ValidateOp
 	}, nil
 }
 
-// Update re-validates and replaces the editable fields, leaving the sealed key alone, and reports whether the base URL changed.
+// Update re-validates and replaces the editable fields, leaving the sealed key and kind alone, and reports whether the base URL changed.
 func (p *Provider) Update(in Input, now time.Time, opts ...ValidateOption) (urlChanged bool, err error) {
+	if in.Kind != p.Kind {
+		return false, &KindChangedError{}
+	}
 	baseURL, models, err := validate(in, resolveValidateOpts(opts))
 	if err != nil {
 		return false, err
 	}
 	urlChanged = baseURL != p.BaseURL
 	p.Name = strings.TrimSpace(in.Name)
-	p.Kind = in.Kind
 	p.BaseURL = baseURL
 	p.Models = models
 	p.UpdatedAt = now.UTC()

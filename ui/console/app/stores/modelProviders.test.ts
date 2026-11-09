@@ -11,8 +11,8 @@ const orgId = 'V3StGXR8Z5jdHj6BmyT2a';
 const projectId = 'x6MH9WPWjktMwCBKHy4pF';
 const prices = { inputMicros: 400_000n, outputMicros: 1_600_000n, cacheReadMicros: 100_000n, cacheWriteMicros: 0n };
 const providerPB = create(ModelProviderSchema, { id: 'UxVy4UK3vmrHzPZ273hCA', orgId, projectId, name: 'OpenRouter', kind: ModelProviderKind.OPENAI_COMPATIBLE, baseUrl: 'https://openrouter.ai/api/v1', apiKeySet: true, models: [{ id: 'openai/gpt-4.1-mini', vision: true, prices }, { id: 'llama', vision: false }] });
-const provider: ModelProvider = { id: 'UxVy4UK3vmrHzPZ273hCA', orgId, projectId, name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', keySet: true, models: [{ id: 'openai/gpt-4.1-mini', vision: true, prices }, { id: 'llama', vision: false, prices: undefined }] };
-const input: ProviderInput = { name: ' OpenRouter ', baseUrl: ' https://openrouter.ai/api/v1 ', apiKey: '  sk-or-1  ', models: [{ id: ' openai/gpt-4.1-mini ', vision: true, prices }] };
+const provider: ModelProvider = { id: 'UxVy4UK3vmrHzPZ273hCA', orgId, projectId, name: 'OpenRouter', kind: ModelProviderKind.OPENAI_COMPATIBLE, baseUrl: 'https://openrouter.ai/api/v1', keySet: true, models: [{ id: 'openai/gpt-4.1-mini', vision: true, prices }, { id: 'llama', vision: false, prices: undefined }] };
+const input: ProviderInput = { name: ' OpenRouter ', kind: ModelProviderKind.OPENAI_COMPATIBLE, baseUrl: ' https://openrouter.ai/api/v1 ', apiKey: '  sk-or-1  ', models: [{ id: ' openai/gpt-4.1-mini ', vision: true, prices }] };
 
 describe('model provider mapping', () => {
   it('copies the fields it needs, keeping prices in micro-USD and never a key', () => {
@@ -25,6 +25,14 @@ describe('model provider mapping', () => {
     expect(add.models[0]).toMatchObject({ id: 'openai/gpt-4.1-mini', prices });
     expect(updateRequest(provider.id, { ...input, apiKey: '   ' }).apiKey).toBeUndefined();
     expect(updateRequest(provider.id, input).apiKey).toBe('sk-or-1');
+  });
+
+  it('reads the kind and sends the chosen kind on create and update', () => {
+    expect(toModelProvider(create(ModelProviderSchema, { ...providerPB, kind: ModelProviderKind.ANTHROPIC })).kind).toBe(ModelProviderKind.ANTHROPIC);
+    const anthropic = { ...input, kind: ModelProviderKind.ANTHROPIC };
+    expect(createRequest(orgId, projectId, anthropic).kind).toBe(ModelProviderKind.ANTHROPIC);
+    expect(updateRequest(provider.id, anthropic).kind).toBe(ModelProviderKind.ANTHROPIC);
+    expect(updateRequest(provider.id, input).kind).toBe(ModelProviderKind.OPENAI_COMPATIBLE);
   });
 });
 
