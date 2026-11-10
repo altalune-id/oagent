@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiError, fakeAnthropic, messagesStream } from '../test/anthropic-api.ts';
 import { fakeMcp, goldenRequest, quiet } from '../test/turn-fixtures.ts';
 import { createRunTurn } from '../turn/index.ts';
-import { anthropicClient, anthropicModel } from './anthropic.ts';
+import { anthropicClient, anthropicModel, supportsAdaptiveThinking } from './anthropic.ts';
 import { ClientCache } from './cache.ts';
 import { createModels } from './index.ts';
 
@@ -14,13 +14,22 @@ const BINDING_ERROR = 'messages.1.content.0: thinking block is bound to a differ
 
 type Event = Record<string, unknown>;
 
-async function runOneTurn(): Promise<Event> {
+async function runTurnEvents(modelId?: string): Promise<Event[]> {
   const events: Event[] = [];
   const runTurn = createRunTurn({ models: createModels(), log: quiet, openMcp: fakeMcp([]) });
-  await runTurn(goldenRequest('anthropic_reply'), async (e) => {
+  const request = goldenRequest('anthropic_reply', (r) => {
+    if (modelId) {
+      r.agent.model.modelId = modelId;
+    }
+  });
+  await runTurn(request, async (e) => {
     events.push(e);
   }, new AbortController().signal);
-  return events.find(e => e.type === 'OAGENT_TERMINAL')!;
+  return events;
+}
+
+async function runOneTurn(modelId?: string): Promise<Event> {
+  return (await runTurnEvents(modelId)).find(e => e.type === 'OAGENT_TERMINAL')!;
 }
 
 afterEach(() => {
@@ -62,6 +71,32 @@ describe('anthropicClient', () => {
   });
 });
 
+describe('supportsAdaptiveThinking', () => {
+  it.each([
+    ['claude-opus-5-5', true],
+    ['claude-sonnet-5-5', true],
+    ['claude-haiku-5-5', true],
+    ['claude-fable-5-1', true],
+    ['claude-opus-5', true],
+    ['claude-opus-4-8', true],
+    ['claude-opus-4-6', true],
+    ['claude-sonnet-4-6', true],
+    ['claude-opus-6', true],
+    ['claude-haiku-4-5', false],
+    ['claude-sonnet-4-5', false],
+    ['claude-sonnet-4-5-20250929', false],
+    ['claude-opus-4-1', false],
+    ['claude-opus-4-20250514', false],
+    ['claude-3-5-sonnet-20241022', false],
+    ['claude-3-opus-latest', false],
+    ['claude', false],
+    ['my-proxy-alias', false],
+    ['', false],
+  ])('%s gets adaptive thinking: %s', (modelId, expected) => {
+    expect(supportsAdaptiveThinking(modelId)).toBe(expected);
+  });
+});
+
 describe('anthropicModel', () => {
   it('turns on adaptive thinking and Anthropic caching and never sets a temperature', () => {
     const model = anthropicModel(new ClientCache<Anthropic>(), 'p1', spec);
@@ -69,6 +104,11 @@ describe('anthropicModel', () => {
     const config = model.getConfig();
     expect(config).toMatchObject({ modelId: 'claude-sonnet-5-5', maxTokens: 1024, cacheConfig: { strategy: 'anthropic' }, params: { thinking: { type: 'adaptive' } } });
     expect(config).not.toHaveProperty('temperature');
+  });
+
+  it('sends no thinking params to a model without adaptive thinking', () => {
+    const config = anthropicModel(new ClientCache<Anthropic>(), 'p1', { ...spec, modelId: 'claude-haiku-4-5' }).getConfig();
+    expect(config).not.toHaveProperty('params');
   });
 
   it('leaves maxTokens to the Strands default when the request has none', () => {
@@ -97,6 +137,30 @@ describe('an Anthropic turn on the wire', () => {
     expect(JSON.stringify(req!.body)).toContain('"cache_control"');
     expect(terminal.status).toBe('completed');
     expect(terminal.usage).toMatchObject({ cacheReadInputTokens: 80, cacheWriteInputTokens: 40 });
+  });
+
+  it('sends no thinking field to an older model', async () => {
+    const api = fakeAnthropic([() => messagesStream('Hi, how can I help?')]);
+    vi.stubGlobal('fetch', api.fetch);
+
+    const terminal = await runOneTurn('claude-haiku-4-5');
+
+    expect(api.seen[0]!.body.model).toBe('claude-haiku-4-5');
+    expect(api.seen[0]!.body).not.toHaveProperty('thinking');
+    expect(terminal.status).toBe('completed');
+  });
+
+  it('fails a refused turn with model_error, no snapshot and no refused message', async () => {
+    const api = fakeAnthropic([() => messagesStream('I can\'t help with', 'refusal')]);
+    vi.stubGlobal('fetch', api.fetch);
+
+    const events = await runTurnEvents();
+
+    const terminal = events.find(e => e.type === 'OAGENT_TERMINAL')!;
+    expect(terminal).toMatchObject({ status: 'failed', stopReason: 'refusal', snapshot: null, error: { code: 'model_error' } });
+    expect((terminal.messagesAppended as Event[]).map(m => m.role)).toEqual(['user']);
+    expect(events.find(e => e.type === 'RUN_ERROR')).toMatchObject({ code: 'model_error' });
+    expect(events.some(e => e.type === 'RUN_FINISHED')).toBe(false);
   });
 
   it('retries once with drop_block and the binding beta when a thinking block is bound to another conversation', async () => {

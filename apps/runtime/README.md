@@ -59,7 +59,7 @@ The platform's stop timeout must be longer than the grace period.
 
 Each folder's `index.ts` is its entry point; other folders import only that file.
 
-Anthropic turns always use adaptive thinking, so Claude Haiku 4.5 and older models are not supported: they refuse the request and the run fails.
+Anthropic turns use adaptive thinking on models from version 4.6 on (`claude-<family>-<major>[-<minor>]` ids, such as `claude-opus-4-6` or `claude-sonnet-5-5`). Older models, such as Claude Haiku 4.5 and Claude Sonnet 4.5, and ids in any other form run without thinking. A safety refusal fails the run with `model_error`.
 
 ## Develop
 

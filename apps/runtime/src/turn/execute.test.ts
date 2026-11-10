@@ -4,7 +4,7 @@ import { Buffer } from 'node:buffer';
 import { Agent, FunctionTool, Message, ModelThrottledError, TextBlock } from '@strands-agents/sdk';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { TurnRefusedError } from '../contract/index.ts';
+import { ModelProvider, TurnRefusedError } from '../contract/index.ts';
 import { createModels } from '../models/index.ts';
 import { apiError, fakeAnthropic } from '../test/anthropic-api.ts';
 import { ScriptedModel } from '../test/scripted-model.ts';
@@ -303,6 +303,12 @@ describe('anthropic model errors', () => {
     vi.unstubAllGlobals();
   });
 
+  function anthropicImageRequest(): ReturnType<typeof goldenRequest> {
+    const request = imageRequest();
+    request.agent.model.provider = ModelProvider.ANTHROPIC;
+    return request;
+  }
+
   function anthropic(responses: (() => Response)[]): { model: ReturnType<ReturnType<typeof createModels>['model']>, seen: unknown[] } {
     const api = fakeAnthropic(responses);
     vi.stubGlobal('fetch', api.fetch);
@@ -312,13 +318,25 @@ describe('anthropic model errors', () => {
 
   it('maps an Anthropic 400 on an image turn to image_unsupported', async () => {
     const { model } = anthropic([() => apiError(400, 'Image does not match the provided media type')]);
-    const out = await executeTurn(imageRequest(), never, { model, log: quiet, openMcp: fakeMcp([]) });
+    const out = await executeTurn(anthropicImageRequest(), never, { model, log: quiet, openMcp: fakeMcp([]) });
+    expect(out.error).toEqual({ code: 'image_unsupported' });
+  });
+
+  it('keeps an Anthropic 400 that is not about the image on an image turn a model_error', async () => {
+    const { model } = anthropic([() => apiError(400, 'max_tokens: 200000 > 128000, which is the maximum allowed number of output tokens')]);
+    const out = await executeTurn(anthropicImageRequest(), never, { model, log: quiet, openMcp: fakeMcp([]) });
+    expect(out.error).toEqual({ code: 'model_error' });
+  });
+
+  it.each([413, 415])('maps an Anthropic %i on an image turn to image_unsupported whatever the message', async (status) => {
+    const { model } = anthropic([() => apiError(status, 'request too large')]);
+    const out = await executeTurn(anthropicImageRequest(), never, { model, log: quiet, openMcp: fakeMcp([]) });
     expect(out.error).toEqual({ code: 'image_unsupported' });
   });
 
   it('keeps an Anthropic 429 a model_error and does not retry it', async () => {
     const { model, seen } = anthropic([() => apiError(429, 'rate limited'), () => apiError(429, 'rate limited')]);
-    const out = await executeTurn(imageRequest(), never, { model, log: quiet, openMcp: fakeMcp([]) });
+    const out = await executeTurn(anthropicImageRequest(), never, { model, log: quiet, openMcp: fakeMcp([]) });
     expect(out.status).toBe('failed');
     expect(out.error).toEqual({ code: 'model_error' });
     expect(seen).toHaveLength(1);

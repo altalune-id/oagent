@@ -1,5 +1,7 @@
+import Anthropic from '@anthropic-ai/sdk';
 import { AnthropicModel } from '@strands-agents/sdk/models/anthropic';
 import { OpenAIModel } from '@strands-agents/sdk/models/openai';
+import OpenAI from 'openai';
 import { describe, expect, it } from 'vitest';
 
 import { createModels } from './index.ts';
@@ -21,11 +23,12 @@ describe('createModels', () => {
   });
 
   it('keeps one client cache per provider', () => {
+    const anthropicSpec = { ...spec, provider: 'anthropic' as const };
+    const clientOf = (model: unknown): unknown => (model as { _client: unknown })._client;
     const models = createModels();
-    const a = models.model('p1', { ...spec, provider: 'anthropic', baseUrl: 'https://llm.example.com/v1' }, 0);
-    const o = models.model('p1', spec, 0);
-    expect(a).toBeInstanceOf(AnthropicModel);
-    expect(o).toBeInstanceOf(OpenAIModel);
+    expect(clientOf(models.model('p1', anthropicSpec, 0))).toBeInstanceOf(Anthropic);
+    expect(clientOf(models.model('p1', spec, 0))).toBeInstanceOf(OpenAI);
+    expect(clientOf(models.model('p1', anthropicSpec, 0))).toBeInstanceOf(Anthropic);
   });
 
   it('throws on an unknown provider instead of building a broken model', () => {

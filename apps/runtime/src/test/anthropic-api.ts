@@ -9,13 +9,13 @@ function sse(events: Record<string, unknown>[]): string {
   return events.map(e => `event: ${String(e.type)}\ndata: ${JSON.stringify(e)}\n\n`).join('');
 }
 
-export function messagesStream(text: string): Response {
+export function messagesStream(text: string, stopReason = 'end_turn'): Response {
   const body = sse([
     { type: 'message_start', message: { id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-sonnet-5-5', content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 120, output_tokens: 1, cache_read_input_tokens: 80, cache_creation_input_tokens: 40 } } },
     { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
     { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text } },
     { type: 'content_block_stop', index: 0 },
-    { type: 'message_delta', delta: { stop_reason: 'end_turn', stop_sequence: null }, usage: { output_tokens: 9 } },
+    { type: 'message_delta', delta: { stop_reason: stopReason, stop_sequence: null }, usage: { output_tokens: 9 } },
     { type: 'message_stop' },
   ]);
   return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
