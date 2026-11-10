@@ -14,7 +14,7 @@ import {
   ToolResultBlock,
 } from '@strands-agents/sdk';
 
-import { inputParts } from '../contract/index.ts';
+import { inputParts, ModelProvider } from '../contract/index.ts';
 import { openMcpServers } from '../mcp/index.ts';
 import { historyToMessages } from './history.ts';
 import { BUDGET_REFUSAL, LIMIT_REPLY, overBudget, stepLimit, UsageMeter } from './limits.ts';
@@ -56,20 +56,33 @@ const FORMAT: Record<ImageMime, 'jpeg' | 'png' | 'webp'> = { 'image/jpeg': 'jpeg
 
 const IMAGE_REFUSAL_STATUSES = new Set([400, 413, 415, 422]);
 
-function httpStatusOf(error: unknown): number | undefined {
+const IMAGE_SIZE_STATUSES = new Set([413, 415]);
+
+type HttpError = { status: number, message?: unknown, error?: { error?: { message?: unknown } } };
+
+function httpErrorOf(error: unknown): HttpError | undefined {
   for (let e: unknown = error, depth = 0; e && typeof e === 'object' && depth < 5; e = (e as { cause?: unknown }).cause, depth++) {
-    const status = (e as { status?: unknown }).status;
-    if (typeof status === 'number') {
-      return status;
+    if (typeof (e as { status?: unknown }).status === 'number') {
+      return e as HttpError;
     }
   }
   return undefined;
 }
 
+function anthropicImageError(http: HttpError): boolean {
+  if (IMAGE_SIZE_STATUSES.has(http.status)) {
+    return true;
+  }
+  const message = http.error?.error?.message ?? http.message;
+  return typeof message === 'string' && /\bimage/i.test(message);
+}
+
 function imageRefused(request: TurnRequest, error: unknown): boolean {
-  const status = httpStatusOf(error);
-  const hasImage = inputParts(request).some(p => 'image' in p);
-  return hasImage && status !== undefined && IMAGE_REFUSAL_STATUSES.has(status);
+  const http = httpErrorOf(error);
+  if (!http || !IMAGE_REFUSAL_STATUSES.has(http.status) || !inputParts(request).some(p => 'image' in p)) {
+    return false;
+  }
+  return request.agent.model.provider !== ModelProvider.ANTHROPIC || anthropicImageError(http);
 }
 
 function inputOf(request: TurnRequest): ContentBlockData[] | InterruptResponseContentData[] {
@@ -91,6 +104,9 @@ function statusOf(stopReason: string, interrupted: boolean, budgetHit: boolean):
   }
   if (stopReason === 'cancelled') {
     return 'cancelled';
+  }
+  if (stopReason === 'refusal') {
+    return 'failed';
   }
   return 'completed';
 }
@@ -186,6 +202,9 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
     meter.closeCutCall();
     const interrupts = (result.interrupts ?? []).map(i => ({ id: i.id, name: i.name, reason: (i.reason ?? null) as JSONValue }));
     const status = statusOf(result.stopReason, interrupts.length > 0, budgetHit);
+    if (status === 'failed') {
+      return outcome(status, result.stopReason, { newMessages: agent.messages.slice(start).filter(m => m !== result.lastMessage), error: { code: 'model_error' } });
+    }
     const snapshot = cleanSnapshot(agent.takeSnapshot({ preset: 'session', appData: { thread: request.ids.thread, agentVersion: request.ids.agentVersion, sdk: SDK_VERSION } }), budgetHit ? BUDGET_REFUSAL : undefined);
     const done = outcome(status, budgetHit ? 'budget' : result.stopReason, { snapshot, interrupts });
     if (status === 'cancelled') {

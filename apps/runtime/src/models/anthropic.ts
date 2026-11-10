@@ -16,12 +16,19 @@ export function anthropicClient(cache: ClientCache<Anthropic>, project: string, 
   }));
 }
 
+// NOTE: deny-list, not allow-list: an unread id keeps thinking so Strands' drop_block retry still covers models that think upstream.
+const PRE_ADAPTIVE = /claude-(?:[0-3](?=$|[-.@:])|instant|[a-z]+-[0-3](?=$|[-.@:])|[a-z]+-4(?:-[0-5])?(?=$|[@:.]|-\d{8}|-v\d))/;
+
+export function supportsAdaptiveThinking(modelId: string): boolean {
+  return !PRE_ADAPTIVE.test(modelId);
+}
+
 export function anthropicModel(cache: ClientCache<Anthropic>, project: string, spec: ModelSpec): AnthropicModel {
   return new AnthropicModel({
     client: anthropicClient(cache, project, spec),
     modelId: spec.modelId,
     cacheConfig: { strategy: 'anthropic' },
-    params: { thinking: { type: 'adaptive' } },
+    ...(supportsAdaptiveThinking(spec.modelId) && { params: { thinking: { type: 'adaptive' } } }),
     ...(spec.maxTokens !== undefined && { maxTokens: spec.maxTokens }),
   });
 }
