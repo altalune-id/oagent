@@ -16,16 +16,11 @@ export function anthropicClient(cache: ClientCache<Anthropic>, project: string, 
   }));
 }
 
-// shortcut: reads the version from claude-<family>-<major>[-<minor>] ids only; other ids get no thinking, add a rule when one needs it.
-const VERSIONED_ID = /^claude-[a-z]+-(\d+)(?:-(\d{1,2}))?(?:-|$)/;
+// NOTE: deny-list, not allow-list: an unread id keeps thinking so Strands' drop_block retry still covers models that think upstream.
+const PRE_ADAPTIVE = /claude-(?:[0-3](?=$|[-.@:])|instant|[a-z]+-[0-3](?=$|[-.@:])|[a-z]+-4(?:-[0-5])?(?=$|[@:.]|-\d{8}|-v\d))/;
 
 export function supportsAdaptiveThinking(modelId: string): boolean {
-  const match = VERSIONED_ID.exec(modelId);
-  if (!match) {
-    return false;
-  }
-  const major = Number(match[1]);
-  return major > 4 || (major === 4 && Number(match[2] ?? 0) >= 6);
+  return !PRE_ADAPTIVE.test(modelId);
 }
 
 export function anthropicModel(cache: ClientCache<Anthropic>, project: string, spec: ModelSpec): AnthropicModel {

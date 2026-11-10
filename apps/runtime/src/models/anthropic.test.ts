@@ -89,9 +89,17 @@ describe('supportsAdaptiveThinking', () => {
     ['claude-opus-4-20250514', false],
     ['claude-3-5-sonnet-20241022', false],
     ['claude-3-opus-latest', false],
-    ['claude', false],
-    ['my-proxy-alias', false],
-    ['', false],
+    ['claude-opus-4-6@20260205', true],
+    ['claude-sonnet-4-6-20260217', true],
+    ['anthropic.claude-sonnet-5-5-v1:0', true],
+    ['us.anthropic.claude-opus-5-5', true],
+    ['my-proxy-alias', true],
+    ['claude-opus-4-5@20251101', false],
+    ['anthropic.claude-haiku-4-5-20251001-v1:0', false],
+    ['claude-sonnet-4-20250514', false],
+    ['claude-3-7-sonnet-latest', false],
+    ['claude-2.1', false],
+    ['claude-instant-1.2', false],
   ])('%s gets adaptive thinking: %s', (modelId, expected) => {
     expect(supportsAdaptiveThinking(modelId)).toBe(expected);
   });
@@ -158,6 +166,7 @@ describe('an Anthropic turn on the wire', () => {
 
     const terminal = events.find(e => e.type === 'OAGENT_TERMINAL')!;
     expect(terminal).toMatchObject({ status: 'failed', stopReason: 'refusal', snapshot: null, error: { code: 'model_error' } });
+    expect(terminal.usage).toMatchObject({ outputTokens: 9, cacheReadInputTokens: 80, cacheWriteInputTokens: 40, estimated: false });
     expect((terminal.messagesAppended as Event[]).map(m => m.role)).toEqual(['user']);
     expect(events.find(e => e.type === 'RUN_ERROR')).toMatchObject({ code: 'model_error' });
     expect(events.some(e => e.type === 'RUN_FINISHED')).toBe(false);
