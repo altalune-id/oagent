@@ -20,6 +20,18 @@ func TestLoad_MailDefaults(t *testing.T) {
 	assert.Equal(t, 587, c.Mail.SMTP.Port)
 	assert.Equal(t, MailTLSStartTLS, c.Mail.SMTP.TLS)
 	assert.Equal(t, 10*time.Second, c.Mail.SMTP.Timeout)
+	assert.Equal(t, 5*time.Second, c.Mail.IdlePoll)
+	assert.Equal(t, 5*time.Second, c.Outbox.IdlePoll)
+}
+
+func TestLoad_IdlePollFromEnv(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("OAGENT_MAIL_IDLE_POLL", "10m")
+	t.Setenv("OAGENT_OUTBOX_IDLE_POLL", "11m")
+	c, err := Load(missingPath(t))
+	require.NoError(t, err)
+	assert.Equal(t, 10*time.Minute, c.Mail.IdlePoll)
+	assert.Equal(t, 11*time.Minute, c.Outbox.IdlePoll)
 }
 
 func TestLoad_MailFromEnv(t *testing.T) {

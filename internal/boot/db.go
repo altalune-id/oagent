@@ -14,9 +14,11 @@ import (
 	"altalune.id/oagent/schema"
 )
 
-func buildDBHealth(k kernel.Kernel, cfg config.Config, log *slog.Logger) *pg.HealthMonitor {
+func buildDBHealth(ctx context.Context, k kernel.Kernel, cfg config.Config, log *slog.Logger) *pg.HealthMonitor {
 	h := cfg.Postgres.Health
-	return pg.NewHealthMonitor(k.Pool.W, k.Pool.R, pg.HealthConfig{Interval: h.Interval, Timeout: h.Timeout}, log, k.Meter)
+	m := pg.NewHealthMonitor(k.Pool.W, k.Pool.R, pg.HealthConfig{Interval: h.Interval, Timeout: h.Timeout}, log, k.Meter)
+	_ = m.Probe(ctx)
+	return m
 }
 
 type (

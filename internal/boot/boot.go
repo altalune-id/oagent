@@ -133,7 +133,7 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		return nil, err
 	}
 	warnSampleLegal(cfg, log, logsInstallURL(o))
-	dbHealth := buildDBHealth(k, cfg, log)
+	dbHealth := buildDBHealth(ctx, k, cfg, log)
 	apiHandler := buildAPIHandler(svcs, k.Reporter.Unexpected, cfg.API, cfg.HTTP.BasePath, log)
 	crossOrigin, err := buildCrossOrigin(cfg.HTTP.BaseURL)
 	if err != nil {
@@ -173,15 +173,14 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		}),
 		log,
 	))
-	sup.Register(dbHealth)
 	if rh != nil {
 		sup.Register(rh)
 	}
 	if nh != nil {
 		sup.Register(nh)
 	}
-	sup.Register(buildOutboxWorker(svcs, log))
-	sup.Register(buildMailWorker(svcs, log))
+	sup.Register(buildOutboxWorker(svcs, cfg.Outbox, log))
+	sup.Register(buildMailWorker(svcs, cfg.Mail, log))
 	sup.Register(svcs.KeyUsage)
 	sup.Register(svcs.RunTurns)
 	if lims.janitor != nil {
@@ -196,6 +195,9 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 		}
 		runner = r
 		sup.Register(runner)
+		if svcs.ChannelReplier != nil {
+			sup.Register(svcs.ChannelReplier.WithSweep(outboxTenants{orgs: svcs.Orgs}, cfg.Channel.ReplyIdlePoll))
+		}
 	} else if log != nil {
 		log.Info("boot: scheduler disabled by " + off)
 	}

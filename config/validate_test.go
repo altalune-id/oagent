@@ -97,6 +97,13 @@ func TestValidate_EveryRule(t *testing.T) {
 			devConsole(c)
 			c.Secrets.EncryptionKey = "zz"
 		}, valid},
+		{"mail.idlePoll under one second", func(c *Config) { c.Mail.IdlePoll = time.Millisecond }, invalidSetting("mail.idlePoll")},
+		{"mail.idlePoll ten minutes", func(c *Config) { c.Mail.IdlePoll = 10 * time.Minute }, valid},
+		{"outbox.idlePoll under one second", func(c *Config) { c.Outbox.IdlePoll = time.Millisecond }, invalidSetting("outbox.idlePoll")},
+		{"channel.replyIdlePoll under the 15s tick", func(c *Config) { c.Channel.ReplyIdlePoll = 14 * time.Second }, invalidSetting("channel.replyIdlePoll")},
+		{"channel.replyIdlePoll at the 15s tick", func(c *Config) { c.Channel.ReplyIdlePoll = 15 * time.Second }, valid},
+		{"channel.replyIdlePoll ten minutes", func(c *Config) { c.Channel.ReplyIdlePoll = 10 * time.Minute }, valid},
+		{"outbox.idlePoll ten minutes", func(c *Config) { c.Outbox.IdlePoll = 10 * time.Minute }, valid},
 		{"mail.driver unknown", func(c *Config) { c.Mail.Driver = "fax" }, invalidSetting("mail.driver")},
 		{"mail.driver empty", func(c *Config) { c.Mail.Driver = "" }, invalidSetting("mail.driver")},
 		{"mail.driver console in production", func(c *Config) { c.Mail.Driver = MailDriverConsole }, invalidSetting("mail.driver")},

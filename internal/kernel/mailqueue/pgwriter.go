@@ -35,6 +35,9 @@ func (s *postgresStore) Enqueue(ctx context.Context, m mailer.Message) (uuid.UUI
 	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { _, err := stmt.ExecContext(ctx, q); return err }); err != nil {
 		return uuid.Nil, fmt.Errorf("mailqueue.postgres.Enqueue: %w", err)
 	}
+	if s.wake != nil {
+		db.AfterCommit(ctx, s.wake)
+	}
 	return id, nil
 }
 

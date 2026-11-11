@@ -52,6 +52,8 @@ func buildMailQueue(pool db.Pool, cfg config.Config, sl sealer.Sealer) mailqueue
 	return mailqueue.NewStore(pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix, sl, mailAllowPlain(cfg))
 }
 
-func buildMailWorker(svcs *Services, log *slog.Logger) *mailqueue.Worker {
-	return mailqueue.NewWorker(svcs.MailQueue, svcs.Mailer, log, mailqueue.WorkerOpts{})
+func buildMailWorker(svcs *Services, cfg config.MailConfig, log *slog.Logger) *mailqueue.Worker {
+	w := mailqueue.NewWorker(svcs.MailQueue, svcs.Mailer, log, mailqueue.WorkerOpts{IdlePoll: cfg.IdlePoll})
+	wakeOnEnqueue(svcs.MailQueue, w.Wake)
+	return w
 }

@@ -45,7 +45,7 @@ Pick the shape first:
    - Work that must survive the cancel (a final flush) uses `context.WithTimeout(context.WithoutCancel(ctx), …)`, as `usage.Worker.Run` does.
    - A worker whose dependencies are nil logs once and returns `nil` (`outbox.Worker.Run`).
 
-2. **Name** in the existing style: `<package>.<verb>` for kernel workers (`outbox.dispatch`, `mailqueue.send`), a short kebab name otherwise (`apikey-usage`, `db-health`). Export it as `WorkerName` when tests or boot refer to it.
+2. **Name** in the existing style: `<package>.<verb>` for kernel workers (`outbox.dispatch`, `mailqueue.send`), a short kebab name otherwise (`apikey-usage`, `nats-health`). Export it as `WorkerName` when tests or boot refer to it.
 3. **Boot.** Build it in the file that owns the feature (`internal/boot/outbox.go`, `mail.go`, `ratelimit.go`) and `sup.Register(...)` it in `Boot` (`internal/boot/boot.go`), behind its condition. A resource it holds is closed through `k.AddCloser`; the kernel closes in reverse order.
 4. **Tests:** unit tests on fakes for one tick, a failing tick that keeps running, and `Run` returning when the context is cancelled (`TestWorkerRunTicksThenStops`). Update the worker counts in `internal/boot/boot_test.go`.
 

@@ -197,3 +197,81 @@ func TestContextWithTx(t *testing.T) {
 	_, ok = CurrentTx(ctx)
 	assert.True(t, ok)
 }
+
+func TestAfterCommit_RunsAfterCommit(t *testing.T) {
+	pool, mock := mockPool(t)
+	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
+	mock.ExpectCommit()
+
+	ran := 0
+	err := RunInTx(context.Background(), pool, func(ctx context.Context) error {
+		AfterCommit(ctx, func() { ran++ })
+		assert.Zero(t, ran, "a hook waits for the commit")
+		return nil
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 1, ran)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestAfterCommit_SkippedOnRollback(t *testing.T) {
+	pool, mock := mockPool(t)
+	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
+	mock.ExpectRollback()
+
+	ran := 0
+	err := RunInTx(context.Background(), pool, func(ctx context.Context) error {
+		AfterCommit(ctx, func() { ran++ })
+		return errors.New("boom")
+	})
+	require.Error(t, err)
+	assert.Zero(t, ran)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestAfterCommit_SkippedOnCommitError(t *testing.T) {
+	pool, mock := mockPool(t)
+	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
+	mock.ExpectCommit().WillReturnError(errors.New("serialization failure"))
+
+	ran := 0
+	err := RunInTx(context.Background(), pool, func(ctx context.Context) error {
+		AfterCommit(ctx, func() { ran++ })
+		return nil
+	})
+	require.Error(t, err)
+	assert.Zero(t, ran)
+}
+
+func TestAfterCommit_NestedRunsOnceAfterTheOuterCommit(t *testing.T) {
+	pool, mock := mockPool(t)
+	mock.ExpectBegin()
+	expectScope(mock, tenant.Context{})
+	mock.ExpectCommit()
+
+	ran := 0
+	err := RunInTx(context.Background(), pool, func(ctx context.Context) error {
+		if err := RunInTx(ctx, pool, func(ctx context.Context) error {
+			return InTx(ctx, pool, func(*sql.Tx) error {
+				AfterCommit(ctx, func() { ran++ })
+				return nil
+			})
+		}); err != nil {
+			return err
+		}
+		assert.Zero(t, ran, "an inner unit of work does not commit")
+		return nil
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 1, ran)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestAfterCommit_RunsAtOnceWithoutATransaction(t *testing.T) {
+	ran := 0
+	AfterCommit(context.Background(), func() { ran++ })
+	assert.Equal(t, 1, ran)
+}

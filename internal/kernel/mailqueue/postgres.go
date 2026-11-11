@@ -22,6 +22,7 @@ type postgresStore struct {
 	q          *entity.MailQueue
 	sealer     sealer.Sealer
 	allowPlain bool
+	wake       func()
 }
 
 // NewStore builds the Postgres queue; allowPlain stores unsealed JSON when sl has no key.
@@ -31,6 +32,9 @@ func NewStore(pool db.Pool, schema, prefix string, sl sealer.Sealer, allowPlain 
 	}
 	return &postgresStore{pool: pool, q: entity.NewMailQueue(schema, prefix), sealer: sl, allowPlain: allowPlain}
 }
+
+// OnEnqueue sets fn to run after each enqueue commits; call it before the store is shared.
+func (s *postgresStore) OnEnqueue(fn func()) { s.wake = fn }
 
 func (s *postgresStore) seal(id uuid.UUID, m mailer.Message) (payload []byte, sealed bool, err error) {
 	plain, err := json.Marshal(m)

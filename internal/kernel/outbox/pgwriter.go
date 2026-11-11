@@ -24,7 +24,11 @@ func (s *postgresStore) Enqueue(ctx context.Context, e Entry) error {
 	if err != nil {
 		return err
 	}
-	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error { return s.enqueue(ctx, tx, tc, e) })
+	if err := db.InTx(ctx, s.pool, func(tx *sql.Tx) error { return s.enqueue(ctx, tx, tc, e) }); err != nil {
+		return err
+	}
+	s.wakeAfterCommit(ctx)
+	return nil
 }
 
 func (s *postgresStore) enqueue(ctx context.Context, tx *sql.Tx, tc tenant.Context, e Entry) error {
@@ -215,7 +219,11 @@ func (s *postgresStore) Requeue(ctx context.Context, id uuid.UUID, target string
 	if err != nil {
 		return err
 	}
-	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error { return s.requeue(ctx, tx, tc, id, target) })
+	if err := db.InTx(ctx, s.pool, func(tx *sql.Tx) error { return s.requeue(ctx, tx, tc, id, target) }); err != nil {
+		return err
+	}
+	s.wakeAfterCommit(ctx)
+	return nil
 }
 
 func (s *postgresStore) requeue(ctx context.Context, tx *sql.Tx, tc tenant.Context, id uuid.UUID, target string) error {
@@ -275,6 +283,9 @@ func (s *postgresStore) RequeueFailed(ctx context.Context, target string) (int, 
 	})
 	if err != nil {
 		return 0, err
+	}
+	if n > 0 {
+		s.wakeAfterCommit(ctx)
 	}
 	return n, nil
 }

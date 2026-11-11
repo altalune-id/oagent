@@ -45,7 +45,7 @@ func TestBuildScheduler_ChannelJobs(t *testing.T) {
 	for _, j := range r.Jobs() {
 		names = append(names, j.Name)
 	}
-	assert.ElementsMatch(t, []string{"session-sweep", "ingest-prune", "channel-reply"}, names)
+	assert.ElementsMatch(t, []string{"session-sweep", "ingest-prune"}, names)
 }
 
 func TestSchedulerConfig(t *testing.T) {

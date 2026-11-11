@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/google/uuid"
 
@@ -21,6 +22,9 @@ type txCtxKey struct{}
 type unitOfWork struct {
 	tx    *sql.Tx
 	scope tenant.Context
+
+	mu    sync.Mutex
+	after []func()
 }
 
 // Transactor runs a use case as one unit of work.
@@ -79,13 +83,35 @@ func own(ctx context.Context, handle *sql.DB, opts *sql.TxOptions, fn func(uow *
 	if _, err := tx.ExecContext(ctx, setScope, scopeValue(scope.OrgID), scopeValue(scope.UserID)); err != nil {
 		return fmt.Errorf("db: set tenant scope: %w", err)
 	}
-	if err := fn(&unitOfWork{tx: tx, scope: scope}); err != nil {
+	uow := &unitOfWork{tx: tx, scope: scope}
+	if err := fn(uow); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("db: commit: %w", err)
 	}
+	for _, hook := range uow.hooks() {
+		hook()
+	}
 	return nil
+}
+
+// AfterCommit runs fn once the unit of work on ctx commits, never on a rollback or a failed commit, and at once when ctx carries none.
+func AfterCommit(ctx context.Context, fn func()) {
+	uow, ok := unitOfWorkFromContext(ctx)
+	if !ok {
+		fn()
+		return
+	}
+	uow.mu.Lock()
+	defer uow.mu.Unlock()
+	uow.after = append(uow.after, fn)
+}
+
+func (u *unitOfWork) hooks() []func() {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	return u.after
 }
 
 // SECURITY: a join never changes a set org and sets one the transaction lacks.
@@ -119,7 +145,7 @@ func CurrentTx(ctx context.Context) (*sql.Tx, bool) {
 	return uow.tx, true
 }
 
-// ContextWithTx returns a context carrying tx as the active unit of work, with no tenant scope.
+// ContextWithTx binds tx to ctx as the unit of work, with no tenant scope; test-only, as AfterCommit hooks on it never run.
 func ContextWithTx(ctx context.Context, tx *sql.Tx) context.Context {
 	return contextWithUnitOfWork(ctx, &unitOfWork{tx: tx})
 }
