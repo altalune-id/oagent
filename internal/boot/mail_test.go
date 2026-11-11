@@ -91,7 +91,7 @@ func TestBuildMailWorker(t *testing.T) {
 		Mailer:    console.New("", &buf),
 		MailQueue: mailqueue.NewStore(db.Pool{}, "public", "", sealer.Disabled(), false),
 	}
-	w := buildMailWorker(svcs, slog.New(slog.NewTextHandler(&buf, nil)))
+	w := buildMailWorker(svcs, config.MailConfig{}, slog.New(slog.NewTextHandler(&buf, nil)))
 	require.NotNil(t, w)
 	assert.Equal(t, mailqueue.WorkerName, w.Name())
 }

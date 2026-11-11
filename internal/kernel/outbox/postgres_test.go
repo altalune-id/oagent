@@ -358,3 +358,87 @@ func TestStoreQueryErrors(t *testing.T) {
 	_, err = s.ListByTarget(ctx, "ep", 10)
 	assert.Error(t, err)
 }
+
+func TestEnqueueWakesOnlyAfterTheCommit(t *testing.T) {
+	org, project := uuid.New(), uuid.New()
+	ctx := tenantedCtx(org, project)
+	e := Entry{ID: uuid.New(), PublicID: "d", EventID: uuid.New(), EventPublicID: "e", OrgID: org, ProjectID: project, Target: "t", Payload: []byte("{}")}
+
+	t.Run("own transaction", func(t *testing.T) {
+		s, mock, _ := newTestStore(t)
+		wakes := 0
+		s.OnEnqueue(func() { wakes++ })
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
+		mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectCommit()
+		require.NoError(t, s.Enqueue(ctx, e))
+		assert.Equal(t, 1, wakes)
+	})
+
+	t.Run("caller's transaction commits", func(t *testing.T) {
+		s, mock, _ := newTestStore(t)
+		wakes := 0
+		s.OnEnqueue(func() { wakes++ })
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
+		mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectCommit()
+		require.NoError(t, db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
+			require.NoError(t, s.Enqueue(ctx, e))
+			assert.Zero(t, wakes, "no wake before the commit")
+			return nil
+		}))
+		assert.Equal(t, 1, wakes)
+	})
+
+	t.Run("caller's transaction rolls back", func(t *testing.T) {
+		s, mock, _ := newTestStore(t)
+		wakes := 0
+		s.OnEnqueue(func() { wakes++ })
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
+		mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectRollback()
+		require.ErrorIs(t, db.RunInTx(ctx, s.pool, func(ctx context.Context) error {
+			require.NoError(t, s.Enqueue(ctx, e))
+			return errBoom
+		}), errBoom)
+		assert.Zero(t, wakes)
+	})
+}
+
+func TestRequeueWakes(t *testing.T) {
+	ctx := tenantedCtx(uuid.New(), uuid.New())
+
+	t.Run("one entry", func(t *testing.T) {
+		s, mock, _ := newTestStore(t)
+		wakes := 0
+		s.OnEnqueue(func() { wakes++ })
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
+		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectCommit()
+		require.NoError(t, s.Requeue(ctx, uuid.New(), "ep"))
+		assert.Equal(t, 1, wakes)
+	})
+
+	t.Run("every failed entry", func(t *testing.T) {
+		s, mock, _ := newTestStore(t)
+		wakes := 0
+		s.OnEnqueue(func() { wakes++ })
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
+		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 2))
+		mock.ExpectCommit()
+		mock.ExpectBegin()
+		dbtest.ExpectScope(mock)
+		mock.ExpectExec("UPDATE").WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectCommit()
+		_, err := s.RequeueFailed(ctx, "ep")
+		require.NoError(t, err)
+		_, err = s.RequeueFailed(ctx, "ep")
+		require.NoError(t, err)
+		assert.Equal(t, 1, wakes, "nothing requeued, no wake")
+	})
+}

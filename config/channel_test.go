@@ -12,6 +12,7 @@ func TestConfig_ChannelDefaults(t *testing.T) {
 	c := validConfig(t)
 	assert.Empty(t, c.Channel.DefaultOpenwaBaseURL, "no default OpenWA URL unless the operator sets one")
 	assert.Equal(t, 30*time.Minute, c.Channel.MaxMessageAge)
+	assert.Equal(t, 15*time.Second, c.Channel.ReplyIdlePoll)
 	assert.False(t, c.Channel.AllowPrivateHosts, "production reaches only public OpenWA hosts unless the operator says so")
 	assert.True(t, c.RateLimit.Ingest.Enabled, "a default deploy limits inbound deliveries per connection")
 	assert.Equal(t, 120, c.RateLimit.Ingest.PerConnectionPerMinute)

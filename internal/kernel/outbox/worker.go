@@ -3,6 +3,8 @@ package outbox
 import (
 	"context"
 	"log/slog"
+	"slices"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -34,8 +36,10 @@ type Tenants interface {
 
 // WorkerOpts tunes one dispatch loop, with every non-positive field taking the package default.
 type WorkerOpts struct {
-	// Tick is how often the worker sweeps for due entries.
+	// Tick is the shortest wait between two sweeps that no wake asked for.
 	Tick time.Duration
+	// IdlePoll is the longest wait between two sweeps when no wake or retry is due.
+	IdlePoll time.Duration
 	// Batch caps how many entries one tenant yields per sweep.
 	Batch int
 	// Concurrency caps deliveries in flight within one tenant's batch.
@@ -44,13 +48,17 @@ type WorkerOpts struct {
 	SettleGrace time.Duration
 }
 
-// Worker claims due entries every tick and hands each to a Deliverer.
+// Worker claims due entries on a wake, a retry or the idle poll, and hands each to a Deliverer.
 type Worker struct {
 	store   Store
 	deliver Deliverer
 	tenants Tenants
 	log     *slog.Logger
 	opts    WorkerOpts
+	wake    chan struct{}
+
+	mu      sync.Mutex
+	retries []time.Time
 }
 
 // NewWorker returns the dispatch worker, whose Run is a no-op when Store, Deliverer or Tenants is nil.
@@ -60,6 +68,9 @@ func NewWorker(s Store, d Deliverer, tenants Tenants, log *slog.Logger, opts Wor
 	}
 	if opts.Tick <= 0 {
 		opts.Tick = defaultTick
+	}
+	if opts.IdlePoll <= 0 {
+		opts.IdlePoll = opts.Tick
 	}
 	if opts.Batch <= 0 {
 		opts.Batch = defaultBatch
@@ -76,53 +87,95 @@ func NewWorker(s Store, d Deliverer, tenants Tenants, log *slog.Logger, opts Wor
 		tenants: tenants,
 		log:     log.With(slog.String("component", WorkerName)),
 		opts:    opts,
+		wake:    make(chan struct{}, 1),
+	}
+}
+
+// Wake asks the worker to sweep now; it never blocks, and wakes sent during a sweep collapse into one.
+func (w *Worker) Wake() {
+	select {
+	case w.wake <- struct{}{}:
+	default:
 	}
 }
 
 // Name implements worker.Worker.
 func (w *Worker) Name() string { return WorkerName }
 
-// Run implements worker.Worker, sweeping due entries every tick until ctx is done.
+// Run implements worker.Worker, sweeping at start, on a wake, at the earliest retry it scheduled, and on the idle poll until ctx is done.
 func (w *Worker) Run(ctx context.Context) error {
 	if w.store == nil || w.deliver == nil || w.tenants == nil {
 		w.log.Info("outbox: dispatch idle, no deliverer configured")
 		return nil
 	}
-	t := time.NewTicker(w.opts.Tick)
+	t := time.NewTimer(0)
 	defer t.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
+		case <-w.wake:
 		case <-t.C:
-			w.sweep(ctx)
 		}
+		if w.sweep(ctx) {
+			t.Reset(w.opts.Tick)
+			continue
+		}
+		t.Reset(w.nextSweep(time.Now()))
 	}
 }
 
-func (w *Worker) sweep(ctx context.Context) {
+func (w *Worker) sweep(ctx context.Context) (full bool) {
+	w.dropDueRetries(time.Now())
 	err := w.tenants.Each(ctx, func(tctx context.Context, tenantID string) error {
-		w.drain(tctx, tenantID)
+		if w.drain(tctx, tenantID) {
+			full = true
+		}
 		return ctx.Err()
 	})
 	if err == nil || ctx.Err() != nil {
-		return
+		return full
 	}
 	w.log.ErrorContext(ctx, "outbox: enumerate tenants", slog.String("err", err.Error()))
+	w.retryAt(time.Now().Add(w.opts.Tick))
+	return full
 }
 
-func (w *Worker) drain(ctx context.Context, tenantID string) {
+func (w *Worker) nextSweep(now time.Time) time.Duration {
+	wait := w.opts.IdlePoll
+	w.mu.Lock()
+	for _, at := range w.retries {
+		wait = min(wait, at.Sub(now))
+	}
+	w.mu.Unlock()
+	return max(wait, w.opts.Tick)
+}
+
+func (w *Worker) dropDueRetries(now time.Time) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.retries = slices.DeleteFunc(w.retries, func(at time.Time) bool { return !at.After(now) })
+}
+
+func (w *Worker) retryAt(at time.Time) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.retries = append(w.retries, at)
+}
+
+func (w *Worker) drain(ctx context.Context, tenantID string) (full bool) {
 	claimed, err := w.store.ClaimDue(ctx, time.Now().UTC(), w.opts.Batch)
 	if err != nil {
 		if ctx.Err() != nil {
-			return
+			return false
 		}
 		w.log.ErrorContext(ctx, "outbox: claim due",
 			slog.String("tenant", tenantID), slog.String("err", err.Error()))
-		return
+		w.retryAt(time.Now().Add(w.opts.Tick))
+		return false
 	}
 	if len(claimed) == 0 {
-		return
+		return false
 	}
 	g := new(errgroup.Group)
 	g.SetLimit(w.opts.Concurrency)
@@ -139,6 +192,7 @@ func (w *Worker) drain(ctx context.Context, tenantID string) {
 		})
 	}
 	_ = g.Wait()
+	return len(claimed) >= w.opts.Batch
 }
 
 func (w *Worker) deliverOne(ctx context.Context, e Entry) {
@@ -152,6 +206,7 @@ func (w *Worker) deliverOne(ctx context.Context, e Entry) {
 		if sErr := w.store.Succeed(settleCtx, e, time.Now().UTC()); sErr != nil {
 			w.log.ErrorContext(settleCtx, "outbox: settle delivered",
 				slog.String("entry", e.ID.String()), slog.String("err", sErr.Error()))
+			w.retryAt(time.Now().Add(ClaimLease))
 		}
 		return
 	}
@@ -160,5 +215,10 @@ func (w *Worker) deliverOne(ctx context.Context, e Entry) {
 	if fErr := w.store.Fail(settleCtx, e, retryAt, err.Error()); fErr != nil {
 		w.log.ErrorContext(settleCtx, "outbox: settle failed delivery",
 			slog.String("entry", e.ID.String()), slog.String("err", fErr.Error()))
+		w.retryAt(time.Now().Add(ClaimLease))
+		return
+	}
+	if e.Attempt < MaxAttempts {
+		w.retryAt(retryAt)
 	}
 }

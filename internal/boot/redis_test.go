@@ -125,7 +125,7 @@ func TestBoot_DefaultConfigNeverOpensRedis(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, *calls)
 	assert.NotContains(t, workerNames(app), "redis-health")
-	assert.Len(t, app.Supervisor.Workers(), 7)
+	assert.Len(t, app.Supervisor.Workers(), 6)
 	require.NoError(t, app.Close(context.Background()))
 }
 

@@ -66,6 +66,8 @@ Use this when a domain that already exists needs a new use case: create, change,
    }
    ```
 
+   Work that must wait for the commit, such as waking a worker, goes through `db.AfterCommit(ctx, fn)`: it runs once the outermost unit of work commits, never on a rollback, and at once when `ctx` carries none (`outbox` and `mailqueue` `Enqueue`).
+
 5. **Required ids, scope and cross-domain checks.** A missing UUID is `apperror.Invalid("<field>", apperror.FieldRequired)`. Then scope the context: `ctx = tenant.WithOrg(ctx, req.OrgID)` (as `project.Service.Create` does). A project that must belong to the org goes through `tenant.RequireProjectInOrg(ctx, s.projects, orgID, projectID)`.
 6. **Generated slugs.** An empty slug is minted with `slugpkg.Retry(slugpkg.MaxAttempts, IsAlreadyExistsError, ...)`, as in `agent.Service.createGenerated`.
 7. **New store verb?** [store-method.md](store-method.md). **New error?** [error-code.md](error-code.md), and add its `Is…` helper to `IsExpectedError` in `errors.go`.

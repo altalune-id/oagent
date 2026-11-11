@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/apperror"
+	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/outbox"
 	"altalune.id/oagent/internal/kernel/tenant"
@@ -70,7 +71,21 @@ func TestBuildOutboxWorker(t *testing.T) {
 		Sealer:       sealer.Disabled(),
 		Orgs:         org.NewService(&fakes.OrgStore{}, fakes.Transactor{}, testUnexpected()),
 	}
-	w := buildOutboxWorker(svcs, nil)
+	w := buildOutboxWorker(svcs, config.OutboxConfig{}, nil)
 	require.NotNil(t, w)
 	assert.Equal(t, outbox.WorkerName, w.Name())
+}
+
+type notifyingStore struct{ wake func() }
+
+func (n *notifyingStore) OnEnqueue(fn func()) { n.wake = fn }
+
+func TestWakeOnEnqueue(t *testing.T) {
+	n := &notifyingStore{}
+	woke := false
+	wakeOnEnqueue(n, func() { woke = true })
+	require.NotNil(t, n.wake)
+	n.wake()
+	assert.True(t, woke)
+	assert.NotPanics(t, func() { wakeOnEnqueue(struct{}{}, func() {}) })
 }

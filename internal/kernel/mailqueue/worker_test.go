@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/google/uuid"
@@ -378,4 +379,209 @@ func TestWorkerPrunesSettledEntriesOncePerDay(t *testing.T) {
 	w.sweep(context.Background())
 	assert.Len(t, store.prunedTo, 2)
 	assert.Contains(t, buf.String(), "prune settled")
+}
+
+type dueEntry struct {
+	e   Entry
+	due time.Time
+}
+
+type queueStore struct {
+	WorkerStore
+	mu          sync.Mutex
+	due         map[uuid.UUID]*dueEntry
+	sent        int
+	claimErrs   int
+	succeedErrs int
+}
+
+func (q *queueStore) add(e Entry, due time.Time) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if q.due == nil {
+		q.due = map[uuid.UUID]*dueEntry{}
+	}
+	q.due[e.ID] = &dueEntry{e: e, due: due}
+}
+
+func (q *queueStore) ClaimDue(_ context.Context, now time.Time, limit int) ([]Entry, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if q.claimErrs > 0 {
+		q.claimErrs--
+		return nil, errors.New("cold start")
+	}
+	var out []Entry
+	for _, d := range q.due {
+		if len(out) < limit && !d.due.After(now) {
+			d.e.Attempt++
+			d.due = now.Add(ClaimLease)
+			out = append(out, d.e)
+		}
+	}
+	return out, nil
+}
+
+func (q *queueStore) Open(Entry) (mailer.Message, error) { return testMessage(), nil }
+
+func (q *queueStore) PruneSettled(context.Context, time.Time) (int64, error) { return 0, nil }
+
+func (q *queueStore) Succeed(_ context.Context, e Entry, _ time.Time) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if q.succeedErrs > 0 {
+		q.succeedErrs--
+		return errors.New("cold start")
+	}
+	delete(q.due, e.ID)
+	q.sent++
+	return nil
+}
+
+func (q *queueStore) Fail(_ context.Context, e Entry, retryAt time.Time, _ string) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.due[e.ID].due = retryAt
+	return nil
+}
+
+func (q *queueStore) sentCount() int {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return q.sent
+}
+
+type flakyMailer struct {
+	mu    sync.Mutex
+	fails int
+}
+
+func (f *flakyMailer) Send(context.Context, mailer.Message) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.fails > 0 {
+		f.fails--
+		return errors.New("try later")
+	}
+	return nil
+}
+
+func idleOpts() WorkerOpts {
+	return WorkerOpts{Tick: 5 * time.Second, IdlePoll: 10 * time.Minute}
+}
+
+func runWorker(t *testing.T, w *Worker) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() { done <- w.Run(ctx) }()
+	t.Cleanup(func() {
+		cancel()
+		require.NoError(t, <-done)
+	})
+	synctest.Wait()
+}
+
+func quietLog() *slog.Logger { return slog.New(slog.DiscardHandler) }
+
+func TestWorkerRunSweepsAtStartup(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := &queueStore{}
+		store.add(claimed(0), time.Now())
+		runWorker(t, NewWorker(store, &flakyMailer{}, quietLog(), idleOpts()))
+
+		assert.Equal(t, 1, store.sentCount())
+	})
+}
+
+func TestWorkerWakeSendsBeforeIdlePoll(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := &queueStore{}
+		w := NewWorker(store, &flakyMailer{}, quietLog(), idleOpts())
+		runWorker(t, w)
+
+		store.add(claimed(0), time.Now())
+		w.Wake()
+		synctest.Wait()
+
+		assert.Equal(t, 1, store.sentCount(), "a wake sweeps at once, without waiting for the idle poll")
+	})
+}
+
+func TestWorkerWakeNeverBlocks(t *testing.T) {
+	w := NewWorker(&queueStore{}, &flakyMailer{}, quietLog(), idleOpts())
+	for range 3 {
+		w.Wake()
+	}
+}
+
+func TestWorkerIdlePollCatchesAMissedWake(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := &queueStore{}
+		runWorker(t, NewWorker(store, &flakyMailer{}, quietLog(), idleOpts()))
+
+		store.add(claimed(0), time.Now())
+		time.Sleep(10*time.Minute - time.Second)
+		synctest.Wait()
+		assert.Zero(t, store.sentCount(), "nothing sweeps before the idle poll")
+
+		time.Sleep(2 * time.Second)
+		synctest.Wait()
+		assert.Equal(t, 1, store.sentCount())
+	})
+}
+
+func TestWorkerRetriesBeforeIdlePoll(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := &queueStore{}
+		store.add(claimed(0), time.Now())
+		runWorker(t, NewWorker(store, &flakyMailer{fails: 1}, quietLog(), idleOpts()))
+		require.Zero(t, store.sentCount(), "the first send fails")
+
+		time.Sleep(backoffBase(2) + backoffBase(2)/10 + time.Second)
+		synctest.Wait()
+		assert.Equal(t, 1, store.sentCount(), "the retry runs at its next attempt time, not at the idle poll")
+	})
+}
+
+func TestWorkerRetriesOneTickAfterAClaimError(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := &queueStore{claimErrs: 1}
+		store.add(claimed(0), time.Now())
+		runWorker(t, NewWorker(store, &flakyMailer{}, quietLog(), idleOpts()))
+
+		time.Sleep(idleOpts().Tick)
+		synctest.Wait()
+		assert.Equal(t, 1, store.sentCount(), "a failed claim is tried again after a tick, not at the idle poll")
+	})
+}
+
+func TestWorkerRetriesAtTheLeaseAfterASettleError(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := &queueStore{succeedErrs: 1}
+		store.add(claimed(0), time.Now())
+		runWorker(t, NewWorker(store, &flakyMailer{}, quietLog(), idleOpts()))
+
+		time.Sleep(ClaimLease + time.Second)
+		synctest.Wait()
+		assert.Equal(t, 1, store.sentCount(), "an unsettled claim is swept again when its lease ends, not at the idle poll")
+	})
+}
+
+func TestWorkerTracksEveryRetryTime(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := &queueStore{}
+		store.add(claimed(0), time.Now())
+		store.add(claimed(2), time.Now())
+		opts := idleOpts()
+		opts.IdlePoll = 24 * time.Hour
+		runWorker(t, NewWorker(store, &flakyMailer{fails: 2}, quietLog(), opts))
+
+		time.Sleep(backoffBase(2) + backoffBase(2)/10 + time.Second)
+		synctest.Wait()
+		require.Equal(t, 1, store.sentCount(), "the earlier retry runs first")
+		time.Sleep(backoffBase(4) + backoffBase(4)/10)
+		synctest.Wait()
+		assert.Equal(t, 2, store.sentCount(), "the later retry is not lost once the earlier one ran")
+	})
 }

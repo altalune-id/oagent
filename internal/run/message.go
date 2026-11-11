@@ -78,7 +78,7 @@ type ReplyJob struct {
 	Kind, To, QuoteID, Text string
 	State                   string
 	PartsSent, Attempts     int
-	EndedAt                 time.Time
+	EndedAt, NextAt         time.Time
 }
 
 // ReplyTexts are a channel connection's set replies.

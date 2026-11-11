@@ -146,7 +146,8 @@ func TestBoot(t *testing.T) {
 	assert.NotNil(t, app.Kernel.Meter)
 	assert.NotNil(t, app.Kernel.Queue) // always non-nil; Disabled when queue.enabled=false
 	require.NotNil(t, app.Supervisor)
-	assert.Len(t, app.Supervisor.Workers(), 7) // http + db-health + outbox + mailqueue + apikey-usage + run-turns + ratelimit.janitor
+	assert.Len(t, app.Supervisor.Workers(), 6) // http + outbox + mailqueue + apikey-usage + run-turns + ratelimit.janitor
+	assert.NotContains(t, workerNames(app), "channel-reply", "replies are sent only where the scheduler runs")
 	assert.Contains(t, workerNames(app), "apikey-usage")
 	assert.Contains(t, workerNames(app), "run-turns")
 	assert.NotNil(t, app.Services.Runs)
@@ -176,7 +177,8 @@ func TestBoot_SchedulerEnabled(t *testing.T) {
 		Scheduler: config.SchedulerConfig{Enabled: true},
 	}, testLogger())
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 8) // http + db-health + outbox + mailqueue + apikey-usage + run-turns + ratelimit.janitor + scheduler
+	assert.Len(t, app.Supervisor.Workers(), 8) // http + outbox + mailqueue + channel-reply + apikey-usage + run-turns + ratelimit.janitor + scheduler
+	assert.Contains(t, workerNames(app), "channel-reply")
 	require.NoError(t, app.Close(context.Background()))
 }
 
@@ -192,7 +194,8 @@ func TestBoot_WithSchedulerFalse(t *testing.T) {
 		config.Config{Postgres: config.PostgresConfig{DSN: "x"}, Scheduler: config.SchedulerConfig{Enabled: true}},
 		testLogger(), WithScheduler(false))
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 7) // http + db-health + outbox + mailqueue + apikey-usage + run-turns + ratelimit.janitor
+	assert.Len(t, app.Supervisor.Workers(), 6) // http + outbox + mailqueue + apikey-usage + run-turns + ratelimit.janitor
+	assert.NotContains(t, workerNames(app), "channel-reply")
 	require.NoError(t, app.Close(context.Background()))
 }
 
@@ -234,7 +237,7 @@ func TestBoot_ConsumerEnabled(t *testing.T) {
 
 	app, err := Boot(context.Background(), natsFeatureConfig(), testLogger())
 	require.NoError(t, err)
-	assert.Len(t, app.Supervisor.Workers(), 10) // http + db-health + nats-health + outbox + mailqueue + apikey-usage + run-turns + ratelimit.janitor + consumer + listener
+	assert.Len(t, app.Supervisor.Workers(), 9) // http + nats-health + outbox + mailqueue + apikey-usage + run-turns + ratelimit.janitor + consumer + listener
 	assert.Contains(t, workerNames(app), "nats-health")
 	assert.Contains(t, workerNames(app), "fake-consumer")
 	assert.Contains(t, workerNames(app), "fake-listener")

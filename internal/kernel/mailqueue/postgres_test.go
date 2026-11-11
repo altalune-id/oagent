@@ -164,6 +164,63 @@ func TestClaimDueBeginError(t *testing.T) {
 	assert.ErrorContains(t, err, "down")
 }
 
+func TestClaimDueReapError(t *testing.T) {
+	s, mock, _ := newTestStore(t, testSealer(t), false)
+	dbtest.ExpectTx(mock)
+	mock.ExpectExec("UPDATE").WillReturnError(errors.New("reap down"))
+	mock.ExpectRollback()
+	_, err := s.ClaimDue(context.Background(), now(), 1)
+	assert.ErrorContains(t, err, "reap exhausted")
+}
+
 var errBoom = errors.New("boom")
 
 func now() time.Time { return time.Now().UTC() }
+
+func TestEnqueueWakesOnlyAfterTheCommit(t *testing.T) {
+	t.Run("own transaction", func(t *testing.T) {
+		s, mock, _ := newTestStore(t, testSealer(t), false)
+		wakes := 0
+		s.OnEnqueue(func() { wakes++ })
+		dbtest.ExpectTx(mock)
+		expectInsert(mock, &capture{}, &capture{}, &capture{})
+		mock.ExpectCommit()
+		_, err := s.Enqueue(context.Background(), testMessage())
+		require.NoError(t, err)
+		assert.Equal(t, 1, wakes)
+	})
+
+	t.Run("caller's transaction", func(t *testing.T) {
+		for name, fail := range map[string]bool{"commits": false, "rolls back": true} {
+			t.Run(name, func(t *testing.T) {
+				s, mock, _ := newTestStore(t, testSealer(t), false)
+				wakes := 0
+				s.OnEnqueue(func() { wakes++ })
+				dbtest.ExpectTx(mock)
+				expectInsert(mock, &capture{}, &capture{}, &capture{})
+				if fail {
+					mock.ExpectRollback()
+				} else {
+					mock.ExpectCommit()
+				}
+				boom := errors.New("boom")
+				err := db.RunInTx(context.Background(), s.pool, func(ctx context.Context) error {
+					_, err := s.Enqueue(ctx, testMessage())
+					require.NoError(t, err)
+					assert.Zero(t, wakes, "no wake before the commit")
+					if fail {
+						return boom
+					}
+					return nil
+				})
+				if fail {
+					require.ErrorIs(t, err, boom)
+					assert.Zero(t, wakes)
+					return
+				}
+				require.NoError(t, err)
+				assert.Equal(t, 1, wakes)
+			})
+		}
+	})
+}

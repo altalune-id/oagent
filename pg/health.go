@@ -6,16 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-
-	"altalune.id/oagent/worker"
 )
-
-var _ worker.Worker = (*HealthMonitor)(nil)
 
 const (
 	defaultHealthInterval = 30 * time.Second
@@ -38,13 +35,14 @@ type HandleHealth struct {
 	Stats   sql.DBStats
 }
 
-// HealthMonitor probes the writer and a distinct reader, and publishes the latest snapshot.
+// HealthMonitor probes the writer and a distinct reader on demand, and caches the latest snapshot for the interval.
 type HealthMonitor struct {
 	writer *sql.DB
 	reader *sql.DB
 	cfg    HealthConfig
 	log    *slog.Logger
-	snap   atomic.Pointer[Health]
+	snap   atomic.Pointer[probed]
+	mu     sync.Mutex
 
 	probeDur metric.Float64Histogram
 	up       metric.Int64Gauge
@@ -72,34 +70,43 @@ func NewHealthMonitor(writer, reader *sql.DB, cfg HealthConfig, log *slog.Logger
 	return m
 }
 
-// Snapshot returns the most recent probe result, or nil before the first probe.
-func (m *HealthMonitor) Snapshot() *Health { return m.snap.Load() }
+type probed struct {
+	health *Health
+	at     time.Time
+}
 
-// Ready reports whether every probed handle responded to the most recent probe; false before the first.
+// Snapshot returns the most recent probe result, or nil before the first probe.
+func (m *HealthMonitor) Snapshot() *Health {
+	if p := m.snap.Load(); p != nil {
+		return p.health
+	}
+	return nil
+}
+
+// Ready reports whether every handle answered a probe at most one interval old, probing when the cached one is stale.
 func (m *HealthMonitor) Ready() bool {
-	s := m.snap.Load()
+	if s := m.fresh(); s != nil {
+		return s.Ready
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if s := m.fresh(); s != nil {
+		return s.Ready
+	}
+	m.probeOnce(context.Background())
+	s := m.Snapshot()
 	return s != nil && s.Ready
 }
 
-// Name identifies the monitor to the worker Supervisor.
-func (m *HealthMonitor) Name() string { return "db-health" }
-
-// Run probes once immediately, then every configured interval until ctx is done.
-func (m *HealthMonitor) Run(ctx context.Context) error {
-	m.probeOnce(ctx)
-	t := time.NewTicker(m.cfg.Interval)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-t.C:
-			m.probeOnce(ctx)
-		}
+func (m *HealthMonitor) fresh() *Health {
+	p := m.snap.Load()
+	if p == nil || time.Since(p.at) >= m.cfg.Interval {
+		return nil
 	}
+	return p.health
 }
 
-// SECURITY: probe errors never leave Run - a database outage must not kill the process or escalate to the notification sinks on every tick.
+// SECURITY: probe errors never leave Ready - a database outage must not escalate to the notification sinks on every probe.
 func (m *HealthMonitor) probeOnce(ctx context.Context) {
 	err := m.Probe(ctx)
 	if err == nil || m.log == nil {
@@ -143,7 +150,8 @@ func (m *HealthMonitor) Probe(ctx context.Context) error {
 		m.record(ctx, hh)
 	}
 
-	m.snap.Store(&Health{At: time.Now().UTC(), Handles: results, Ready: len(failures) == 0})
+	now := time.Now()
+	m.snap.Store(&probed{health: &Health{At: now.UTC(), Handles: results, Ready: len(failures) == 0}, at: now})
 	if len(failures) > 0 && m.log != nil {
 		m.log.WarnContext(ctx, "pg: health probe degraded", slog.Int("failed_handles", len(failures)))
 	}

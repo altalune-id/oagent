@@ -47,5 +47,5 @@ While off, messages are refused and not stored; senders get no reply and won't a
 | turn         | messages wait for the connection's quiet window (3 s, at most 10 s), then run as one turn in WhatsApp time order; a message older than `channel.maxMessageAge` (30 m) is skipped                 |
 | photos       | up to 3 per turn, 5 MiB each, fetched from OpenWA for that turn only; a model without vision gets the caption and the person gets the photo set reply                                            |
 | voice        | a voice-only DM gets the voice set reply; a group stays silent                                                                                                                                   |
-| reply        | the agent's last answer, formatted for WhatsApp and split into at most 3 parts; groups quote the message answered. A failed send is retried by the `channel-reply` job for up to 10 minutes      |
+| reply        | the agent's last answer, formatted for WhatsApp and split into at most 3 parts; groups quote the message answered. A failed send is retried by the `channel-reply` worker for up to 10 minutes   |
 | read receipt | the last message of the turn is marked read when the turn starts                                                                                                                                 |

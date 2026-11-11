@@ -3,7 +3,6 @@
 package pg_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -18,7 +17,6 @@ func TestHealthMonitor_ProbesASingleHandleOnce(t *testing.T) {
 	sqlDB := openReplica(t, pgtest.New(t).DSN)
 	m := pg.NewHealthMonitor(sqlDB, sqlDB, pg.HealthConfig{}, nil, nil)
 	require.Nil(t, m.Snapshot())
-	require.False(t, m.Ready())
 
 	require.NoError(t, m.Probe(t.Context()))
 	snap := m.Snapshot()
@@ -62,14 +60,11 @@ func TestHealthMonitor_ReportsADeadReader(t *testing.T) {
 	assert.NotEmpty(t, snap.Handles[1].Err)
 }
 
-func TestHealthMonitor_RunProbesImmediatelyAndStopsWithItsContext(t *testing.T) {
+func TestHealthMonitor_ReadyProbesOnDemand(t *testing.T) {
 	sqlDB := openReplica(t, pgtest.New(t).DSN)
 	m := pg.NewHealthMonitor(sqlDB, sqlDB, pg.HealthConfig{Interval: time.Hour}, nil, nil)
 
-	ctx, cancel := context.WithCancel(t.Context())
-	done := make(chan error, 1)
-	go func() { done <- m.Run(ctx) }()
-	require.Eventually(t, m.Ready, 10*time.Second, 10*time.Millisecond, "Run must probe before the first interval")
-	cancel()
-	require.NoError(t, <-done)
+	require.Nil(t, m.Snapshot())
+	require.True(t, m.Ready(), "Ready pings when no snapshot is cached")
+	require.NotNil(t, m.Snapshot())
 }

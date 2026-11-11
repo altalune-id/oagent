@@ -567,7 +567,7 @@ func (s *postgresStore) ReplyJob(ctx context.Context, runID uuid.UUID) (*ReplyJo
 		return nil, err
 	}
 	r, t, m, i := s.runs, s.threads, s.messages, s.identities
-	head := postgres.SELECT(r.PublicID, r.ReplyState, r.ReplyPartsSent, r.ReplyAttempts, r.EndedAt,
+	head := postgres.SELECT(r.PublicID, r.ReplyState, r.ReplyPartsSent, r.ReplyAttempts, r.EndedAt, r.ReplyNextAt,
 		t.ConnectionID, t.Kind, t.ChannelAddress, i.Value).
 		FROM(r.INNER_JOIN(t, t.ID.EQ(r.ThreadID)).
 			LEFT_JOIN(i, i.EndUserID.EQ(t.ActorEndUserID).AND(i.Kind.EQ(t.ReplyVia)).AND(i.OrgID.EQ(t.OrgID)))).
@@ -578,6 +578,7 @@ func (s *postgresStore) ReplyJob(ctx context.Context, runID uuid.UUID) (*ReplyJo
 		Parts    int        `alias:"runs.reply_parts_sent"`
 		Attempts int        `alias:"runs.reply_attempts"`
 		EndedAt  *time.Time `alias:"runs.ended_at"`
+		NextAt   *time.Time `alias:"runs.reply_next_at"`
 		Conn     *uuid.UUID `alias:"threads.connection_id"`
 		Kind     string     `alias:"threads.kind"`
 		Address  *string    `alias:"threads.channel_address"`
@@ -587,7 +588,7 @@ func (s *postgresStore) ReplyJob(ctx context.Context, runID uuid.UUID) (*ReplyJo
 		WHERE(m.RunID.EQ(postgres.UUID(runID)).AND(m.OrgID.EQ(postgres.UUID(tc.OrgID)))).
 		ORDER_BY(m.Seq.ASC())
 	var rows []messageRow
-	err = db.Read(ctx, s.pool, func(q qrm.DB) error {
+	err = db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error {
 		if err := head.QueryContext(ctx, q, &row); err != nil {
 			return err
 		}
@@ -609,6 +610,9 @@ func (s *postgresStore) ReplyJob(ctx context.Context, runID uuid.UUID) (*ReplyJo
 	}
 	if row.EndedAt != nil {
 		job.EndedAt = *row.EndedAt
+	}
+	if row.NextAt != nil {
+		job.NextAt = *row.NextAt
 	}
 	job.To = deref(row.Identity)
 	all := toMessages(rows)
@@ -640,7 +644,7 @@ func (s *postgresStore) DueReplies(ctx context.Context, now time.Time, limit int
 	var rows []struct {
 		ID uuid.UUID `alias:"runs.id"`
 	}
-	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
+	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
 		return nil, fmt.Errorf("run.postgres: DueReplies: %w", err)
 	}
 	out := make([]uuid.UUID, len(rows))

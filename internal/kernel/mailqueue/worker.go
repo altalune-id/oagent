@@ -9,6 +9,7 @@ import (
 	"net/textproto"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -33,21 +34,27 @@ const (
 
 // WorkerOpts tunes one send loop, with every non-positive field taking the package default.
 type WorkerOpts struct {
-	// Tick is how often the worker sweeps for due entries.
+	// Tick is the shortest wait between two sweeps that no wake asked for.
 	Tick time.Duration
+	// IdlePoll is the longest wait between two sweeps when no wake or retry is due.
+	IdlePoll time.Duration
 	// Concurrency is how many entries one claim takes and sends at once.
 	Concurrency int
 	// SettleGrace bounds the Succeed or Fail that records a send outcome during shutdown.
 	SettleGrace time.Duration
 }
 
-// Worker claims due entries every tick and sends each through a mailer.
+// Worker claims due entries on a wake, a retry or the idle poll, and sends each through a mailer.
 type Worker struct {
 	store     WorkerStore
 	mailer    mailer.Mailer
 	log       *slog.Logger
 	opts      WorkerOpts
 	nextPrune time.Time
+	wake      chan struct{}
+
+	mu      sync.Mutex
+	retries []time.Time
 }
 
 // NewWorker returns the send worker, whose Run is a no-op when the store or the mailer is nil.
@@ -58,38 +65,77 @@ func NewWorker(s WorkerStore, m mailer.Mailer, log *slog.Logger, opts WorkerOpts
 	if opts.Tick <= 0 {
 		opts.Tick = defaultTick
 	}
+	if opts.IdlePoll <= 0 {
+		opts.IdlePoll = opts.Tick
+	}
 	if opts.Concurrency <= 0 {
 		opts.Concurrency = defaultConcurrency
 	}
 	if opts.SettleGrace <= 0 {
 		opts.SettleGrace = defaultSettleGrace
 	}
-	return &Worker{store: s, mailer: m, log: log.With(slog.String("component", WorkerName)), opts: opts}
+	return &Worker{
+		store: s, mailer: m, log: log.With(slog.String("component", WorkerName)), opts: opts,
+		wake: make(chan struct{}, 1),
+	}
+}
+
+// Wake asks the worker to sweep now; it never blocks, and wakes sent during a sweep collapse into one.
+func (w *Worker) Wake() {
+	select {
+	case w.wake <- struct{}{}:
+	default:
+	}
 }
 
 // Name implements worker.Worker.
 func (w *Worker) Name() string { return WorkerName }
 
-// Run implements worker.Worker, sweeping due entries every tick until ctx is done.
+// Run implements worker.Worker, sweeping at start, on a wake, at the earliest retry it scheduled, and on the idle poll until ctx is done.
 func (w *Worker) Run(ctx context.Context) error {
 	if w.store == nil || w.mailer == nil {
 		w.log.Info("mailqueue: send idle, no mailer configured")
 		return nil
 	}
-	t := time.NewTicker(w.opts.Tick)
+	t := time.NewTimer(0)
 	defer t.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
+		case <-w.wake:
 		case <-t.C:
-			w.sweep(ctx)
 		}
+		w.sweep(ctx)
+		t.Reset(w.nextSweep(time.Now()))
 	}
+}
+
+func (w *Worker) nextSweep(now time.Time) time.Duration {
+	wait := w.opts.IdlePoll
+	w.mu.Lock()
+	for _, at := range w.retries {
+		wait = min(wait, at.Sub(now))
+	}
+	w.mu.Unlock()
+	return max(wait, w.opts.Tick)
+}
+
+func (w *Worker) dropDueRetries(now time.Time) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.retries = slices.DeleteFunc(w.retries, func(at time.Time) bool { return !at.After(now) })
+}
+
+func (w *Worker) retryAt(at time.Time) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.retries = append(w.retries, at)
 }
 
 // NOTE: each claim takes only what it sends at once, so no claimed entry waits out its lease behind others.
 func (w *Worker) sweep(ctx context.Context) {
+	w.dropDueRetries(time.Now())
 	w.prune(ctx)
 	for ctx.Err() == nil {
 		if n := w.round(ctx); n < w.opts.Concurrency {
@@ -103,6 +149,7 @@ func (w *Worker) round(ctx context.Context) int {
 	if err != nil {
 		if ctx.Err() == nil {
 			w.log.ErrorContext(ctx, "mailqueue: claim due", slog.String("err", err.Error()))
+			w.retryAt(time.Now().Add(w.opts.Tick))
 		}
 		return 0
 	}
@@ -146,6 +193,7 @@ func (w *Worker) sendOne(ctx context.Context, e Entry) {
 		if sErr := w.store.Succeed(settleCtx, e, time.Now().UTC()); sErr != nil {
 			w.log.ErrorContext(settleCtx, "mailqueue: settle sent",
 				slog.String("entry", e.ID.String()), slog.String("err", sErr.Error()))
+			w.retryAt(time.Now().Add(ClaimLease))
 		}
 		return
 	}
@@ -167,11 +215,15 @@ func (w *Worker) sendOne(ctx context.Context, e Entry) {
 		sErr = w.store.GiveUp(settleCtx, e, now, f.text)
 	default:
 		w.log.WarnContext(ctx, "mailqueue: send failed, will retry", attrs...)
-		sErr = w.store.Fail(settleCtx, e, now.Add(retryWait(e.Attempt, err)), f.text)
+		retryAt := now.Add(retryWait(e.Attempt, err))
+		if sErr = w.store.Fail(settleCtx, e, retryAt, f.text); sErr == nil {
+			w.retryAt(retryAt)
+		}
 	}
 	if sErr != nil {
 		w.log.ErrorContext(settleCtx, "mailqueue: settle failed send",
 			slog.String("entry", e.ID.String()), slog.String("err", sErr.Error()))
+		w.retryAt(time.Now().Add(ClaimLease))
 	}
 }
 

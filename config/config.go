@@ -25,6 +25,7 @@ type Config struct {
 	Compliance ComplianceConfig `yaml:"compliance" mapstructure:"compliance"`
 	CLI        CLIConfig        `yaml:"cli"        mapstructure:"cli"`
 	Mail       MailConfig       `yaml:"mail"       mapstructure:"mail"`
+	Outbox     OutboxConfig     `yaml:"outbox"     mapstructure:"outbox"`
 	RateLimit  RateLimitConfig  `yaml:"rateLimit"  mapstructure:"rateLimit"`
 	Redis      RedisConfig      `yaml:"redis"      mapstructure:"redis"`
 	NATS       NATSConfig       `yaml:"nats"       mapstructure:"nats"`

@@ -49,6 +49,8 @@ channel:
   defaultOpenwaBaseURL: ""
   # env: OAGENT_CHANNEL_MAX_MESSAGE_AGE
   maxMessageAge: 30m
+  # env: OAGENT_CHANNEL_REPLY_IDLE_POLL
+  replyIdlePoll: 15s
 
 cli:
   # env: OAGENT_CLI_SESSION_FILE
@@ -101,6 +103,8 @@ mail:
   driver: console
   # env: OAGENT_MAIL_FROM
   from: ""
+  # env: OAGENT_MAIL_IDLE_POLL
+  idlePoll: 5s
   resend:
     # [secret] env: OAGENT_MAIL_RESEND_API_KEY
     apiKey: ""
@@ -160,6 +164,10 @@ oidc:
   issuer: ""
   # env: OAGENT_OIDC_SCOPES
   scopes: openid,profile,email
+
+outbox:
+  # env: OAGENT_OUTBOX_IDLE_POLL
+  idlePoll: 5s
 
 postgres:
   # env: OAGENT_POSTGRES_CONN_MAX_IDLE_TIME
