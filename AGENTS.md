@@ -89,7 +89,7 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
 
 **Versions**
 
-- Go 1.26.10, Node 24.15 or newer, pnpm 10 (never 11).
+- Go 1.26.11, Node 24.15 or newer, pnpm 10 (never 11).
 - Use the latest stable dependency versions that are at least a few days old.
 - Docker images are pinned by version, not digest.
 
