@@ -85,7 +85,8 @@ func (d *fakeDriver) request(th *fakeThread, threadID uuid.UUID) runtime.TurnReq
 	if d.env.MCPURL != "" {
 		req.MCPServers = []runtime.MCPServerSpec{{
 			Name: d.env.MCPServerName, URL: d.env.MCPURL, Auth: runtime.MCPAuth{Kind: "none"},
-			AllowedTools: []string{d.env.MCPToolName}, ConnectTimeoutMs: 5000, CallTimeoutMs: 5000,
+			Tools:            []runtime.ToolGrant{{Name: d.env.MCPToolName, Approval: runtime.ApprovalSpec{Mode: "never"}}},
+			ConnectTimeoutMs: 5000, CallTimeoutMs: 5000,
 		}}
 	}
 	if th.attempt > 1 && len(th.checkpoints) > 0 {
