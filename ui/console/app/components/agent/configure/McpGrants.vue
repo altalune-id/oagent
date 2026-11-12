@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentConfig } from './agentConfig';
+import type { AgentConfig, AgentToolConfig } from './agentConfig';
 import type { McpServer, McpTool } from '~/stores/mcpServers';
 import AppButton from '#base/components/ui/AppButton.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
@@ -7,7 +7,8 @@ import SearchInput from '#base/components/ui/SearchInput.vue';
 import SelectAllCheckbox from '#base/components/ui/SelectAllCheckbox.vue';
 import { hintBadges, nameParts, toolName } from '~/components/mcpserver/tools';
 import { useMcpServersStore } from '~/stores/mcpServers';
-import { grantFor, grantState, missingServers, withAllGrants, withApproval, withGrant, withoutGrant } from './runtime';
+import ApprovalRule from './ApprovalRule.vue';
+import { grantFor, grantState, missingServers, withAllGrants, withGrant, withoutGrant, withToolConfig } from './runtime';
 
 const { servers, disabled = false, serversLink } = defineProps<{ servers: McpServer[], disabled?: boolean, serversLink: string }>();
 
@@ -77,8 +78,8 @@ function setAll(server: McpServer, on: boolean) {
   config.value = withAllGrants(config.value, server, shown(server), on);
 }
 
-function setApproval(server: McpServer, tool: McpTool, on: boolean) {
-  config.value = withApproval(config.value, server.id, tool.name, on);
+function setRule(server: McpServer, next: AgentToolConfig) {
+  config.value = withToolConfig(config.value, server.id, next);
 }
 
 function removeMissing(serverId: string) {
@@ -174,17 +175,10 @@ function removeMissing(serverId: string) {
             </div>
 
             <div v-if="grantFor(config, server.id, tool.name)" class="flex flex-col gap-2 ps-7">
-              <label class="label cursor-pointer gap-2 text-ui text-base-content">
-                <input
-                  type="checkbox" class="toggle toggle-sm" :checked="grantFor(config, server.id, tool.name)!.requireApproval" :disabled="disabled"
-                  @change="setApproval(server, tool, ($event.target as HTMLInputElement).checked)"
-                >
-                {{ t('approvalrule.ask') }}
-              </label>
-              <div v-if="!server.trusted && !grantFor(config, server.id, tool.name)!.requireApproval" role="alert" class="alert alert-warning alert-soft text-base-content text-ui">
-                <Icon name="lucide:triangle-alert" size="16" class="shrink-0" aria-hidden="true" />
-                <span>{{ t('grants.untrusted_no_ask') }}</span>
-              </div>
+              <ApprovalRule
+                :grant="grantFor(config, server.id, tool.name)!" :args="tool.args" :server-name="server.name" :trusted="server.trusted" :disabled="disabled"
+                @change="setRule(server, $event)" @refresh="void store.loadTools(server.id)"
+              />
             </div>
           </li>
         </ul>

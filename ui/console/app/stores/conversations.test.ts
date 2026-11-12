@@ -1,6 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useApprovalsStore } from './approvals';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { useThreadsStore } from './threads';
 
 describe('useThreadsStore', () => {
@@ -37,47 +36,5 @@ describe('useThreadsStore', () => {
     expect(store.runs.find(r => r.id === 'run_4Fh8RmTq2LxW')!.status).toBe('cancelled');
     store.cancelRun('nope', 'nope', 'Budi');
     expect(store.byId('nope')).toBeUndefined();
-  });
-});
-
-describe('useApprovalsStore', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia());
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('approves through a running state, rejects with a reason and ignores decided items', async () => {
-    const store = useApprovalsStore();
-    await store.ensureLoaded('p1');
-    await store.ensureLoaded('p1');
-    expect(store.pending.map(i => i.approval.id)).toEqual(['apr_kp1']);
-    const run = store.decide('apr_kp1', true, 'Budi');
-    expect(store.items[0]!.approval.status).toBe('executing');
-    expect(store.pending).toHaveLength(1);
-    await vi.runAllTimersAsync();
-    await run;
-    expect(store.items[0]!.approval).toMatchObject({ status: 'approved', decidedBy: 'Budi', decidedVia: { channel: 'console' } });
-    expect(store.decided.map(i => i.approval.id)).toEqual(['apr_kp1', 'apr_ps2', 'apr_tr3']);
-    expect(store.pending).toEqual([]);
-    store.items[0]!.approval.status = 'pending';
-    expect(await store.decide('apr_kp1', false, 'Budi', ' salah ')).toBe(true);
-    expect(store.items[0]!.approval).toMatchObject({ status: 'rejected', reason: 'salah' });
-    expect(await store.decide('apr_ps2', false, 'Budi')).toBe(false);
-    expect(store.items[1]!.approval.status).toBe('approved');
-    expect(await store.decide('nope', true, 'Budi')).toBe(false);
-  });
-
-  it('moves a pending request past its expiry to Expired and refuses to decide it', async () => {
-    const store = useApprovalsStore();
-    await store.load('p1');
-    store.items[0]!.approval.expiresAt = new Date(Date.now() - 1000);
-    expect(store.pending).toEqual([]);
-    expect(store.expired.map(i => i.approval.id)).toEqual(['apr_kp1', 'apr_del1']);
-    expect(await store.decide('apr_kp1', true, 'Budi')).toBe(false);
-    expect(store.items[0]!.approval.status).toBe('pending');
   });
 });

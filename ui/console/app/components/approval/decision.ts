@@ -8,12 +8,13 @@ export function statusAt(a: ApprovalRequest, now = new Date()): ApprovalStatus {
   return a.status === 'pending' && a.expiresAt && a.expiresAt <= now ? 'expired' : a.status;
 }
 
-// decideApproval records one decision on a pending request, or returns null when it was already decided or expired.
-export function decideApproval(a: ApprovalRequest, approve: boolean, by: string, via: DecidedVia, reason = '', at = new Date()): ApprovalRequest | null {
-  if (statusAt(a, at) !== 'pending') {
+// expiresIn is the countdown for a pending request at minute granularity, "soon" under an hour, or null when it has none or is no longer pending.
+export function expiresIn(a: ApprovalRequest, now = new Date()): { key: string, n: number, soon: boolean } | null {
+  if (!a.expiresAt || statusAt(a, now) !== 'pending') {
     return null;
   }
-  return { ...a, status: approve ? 'approved' : 'rejected', decidedBy: by, decidedVia: via, decidedAt: at, reason: reason.trim() || undefined };
+  const minutes = Math.max(1, Math.ceil((a.expiresAt.getTime() - now.getTime()) / 60_000));
+  return minutes < 60 ? { key: 'approvals.expires_in_min', n: minutes, soon: true } : { key: 'approvals.expires_in_h', n: Math.floor(minutes / 60), soon: false };
 }
 
 // viaLabel names where a decision was made, such as a WhatsApp reply or the console.
@@ -33,6 +34,7 @@ export function decisionLabel(a: ApprovalRequest, t: Translate, time: (d: Date) 
   if (status !== 'approved' && status !== 'rejected') {
     return '';
   }
-  const head = t(status === 'approved' ? 'approvalcard.approved' : 'approvalcard.rejected', { by: shownName(a.decidedBy, a.deciderDeleted, t) });
+  const by = shownName(a.decidedBy, a.deciderDeleted, t);
+  const head = by ? t(status === 'approved' ? 'approvalcard.approved' : 'approvalcard.rejected', { by }) : t(status === 'approved' ? 'approvalcard.approved_plain' : 'approvalcard.rejected_plain');
   return [head, viaLabel(a.decidedVia, t), a.decidedAt ? time(a.decidedAt) : ''].filter(Boolean).join(' · ');
 }

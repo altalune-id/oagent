@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
 import { describe, expect, it } from 'vitest';
@@ -22,24 +22,6 @@ function streamOf(text: string, chunk = 7): ReadableStream<Uint8Array> {
 }
 
 const interruptGolden = join(goldens, 'interrupt_outcome.sse');
-
-const interrupt = {
-  id: 'call_1',
-  reason: 'tool_call',
-  toolCallId: 'call_1',
-  message: 'yasaku · record_expense\namount: 25000\naccount: cash',
-  expiresAt: '2026-11-07T00:00:00Z',
-  responseSchema: { type: 'object', properties: { approved: { type: 'boolean' }, text: { type: 'string' } }, required: ['approved'] },
-  metadata: { approval: 'Ap4Q8wYk2HhT3mVz7XcLp' },
-};
-
-const interruptStream = [
-  { type: 'RUN_STARTED', threadId: 'client-thread-1', runId: 'Rn5Q8wYk2HhT3mVz7XcLp' },
-  { type: 'TOOL_CALL_START', toolCallId: 'call_1', toolCallName: 'yasaku__record_expense', parentMessageId: 'msg_asst_1' },
-  { type: 'TOOL_CALL_ARGS', toolCallId: 'call_1', delta: '{"amount":25000,"account":"cash","confirm":true}' },
-  { type: 'TOOL_CALL_END', toolCallId: 'call_1' },
-  { type: 'RUN_FINISHED', threadId: 'client-thread-1', runId: 'Rn5Q8wYk2HhT3mVz7XcLp', outcome: { type: 'interrupt', interrupts: [interrupt] } },
-].map((e, i) => `id: ${i + 1}\ndata: ${JSON.stringify(e)}\n\n`).join('');
 
 function dataOf(text: string) {
   return text.split('\n').filter(l => l.startsWith('data: ')).map(l => JSON.parse(l.slice(6)) as Record<string, unknown>);
@@ -78,11 +60,7 @@ describe('the AG-UI SSE reader', () => {
     }
   });
 
-  it('keeps RUN_FINISHED\'s interrupt outcome whole, in 1- and 7-byte chunks (the runtime\'s interrupt stream)', async () => {
-    await expectInterruptOutcome(interruptStream);
-  });
-
-  it.skipIf(!existsSync(interruptGolden))('keeps RUN_FINISHED\'s interrupt outcome whole in the data plane golden interrupt_outcome.sse (runs once it ships)', async () => {
+  it('keeps RUN_FINISHED\'s interrupt outcome whole in the data plane golden interrupt_outcome.sse, in 1-, 7- and 64-byte chunks', async () => {
     await expectInterruptOutcome(readFileSync(interruptGolden, 'utf8'));
   });
 

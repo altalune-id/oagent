@@ -1,6 +1,6 @@
 import type { ApprovalRequest } from '~/stores/approvals';
 import { describe, expect, it } from 'vitest';
-import { decideApproval, decisionLabel, statusAt, viaLabel } from './decision';
+import { decisionLabel, expiresIn, statusAt, viaLabel } from './decision';
 
 const t = (key: string, params?: Record<string, unknown>) => (params ? `${key}|${JSON.stringify(params)}` : key);
 const time = () => '10:42';
@@ -15,22 +15,26 @@ describe('approval decisions', () => {
     expect(statusAt({ ...pending, status: 'approved' }, new Date(2027, 0, 1))).toBe('approved');
   });
 
-  it('records one decision on a pending request and refuses a second or an expired one', () => {
-    const decided = decideApproval(pending, true, 'Budi', { channel: 'console' }, ' ', now)!;
-    expect(decided).toMatchObject({ status: 'approved', decidedBy: 'Budi', decidedVia: { channel: 'console' }, decidedAt: now, reason: undefined });
-    expect(decideApproval(decided, false, 'Sari', { channel: 'console' }, '', now)).toBeNull();
-    expect(decideApproval(pending, false, 'Sari', { channel: 'try' }, ' salah ', now)!.reason).toBe('salah');
-    expect(decideApproval(pending, true, 'Budi', { channel: 'console' }, '', new Date(2026, 10, 6))).toBeNull();
+  it('counts down at minute granularity, hours from an hour up, soon under an hour', () => {
+    expect(expiresIn(pending, now)).toEqual({ key: 'approvals.expires_in_h', n: 24, soon: false });
+    expect(expiresIn(pending, new Date(2026, 10, 5, 11, 1))).toEqual({ key: 'approvals.expires_in_min', n: 59, soon: true });
+    expect(expiresIn(pending, new Date(2026, 10, 5, 11, 59, 30))).toEqual({ key: 'approvals.expires_in_min', n: 1, soon: true });
+    expect(expiresIn(pending, new Date(2026, 10, 5, 12, 0))).toBeNull();
+    expect(expiresIn({ ...pending, expiresAt: undefined }, now)).toBeNull();
+    expect(expiresIn({ ...pending, status: 'approved' }, now)).toBeNull();
   });
 
   it('labels who decided, how and when, with one function for every screen', () => {
     expect(viaLabel(undefined, t)).toBe('');
     expect(viaLabel({ channel: 'whatsapp', reply: 'ya' }, t)).toBe('approvalcard.via_whatsapp_reply|{"reply":"ya"}');
     expect(viaLabel({ channel: 'console' }, t)).toBe('approvalcard.via_console');
+    expect(viaLabel({ channel: 'mcp' }, t)).toBe('approvalcard.via_mcp');
     const approved = { ...pending, status: 'approved' as const, decidedBy: 'Sari', decidedVia: { channel: 'whatsapp' as const, reply: 'ya' }, decidedAt: now };
     expect(decisionLabel(approved, t, time, now)).toBe('approvalcard.approved|{"by":"Sari"} · approvalcard.via_whatsapp_reply|{"reply":"ya"} · 10:42');
     expect(decisionLabel({ ...pending, status: 'rejected', decidedBy: 'Budi' }, t, time, now)).toBe('approvalcard.rejected|{"by":"Budi"}');
     expect(decisionLabel(pending, t, time, new Date(2026, 10, 6))).toBe('approvalcard.expired');
+    expect(decisionLabel({ ...pending, status: 'approved', decidedVia: { channel: 'whatsapp' } }, t, time, now)).toBe('approvalcard.approved_plain · approvalcard.via_whatsapp');
+    expect(decisionLabel({ ...pending, status: 'rejected' }, t, time, now)).toBe('approvalcard.rejected_plain');
     expect(decisionLabel(pending, t, time, now)).toBe('');
   });
 });

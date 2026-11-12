@@ -25,8 +25,8 @@ describe('channel wire mapping', () => {
   it('sends only what changed in an update, trimmed, and a device key only when one was typed', () => {
     expect(patchRequest('C1', { quietMs: 2_500 })).toEqual({ id: 'C1', quietWindowMs: 2_500 });
     expect(patchRequest('C1', { deviceKey: '  ' })).toEqual({ id: 'C1' });
-    expect(patchRequest('C1', { baseUrl: ' https://x.id ', deviceKey: ' k ', replies: { failure: ' a ', voice: 'b', photo: 'c' }, enabled: false }))
-      .toEqual({ id: 'C1', baseUrl: 'https://x.id', deviceKey: 'k', replyFailure: 'a', replyVoice: 'b', replyPhotoUnreadable: 'c', enabled: false });
+    expect(patchRequest('C1', { baseUrl: ' https://x.id ', deviceKey: ' k ', replies: { failure: ' a ', voice: 'b', photo: 'c', approvalPrompt: ' Setuju?\n{preview} ', approvalExpired: ' Kedaluwarsa. ' }, enabled: false }))
+      .toEqual({ id: 'C1', baseUrl: 'https://x.id', deviceKey: 'k', replyFailure: 'a', replyVoice: 'b', replyPhotoUnreadable: 'c', approvalPrompt: 'Setuju?\n{preview}', approvalExpired: 'Kedaluwarsa.', enabled: false });
   });
 });
 
@@ -39,7 +39,7 @@ describe('channels store', () => {
     expect(client.listConnections).toHaveBeenCalledOnce();
     expect(client.listConnections).toHaveBeenCalledWith({ projectId, agentId });
     expect(store.connection(agentId)?.deviceId).toBe('dev_8fK2pQ7mXr9Lt4Wv');
-    expect(store.settings).toEqual({ defaultOpenwaBaseUrl: 'https://openwa.altalune.id', defaultReplies: { failure: channelDefaults.replyFailure, voice: channelDefaults.replyVoice, photo: channelDefaults.replyPhotoUnreadable }, timing: { quietMs: 3_000, quietMaxMs: 10_000, maxMessageAgeMinutes: 30 } });
+    expect(store.settings).toEqual({ defaultOpenwaBaseUrl: 'https://openwa.altalune.id', defaultReplies: { failure: channelDefaults.replyFailure, voice: channelDefaults.replyVoice, photo: channelDefaults.replyPhotoUnreadable, approvalPrompt: channelDefaults.approvalPrompt, approvalExpired: channelDefaults.approvalExpired }, timing: { quietMs: 3_000, quietMaxMs: 10_000, maxMessageAgeMinutes: 30 } });
   });
 
   it('creates with the key trimmed, no secret and the operator defaults, and keeps no key', async () => {
@@ -73,11 +73,12 @@ describe('channels store', () => {
   });
 
   it('falls back to the operator default for an empty set reply', async () => {
-    fakeChannelClient([connectionPB({ replyVoice: '' })]);
+    fakeChannelClient([connectionPB({ replyVoice: '', approvalPrompt: '', approvalExpired: 'Sudah kedaluwarsa.' })]);
     const store = useChannelsStore();
     await store.load(projectId, agentId);
-    expect(store.replies(agentId)).toEqual({ failure: channelDefaults.replyFailure, voice: channelDefaults.replyVoice, photo: channelDefaults.replyPhotoUnreadable });
-    expect(store.replies('other')).toEqual({ failure: channelDefaults.replyFailure, voice: channelDefaults.replyVoice, photo: channelDefaults.replyPhotoUnreadable });
+    const defaults = { failure: channelDefaults.replyFailure, voice: channelDefaults.replyVoice, photo: channelDefaults.replyPhotoUnreadable, approvalPrompt: channelDefaults.approvalPrompt, approvalExpired: channelDefaults.approvalExpired };
+    expect(store.replies(agentId)).toEqual({ ...defaults, approvalExpired: 'Sudah kedaluwarsa.' });
+    expect(store.replies('other')).toEqual(defaults);
   });
 
   it('loads a whole project for the overview, and shows a load error', async () => {

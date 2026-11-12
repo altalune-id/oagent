@@ -1,9 +1,16 @@
 import type { Timestamp } from '@bufbuild/protobuf/wkt';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 
+export interface FreeCondition {
+  arg: string;
+  values: string[];
+  absent: boolean;
+}
+
 export interface AgentToolConfig {
   name: string;
   requireApproval: boolean;
+  freeWhen?: FreeCondition[];
 }
 
 export interface AgentGrant {
@@ -40,6 +47,7 @@ export interface Change {
 interface WireTool {
   name: string;
   requireApproval: boolean;
+  freeWhen?: { arg: string, values: string[], absent: boolean }[];
 }
 
 interface WireConfig {
@@ -75,7 +83,7 @@ export function fromWire(c?: WireConfig): AgentConfig {
   if (!c) {
     return emptyConfig();
   }
-  const tool = (t: WireTool) => ({ name: t.name, requireApproval: t.requireApproval });
+  const tool = (t: WireTool): AgentToolConfig => ({ name: t.name, requireApproval: t.requireApproval, freeWhen: t.freeWhen?.map(f => ({ arg: f.arg, values: [...f.values], absent: f.absent })) ?? [] });
   return {
     instructions: c.instructions,
     providerId: c.providerId,
@@ -100,7 +108,7 @@ export function toWire(c: AgentConfig) {
     temperature: c.temperature,
     maxSteps: c.maxSteps,
     maxCostCents: c.maxCostCents,
-    mcpServers: c.grants.filter(g => !g.missing).map(g => ({ serverId: g.serverId, tools: g.tools.map(t => ({ name: t.name, requireApproval: t.requireApproval })) })),
+    mcpServers: c.grants.filter(g => !g.missing).map(g => ({ serverId: g.serverId, tools: g.tools.map(t => ({ name: t.name, requireApproval: t.requireApproval, freeWhen: t.requireApproval ? (t.freeWhen ?? []) : [] })) })),
   };
 }
 
@@ -149,6 +157,8 @@ export function changes(draft: AgentConfig, live: AgentConfig | undefined, money
       out.push({ key: tool.requireApproval ? 'configure.change_tool_added_approval' : 'configure.change_tool_added', params: { tool: name } });
     } else if (old.requireApproval !== tool.requireApproval) {
       out.push({ key: tool.requireApproval ? 'configure.change_tool_needs_approval' : 'configure.change_tool_no_approval', params: { tool: name } });
+    } else if (tool.requireApproval && JSON.stringify(old.freeWhen ?? []) !== JSON.stringify(tool.freeWhen ?? [])) {
+      out.push({ key: 'configure.change_tool_rule', params: { tool: name } });
     }
   }
   for (const name of before.keys()) {

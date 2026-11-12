@@ -33,10 +33,10 @@ describe('approval card', () => {
 
   it('draws the warning border only while the request is pending', async () => {
     const w = mount(ApprovalCard, { props: { approval } });
-    expect(w.get('section').classes()).toContain('border-warning');
+    expect(w.get('article').classes()).toContain('border-warning');
     await w.setProps({ approval: { ...approval, status: 'approved', decidedBy: 'Sari', decidedAt: new Date() } });
-    expect(w.get('section').classes()).toEqual(expect.arrayContaining(['border-base-300']));
-    expect(w.get('section').classes()).not.toContain('border-warning');
+    expect(w.get('article').classes()).toEqual(expect.arrayContaining(['border-base-300']));
+    expect(w.get('article').classes()).not.toContain('border-warning');
   });
 
   it('does not take focus for a decision made elsewhere', async () => {

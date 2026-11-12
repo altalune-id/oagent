@@ -13,7 +13,7 @@ const provider = 'Pv6tQm2ZxR8wKp3VbNc4K';
 const server = 'Ms2bVn7QxK4pRt9KwZc3H';
 const names = { provider: (p: string) => (p === provider ? 'OpenRouter' : '?'), server: (x: string) => (x === server ? 'yasaku' : x) };
 type Wire = ReturnType<typeof toWire> & { providerMissing: boolean, tools: { name: string, requireApproval: boolean }[], mcpServers: { serverId: string, tools: { name: string, requireApproval: boolean }[], missing: boolean }[] };
-const liveWire: Wire = { instructions: 'Help.', providerId: provider, model: 'large-2', helperModel: '', temperature: 0.2, maxSteps: 12, maxCostCents: 10, mcpServers: [{ serverId: server, tools: [{ name: 'orders_lookup', requireApproval: false }, { name: 'refunds_create', requireApproval: false }], missing: false }], providerMissing: false, tools: [] };
+const liveWire: Wire = { instructions: 'Help.', providerId: provider, model: 'large-2', helperModel: '', temperature: 0.2, maxSteps: 12, maxCostCents: 10, mcpServers: [{ serverId: server, tools: [{ name: 'orders_lookup', requireApproval: false, freeWhen: [] }, { name: 'refunds_create', requireApproval: false, freeWhen: [] }], missing: false }], providerMissing: false, tools: [] };
 const draftWire: Wire = { ...liveWire, instructions: 'Help. Never promise a date.' };
 const live = fromWire(liveWire);
 const draft = fromWire(draftWire);
@@ -32,12 +32,24 @@ describe('agentConfig', () => {
 
   it('sends no legacy tools, output-only flags or grants of a deleted server', () => {
     const withLegacy = fromWire({ ...draftWire, providerMissing: true, tools: [{ name: 'old', requireApproval: true }], mcpServers: [...draftWire.mcpServers, { serverId: 'GneZ23456789abcdefghj', tools: [{ name: 'x', requireApproval: true }], missing: true }] });
-    expect(withLegacy.tools).toEqual([{ name: 'old', requireApproval: true }]);
+    expect(withLegacy.tools).toEqual([{ name: 'old', requireApproval: true, freeWhen: [] }]);
     expect(withLegacy.grants.map(g => g.missing)).toEqual([false, true]);
     const sent = toWire(withLegacy);
     expect(sent).not.toHaveProperty('tools');
     expect(sent).not.toHaveProperty('providerMissing');
-    expect(sent.mcpServers).toEqual([{ serverId: server, tools: draftWire.mcpServers[0]!.tools }]);
+    expect(sent.mcpServers).toEqual([{ serverId: server, tools: draftWire.mcpServers[0]!.tools.map(t => ({ ...t, freeWhen: [] })) }]);
+  });
+
+  it('round-trips a free_when rule, drops it when the tool is not asked, and lists a rule change', () => {
+    const rule = [{ arg: 'confirm', values: ['false'], absent: false }];
+    const tool = draftWire.mcpServers[0]!.tools[0]!;
+    const asked = fromWire({ ...draftWire, mcpServers: [{ ...draftWire.mcpServers[0]!, tools: [{ ...tool, requireApproval: true, freeWhen: rule }] }] });
+    expect(asked.grants[0]!.tools[0]!.freeWhen).toEqual(rule);
+    expect(toWire(asked).mcpServers[0]!.tools[0]!.freeWhen).toEqual(rule);
+    const free = { ...asked, grants: [{ ...asked.grants[0]!, tools: [{ ...asked.grants[0]!.tools[0]!, requireApproval: false }] }] };
+    expect(toWire(free).mcpServers[0]!.tools[0]!.freeWhen).toEqual([]);
+    const stricter = { ...asked, grants: [{ ...asked.grants[0]!, tools: [{ ...asked.grants[0]!.tools[0]!, freeWhen: [] }] }] };
+    expect(changes(stricter, asked, usd, names).map(c => c.key)).toContain('configure.change_tool_rule');
   });
 
   it('lists every change against the live version, and a first publish when there is none', () => {

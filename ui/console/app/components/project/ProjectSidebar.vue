@@ -22,7 +22,7 @@ const approvals = useApprovalsStore();
 
 watch(project, (value) => {
   if (value) {
-    void approvals.ensureLoaded(value.id);
+    void approvals.loadCount(value.id);
   }
 }, { immediate: true });
 </script>
