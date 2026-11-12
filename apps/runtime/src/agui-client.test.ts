@@ -11,7 +11,7 @@ import { RunAgentInputSchema } from '@ag-ui/core/schemas';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const dir = fileURLToPath(new URL('../../../internal/dataplane/testdata/sse/', import.meta.url));
-const CASES = ['cancelled', 'heartbeat_gap', 'interrupted', 'plain_reply', 'raw_dropped', 'replay_settled', 'tool_call'];
+const CASES = ['cancelled', 'heartbeat_gap', 'interrupt_outcome', 'interrupted', 'plain_reply', 'raw_dropped', 'replay_settled', 'tool_call'];
 const THREAD = 'client-thread-1';
 const CHUNK = 7;
 

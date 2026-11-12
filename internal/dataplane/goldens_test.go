@@ -22,7 +22,7 @@ const (
 	runPublicID  = "Rn5Q8wYk2HhT3mVz7XcLp"
 )
 
-var sseCases = []string{"plain_reply", "tool_call", "heartbeat_gap", "raw_dropped", "cancelled", "interrupted", "replay_settled"}
+var sseCases = []string{"plain_reply", "tool_call", "heartbeat_gap", "raw_dropped", "cancelled", "interrupted", "replay_settled", "interrupt_outcome"}
 
 var relayed = []runtime.EventType{
 	runtime.EventRunStarted, runtime.EventTextMessageStart, runtime.EventTextMessageContent, runtime.EventTextMessageEnd,

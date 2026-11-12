@@ -32,6 +32,7 @@ import (
 const (
 	projectKey  = "oak_project"
 	orgKey      = "oak_org"
+	decideKey   = "oak_decide"
 	personalKey = "oak_personal"
 	readOnlyKey = "oak_readonly"
 	otherKey    = "oak_other"
@@ -151,6 +152,7 @@ func newPlane(t *testing.T, maxConcurrent int, opts ...func(*dataplane.Deps)) *p
 			personalKey: keyFor([]string{"*"}, true, uuid.New()),
 			readOnlyKey: keyFor([]string{scope.RunRead}, true, uuid.Nil),
 			otherKey:    keyFor([]string{"run:*"}, false, uuid.Nil, uuid.New()),
+			decideKey:   keyFor([]string{"run:*", scope.ApprovalDecide}, true, uuid.Nil),
 		},
 		KeyPrefix: "oak_",
 		Agents: agents{

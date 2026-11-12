@@ -59,6 +59,8 @@ type Runner interface {
 
 // Deps is what the data plane needs; RuntimeReady reports whether a runtime is configured.
 type Deps struct {
+	// Approvals reads a thread's pending approval and decides it for a resume[]; nil turns resume and the 409 off.
+	Approvals    Approvals
 	Keys         Keys
 	KeyPrefix    string
 	Agents       Agents
@@ -74,6 +76,19 @@ type Deps struct {
 	LeaseTTL     time.Duration
 	Unexpected   apperror.UnexpectedFunc
 	Log          *slog.Logger
+}
+
+// PendingApproval is a thread's pending approval: Open lists the tool call ids a resume[] must answer.
+type PendingApproval struct {
+	ID       uuid.UUID
+	PublicID string
+	Open     []string
+}
+
+// Approvals reads a thread's pending approval, nil when none waits, and decides it for the caller on ctx without a kick.
+type Approvals interface {
+	PendingForThread(ctx context.Context, threadID uuid.UUID) (*PendingApproval, error)
+	Decide(ctx context.Context, id uuid.UUID, approved bool, text string) error
 }
 
 // Handler serves the /api/v1/ integrator API.

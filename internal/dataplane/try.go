@@ -56,6 +56,19 @@ func (h *Handler) postTryRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.keepReading(w, r)
+	if in.Resume != nil {
+		stream, err := h.resume(c, in, actor, h.d.Store.TryThreadByExternalKey)
+		if err != nil {
+			h.writeError(w, r, err)
+			return
+		}
+		h.relay(w, r, stream, in.ThreadID)
+		return
+	}
+	if err := h.refusePending(c, in, actor, h.d.Store.TryThreadByExternalKey); err != nil {
+		h.writeError(w, r, err)
+		return
+	}
 	if err := h.d.Drafts.Pin(c.ctx, c.agent.ID, c.principal.UserID); err != nil {
 		h.writeError(w, r, err)
 		return
