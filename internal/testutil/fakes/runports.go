@@ -3,6 +3,7 @@ package fakes
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
@@ -15,6 +16,8 @@ var errUnknownRef = errors.New("fakes: unknown id")
 // RunAgents is an in-memory run.Agents.
 type RunAgents struct {
 	Versions map[uuid.UUID]*run.AgentVersion
+	// VersionErr fails every Version, as a read error would.
+	VersionErr error
 	// Drafts answers Draft by agent; DraftErr refuses every Draft.
 	Drafts   map[uuid.UUID]*run.AgentVersion
 	DraftErr error
@@ -24,9 +27,12 @@ var _ run.Agents = (*RunAgents)(nil)
 
 // Version implements run.Agents.
 func (f *RunAgents) Version(_ context.Context, id uuid.UUID) (*run.AgentVersion, error) {
+	if f.VersionErr != nil {
+		return nil, f.VersionErr
+	}
 	v, ok := f.Versions[id]
 	if !ok {
-		return nil, errUnknownRef
+		return nil, fmt.Errorf("%w: version %s", run.ErrResourceGone, id)
 	}
 	return v, nil
 }
@@ -79,6 +85,8 @@ type RunMCPServers struct {
 	mu      sync.Mutex
 	Servers map[uuid.UUID]run.OpenedServer
 	Opened  []uuid.UUID
+	// OpenErr fails every Open, as a read or unseal error would.
+	OpenErr error
 }
 
 var _ run.MCPServers = (*RunMCPServers)(nil)
@@ -87,9 +95,12 @@ var _ run.MCPServers = (*RunMCPServers)(nil)
 func (f *RunMCPServers) Open(_ context.Context, id uuid.UUID) (run.OpenedServer, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.OpenErr != nil {
+		return run.OpenedServer{}, f.OpenErr
+	}
 	s, ok := f.Servers[id]
 	if !ok {
-		return run.OpenedServer{}, errUnknownRef
+		return run.OpenedServer{}, fmt.Errorf("%w: server %s", run.ErrResourceGone, id)
 	}
 	f.Opened = append(f.Opened, id)
 	return s, nil

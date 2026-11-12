@@ -8,7 +8,7 @@ import (
 )
 
 // ContractVersion is the turn contract version; a breaking change bumps it, an optional field old peers refuse only when set does not.
-const ContractVersion = 2
+const ContractVersion = 3
 
 // TurnRequest is the body of POST /turn. SECURITY: it carries provider and MCP secrets; never log or trace it.
 type TurnRequest struct {
@@ -53,7 +53,7 @@ type ModelSpec struct {
 	MaxTokens *int32 `json:"maxTokens,omitempty"`
 }
 
-// MCPServerSpec is one MCP server a turn may call; AllowedTools are the server-side tool names.
+// MCPServerSpec is one MCP server a turn may call; version 3 sends Tools with their approval specs, older versions AllowedTools.
 type MCPServerSpec struct {
 	Name             string      `json:"name"`
 	URL              string      `json:"url"`
@@ -242,6 +242,8 @@ type RunFinished struct {
 	ThreadID  string          `json:"threadId"`
 	RunID     string          `json:"runId"`
 	Result    json.RawMessage `json:"result,omitempty"`
+	// Outcome is the AG-UI run outcome Go adds when the run waits on an approval; the runtime never sends it.
+	Outcome json.RawMessage `json:"outcome,omitempty"`
 }
 
 // RunError closes the AG-UI stream of a turn that did not end normally.

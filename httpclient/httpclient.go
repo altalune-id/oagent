@@ -20,9 +20,10 @@ const (
 // New returns an *http.Client that refuses non-public destinations unless WithAllowPrivateHosts(true) is passed.
 func New(opts ...Option) *http.Client {
 	s := settings{
-		dialTimeout: DefaultDialTimeout,
-		timeout:     DefaultTimeout,
-		otel:        true,
+		dialTimeout:     DefaultDialTimeout,
+		timeout:         DefaultTimeout,
+		otel:            true,
+		idleConnTimeout: 90 * time.Second,
 	}
 	for _, opt := range opts {
 		opt(&s)
@@ -58,7 +59,7 @@ func newTransport(s settings) http.RoundTripper {
 		// NOTE: the stdlib default of 2 starves concurrent calls to a single upstream.
 		MaxIdleConnsPerHost: 16,
 		MaxConnsPerHost:     64,
-		IdleConnTimeout:     90 * time.Second,
+		IdleConnTimeout:     s.idleConnTimeout,
 	}
 	if s.responseBodyLimit > 0 {
 		rt = &limitTransport{next: rt, limit: s.responseBodyLimit}

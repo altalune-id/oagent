@@ -2,6 +2,8 @@ package run
 
 import (
 	"context"
+	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -43,6 +45,8 @@ type MCPGrant struct {
 type ToolGrant struct {
 	Name            string
 	RequireApproval bool
+	// FreeWhen is the tool's free_when conditions as JSON, empty when there are none.
+	FreeWhen json.RawMessage
 }
 
 // Agents loads agent versions of the org on ctx.
@@ -115,4 +119,74 @@ type Person struct {
 // People names end users for display; an unknown end user is the zero Person.
 type People interface {
 	Person(ctx context.Context, id uuid.UUID) (Person, error)
+}
+
+// ApprovalCall is one gated tool call an approval interrupt raised; Keys is its arguments' order in the live schema.
+type ApprovalCall struct {
+	// State is empty while pending, then approved, executing, executed or unknown.
+	State                                 string
+	ToolCallID, InterruptID, Server, Tool string
+	Args                                  json.RawMessage
+	ArgsHash                              string
+	Keys                                  []string
+}
+
+// RaiseApproval is the one approval an awaiting settle records for every approval interrupt of the step.
+type RaiseApproval struct {
+	OrgID, ProjectID, AgentID, RunID, ThreadID uuid.UUID
+	ThreadKind                                 string
+	Calls                                      []ApprovalCall
+	Speakers                                   []uuid.NullUUID
+	SnapshotHash                               []byte
+}
+
+// RunApproval is a run's latest approval as a resume reads it; Status is pending, approved, rejected or expired.
+type RunApproval struct {
+	ID                 uuid.UUID
+	PublicID, Preview  string
+	Status             string
+	DecisionText       string
+	ExpiresAt          time.Time
+	Calls              []ApprovalCall
+	RaisedSnapshotHash []byte
+	// Channel is whatsapp, api or console; only a whatsapp approval is decided from the chat.
+	Channel string
+	// Requester is the end user whose message raised it; PromptExternalID is the sent prompt's provider id.
+	Requester        uuid.NullUUID
+	PromptExternalID string
+	// PromptAfterSeq is the thread's last seq when the prompt was sent, nil until then; only later messages may decide.
+	PromptAfterSeq *int64
+}
+
+// ChatAnswer is a requester's chat message deciding approval ApprovalID.
+type ChatAnswer struct {
+	ApprovalID, By uuid.UUID
+	Approved       bool
+	Text           string
+}
+
+// Approvals raises, reads and decides the approvals a run waits on; the approval service implements it.
+type Approvals interface {
+	Raise(ctx context.Context, in RaiseApproval) error
+	Latest(ctx context.Context, runID uuid.UUID) (*RunApproval, error)
+	// MatchWord reads a chat reply as yes or no; matched is false for any other text.
+	MatchWord(text string) (approved, matched bool)
+	// Expire marks approval id expired when it is still pending and past its expiry on the database clock.
+	Expire(ctx context.Context, id uuid.UUID) (expired bool, err error)
+	// NeedsApproval runs the approval evaluator on a call of grant with args, without a live schema.
+	NeedsApproval(grant ToolGrant, args json.RawMessage) bool
+	// MarkExecuting moves approved calls to executing; the caller commits it under the lease before the resume is sent.
+	MarkExecuting(ctx context.Context, id uuid.UUID, toolCallIDs []string) error
+	// MarkUndelivered moves executing calls back to approved when their request never reached the runtime.
+	MarkUndelivered(ctx context.Context, id uuid.UUID, toolCallIDs []string) error
+	// MarkExecuted records that an executing call's result was stored.
+	MarkExecuted(ctx context.Context, id uuid.UUID, toolCallID string) error
+	// MarkUnknown records that an executing call has no stored result after a restart, so it never runs again.
+	MarkUnknown(ctx context.Context, id uuid.UUID, toolCallID string) error
+	// ExpireUnresumable expires approval id with its run when the interrupt can't resume.
+	ExpireUnresumable(ctx context.Context, id uuid.UUID) error
+	// RejectOnCancel rejects pending approval id for the caller who cancels its run, or for the system when bySystem.
+	RejectOnCancel(ctx context.Context, id uuid.UUID, bySystem bool) error
+	// DecideFromChat records a WhatsApp decision; decided is false when the approval was no longer pending.
+	DecideFromChat(ctx context.Context, a ChatAnswer) (decided bool, err error)
 }

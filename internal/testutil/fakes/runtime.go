@@ -13,9 +13,11 @@ import (
 
 // Runtime is a runtime.Runtime that answers each turn from Replies in order: an error, or NDJSON lines to stream.
 type Runtime struct {
-	mu       sync.Mutex
-	Replies  []RuntimeReply
-	Requests []runtime.TurnRequest
+	// BeforeTurn runs as Turn is called, before the request is recorded, to observe state at that moment.
+	BeforeTurn func()
+	mu         sync.Mutex
+	Replies    []RuntimeReply
+	Requests   []runtime.TurnRequest
 }
 
 // RuntimeReply is one turn's answer; Block makes the stream wait for the turn's context after its lines.
@@ -31,6 +33,9 @@ var _ runtime.Runtime = (*Runtime)(nil)
 
 // Turn implements runtime.Runtime.
 func (f *Runtime) Turn(ctx context.Context, req runtime.TurnRequest) (runtime.Stream, error) {
+	if f.BeforeTurn != nil {
+		f.BeforeTurn()
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.Requests = append(f.Requests, req)

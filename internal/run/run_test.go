@@ -14,7 +14,7 @@ import (
 )
 
 var legalMoves = map[Status][]Status{
-	StatusRunning:          {StatusCompleted, StatusLimitReached, StatusFailed, StatusCancelled, StatusInterrupted, StatusAwaitingApproval},
+	StatusRunning:          {StatusCompleted, StatusLimitReached, StatusFailed, StatusCancelled, StatusInterrupted, StatusAwaitingApproval, StatusExpired},
 	StatusInterrupted:      {StatusRunning, StatusFailed, StatusCancelled},
 	StatusAwaitingApproval: {StatusRunning, StatusExpired, StatusCancelled},
 }

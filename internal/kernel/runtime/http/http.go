@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"time"
 
 	"altalune.id/oagent/httpclient"
 	"altalune.id/oagent/internal/kernel/runtime"
@@ -38,13 +39,23 @@ type Client struct {
 
 var _ runtime.Runtime = (*Client)(nil)
 
+// NOTE: Node closes an idle keep-alive connection after 5 s; reusing a closed one can lose an approved call's request, so ours close first.
+const idleConnTimeout = 4 * time.Second
+
+func clientOptions() []httpclient.Option {
+	return []httpclient.Option{
+		httpclient.WithAllowPrivateHosts(true), httpclient.WithoutTimeout(), httpclient.WithoutProxy(),
+		httpclient.WithIdleConnTimeout(idleConnTimeout),
+	}
+}
+
 // New builds a client for the runtime at cfg.URL; the turn's context bounds each call.
 func New(cfg runtime.Config) (*Client, error) {
 	u, err := url.Parse(cfg.URL)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return nil, errors.New("runtime.http: url must be an absolute http or https URL")
 	}
-	hc := httpclient.New(httpclient.WithAllowPrivateHosts(true), httpclient.WithoutTimeout(), httpclient.WithoutProxy())
+	hc := httpclient.New(clientOptions()...)
 	// SECURITY: a redirect would replay the body, which carries the provider key and MCP credentials, to another URL.
 	hc.CheckRedirect = func(*nethttp.Request, []*nethttp.Request) error { return nethttp.ErrUseLastResponse }
 	return &Client{endpoint: strings.TrimSuffix(u.String(), "/") + "/turn", token: cfg.Token, hc: hc, log: slog.Default()}, nil

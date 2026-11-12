@@ -34,7 +34,8 @@ func (s *Service) request(ctx context.Context, t *turn) (runtime.TurnRequest, []
 		StoredResults: []runtime.StoredResult{},
 		Limits:        runtime.Limits{DeadlineMs: (s.turnTimeout - deadlineMargin).Milliseconds(), Budget: s.budget(t)},
 	}
-	servers, err := s.mcpServers(ctx, v)
+	t.grants = map[string]ToolGrant{}
+	servers, err := s.mcpServers(ctx, v, t.grants)
 	if err != nil {
 		return req, nil, err
 	}
@@ -54,6 +55,15 @@ func (s *Service) request(ctx context.Context, t *turn) (runtime.TurnRequest, []
 		if json.Unmarshal(sr.Body, &body) == nil && len(body.Result) > 0 {
 			req.StoredResults = append(req.StoredResults, runtime.StoredResult{ToolUseID: sr.ToolUseID, Result: body.Result})
 		}
+	}
+	// NOTE: an approval resume always sends the snapshot it was raised in and the answers; the crash continue is only for no open interrupt.
+	if t.approval != nil {
+		responses, err := ResumeResponses(t.approval)
+		if err != nil {
+			return req, nil, err
+		}
+		req.Input, req.Snapshot = runtime.TurnInput{Kind: runtime.InputResume, Responses: responses}, t.snap.Blob
+		return req, nil, nil
 	}
 	if r.Attempt > 1 && len(req.StoredResults) > 0 {
 		all, err := s.store.History(ctx, r.ThreadID, uuid.Nil)
@@ -109,29 +119,56 @@ func (s *Service) budget(t *turn) *runtime.Budget {
 	}
 }
 
-func (s *Service) mcpServers(ctx context.Context, v *AgentVersion) ([]runtime.MCPServerSpec, error) {
+// SECURITY: every granted tool goes to the runtime with its approval spec (contract v3); the runtime asks before a gated call runs.
+func (s *Service) mcpServers(ctx context.Context, v *AgentVersion, grants map[string]ToolGrant) ([]runtime.MCPServerSpec, error) {
 	out := []runtime.MCPServerSpec{}
 	for _, g := range v.MCPServers {
-		var allowed []string
-		for _, tool := range g.Tools {
-			if !tool.RequireApproval {
-				allowed = append(allowed, tool.Name)
-			}
-		}
-		if len(allowed) == 0 {
+		if len(g.Tools) == 0 {
 			continue
 		}
 		srv, err := s.servers.Open(ctx, g.ServerID)
 		if err != nil {
 			return nil, fmt.Errorf("run: open mcp server %s: %w", g.ServerID, err)
 		}
+		grant(grants, srv.Name, g.Tools)
+		tools := make([]runtime.ToolGrant, 0, len(g.Tools))
+		for _, tool := range g.Tools {
+			tools = append(tools, runtime.ToolGrant{Name: tool.Name, Approval: approvalSpec(tool)})
+		}
 		out = append(out, runtime.MCPServerSpec{
-			Name: srv.Name, URL: srv.URL, AllowedTools: allowed,
+			Name: srv.Name, URL: srv.URL, Tools: tools,
 			Auth:             runtime.MCPAuth{Kind: srv.AuthKind, Header: srv.AuthHeader, Value: srv.AuthValue},
 			ConnectTimeoutMs: connectTimeoutMs, CallTimeoutMs: srv.TimeoutMS,
 		})
 	}
 	return out, nil
+}
+
+// SECURITY: a free_when that doesn't decode makes the tool always ask, never free.
+func approvalSpec(tool ToolGrant) runtime.ApprovalSpec {
+	switch {
+	case !tool.RequireApproval:
+		return runtime.ApprovalSpec{Mode: "never"}
+	case len(tool.FreeWhen) == 0:
+		return runtime.ApprovalSpec{Mode: "always"}
+	}
+	var conds []runtime.FreeCondition
+	if json.Unmarshal(tool.FreeWhen, &conds) != nil || len(conds) == 0 {
+		return runtime.ApprovalSpec{Mode: "always"}
+	}
+	for i := range conds {
+		if conds[i].Values == nil {
+			// NOTE: the runtime requires values; an absent-only condition sends [] because null fails every turn's validation.
+			conds[i].Values = []json.RawMessage{}
+		}
+	}
+	return runtime.ApprovalSpec{Mode: "conditional", FreeWhen: conds}
+}
+
+func grant(grants map[string]ToolGrant, server string, tools []ToolGrant) {
+	for _, tool := range tools {
+		grants[server+toolNameSeparator+tool.Name] = tool
+	}
 }
 
 type agUIMessage struct {
@@ -426,8 +463,18 @@ func checkpointMessage(cp *runtime.Checkpoint) Message {
 }
 
 func (s *Service) stream(ctx context.Context, t *turn, req runtime.TurnRequest, history []json.RawMessage) (*Run, error) {
+	if err := s.markExecuting(ctx, t); err != nil {
+		return nil, s.errOrReport(ctx, "run: mark executing", err)
+	}
 	st, err := s.rt.Turn(ctx, req)
 	if runtime.IsSnapshotUnloadableError(err) && req.Snapshot != nil {
+		if t.approval != nil {
+			// SECURITY: interrupt answers belong to the snapshot that raised them; without it the resume expires, never rebuilds.
+			if rerr := s.undelivered(context.WithoutCancel(ctx), t, err); rerr != nil {
+				return nil, s.errOrReport(ctx, "run: undelivered", rerr)
+			}
+			return s.unresumable(ctx, t)
+		}
 		req.Snapshot, req.History = nil, history
 		st, err = s.rt.Turn(ctx, req)
 	}
@@ -452,7 +499,8 @@ func (s *Service) stream(ctx context.Context, t *turn, req runtime.TurnRequest, 
 			calls[ev.ToolCallID] = ev
 		case *runtime.Checkpoint:
 			msgs := []Message{callMessage(ev, calls[ev.ToolUseID]), checkpointMessage(ev)}
-			if err := s.store.PutCheckpoint(context.WithoutCancel(ctx), t.token, t.run.ID, ev.ToolUseID, msgs); err != nil {
+			s.audit(ctx, t, ev.ToolUseID, ev.Name, ev.Input)
+			if err := s.checkpoint(context.WithoutCancel(ctx), t, ev.ToolUseID, msgs); err != nil {
 				return s.abandon(ctx, t, add(t.run.Usage, est.usage()), err)
 			}
 			t.stored[ev.ToolUseID] = true
@@ -475,6 +523,9 @@ func (e estimate) usage() Usage {
 }
 
 func (s *Service) refused(ctx context.Context, t *turn, err error) (*Run, error) {
+	if rerr := s.undelivered(context.WithoutCancel(ctx), t, err); rerr != nil {
+		return nil, s.errOrReport(ctx, "run: undelivered", rerr)
+	}
 	if runtime.IsContractError(err) || (runtime.IsStatusError(err) && !transientStatus(err)) || runtime.IsSnapshotUnloadableError(err) {
 		s.log.ErrorContext(ctx, "run: runtime refused the turn", "run", t.run.PublicID, "err", err.Error())
 		return s.fail(ctx, t, apperror.CodeRunRuntimeFailed)
@@ -511,6 +562,15 @@ func add(a, b Usage) Usage {
 
 func (s *Service) finish(ctx context.Context, t *turn, term *runtime.Terminal) (*Run, error) {
 	to, code := terminalStatus(term)
+	snap := s.terminalSnapshot(t, term.Snapshot)
+	if to == StatusAwaitingApproval {
+		raise, err := s.raiseFor(t, term, snap)
+		if err != nil {
+			s.log.ErrorContext(ctx, "run: awaiting approval refused", "run", t.run.PublicID, "err", err.Error())
+			to, code = StatusFailed, apperror.CodeRunRuntimeFailed
+		}
+		t.raise = raise
+	}
 	t.imageRefused = term.Error != nil && term.Error.Code == imageUnsupported
 	if err := t.run.Move(to, time.Now()); err != nil {
 		return nil, s.errOrReport(ctx, "run: finish", err)
@@ -522,7 +582,34 @@ func (s *Service) finish(ctx context.Context, t *turn, term *runtime.Terminal) (
 		CacheReadTokens: term.Usage.CacheReadInputTokens, CacheWriteTokens: term.Usage.CacheWriteInputTokens,
 		Estimated: term.Usage.Estimated,
 	})
-	return s.settle(ctx, t, u, finalMessages(term.MessagesAppended, t.stored), s.terminalSnapshot(t, term.Snapshot))
+	return s.settle(ctx, t, u, finalMessages(term.MessagesAppended, t.stored), snap)
+}
+
+// SECURITY: the approval is pinned to the hash of the very snapshot this settle saves, in the same unit of work.
+func (s *Service) raiseFor(t *turn, term *runtime.Terminal, snap *Snapshot) (*RaiseApproval, error) {
+	if s.approvals == nil || snap == nil || s.snaps == nil {
+		return nil, fmt.Errorf("run: an awaiting turn needs approvals and its snapshot")
+	}
+	calls, err := approvalCalls(term.Interrupts)
+	if err != nil {
+		return nil, err
+	}
+	speakers := make([]uuid.NullUUID, 0, len(t.taken))
+	for _, m := range t.taken {
+		if m.Role != RoleUser {
+			continue
+		}
+		var who uuid.NullUUID
+		if m.SpeakerID != nil {
+			who = uuid.NullUUID{UUID: *m.SpeakerID, Valid: true}
+		}
+		speakers = append(speakers, who)
+	}
+	r := t.run
+	return &RaiseApproval{
+		OrgID: r.OrgID, ProjectID: r.ProjectID, AgentID: t.thread.AgentID, RunID: r.ID, ThreadID: r.ThreadID, ThreadKind: t.thread.Kind,
+		Calls: calls, Speakers: speakers, SnapshotHash: SnapshotHash(snap),
+	}, nil
 }
 
 func terminalStatus(term *runtime.Terminal) (Status, apperror.Code) {
@@ -551,9 +638,6 @@ func finalMessages(appended []json.RawMessage, stored map[string]bool) []Message
 			continue
 		}
 		if am.Role == string(RoleTool) {
-			if stored[am.ToolCallID] {
-				continue
-			}
 			out = append(out, Message{Role: RoleTool, Body: raw, ToolCallID: am.ToolCallID})
 			continue
 		}

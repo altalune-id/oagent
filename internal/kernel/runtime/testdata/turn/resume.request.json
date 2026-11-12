@@ -1,5 +1,5 @@
 {
-  "contractVersion": 2,
+  "contractVersion": 3,
   "ids": {
     "run": "Rn5Q8wYk2HhT3mVz7XcLp",
     "thread": "t0193a2b4c5d67e8f9a0b1c2d3e4f5a6b",
@@ -27,11 +27,16 @@
         "kind": "bearer",
         "value": "tok-test"
       },
-      "allowedTools": [
-        "record_expense"
-      ],
       "connectTimeoutMs": 10000,
-      "callTimeoutMs": 5000
+      "callTimeoutMs": 5000,
+      "tools": [
+        {
+          "name": "record_expense",
+          "approval": {
+            "mode": "never"
+          }
+        }
+      ]
     }
   ],
   "snapshot": {

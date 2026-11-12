@@ -13,7 +13,7 @@ import (
 	"altalune.id/oagent/internal/kernel/tenant"
 )
 
-// OpenRun loads the thread's interrupted run, the one a claim resumes; nil when there is none.
+// OpenRun loads the thread's interrupted or awaiting run, the one a claim resumes or parks on; nil when there is none.
 func (s *postgresStore) OpenRun(ctx context.Context, threadID uuid.UUID) (*Run, error) {
 	tc, err := tenant.From(ctx)
 	if err != nil {
@@ -24,7 +24,7 @@ func (s *postgresStore) OpenRun(ctx context.Context, threadID uuid.UUID) (*Run, 
 		FROM(r).
 		WHERE(r.ThreadID.EQ(postgres.UUID(threadID)).
 			AND(r.OrgID.EQ(postgres.UUID(tc.OrgID))).
-			AND(r.Status.EQ(postgres.String(string(StatusInterrupted))))).
+			AND(r.Status.IN(postgres.String(string(StatusInterrupted)), postgres.String(string(StatusAwaitingApproval))))).
 		LIMIT(1)
 	var row runRow
 	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &row) }); err != nil {
@@ -94,11 +94,29 @@ func (s *postgresStore) PendingUnleased(ctx context.Context, now time.Time, limi
 	resumable := postgres.SELECT(r.ID).
 		FROM(r).
 		WHERE(r.ThreadID.EQ(t.ID).AND(r.Status.EQ(postgres.String(string(StatusInterrupted)))))
+	// NOTE: a parked run whose thread has the cancel flag needs a drain to apply it, even while its approval still holds.
+	awaitingRun := postgres.SELECT(r.ID).
+		FROM(r).
+		WHERE(r.ThreadID.EQ(t.ID).AND(r.Status.EQ(postgres.String(string(StatusAwaitingApproval)))))
+	a := s.approvals
+	stillWaiting := postgres.SELECT(a.ID).
+		FROM(a).
+		WHERE(a.OrgID.EQ(postgres.UUID(tc.OrgID)).
+			AND(a.RunID.EQ(r.ID)).
+			AND(a.Status.EQ(postgres.String(approvalPending))).
+			AND(a.ExpiresAt.GT(postgres.NOW())))
+	// NOTE: an awaiting run no approval holds (decided with a lost kick, past expiry, no row) is resumable, or an API thread waits forever.
+	unblocked := postgres.SELECT(r.ID).
+		FROM(r).
+		WHERE(r.ThreadID.EQ(t.ID).
+			AND(r.Status.EQ(postgres.String(string(StatusAwaitingApproval)))).
+			AND(postgres.NOT(postgres.EXISTS(stillWaiting))))
 	stmt := postgres.SELECT(t.ID).
 		FROM(t).
 		WHERE(t.OrgID.EQ(postgres.UUID(tc.OrgID)).
 			AND(t.LeaseUntil.IS_NULL().OR(t.LeaseUntil.LT(postgres.TimestampzT(now.UTC())))).
-			AND(postgres.EXISTS(pending).OR(postgres.EXISTS(resumable)))).
+			AND(postgres.EXISTS(pending).OR(postgres.EXISTS(resumable)).OR(postgres.EXISTS(unblocked)).
+				OR(t.CancelRequested.IS_TRUE().AND(postgres.EXISTS(awaitingRun))))).
 		ORDER_BY(t.UpdatedAt.ASC()).
 		LIMIT(int64(max(limit, 1)))
 	return s.threadIDs(ctx, "PendingUnleased", stmt)
@@ -311,6 +329,28 @@ func (s *postgresStore) HasPending(ctx context.Context, threadID uuid.UUID) (boo
 		return false, fmt.Errorf("run.postgres: HasPending: %w", err)
 	}
 	return len(rows) > 0, nil
+}
+
+// PendingMessages lists a thread's pending messages in channel order, at most limit, from the primary.
+func (s *postgresStore) PendingMessages(ctx context.Context, threadID, speaker uuid.UUID, afterSeq int64, limit int) ([]Message, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	m := s.messages
+	stmt := postgres.SELECT(m.AllColumns).FROM(m).
+		WHERE(m.ThreadID.EQ(postgres.UUID(threadID)).
+			AND(m.OrgID.EQ(postgres.UUID(tc.OrgID))).
+			AND(m.Status.EQ(postgres.String(string(MessagePending)))).
+			AND(m.SpeakerID.EQ(postgres.UUID(speaker))).
+			AND(m.Seq.GT(postgres.Int(afterSeq)))).
+		ORDER_BY(m.ChannelTime.ASC().NULLS_LAST(), m.Seq.ASC()).
+		LIMIT(int64(max(limit, 1)))
+	var rows []messageRow
+	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
+		return nil, fmt.Errorf("run.postgres: PendingMessages: %w", err)
+	}
+	return toMessages(rows), nil
 }
 
 // RunByID loads a run of the org on ctx.
@@ -567,22 +607,24 @@ func (s *postgresStore) ReplyJob(ctx context.Context, runID uuid.UUID) (*ReplyJo
 		return nil, err
 	}
 	r, t, m, i := s.runs, s.threads, s.messages, s.identities
-	head := postgres.SELECT(r.PublicID, r.ReplyState, r.ReplyPartsSent, r.ReplyAttempts, r.EndedAt, r.ReplyNextAt,
-		t.ConnectionID, t.Kind, t.ChannelAddress, i.Value).
+	head := postgres.SELECT(r.PublicID, r.ReplyState, r.ReplyKind, r.ReplyPartsSent, r.ReplyAttempts, r.EndedAt, r.ReplyNextAt,
+		t.ConnectionID, t.Kind, t.ChannelAddress, t.NextSeq, i.Value).
 		FROM(r.INNER_JOIN(t, t.ID.EQ(r.ThreadID)).
 			LEFT_JOIN(i, i.EndUserID.EQ(t.ActorEndUserID).AND(i.Kind.EQ(t.ReplyVia)).AND(i.OrgID.EQ(t.OrgID)))).
 		WHERE(r.ID.EQ(postgres.UUID(runID)).AND(r.OrgID.EQ(postgres.UUID(tc.OrgID))))
 	var row struct {
-		PublicID string     `alias:"runs.public_id"`
-		State    *string    `alias:"runs.reply_state"`
-		Parts    int        `alias:"runs.reply_parts_sent"`
-		Attempts int        `alias:"runs.reply_attempts"`
-		EndedAt  *time.Time `alias:"runs.ended_at"`
-		NextAt   *time.Time `alias:"runs.reply_next_at"`
-		Conn     *uuid.UUID `alias:"threads.connection_id"`
-		Kind     string     `alias:"threads.kind"`
-		Address  *string    `alias:"threads.channel_address"`
-		Identity *string    `alias:"end_user_identities.value"`
+		PublicID  string     `alias:"runs.public_id"`
+		State     *string    `alias:"runs.reply_state"`
+		ReplyKind *string    `alias:"runs.reply_kind"`
+		Parts     int        `alias:"runs.reply_parts_sent"`
+		Attempts  int        `alias:"runs.reply_attempts"`
+		EndedAt   *time.Time `alias:"runs.ended_at"`
+		NextAt    *time.Time `alias:"runs.reply_next_at"`
+		Conn      *uuid.UUID `alias:"threads.connection_id"`
+		Kind      string     `alias:"threads.kind"`
+		Address   *string    `alias:"threads.channel_address"`
+		NextSeq   int64      `alias:"threads.next_seq"`
+		Identity  *string    `alias:"end_user_identities.value"`
 	}
 	msgs := postgres.SELECT(m.AllColumns).FROM(m).
 		WHERE(m.RunID.EQ(postgres.UUID(runID)).AND(m.OrgID.EQ(postgres.UUID(tc.OrgID)))).
@@ -604,7 +646,7 @@ func (s *postgresStore) ReplyJob(ctx context.Context, runID uuid.UUID) (*ReplyJo
 		return nil, fmt.Errorf("run.postgres: ReplyJob: %w", err)
 	}
 	job := &ReplyJob{RunID: runID, RunPublicID: row.PublicID, Kind: row.Kind, PartsSent: row.Parts, Attempts: row.Attempts}
-	job.State = deref(row.State)
+	job.State, job.ReplyKind, job.LastSeq = deref(row.State), deref(row.ReplyKind), row.NextSeq-1
 	if row.Conn != nil {
 		job.ConnectionID = *row.Conn
 	}
