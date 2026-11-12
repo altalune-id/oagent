@@ -14,6 +14,7 @@ import (
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/config"
+	"altalune.id/oagent/internal/approval"
 	"altalune.id/oagent/internal/channel"
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/session"
@@ -89,4 +90,19 @@ func TestReporterAdapter(t *testing.T) {
 
 	a.Report(context.Background(), "m", errors.New("plain"))
 	assert.True(t, reported)
+}
+
+func TestBuildScheduler_ApprovalJobs(t *testing.T) {
+	k := kernel.Kernel{Meter: noopmetric.NewMeterProvider().Meter("test"), Reporter: apperror.NewReporter(nil, false)}
+	svcs := &Services{
+		Sessions:  session.NewMemoryStore(),
+		Approvals: approval.NewService(&fakes.ApprovalStore{}, fakes.Transactor{}, approvalRefs{}, nil),
+	}
+	r, err := buildScheduler(k, config.Config{Scheduler: config.SchedulerConfig{Enabled: true}}, svcs, testLogger())
+	require.NoError(t, err)
+	var names []string
+	for _, j := range r.Jobs() {
+		names = append(names, j.Name)
+	}
+	assert.ElementsMatch(t, []string{"session-sweep", "approval-expire"}, names)
 }

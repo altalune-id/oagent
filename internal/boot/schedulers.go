@@ -52,6 +52,9 @@ func buildScheduler(k kernel.Kernel, cfg config.Config, s *Services, log *slog.L
 	if s.Channels != nil {
 		jobs = append(jobs, s.Channels.SchedulerJobs()...)
 	}
+	if s.Approvals != nil {
+		jobs = append(jobs, s.Approvals.Jobs(cfg.Run.SweepEvery)...)
+	}
 	for _, j := range jobs {
 		if err := r.Register(j); err != nil {
 			return nil, fmt.Errorf("boot: register %s: %w", j.Name, err)
