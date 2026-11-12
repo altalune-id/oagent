@@ -14,4 +14,6 @@ export const webhookEvents: WebhookEvent[] = [
   { name: 'channel.connection.created', labelKey: 'webhooks.event_channel_connection_created' },
   { name: 'channel.connection.updated', labelKey: 'webhooks.event_channel_connection_updated' },
   { name: 'channel.connection.deleted', labelKey: 'webhooks.event_channel_connection_deleted' },
+  { name: 'approval.requested', labelKey: 'webhooks.event_approval_requested' },
+  { name: 'approval.decided', labelKey: 'webhooks.event_approval_decided' },
 ];

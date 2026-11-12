@@ -11,6 +11,7 @@ import (
 	"altalune.id/oagent/apperror"
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
+	approvalv1connect "altalune.id/oagent/gen/go/approval/v1/approvalv1connect"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
 	channelv1connect "altalune.id/oagent/gen/go/channel/v1/channelv1connect"
 	enduserv1connect "altalune.id/oagent/gen/go/enduser/v1/enduserv1connect"
@@ -24,6 +25,7 @@ import (
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
+	"altalune.id/oagent/internal/approval"
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/channel"
 	"altalune.id/oagent/internal/enduser"
@@ -66,11 +68,15 @@ type Services struct {
 	// People and PeopleActivity serve the end-user read API.
 	People         *enduser.Service
 	PeopleActivity enduser.Activity
-	Users          *user.Service
-	Members        *member.Service
-	Invites        *invite.Service
-	Auth           *auth.Service
-	Refs           Refs
+	// Approvals, with its public-id lookups and the label rule, serves the approval API.
+	Approvals     *approval.Service
+	ApprovalRefs  approval.HandlerRefs
+	ApprovalNames approval.Names
+	Users         *user.Service
+	Members       *member.Service
+	Invites       *invite.Service
+	Auth          *auth.Service
+	Refs          Refs
 	// Passwords is true when console password sign-in is on.
 	Passwords bool
 }
@@ -112,6 +118,7 @@ type Server struct {
 	MCPServerSvc     *mcpserver.McpServerService
 	ChannelSvc       *channel.ChannelService
 	EndUserSvc       *enduser.EndUserService
+	ApprovalSvc      *approval.ApprovalService
 	ThreadSvc        *run.ThreadService
 
 	OpenAPIEnabled   bool
@@ -161,6 +168,9 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 	if svcs.People != nil && svcs.PeopleActivity != nil {
 		s.EndUserSvc = enduser.NewControlPlane(svcs.People, svcs.Refs, svcs.PeopleActivity)
 	}
+	if svcs.Approvals != nil && svcs.ApprovalRefs != nil && svcs.ApprovalNames != nil {
+		s.ApprovalSvc = approval.NewControlPlane(svcs.Approvals, svcs.ApprovalRefs, svcs.ApprovalNames)
+	}
 	if svcs.Runs != nil && svcs.EndUsers != nil {
 		s.ThreadSvc = run.NewControlPlane(svcs.Runs, svcs.Refs, svcs.EndUsers)
 	}
@@ -208,6 +218,10 @@ func (s *Server) Handler(basePath string) http.Handler {
 	if s.EndUserSvc != nil {
 		peoplePath, peopleHandler := enduserv1connect.NewEndUserServiceHandler(s.EndUserSvc, s.handlerOptions()...)
 		inner.Handle(peoplePath, peopleHandler)
+	}
+	if s.ApprovalSvc != nil {
+		approvalPath, approvalHandler := approvalv1connect.NewApprovalServiceHandler(s.ApprovalSvc, s.handlerOptions()...)
+		inner.Handle(approvalPath, approvalHandler)
 	}
 	if s.ThreadSvc != nil {
 		threadPath, threadHandler := threadv1connect.NewThreadServiceHandler(s.ThreadSvc, s.handlerOptions()...)

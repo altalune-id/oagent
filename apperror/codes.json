@@ -96,5 +96,11 @@
   { "code": "CHN003", "name": "ConnectionSecretRequired", "kind": "invalid", "params": [], "reasons": [] },
   { "code": "CHN004", "name": "ConnectionSecretsUnavailable", "kind": "failed_precondition", "params": [], "reasons": [] },
   { "code": "CHN005", "name": "ConnectionProviderUnavailable", "kind": "failed_precondition", "params": [], "reasons": [] },
-  { "code": "CHN006", "name": "ConnectionWebhookURLUnavailable", "kind": "failed_precondition", "params": [], "reasons": [] }
+  { "code": "CHN006", "name": "ConnectionWebhookURLUnavailable", "kind": "failed_precondition", "params": [], "reasons": [] },
+  { "code": "APR001", "name": "ApprovalPending", "kind": "failed_precondition", "params": ["approval"], "reasons": [] },
+  { "code": "APR002", "name": "ApprovalNotFound", "kind": "not_found", "params": [], "reasons": [] },
+  { "code": "APR003", "name": "ApprovalAlreadyDecided", "kind": "failed_precondition", "params": ["status"], "reasons": [] },
+  { "code": "APR004", "name": "ResumeIncomplete", "kind": "invalid", "params": ["missing"], "reasons": [] },
+  { "code": "APR005", "name": "EditedArgsRefused", "kind": "invalid", "params": [], "reasons": [] },
+  { "code": "APR006", "name": "ApprovalAnsweredByApp", "kind": "failed_precondition", "params": [], "reasons": [] }
 ]

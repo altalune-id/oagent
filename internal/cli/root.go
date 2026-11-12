@@ -15,6 +15,7 @@ import (
 	"altalune.id/oagent/config"
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
+	approvalv1connect "altalune.id/oagent/gen/go/approval/v1/approvalv1connect"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
 	channelv1connect "altalune.id/oagent/gen/go/channel/v1/channelv1connect"
 	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
@@ -25,6 +26,7 @@ import (
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apiclient"
 	"altalune.id/oagent/internal/apikey"
+	"altalune.id/oagent/internal/approval"
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/boot"
 	"altalune.id/oagent/internal/channel"
@@ -157,6 +159,9 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 	channelCmd := channel.NewCmd(channelClientFn(bootClient))
 	markClientTree(channelCmd)
 
+	approvalCmd := approval.NewCmd(approvalClientFn(bootClient))
+	markClientTree(approvalCmd)
+
 	authCmd := auth.NewCmd(sessionProfiles{}, authClientFn(bootClient), authSessionClientFn(bootClient))
 	markClientTree(authCmd)
 
@@ -173,6 +178,7 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 		apiKeyCmd,
 		webhookCmd,
 		channelCmd,
+		approvalCmd,
 		newVersionCmd(),
 	)
 	return root
@@ -273,6 +279,16 @@ func webhookClientFn(bootClient ClientBootFn) webhook.ClientFn {
 			return nil, err
 		}
 		return client.Webhooks, nil
+	}
+}
+
+func approvalClientFn(bootClient ClientBootFn) approval.ClientFn {
+	return func(cmd *cobra.Command) (approvalv1connect.ApprovalServiceClient, error) {
+		client, err := connectClient(cmd, bootClient)
+		if err != nil {
+			return nil, err
+		}
+		return client.Approvals, nil
 	}
 }
 

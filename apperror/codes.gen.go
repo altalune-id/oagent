@@ -118,6 +118,13 @@ const (
 	CodeConnectionSecretsUnavailable    Code = "CHN004"
 	CodeConnectionProviderUnavailable   Code = "CHN005"
 	CodeConnectionWebhookURLUnavailable Code = "CHN006"
+
+	CodeApprovalPending        Code = "APR001"
+	CodeApprovalNotFound       Code = "APR002"
+	CodeApprovalAlreadyDecided Code = "APR003"
+	CodeResumeIncomplete       Code = "APR004"
+	CodeEditedArgsRefused      Code = "APR005"
+	CodeApprovalAnsweredByApp  Code = "APR006"
 )
 
 var kinds = map[Code]Kind{
@@ -235,4 +242,11 @@ var kinds = map[Code]Kind{
 	CodeConnectionSecretsUnavailable:    KindFailedPrecondition,
 	CodeConnectionProviderUnavailable:   KindFailedPrecondition,
 	CodeConnectionWebhookURLUnavailable: KindFailedPrecondition,
+
+	CodeApprovalPending:        KindFailedPrecondition,
+	CodeApprovalNotFound:       KindNotFound,
+	CodeApprovalAlreadyDecided: KindFailedPrecondition,
+	CodeResumeIncomplete:       KindInvalid,
+	CodeEditedArgsRefused:      KindInvalid,
+	CodeApprovalAnsweredByApp:  KindFailedPrecondition,
 }

@@ -35,6 +35,7 @@ type Runs struct {
 	ReplyPartsSent        postgres.ColumnInteger
 	ReplyAttempts         postgres.ColumnInteger
 	ReplyNextAt           postgres.ColumnTimestampz
+	ReplyKind             postgres.ColumnString
 	IsGroup               postgres.ColumnBool
 
 	AllColumns postgres.ColumnList
@@ -76,11 +77,12 @@ func NewRuns(schema, tablePrefix string) *Runs {
 		replyAttempts         = postgres.IntegerColumn("reply_attempts")
 		replyNextAt           = postgres.TimestampzColumn("reply_next_at")
 		isGroup               = postgres.BoolColumn("is_group")
+		replyKind             = postgres.StringColumn("reply_kind")
 		all                   = postgres.ColumnList{
 			id, publicID, orgID, projectID, threadID, agentVersionID, status, idempotencyKey, attempt, inputTokens, outputTokens,
 			cacheReadTokens, cacheWriteTokens, usageEstimated, priceInputMicros, priceOutputMicros, priceCacheReadMicros,
 			priceCacheWriteMicros, costMicros, latencyMS, errorCode, startedAt, endedAt, createdAt, updatedAt, replyState,
-			replyPartsSent, replyAttempts, replyNextAt, isGroup,
+			replyPartsSent, replyAttempts, replyNextAt, isGroup, replyKind,
 		}
 	)
 	return &Runs{
@@ -115,6 +117,7 @@ func NewRuns(schema, tablePrefix string) *Runs {
 		ReplyAttempts:         replyAttempts,
 		ReplyNextAt:           replyNextAt,
 		IsGroup:               isGroup,
+		ReplyKind:             replyKind,
 		AllColumns:            all,
 	}
 }

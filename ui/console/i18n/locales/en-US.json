@@ -179,6 +179,8 @@
   "webhooks.event_channel_connection_created": "Channel connected",
   "webhooks.event_channel_connection_updated": "Channel connection changed",
   "webhooks.event_channel_connection_deleted": "Channel removed",
+  "webhooks.event_approval_requested": "Approval requested",
+  "webhooks.event_approval_decided": "Approval decided",
   "webhooks.events": "Events",
   "webhooks.inactive": "Inactive",
   "webhooks.logs": "Logs",

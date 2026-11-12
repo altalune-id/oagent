@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/types/pluginpb"
 
 	agentv1 "altalune.id/oagent/gen/go/agent/v1"
+	approvalv1 "altalune.id/oagent/gen/go/approval/v1"
 	authv1 "altalune.id/oagent/gen/go/auth/v1"
 	channelv1 "altalune.id/oagent/gen/go/channel/v1"
 	enduserv1 "altalune.id/oagent/gen/go/enduser/v1"
@@ -37,6 +38,7 @@ func committedFiles() []protoreflect.FileDescriptor {
 		authv1.File_auth_v1_auth_proto,
 		channelv1.File_channel_v1_channel_proto,
 		enduserv1.File_enduser_v1_enduser_proto,
+		approvalv1.File_approval_v1_approval_proto,
 		invitev1.File_invite_v1_invite_proto,
 		mcpserverv1.File_mcpserver_v1_mcpserver_proto,
 		memberv1.File_member_v1_member_proto,

@@ -26,6 +26,7 @@ import (
 	apperrorv1 "altalune.id/oagent/gen/go/apperror/v1"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
+	"altalune.id/oagent/internal/approval"
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/channel"
 	"altalune.id/oagent/internal/enduser"
@@ -235,6 +236,12 @@ func samples() []error {
 		&channel.WebhookURLUnavailableError{},
 		&run.ThreadNotFoundError{ID: "t"},
 		&run.ThreadActorMismatchError{ThreadID: "t"},
+		&approval.PendingError{Approval: "Vb3Kq8Rt2Wy5Zp9Hm7Nc4"},
+		&approval.NotFoundError{},
+		&approval.AlreadyDecidedError{Status: "rejected"},
+		&approval.ResumeIncompleteError{Missing: []string{"call_1"}},
+		&approval.EditedArgsRefusedError{},
+		&approval.AnsweredByAppError{},
 	}
 }
 

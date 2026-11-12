@@ -18,6 +18,7 @@ import (
 	"altalune.id/oagent/apperror"
 	agentv1 "altalune.id/oagent/gen/go/agent/v1"
 	apikeyv1 "altalune.id/oagent/gen/go/apikey/v1"
+	approvalv1 "altalune.id/oagent/gen/go/approval/v1"
 	authv1 "altalune.id/oagent/gen/go/auth/v1"
 	channelv1 "altalune.id/oagent/gen/go/channel/v1"
 	invitev1 "altalune.id/oagent/gen/go/invite/v1"
@@ -40,6 +41,7 @@ var unruled = map[string]string{
 	"channel.v1.GetChannelSettingsRequest":                "empty request",
 	"channel.v1.UpdateConnectionRequest.enabled":          "an optional bool; unset keeps the switch",
 	"channel.v1.SetConnectionSecretRequest.drop_previous": "a bool; true retires the previous secret",
+	"approval.v1.DecideApprovalRequest.approved":          "a bool; false rejects",
 
 	"apikey.v1.CreateAPIKeyRequest.all_projects":    "a bool; the domain checks it against project_ids (KEY005)",
 	"webhook.v1.UpdateWebhookRequest.active":        "a bool; false deactivates",
@@ -171,6 +173,17 @@ func TestRequestRules_Accept(t *testing.T) {
 		msg  proto.Message
 	}{
 		{"public id", &orgv1.GetOrgRequest{Id: goodID}},
+		{"approvals with no status", &approvalv1.ListApprovalsRequest{ProjectId: goodID}},
+		{"approvals by status and agent", &approvalv1.ListApprovalsRequest{ProjectId: goodID, AgentId: goodID, Status: "expired"}},
+		{"decided approvals", &approvalv1.ListApprovalsRequest{ProjectId: goodID, Status: "decided"}},
+		{"a reject with a 4000-character reason", &approvalv1.DecideApprovalRequest{Id: goodID, Text: strings.Repeat("é", 4000)}},
+		{"free_when at its limits", freeWhen(func(c []*agentv1.FreeCondition) []*agentv1.FreeCondition {
+			c[0].Arg, c[0].Values = "_"+strings.Repeat("a", 63), append(slices.Repeat([]string{"1"}, 15), `"`+strings.Repeat("x", 254)+`"`)
+			for range 7 {
+				c = append(c, &agentv1.FreeCondition{Arg: "dry_run", Values: []string{"true", `{"a":1}`}})
+			}
+			return c
+		})},
 		{"padded name the domain trims", &orgv1.UpdateOrgRequest{Id: goodID, Name: "  " + strings.Repeat("é", 200) + "  ", Slug: "acme"}},
 		{"uppercase email", &invitev1.DraftInviteRequest{OrgId: goodID, Email: "  Dina@Example.COM "}},
 		{"unicode email", &invitev1.DraftInviteRequest{OrgId: goodID, Email: "dïna@exämple.com"}},
@@ -196,6 +209,7 @@ func TestRequestRules_Accept(t *testing.T) {
 		{"channel connection on a private http OpenWA with a path", withChannel(func(r *channelv1.CreateConnectionRequest) { r.BaseUrl = "http://10.0.0.5:8080/openwa" })},
 		{"channel update keeping the key", &channelv1.UpdateConnectionRequest{Id: goodID, BaseUrl: new("https://wa.example.com"), OpenwaOrg: new("acme"), OpenwaProject: new("main"), DeviceId: new("dev_V1StGXR8Z5jdHi6B")}},
 		{"channel update of the switch only", &channelv1.UpdateConnectionRequest{Id: goodID, Enabled: new(false)}},
+		{"channel approval prompt with its preview", &channelv1.UpdateConnectionRequest{Id: goodID, ApprovalPrompt: new("{preview}\n\nBalas YA atau TIDAK")}},
 		{"channel list for one agent", &channelv1.ListConnectionsRequest{ProjectId: goodID, AgentId: goodID}},
 		{"mcp server without auth", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) {
 			r.AuthKind, r.AuthHeader, r.AuthValue = mcpserverv1.McpServerAuthKind_MCP_SERVER_AUTH_KIND_NONE, "", ""
@@ -226,6 +240,37 @@ func TestRequestRules_Refuse(t *testing.T) {
 	v := newTestValidator(t)
 	future := timestamppb.New(time.Now().Add(time.Hour))
 	refused := []ruleCase{
+		{"approvals in an unknown status", &approvalv1.ListApprovalsRequest{ProjectId: goodID, Status: "executing"}, "status", apperror.FieldNotAllowed},
+		{"approvals without a project", &approvalv1.ListApprovalsRequest{}, "project_id", apperror.FieldRequired},
+		{"an approval by uuid", &approvalv1.GetApprovalRequest{Id: "4b0b0a0e-1d2c-4f7a-9a6b-1f0e2d3c4b5a"}, "id", apperror.FieldInvalidFormat},
+		{"a decision without an id", &approvalv1.DecideApprovalRequest{Approved: true}, "id", apperror.FieldRequired},
+		{"a 4001-character reason", &approvalv1.DecideApprovalRequest{Id: goodID, Text: strings.Repeat("é", 4001)}, "text", apperror.FieldTooLong},
+		{"free_when with 9 conditions", freeWhen(func(c []*agentv1.FreeCondition) []*agentv1.FreeCondition {
+			for range 8 {
+				c = append(c, &agentv1.FreeCondition{Arg: "a", Absent: true})
+			}
+			return c
+		}), "config.mcp_servers[0].tools[0].free_when", apperror.FieldTooMany},
+		{"free_when arg with a dash", freeWhen(func(c []*agentv1.FreeCondition) []*agentv1.FreeCondition {
+			c[0].Arg = "dry-run"
+			return c
+		}), "config.mcp_servers[0].tools[0].free_when[0].arg", apperror.FieldInvalidFormat},
+		{"free_when arg of 65", freeWhen(func(c []*agentv1.FreeCondition) []*agentv1.FreeCondition {
+			c[0].Arg = "a" + strings.Repeat("b", 64)
+			return c
+		}), "config.mcp_servers[0].tools[0].free_when[0].arg", apperror.FieldInvalidFormat},
+		{"free_when with 17 values", freeWhen(func(c []*agentv1.FreeCondition) []*agentv1.FreeCondition {
+			c[0].Values = slices.Repeat([]string{"1"}, 17)
+			return c
+		}), "config.mcp_servers[0].tools[0].free_when[0].values", apperror.FieldTooMany},
+		{"a 257-byte free_when value", freeWhen(func(c []*agentv1.FreeCondition) []*agentv1.FreeCondition {
+			c[0].Values = []string{`"` + strings.Repeat("x", 255) + `"`}
+			return c
+		}), "config.mcp_servers[0].tools[0].free_when[0].values[0]", apperror.FieldTooLong},
+		{"an empty free_when value", freeWhen(func(c []*agentv1.FreeCondition) []*agentv1.FreeCondition {
+			c[0].Values = []string{""}
+			return c
+		}), "config.mcp_servers[0].tools[0].free_when[0].values[0]", apperror.FieldTooShort},
 		{"missing id", &orgv1.GetOrgRequest{}, "id", apperror.FieldRequired},
 		{"short id", &orgv1.GetOrgRequest{Id: "abc"}, "id", apperror.FieldInvalidFormat},
 		{"uuid id", &orgv1.GetOrgRequest{Id: "4b0b0a0e-1d2c-4f7a-9a6b-1f0e2d3c4b5a"}, "id", apperror.FieldInvalidFormat},
@@ -302,6 +347,7 @@ func TestRequestRules_Refuse(t *testing.T) {
 		{"1001-character set reply", withChannel(func(r *channelv1.CreateConnectionRequest) { r.ReplyVoice = strings.Repeat("v", 1001) }), "reply_voice", apperror.FieldTooLong},
 		{"quiet window over 10 s", withChannel(func(r *channelv1.CreateConnectionRequest) { r.QuietWindowMs = new(int32(10001)) }), "quiet_window_ms", apperror.FieldInvalid},
 		{"empty device key on update", &channelv1.UpdateConnectionRequest{Id: goodID, DeviceKey: new(string)}, "device_key", apperror.FieldTooShort},
+		{"approval prompt without its preview", &channelv1.UpdateConnectionRequest{Id: goodID, ApprovalPrompt: new("Reply YES or NO")}, "approval_prompt", apperror.FieldInvalidFormat},
 		{"empty base url on update", &channelv1.UpdateConnectionRequest{Id: goodID, BaseUrl: new("")}, "base_url", apperror.FieldInvalidFormat},
 		{"empty openwa org on update", &channelv1.UpdateConnectionRequest{Id: goodID, OpenwaOrg: new("")}, "openwa_org", apperror.FieldTooShort},
 		{"empty openwa project on update", &channelv1.UpdateConnectionRequest{Id: goodID, OpenwaProject: new("")}, "openwa_project", apperror.FieldTooShort},
@@ -449,4 +495,11 @@ func TestEveryMessageRuleNamesAField(t *testing.T) {
 		}
 		assert.Empty(t, rules.GetOneof(), "%s: a message oneof rule has no single field to name; use a CEL rule", input.FullName())
 	}
+}
+
+func freeWhen(edit func([]*agentv1.FreeCondition) []*agentv1.FreeCondition) *agentv1.UpdateAgentDraftRequest {
+	conds := edit([]*agentv1.FreeCondition{{Arg: "confirm", Values: []string{"false"}, Absent: true}})
+	return &agentv1.UpdateAgentDraftRequest{Id: goodID, Config: &agentv1.AgentConfig{McpServers: []*agentv1.McpGrant{{
+		ServerId: goodID, Tools: []*agentv1.AgentTool{{Name: "record_expense", RequireApproval: true, FreeWhen: conds}},
+	}}}}
 }
