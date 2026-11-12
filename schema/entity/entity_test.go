@@ -55,7 +55,7 @@ func TestBindings(t *testing.T) {
 				"id", "public_id", "org_id", "project_id", "agent_id", "provider", "status", "base_url", "openwa_org", "openwa_project", "device_id",
 				"signing_secret_primary_sealed", "signing_secret_secondary_sealed", "device_key_sealed", "quiet_window_ms", "quiet_max_ms",
 				"reply_failure", "reply_voice", "reply_photo_unreadable", "last_result", "last_result_at", "last_bad_signature_at",
-				"created_at", "updated_at",
+				"created_at", "updated_at", "approval_prompt", "approval_expired",
 			},
 		},
 		{
@@ -76,7 +76,16 @@ func TestBindings(t *testing.T) {
 			func(s, p string) binding { b := entity.NewRuns(s, p); return binding{b, b.AllColumns} },
 			[]string{
 				"id", "public_id", "org_id", "project_id", "thread_id", "agent_version_id", "status", "idempotency_key", "attempt", "input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "usage_estimated", "price_input_micros", "price_output_micros", "price_cache_read_micros", "price_cache_write_micros", "cost_micros", "latency_ms", "error_code", "started_at", "ended_at", "created_at", "updated_at",
-				"reply_state", "reply_parts_sent", "reply_attempts", "reply_next_at", "is_group",
+				"reply_state", "reply_parts_sent", "reply_attempts", "reply_next_at", "is_group", "reply_kind",
+			},
+		},
+		{
+			"approvals",
+			func(s, p string) binding { b := entity.NewApprovals(s, p); return binding{b, b.AllColumns} },
+			[]string{
+				"id", "public_id", "org_id", "project_id", "agent_id", "run_id", "thread_id", "calls", "preview", "channel",
+				"requester_end_user_id", "prompt_external_id", "raised_snapshot_hash", "status", "decided_by_kind", "decided_by_id",
+				"decided_via", "decision_text", "expires_at", "created_at", "decided_at", "prompt_after_seq",
 			},
 		},
 		{
@@ -233,6 +242,7 @@ func TestBindings_EveryColumnFieldIsSet(t *testing.T) {
 		"thread_snapshots": entity.NewThreadSnapshots("s", ""), "end_users": entity.NewEndUsers("s", ""),
 		"end_user_identities": entity.NewEndUserIdentities("s", ""),
 		"channel_connections": entity.NewChannelConnections("s", ""), "ingest_deliveries": entity.NewIngestDeliveries("s", ""),
+		"approvals": entity.NewApprovals("s", ""),
 	} {
 		v := reflect.ValueOf(b).Elem()
 		for i := range v.NumField() {

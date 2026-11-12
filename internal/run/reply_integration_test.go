@@ -19,9 +19,9 @@ import (
 type replyStore interface {
 	ReplyJob(ctx context.Context, runID uuid.UUID) (*run.ReplyJob, error)
 	DueReplies(ctx context.Context, now time.Time, limit int) ([]uuid.UUID, error)
-	ReplyProgress(ctx context.Context, runID uuid.UUID, partsSent int) error
-	ReplyRetry(ctx context.Context, runID uuid.UUID, next time.Time) error
-	ReplyEnd(ctx context.Context, runID uuid.UUID, state string) error
+	ReplyProgress(ctx context.Context, runID uuid.UUID, kind string, partsSent int) error
+	ReplyRetry(ctx context.Context, runID uuid.UUID, kind string, next time.Time) error
+	ReplyEnd(ctx context.Context, runID uuid.UUID, kind, state string) error
 }
 
 func (p *pgRunner) replies() replyStore { return p.store.(replyStore) }
@@ -106,9 +106,9 @@ func TestStore_ReplyJobDM(t *testing.T) {
 	assert.NotEmpty(t, job.Text)
 	assert.Zero(t, job.PartsSent)
 
-	require.NoError(t, p.replies().ReplyProgress(in(p.s.org), r.ID, 2))
+	require.NoError(t, p.replies().ReplyProgress(in(p.s.org), r.ID, "", 2))
 	next := time.Now().Add(time.Minute).UTC().Truncate(time.Microsecond)
-	require.NoError(t, p.replies().ReplyRetry(in(p.s.org), r.ID, next))
+	require.NoError(t, p.replies().ReplyRetry(in(p.s.org), r.ID, "", next))
 	job, err = p.replies().ReplyJob(in(p.s.org), r.ID)
 	require.NoError(t, err)
 	assert.Equal(t, 2, job.PartsSent)
@@ -123,12 +123,12 @@ func TestStore_ReplyJobDM(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []uuid.UUID{r.ID}, due)
 
-	require.NoError(t, p.replies().ReplyEnd(in(p.s.org), r.ID, run.ReplySent))
+	require.NoError(t, p.replies().ReplyEnd(in(p.s.org), r.ID, "", run.ReplySent))
 	state, at := p.replyState(t, r.ID)
 	assert.Equal(t, run.ReplySent, *state)
 	assert.Nil(t, at)
-	require.NoError(t, p.replies().ReplyEnd(in(p.s.org), r.ID, run.ReplyFailed))
-	require.NoError(t, p.replies().ReplyRetry(in(p.s.org), r.ID, next))
+	require.NoError(t, p.replies().ReplyEnd(in(p.s.org), r.ID, "", run.ReplyFailed))
+	require.NoError(t, p.replies().ReplyRetry(in(p.s.org), r.ID, "", next))
 	state, at = p.replyState(t, r.ID)
 	assert.Equal(t, run.ReplySent, *state, "only a due reply moves: a late job never undoes a sent one")
 	assert.Nil(t, at)
@@ -163,4 +163,94 @@ func TestStore_ReplyJobDetachedThread(t *testing.T) {
 	job, err := p.replies().ReplyJob(in(p.s.org), r.ID)
 	require.NoError(t, err)
 	assert.Equal(t, uuid.Nil, job.ConnectionID, "a detached thread has no connection to send through")
+}
+
+func TestStore_DueRepliesSendsPromptAndExpiredReplies(t *testing.T) {
+	p := newPgRunner(t)
+	now := time.Now()
+	var ids []uuid.UUID
+	for i := range 3 {
+		thread := p.arrive(t, p.chat(t, p.s, "dm"), "wamid-"+string(rune('a'+i)), "halo", now)
+		r, err := p.turn(t, thread, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+		require.NoError(t, err)
+		ids = append(ids, r.ID)
+	}
+	for i, kind := range []string{"expired", "prompt"} {
+		p.exec(t, `UPDATE `+p.schema+`.runs SET reply_kind = $2, reply_next_at = $3 WHERE id = $1`, ids[i], kind, now.Add(-time.Duration(3-i)*time.Minute))
+	}
+	p.exec(t, `UPDATE `+p.schema+`.runs SET reply_next_at = $2 WHERE id = $1`, ids[2], now.Add(-time.Minute))
+
+	due, err := p.replies().DueReplies(in(p.s.org), now, 10)
+	require.NoError(t, err)
+	assert.Equal(t, ids, due, "no reply kind is held any more: oldest first")
+	job, err := p.replies().ReplyJob(in(p.s.org), ids[0])
+	require.NoError(t, err)
+	assert.Equal(t, run.ReplyKindExpired, job.ReplyKind, "the sender builds it from the connection's approval_expired")
+}
+
+func TestPrompt_SetDueInAwaitingSettleTx(t *testing.T) {
+	p := newPgRunner(t)
+	p.svc.WithApprovals(&fakes.RunApprovals{})
+	thread := p.arrive(t, p.chat(t, p.s, "dm"), "wamid-1", "record lunch 25000", time.Now())
+	r, err := p.turn(t, thread, fakes.RuntimeReply{Stream: awaitStream(t, "call_1")})
+	require.NoError(t, err)
+	require.Equal(t, run.StatusAwaitingApproval, r.Status)
+	state, next := p.replyState(t, r.ID)
+	require.NotNil(t, state)
+	assert.Equal(t, run.ReplyDue, *state, "the awaiting settle made the prompt due")
+	require.NotNil(t, next)
+
+	due, err := p.replies().DueReplies(in(p.s.org), next.Add(time.Second), 10)
+	require.NoError(t, err)
+	assert.Contains(t, due, r.ID, "a crash before the send leaves it to the reply job")
+	job, err := p.replies().ReplyJob(in(p.s.org), r.ID)
+	require.NoError(t, err)
+	assert.Equal(t, run.ReplyKindPrompt, job.ReplyKind)
+}
+
+// NOTE: approvedDM parks a DM run on an approval, then lets prompt run against the prompt's due reply before the run resumes and settles its final reply.
+func approvedDM(t *testing.T, prompt func(p *pgRunner, runID uuid.UUID)) (*pgRunner, uuid.UUID) {
+	t.Helper()
+	p := newPgRunner(t)
+	a := &fakes.RunApprovals{}
+	p.svc.WithApprovals(a)
+	thread := p.arrive(t, p.chat(t, p.s, "dm"), "wamid-1", "record lunch 25000", time.Now())
+	parked, err := p.turn(t, thread, fakes.RuntimeReply{Stream: awaitStream(t, "call_1")})
+	require.NoError(t, err)
+	require.Equal(t, run.StatusAwaitingApproval, parked.Status)
+	prompt(p, parked.ID)
+	a.Decide(parked.ID, "approved", "")
+	done, err := p.turn(t, thread, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	require.NoError(t, err)
+	require.Equal(t, run.StatusCompleted, done.Status)
+	return p, parked.ID
+}
+
+func TestReply_FinalReplyAfterApprovalStartsFresh(t *testing.T) {
+	p, runID := approvedDM(t, func(p *pgRunner, runID uuid.UUID) {
+		require.NoError(t, p.replies().ReplyProgress(in(p.s.org), runID, run.ReplyKindPrompt, 1))
+		require.NoError(t, p.replies().ReplyRetry(in(p.s.org), runID, run.ReplyKindPrompt, time.Now()))
+		require.NoError(t, p.replies().ReplyEnd(in(p.s.org), runID, run.ReplyKindPrompt, run.ReplySent))
+	})
+	job, err := p.replies().ReplyJob(in(p.s.org), runID)
+	require.NoError(t, err)
+	assert.Equal(t, run.ReplyDue, job.State)
+	assert.Zero(t, job.PartsSent, "the prompt's sent parts never skip the final reply")
+	assert.Zero(t, job.Attempts, "the prompt's retries never slow the final reply")
+}
+
+func TestReply_LatePromptEndLeavesTheFinalReply(t *testing.T) {
+	var promptJob *run.ReplyJob
+	p, runID := approvedDM(t, func(p *pgRunner, runID uuid.UUID) {
+		var err error
+		promptJob, err = p.replies().ReplyJob(in(p.s.org), runID)
+		require.NoError(t, err)
+		require.Equal(t, run.ReplyKindPrompt, promptJob.ReplyKind)
+	})
+	require.NoError(t, p.replies().ReplyProgress(in(p.s.org), runID, promptJob.ReplyKind, 1))
+	require.NoError(t, p.replies().ReplyEnd(in(p.s.org), runID, promptJob.ReplyKind, run.ReplySent))
+	job, err := p.replies().ReplyJob(in(p.s.org), runID)
+	require.NoError(t, err)
+	assert.Equal(t, run.ReplyDue, job.State, "a slow prompt send that ends after the decision never marks the final reply sent")
+	assert.Zero(t, job.PartsSent)
 }

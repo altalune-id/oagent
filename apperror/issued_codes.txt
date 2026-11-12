@@ -96,3 +96,9 @@ CHN003 ConnectionSecretRequired
 CHN004 ConnectionSecretsUnavailable
 CHN005 ConnectionProviderUnavailable
 CHN006 ConnectionWebhookURLUnavailable
+APR001 ApprovalPending
+APR002 ApprovalNotFound
+APR003 ApprovalAlreadyDecided
+APR004 ResumeIncomplete
+APR005 EditedArgsRefused
+APR006 ApprovalAnsweredByApp

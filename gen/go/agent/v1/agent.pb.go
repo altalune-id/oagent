@@ -159,11 +159,12 @@ func (x *Agent) GetUnpublishedChanges() bool {
 	return false
 }
 
-// AgentTool is a tool the agent may call; require_approval makes a person approve each call.
+// AgentTool is a tool the agent may call; require_approval makes a person approve each call, and free_when lets a call run without asking when every condition holds.
 type AgentTool struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Name            string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	RequireApproval bool                   `protobuf:"varint,2,opt,name=require_approval,json=requireApproval,proto3" json:"require_approval,omitempty"`
+	FreeWhen        []*FreeCondition       `protobuf:"bytes,3,rep,name=free_when,json=freeWhen,proto3" json:"free_when,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -212,6 +213,74 @@ func (x *AgentTool) GetRequireApproval() bool {
 	return false
 }
 
+func (x *AgentTool) GetFreeWhen() []*FreeCondition {
+	if x != nil {
+		return x.FreeWhen
+	}
+	return nil
+}
+
+// FreeCondition holds when the call's argument arg equals one of values, each a JSON value such as false or "draft", or when the argument is absent and absent is true.
+type FreeCondition struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Arg           string                 `protobuf:"bytes,1,opt,name=arg,proto3" json:"arg,omitempty"`
+	Values        []string               `protobuf:"bytes,2,rep,name=values,proto3" json:"values,omitempty"`
+	Absent        bool                   `protobuf:"varint,3,opt,name=absent,proto3" json:"absent,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FreeCondition) Reset() {
+	*x = FreeCondition{}
+	mi := &file_agent_v1_agent_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FreeCondition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FreeCondition) ProtoMessage() {}
+
+func (x *FreeCondition) ProtoReflect() protoreflect.Message {
+	mi := &file_agent_v1_agent_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FreeCondition.ProtoReflect.Descriptor instead.
+func (*FreeCondition) Descriptor() ([]byte, []int) {
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *FreeCondition) GetArg() string {
+	if x != nil {
+		return x.Arg
+	}
+	return ""
+}
+
+func (x *FreeCondition) GetValues() []string {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
+func (x *FreeCondition) GetAbsent() bool {
+	if x != nil {
+		return x.Absent
+	}
+	return false
+}
+
 // McpGrant lets an agent call the listed tools of one MCP server; missing is output only and true when the server no longer exists.
 type McpGrant struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -224,7 +293,7 @@ type McpGrant struct {
 
 func (x *McpGrant) Reset() {
 	*x = McpGrant{}
-	mi := &file_agent_v1_agent_proto_msgTypes[2]
+	mi := &file_agent_v1_agent_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -236,7 +305,7 @@ func (x *McpGrant) String() string {
 func (*McpGrant) ProtoMessage() {}
 
 func (x *McpGrant) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[2]
+	mi := &file_agent_v1_agent_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -249,7 +318,7 @@ func (x *McpGrant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use McpGrant.ProtoReflect.Descriptor instead.
 func (*McpGrant) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{2}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *McpGrant) GetServerId() string {
@@ -292,7 +361,7 @@ type AgentConfig struct {
 
 func (x *AgentConfig) Reset() {
 	*x = AgentConfig{}
-	mi := &file_agent_v1_agent_proto_msgTypes[3]
+	mi := &file_agent_v1_agent_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -304,7 +373,7 @@ func (x *AgentConfig) String() string {
 func (*AgentConfig) ProtoMessage() {}
 
 func (x *AgentConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[3]
+	mi := &file_agent_v1_agent_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -317,7 +386,7 @@ func (x *AgentConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentConfig.ProtoReflect.Descriptor instead.
 func (*AgentConfig) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{3}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AgentConfig) GetInstructions() string {
@@ -406,7 +475,7 @@ type AgentVersion struct {
 
 func (x *AgentVersion) Reset() {
 	*x = AgentVersion{}
-	mi := &file_agent_v1_agent_proto_msgTypes[4]
+	mi := &file_agent_v1_agent_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -418,7 +487,7 @@ func (x *AgentVersion) String() string {
 func (*AgentVersion) ProtoMessage() {}
 
 func (x *AgentVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[4]
+	mi := &file_agent_v1_agent_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -431,7 +500,7 @@ func (x *AgentVersion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentVersion.ProtoReflect.Descriptor instead.
 func (*AgentVersion) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{4}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AgentVersion) GetId() string {
@@ -489,7 +558,7 @@ type CreateAgentRequest struct {
 
 func (x *CreateAgentRequest) Reset() {
 	*x = CreateAgentRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[5]
+	mi := &file_agent_v1_agent_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -501,7 +570,7 @@ func (x *CreateAgentRequest) String() string {
 func (*CreateAgentRequest) ProtoMessage() {}
 
 func (x *CreateAgentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[5]
+	mi := &file_agent_v1_agent_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -514,7 +583,7 @@ func (x *CreateAgentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAgentRequest.ProtoReflect.Descriptor instead.
 func (*CreateAgentRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{5}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CreateAgentRequest) GetOrgId() string {
@@ -561,7 +630,7 @@ type CreateAgentResponse struct {
 
 func (x *CreateAgentResponse) Reset() {
 	*x = CreateAgentResponse{}
-	mi := &file_agent_v1_agent_proto_msgTypes[6]
+	mi := &file_agent_v1_agent_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -573,7 +642,7 @@ func (x *CreateAgentResponse) String() string {
 func (*CreateAgentResponse) ProtoMessage() {}
 
 func (x *CreateAgentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[6]
+	mi := &file_agent_v1_agent_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -586,7 +655,7 @@ func (x *CreateAgentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAgentResponse.ProtoReflect.Descriptor instead.
 func (*CreateAgentResponse) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{6}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CreateAgentResponse) GetAgent() *Agent {
@@ -605,7 +674,7 @@ type GetAgentRequest struct {
 
 func (x *GetAgentRequest) Reset() {
 	*x = GetAgentRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[7]
+	mi := &file_agent_v1_agent_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -617,7 +686,7 @@ func (x *GetAgentRequest) String() string {
 func (*GetAgentRequest) ProtoMessage() {}
 
 func (x *GetAgentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[7]
+	mi := &file_agent_v1_agent_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -630,7 +699,7 @@ func (x *GetAgentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAgentRequest.ProtoReflect.Descriptor instead.
 func (*GetAgentRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{7}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetAgentRequest) GetId() string {
@@ -649,7 +718,7 @@ type GetAgentResponse struct {
 
 func (x *GetAgentResponse) Reset() {
 	*x = GetAgentResponse{}
-	mi := &file_agent_v1_agent_proto_msgTypes[8]
+	mi := &file_agent_v1_agent_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -661,7 +730,7 @@ func (x *GetAgentResponse) String() string {
 func (*GetAgentResponse) ProtoMessage() {}
 
 func (x *GetAgentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[8]
+	mi := &file_agent_v1_agent_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -674,7 +743,7 @@ func (x *GetAgentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAgentResponse.ProtoReflect.Descriptor instead.
 func (*GetAgentResponse) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{8}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetAgentResponse) GetAgent() *Agent {
@@ -693,7 +762,7 @@ type ListAgentsRequest struct {
 
 func (x *ListAgentsRequest) Reset() {
 	*x = ListAgentsRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[9]
+	mi := &file_agent_v1_agent_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -705,7 +774,7 @@ func (x *ListAgentsRequest) String() string {
 func (*ListAgentsRequest) ProtoMessage() {}
 
 func (x *ListAgentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[9]
+	mi := &file_agent_v1_agent_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -718,7 +787,7 @@ func (x *ListAgentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAgentsRequest.ProtoReflect.Descriptor instead.
 func (*ListAgentsRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{9}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ListAgentsRequest) GetProjectId() string {
@@ -737,7 +806,7 @@ type ListAgentsResponse struct {
 
 func (x *ListAgentsResponse) Reset() {
 	*x = ListAgentsResponse{}
-	mi := &file_agent_v1_agent_proto_msgTypes[10]
+	mi := &file_agent_v1_agent_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -749,7 +818,7 @@ func (x *ListAgentsResponse) String() string {
 func (*ListAgentsResponse) ProtoMessage() {}
 
 func (x *ListAgentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[10]
+	mi := &file_agent_v1_agent_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -762,7 +831,7 @@ func (x *ListAgentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAgentsResponse.ProtoReflect.Descriptor instead.
 func (*ListAgentsResponse) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{10}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListAgentsResponse) GetAgents() []*Agent {
@@ -783,7 +852,7 @@ type UpdateAgentRequest struct {
 
 func (x *UpdateAgentRequest) Reset() {
 	*x = UpdateAgentRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[11]
+	mi := &file_agent_v1_agent_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -795,7 +864,7 @@ func (x *UpdateAgentRequest) String() string {
 func (*UpdateAgentRequest) ProtoMessage() {}
 
 func (x *UpdateAgentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[11]
+	mi := &file_agent_v1_agent_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -808,7 +877,7 @@ func (x *UpdateAgentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateAgentRequest.ProtoReflect.Descriptor instead.
 func (*UpdateAgentRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{11}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *UpdateAgentRequest) GetId() string {
@@ -841,7 +910,7 @@ type UpdateAgentResponse struct {
 
 func (x *UpdateAgentResponse) Reset() {
 	*x = UpdateAgentResponse{}
-	mi := &file_agent_v1_agent_proto_msgTypes[12]
+	mi := &file_agent_v1_agent_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -853,7 +922,7 @@ func (x *UpdateAgentResponse) String() string {
 func (*UpdateAgentResponse) ProtoMessage() {}
 
 func (x *UpdateAgentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[12]
+	mi := &file_agent_v1_agent_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -866,7 +935,7 @@ func (x *UpdateAgentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateAgentResponse.ProtoReflect.Descriptor instead.
 func (*UpdateAgentResponse) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{12}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *UpdateAgentResponse) GetAgent() *Agent {
@@ -885,7 +954,7 @@ type DeleteAgentRequest struct {
 
 func (x *DeleteAgentRequest) Reset() {
 	*x = DeleteAgentRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[13]
+	mi := &file_agent_v1_agent_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -897,7 +966,7 @@ func (x *DeleteAgentRequest) String() string {
 func (*DeleteAgentRequest) ProtoMessage() {}
 
 func (x *DeleteAgentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[13]
+	mi := &file_agent_v1_agent_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -910,7 +979,7 @@ func (x *DeleteAgentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAgentRequest.ProtoReflect.Descriptor instead.
 func (*DeleteAgentRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{13}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *DeleteAgentRequest) GetId() string {
@@ -928,7 +997,7 @@ type DeleteAgentResponse struct {
 
 func (x *DeleteAgentResponse) Reset() {
 	*x = DeleteAgentResponse{}
-	mi := &file_agent_v1_agent_proto_msgTypes[14]
+	mi := &file_agent_v1_agent_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -940,7 +1009,7 @@ func (x *DeleteAgentResponse) String() string {
 func (*DeleteAgentResponse) ProtoMessage() {}
 
 func (x *DeleteAgentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[14]
+	mi := &file_agent_v1_agent_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -953,7 +1022,7 @@ func (x *DeleteAgentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAgentResponse.ProtoReflect.Descriptor instead.
 func (*DeleteAgentResponse) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{14}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{15}
 }
 
 type UpdateAgentDraftRequest struct {
@@ -966,7 +1035,7 @@ type UpdateAgentDraftRequest struct {
 
 func (x *UpdateAgentDraftRequest) Reset() {
 	*x = UpdateAgentDraftRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[15]
+	mi := &file_agent_v1_agent_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -978,7 +1047,7 @@ func (x *UpdateAgentDraftRequest) String() string {
 func (*UpdateAgentDraftRequest) ProtoMessage() {}
 
 func (x *UpdateAgentDraftRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[15]
+	mi := &file_agent_v1_agent_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -991,7 +1060,7 @@ func (x *UpdateAgentDraftRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateAgentDraftRequest.ProtoReflect.Descriptor instead.
 func (*UpdateAgentDraftRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{15}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *UpdateAgentDraftRequest) GetId() string {
@@ -1017,7 +1086,7 @@ type UpdateAgentDraftResponse struct {
 
 func (x *UpdateAgentDraftResponse) Reset() {
 	*x = UpdateAgentDraftResponse{}
-	mi := &file_agent_v1_agent_proto_msgTypes[16]
+	mi := &file_agent_v1_agent_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1029,7 +1098,7 @@ func (x *UpdateAgentDraftResponse) String() string {
 func (*UpdateAgentDraftResponse) ProtoMessage() {}
 
 func (x *UpdateAgentDraftResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[16]
+	mi := &file_agent_v1_agent_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1042,7 +1111,7 @@ func (x *UpdateAgentDraftResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateAgentDraftResponse.ProtoReflect.Descriptor instead.
 func (*UpdateAgentDraftResponse) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{16}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *UpdateAgentDraftResponse) GetAgent() *Agent {
@@ -1061,7 +1130,7 @@ type PublishAgentRequest struct {
 
 func (x *PublishAgentRequest) Reset() {
 	*x = PublishAgentRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[17]
+	mi := &file_agent_v1_agent_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1073,7 +1142,7 @@ func (x *PublishAgentRequest) String() string {
 func (*PublishAgentRequest) ProtoMessage() {}
 
 func (x *PublishAgentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[17]
+	mi := &file_agent_v1_agent_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1086,7 +1155,7 @@ func (x *PublishAgentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishAgentRequest.ProtoReflect.Descriptor instead.
 func (*PublishAgentRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{17}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *PublishAgentRequest) GetId() string {
@@ -1108,7 +1177,7 @@ type PublishAgentResponse struct {
 
 func (x *PublishAgentResponse) Reset() {
 	*x = PublishAgentResponse{}
-	mi := &file_agent_v1_agent_proto_msgTypes[18]
+	mi := &file_agent_v1_agent_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1120,7 +1189,7 @@ func (x *PublishAgentResponse) String() string {
 func (*PublishAgentResponse) ProtoMessage() {}
 
 func (x *PublishAgentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[18]
+	mi := &file_agent_v1_agent_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1133,7 +1202,7 @@ func (x *PublishAgentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishAgentResponse.ProtoReflect.Descriptor instead.
 func (*PublishAgentResponse) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{18}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *PublishAgentResponse) GetAgent() *Agent {
@@ -1168,7 +1237,7 @@ type ListAgentVersionsRequest struct {
 
 func (x *ListAgentVersionsRequest) Reset() {
 	*x = ListAgentVersionsRequest{}
-	mi := &file_agent_v1_agent_proto_msgTypes[19]
+	mi := &file_agent_v1_agent_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1180,7 +1249,7 @@ func (x *ListAgentVersionsRequest) String() string {
 func (*ListAgentVersionsRequest) ProtoMessage() {}
 
 func (x *ListAgentVersionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[19]
+	mi := &file_agent_v1_agent_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1193,7 +1262,7 @@ func (x *ListAgentVersionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAgentVersionsRequest.ProtoReflect.Descriptor instead.
 func (*ListAgentVersionsRequest) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{19}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ListAgentVersionsRequest) GetAgentId() string {
@@ -1219,7 +1288,7 @@ type ListAgentVersionsResponse struct {
 
 func (x *ListAgentVersionsResponse) Reset() {
 	*x = ListAgentVersionsResponse{}
-	mi := &file_agent_v1_agent_proto_msgTypes[20]
+	mi := &file_agent_v1_agent_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1231,7 +1300,7 @@ func (x *ListAgentVersionsResponse) String() string {
 func (*ListAgentVersionsResponse) ProtoMessage() {}
 
 func (x *ListAgentVersionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agent_v1_agent_proto_msgTypes[20]
+	mi := &file_agent_v1_agent_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1244,7 +1313,7 @@ func (x *ListAgentVersionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAgentVersionsResponse.ProtoReflect.Descriptor instead.
 func (*ListAgentVersionsResponse) Descriptor() ([]byte, []int) {
-	return file_agent_v1_agent_proto_rawDescGZIP(), []int{20}
+	return file_agent_v1_agent_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ListAgentVersionsResponse) GetVersions() []*AgentVersion {
@@ -1275,10 +1344,15 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	" \x01(\v2\x15.agent.v1.AgentConfigR\x05draft\x12+\n" +
 	"\x11published_version\x18\v \x01(\x05R\x10publishedVersion\x12D\n" +
 	"\x10draft_updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\x0edraftUpdatedAt\x12/\n" +
-	"\x13unpublished_changes\x18\r \x01(\bR\x12unpublishedChangesJ\x04\b\x02\x10\x03R\tpublic_id\"i\n" +
+	"\x13unpublished_changes\x18\r \x01(\bR\x12unpublishedChangesJ\x04\b\x02\x10\x03R\tpublic_id\"\xa9\x01\n" +
 	"\tAgentTool\x121\n" +
 	"\x04name\x18\x01 \x01(\tB\x1d\xbaH\x1ar\x182\x16^[a-zA-Z0-9_.-]{1,64}$R\x04name\x12)\n" +
-	"\x10require_approval\x18\x02 \x01(\bR\x0frequireApproval\"\xe3\x01\n" +
+	"\x10require_approval\x18\x02 \x01(\bR\x0frequireApproval\x12>\n" +
+	"\tfree_when\x18\x03 \x03(\v2\x17.agent.v1.FreeConditionB\b\xbaH\x05\x92\x01\x02\x10\bR\bfreeWhen\"\x8a\x01\n" +
+	"\rFreeCondition\x126\n" +
+	"\x03arg\x18\x01 \x01(\tB$\xbaH!r\x1f2\x1d^[A-Za-z_][A-Za-z0-9_]{0,63}$R\x03arg\x12)\n" +
+	"\x06values\x18\x02 \x03(\tB\x11\xbaH\x0e\x92\x01\v\x10\x10\"\ar\x05\x10\x01(\x80\x02R\x06values\x12\x16\n" +
+	"\x06absent\x18\x03 \x01(\bR\x06absent\"\xe3\x01\n" +
 	"\bMcpGrant\x12)\n" +
 	"\tserver_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\bserverId\x12\x91\x01\n" +
 	"\x05tools\x18\x02 \x03(\v2\x13.agent.v1.AgentToolBf\xbaHc\xba\x01[\n" +
@@ -1392,71 +1466,73 @@ func file_agent_v1_agent_proto_rawDescGZIP() []byte {
 	return file_agent_v1_agent_proto_rawDescData
 }
 
-var file_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_agent_v1_agent_proto_goTypes = []any{
 	(*Agent)(nil),                     // 0: agent.v1.Agent
 	(*AgentTool)(nil),                 // 1: agent.v1.AgentTool
-	(*McpGrant)(nil),                  // 2: agent.v1.McpGrant
-	(*AgentConfig)(nil),               // 3: agent.v1.AgentConfig
-	(*AgentVersion)(nil),              // 4: agent.v1.AgentVersion
-	(*CreateAgentRequest)(nil),        // 5: agent.v1.CreateAgentRequest
-	(*CreateAgentResponse)(nil),       // 6: agent.v1.CreateAgentResponse
-	(*GetAgentRequest)(nil),           // 7: agent.v1.GetAgentRequest
-	(*GetAgentResponse)(nil),          // 8: agent.v1.GetAgentResponse
-	(*ListAgentsRequest)(nil),         // 9: agent.v1.ListAgentsRequest
-	(*ListAgentsResponse)(nil),        // 10: agent.v1.ListAgentsResponse
-	(*UpdateAgentRequest)(nil),        // 11: agent.v1.UpdateAgentRequest
-	(*UpdateAgentResponse)(nil),       // 12: agent.v1.UpdateAgentResponse
-	(*DeleteAgentRequest)(nil),        // 13: agent.v1.DeleteAgentRequest
-	(*DeleteAgentResponse)(nil),       // 14: agent.v1.DeleteAgentResponse
-	(*UpdateAgentDraftRequest)(nil),   // 15: agent.v1.UpdateAgentDraftRequest
-	(*UpdateAgentDraftResponse)(nil),  // 16: agent.v1.UpdateAgentDraftResponse
-	(*PublishAgentRequest)(nil),       // 17: agent.v1.PublishAgentRequest
-	(*PublishAgentResponse)(nil),      // 18: agent.v1.PublishAgentResponse
-	(*ListAgentVersionsRequest)(nil),  // 19: agent.v1.ListAgentVersionsRequest
-	(*ListAgentVersionsResponse)(nil), // 20: agent.v1.ListAgentVersionsResponse
-	(*timestamppb.Timestamp)(nil),     // 21: google.protobuf.Timestamp
+	(*FreeCondition)(nil),             // 2: agent.v1.FreeCondition
+	(*McpGrant)(nil),                  // 3: agent.v1.McpGrant
+	(*AgentConfig)(nil),               // 4: agent.v1.AgentConfig
+	(*AgentVersion)(nil),              // 5: agent.v1.AgentVersion
+	(*CreateAgentRequest)(nil),        // 6: agent.v1.CreateAgentRequest
+	(*CreateAgentResponse)(nil),       // 7: agent.v1.CreateAgentResponse
+	(*GetAgentRequest)(nil),           // 8: agent.v1.GetAgentRequest
+	(*GetAgentResponse)(nil),          // 9: agent.v1.GetAgentResponse
+	(*ListAgentsRequest)(nil),         // 10: agent.v1.ListAgentsRequest
+	(*ListAgentsResponse)(nil),        // 11: agent.v1.ListAgentsResponse
+	(*UpdateAgentRequest)(nil),        // 12: agent.v1.UpdateAgentRequest
+	(*UpdateAgentResponse)(nil),       // 13: agent.v1.UpdateAgentResponse
+	(*DeleteAgentRequest)(nil),        // 14: agent.v1.DeleteAgentRequest
+	(*DeleteAgentResponse)(nil),       // 15: agent.v1.DeleteAgentResponse
+	(*UpdateAgentDraftRequest)(nil),   // 16: agent.v1.UpdateAgentDraftRequest
+	(*UpdateAgentDraftResponse)(nil),  // 17: agent.v1.UpdateAgentDraftResponse
+	(*PublishAgentRequest)(nil),       // 18: agent.v1.PublishAgentRequest
+	(*PublishAgentResponse)(nil),      // 19: agent.v1.PublishAgentResponse
+	(*ListAgentVersionsRequest)(nil),  // 20: agent.v1.ListAgentVersionsRequest
+	(*ListAgentVersionsResponse)(nil), // 21: agent.v1.ListAgentVersionsResponse
+	(*timestamppb.Timestamp)(nil),     // 22: google.protobuf.Timestamp
 }
 var file_agent_v1_agent_proto_depIdxs = []int32{
-	21, // 0: agent.v1.Agent.created_at:type_name -> google.protobuf.Timestamp
-	21, // 1: agent.v1.Agent.updated_at:type_name -> google.protobuf.Timestamp
-	3,  // 2: agent.v1.Agent.draft:type_name -> agent.v1.AgentConfig
-	21, // 3: agent.v1.Agent.draft_updated_at:type_name -> google.protobuf.Timestamp
-	1,  // 4: agent.v1.McpGrant.tools:type_name -> agent.v1.AgentTool
-	1,  // 5: agent.v1.AgentConfig.tools:type_name -> agent.v1.AgentTool
-	2,  // 6: agent.v1.AgentConfig.mcp_servers:type_name -> agent.v1.McpGrant
-	3,  // 7: agent.v1.AgentVersion.config:type_name -> agent.v1.AgentConfig
-	21, // 8: agent.v1.AgentVersion.created_at:type_name -> google.protobuf.Timestamp
-	0,  // 9: agent.v1.CreateAgentResponse.agent:type_name -> agent.v1.Agent
-	0,  // 10: agent.v1.GetAgentResponse.agent:type_name -> agent.v1.Agent
-	0,  // 11: agent.v1.ListAgentsResponse.agents:type_name -> agent.v1.Agent
-	0,  // 12: agent.v1.UpdateAgentResponse.agent:type_name -> agent.v1.Agent
-	3,  // 13: agent.v1.UpdateAgentDraftRequest.config:type_name -> agent.v1.AgentConfig
-	0,  // 14: agent.v1.UpdateAgentDraftResponse.agent:type_name -> agent.v1.Agent
-	0,  // 15: agent.v1.PublishAgentResponse.agent:type_name -> agent.v1.Agent
-	4,  // 16: agent.v1.PublishAgentResponse.version:type_name -> agent.v1.AgentVersion
-	4,  // 17: agent.v1.ListAgentVersionsResponse.versions:type_name -> agent.v1.AgentVersion
-	5,  // 18: agent.v1.AgentService.CreateAgent:input_type -> agent.v1.CreateAgentRequest
-	7,  // 19: agent.v1.AgentService.GetAgent:input_type -> agent.v1.GetAgentRequest
-	9,  // 20: agent.v1.AgentService.ListAgents:input_type -> agent.v1.ListAgentsRequest
-	11, // 21: agent.v1.AgentService.UpdateAgent:input_type -> agent.v1.UpdateAgentRequest
-	13, // 22: agent.v1.AgentService.DeleteAgent:input_type -> agent.v1.DeleteAgentRequest
-	15, // 23: agent.v1.AgentService.UpdateAgentDraft:input_type -> agent.v1.UpdateAgentDraftRequest
-	17, // 24: agent.v1.AgentService.PublishAgent:input_type -> agent.v1.PublishAgentRequest
-	19, // 25: agent.v1.AgentService.ListAgentVersions:input_type -> agent.v1.ListAgentVersionsRequest
-	6,  // 26: agent.v1.AgentService.CreateAgent:output_type -> agent.v1.CreateAgentResponse
-	8,  // 27: agent.v1.AgentService.GetAgent:output_type -> agent.v1.GetAgentResponse
-	10, // 28: agent.v1.AgentService.ListAgents:output_type -> agent.v1.ListAgentsResponse
-	12, // 29: agent.v1.AgentService.UpdateAgent:output_type -> agent.v1.UpdateAgentResponse
-	14, // 30: agent.v1.AgentService.DeleteAgent:output_type -> agent.v1.DeleteAgentResponse
-	16, // 31: agent.v1.AgentService.UpdateAgentDraft:output_type -> agent.v1.UpdateAgentDraftResponse
-	18, // 32: agent.v1.AgentService.PublishAgent:output_type -> agent.v1.PublishAgentResponse
-	20, // 33: agent.v1.AgentService.ListAgentVersions:output_type -> agent.v1.ListAgentVersionsResponse
-	26, // [26:34] is the sub-list for method output_type
-	18, // [18:26] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	22, // 0: agent.v1.Agent.created_at:type_name -> google.protobuf.Timestamp
+	22, // 1: agent.v1.Agent.updated_at:type_name -> google.protobuf.Timestamp
+	4,  // 2: agent.v1.Agent.draft:type_name -> agent.v1.AgentConfig
+	22, // 3: agent.v1.Agent.draft_updated_at:type_name -> google.protobuf.Timestamp
+	2,  // 4: agent.v1.AgentTool.free_when:type_name -> agent.v1.FreeCondition
+	1,  // 5: agent.v1.McpGrant.tools:type_name -> agent.v1.AgentTool
+	1,  // 6: agent.v1.AgentConfig.tools:type_name -> agent.v1.AgentTool
+	3,  // 7: agent.v1.AgentConfig.mcp_servers:type_name -> agent.v1.McpGrant
+	4,  // 8: agent.v1.AgentVersion.config:type_name -> agent.v1.AgentConfig
+	22, // 9: agent.v1.AgentVersion.created_at:type_name -> google.protobuf.Timestamp
+	0,  // 10: agent.v1.CreateAgentResponse.agent:type_name -> agent.v1.Agent
+	0,  // 11: agent.v1.GetAgentResponse.agent:type_name -> agent.v1.Agent
+	0,  // 12: agent.v1.ListAgentsResponse.agents:type_name -> agent.v1.Agent
+	0,  // 13: agent.v1.UpdateAgentResponse.agent:type_name -> agent.v1.Agent
+	4,  // 14: agent.v1.UpdateAgentDraftRequest.config:type_name -> agent.v1.AgentConfig
+	0,  // 15: agent.v1.UpdateAgentDraftResponse.agent:type_name -> agent.v1.Agent
+	0,  // 16: agent.v1.PublishAgentResponse.agent:type_name -> agent.v1.Agent
+	5,  // 17: agent.v1.PublishAgentResponse.version:type_name -> agent.v1.AgentVersion
+	5,  // 18: agent.v1.ListAgentVersionsResponse.versions:type_name -> agent.v1.AgentVersion
+	6,  // 19: agent.v1.AgentService.CreateAgent:input_type -> agent.v1.CreateAgentRequest
+	8,  // 20: agent.v1.AgentService.GetAgent:input_type -> agent.v1.GetAgentRequest
+	10, // 21: agent.v1.AgentService.ListAgents:input_type -> agent.v1.ListAgentsRequest
+	12, // 22: agent.v1.AgentService.UpdateAgent:input_type -> agent.v1.UpdateAgentRequest
+	14, // 23: agent.v1.AgentService.DeleteAgent:input_type -> agent.v1.DeleteAgentRequest
+	16, // 24: agent.v1.AgentService.UpdateAgentDraft:input_type -> agent.v1.UpdateAgentDraftRequest
+	18, // 25: agent.v1.AgentService.PublishAgent:input_type -> agent.v1.PublishAgentRequest
+	20, // 26: agent.v1.AgentService.ListAgentVersions:input_type -> agent.v1.ListAgentVersionsRequest
+	7,  // 27: agent.v1.AgentService.CreateAgent:output_type -> agent.v1.CreateAgentResponse
+	9,  // 28: agent.v1.AgentService.GetAgent:output_type -> agent.v1.GetAgentResponse
+	11, // 29: agent.v1.AgentService.ListAgents:output_type -> agent.v1.ListAgentsResponse
+	13, // 30: agent.v1.AgentService.UpdateAgent:output_type -> agent.v1.UpdateAgentResponse
+	15, // 31: agent.v1.AgentService.DeleteAgent:output_type -> agent.v1.DeleteAgentResponse
+	17, // 32: agent.v1.AgentService.UpdateAgentDraft:output_type -> agent.v1.UpdateAgentDraftResponse
+	19, // 33: agent.v1.AgentService.PublishAgent:output_type -> agent.v1.PublishAgentResponse
+	21, // 34: agent.v1.AgentService.ListAgentVersions:output_type -> agent.v1.ListAgentVersionsResponse
+	27, // [27:35] is the sub-list for method output_type
+	19, // [19:27] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_agent_v1_agent_proto_init() }
@@ -1470,7 +1546,7 @@ func file_agent_v1_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agent_v1_agent_proto_rawDesc), len(file_agent_v1_agent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

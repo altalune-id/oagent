@@ -35,6 +35,7 @@ func lookups() map[string]lookup {
 		"resolve_run_by_public_id(text)":                {"resolve_run_by_public_id('x')", []string{"id", "org_id", "project_id", "agent_id"}},
 		"resolve_channel_connection_by_public_id(text)": {"resolve_channel_connection_by_public_id('x')", []string{"id", "org_id", "project_id", "agent_id", "provider", "device_id", "status", "secured"}},
 		"resolve_end_user_by_public_id(text)":           {"resolve_end_user_by_public_id('x')", []string{"id", "org_id", "project_id"}},
+		"resolve_approval_by_public_id(text)":           {"resolve_approval_by_public_id('x')", []string{"id", "org_id", "project_id", "agent_id"}},
 		"resolve_invite_by_public_id(text)":             {"resolve_invite_by_public_id('x')", []string{"id", "public_id", "org_id", "email", "role", "draft", "invited_by", "expires_at", "accepted_at", "accepted_by", "revoked_at", "created_at", "updated_at"}},
 		"resolve_api_key_by_secret_hash(bytea)":         {"resolve_api_key_by_secret_hash('\\x00'::bytea)", []string{"id", "org_id", "project_id", "kind", "all_projects", "project_ids", "name", "secret_hint", "scopes", "resource_ids", "created_by", "created_at", "expires_at", "revoked_at", "last_used_at"}},
 	}
@@ -99,6 +100,12 @@ func TestLookups_ResolveTheMatchingRowOnly(t *testing.T) {
 	exec(`INSERT INTO `+s+`model_providers (id, public_id, org_id, project_id, name, kind, base_url, api_key_sealed, models, created_at, updated_at) VALUES ($1, 'r1', $2, $3, 'p', 'openai_compatible', 'https://e.com', '\x01', '[]', $4, $4)`, provider, other, project, now)
 	server := uuid.New()
 	exec(`INSERT INTO `+s+`mcp_servers (id, public_id, org_id, project_id, name, url, auth_kind, timeout_ms, trusted, created_at, updated_at) VALUES ($1, 's1', $2, $3, 'yasaku', 'https://e.com/mcp', 'none', 5000, false, $4, $4)`, server, other, project, now)
+	version, thread, run, approval := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	exec(`INSERT INTO `+s+`agent_versions (id, public_id, org_id, project_id, agent_id, version, config, created_at, kind) VALUES ($1, 'v1', $2, $3, $4, 1, '{}', $5, 'published')`, version, other, project, agent, now)
+	exec(`INSERT INTO `+s+`threads (id, public_id, org_id, project_id, agent_id, kind, external_key, created_at, updated_at) VALUES ($1, 't1', $2, $3, $4, 'api', 'k', $5, $5)`, thread, other, project, agent, now)
+	exec(`INSERT INTO `+s+`runs (id, public_id, org_id, project_id, thread_id, agent_version_id, status, started_at, created_at, updated_at) VALUES ($1, 'n1', $2, $3, $4, $5, 'awaiting_approval', $6, $6, $6)`, run, other, project, thread, version, now)
+	exec(`INSERT INTO `+s+`approvals (id, public_id, org_id, project_id, agent_id, run_id, thread_id, calls, preview, channel, raised_snapshot_hash, status, expires_at, created_at)
+		VALUES ($1, 'ap1', $2, $3, $4, $5, $6, '[{"tool":"t"}]', 'p', 'api', '\x01', 'pending', $7, $7)`, approval, other, project, agent, run, thread, now)
 	invite := uuid.New()
 	exec(`INSERT INTO `+s+`invites (id, public_id, org_id, email, role, token_hash, expires_at, created_at, updated_at, email_only) VALUES ($1, 'i1', $2, 'a@example.com', 'member', 'tok', $3, $3, $3, false)`, invite, other, now.Add(time.Hour))
 	exec(`INSERT INTO `+s+`api_keys (id, org_id, kind, all_projects, name, secret_hash, secret_hint, created_at) VALUES ($1, $2, 'org', true, 'k', '\x01'::bytea, 'abcd', $3)`, uuid.New(), other, now)
@@ -147,6 +154,8 @@ func TestLookups_ResolveTheMatchingRowOnly(t *testing.T) {
 	assert.Equal(t, []uuid.UUID{server}, ids(`SELECT * FROM `+s+`resolve_mcp_server_by_public_id($1)`, "s1"))
 	assert.Empty(t, ids(`SELECT * FROM `+s+`resolve_mcp_server_by_public_id($1)`, "nope"))
 	assert.Empty(t, ids(`SELECT * FROM `+s+`resolve_api_key_by_secret_hash($1)`, []byte{2}))
+	assert.Equal(t, []uuid.UUID{approval}, ids(`SELECT * FROM `+s+`resolve_approval_by_public_id($1)`, "ap1"))
+	assert.Empty(t, ids(`SELECT * FROM `+s+`resolve_approval_by_public_id($1)`, "nope"))
 }
 
 func TestLookups_TheServiceRoleMayExecuteThem(t *testing.T) {

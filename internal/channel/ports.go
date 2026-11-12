@@ -28,9 +28,9 @@ type Refs interface {
 type ReplyStore interface {
 	ReplyJob(ctx context.Context, runID uuid.UUID) (*run.ReplyJob, error)
 	DueReplies(ctx context.Context, now time.Time, limit int) ([]uuid.UUID, error)
-	ReplyProgress(ctx context.Context, runID uuid.UUID, partsSent int) error
-	ReplyRetry(ctx context.Context, runID uuid.UUID, next time.Time) error
-	ReplyEnd(ctx context.Context, runID uuid.UUID, state string) error
+	ReplyProgress(ctx context.Context, runID uuid.UUID, kind string, partsSent int) error
+	ReplyRetry(ctx context.Context, runID uuid.UUID, kind string, next time.Time) error
+	ReplyEnd(ctx context.Context, runID uuid.UUID, kind, state string) error
 }
 
 // Connections opens an active connection with its secrets and records a verified outcome; *Service implements it.

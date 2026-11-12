@@ -11,6 +11,7 @@ import (
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
+	"altalune.id/oagent/internal/approval"
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/channel"
 	"altalune.id/oagent/internal/channel/openwa"
@@ -71,6 +72,7 @@ type Services struct {
 	ChannelProvider channel.Provider
 	ChannelReplier  *channel.Replier
 	EndUsers        *enduser.Service
+	Approvals       *approval.Service
 	RunStore        run.Store
 	Runs            *run.Service
 	// RunTurns is the run-turns worker; RunKicker reaches it, through the queue when it is on.
@@ -248,6 +250,9 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		DefaultBaseURL: cfg.Channel.DefaultOpenwaBaseURL,
 		MaxMessageAge:  cfg.Channel.MaxMessageAge,
 	}
+	svcs.Approvals = approval.NewService(approval.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix), uow,
+		approvalRefs{publicIDs: newPublicIDs(svcs), svcs: svcs}, k.Reporter.Unexpected).
+		WithPublisher(webhooks).WithKicker(approvalKicker{svcs: svcs})
 	members.WithEffects(memberEffects(cfg, svcs)).WithDirectory(memberDirectory{users: users, orgs: orgs})
 	installer.WithTerms(svcs.Legal)
 	return svcs

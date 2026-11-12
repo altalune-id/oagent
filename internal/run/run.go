@@ -36,7 +36,7 @@ func Statuses() []Status {
 //nolint:gochecknoglobals // the fixed table of legal moves.
 var moves = map[Status][]Status{
 	StatusRunning: {
-		StatusCompleted, StatusLimitReached, StatusFailed, StatusCancelled, StatusInterrupted, StatusAwaitingApproval,
+		StatusCompleted, StatusLimitReached, StatusFailed, StatusCancelled, StatusInterrupted, StatusAwaitingApproval, StatusExpired,
 	},
 	StatusInterrupted:      {StatusRunning, StatusFailed, StatusCancelled},
 	StatusAwaitingApproval: {StatusRunning, StatusExpired, StatusCancelled},
@@ -70,7 +70,9 @@ type Run struct {
 	// Group marks a run of a group thread: no single person, so no memories reach it.
 	Group bool
 	// ReplyState is a channel run's reply: ReplyDue, ReplySent, ReplyFailed or ReplyNone; empty for an API or unsettled run.
-	ReplyState           string
+	ReplyState string
+	// ReplyKind is what a due channel reply sends: ReplyKindPrompt for an approval prompt, else empty (the run's reply).
+	ReplyKind            string
 	StartedAt, UpdatedAt time.Time
 	EndedAt              *time.Time
 }
@@ -100,3 +102,10 @@ func (r *Run) Move(to Status, now time.Time) error {
 	}
 	return nil
 }
+
+const (
+	// ReplyKindPrompt marks a due reply that is the approval prompt, which the sender builds from the approval.
+	ReplyKindPrompt = "prompt"
+	// ReplyKindExpired marks a due reply that tells the requester their approval expired.
+	ReplyKindExpired = "expired"
+)

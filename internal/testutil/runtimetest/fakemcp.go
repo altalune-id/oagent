@@ -14,15 +14,18 @@ import (
 
 // FakeMCP is a streamable HTTP MCP server with one tool that counts its calls.
 type FakeMCP struct {
-	srv   *httptest.Server
-	tool  string
-	calls atomic.Int32
+	srv     *httptest.Server
+	tool    string
+	calls   atomic.Int32
+	hold    atomic.Bool
+	held    chan struct{}
+	release chan struct{}
 }
 
 // NewFakeMCP starts the server on loopback with the one tool named tool.
 func NewFakeMCP(t *testing.T, tool string) *FakeMCP {
 	t.Helper()
-	m := &FakeMCP{tool: tool}
+	m := &FakeMCP{tool: tool, held: make(chan struct{}, 8), release: make(chan struct{})}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("runtimetest: fake MCP listen: %v", err)
@@ -31,8 +34,15 @@ func NewFakeMCP(t *testing.T, tool string) *FakeMCP {
 	m.srv.Listener = ln
 	m.srv.Start()
 	t.Cleanup(m.srv.Close)
+	t.Cleanup(func() { close(m.release) })
 	return m
 }
+
+// HoldCalls makes every later tools/call count, then block until its client goes away, as a crash mid-call would leave it.
+func (m *FakeMCP) HoldCalls() { m.hold.Store(true) }
+
+// Held receives once per tools/call that started blocking.
+func (m *FakeMCP) Held() <-chan struct{} { return m.held }
 
 // Port is the server's TCP port.
 func (m *FakeMCP) Port() int { return m.srv.Listener.Addr().(*net.TCPAddr).Port }
@@ -74,6 +84,14 @@ func (m *FakeMCP) serve(w http.ResponseWriter, r *http.Request) {
 		}}}
 	case "tools/call":
 		n := m.calls.Add(1)
+		if m.hold.Load() {
+			m.held <- struct{}{}
+			select {
+			case <-r.Context().Done():
+			case <-m.release:
+			}
+			return
+		}
 		result = map[string]any{"content": []any{map[string]any{"type": "text", "text": fmt.Sprintf(`{"id":"entry_%d"}`, n)}}}
 	default:
 		w.Header().Set("Content-Type", "application/json")

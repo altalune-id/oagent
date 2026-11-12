@@ -17,19 +17,8 @@ import (
 var goldenCases = []string{
 	"plain_reply", "tool_call", "mcp_server_down", "resume", "rebuild_from_history", "stored_result", "limit_reached", "cancel", "model_error", "resume_after_crash",
 	"image_input", "image_refused", "anthropic_reply",
-	"approval_interrupt", "approval_rule_broken", "approval_resume_approved", "approval_resume_rejected", "approval_hash_mismatch", "approval_absent_only",
-}
-
-var goldenVersions = map[string]int{
-	"approval_interrupt": 3, "approval_rule_broken": 3, "approval_resume_approved": 3, "approval_resume_rejected": 3, "approval_hash_mismatch": 3,
-	"approval_absent_only": 3,
-}
-
-func goldenVersion(name string) int {
-	if v, ok := goldenVersions[name]; ok {
-		return v
-	}
-	return ContractVersion
+	"approval_interrupt", "approval_rule_broken", "approval_resume_approved", "approval_resume_rejected", "approval_hash_mismatch",
+	"approval_absent_only",
 }
 
 func readGolden(t *testing.T, name string) []byte {
@@ -63,7 +52,7 @@ func TestGoldens_DecodeEveryCase(t *testing.T) {
 		t.Run(c, func(t *testing.T) {
 			req, err := DecodeRequest(readGolden(t, c+".request.json"))
 			require.NoError(t, err, "request")
-			assert.Equal(t, goldenVersion(c), req.ContractVersion)
+			assert.Equal(t, ContractVersion, req.ContractVersion)
 			for _, sr := range req.StoredResults {
 				assertToolResult(t, sr.Result)
 			}

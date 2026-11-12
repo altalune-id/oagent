@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -11,8 +12,10 @@ import (
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
+	"altalune.id/oagent/internal/approval"
 	"altalune.id/oagent/internal/dataplane"
 	"altalune.id/oagent/internal/enduser"
+	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/run"
 	"altalune.id/oagent/internal/user"
@@ -55,6 +58,7 @@ func newDataPlane(
 		Runner:    svcs.RunTurns,
 		Canceller: svcs.Runs,
 		Drafts:    dataPlaneDrafts{agents: svcs.Agents},
+		Approvals: dataPlaneApprovals{approvals: svcs.Approvals},
 		Limits: dataplane.Limits{
 			Limiter: lims.dataPlane, TrustedProxyHops: cfg.HTTP.TrustedProxyHops,
 			PerKey: dataplane.KeyRule(cfg.RateLimit.DataPlane.PerKeyPerMinute), PerIP: dataplane.IPRule(cfg.RateLimit.DataPlane.PerIPPerMinute),
@@ -145,4 +149,37 @@ func (k keyHints) KeyHint(ctx context.Context, keyID uuid.UUID) (string, error) 
 		return "", err
 	}
 	return key.SecretHint, nil
+}
+
+// NOTE: dataPlaneApprovals decides a resume[] as the caller with no kick: the POST holds the lease and runs the resumed run itself.
+type dataPlaneApprovals struct{ approvals *approval.Service }
+
+func (a dataPlaneApprovals) PendingForThread(ctx context.Context, threadID uuid.UUID) (*dataplane.PendingApproval, error) {
+	if a.approvals == nil {
+		return nil, nil
+	}
+	got, err := a.approvals.PendingForThread(ctx, threadID)
+	if approval.IsNotFoundError(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !got.ExpiresAt.After(time.Now()) {
+		return nil, nil
+	}
+	out := &dataplane.PendingApproval{ID: got.ID, PublicID: got.PublicID}
+	for _, c := range got.Calls {
+		out.Open = append(out.Open, c.ToolCallID)
+	}
+	return out, nil
+}
+
+func (a dataPlaneApprovals) Decide(ctx context.Context, id uuid.UUID, approved bool, text string) error {
+	via := approval.ViaConsole
+	if session.PrincipalFrom(ctx).Source == session.SourceAPIKey {
+		via = approval.ViaAPI
+	}
+	_, err := a.approvals.Decide(ctx, id, approval.Answer{Approved: approved, Text: text, By: approval.DeciderOf(ctx), Via: via})
+	return err
 }

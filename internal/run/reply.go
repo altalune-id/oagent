@@ -41,8 +41,17 @@ func (s *Service) reply(t *turn, final []Message) []Message {
 		default:
 			return withSetReply(r, final, t.texts.Failure)
 		}
-	case StatusCancelled, StatusAwaitingApproval:
+	case StatusAwaitingApproval:
+		// NOTE: the approval prompt goes out through the same sender as a reply, quoting the requester in a group.
+		r.ReplyState, r.ReplyKind = ReplyDue, ReplyKindPrompt
+	case StatusCancelled:
 		r.ReplyState = ReplyNone
+	case StatusExpired:
+		// NOTE: only a DM is told; the sender builds the text from the connection's approval_expired.
+		r.ReplyState = ReplyNone
+		if !group {
+			r.ReplyState, r.ReplyKind = ReplyDue, ReplyKindExpired
+		}
 	}
 	return final
 }

@@ -12,6 +12,7 @@ import (
 
 	"altalune.id/oagent/config"
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
+	approvalv1mcp "altalune.id/oagent/gen/go/approval/v1/approvalv1mcp"
 	authv1mcp "altalune.id/oagent/gen/go/auth/v1/authv1mcp"
 	channelv1mcp "altalune.id/oagent/gen/go/channel/v1/channelv1mcp"
 	enduserv1mcp "altalune.id/oagent/gen/go/enduser/v1/enduserv1mcp"
@@ -24,6 +25,7 @@ import (
 	threadv1mcp "altalune.id/oagent/gen/go/thread/v1/threadv1mcp"
 	webhookv1mcp "altalune.id/oagent/gen/go/webhook/v1/webhookv1mcp"
 	"altalune.id/oagent/internal/agent"
+	"altalune.id/oagent/internal/approval"
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/channel"
 	"altalune.id/oagent/internal/enduser"
@@ -63,6 +65,8 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger, allo
 	channelv1mcp.RegisterChannelServiceTools(registry, channels, permission.For, validate)
 	people := enduser.NewControlPlane(svcs.EndUsers, refs, endUserActivity{store: svcs.RunStore})
 	enduserv1mcp.RegisterEndUserServiceTools(registry, people, permission.For, validate)
+	approvals := approval.NewControlPlane(svcs.Approvals, approvalRefs{publicIDs: refs, svcs: svcs}, approvalNames{svcs: svcs})
+	approvalv1mcp.RegisterApprovalServiceTools(registry, approvals, permission.For, validate)
 	threads := run.NewControlPlane(svcs.Runs, refs, runPeople{users: svcs.EndUsers})
 	threadv1mcp.RegisterThreadServiceTools(registry, threads, permission.For, validate)
 	memberv1mcp.RegisterMemberServiceTools(registry, member.NewControlPlane(svcs.Members, refs), permission.For, validate)

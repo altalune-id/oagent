@@ -458,3 +458,23 @@ func TestTurnRunner_APIThreadSendsNoReply(t *testing.T) {
 		assert.Empty(t, sender.sent())
 	})
 }
+
+func TestTurnRunner_SendsTheApprovalPrompt(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newSvc(t)
+		_, conn := f.channel(t, "dm", true)
+		f.withTexts(conn)
+		f.withApprovals()
+		f.say(t, "record lunch 25000")
+		f.rt.Replies = append(f.rt.Replies, fakes.RuntimeReply{Stream: awaitStream(t, "call_1")})
+		sender := &replies{}
+		r := run.NewRunner(f.svc, f.store, runnerOpts()).WithReplies(sender)
+		stop := startRunner(t, r)
+		require.True(t, r.Offer(f.kick()))
+		done := f.waitRun(t, func(r *run.Run) bool { return r.Status == run.StatusAwaitingApproval })
+		synctest.Wait()
+		stop()
+		assert.Equal(t, run.ReplyKindPrompt, done.ReplyKind)
+		assert.Equal(t, []uuid.UUID{done.ID}, sender.sent(), "the prompt goes out right after the awaiting settle")
+	})
+}

@@ -2,6 +2,7 @@
 package agent
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -34,6 +35,9 @@ const (
 	maxTools        = 64
 	maxGrants       = 16
 	maxGrantTools   = 128
+	maxFreeWhen     = 8
+	maxFreeValues   = 16
+	maxFreeValueLen = 256
 )
 
 //nolint:gochecknoglobals // immutable compiled patterns.
@@ -42,6 +46,7 @@ var (
 	modelRe     = regexp.MustCompile(`^[A-Za-z0-9._:/-]*$`)
 	toolNameRe  = regexp.MustCompile(`^[a-zA-Z0-9_.-]{1,64}$`)
 	grantNameRe = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
+	argNameRe   = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,63}$`)
 )
 
 // Agent is an aggregate scoped to an organization and a project.
@@ -114,6 +119,26 @@ func (c Config) ServerIDs() []uuid.UUID {
 type Tool struct {
 	Name            string `json:"name"`
 	RequireApproval bool   `json:"require_approval,omitempty"`
+	// FreeWhen lets a call of a tool that requires approval run without asking when every condition holds.
+	FreeWhen []FreeCondition `json:"free_when,omitempty"`
+}
+
+// FreeCondition holds when argument Arg equals one of Values (canonical JSON), or is absent and Absent is set.
+type FreeCondition struct {
+	Arg    string            `json:"arg"`
+	Values []json.RawMessage `json:"values,omitempty"`
+	Absent bool              `json:"absent,omitempty"`
+}
+
+// Equal reports whether t and o are the same tool with the same approval rule.
+func (t Tool) Equal(o Tool) bool {
+	return t.Name == o.Name && t.RequireApproval == o.RequireApproval && slices.EqualFunc(t.FreeWhen, o.FreeWhen, FreeCondition.Equal)
+}
+
+// Equal reports whether c and o are the same condition; values compare byte for byte, as they are stored canonical.
+func (c FreeCondition) Equal(o FreeCondition) bool {
+	return c.Arg == o.Arg && c.Absent == o.Absent &&
+		slices.EqualFunc(c.Values, o.Values, func(a, b json.RawMessage) bool { return bytes.Equal(a, b) })
 }
 
 // Version is an immutable published Config of an agent; Version counts from 1 per agent.
@@ -176,8 +201,35 @@ func (c Config) Validate() error {
 			return invalid("tools", apperror.FieldInvalid)
 		}
 		seen[t.Name] = true
+		if reason, bad := validFreeWhen(t.FreeWhen); bad {
+			return invalid("tools.free_when", reason)
+		}
 	}
 	return c.validateGrants(invalid)
+}
+
+// NOTE: the same limits as the proto rules, for callers that do not pass through them (the CLI, a stored draft).
+func validFreeWhen(conds []FreeCondition) (apperror.FieldReason, bool) {
+	if len(conds) > maxFreeWhen {
+		return apperror.FieldTooMany, true
+	}
+	for _, c := range conds {
+		switch {
+		case !argNameRe.MatchString(c.Arg):
+			return apperror.FieldInvalidFormat, true
+		case len(c.Values) > maxFreeValues:
+			return apperror.FieldTooMany, true
+		}
+		for _, v := range c.Values {
+			switch {
+			case len(v) > maxFreeValueLen:
+				return apperror.FieldTooLong, true
+			case !json.Valid(v):
+				return apperror.FieldInvalidFormat, true
+			}
+		}
+	}
+	return "", false
 }
 
 func (c Config) validateGrants(invalid func(string, apperror.FieldReason) error) error {
@@ -203,6 +255,9 @@ func (c Config) validateGrants(invalid func(string, apperror.FieldReason) error)
 				return invalid("mcp_servers.tools", apperror.FieldInvalid)
 			}
 			names[t.Name] = true
+			if reason, bad := validFreeWhen(t.FreeWhen); bad {
+				return invalid("mcp_servers.tools.free_when", reason)
+			}
 		}
 		total += len(g.Tools)
 	}
@@ -215,10 +270,10 @@ func (c Config) validateGrants(invalid func(string, apperror.FieldReason) error)
 // Equal reports whether c and o run the same; a nil and an empty tool list are equal.
 func (c Config) Equal(o Config) bool {
 	return c.Instructions == o.Instructions && c.Model == o.Model && c.Temperature == o.Temperature &&
-		c.MaxSteps == o.MaxSteps && c.MaxCostCents == o.MaxCostCents && slices.Equal(c.Tools, o.Tools) &&
+		c.MaxSteps == o.MaxSteps && c.MaxCostCents == o.MaxCostCents && slices.EqualFunc(c.Tools, o.Tools, Tool.Equal) &&
 		c.ProviderID == o.ProviderID && c.HelperModel == o.HelperModel &&
 		slices.EqualFunc(c.MCPServers, o.MCPServers, func(a, b MCPGrant) bool {
-			return a.ServerID == b.ServerID && slices.Equal(a.Tools, b.Tools)
+			return a.ServerID == b.ServerID && slices.EqualFunc(a.Tools, b.Tools, Tool.Equal)
 		})
 }
 
@@ -486,7 +541,7 @@ func configToProto(c Config) *agentv1.AgentConfig {
 func toolsToProto(tools []Tool) []*agentv1.AgentTool {
 	out := make([]*agentv1.AgentTool, 0, len(tools))
 	for _, t := range tools {
-		out = append(out, &agentv1.AgentTool{Name: t.Name, RequireApproval: t.RequireApproval})
+		out = append(out, &agentv1.AgentTool{Name: t.Name, RequireApproval: t.RequireApproval, FreeWhen: freeWhenToProto(t.FreeWhen)})
 	}
 	return out
 }
@@ -497,7 +552,7 @@ func toolsFromProto(tools []*agentv1.AgentTool) []Tool {
 	}
 	out := make([]Tool, 0, len(tools))
 	for _, t := range tools {
-		out = append(out, Tool{Name: t.GetName(), RequireApproval: t.GetRequireApproval()})
+		out = append(out, Tool{Name: t.GetName(), RequireApproval: t.GetRequireApproval(), FreeWhen: freeWhenFromProto(t.GetFreeWhen())})
 	}
 	return out
 }

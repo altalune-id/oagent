@@ -77,8 +77,12 @@ type ReplyJob struct {
 	ConnectionID            uuid.UUID
 	Kind, To, QuoteID, Text string
 	State                   string
-	PartsSent, Attempts     int
-	EndedAt, NextAt         time.Time
+	// LastSeq is the thread's last message seq when the job was read; a prompt sent from it is answered only by later messages.
+	LastSeq int64
+	// ReplyKind is ReplyKindPrompt when the due reply is the approval prompt, else empty.
+	ReplyKind           string
+	PartsSent, Attempts int
+	EndedAt, NextAt     time.Time
 }
 
 // ReplyTexts are a channel connection's set replies.
@@ -133,6 +137,7 @@ type Thread struct {
 
 const (
 	threadKindAPI   = "api"
+	threadKindDM    = "dm"
 	threadKindGroup = "group"
 	threadKindTry   = "try"
 )
@@ -190,6 +195,17 @@ type ThreadSummary struct {
 	LastActivityAt time.Time
 	OpenRun        Status
 	Messages, Runs int64
+}
+
+// QuotedID is the provider id of the message this channel message quoted, empty when none.
+func (m Message) QuotedID() string {
+	var b struct {
+		Channel struct {
+			Quoted string `json:"quoted"`
+		} `json:"channel"`
+	}
+	_ = json.Unmarshal(m.Body, &b)
+	return b.Channel.Quoted
 }
 
 // AGUIBody is the message's AG-UI fields only. SECURITY: Go's own bookkeeping, such as a checkpoint's raw result, stays server-side.

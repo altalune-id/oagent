@@ -29,6 +29,7 @@ import (
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
+	"altalune.id/oagent/internal/approval"
 	"altalune.id/oagent/internal/channel"
 	"altalune.id/oagent/internal/enduser"
 	"altalune.id/oagent/internal/kernel/events"
@@ -74,6 +75,7 @@ type reachOrg struct {
 
 type reachIDs struct {
 	org, project, otherProject, agent, webhook, delivery, member, invite, keyHint, provider, server, thread, run, connection, endUser string
+	approval                                                                                                                          string
 }
 
 func (ids reachIDs) serviceID(service protoreflect.FullName) string {
@@ -94,6 +96,8 @@ func (ids reachIDs) serviceID(service protoreflect.FullName) string {
 		return ids.connection
 	case "enduser.v1.EndUserService":
 		return ids.endUser
+	case "approval.v1.ApprovalService":
+		return ids.approval
 	}
 	return ""
 }
@@ -136,6 +140,12 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 	}, "owk_probe")
 	require.NoError(t, err)
 	th, r, who := seedThread(inB, t, f, prj.ID, ag.ID)
+	apr, err := f.svcs.Approvals.Create(inB, approval.CreateInput{
+		OrgID: b.ID, ProjectID: prj.ID, AgentID: ag.ID, RunID: r.ID, ThreadID: th.ID, ThreadKind: th.Kind,
+		Calls:              []approval.Call{{ToolCallID: "call_1", InterruptID: "intr_1", Server: "yasaku", Tool: "record_expense", Args: []byte(`{"amount":1}`)}},
+		RaisedSnapshotHash: []byte{1},
+	})
+	require.NoError(t, err)
 	var delivery, deliveryID string
 	require.NoError(t, f.db.QueryRowContext(ctx, `SELECT public_id, id::text FROM outbox_entries WHERE target = $1`, hook.ID.String()).
 		Scan(&delivery, &deliveryID))
@@ -149,7 +159,7 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 	s.pub = reachIDs{
 		org: b.PublicID, project: prj.PublicID, otherProject: other.PublicID, agent: ag.PublicID, webhook: hook.PublicID, delivery: delivery,
 		member: u.PublicID, invite: c.Invite.PublicID, keyHint: hintOf(key), provider: provider.PublicID, server: server.PublicID,
-		thread: th.PublicID, run: r.PublicID, connection: conn.PublicID, endUser: who.PublicID,
+		thread: th.PublicID, run: r.PublicID, connection: conn.PublicID, endUser: who.PublicID, approval: apr.PublicID,
 	}
 	var keyID string
 	require.NoError(t, f.db.QueryRowContext(ctx, `SELECT id::text FROM api_keys WHERE org_id = $1 AND secret_hint = $2`, b.ID, hintOf(key)).Scan(&keyID))
@@ -157,6 +167,7 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 		org: b.ID.String(), project: prj.ID.String(), otherProject: other.ID.String(), agent: ag.ID.String(), webhook: hook.ID.String(),
 		delivery: deliveryID, member: u.ID.String(), invite: c.Invite.ID.String(), keyHint: keyID,
 		provider: provider.ID.String(), server: server.ID.String(), thread: th.ID.String(), run: r.ID.String(), connection: conn.ID.String(), endUser: who.ID.String(),
+		approval: apr.ID.String(),
 	}
 	return s
 }
@@ -360,9 +371,9 @@ func TestReach_UUIDsAndGarbageAreRefused(t *testing.T) {
 	f := newAPIFixture(t)
 	s := seedReach(t, f)
 	cookie, _, _ := f.personCookieIn(t, s.orgB, "b-owner@example.com", member.RoleOwner)
-	garbage := reachIDs{"nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope"}
+	garbage := reachIDs{"nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope"}
 	const unknownID = "unknwnunknwnunknwnabc"
-	unknown := reachIDs{unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, "zzzz", unknownID, unknownID, unknownID, unknownID, unknownID, unknownID}
+	unknown := reachIDs{unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, "zzzz", unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID}
 	before := s.snapshot(t, f)
 	for name, tc := range map[string]struct {
 		ids  reachIDs

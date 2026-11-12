@@ -30,7 +30,7 @@ const interrupt = {
   message: 'yasaku · record_expense\namount: 25000\naccount: cash',
   expiresAt: '2026-11-07T00:00:00Z',
   responseSchema: { type: 'object', properties: { approved: { type: 'boolean' }, text: { type: 'string' } }, required: ['approved'] },
-  metadata: { approval: 'apr_Q8wYk2HhT3mVz7XcLp' },
+  metadata: { approval: 'Ap4Q8wYk2HhT3mVz7XcLp' },
 };
 
 const interruptStream = [

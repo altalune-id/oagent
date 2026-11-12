@@ -121,11 +121,15 @@ func (l *safeLog) String() string {
 }
 
 type chStack struct {
-	hooks string
-	conn  *channel.Connection
-	logs  *safeLog
-	admin *sql.DB
-	sch   string
+	hooks    string
+	conn     *channel.Connection
+	logs     *safeLog
+	admin    *sql.DB
+	sch      string
+	svcs     *boot.Services
+	in       context.Context
+	agentID  uuid.UUID
+	provider uuid.UUID
 }
 
 func newChannelStack(t *testing.T, rt *runtimetest.Runtime, wa *fakeOpenWA) *chStack {
@@ -190,7 +194,7 @@ func newChannelStack(t *testing.T, rt *runtimetest.Runtime, wa *fakeOpenWA) *chS
 		stop()
 		<-done
 	})
-	return &chStack{hooks: hooks.URL, conn: conn, logs: logs, admin: admin, sch: schema}
+	return &chStack{hooks: hooks.URL, conn: conn, logs: logs, admin: admin, sch: schema, svcs: svcs, in: in, agentID: a.ID, provider: provider.ID}
 }
 
 func fixture(t *testing.T, name, msgID, body string, at time.Time) []byte {

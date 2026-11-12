@@ -2,6 +2,7 @@ package boot
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 
@@ -42,6 +43,8 @@ func buildRun(k kernel.Kernel, cfg config.Config, s *Services, limiter ratelimit
 		WithRateCap(run.RateCap{Limiter: limiter, PerMinute: cfg.Run.MaxPerMinutePerProject}).
 		WithTurnTimeout(cfg.Run.TurnTimeout).
 		WithMaxAttempts(cfg.Run.MaxAttempts).
+		WithApprovals(runApprovals{svcs: s}).
+		WithMeter(k.Meter).
 		WithLogger(orDiscard(log))
 	if s.EndUsers != nil {
 		svc.WithNames(endUserNames{users: s.EndUsers})
@@ -61,7 +64,7 @@ func buildRun(k kernel.Kernel, cfg config.Config, s *Services, limiter ratelimit
 	}).WithLogger(orDiscard(log)).WithWindows(store)
 	if s.Channels != nil {
 		svc.WithMedia(channel.Media{Service: s.Channels, Provider: s.ChannelProvider})
-		s.ChannelReplier = channel.NewReplier(s.Channels, store, s.ChannelProvider, orDiscard(log))
+		s.ChannelReplier = channel.NewReplier(s.Channels, store, s.ChannelProvider, orDiscard(log)).WithPrompts(approvalPrompts{svcs: s})
 		runner.WithReplies(s.ChannelReplier)
 	}
 	kicker := run.NewKicker(k.Queue, cfg.Queue.Enabled, runner)
@@ -92,10 +95,17 @@ type runAgents struct {
 
 func (a runAgents) Version(ctx context.Context, id uuid.UUID) (*run.AgentVersion, error) {
 	v, err := a.store.VersionByID(ctx, id)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		var out *run.AgentVersion
+		out, err = a.pinned(ctx, v)
+		if err == nil {
+			return out, nil
+		}
 	}
-	return a.pinned(ctx, v)
+	if agent.IsNotFoundError(err) {
+		return nil, fmt.Errorf("%w: %w", run.ErrResourceGone, err)
+	}
+	return nil, err
 }
 
 func (a runAgents) Latest(ctx context.Context, agentID uuid.UUID) (*run.AgentVersion, error) {
@@ -128,7 +138,11 @@ func (a runAgents) pinned(ctx context.Context, v *agent.Version) (*run.AgentVers
 	for _, g := range c.MCPServers {
 		grant := run.MCPGrant{ServerID: g.ServerID}
 		for _, t := range g.Tools {
-			grant.Tools = append(grant.Tools, run.ToolGrant{Name: t.Name, RequireApproval: t.RequireApproval})
+			tool := run.ToolGrant{Name: t.Name, RequireApproval: t.RequireApproval}
+			if len(t.FreeWhen) > 0 {
+				tool.FreeWhen, _ = json.Marshal(t.FreeWhen)
+			}
+			grant.Tools = append(grant.Tools, tool)
 		}
 		out.MCPServers = append(out.MCPServers, grant)
 	}
@@ -171,6 +185,9 @@ type runServers struct{ servers *mcpserver.Service }
 
 func (s runServers) Open(ctx context.Context, id uuid.UUID) (run.OpenedServer, error) {
 	srv, value, err := s.servers.Open(ctx, id)
+	if mcpserver.IsNotFoundError(err) {
+		return run.OpenedServer{}, fmt.Errorf("%w: %w", run.ErrResourceGone, err)
+	}
 	if err != nil {
 		return run.OpenedServer{}, err
 	}

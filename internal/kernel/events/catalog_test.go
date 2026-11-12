@@ -18,8 +18,15 @@ func TestCatalog(t *testing.T) {
 	_, ok = events.Lookup("nope")
 	assert.False(t, ok)
 
-	assert.Len(t, events.Subscribable(), 9)
-	assert.Len(t, events.All(), 10)
+	assert.Len(t, events.Subscribable(), 11)
+	assert.Len(t, events.All(), 12)
+	for _, t2 := range []events.Type{events.ApprovalRequested, events.ApprovalDecided} {
+		spec, ok := events.Lookup(t2)
+		assert.True(t, ok, t2)
+		assert.True(t, spec.Subscribable, t2)
+		assert.False(t, spec.OrgWide, t2)
+		assert.Equal(t, "v1", spec.APIVersion())
+	}
 	for _, t2 := range []events.Type{events.ChannelConnectionCreated, events.ChannelConnectionUpdated, events.ChannelConnectionDeleted} {
 		spec, ok := events.Lookup(t2)
 		assert.True(t, ok, t2)
@@ -56,6 +63,11 @@ func TestCheckPayload(t *testing.T) {
 	assert.NoError(t, events.CheckPayload(events.RunFailed, events.RunFailedV1{}))
 	assert.True(t, events.IsPayloadMismatchError(events.CheckPayload(events.RunCompleted, events.RunFailedV1{})))
 	assert.True(t, events.IsPayloadMismatchError(events.CheckPayload(events.RunFailed, events.RunCompletedV1{})))
+
+	assert.NoError(t, events.CheckPayload(events.ApprovalRequested, events.ApprovalRequestedV1{}))
+	assert.NoError(t, events.CheckPayload(events.ApprovalDecided, events.ApprovalDecidedV1{}))
+	assert.True(t, events.IsPayloadMismatchError(events.CheckPayload(events.ApprovalRequested, events.ApprovalDecidedV1{})))
+	assert.True(t, events.IsPayloadMismatchError(events.CheckPayload(events.ApprovalDecided, events.ApprovalRequestedV1{})))
 
 	assert.NoError(t, events.CheckPayload(events.ChannelConnectionCreated, events.ChannelConnectionCreatedV1{}))
 	assert.NoError(t, events.CheckPayload(events.ChannelConnectionUpdated, events.ChannelConnectionUpdatedV1{}))

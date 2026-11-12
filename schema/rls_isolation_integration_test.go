@@ -108,8 +108,8 @@ func rlsInserts() []rlsInsert {
 		}},
 		{"channel_connections", func(s string) string {
 			return `INSERT INTO ` + s + `.channel_connections (id, public_id, org_id, project_id, agent_id, provider, status, base_url, openwa_org, openwa_project, device_id,
-				signing_secret_primary_sealed, device_key_sealed, reply_failure, reply_voice, reply_photo_unreadable, created_at, updated_at)
-				VALUES ($1, $2, $3, $4, $5, 'openwa', 'active', 'https://wa.example.com', 'acme', 'main', $6, '\x01', '\x02', 'f', 'v', 'p', $7, $7)`
+				signing_secret_primary_sealed, device_key_sealed, reply_failure, reply_voice, reply_photo_unreadable, approval_prompt, approval_expired, created_at, updated_at)
+				VALUES ($1, $2, $3, $4, $5, 'openwa', 'active', 'https://wa.example.com', 'acme', 'main', $6, '\x01', '\x02', 'f', 'v', 'p', 'ap', 'ae', $7, $7)`
 		}, func(tn rlsTenant, _ string) []any {
 			return []any{tn.connection, "c" + id()[:12], tn.org, tn.project, tn.agent, "dev_" + id()[:8], now}
 		}},
@@ -132,6 +132,12 @@ func rlsInserts() []rlsInsert {
 			return `INSERT INTO ` + s + `.messages (id, org_id, project_id, thread_id, seq, role, body, speaker_id, status, run_id, created_at) VALUES ($1, $2, $3, $4, 1, 'user', '{}', $5, 'consumed', $6, $7)`
 		}, func(tn rlsTenant, _ string) []any {
 			return []any{uuid.New(), tn.org, tn.project, tn.thread, tn.endUser, tn.run, now}
+		}},
+		{"approvals", func(s string) string {
+			return `INSERT INTO ` + s + `.approvals (id, public_id, org_id, project_id, agent_id, run_id, thread_id, calls, preview, channel, raised_snapshot_hash,
+				status, expires_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, '[{"tool":"t"}]', 'p', 'api', '\x01', 'pending', $8, $8)`
+		}, func(tn rlsTenant, _ string) []any {
+			return []any{uuid.New(), "a" + id()[:12], tn.org, tn.project, tn.agent, tn.run, tn.thread, now}
 		}},
 		{"thread_snapshots", func(s string) string {
 			return `INSERT INTO ` + s + `.thread_snapshots (thread_id, org_id, project_id, agent_version_id, sdk_version, blob, updated_at) VALUES ($1, $2, $3, $4, '1.0.0', '\x01', $5)`
@@ -265,7 +271,7 @@ func TestRLS_EveryOrgOwnedTableIsolatesTenants(t *testing.T) {
 			assert.Positive(t, before)
 		})
 	}
-	assert.Equal(t, 21, tables, "every org-owned table is covered")
+	assert.Equal(t, 22, tables, "every org-owned table is covered")
 }
 
 // SECURITY: a user-only scope reads its own memberships and orgs, but every write needs the org itself.

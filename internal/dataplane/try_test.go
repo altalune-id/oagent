@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -52,12 +53,13 @@ const (
 	bob      = "bob"
 	viewer   = "viewer"
 	stranger = "stranger"
+	decider  = "decider"
 )
 
-func newTryPlane(t *testing.T) *tryPlane {
+func newTryPlane(t *testing.T, opts ...func(*dataplane.Deps)) *tryPlane {
 	t.Helper()
 	tp := &tryPlane{drafts: &drafts{}, draftID: uuid.New()}
-	tp.plane = newPlane(t, 4, func(d *dataplane.Deps) { d.Drafts = tp.drafts })
+	tp.plane = newPlane(t, 4, append([]func(*dataplane.Deps){func(d *dataplane.Deps) { d.Drafts = tp.drafts }}, opts...)...)
 	published := tp.agents.Versions[tp.version]
 	draft := *published
 	draft.ID, draft.Version, draft.Draft = tp.draftID, 0, true
@@ -71,6 +73,7 @@ func newTryPlane(t *testing.T) *tryPlane {
 		bob:      person(tp.org, scope.RunCreate, scope.RunRead),
 		viewer:   person(tp.org, scope.RunRead),
 		stranger: person(uuid.New(), scope.RunCreate, scope.RunRead),
+		decider:  person(tp.org, scope.RunCreate, scope.RunRead, scope.ApprovalDecide),
 	}
 	mux := http.NewServeMux()
 	for pattern, route := range tp.handler.TryRoutes() {
@@ -194,4 +197,31 @@ func TestTry_CancelAndMessagesAreTheMembersOwn(t *testing.T) {
 		"cancel needs run:create")
 	assert.Equal(t, http.StatusNotFound, tp.do(t, bob, http.MethodPost, "/agents/AGENTpub/try/runs/"+r.PublicID+"/cancel", "").StatusCode)
 	assert.Equal(t, http.StatusAccepted, tp.do(t, alice, http.MethodPost, "/agents/AGENTpub/try/runs/"+r.PublicID+"/cancel", "").StatusCode)
+}
+
+func TestTry_ResumeStreamsTheContinuation(t *testing.T) {
+	ap := &approvals{ra: &fakes.RunApprovals{}}
+	tp := newTryPlane(t, func(d *dataplane.Deps) { d.Approvals = ap })
+	ap.store = tp.store
+	tp.svc.WithApprovals(ap.ra)
+	tp.rt.Replies = append(tp.rt.Replies, fakes.RuntimeReply{Stream: approvalStream(t)})
+	resp := tp.do(t, decider, http.MethodPost, "/agents/AGENTpub/try/runs", body("try-1", "record lunch 25000"))
+	require.Equal(t, http.StatusOK, resp.StatusCode, resp.Body)
+	assert.Contains(t, resp.Body, `"outcome":{"type":"interrupt"`)
+	require.Eventually(t, func() bool {
+		runs := tp.store.AllRuns()
+		return len(runs) == 1 && runs[0].Status == run.StatusAwaitingApproval && tp.store.LeaseOwner(runs[0].ThreadID) == ""
+	}, 5*time.Second, 10*time.Millisecond)
+
+	again := tp.do(t, decider, http.MethodPost, "/agents/AGENTpub/try/runs", body("try-1", "and another"))
+	require.Equal(t, http.StatusConflict, again.StatusCode, "a try thread waits on its approval too")
+
+	tp.reply(t)
+	resp = tp.do(t, decider, http.MethodPost, "/agents/AGENTpub/try/runs",
+		`{"threadId":"try-1","messages":[],"resume":[{"interruptId":"call_1","status":"resolved","payload":{"approved":true}}]}`)
+	require.Equal(t, http.StatusOK, resp.StatusCode, resp.Body)
+	assert.Contains(t, resp.Body, "RUN_FINISHED", "the Try it page streams the resumed run live")
+	assert.Equal(t, []bool{true}, ap.decided)
+	r := tp.settled(t)
+	assert.Equal(t, run.StatusCompleted, r.Status)
 }

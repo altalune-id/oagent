@@ -67,7 +67,8 @@ Pick the shape first:
    Cadence, jitter and timeout are package constants. `Run` returns its error; the runner reports it.
 
 2. Register it in `buildScheduler` (`internal/boot/schedulers.go`). The runner itself is one worker, on when `scheduler.enabled` and not turned off by `serve --no-scheduler` or consumer-only; `serve --scheduler-only` runs it alone.
-3. `ScopeTenant` needs `scheduler.Options.Tenants` and `Singleton` needs `Options.Locker`; `schedulerConfig` sets neither today, so the first job that needs one wires it there.
+3. `ScopeTenant` needs `scheduler.Options.Tenants`, which `buildScheduler` sets (`outboxTenants`); each run gets the org bound on its ctx (`run-sweep`, `approval-expire`). `Singleton` needs `Options.Locker`, which nothing sets yet, so the first job that needs one wires it there.
+4. A job that changes rows a worker acts on reuses the owning service's one write path and wakes the worker itself (`approval-expire` calls `approval.Service`'s expiry and kicks the thread); it never adds a second path.
 
 ## Build: a queue handler
 

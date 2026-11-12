@@ -1,6 +1,7 @@
 package fakes
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"slices"
@@ -39,6 +40,8 @@ type RunStore struct {
 	CheckpointErr, SettleErr error
 	// ResumeGone makes a resume find its run no longer interrupted.
 	ResumeGone bool
+	// LeaseStolen makes every lease check fail, as if another claim took the thread.
+	LeaseStolen bool
 	// ClaimRefused makes every Claim lose, as a project at its concurrency cap does.
 	ClaimRefused bool
 	// ExternalKeys and Actors hold each API thread's key and bound end user.
@@ -140,6 +143,12 @@ func (f *RunStore) fenced(ctx context.Context, id uuid.UUID, token string) (*Run
 
 func (f *RunStore) append(id uuid.UUID, th *RunThread, msgs []run.Message) {
 	for _, m := range msgs {
+		if m.ToolCallID != "" && m.RunID != nil && slices.ContainsFunc(f.Messages, func(o run.Message) bool {
+			return o.RunID != nil && *o.RunID == *m.RunID && o.ToolCallID == m.ToolCallID
+		}) {
+			th.NextSeq++
+			continue
+		}
 		if m.ID == uuid.Nil {
 			m.ID = uuid.New()
 		}
@@ -416,7 +425,7 @@ func (f *RunStore) OpenRun(ctx context.Context, threadID uuid.UUID) (*run.Run, e
 		return nil, err
 	}
 	for _, r := range f.Runs {
-		if r.ThreadID == threadID && r.Status == run.StatusInterrupted {
+		if r.ThreadID == threadID && (r.Status == run.StatusInterrupted || r.Status == run.StatusAwaitingApproval) {
 			out := *r
 			return &out, nil
 		}
@@ -462,6 +471,28 @@ func (f *RunStore) StartRun(ctx context.Context, token string, r *run.Run) ([]ru
 	if key := run.IdempotencyKeyOf(taken); key != "" && r.Attempt == 1 && r.IdempotencyKey == "" {
 		r.IdempotencyKey = key
 		f.Runs[r.ID].IdempotencyKey = key
+	}
+	return taken, nil
+}
+
+// ResumeApproval implements run.Store.
+func (f *RunStore) ResumeApproval(ctx context.Context, token string, r *run.Run) ([]run.Message, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, err := f.fenced(ctx, r.ThreadID, token); err != nil {
+		return nil, err
+	}
+	cur, ok := f.Runs[r.ID]
+	if !ok || cur.Status != run.StatusAwaitingApproval {
+		return nil, run.ErrNothingPending
+	}
+	saved := *r
+	f.Runs[r.ID] = &saved
+	var taken []run.Message
+	for _, m := range f.Messages {
+		if m.RunID != nil && *m.RunID == r.ID && m.ToolCallID == "" {
+			taken = append(taken, m)
+		}
 	}
 	return taken, nil
 }
@@ -519,7 +550,7 @@ func (f *RunStore) StoredResults(_ context.Context, runID uuid.UUID) ([]run.Stor
 
 // Settle implements run.Store.
 func (f *RunStore) Settle(ctx context.Context, token string, r *run.Run, u run.Usage, final []run.Message) error {
-	if !r.Status.Terminal() && r.Status != run.StatusInterrupted {
+	if !r.Status.Terminal() && r.Status != run.StatusInterrupted && r.Status != run.StatusAwaitingApproval {
 		return &run.UnsettledError{Status: r.Status}
 	}
 	f.mu.Lock()
@@ -623,6 +654,53 @@ func (f *RunStore) HasPending(ctx context.Context, threadID uuid.UUID) (bool, er
 	return slices.ContainsFunc(f.Messages, func(m run.Message) bool {
 		return m.ThreadID == threadID && m.Status == run.MessagePending
 	}), nil
+}
+
+// PendingMessages implements run.Store in channel order.
+func (f *RunStore) PendingMessages(ctx context.Context, threadID, speaker uuid.UUID, afterSeq int64, limit int) ([]run.Message, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, err := f.thread(ctx, threadID); err != nil {
+		return nil, err
+	}
+	var out []run.Message
+	for _, m := range f.Messages {
+		if m.ThreadID == threadID && m.Status == run.MessagePending && m.SpeakerID != nil && *m.SpeakerID == speaker && m.Seq > afterSeq {
+			out = append(out, m)
+		}
+	}
+	slices.SortStableFunc(out, func(a, b run.Message) int {
+		switch {
+		case a.ChannelTime == nil && b.ChannelTime == nil:
+			return cmp.Compare(a.Seq, b.Seq)
+		case a.ChannelTime == nil:
+			return 1
+		case b.ChannelTime == nil:
+			return -1
+		}
+		if c := a.ChannelTime.Compare(*b.ChannelTime); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.Seq, b.Seq)
+	})
+	return out[:min(len(out), max(limit, 1))], nil
+}
+
+// AnswerMessage implements run.Store.
+func (f *RunStore) AnswerMessage(ctx context.Context, _ string, threadID, msgID, runID uuid.UUID) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, err := f.thread(ctx, threadID); err != nil {
+		return err
+	}
+	for i := range f.Messages {
+		m := &f.Messages[i]
+		if m.ID == msgID && m.ThreadID == threadID && m.Status == run.MessagePending {
+			m.Status, m.RunID = run.MessageConsumed, &runID
+			return nil
+		}
+	}
+	return run.ErrNothingPending
 }
 
 // RunByID implements run.Store.
@@ -876,4 +954,18 @@ func (f *RunStore) EndUserThreads(ctx context.Context, id uuid.UUID) ([]run.Thre
 		out = append(out, run.ThreadSummary{Thread: *th})
 	}
 	return out, nil
+}
+
+// HoldLease implements run.Store; LeaseStolen fails it.
+func (f *RunStore) HoldLease(ctx context.Context, token string, threadID uuid.UUID) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	th, err := f.thread(ctx, threadID)
+	if err != nil {
+		return err
+	}
+	if f.LeaseStolen || th.LeaseOwner != token {
+		return &run.LeaseLostError{ThreadID: threadID.String()}
+	}
+	return nil
 }

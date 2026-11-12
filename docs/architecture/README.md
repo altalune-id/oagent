@@ -81,13 +81,13 @@ Only the connection, its drivers, boot and the test helpers import a backend lib
 
 ## Domains
 
-Each domain is a package under `internal/`: `org` (with `org/member` and `org/invite`), `project`, `agent`, `modelprovider`, `mcpserver`, `enduser`, `run`, `apikey`, `webhook`, `user`, `auth`, `install`, `legal`, `health`. `enduser` holds the people agents talk to and their identities per project. `run` holds threads, messages, snapshots and runs: the ordered inbox, the thread lease, the turn runner and the run's usage and cost. Each uses only the files it needs: `<domain>.go`, `errors.go`, `ports.go`, `store.go` + `pg*.go`, `service.go`, then one file per surface (`controlplane.go`, `cli.go`, `web.go`), with templ views in `<domain>/views`. See [module.md](../howto/module.md).
+Each domain is a package under `internal/`: `org` (with `org/member` and `org/invite`), `project`, `agent`, `modelprovider`, `mcpserver`, `enduser`, `run`, `approval`, `apikey`, `webhook`, `user`, `auth`, `install`, `legal`, `health`. `enduser` holds the people agents talk to and their identities per project. `run` holds threads, messages, snapshots and runs: the ordered inbox, the thread lease, the turn runner and the run's usage and cost. `approval` holds a run's gated tool calls waiting on a person: one pending approval per thread, a single-use decision from WhatsApp, the console, MCP or the API, expiry by the `approval-expire` job, and each call's state so an approved call runs at most once. Each uses only the files it needs: `<domain>.go`, `errors.go`, `ports.go`, `store.go` + `pg*.go`, `service.go`, then one file per surface (`controlplane.go`, `cli.go`, `web.go`), with templ views in `<domain>/views`. See [module.md](../howto/module.md).
 
 Other internal packages: `permission` (the permission each RPC needs), `apiclient` (the CLI's Connect client), `prompt` (stdin prompts), `render` (CLI output), `mcp` (MCP auth and payloads).
 
 ## Root packages
 
-Packages at the repo root never import `internal/`: `apperror` (error codes, `codes.json`), `config`, the connections `pg`, `nats` and `redis`, `migrator`, `mailer` (+ console, smtp, resend), `worker`, `scheduler`, `httpclient`, `httpserver`, `mcp`, `password`, `sealer`, `nanoid`, `slug`, `weburl`, `scope`, `reqid`, `telemetry`, `version`.
+Packages at the repo root never import `internal/`: `apperror` (error codes, `codes.json`), `config`, the connections `pg`, `nats` and `redis`, `migrator`, `mailer` (+ console, smtp, resend), `worker`, `scheduler`, `httpclient`, `httpserver`, `mcp`, `password`, `sealer`, `nanoid`, `slug`, `weburl`, `canonjson` (canonical JSON, byte for byte the runtime's), `scope`, `reqid`, `telemetry`, `version`.
 
 ## UI builds
 

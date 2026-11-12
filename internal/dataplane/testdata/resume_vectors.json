@@ -1,0 +1,26 @@
+{
+  "about": "Decode rules for RunAgentInput.resume[] against a pending approval's open interrupt ids. Read by Go's dataplane decoder test and the runtime's AG-UI conformance test. want: ok, APR004 (missing lists the unanswered ids), APR005, or invalid (400 with a field).",
+  "vectors": [
+    { "name": "every open interrupt resolved", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "status": "resolved", "payload": { "approved": true, "text": "fine" } }], "want": "ok", "approved": true },
+    { "name": "cancelled means reject", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "status": "cancelled" }], "want": "ok", "approved": false },
+    { "name": "resolved without text", "open": ["call_1", "call_2"], "resume": [{ "interruptId": "call_2", "status": "resolved", "payload": { "approved": true } }, { "interruptId": "call_1", "status": "resolved", "payload": { "approved": true } }], "want": "ok", "approved": true },
+    { "name": "one rejects, so the approval rejects", "open": ["call_1", "call_2"], "resume": [{ "interruptId": "call_1", "status": "resolved", "payload": { "approved": true } }, { "interruptId": "call_2", "status": "resolved", "payload": { "approved": false, "text": "not this one" } }], "want": "ok", "approved": false },
+    { "name": "metadata is allowed", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "status": "resolved", "payload": { "approved": true }, "metadata": { "source": "widget" } }], "want": "ok", "approved": true },
+    { "name": "edited args are refused", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "status": "resolved", "payload": { "approved": true, "editedArgs": { "amount": 1 } } }], "want": "APR005" },
+    { "name": "resolved needs payload.approved", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "status": "resolved", "payload": {} }], "want": "invalid", "field": "resume.payload.approved" },
+    { "name": "payload.text must be a string", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "status": "resolved", "payload": { "approved": true, "text": 5 } }], "want": "invalid", "field": "resume.payload.text" },
+    { "name": "an unknown status", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "status": "maybe" }], "want": "invalid", "field": "resume.status" },
+    { "name": "an unknown entry key", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "status": "cancelled", "extra": 1 }], "want": "invalid", "field": "resume.extra" },
+    { "name": "a partial resume", "open": ["call_1", "call_2"], "resume": [{ "interruptId": "call_1", "status": "cancelled" }], "want": "APR004", "missing": ["call_2"] },
+    { "name": "an empty resume", "open": ["call_1"], "resume": [], "want": "APR004", "missing": ["call_1"] },
+    { "name": "an id that is not open", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "status": "cancelled" }, { "interruptId": "call_9", "status": "cancelled" }], "want": "invalid", "field": "resume.interruptId" },
+    { "name": "a payload key that only matches by case is an edit", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "status": "resolved", "payload": { "approved": false, "Approved": true } }], "want": "APR005" },
+    { "name": "a duplicated payload key", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "status": "resolved", "payload": { "approved": false, "approved": true } }], "want": "invalid", "field": "resume.payload" },
+    { "name": "an entry key that only matches by case", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "Status": "resolved", "status": "cancelled" }], "want": "invalid", "field": "resume.Status" },
+    { "name": "a duplicated entry key", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "status": "resolved", "status": "cancelled" }], "want": "invalid", "field": "resume" },
+    { "name": "approved: null is refused, never a reject", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "status": "resolved", "payload": { "approved": null } }], "want": "invalid", "field": "resume.payload.approved" },
+    { "name": "two payload faults: keys are checked in sorted order, so the case-only key wins", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "status": "resolved", "payload": { "approved": "yes", "Approved": true } }], "want": "APR005" },
+    { "name": "two entry faults: keys are checked in sorted order", "open": ["call_1"], "resume": [{ "interruptId": 5, "status": "cancelled", "Extra": 1 }], "want": "invalid", "field": "resume.Extra" },
+    { "name": "an id answered twice", "open": ["call_1"], "resume": [{ "interruptId": "call_1", "status": "cancelled" }, { "interruptId": "call_1", "status": "cancelled" }], "want": "invalid", "field": "resume.interruptId" }
+  ]
+}

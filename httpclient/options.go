@@ -17,6 +17,12 @@ type settings struct {
 	noTimeout         bool
 	noProxy           bool
 	retry             RetryPolicy
+	idleConnTimeout   time.Duration
+}
+
+// WithIdleConnTimeout closes a pooled connection after d idle; keep it below the server's keep-alive timeout.
+func WithIdleConnTimeout(d time.Duration) Option {
+	return func(s *settings) { s.idleConnTimeout = d }
 }
 
 // WithoutProxy ignores HTTP_PROXY and HTTPS_PROXY. SECURITY: use it for clients whose request bodies carry secrets.

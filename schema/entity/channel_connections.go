@@ -28,6 +28,8 @@ type ChannelConnections struct {
 	LastResult                   postgres.ColumnString
 	LastResultAt                 postgres.ColumnTimestampz
 	LastBadSignatureAt           postgres.ColumnTimestampz
+	ApprovalPrompt               postgres.ColumnString
+	ApprovalExpired              postgres.ColumnString
 	CreatedAt                    postgres.ColumnTimestampz
 	UpdatedAt                    postgres.ColumnTimestampz
 
@@ -64,10 +66,13 @@ func NewChannelConnections(schema, tablePrefix string) *ChannelConnections {
 		lastBadSignatureAt           = postgres.TimestampzColumn("last_bad_signature_at")
 		createdAt                    = postgres.TimestampzColumn("created_at")
 		updatedAt                    = postgres.TimestampzColumn("updated_at")
+		approvalPrompt               = postgres.StringColumn("approval_prompt")
+		approvalExpired              = postgres.StringColumn("approval_expired")
 		all                          = postgres.ColumnList{
 			id, publicID, orgID, projectID, agentID, provider, status, baseURL, openwaOrg, openwaProject, deviceID,
 			signingSecretPrimarySealed, signingSecretSecondarySealed, deviceKeySealed, quietWindowMS, quietMaxMS, replyFailure,
 			replyVoice, replyPhotoUnreadable, lastResult, lastResultAt, lastBadSignatureAt, createdAt, updatedAt,
+			approvalPrompt, approvalExpired,
 		}
 	)
 	return &ChannelConnections{
@@ -96,6 +101,8 @@ func NewChannelConnections(schema, tablePrefix string) *ChannelConnections {
 		LastBadSignatureAt:           lastBadSignatureAt,
 		CreatedAt:                    createdAt,
 		UpdatedAt:                    updatedAt,
+		ApprovalPrompt:               approvalPrompt,
+		ApprovalExpired:              approvalExpired,
 		AllColumns:                   all,
 	}
 }

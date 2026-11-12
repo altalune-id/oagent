@@ -18,6 +18,12 @@ type Reader interface {
 	Thread(ctx context.Context, threadID uuid.UUID) (*Thread, error)
 	History(ctx context.Context, threadID, exceptRun uuid.UUID) ([]Message, error)
 	HasPending(ctx context.Context, threadID uuid.UUID) (bool, error)
+	// PendingMessages lists speaker's pending messages in a thread after seq afterSeq, in channel order, at most limit.
+	PendingMessages(ctx context.Context, threadID, speaker uuid.UUID, afterSeq int64, limit int) ([]Message, error)
+	// HoldLease fails with a *LeaseLostError unless token still holds the thread's lease, taking the thread lock in ctx's unit of work.
+	HoldLease(ctx context.Context, token string, threadID uuid.UUID) error
+	// AnswerMessage consumes pending message msgID into runID, under the thread's lease token.
+	AnswerMessage(ctx context.Context, token string, threadID, msgID, runID uuid.UUID) error
 	ThreadByExternalKey(ctx context.Context, agentID uuid.UUID, externalKey string) (*Thread, error)
 	TryThreadByExternalKey(ctx context.Context, agentID uuid.UUID, externalKey string) (*Thread, error)
 	RunByPublicID(ctx context.Context, publicID string) (*Run, error)
@@ -52,6 +58,8 @@ type Writer interface {
 	Heartbeat(ctx context.Context, threadID uuid.UUID, token string, ttl time.Duration) (cancel bool, err error)
 	Release(ctx context.Context, threadID uuid.UUID, token string) error
 	StartRun(ctx context.Context, token string, r *Run) ([]Message, error)
+	// ResumeApproval moves an awaiting run back to running under token's lease, with the same attempt; it returns the run's messages.
+	ResumeApproval(ctx context.Context, token string, r *Run) ([]Message, error)
 	PutCheckpoint(ctx context.Context, token string, runID uuid.UUID, toolCallID string, msgs []Message) error
 	Settle(ctx context.Context, token string, r *Run, u Usage, final []Message) error
 	RequestCancel(ctx context.Context, threadID, runID uuid.UUID) error

@@ -18,8 +18,8 @@ func (s runScope) connection(t *testing.T, db *sql.DB) (id uuid.UUID, publicID s
 	id = uuid.New()
 	publicID = "c" + id.String()[:12]
 	_, err := db.ExecContext(t.Context(), `INSERT INTO channel_connections (id, public_id, org_id, project_id, agent_id, provider, status, base_url, openwa_org, openwa_project,
-		device_id, signing_secret_primary_sealed, device_key_sealed, reply_failure, reply_voice, reply_photo_unreadable, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, 'openwa', 'active', 'https://wa.example.com', 'acme', 'main', 'dev_1', '\x01', '\x02', 'f', 'v', 'p', now(), now())`,
+		device_id, signing_secret_primary_sealed, device_key_sealed, reply_failure, reply_voice, reply_photo_unreadable, approval_prompt, approval_expired, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, 'openwa', 'active', 'https://wa.example.com', 'acme', 'main', 'dev_1', '\x01', '\x02', 'f', 'v', 'p', 'ap', 'ae', now(), now())`,
 		id, publicID, s.orgA, s.prjA, s.agentA)
 	require.NoError(t, err)
 	return id, publicID

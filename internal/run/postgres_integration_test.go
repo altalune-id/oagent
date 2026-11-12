@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/run"
+	"altalune.id/oagent/internal/testutil/fakes"
 	"altalune.id/oagent/internal/testutil/pgtest"
 )
 
@@ -933,4 +935,133 @@ func TestStore_RunByID(t *testing.T) {
 	assert.Equal(t, r.PublicID, got.PublicID)
 	_, err = f.store.RunByID(in(f.seed(t).org), r.ID)
 	assert.True(t, run.IsNotFoundError(err))
+}
+
+func TestStore_AwaitingRunOpensAndResumesWithTheSameAttempt(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	thread := f.thread(t, s)
+	ctx := in(s.org)
+	_, err := f.store.AppendMessage(ctx, thread, userMsg("record lunch", "wamid.1"))
+	require.NoError(t, err)
+	token := f.claimed(t, s, thread)
+	r := run.New(s.org, s.project, thread, s.version, time.Now())
+	_, err = f.store.StartRun(ctx, token, r)
+	require.NoError(t, err)
+	require.NoError(t, r.Move(run.StatusAwaitingApproval, time.Now()))
+	r.ReplyState, r.ReplyKind = run.ReplyDue, run.ReplyKindPrompt
+	require.NoError(t, f.store.Settle(ctx, token, r, run.Usage{}, nil), "an awaiting run settles")
+	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.runs WHERE id = $1 AND status = 'awaiting_approval' AND reply_kind = 'prompt'`, r.ID))
+	require.NoError(t, f.store.Release(ctx, thread, token))
+	_, err = f.store.AppendMessage(ctx, thread, userMsg("and coffee", ""))
+	require.NoError(t, err)
+
+	token = f.claimed(t, s, thread)
+	open, err := f.store.OpenRun(ctx, thread)
+	require.NoError(t, err)
+	require.NotNil(t, open, "an awaiting run is open")
+	assert.Equal(t, r.ID, open.ID)
+	require.NoError(t, open.Move(run.StatusRunning, time.Now()))
+	taken, err := f.store.ResumeApproval(ctx, token, open)
+	require.NoError(t, err)
+	require.Len(t, taken, 1, "the run's own message, not the new one")
+	assert.Equal(t, "wamid.1", taken[0].ExternalMessageID)
+	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.runs WHERE id = $1 AND status = 'running' AND attempt = 1`, r.ID), "the same attempt")
+	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.runs WHERE id = $1 AND reply_state IS NULL AND reply_kind IS NULL AND reply_next_at IS NULL`, r.ID),
+		"a prompt not yet sent never goes out after the decision")
+	_, err = f.store.ResumeApproval(ctx, token, open)
+	assert.ErrorIs(t, err, run.ErrNothingPending, "only an awaiting run resumes this way")
+}
+
+func TestStore_PendingUnleasedFindsAnAwaitingRunNoApprovalHolds(t *testing.T) {
+	p := newPgRunner(t)
+	p.svc.WithApprovals(&fakes.RunApprovals{})
+	for name, tc := range map[string]struct {
+		status, expires string
+		found           bool
+	}{
+		"pending, not yet expired": {"pending", "now() + interval '1 hour'", false},
+		"pending past expiry":      {"pending", "now() - interval '1 second'", true},
+		"decided, kick lost":       {"approved", "now() + interval '1 hour'", true},
+		"no row":                   {"", "", true},
+	} {
+		thread := p.thread(t, p.s)
+		_, err := p.store.AppendMessage(in(p.s.org), thread, userMsg("record lunch", ""))
+		require.NoError(t, err, name)
+		r, err := p.turn(t, thread, fakes.RuntimeReply{Stream: awaitStream(t, "call_1")})
+		require.NoError(t, err, name)
+		require.Equal(t, run.StatusAwaitingApproval, r.Status, name)
+		if tc.status != "" {
+			decided := "NULL"
+			if tc.status != "pending" {
+				decided = "now()"
+			}
+			p.exec(t, `INSERT INTO `+p.schema+`.approvals (id, public_id, org_id, project_id, agent_id, run_id, thread_id, calls, preview, channel,
+				raised_snapshot_hash, status, expires_at, created_at, decided_at, decided_by_kind)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, '[{"tool_call_id":"call_1"}]', 'p', 'api', '\x01', $8, `+tc.expires+`, now(), `+decided+`, `+map[bool]string{true: "NULL", false: "'system'"}[decided == "NULL"]+`)`,
+				uuid.New(), "a"+uuid.NewString()[:12], p.s.org, p.s.project, p.s.agent, r.ID, thread, tc.status)
+		}
+		got, err := p.store.PendingUnleased(in(p.s.org), time.Now(), 100)
+		require.NoError(t, err, name)
+		assert.Equal(t, tc.found, slices.Contains(got, thread), name)
+	}
+}
+
+func TestSettle_ToolMessageOncePerCallID(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	thread := f.thread(t, s)
+	ctx := in(s.org)
+	_, err := f.store.AppendMessage(ctx, thread, userMsg("record lunch and wipe", ""))
+	require.NoError(t, err)
+	token := f.claimed(t, s, thread)
+	r := run.New(s.org, s.project, thread, s.version, time.Now())
+	_, err = f.store.StartRun(ctx, token, r)
+	require.NoError(t, err)
+	require.NoError(t, r.Move(run.StatusAwaitingApproval, time.Now()))
+	require.NoError(t, f.store.Settle(ctx, token, r, run.Usage{}, []run.Message{toolMsg("call_free")}), "leg 1 stores the free sibling's result")
+
+	open, err := f.store.OpenRun(ctx, thread)
+	require.NoError(t, err)
+	require.NoError(t, open.Move(run.StatusRunning, time.Now()))
+	_, err = f.store.ResumeApproval(ctx, token, open)
+	require.NoError(t, err)
+	require.NoError(t, open.Move(run.StatusCompleted, time.Now()))
+	require.NoError(t, f.store.Settle(ctx, token, open, run.Usage{}, []run.Message{toolMsg("call_free"), toolMsg("call_gated"), assistantMsg("done")}),
+		"leg 2 appends every tool message of the run again; the repeat is skipped, not an error")
+	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.messages WHERE run_id = $1 AND tool_call_id = 'call_free'`, r.ID))
+	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.messages WHERE run_id = $1 AND tool_call_id = 'call_gated'`, r.ID))
+}
+
+func TestStore_PendingUnleasedFindsAParkedRunWithTheCancelFlag(t *testing.T) {
+	p := newPgRunner(t)
+	p.svc.WithApprovals(&fakes.RunApprovals{})
+	thread := p.thread(t, p.s)
+	_, err := p.store.AppendMessage(in(p.s.org), thread, userMsg("record lunch", ""))
+	require.NoError(t, err)
+	r, err := p.turn(t, thread, fakes.RuntimeReply{Stream: awaitStream(t, "call_1")})
+	require.NoError(t, err)
+	require.Equal(t, run.StatusAwaitingApproval, r.Status)
+	p.exec(t, `INSERT INTO `+p.schema+`.approvals (id, public_id, org_id, project_id, agent_id, run_id, thread_id, calls, preview, channel,
+		raised_snapshot_hash, status, expires_at, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, '[{"tool_call_id":"call_1"}]', 'p', 'api', '\x01', 'pending', now() + interval '1 hour', now())`,
+		uuid.New(), "a"+uuid.NewString()[:12], p.s.org, p.s.project, p.s.agent, r.ID, thread)
+	got, err := p.store.PendingUnleased(in(p.s.org), time.Now(), 100)
+	require.NoError(t, err)
+	require.NotContains(t, got, thread, "parked on a live approval")
+
+	require.NoError(t, p.store.RequestCancel(in(p.s.org), thread, r.ID))
+	got, err = p.store.PendingUnleased(in(p.s.org), time.Now(), 100)
+	require.NoError(t, err)
+	assert.Contains(t, got, thread, "a parked run with the cancel flag gets a drain, so the cancel is applied")
+}
+
+func TestStore_HoldLeaseOnlyForTheHolder(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	thread := f.thread(t, s)
+	token := f.claimed(t, s, thread)
+	require.NoError(t, f.store.HoldLease(in(s.org), token, thread))
+	var lost *run.LeaseLostError
+	require.ErrorAs(t, f.store.HoldLease(in(s.org), "another-claim", thread), &lost)
 }

@@ -153,19 +153,6 @@ func TestRun_LegacyVersionRefused(t *testing.T) {
 	assert.Empty(t, f.rt.Requests, "no runtime call")
 }
 
-func TestRun_GatedToolNotExposedBeforeApprovals(t *testing.T) {
-	f := newSvc(t)
-	f.say(t, "record lunch")
-	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "tool_call")})
-	req := f.rt.LastRequest()
-	require.Len(t, req.MCPServers, 1, "a server with only gated tools is left out")
-	s := req.MCPServers[0]
-	assert.Equal(t, []string{"record_expense"}, s.AllowedTools)
-	assert.Equal(t, runtime.MCPAuth{Kind: "bearer", Value: "tok-test"}, s.Auth)
-	assert.Equal(t, int32(5000), s.CallTimeoutMs)
-	assert.Equal(t, []uuid.UUID{f.server}, f.servers.Opened, "the gated server is never opened")
-}
-
 func TestRun_RequestCarriesTheProviderOnlyForAnthropic(t *testing.T) {
 	cases := map[string]struct {
 		provider string
@@ -763,14 +750,96 @@ func TestRun_LongMessageCutWithNote(t *testing.T) {
 	assert.Equal(t, strings.Repeat("a", 4000), inputContent(t, f.rt.LastRequest()), "4,000 runes fit")
 }
 
-func TestRun_ChannelRunNeverCarriesGatedTool(t *testing.T) {
+func TestRun_ChannelRunCarriesGatedToolsBehindApproval(t *testing.T) {
 	for _, kind := range []string{"dm", "group"} {
 		f := newSvc(t)
 		f.store.Kinds = map[uuid.UUID]string{f.thread: kind}
 		f.say(t, "hapus semua")
 		f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
 		req := f.rt.LastRequest()
-		require.Len(t, req.MCPServers, 1, kind)
-		assert.Equal(t, []string{"record_expense"}, req.MCPServers[0].AllowedTools, "%s: a tool that needs approval never reaches a channel run", kind)
+		require.Len(t, req.MCPServers, 2, kind)
+		modes := map[string]string{}
+		for _, srv := range req.MCPServers {
+			for _, tool := range srv.Tools {
+				modes[tool.Name] = tool.Approval.Mode
+			}
+		}
+		assert.Equal(t, map[string]string{"record_expense": "never", "delete_all": "always", "wipe": "always"}, modes,
+			"%s: a gated tool reaches a channel run only behind its approval", kind)
+	}
+}
+
+func TestTurn_SendsApprovalSpecs(t *testing.T) {
+	f := newSvc(t)
+	f.version.MCPServers[0].Tools = append(f.version.MCPServers[0].Tools,
+		run.ToolGrant{Name: "pay", RequireApproval: true, FreeWhen: json.RawMessage(`[{"arg":"dry_run","values":[true]}]`)})
+	f.say(t, "record lunch")
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "tool_call")})
+	req := f.rt.LastRequest()
+	assert.Equal(t, 3, req.ContractVersion, "approval specs ride on contract version 3")
+	require.Len(t, req.MCPServers, 2, "a server whose tools are all gated is sent too: the runtime gates them")
+	byName := map[string]runtime.MCPServerSpec{}
+	for _, s := range req.MCPServers {
+		byName[s.Name] = s
+		assert.Empty(t, s.AllowedTools, "v3 sends tools, never allowedTools")
+	}
+	assert.Equal(t, []runtime.ToolGrant{
+		{Name: "record_expense", Approval: runtime.ApprovalSpec{Mode: "never"}},
+		{Name: "delete_all", Approval: runtime.ApprovalSpec{Mode: "always"}},
+		{Name: "pay", Approval: runtime.ApprovalSpec{Mode: "conditional", FreeWhen: []runtime.FreeCondition{{Arg: "dry_run", Values: []json.RawMessage{json.RawMessage(`true`)}}}}},
+	}, byName["yasaku"].Tools)
+	assert.Equal(t, []runtime.ToolGrant{{Name: "wipe", Approval: runtime.ApprovalSpec{Mode: "always"}}}, byName["danger"].Tools)
+}
+
+// NOTE: v2Only is a runtime that predates contract version 3: it refuses any later version with 400, as an old runtime does.
+type v2Only struct{ *fakes.Runtime }
+
+func (r v2Only) Turn(ctx context.Context, req runtime.TurnRequest) (runtime.Stream, error) {
+	if req.ContractVersion > 2 {
+		r.Requests = append(r.Requests, req)
+		return nil, &runtime.ContractError{Status: 400, Code: "invalid_request"}
+	}
+	return r.Runtime.Turn(ctx, req)
+}
+
+func TestTurn_OldRuntimeV3RefusedFailsRun(t *testing.T) {
+	f := newSvc(t)
+	old := v2Only{Runtime: f.rt}
+	f.svc.WithRuntime(old)
+	f.say(t, "delete everything")
+	r := f.execute(t, fakes.RuntimeReply{Stream: stream(t, "tool_call")})
+	require.NotNil(t, r)
+	assert.Equal(t, run.StatusFailed, r.Status, "an old runtime can't gate tools, so the run fails rather than run them unguarded")
+	assert.Equal(t, "RUN006", r.ErrorCode)
+	assert.Len(t, f.rt.Replies, 1, "no turn ran: the queued reply was never used")
+}
+
+func TestTurn_AbsentOnlyFreeWhenSendsEmptyValues(t *testing.T) {
+	f := newSvc(t)
+	f.version.MCPServers[0].Tools = append(f.version.MCPServers[0].Tools,
+		run.ToolGrant{Name: "pay", RequireApproval: true, FreeWhen: json.RawMessage(`[{"arg":"dry_run","absent":true}]`)})
+	f.say(t, "record lunch")
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "tool_call")})
+	raw, err := json.Marshal(f.rt.LastRequest())
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), `{"arg":"dry_run","values":[],"absent":true}`, "the runtime requires values; null is a 400 for every run")
+	assert.NotContains(t, string(raw), `"values":null`)
+}
+
+func TestTurn_UnreadableFreeWhenAlwaysAsks(t *testing.T) {
+	for name, freeWhen := range map[string]string{"not JSON": `{`, "an empty list": `[]`, "not a list": `{"arg":"x"}`} {
+		f := newSvc(t)
+		f.version.MCPServers[0].Tools = []run.ToolGrant{{Name: "pay", RequireApproval: true, FreeWhen: json.RawMessage(freeWhen)}}
+		f.say(t, "pay")
+		f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+		var got runtime.ApprovalSpec
+		for _, s := range f.rt.LastRequest().MCPServers {
+			for _, tool := range s.Tools {
+				if tool.Name == "pay" {
+					got = tool.Approval
+				}
+			}
+		}
+		assert.Equal(t, runtime.ApprovalSpec{Mode: "always"}, got, "%s: a free_when Go can't read asks, never runs free", name)
 	}
 }
