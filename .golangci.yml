@@ -126,8 +126,8 @@ linters:
         domain-purity:
           list-mode: strict
           files:
-            - "**/internal/{agent,apikey,auth,enduser,install,legal,mcpserver,modelprovider,org,project,run,user,webhook}/{agent,apikey,auth,enduser,install,legal,mcpserver,modelprovider,org,project,run,user,webhook}.go"
-            - "**/internal/{agent,apikey,auth,enduser,install,legal,mcpserver,modelprovider,org,project,run,user,webhook}/{store,errors}.go"
+            - "**/internal/{agent,apikey,auth,enduser,install,knowledge,legal,mcpserver,modelprovider,org,project,run,user,webhook}/{agent,apikey,auth,enduser,install,knowledge,legal,mcpserver,modelprovider,org,project,run,user,webhook}.go"
+            - "**/internal/{agent,apikey,auth,enduser,install,knowledge,legal,mcpserver,modelprovider,org,project,run,user,webhook}/{store,errors}.go"
             # org/member and org/invite are excluded: they share role and error types with their parent domain.
           allow:
             - $gostd
@@ -236,6 +236,17 @@ linters:
               desc: "domains reach NATS through internal/kernel/queue, never the connection"
             - pkg: "altalune.id/oagent/redis$"
               desc: "domains never use the Redis connection; a feature's driver does"
+        run-boundary:
+          list-mode: lax
+          files:
+            - "**/internal/run/**"
+            - "!**/*_test.go"
+          allow:
+            - altalune.id/oagent/internal/kernel/
+            - altalune.id/oagent/internal/run
+          deny:
+            - pkg: "altalune.id/oagent/internal/"
+              desc: "run reaches other domains through its own ports, never their packages"
         kernel-boundary:
           list-mode: lax
           files:
