@@ -45,6 +45,34 @@ func TestNew_AllowsPrivateWhenOptedIn(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
+func TestNew_WithoutRedirects(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/next" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.Redirect(w, r, "/next", http.StatusFound)
+	}))
+	t.Cleanup(ts.Close)
+
+	resp, err := New(WithAllowPrivateHosts(true), WithOtel(false), WithoutRedirects()).Get(ts.URL)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	assert.Equal(t, http.StatusFound, resp.StatusCode)
+	assert.Equal(t, "/next", resp.Header.Get("Location"))
+
+	resp, err = New(WithAllowPrivateHosts(true), WithOtel(false)).Get(ts.URL)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "the default still follows")
+}
+
+func TestRetryableStatus(t *testing.T) {
+	for code, want := range map[int]bool{200: false, 400: false, 401: false, 408: true, 429: true, 500: true, 501: false, 502: true, 503: true, 504: true} {
+		assert.Equal(t, want, RetryableStatus(code), "%d", code)
+	}
+}
+
 func TestNew_ResponseBodyLimit(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("0123456789ABCDEF"))

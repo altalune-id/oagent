@@ -33,7 +33,11 @@ func New(opts ...Option) *http.Client {
 	if s.noTimeout {
 		timeout = 0
 	}
-	return &http.Client{Transport: newTransport(s), Timeout: timeout}
+	c := &http.Client{Transport: newTransport(s), Timeout: timeout}
+	if s.noRedirects {
+		c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	}
+	return c
 }
 
 func newTransport(s settings) http.RoundTripper {
