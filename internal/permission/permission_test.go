@@ -9,6 +9,7 @@ import (
 
 	agentv1 "altalune.id/oagent/gen/go/agent/v1"
 	apikeyv1 "altalune.id/oagent/gen/go/apikey/v1"
+	approvalv1 "altalune.id/oagent/gen/go/approval/v1"
 	authv1 "altalune.id/oagent/gen/go/auth/v1"
 	channelv1 "altalune.id/oagent/gen/go/channel/v1"
 	enduserv1 "altalune.id/oagent/gen/go/enduser/v1"
@@ -32,6 +33,7 @@ func allProcedures() []string {
 		authv1.File_auth_v1_auth_proto,
 		channelv1.File_channel_v1_channel_proto,
 		enduserv1.File_enduser_v1_enduser_proto,
+		approvalv1.File_approval_v1_approval_proto,
 		invitev1.File_invite_v1_invite_proto,
 		mcpserverv1.File_mcpserver_v1_mcpserver_proto,
 		memberv1.File_member_v1_member_proto,
@@ -54,7 +56,7 @@ func allProcedures() []string {
 
 func TestEveryRPCHasAPermission(t *testing.T) {
 	procs := allProcedures()
-	require.Len(t, procs, 74, "Org 4, Project 5, Agent 8, APIKey 3, Webhook 11, Auth 6, Member 4, Invite 7, ModelProvider 5, McpServer 6, Thread 6, Channel 7, EndUser 2")
+	require.Len(t, procs, 77, "Org 4, Project 5, Agent 8, APIKey 3, Webhook 11, Auth 6, Member 4, Invite 7, ModelProvider 5, McpServer 6, Thread 6, Channel 7, EndUser 2, Approval 3")
 	table := Table()
 	for _, proc := range procs {
 		perms := table[proc]
@@ -104,6 +106,9 @@ func TestPermissionTable_Spec15(t *testing.T) {
 		"/channel.v1.ChannelService/GetChannelSettings":              "channel:read",
 		"/enduser.v1.EndUserService/ListEndUsers":                    "thread:read",
 		"/enduser.v1.EndUserService/GetEndUser":                      "thread:read",
+		"/approval.v1.ApprovalService/ListApprovals":                 "thread:read",
+		"/approval.v1.ApprovalService/GetApproval":                   "thread:read",
+		"/approval.v1.ApprovalService/DecideApproval":                "approval:decide",
 		"/thread.v1.ThreadService/ListThreads":                       "thread:read",
 		"/thread.v1.ThreadService/GetThread":                         "thread:read",
 		"/thread.v1.ThreadService/ListThreadMessages":                "thread:read",

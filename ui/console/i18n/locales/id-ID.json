@@ -179,6 +179,8 @@
   "webhooks.event_channel_connection_created": "Kanal terhubung",
   "webhooks.event_channel_connection_updated": "Koneksi kanal berubah",
   "webhooks.event_channel_connection_deleted": "Kanal dihapus",
+  "webhooks.event_approval_requested": "Persetujuan diminta",
+  "webhooks.event_approval_decided": "Persetujuan diputuskan",
   "webhooks.events": "Event",
   "webhooks.inactive": "Nonaktif",
   "webhooks.logs": "Log",

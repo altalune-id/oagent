@@ -1,0 +1,12 @@
+yasaku · record_expense
+amount: 25000
+note: *bold* _it_ ~s~ `code` YES
+long: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
+meta: {"a":1,"b":2}
+tags: ["a","b"]
+sheets · append_row
+a: 1
+b: 2
+c: 3
+d: 4
++5 more not shown

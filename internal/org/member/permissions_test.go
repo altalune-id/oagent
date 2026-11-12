@@ -61,10 +61,11 @@ func TestBuiltinPermissions_NoRoleLosesAccess(t *testing.T) {
 		RoleOwner: {"*"},
 		RoleAdmin: {
 			scope.OrgRead, "project:*", "agent:*", "webhook:*", "member:*", "apikey:*", "provider:*", "mcpserver:*", "run:*", scope.ThreadRead,
+			"channel:*",
 		},
 		RoleMember: {
 			scope.OrgRead, scope.ProjectRead, "agent:*", "webhook:*", scope.MemberRead, scope.ApikeyRead,
-			scope.ProviderRead, scope.McpserverRead, "run:*", scope.ThreadRead,
+			scope.ProviderRead, scope.McpserverRead, "run:*", scope.ThreadRead, scope.ChannelRead,
 		},
 	}
 	for r, old := range before {
@@ -78,4 +79,11 @@ func TestBuiltinPermissions_Channels(t *testing.T) {
 	assert.True(t, scope.Grants(m, scope.ChannelRead), "a member sees channel connections")
 	assert.False(t, scope.Grants(m, scope.ChannelWrite), "a member never changes one")
 	assert.True(t, scope.Covers(BuiltinPermissions(RoleOwner), []string{scope.ChannelRead, scope.ChannelWrite}))
+}
+
+func TestBuiltinPermissions_Approvals(t *testing.T) {
+	for _, r := range []Role{RoleOwner, RoleAdmin, RoleMember} {
+		assert.True(t, scope.Grants(BuiltinPermissions(r), scope.ApprovalDecide), "%s decides approvals, as it runs agents", r)
+		assert.True(t, scope.Grants(BuiltinPermissions(r), scope.ThreadRead), "%s reads approvals through thread:read", r)
+	}
 }

@@ -4,6 +4,7 @@ package permission
 import (
 	agentv1connect "altalune.id/oagent/gen/go/agent/v1/agentv1connect"
 	apikeyv1connect "altalune.id/oagent/gen/go/apikey/v1/apikeyv1connect"
+	approvalv1connect "altalune.id/oagent/gen/go/approval/v1/approvalv1connect"
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
 	channelv1connect "altalune.id/oagent/gen/go/channel/v1/channelv1connect"
 	enduserv1connect "altalune.id/oagent/gen/go/enduser/v1/enduserv1connect"
@@ -63,6 +64,9 @@ func Table() map[string][]string {
 		channelv1connect.ChannelServiceGetChannelSettingsProcedure:     {scope.ChannelRead},
 		enduserv1connect.EndUserServiceListEndUsersProcedure:           {scope.ThreadRead},
 		enduserv1connect.EndUserServiceGetEndUserProcedure:             {scope.ThreadRead},
+		approvalv1connect.ApprovalServiceListApprovalsProcedure:        {scope.ThreadRead},
+		approvalv1connect.ApprovalServiceGetApprovalProcedure:          {scope.ThreadRead},
+		approvalv1connect.ApprovalServiceDecideApprovalProcedure:       {scope.ApprovalDecide},
 		threadv1connect.ThreadServiceListThreadsProcedure:              {scope.ThreadRead},
 		threadv1connect.ThreadServiceGetThreadProcedure:                {scope.ThreadRead},
 		threadv1connect.ThreadServiceListThreadMessagesProcedure:       {scope.ThreadRead},
