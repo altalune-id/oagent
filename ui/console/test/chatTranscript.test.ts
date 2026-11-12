@@ -19,7 +19,7 @@ function sides(viewer: 'person' | 'agent') {
     user: chats[0]!.classes(),
     agent: chats[1]!.classes(),
     tool: w.get('details').classes(),
-    card: w.get('section').element.parentElement!.className,
+    card: w.get('article').element.parentElement!.className,
     userBubble: chats[0]!.get('.chat-bubble').classes(),
   };
 }

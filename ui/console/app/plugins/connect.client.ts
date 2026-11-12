@@ -4,6 +4,7 @@ import { createConnectTransport } from '@connectrpc/connect-web';
 import { createRedirectOnce, isUnauthenticated } from '#base/lib/auth/unauthenticated';
 import { AgentService } from '#gen/agent/v1/agent_pb';
 import { APIKeyService } from '#gen/apikey/v1/apikey_pb';
+import { ApprovalService } from '#gen/approval/v1/approval_pb';
 import { AuthService } from '#gen/auth/v1/auth_pb';
 import { ChannelService } from '#gen/channel/v1/channel_pb';
 import { EndUserService } from '#gen/enduser/v1/enduser_pb';
@@ -52,6 +53,7 @@ export default defineNuxtPlugin({
         channelClient: createClient(ChannelService, transport),
         endUserClient: createClient(EndUserService, transport),
         threadClient: createClient(ThreadService, transport),
+        approvalClient: createClient(ApprovalService, transport),
         apiKeyClient: createClient(APIKeyService, transport),
         webhookClient: createClient(WebhookService, transport),
         memberClient: createClient(MemberService, transport),

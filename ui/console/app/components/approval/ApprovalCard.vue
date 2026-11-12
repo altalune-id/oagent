@@ -4,9 +4,9 @@ import AppButton from '#base/components/ui/AppButton.vue';
 import { shownName } from '~/components/enduser/forget';
 import { chatTime } from '~/components/try/chatTime';
 import { useNow } from '~/composables/useNow';
-import { decisionLabel, statusAt } from './decision';
+import { decisionLabel, expiresIn, statusAt } from './decision';
 
-const { approval, readOnly = false, busy = false } = defineProps<{ approval: ApprovalRequest, readOnly?: boolean, busy?: boolean }>();
+const { approval, readOnly = false, busy = false, answeredByApp = false, note = '' } = defineProps<{ approval: ApprovalRequest, readOnly?: boolean, busy?: boolean, answeredByApp?: boolean, note?: string }>();
 const emit = defineEmits<{ approve: [], reject: [reason: string] }>();
 
 const { t, locale } = useI18n();
@@ -19,14 +19,13 @@ const rejectButton = ref<{ $el: HTMLElement }>();
 const decisionText = ref<HTMLElement>();
 const shownArgs = computed(() => approval.args.filter(a => !a.gate));
 const shortTool = computed(() => approval.tool.split('__').at(-1) ?? approval.tool);
-const raw = computed(() => JSON.stringify(approval.raw, null, 2));
+const raw = computed(() => (approval.raw ? JSON.stringify(approval.raw, null, 2) : ''));
+const calls = computed(() => (approval.calls && approval.calls.length > 1 ? approval.calls : [{ title: '', args: shownArgs.value }]));
 
 const now = useNow();
 const status = computed(() => statusAt(approval, now.value));
+const countdown = computed(() => expiresIn(approval, now.value));
 const decision = computed(() => {
-  if (status.value === 'executing') {
-    return t('approvalcard.executing');
-  }
   if (status.value === 'pending') {
     return readOnly && (approval.requestedBy || approval.requesterDeleted) ? t('approvalcard.waiting_for', { name: shownName(approval.requestedBy, approval.requesterDeleted, t) }) : '';
   }
@@ -62,7 +61,7 @@ function reject() {
 </script>
 
 <template>
-  <section class="flex flex-col gap-3 rounded-box border bg-base-100 p-3 text-ui" :class="status === 'pending' ? 'border-warning' : 'border-base-300'" :aria-labelledby="`${uid}-title`">
+  <article class="flex flex-col gap-3 rounded-box border bg-base-100 p-3 text-ui" :class="status === 'pending' ? 'border-warning' : 'border-base-300'" :aria-labelledby="`${uid}-title`">
     <div class="flex flex-wrap items-start justify-between gap-2">
       <h3 :id="`${uid}-title`" class="flex items-center gap-1.5 font-semibold">
         <Icon name="lucide:hand" size="16" class="shrink-0" aria-hidden="true" />
@@ -70,24 +69,41 @@ function reject() {
       </h3>
       <span class="badge badge-sm badge-ghost font-mono">{{ approval.tool }}</span>
     </div>
-    <dl :id="`${uid}-args`" class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1">
-      <template v-for="arg in shownArgs" :key="arg.label">
-        <dt class="text-base-content/70" :class="{ 'font-mono text-xs': arg.mono }">
-          {{ arg.label }}
-        </dt>
-        <dd class="min-w-0 break-words" :class="{ 'font-mono text-xs': arg.mono }">
-          {{ arg.value }}
-        </dd>
-      </template>
-    </dl>
-    <details class="collapse-arrow collapse rounded-box border border-base-300">
+    <div :id="`${uid}-args`" class="flex flex-col gap-2">
+      <div v-for="(call, ci) in calls" :key="ci" class="flex flex-col gap-1">
+        <h4 v-if="call.title" class="font-mono text-xs font-medium">
+          {{ call.title }}
+        </h4>
+        <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1">
+          <template v-for="arg in call.args" :key="arg.label">
+            <dt class="text-base-content/70" :class="{ 'font-mono text-xs': arg.mono }">
+              {{ arg.label }}
+            </dt>
+            <dd class="min-w-0 break-words" :class="{ 'font-mono text-xs': arg.mono }">
+              {{ arg.value }}
+            </dd>
+          </template>
+        </dl>
+      </div>
+      <p v-if="approval.more" class="text-xs text-base-content/70">
+        {{ t('approvals.more_calls') }}
+      </p>
+    </div>
+    <p v-if="countdown" class="text-xs">
+      <span :class="countdown.soon ? 'badge badge-sm badge-soft badge-warning text-base-content' : 'text-base-content/70'">{{ t(countdown.key, { n: countdown.n }) }}</span>
+    </p>
+    <details v-if="raw" class="collapse-arrow collapse rounded-box border border-base-300">
       <summary class="collapse-title min-h-0 py-2 text-xs">
         {{ t('approvalcard.raw') }}
       </summary>
       <pre class="collapse-content font-mono text-xs whitespace-pre-wrap wrap-anywhere">{{ raw }}</pre>
     </details>
 
-    <template v-if="status === 'pending' && !readOnly">
+    <p v-if="status === 'pending' && answeredByApp" class="flex items-center gap-1.5 text-ui text-base-content/70">
+      <Icon name="lucide:plug" size="16" class="shrink-0" aria-hidden="true" />
+      {{ t('approvals.answered_by_app') }}
+    </p>
+    <template v-else-if="status === 'pending' && !readOnly">
       <div v-if="rejecting" class="flex flex-col gap-2">
         <label class="flex flex-col gap-1">
           <span class="label text-ui text-base-content">{{ t('approvalcard.reason') }}</span>
@@ -117,5 +133,8 @@ function reject() {
       <span>{{ decision }}</span>
       <span v-if="approval.reason">· “{{ approval.reason }}”</span>
     </p>
-  </section>
+    <p v-if="note" class="text-xs text-base-content/70" data-testid="card-note">
+      {{ note }}
+    </p>
+  </article>
 </template>

@@ -25,6 +25,7 @@ beforeEach(async () => {
   useProjectsStore().items = [{ id: projectId, orgId, slug: 'support', name: 'Support Copilot' }];
   setClient('$authClient', { whoami: vi.fn().mockResolvedValue(create(WhoamiResponseSchema, { source: 'oidc', userId: 'F5pLm2XwQ8kRt3VnZ7bYc', name: 'Sam Rivera', email: 'sam@acme.test' })) });
   setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [triage] }) });
+  setClient('$approvalClient', { listApprovals: vi.fn().mockResolvedValue({ approvals: [], nextPageToken: '', pendingCount: 1n }) });
   await useAuthStore().load();
 });
 
@@ -47,7 +48,7 @@ describe('project sidebar', () => {
     await flushPromises();
     const approvalsItem = () => w.findAll('nav > ul:last-child li')[2]!.text();
     expect(approvalsItem()).toBe('approvals.title1');
-    useApprovalsStore().projectId = 'another-project';
+    useApprovalsStore().countProject = 'another-project';
     await flushPromises();
     expect(approvalsItem()).toBe('approvals.title');
   });

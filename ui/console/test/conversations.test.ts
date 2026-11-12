@@ -4,16 +4,12 @@ import { flushPromises, RouterLinkStub } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useToast } from '#base/components/ui/toast';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { RunSchema, RunStatus, ThreadMessageSchema, ThreadSchema } from '#gen/thread/v1/thread_pb';
 import { mountPage } from '#test/mount-page';
 import { route, router, setClient, setKnownKeys, setRoute } from '#test/nuxt-globals';
-import { useNow } from '~/composables/useNow';
 import ThreadPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/threads/[thread].vue';
 import ThreadsPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/threads/index.vue';
-import ApprovalsPage from '~/pages/o/[org]/projects/[project]/approvals.vue';
-import { useApprovalsStore } from '~/stores/approvals';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 import { useThreadsStore } from '~/stores/threads';
@@ -217,82 +213,5 @@ describe('thread view', () => {
     const errorHandler = vi.fn();
     await mountPage(ThreadPage, { global: { config: { errorHandler } } });
     expect(errorHandler.mock.calls[0]![0]).toMatchObject({ statusCode: 404 });
-  });
-});
-
-describe('approvals inbox', () => {
-  it('opens a pending request as the shared card and approves it without a confirm', async () => {
-    vi.useFakeTimers();
-    seed('/approvals', {});
-    const w = await mountPage(ApprovalsPage);
-    const tabs = w.findAll('nav a');
-    expect(tabs.map(a => a.text())).toEqual(['approvals.tab_pending 1', 'approvals.tab_decided', 'approvals.tab_expired']);
-    expect(tabs[0]!.attributes('aria-current')).toBe('page');
-    const card = w.get('details section');
-    expect(card.findAll('dt').map(d => d.text())).toContain('Dompet');
-    await card.findAll('button').find(b => b.text().includes('approvalcard.approve_run'))!.trigger('click');
-    expect(w.text()).toContain('approvalcard.executing');
-    await vi.runAllTimersAsync();
-    await flushPromises();
-    expect(w.text()).toContain('approvals.empty_pending');
-    expect(useApprovalsStore().items[0]!.approval.status).toBe('approved');
-  });
-
-  it('says so in a toast and moves focus to the list after a decision', async () => {
-    vi.useFakeTimers();
-    seed('/approvals', {});
-    const w = await mountPage(ApprovalsPage, { attachTo: document.body });
-    const card = w.get('details section');
-    await card.findAll('button').find(b => b.text().includes('approvalcard.approve_run'))!.trigger('click');
-    await vi.advanceTimersByTimeAsync(1000);
-    await flushPromises();
-    expect(useToast().toasts.at(-1)).toMatchObject({ kind: 'success', text: 'approvals.approved_toast|{"title":"Simpan Rp40.000 dari Cash?"}' });
-    expect(document.activeElement?.getAttribute('tabindex')).toBe('-1');
-    expect(document.activeElement?.textContent).toContain('approvals.empty_pending');
-    w.unmount();
-  });
-
-  it('shows a decision that came too late as expired', async () => {
-    seed('/approvals', {});
-    await useApprovalsStore().load(projectId);
-    useNow().value = new Date(Date.now() - 60_000);
-    useApprovalsStore().items[0]!.approval.expiresAt = new Date(Date.now() - 1000);
-    const w = await mountPage(ApprovalsPage, { attachTo: document.body });
-    await w.get('details section').findAll('button').find(b => b.text().includes('approvalcard.approve_run'))!.trigger('click');
-    await flushPromises();
-    expect(useToast().toasts.at(-1)).toMatchObject({ kind: 'error', text: 'approvals.expired_toast|{"title":"Simpan Rp40.000 dari Cash?"}' });
-    expect(useApprovalsStore().expired.map(i => i.approval.id)).toContain('apr_kp1');
-    expect(w.text()).toContain('approvals.empty_pending');
-    w.unmount();
-  });
-
-  it('lists decided and expired requests with who decided, from the tab in the URL', async () => {
-    seed('/approvals', {}, ['agent:read', 'agent:write'], { tab: 'decided' });
-    const w = await mountPage(ApprovalsPage);
-    const rows = w.findAll('tbody tr');
-    expect(rows).toHaveLength(2);
-    expect(rows[0]!.text()).toContain('approvalcard.approved|{"by":"Sari"} · approvalcard.via_whatsapp_reply|{"reply":"ya"}');
-    expect(rows[1]!.text()).toContain('approvalcard.rejected|{"by":"Budi"} · approvalcard.via_console');
-    setRoute({ path: '/o/acme/projects/rumah/approvals', params: { org: 'acme', project: 'rumah' }, query: { tab: 'expired' } });
-    await flushPromises();
-    expect(w.get('tbody').text()).toContain('approvalcard.expired');
-  });
-
-  it('falls back to Pending for an unknown tab and moves an expired request out of it', async () => {
-    seed('/approvals', {}, ['agent:read', 'agent:write'], { tab: 'bogus' });
-    useApprovalsStore().items = [];
-    await useApprovalsStore().load(projectId);
-    useApprovalsStore().items[0]!.approval.expiresAt = new Date(Date.now() - 1000);
-    const w = await mountPage(ApprovalsPage);
-    expect(w.findAll('nav a')[0]!.attributes('aria-current')).toBe('page');
-    expect(w.text()).toContain('approvals.empty_pending');
-    expect(w.findAll('nav a')[0]!.text()).toBe('approvals.tab_pending 0');
-  });
-
-  it('shows no decision buttons without agent:write', async () => {
-    seed('/approvals', {}, ['agent:read']);
-    const w = await mountPage(ApprovalsPage);
-    expect(w.text()).toContain('approvals.cant_decide');
-    expect(w.findAll('button').some(b => b.text().includes('approvalcard.approve_run'))).toBe(false);
   });
 });

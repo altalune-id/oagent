@@ -15,7 +15,7 @@ export function useProjectNav() {
     const settings = `${base}/settings`;
     const org = orgs.bySlug(route.params.org as string);
     const current = projects.items.find(p => p.orgId === org?.id && p.slug === route.params.project);
-    const pendingCount = current && approvals.projectId === current.id ? approvals.pending.length : 0;
+    const pendingCount = current && approvals.countProject === current.id ? approvals.pendingCount : 0;
     return [{
       items: [
         { key: 'overview', label: t('nav.overview'), to: base, icon: 'lucide:activity', active: route.path === base },

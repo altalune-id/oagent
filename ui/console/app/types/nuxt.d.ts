@@ -1,6 +1,7 @@
 import type { Client } from '@connectrpc/connect';
 import type { AgentService } from '#gen/agent/v1/agent_pb';
 import type { APIKeyService } from '#gen/apikey/v1/apikey_pb';
+import type { ApprovalService } from '#gen/approval/v1/approval_pb';
 import type { AuthService } from '#gen/auth/v1/auth_pb';
 import type { ChannelService } from '#gen/channel/v1/channel_pb';
 import type { EndUserService } from '#gen/enduser/v1/enduser_pb';
@@ -23,6 +24,7 @@ declare module '#app' {
     $channelClient: Client<typeof ChannelService>;
     $endUserClient: Client<typeof EndUserService>;
     $threadClient: Client<typeof ThreadService>;
+    $approvalClient: Client<typeof ApprovalService>;
     $apiKeyClient: Client<typeof APIKeyService>;
     $webhookClient: Client<typeof WebhookService>;
     $memberClient: Client<typeof MemberService>;

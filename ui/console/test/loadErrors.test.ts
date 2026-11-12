@@ -27,7 +27,7 @@ vi.mock('~/preview/samples', async (original) => {
     }
     return (real[name] as (...a: unknown[]) => unknown)(...args);
   };
-  return { ...real, ...Object.fromEntries(['sampleApprovals', 'sampleThreads', 'sampleWebSearch'].map(n => [n, wrap(n)])) };
+  return { ...real, ...Object.fromEntries(['sampleThreads', 'sampleWebSearch'].map(n => [n, wrap(n)])) };
 });
 
 const orgId = 'B6rTn1YkM8wQz3XpL5vGd';
@@ -44,7 +44,6 @@ function seed(path: string, params: Record<string, string> = {}) {
 
 const agent = { agent: 'yasaku-keuangan' };
 const cases = [
-  ['approvals', 'sampleApprovals', '/approvals', {}, ApprovalsPage, 'error.load_approvals'],
   ['conversations', 'sampleThreads', '/agents/yasaku-keuangan/threads', agent, ThreadsPage, 'error.load_threads'],
   ['one conversation', 'sampleThreads', '/agents/yasaku-keuangan/threads/thr_grp3Kd9Q', { ...agent, thread: 'thr_grp3Kd9Q' }, ThreadPage, 'error.load_threads'],
   ['runs', 'sampleThreads', '/agents/yasaku-keuangan/runs', agent, RunsPage, 'error.load_threads'],
@@ -65,6 +64,18 @@ describe('load errors', () => {
     await flushPromises();
     expect(w.get('[role="alert"]').text()).toContain(key);
     failing.clear();
+    await w.findAll('button').find(b => b.text() === 'common.retry')!.trigger('click');
+    await flushPromises();
+    expect(w.find('[role="alert"]').exists()).toBe(false);
+  });
+
+  it('shows a retryable error when approvals fail to load', async () => {
+    seed('/approvals');
+    const listApprovals = vi.fn().mockRejectedValueOnce(new Error('boom')).mockResolvedValue({ approvals: [], nextPageToken: '', pendingCount: 0n });
+    setClient('$approvalClient', { listApprovals });
+    const w = await mountPage(ApprovalsPage);
+    await flushPromises();
+    expect(w.get('[role="alert"]').text()).toContain('error.load_approvals');
     await w.findAll('button').find(b => b.text() === 'common.retry')!.trigger('click');
     await flushPromises();
     expect(w.find('[role="alert"]').exists()).toBe(false);

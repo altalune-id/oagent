@@ -1,6 +1,6 @@
 import type { AgentRuntimeConfig } from '~/stores/agentRuntime';
 import type { SampleAgent } from '~/stores/agents';
-import type { ApprovalItem, ApprovalRequest } from '~/stores/approvals';
+import type { ApprovalRequest } from '~/stores/approvals';
 import type { KnowledgeSource } from '~/stores/knowledge';
 import type { RunSummary, ThreadDetail } from '~/stores/threads';
 import type { WebSearchSetting } from '~/stores/webSearch';
@@ -148,7 +148,7 @@ export function sampleThreads(): ThreadDetail[] {
         { id: id(), kind: 'run', run: run('run_7Xp2KqLvN9sT4bWz') },
         { id: id(), kind: 'tool', name: 'yasaku__list_wallets', args: {}, result: [{ name: 'Cash', balance: 1250000 }], state: 'done' },
         { id: id(), kind: 'tool', name: 'yasaku__record_expense', args: { ...kopi.approval.raw, confirm: false }, result: { preview: 'Simpan Rp40.000 dari Cash?' }, state: 'preview' },
-        { id: id(), kind: 'tool', name: 'yasaku__record_expense', args: kopi.approval.raw, state: 'awaiting' },
+        { id: id(), kind: 'tool', name: 'yasaku__record_expense', args: kopi.approval.raw ?? {}, state: 'awaiting' },
         { id: id(), kind: 'approval', approval: { ...kopi.approval } },
       ],
     },
@@ -195,20 +195,5 @@ export function sampleThreads(): ThreadDetail[] {
         { id: id(), kind: 'notice', key: 'try.stopped' },
       ],
     },
-  ];
-}
-
-export function sampleApprovals(): ApprovalItem[] {
-  const threads = sampleThreads();
-  const card = (threadId: string, approvalId: string) => {
-    const item = threads.find(t => t.id === threadId)!.items.find(i => i.kind === 'approval' && i.approval.id === approvalId);
-    return { ...(item as { approval: ApprovalRequest }).approval };
-  };
-  const yasaku = { agentName: 'Yasaku Keuangan', agentSlug: 'yasaku-keuangan' };
-  return [
-    { ...yasaku, approval: card('thr_dm8Kq2Wx', 'apr_kp1'), threadId: 'thr_dm8Kq2Wx', channel: 'whatsapp_dm', askedAt: minutesAgo(2) },
-    { ...yasaku, approval: card('thr_grp3Kd9Q', 'apr_ps2'), threadId: 'thr_grp3Kd9Q', channel: 'whatsapp_group', askedAt: minutesAgo(46) },
-    { ...yasaku, approval: { id: 'apr_tr3', tool: 'yasaku__record_transfer', title: 'Transfer Rp500.000 dari BCA ke Cash?', args: [{ label: 'Jumlah', value: 'Rp500.000' }, { label: 'Dari', value: 'BCA' }, { label: 'Ke', value: 'Cash' }, { label: 'confirm', value: 'true', mono: true, gate: true }], raw: { from: 'BCA', to: 'Cash', amount: 500000, confirm: true }, status: 'rejected', requestedBy: 'Budi', decidedBy: 'Budi', decidedVia: { channel: 'console' }, decidedAt: minutesAgo(180) }, threadId: 'thr_try2Hx6P', channel: 'try', askedAt: minutesAgo(181) },
-    { ...yasaku, approval: card('thr_grp3Kd9Q', 'apr_del1'), threadId: 'thr_grp3Kd9Q', channel: 'whatsapp_group', askedAt: minutesAgo(2890) },
   ];
 }
