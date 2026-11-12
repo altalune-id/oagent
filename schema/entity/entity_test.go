@@ -64,6 +64,34 @@ func TestBindings(t *testing.T) {
 			[]string{"org_id", "project_id", "connection_id", "delivery_id", "received_at"},
 		},
 		{
+			"files",
+			func(s, p string) binding { b := entity.NewFiles(s, p); return binding{b, b.AllColumns} },
+			[]string{"id", "public_id", "org_id", "project_id", "purpose", "visibility", "object_key", "content_type", "size_bytes", "status", "created_at", "completed_at", "expires_at"},
+		},
+		{
+			"knowledge_settings",
+			func(s, p string) binding { b := entity.NewKnowledgeSettings(s, p); return binding{b, b.AllColumns} },
+			[]string{"project_id", "org_id", "provider_id", "model", "dims", "updated_at"},
+		},
+		{
+			"knowledge_sources",
+			func(s, p string) binding { b := entity.NewKnowledgeSources(s, p); return binding{b, b.AllColumns} },
+			[]string{"id", "public_id", "org_id", "project_id", "kind", "backend", "name", "seed_url", "status", "error_code", "error_reason", "refresh_requested", "refreshed_at", "lease_owner", "lease_until", "created_at", "updated_at"},
+		},
+		{
+			"knowledge_documents",
+			func(s, p string) binding { b := entity.NewKnowledgeDocuments(s, p); return binding{b, b.AllColumns} },
+			[]string{
+				"id", "public_id", "org_id", "project_id", "source_id", "title", "file_id", "url", "content", "content_hash", "status", "error_code", "error_reason", "page_count",
+				"embed_tokens", "embed_cost_micros", "attempts", "lease_owner", "lease_until", "created_at", "updated_at",
+			},
+		},
+		{
+			"knowledge_chunks",
+			func(s, p string) binding { b := entity.NewKnowledgeChunks(s, p); return binding{b, b.AllColumns} },
+			[]string{"id", "org_id", "project_id", "source_id", "document_id", "ordinal", "heading_path", "page", "url", "text", "embedding", "dims", "model_key", "created_at"},
+		},
+		{
 			"threads",
 			func(s, p string) binding { b := entity.NewThreads(s, p); return binding{b, b.AllColumns} },
 			[]string{
@@ -77,6 +105,7 @@ func TestBindings(t *testing.T) {
 			[]string{
 				"id", "public_id", "org_id", "project_id", "thread_id", "agent_version_id", "status", "idempotency_key", "attempt", "input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "usage_estimated", "price_input_micros", "price_output_micros", "price_cache_read_micros", "price_cache_write_micros", "cost_micros", "latency_ms", "error_code", "started_at", "ended_at", "created_at", "updated_at",
 				"reply_state", "reply_parts_sent", "reply_attempts", "reply_next_at", "is_group", "reply_kind",
+				"embedding_tokens", "embedding_price_input_micros", "knowledge_retrieve_calls", "knowledge_retrieve_ms",
 			},
 		},
 		{

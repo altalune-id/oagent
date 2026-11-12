@@ -63,6 +63,10 @@ func inserts(s twoOrgs) map[string]func(ctx context.Context, db *sql.DB, org, pr
 			VALUES ($1, $2, $3, $5, $1, $1, 'agent.created', 1, 1, $4, now())`, s.endpointA),
 		"outbox_entries": exec(`INSERT INTO outbox_entries (id, event_id, org_id, project_id, target, payload, next_attempt_at, last_error, created_at, public_id, event_public_id)
 			VALUES ($1, $1, $2, $3, 'webhook', '\x01', now(), $4, now(), gen_random_uuid()::text, 'e')`),
+		"files": exec(`INSERT INTO files (id, public_id, org_id, project_id, purpose, visibility, object_key, content_type, size_bytes, status, created_at, expires_at)
+			VALUES ($1, $4, $2, $3, 'knowledge', 'private', $4, 'text/plain', 1, 'pending', now(), now())`),
+		"knowledge_sources": exec(`INSERT INTO knowledge_sources (id, public_id, org_id, project_id, kind, backend, name, status, created_at, updated_at)
+			VALUES ($1, $4, $2, $3, 'upload', 'pgvector', $4, 'idle', now(), now())`),
 		"api_keys": exec(`INSERT INTO api_keys (id, org_id, project_id, kind, name, secret_hash, secret_hint, created_at)
 			VALUES ($1, $2, $3, 'project', 'k', decode(md5($4), 'hex'), substr(md5($4), 1, 4), now())`),
 	}

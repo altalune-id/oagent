@@ -39,6 +39,9 @@ func TestMigrations_UpDownUp(t *testing.T) {
 	}
 	require.NoError(t, rows.Err())
 	assert.Empty(t, left, "Down must drop everything Up created")
+	var ext int
+	require.NoError(t, sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM pg_extension WHERE extname = 'vector'`).Scan(&ext))
+	assert.Equal(t, 1, ext, "Down keeps the vector extension")
 
 	require.NoError(t, schema.MigrateUp(ctx, sqlDB, cfg), "Up must work again after a full Down")
 }
