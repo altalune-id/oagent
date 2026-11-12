@@ -32,7 +32,8 @@ The body is AG-UI `RunAgentInput`:
 
 - **`threadId`:** your conversation key (`^[A-Za-z0-9._:@-]{1,128}$`). The first POST creates the thread.
 - **`messages`:** only the **last** message is used, and it must be `role: user`. Its content is a string or text parts, at most 32 KiB. oagent keeps the history, so the earlier messages are ignored.
-- **Other fields:** `runId`, `parentRunId`, `state`, `tools`, `context`, `forwardedProps`, `protocolVersion` and `resume` are accepted and ignored.
+- **`resume`:** answers a pending approval; see [Approvals](#approvals). With a `resume`, `messages` is ignored and may be `[]`: send a new message in the next POST.
+- **Other fields:** `runId`, `parentRunId`, `state`, `tools`, `context`, `forwardedProps` and `protocolVersion` are accepted and ignored.
 - **Strictness:** any other top-level key answers `400`. The body is at most 64 KiB (`413`).
 - **`Idempotency-Key: <key>` (optional):**
   - Retrying with the same key and body never starts a second turn.
@@ -59,6 +60,7 @@ data: {"type":"RUN_FINISHED","threadId":"conv-42","runId":"Rn5Q8wYk2HhT3mVz7XcLp
 - **Ids:** `threadId` is always your own key, and `runId` is the run's public id.
 - **Heartbeat:** `: ping` comments keep the connection open, at least every 15 s.
 - **The last event is sent only once the run is stored.** `RUN_ERROR` carries `{message, code}` and no `runId`. Its `code` is:
+  - `awaiting_approval`: the run waits on an approval, but its interrupt could not be read; reload the thread.
   - `cancelled`: the run was cancelled.
   - `interrupted`: the runtime went away mid-turn. The run resumes on the next turn of the thread.
   - a run error code, such as `RUN004`.
@@ -71,10 +73,56 @@ Errors before the stream starts:
 | ------ | -------- | ------------------------------------------------------------------------------------------------ |
 | 409    | `AGT006` | the agent has no published version                                                               |
 | 409    | `RUN007` | a turn is already running on this thread                                                         |
+| 409    | `APR001` | the thread waits on an approval; answer it with `resume`, see `meta.approval`                    |
 | 429    | `RUN002` | the project is at its run rate or concurrency cap, or a data-plane rate limit; see `Retry-After` |
 | 503    | `RUN003` | no agent runtime is configured, or every turn slot is busy; see `Retry-After`                    |
 
 None of these refusals stores your message, with one exception: a `503 RUN003` that comes after the message was stored means it will still run. Retry with the same `Idempotency-Key` to get its stream or its result, never a second turn.
+
+### Approvals
+
+A tool the agent marks as needing approval stops the run before the call. The stream then ends with an AG-UI interrupt outcome, and the thread waits:
+
+```json
+{
+  "type": "RUN_FINISHED",
+  "threadId": "conv-42",
+  "runId": "Rn5Q8wYk2HhT3mVz7XcLp",
+  "outcome": {
+    "type": "interrupt",
+    "interrupts": [
+      {
+        "id": "call_1",
+        "reason": "tool_call",
+        "toolCallId": "call_1",
+        "message": "yasaku · record_expense\namount: 25000",
+        "expiresAt": "2026-11-07T00:00:00Z",
+        "responseSchema": { "type": "object", "properties": { "approved": { "type": "boolean" }, "text": { "type": "string" } }, "required": ["approved"] },
+        "metadata": { "approval": "Ap4Q8wYk2HhT3mVz7XcLp" }
+      }
+    ]
+  }
+}
+```
+
+Answer it with the next `POST /runs` on the same thread, as the same end user, with a key that has `approval:decide`:
+
+```json
+{ "threadId": "conv-42", "messages": [], "resume": [{ "interruptId": "call_1", "status": "resolved", "payload": { "approved": true } }] }
+```
+
+- **Every open interrupt is answered once.** `status` is `resolved` with `payload {approved, text?}`, or `cancelled` (a reject). Keys are exact: any other payload key is an edit of the call and is refused.
+- **One decision:** the approval is approved only if every answer approves; otherwise it is rejected with the first reject's `text`, which reaches the model.
+- **The response streams the resumed run.** It ends like any run, or with another interrupt.
+- **Unanswered approvals expire** (24 h for an API thread). The run then resumes with the expiry as the answer.
+
+| Status | Code     | When                                                      |
+| ------ | -------- | --------------------------------------------------------- |
+| 400    | `APR004` | the `resume` misses an open interrupt; see `meta.missing` |
+| 400    | `APR005` | a payload holds anything but `approved` and `text`        |
+| 403    | `GEN007` | the key lacks `approval:decide`; see `meta.permission`    |
+| 404    | `APR002` | the thread waits on no approval                           |
+| 409    | `APR003` | the approval was already decided or expired               |
 
 ### `GET /runs/{run}`
 
