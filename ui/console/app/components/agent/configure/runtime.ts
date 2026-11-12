@@ -59,6 +59,11 @@ export function withAllGrants(config: AgentConfig, server: McpServer, tools: Mcp
 }
 
 // withApproval sets whether one granted tool needs a person's approval.
+// withToolConfig replaces one granted tool's settings, such as its approval and free_when rule.
+export function withToolConfig(config: AgentConfig, serverId: string, next: AgentToolConfig): AgentConfig {
+  return { ...config, grants: config.grants.map(g => (g.serverId === serverId ? { ...g, tools: g.tools.map(t => (t.name === next.name ? next : t)) } : g)) };
+}
+
 export function withApproval(config: AgentConfig, serverId: string, tool: string, requireApproval: boolean): AgentConfig {
   return {
     ...config,

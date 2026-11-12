@@ -27,7 +27,7 @@ describe('mcp server mapping', () => {
 
   it('reads the suggested approval, grantability and argument types of a tool', () => {
     expect(toolsPB.map(toMcpTool)).toEqual([
-      { name: 'record_expense', description: 'Record an expense', hint: 'changes', args: [{ name: 'confirm', type: 'boolean' }, { name: 'amount', type: 'number' }, { name: 'note', type: 'string' }, { name: 'odd', type: 'string' }], grantable: true, requireApproval: true },
+      { name: 'record_expense', description: 'Record an expense', hint: 'changes', args: [{ name: 'confirm', type: 'boolean' }, { name: 'amount', type: 'integer' }, { name: 'note', type: 'string' }, { name: 'odd', type: 'other' }], grantable: true, requireApproval: true },
       { name: 'list_wallets', description: 'List wallets', hint: 'read_only', args: [], grantable: true, requireApproval: false },
       { name: 'export_all_transactions_as_spreadsheet_for_accountant_review', description: '', hint: 'read_only', args: [], grantable: false, requireApproval: false },
     ]);

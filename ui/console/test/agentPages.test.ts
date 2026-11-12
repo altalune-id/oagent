@@ -373,10 +373,10 @@ describe('configure page', () => {
     untrusted.element.dispatchEvent(new Event('toggle'));
     const listBills = untrusted.findAll('li input[type="checkbox"]')[0]!;
     await listBills.setValue(true);
-    const ask = untrusted.get('li input.toggle');
-    expect((ask.element as HTMLInputElement).checked, 'a read-only hint on an untrusted server still asks').toBe(true);
+    const always = untrusted.get('li input[aria-label="approvalrule.always"]');
+    expect((always.element as HTMLInputElement).checked, 'a read-only hint on an untrusted server still asks').toBe(true);
     expect(untrusted.find('[role="alert"]').exists()).toBe(false);
-    await ask.setValue(false);
+    await untrusted.get('li input[aria-label="approvalrule.never"]').setValue(true);
     expect(untrusted.get('[role="alert"]').text()).toBe('grants.untrusted_no_ask');
     const web = w.get('#configure-web');
     await web.get('textarea').setValue('');

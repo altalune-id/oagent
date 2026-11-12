@@ -14,7 +14,7 @@ export type ToolHint = 'read_only' | 'changes' | 'destructive';
 
 export interface McpToolArg {
   name: string;
-  type: 'boolean' | 'string' | 'number';
+  type: 'boolean' | 'string' | 'number' | 'integer' | 'other';
 }
 
 export interface McpTool {
@@ -65,10 +65,7 @@ function toAuth(kind: McpServerAuthKind): McpAuth {
 
 function argType(schema: unknown): McpToolArg['type'] {
   const type = schema && typeof schema === 'object' ? (schema as JsonObject).type : undefined;
-  if (type === 'boolean') {
-    return 'boolean';
-  }
-  return type === 'number' || type === 'integer' ? 'number' : 'string';
+  return type === 'boolean' || type === 'string' || type === 'number' || type === 'integer' ? type : 'other';
 }
 
 export function toMcpTool(t: McpServerTool): McpTool {
