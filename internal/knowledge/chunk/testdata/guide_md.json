@@ -1,0 +1,20 @@
+[
+  {
+    "ordinal": 0,
+    "heading_path": "Returns guide",
+    "text": "How returns work.",
+    "embed_text": "guide.md — Returns guide\n\nHow returns work."
+  },
+  {
+    "ordinal": 1,
+    "heading_path": "Eligibility",
+    "text": "- Items within 30 days\n- Original packaging",
+    "embed_text": "guide.md — Eligibility\n\n- Items within 30 days\n- Original packaging"
+  },
+  {
+    "ordinal": 2,
+    "heading_path": "Steps",
+    "text": "1. Open the order.\n2. Choose **Return**.\n```\nRMA-0001\n```",
+    "embed_text": "guide.md — Steps\n\n1. Open the order.\n2. Choose **Return**.\n```\nRMA-0001\n```"
+  }
+]
