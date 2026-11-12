@@ -2,9 +2,12 @@ export interface ReplyTexts {
   failure: string;
   voice: string;
   photo: string;
+  approvalPrompt: string;
+  approvalExpired: string;
 }
 
-export const replyKeys = ['failure', 'voice', 'photo'] as const;
+export const replyKeys = ['failure', 'voice', 'photo', 'approvalPrompt', 'approvalExpired'] as const;
+export const maxReplyLength = 1000;
 export type ReplyKey = typeof replyKeys[number];
 
 export interface ChannelTiming {
@@ -15,7 +18,16 @@ export interface ChannelTiming {
 
 // replyErrors flags each set reply left empty, since the agent would then send a blank message.
 export function replyErrors(replies: ReplyTexts): Partial<Record<ReplyKey, string>> {
-  return Object.fromEntries(replyKeys.filter(k => !replies[k].trim()).map(k => [k, 'channels.error_reply_required']));
+  return Object.fromEntries(replyKeys.flatMap((k) => {
+    const text = replies[k].trim();
+    if (!text) {
+      return [[k, 'channels.error_reply_required']];
+    }
+    if ([...text].length > maxReplyLength) {
+      return [[k, 'channels.error_reply_too_long']];
+    }
+    return k === 'approvalPrompt' && !text.includes('{preview}') ? [[k, 'channels.error_reply_preview']] : [];
+  }));
 }
 
 // seconds turns milliseconds into whole or one-decimal seconds for the read-only timing values.

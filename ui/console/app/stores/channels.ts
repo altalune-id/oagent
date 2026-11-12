@@ -83,7 +83,7 @@ export function toConnection(c: Connection): WhatsAppConnection {
     secondarySet: c.secondarySet,
     quietMs: c.quietWindowMs,
     quietMaxMs: c.quietMaxMs,
-    replies: { failure: c.replyFailure, voice: c.replyVoice, photo: c.replyPhotoUnreadable },
+    replies: { failure: c.replyFailure, voice: c.replyVoice, photo: c.replyPhotoUnreadable, approvalPrompt: c.approvalPrompt, approvalExpired: c.approvalExpired },
     lastResultAt: date(c.lastResultAt),
     lastBadSignatureAt: date(c.lastBadSignatureAt),
   };
@@ -100,7 +100,7 @@ export function patchRequest(id: string, patch: ConnectionPatch) {
     ...(patch.deviceKey?.trim() ? { deviceKey: patch.deviceKey.trim() } : {}),
     ...(patch.quietMs !== undefined ? { quietWindowMs: patch.quietMs } : {}),
     ...(patch.quietMaxMs !== undefined ? { quietMaxMs: patch.quietMaxMs } : {}),
-    ...(patch.replies ? { replyFailure: patch.replies.failure.trim(), replyVoice: patch.replies.voice.trim(), replyPhotoUnreadable: patch.replies.photo.trim() } : {}),
+    ...(patch.replies ? { replyFailure: patch.replies.failure.trim(), replyVoice: patch.replies.voice.trim(), replyPhotoUnreadable: patch.replies.photo.trim(), approvalPrompt: patch.replies.approvalPrompt.trim(), approvalExpired: patch.replies.approvalExpired.trim() } : {}),
     ...(patch.enabled !== undefined ? { enabled: patch.enabled } : {}),
   };
 }
@@ -108,7 +108,7 @@ export function patchRequest(id: string, patch: ConnectionPatch) {
 export const useChannelsStore = defineStore('channels', () => {
   const { $channelClient: client } = useNuxtApp();
   const byAgent = ref<Record<string, WhatsAppConnection[]>>({});
-  const settings = ref<ChannelSettings>({ defaultOpenwaBaseUrl: '', defaultReplies: { failure: '', voice: '', photo: '' }, timing: { quietMs: 0, quietMaxMs: 0, maxMessageAgeMinutes: 0 } });
+  const settings = ref<ChannelSettings>({ defaultOpenwaBaseUrl: '', defaultReplies: { failure: '', voice: '', photo: '', approvalPrompt: '', approvalExpired: '' }, timing: { quietMs: 0, quietMaxMs: 0, maxMessageAgeMinutes: 0 } });
   const loading = ref(false);
   const error = ref<ShownError | null>(null);
   const errorMessage = useErrorMessage();
@@ -128,7 +128,7 @@ export const useChannelsStore = defineStore('channels', () => {
       byAgent.value = { ...byAgent.value, [agentId]: list.connections.map(toConnection) };
       settings.value = {
         defaultOpenwaBaseUrl: s.defaultOpenwaBaseUrl,
-        defaultReplies: { failure: s.replyFailure, voice: s.replyVoice, photo: s.replyPhotoUnreadable },
+        defaultReplies: { failure: s.replyFailure, voice: s.replyVoice, photo: s.replyPhotoUnreadable, approvalPrompt: s.approvalPrompt, approvalExpired: s.approvalExpired },
         timing: { quietMs: s.quietWindowMs, quietMaxMs: s.quietMaxMs, maxMessageAgeMinutes: s.maxMessageAgeMinutes },
       };
       loadedFor = agentId;
@@ -165,7 +165,7 @@ export const useChannelsStore = defineStore('channels', () => {
   function replies(agentId: string): ReplyTexts {
     const own = connection(agentId)?.replies;
     const d = settings.value.defaultReplies;
-    return { failure: own?.failure || d.failure, voice: own?.voice || d.voice, photo: own?.photo || d.photo };
+    return { failure: own?.failure || d.failure, voice: own?.voice || d.voice, photo: own?.photo || d.photo, approvalPrompt: own?.approvalPrompt || d.approvalPrompt, approvalExpired: own?.approvalExpired || d.approvalExpired };
   }
 
   async function create(projectId: string, agentId: string, input: OpenwaInput) {

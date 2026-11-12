@@ -11,6 +11,8 @@ export const channelDefaults = {
   replyFailure: 'Sorry, something went wrong on our side. Please try again in a moment.',
   replyVoice: 'Voice notes are not supported yet. Please send your message as text.',
   replyPhotoUnreadable: 'I could not read that photo. Please describe it in text instead.',
+  approvalPrompt: 'Need your OK first:\n{preview}\nReply YES or NO.',
+  approvalExpired: 'That request expired, so nothing was done.',
   quietWindowMs: 3_000,
   quietMaxMs: 10_000,
   maxMessageAgeMinutes: 30,
@@ -36,6 +38,8 @@ export function connectionPB(over: MessageInitShape<typeof ConnectionSchema> = {
     replyFailure: channelDefaults.replyFailure,
     replyVoice: channelDefaults.replyVoice,
     replyPhotoUnreadable: channelDefaults.replyPhotoUnreadable,
+    approvalPrompt: channelDefaults.approvalPrompt,
+    approvalExpired: channelDefaults.approvalExpired,
     lastResultAt: timestampFromDate(new Date('2026-11-07T09:00:00Z')),
     ...over,
   });
@@ -74,6 +78,8 @@ export function fakeChannelClient(seed: Connection[] = []) {
         replyFailure: req.replyFailure as string,
         replyVoice: req.replyVoice as string,
         replyPhotoUnreadable: req.replyPhotoUnreadable as string,
+        approvalPrompt: req.approvalPrompt as string,
+        approvalExpired: req.approvalExpired as string,
         lastResultAt: undefined,
       });
       held.set(id, c);
