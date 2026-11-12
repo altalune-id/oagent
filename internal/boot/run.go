@@ -49,6 +49,9 @@ func buildRun(k kernel.Kernel, cfg config.Config, s *Services, limiter ratelimit
 	if s.EndUsers != nil {
 		svc.WithNames(endUserNames{users: s.EndUsers})
 	}
+	if s.Knowledge != nil {
+		svc.WithKnowledge(runKnowledge{agents: s.AgentStore, knowledge: s.Knowledge}, runRetriever{s.KnowledgeRetriever}, s.Knowledge)
+	}
 	rt, err := buildRuntime(cfg.Runtime)
 	if err != nil {
 		return runParts{}, err

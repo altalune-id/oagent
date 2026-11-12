@@ -29,6 +29,9 @@ type Config struct {
 	RateLimit  RateLimitConfig  `yaml:"rateLimit"  mapstructure:"rateLimit"`
 	Redis      RedisConfig      `yaml:"redis"      mapstructure:"redis"`
 	NATS       NATSConfig       `yaml:"nats"       mapstructure:"nats"`
+	Storage    StorageConfig    `yaml:"storage"    mapstructure:"storage"`
+	S3         S3Config         `yaml:"s3"         mapstructure:"s3"`
+	Knowledge  KnowledgeConfig  `yaml:"knowledge"  mapstructure:"knowledge"`
 	OIDC       OIDCConfig       `yaml:"oidc"       mapstructure:"oidc"`
 }
 
@@ -169,6 +172,8 @@ func (c *Config) Validate() error {
 		c.validateRun,
 		c.validateRedis,
 		c.validateNATS,
+		c.validateStorage,
+		c.validateS3,
 	} {
 		if err := check(); err != nil {
 			return err

@@ -9,6 +9,7 @@ import (
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/internal/knowledge"
 	"altalune.id/oagent/internal/mcpserver"
 	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/org"
@@ -27,6 +28,7 @@ type publicIDs struct {
 
 	providers *modelprovider.Service
 	servers   *mcpserver.Service
+	knowledge *knowledge.Service
 }
 
 func newPublicIDs(s *Services) publicIDs {
@@ -40,7 +42,32 @@ func newPublicIDs(s *Services) publicIDs {
 
 		providers: s.ModelProviders,
 		servers:   s.MCPServers,
+		knowledge: s.Knowledge,
 	}
+}
+
+// KnowledgeSourceID resolves a knowledge source's public id to its id and project.
+func (p publicIDs) KnowledgeSourceID(ctx context.Context, publicID string) (id, projectID uuid.UUID, ok bool, err error) {
+	if p.knowledge == nil {
+		return uuid.Nil, uuid.Nil, false, nil
+	}
+	r, err := p.knowledge.ResolveSource(ctx, publicID)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, false, notFoundIsAbsent(err)
+	}
+	return r.ID, r.ProjectID, true, nil
+}
+
+// KnowledgeSourcePublicID names a knowledge source of the org on ctx; a deleted one is not ok.
+func (p publicIDs) KnowledgeSourcePublicID(ctx context.Context, id uuid.UUID) (publicID string, ok bool, err error) {
+	if p.knowledge == nil {
+		return "", false, nil
+	}
+	s, err := p.knowledge.GetSource(ctx, id)
+	if err != nil {
+		return "", false, notFoundIsAbsent(err)
+	}
+	return s.PublicID, true, nil
 }
 
 func (p publicIDs) OrgID(ctx context.Context, publicID string) (uuid.UUID, bool, error) {

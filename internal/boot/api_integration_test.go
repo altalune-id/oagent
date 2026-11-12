@@ -84,6 +84,8 @@ func startAPIFixture(t *testing.T, idp *oidcrptest.IDP) *apiFixture {
 	svc, sqlDB, schemaName := pgtest.MigratedRLS(t)
 	cfg.Postgres.Schema = schemaName
 	svcs := buildServices(kernel.Kernel{Pool: svc, Reporter: apperror.NewReporter(nil, false)}, cfg)
+	_, err := buildKnowledge(t.Context(), &kernel.Kernel{Pool: svc, Reporter: apperror.NewReporter(nil, false)}, cfg, svcs, log)
+	require.NoError(t, err)
 	runs, err := buildRun(kernel.Kernel{Pool: svc, Reporter: apperror.NewReporter(nil, false)}, cfg, svcs, nil, log)
 	require.NoError(t, err)
 	svcs.RunStore, svcs.Runs = runs.store, runs.svc

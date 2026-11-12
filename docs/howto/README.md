@@ -20,6 +20,7 @@ Pick the recipe for your change. Each one has a **Plan** checklist (decisions to
 | add a page before sign-in (templ)                      | [web-page](web-page.md)                 |
 | add a console page (signed-in UI)                      | [console-page](console-page.md)         |
 | connect a WhatsApp device through OpenWA (operator)    | [connect-openwa](connect-openwa.md)     |
+| turn on knowledge sources and uploads (operator)       | [knowledge](knowledge.md)               |
 | change what Go sends the runtime in `POST /turn`       | [runtime-contract](runtime-contract.md) |
 
 Gates for every change are in [AGENTS.md](../../AGENTS.md#gates).

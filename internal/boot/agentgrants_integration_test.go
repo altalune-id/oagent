@@ -311,3 +311,27 @@ func TestMCP_AgentScopedKeyCannotBindAProvider(t *testing.T) {
 	})
 	assert.NotContains(t, call(granted, p.PublicID), `"isError":true`)
 }
+
+func TestDeleteProviderHoldingTheEmbeddingModel(t *testing.T) {
+	f := newAPIFixture(t)
+	g := newGrantScope(t, f)
+	in := modelprovider.Input{
+		Name: "embed", Kind: modelprovider.KindOpenAICompatible, BaseURL: "https://example.com/v1",
+		Models: []modelprovider.Model{{ID: "e", Embedding: true, Prices: &modelprovider.Prices{InputMicros: 1, OutputMicros: 0}}},
+	}
+	p, err := g.providers.Create(g.ctx, g.projectID, in, "sk-test")
+	require.NoError(t, err)
+	_, err = f.db.ExecContext(t.Context(), `INSERT INTO knowledge_settings (project_id, org_id, provider_id, model, dims, updated_at)
+		VALUES ($1, $2, $3, 'e', 768, now())`, g.projectID, g.orgID, p.ID)
+	require.NoError(t, err)
+
+	err = g.providers.Delete(g.ctx, p.ID)
+	assert.Equal(t, apperror.CodeModelProviderInUse, codeOfErr(err), "got %v", err)
+	var inUse *modelprovider.InUseError
+	require.ErrorAs(t, err, &inUse)
+	assert.Equal(t, modelprovider.InUseEmbeddingModel, inUse.Reason)
+
+	in.Models[0].Embedding = false
+	_, err = g.providers.Update(g.ctx, p.ID, in, nil)
+	assert.Equal(t, apperror.CodeModelProviderInUse, codeOfErr(err), "the project's embedding model stays an embedding model: %v", err)
+}

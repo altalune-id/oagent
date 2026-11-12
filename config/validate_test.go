@@ -127,6 +127,16 @@ func TestValidate_EveryRule(t *testing.T) {
 		{"mail.smtp.tls unknown with console", func(c *Config) { devConsole(c); c.Mail.SMTP.TLS = "ssl" }, valid},
 		{"mail.resend.apiKey empty", func(c *Config) { c.Mail.Driver = MailDriverResend }, missingSetting("mail.resend.apiKey")},
 		{"rateLimit.driver unknown", func(c *Config) { c.RateLimit.Driver = "disk" }, invalidSetting("rateLimit.driver")},
+		{"storage.driver off", func(c *Config) { c.Storage.Driver = "" }, valid},
+		{"storage.driver unknown", func(c *Config) { c.Storage.Driver = "gcs" }, invalidSetting("storage.driver")},
+		{"storage.driver memory in production", func(c *Config) { c.Storage.Driver = StorageDriverMemory }, invalidSetting("storage.driver")},
+		{"storage.app bad", func(c *Config) { useS3(c); c.Storage.App = "A B" }, invalidSetting("storage.app")},
+		{"storage.upload.urlTTL zero", func(c *Config) { useS3(c); c.Storage.Upload.URLTTL = 0 }, invalidSetting("storage.upload.urlTTL")},
+		{"storage.upload.pendingTTL short", func(c *Config) { useS3(c); c.Storage.Upload.PendingTTL = time.Second }, invalidSetting("storage.upload.pendingTTL")},
+		{"s3 used ok", useS3, valid},
+		{"s3.endpoint empty", func(c *Config) { useS3(c); c.S3.Endpoint = "" }, missingSetting("s3.endpoint")},
+		{"s3.endpoint bad", func(c *Config) { useS3(c); c.S3.Endpoint = "ftp://x" }, invalidSetting("s3.endpoint")},
+		{"s3.timeout zero", func(c *Config) { useS3(c); c.S3.Timeout = 0 }, invalidSetting("s3.timeout")},
 		{"snapshot.driver unknown", func(c *Config) { c.Snapshot.Driver = "s3" }, invalidSetting("snapshot.driver")},
 		{"run.maxConcurrentPerProject zero", func(c *Config) { c.Run.MaxConcurrentPerProject = 0 }, invalidSetting("run.maxConcurrentPerProject")},
 		{"run.maxPerMinutePerProject zero", func(c *Config) { c.Run.MaxPerMinutePerProject = 0 }, invalidSetting("run.maxPerMinutePerProject")},
@@ -298,6 +308,7 @@ func TestValidate_NoSecretInMessages(t *testing.T) {
 		"runtime.token":         func(c *Config) { c.Runtime.URL, c.Runtime.Token = "http://rt:8080", "short" },
 		"secrets.encryptionKey": func(c *Config) { c.Secrets.EncryptionKey = secret },
 		"redis.url":             func(c *Config) { redisFeature(c); c.Redis.URL = "redis://:" + secret + "@[bad" },
+		"s3.endpoint":           func(c *Config) { useS3(c); c.S3.Endpoint = "https://k:" + secret + "@[bad" },
 		"auth.basic.password": func(c *Config) {
 			c.Auth.Mode = AuthModeBasic
 			c.Auth.Basic = BasicConfig{User: "ops", Password: "hunter2"}

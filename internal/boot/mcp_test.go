@@ -22,6 +22,7 @@ import (
 	channelv1mcp "altalune.id/oagent/gen/go/channel/v1/channelv1mcp"
 	enduserv1mcp "altalune.id/oagent/gen/go/enduser/v1/enduserv1mcp"
 	invitev1mcp "altalune.id/oagent/gen/go/invite/v1/invitev1mcp"
+	"altalune.id/oagent/gen/go/knowledge/v1/knowledgev1mcp"
 	mcpserverv1mcp "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1mcp"
 	memberv1mcp "altalune.id/oagent/gen/go/member/v1/memberv1mcp"
 	modelproviderv1mcp "altalune.id/oagent/gen/go/modelprovider/v1/modelproviderv1mcp"
@@ -269,18 +270,24 @@ func TestMCPTools_PermissionsComeFromTheTable(t *testing.T) {
 		invitev1mcp.MemberInviteDiscardToolName: {scope.MemberWrite},
 		authv1mcp.AuthWhoamiToolName:            {authz.AnyAuthenticated},
 
-		modelproviderv1mcp.ModelProviderGetToolName:    {scope.ProviderRead},
-		modelproviderv1mcp.ModelProviderListToolName:   {scope.ProviderRead},
-		modelproviderv1mcp.ModelProviderDeleteToolName: {scope.ProviderWrite},
-		mcpserverv1mcp.McpServerGetToolName:            {scope.McpserverRead},
-		mcpserverv1mcp.McpServerListToolName:           {scope.McpserverRead},
-		mcpserverv1mcp.McpServerDeleteToolName:         {scope.McpserverWrite},
-		mcpserverv1mcp.McpServerToolsToolName:          {scope.McpserverRead},
-		channelv1mcp.ChannelConnectionGetToolName:      {scope.ChannelRead},
-		channelv1mcp.ChannelConnectionListToolName:     {scope.ChannelRead},
-		channelv1mcp.ChannelConnectionDeleteToolName:   {scope.ChannelWrite},
-		enduserv1mcp.EndUserListToolName:               {scope.ThreadRead},
-		enduserv1mcp.EndUserGetToolName:                {scope.ThreadRead},
+		modelproviderv1mcp.ModelProviderGetToolName:     {scope.ProviderRead},
+		modelproviderv1mcp.ModelProviderListToolName:    {scope.ProviderRead},
+		modelproviderv1mcp.ModelProviderDeleteToolName:  {scope.ProviderWrite},
+		mcpserverv1mcp.McpServerGetToolName:             {scope.McpserverRead},
+		mcpserverv1mcp.McpServerListToolName:            {scope.McpserverRead},
+		mcpserverv1mcp.McpServerDeleteToolName:          {scope.McpserverWrite},
+		mcpserverv1mcp.McpServerToolsToolName:           {scope.McpserverRead},
+		knowledgev1mcp.KnowledgeSourceCreateUrlToolName: {scope.KnowledgeWrite},
+		knowledgev1mcp.KnowledgeSourceListToolName:      {scope.KnowledgeRead},
+		knowledgev1mcp.KnowledgeSourceGetToolName:       {scope.KnowledgeRead},
+		knowledgev1mcp.KnowledgeSourceRefreshToolName:   {scope.KnowledgeWrite},
+		knowledgev1mcp.KnowledgeSourceDeleteToolName:    {scope.KnowledgeWrite},
+		knowledgev1mcp.KnowledgeTestSearchToolName:      {scope.KnowledgeRead},
+		channelv1mcp.ChannelConnectionGetToolName:       {scope.ChannelRead},
+		channelv1mcp.ChannelConnectionListToolName:      {scope.ChannelRead},
+		channelv1mcp.ChannelConnectionDeleteToolName:    {scope.ChannelWrite},
+		enduserv1mcp.EndUserListToolName:                {scope.ThreadRead},
+		enduserv1mcp.EndUserGetToolName:                 {scope.ThreadRead},
 
 		threadv1mcp.ThreadListToolName:     {scope.ThreadRead},
 		threadv1mcp.ThreadGetToolName:      {scope.ThreadRead},

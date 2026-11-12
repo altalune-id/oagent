@@ -100,6 +100,10 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 	}
 
 	svcs := buildServices(k, cfg)
+	know, err := buildKnowledge(ctx, &k, cfg, svcs, log)
+	if err != nil {
+		return nil, err
+	}
 	if svcs.MCPTokens, err = buildMCPTokens(cfg, providerClient()); err != nil {
 		return nil, err
 	}
@@ -183,6 +187,13 @@ func Boot(ctx context.Context, cfg config.Config, log *slog.Logger, opts ...Opti
 	sup.Register(buildMailWorker(svcs, cfg.Mail, log))
 	sup.Register(svcs.KeyUsage)
 	sup.Register(svcs.RunTurns)
+	if know.s3Health != nil {
+		sup.Register(know.s3Health)
+	}
+	if len(cfg.Knowledge.Backends()) > 0 {
+		sup.Register(know.ingest)
+		sup.Register(know.crawl)
+	}
 	if lims.janitor != nil {
 		sup.Register(lims.janitor)
 	}

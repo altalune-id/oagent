@@ -9,6 +9,7 @@ import (
 	"altalune.id/oagent/config"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/internal/knowledge"
 	"altalune.id/oagent/internal/mcpserver"
 	"altalune.id/oagent/internal/modelprovider"
 )
@@ -89,15 +90,65 @@ func (g grantLocker) LockShared(ctx context.Context, providerIDs, serverIDs []uu
 	return nil
 }
 
-type providerUsage struct{ agents agent.Store }
+type providerUsage struct {
+	agents    agent.Store
+	knowledge *knowledge.Service
+}
 
-// ProviderUse implements modelprovider.Usage over the agents' latest published versions.
+// ProviderUse implements modelprovider.Usage over the agents' latest published versions and the project's embedding model.
 func (u providerUsage) ProviderUse(ctx context.Context, providerID uuid.UUID) (modelprovider.ProviderUse, error) {
 	use, err := u.agents.ProviderUse(ctx, providerID)
 	if err != nil {
 		return modelprovider.ProviderUse{}, err
 	}
-	return modelprovider.ProviderUse{InUse: use.InUse, Models: use.Models}, nil
+	out := modelprovider.ProviderUse{InUse: use.InUse, Models: use.Models}
+	if u.knowledge != nil {
+		if out.EmbeddingModel, err = u.knowledge.EmbeddingModelOf(ctx, providerID); err != nil {
+			return modelprovider.ProviderUse{}, err
+		}
+	}
+	return out, nil
+}
+
+type grantKnowledge struct{ knowledge *knowledge.Service }
+
+// SourceExists implements agent.Knowledge; an unknown or foreign source answers the agent's grant error.
+func (g grantKnowledge) SourceExists(ctx context.Context, projectID, sourceID uuid.UUID) error {
+	return knowledgeGrantErr(g.knowledge.SourceExists(ctx, projectID, sourceID))
+}
+
+// LockSourcesShared implements agent.Knowledge; a gone source answers the agent's grant error.
+func (g grantKnowledge) LockSourcesShared(ctx context.Context, ids []uuid.UUID) error {
+	return knowledgeGrantErr(g.knowledge.LockSourcesShared(ctx, ids))
+}
+
+func knowledgeGrantErr(err error) error {
+	if knowledge.IsSourceNotFoundError(err) {
+		return &agent.InvalidGrantError{Reason: agent.GrantKnowledgeSource}
+	}
+	return err
+}
+
+type knowledgeBindings struct{ agents agent.Store }
+
+// SourceInUse implements knowledge.Bindings over the agents' latest published versions.
+func (b knowledgeBindings) SourceInUse(ctx context.Context, sourceID uuid.UUID) (bool, error) {
+	return b.agents.KnowledgeSourceInUse(ctx, sourceID)
+}
+
+// SourcesUsedBy implements knowledge.Bindings over the agents' latest published versions.
+func (b knowledgeBindings) SourcesUsedBy(ctx context.Context, projectID uuid.UUID) (map[uuid.UUID][]knowledge.UsedBy, error) {
+	use, err := b.agents.KnowledgeUse(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID][]knowledge.UsedBy, len(use))
+	for id, agents := range use {
+		for _, a := range agents {
+			out[id] = append(out[id], knowledge.UsedBy{AgentID: a.ID, AgentPublicID: a.PublicID, AgentName: a.Name})
+		}
+	}
+	return out, nil
 }
 
 type serverUsage struct{ agents agent.Store }
