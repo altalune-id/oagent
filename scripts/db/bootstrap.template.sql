@@ -80,6 +80,9 @@ DO $$ BEGIN
   EXECUTE format('GRANT @@PREFIX@@_owner TO %I', current_user);
 END $$;
 
+-- NOTE: pgvector is not a trusted extension, so the migrator cannot create it; it lives in public for every schema.
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
+
 CREATE SCHEMA IF NOT EXISTS @@SCHEMA@@ AUTHORIZATION @@PREFIX@@_owner;
 ALTER SCHEMA @@SCHEMA@@ OWNER TO @@PREFIX@@_owner;
 REVOKE CREATE ON SCHEMA @@SCHEMA@@ FROM PUBLIC;
@@ -122,9 +125,20 @@ DO $$ BEGIN
     pg_get_serial_sequence('@@SCHEMA@@.@@TABLE_PREFIX@@goose_db_version', 'id'));
 END $$;
 
--- Functions that already exist (a re-run after migrations): EXECUTE for the service only.
-REVOKE ALL ON ALL FUNCTIONS IN SCHEMA @@SCHEMA@@ FROM PUBLIC;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA @@SCHEMA@@ TO @@PREFIX@@_service;
+-- Functions that already exist (a re-run after migrations): EXECUTE for the service only; extension members keep their own grants.
+DO $$
+DECLARE
+  fn regprocedure;
+BEGIN
+  FOR fn IN
+    SELECT p.oid::regprocedure FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = '@@SCHEMA@@'
+       AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e')
+  LOOP
+    EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC', fn);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO @@PREFIX@@_service', fn);
+  END LOOP;
+END $$;
 
 DO $$ BEGIN
   EXECUTE format('REVOKE @@PREFIX@@_owner FROM %I', current_user);

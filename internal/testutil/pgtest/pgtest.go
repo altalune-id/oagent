@@ -28,7 +28,7 @@ import (
 const (
 	envDSN       = "TEST_PG_DSN"
 	envCI        = "CI"
-	image        = "postgres:17-alpine"
+	image        = "pgvector/pgvector:0.8.7-pg17"
 	labelOwner   = "id.altalune.oagent.pgtest"
 	staleAfter   = 30 * time.Minute
 	schemaPrefix = "pgt_"
@@ -61,6 +61,9 @@ func New(t *testing.T) *Handle {
 			t.Skipf("pgtest: cannot start Postgres (set %s or start docker/podman): %v", envDSN, server.err)
 		}
 		dsn = server.dsn
+	}
+	if err := vectorOnce(t.Context(), dsn); err != nil {
+		t.Fatalf("pgtest: the server needs pgvector, created by a role allowed to: %v", err)
 	}
 	return &Handle{DSN: dsn, Schema: uniqueSchema(t)}
 }
