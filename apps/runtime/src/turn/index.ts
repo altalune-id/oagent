@@ -4,6 +4,7 @@ import type { Logger } from '../log.ts';
 import type { Models } from '../models/index.ts';
 import type { TurnDeps, TurnOutcome } from './execute.ts';
 import { checkImages } from '../contract/index.ts';
+import { approvalSpecs, checkApprovalReady, interventionsFor } from '../interventions/index.ts';
 import { StreamMapper, toAgUiMessages } from './agui.ts';
 import { executeTurn } from './execute.ts';
 import { emptyUsage, LIMIT_REPLY } from './limits.ts';
@@ -41,6 +42,7 @@ export function createRunTurn(deps: RunTurnDeps): RunTurn {
   return async (request, emit, signal) => {
     checkSnapshot(request);
     checkImages(request);
+    checkApprovalReady(request, interventionsFor(approvalSpecs(request)));
     const model = deps.modelFor?.(request) ?? deps.models.model(request.ids.project, request.agent.model, request.agent.temperature);
     const mapper = new StreamMapper(emit);
     const ids = { threadId: request.ids.thread, runId: request.ids.run };

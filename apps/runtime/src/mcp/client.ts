@@ -14,7 +14,8 @@ export type McpServerSpec = {
   name: string,
   url: string,
   auth: McpAuth,
-  allowedTools: string[],
+  allowedTools?: string[],
+  tools?: { name: string }[],
   connectTimeoutMs: number,
   callTimeoutMs: number,
 };
@@ -34,7 +35,7 @@ export class TurnMcpClient extends McpClient {
       prefix: `${spec.name}_`,
       continueOnError: true,
       toolFilters: {
-        allowed: spec.allowedTools,
+        allowed: spec.tools?.map(t => t.name) ?? spec.allowedTools ?? [],
         rejected: [(tool: McpTool) => !TOOL_NAME.test(tool.name)],
       },
     });

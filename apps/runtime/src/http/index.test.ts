@@ -18,7 +18,8 @@ import { createRunTurn } from '../turn/index.ts';
 import { createRuntimeServer, listen, MAX_BODY_BYTES } from './index.ts';
 
 const TOKEN = 'a'.repeat(32);
-const goldenBody = readFileSync(fileURLToPath(new URL('../../../../internal/kernel/runtime/testdata/turn/plain_reply.request.json', import.meta.url)), 'utf8');
+const goldenOf = (name: string): string => readFileSync(fileURLToPath(new URL(`../../../../internal/kernel/runtime/testdata/turn/${name}.request.json`, import.meta.url)), 'utf8');
+const goldenBody = goldenOf('plain_reply');
 const quiet = captureLogger();
 const runtimes: RuntimeServer[] = [];
 
@@ -102,9 +103,41 @@ describe('runtime server', () => {
     const bad = await turn(base, { body: '{' });
     expect(bad.status).toBe(400);
     expect(await bad.json()).toEqual({ error: 'invalid_json' });
-    const wrong = await turn(base, { body: JSON.stringify({ ...JSON.parse(goldenBody), contractVersion: 3 }) });
+    const wrong = await turn(base, { body: JSON.stringify({ ...JSON.parse(goldenBody), contractVersion: 4 }) });
     expect(wrong.status).toBe(400);
     expect(await wrong.json()).toEqual({ error: 'invalid_request', fields: ['contractVersion'] });
+  });
+
+  it('accepts contract versions 1 and 2, and 3 with approval specs, during the rollout', async () => {
+    const seen: unknown[] = [];
+    const base = await serve(async (req) => {
+      seen.push(req.contractVersion === 3 ? req.mcpServers[0]!.tools : req.contractVersion);
+    });
+    const v3 = JSON.parse(goldenOf('tool_call')) as Record<string, unknown>;
+    v3.contractVersion = 3;
+    const server = (v3.mcpServers as Record<string, unknown>[])[0]!;
+    delete server.allowedTools;
+    const tools = [{ name: 'record_expense', approval: { mode: 'conditional', freeWhen: [{ arg: 'confirm', values: [false], absent: true }] } }];
+    server.tools = tools;
+    const plain = JSON.parse(goldenBody) as Record<string, unknown>;
+    for (const body of [{ ...plain, contractVersion: 1 }, { ...plain, contractVersion: 2 }, v3].map(b => JSON.stringify(b))) {
+      const res = await turn(base, { body });
+      expect(res.status).toBe(200);
+      await res.text();
+    }
+    expect(seen).toEqual([1, 2, tools]);
+  });
+
+  it('refuses a resume with no snapshot with 400 on snapshot, before any turn runs', async () => {
+    let ran = false;
+    const base = await serve(async () => {
+      ran = true;
+    });
+    const body = { ...(JSON.parse(goldenOf('resume')) as Record<string, unknown>), snapshot: null };
+    const res = await turn(base, { body: JSON.stringify(body) });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'invalid_request', fields: ['snapshot'] });
+    expect(ran).toBe(false);
   });
 
   it('streams each emitted event as one NDJSON line', async () => {

@@ -2,7 +2,7 @@ import type { TurnRequest } from './request.ts';
 import { Buffer } from 'node:buffer';
 
 import { TurnRefusedError } from './errors.ts';
-import { CONTRACT_VERSION } from './request.ts';
+import { IMAGE_CONTRACT_VERSION } from './request.ts';
 
 export const MAX_IMAGES = 3;
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -54,7 +54,7 @@ export function inputParts(request: TurnRequest): InputPart[] {
   }
   const parts = content as { type: string, text?: string }[];
   const images = parts.filter(p => p.type !== 'text');
-  if (images.length > 0 && request.contractVersion !== CONTRACT_VERSION) {
+  if (images.length > 0 && request.contractVersion < IMAGE_CONTRACT_VERSION) {
     throw new TurnRefusedError(422, 'image_invalid');
   }
   if (images.length > MAX_IMAGES) {

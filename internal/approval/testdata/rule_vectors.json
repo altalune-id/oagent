@@ -1,0 +1,95 @@
+[
+  {
+    "name": "free_when matches",
+    "schema": { "type": "object", "properties": { "amount": { "type": "number" }, "confirm": { "type": "boolean" } } },
+    "rule": { "mode": "conditional", "freeWhen": [{ "arg": "confirm", "values": [false], "absent": true }] },
+    "args": { "amount": 25000, "confirm": false },
+    "want": "free"
+  },
+  {
+    "name": "free_when value differs",
+    "schema": { "type": "object", "properties": { "confirm": { "type": "boolean" } } },
+    "rule": { "mode": "conditional", "freeWhen": [{ "arg": "confirm", "values": [false], "absent": true }] },
+    "args": { "confirm": true },
+    "want": "ask"
+  },
+  {
+    "name": "absent argument with absent true",
+    "schema": { "type": "object", "properties": { "confirm": { "type": "boolean" } } },
+    "rule": { "mode": "conditional", "freeWhen": [{ "arg": "confirm", "values": [false], "absent": true }] },
+    "args": { "amount": 1 },
+    "want": "free"
+  },
+  {
+    "name": "absent argument without absent",
+    "schema": { "type": "object", "properties": { "confirm": { "type": "boolean" } } },
+    "rule": { "mode": "conditional", "freeWhen": [{ "arg": "confirm", "values": [false] }] },
+    "args": {},
+    "want": "ask"
+  },
+  {
+    "name": "strict equality: the string false is not false",
+    "schema": { "type": "object", "properties": { "confirm": { "type": ["boolean", "string"] } } },
+    "rule": { "mode": "conditional", "freeWhen": [{ "arg": "confirm", "values": [false] }] },
+    "args": { "confirm": "false" },
+    "want": "ask"
+  },
+  {
+    "name": "argument missing from the schema",
+    "schema": { "type": "object", "properties": { "amount": { "type": "number" } } },
+    "rule": { "mode": "conditional", "freeWhen": [{ "arg": "confirm", "values": [false], "absent": true }] },
+    "args": { "amount": 1 },
+    "want": "ask",
+    "runtimeOnly": true
+  },
+  {
+    "name": "value of the wrong JSON type for the property",
+    "schema": { "type": "object", "properties": { "confirm": { "type": "boolean" } } },
+    "rule": { "mode": "conditional", "freeWhen": [{ "arg": "confirm", "values": ["no"], "absent": true }] },
+    "args": {},
+    "want": "ask",
+    "runtimeOnly": true
+  },
+  {
+    "name": "mode always",
+    "schema": { "type": "object", "properties": {} },
+    "rule": { "mode": "always" },
+    "args": {},
+    "want": "ask"
+  },
+  {
+    "name": "mode never",
+    "schema": { "type": "object", "properties": {} },
+    "rule": { "mode": "never" },
+    "args": { "anything": true },
+    "want": "free"
+  },
+  {
+    "name": "several conditions with one failing",
+    "schema": { "type": "object", "properties": { "confirm": { "type": "boolean" }, "dry_run": { "type": "boolean" } } },
+    "rule": { "mode": "conditional", "freeWhen": [{ "arg": "confirm", "values": [false], "absent": true }, { "arg": "dry_run", "values": [true] }] },
+    "args": { "confirm": false, "dry_run": false },
+    "want": "ask"
+  },
+  {
+    "name": "object values compared as canonical JSON",
+    "schema": { "type": "object", "properties": { "opts": { "type": "object" } } },
+    "rule": { "mode": "conditional", "freeWhen": [{ "arg": "opts", "values": [{ "a": 1, "b": 2 }] }] },
+    "args": { "opts": { "b": 2, "a": 1 } },
+    "want": "free"
+  },
+  {
+    "name": "integer property accepts an integer literal",
+    "schema": { "type": "object", "properties": { "n": { "type": "integer" } } },
+    "rule": { "mode": "conditional", "freeWhen": [{ "arg": "n", "values": [0] }] },
+    "args": { "n": 0 },
+    "want": "free"
+  },
+  {
+    "name": "an empty argument name never makes a call free",
+    "schema": { "type": "object", "properties": { "": { "type": "string" } } },
+    "rule": { "mode": "conditional", "freeWhen": [{ "arg": "", "values": ["x"], "absent": true }] },
+    "args": {},
+    "want": "ask"
+  }
+]

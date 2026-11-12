@@ -15,6 +15,7 @@ import {
 } from '@strands-agents/sdk';
 
 import { inputParts, ModelProvider } from '../contract/index.ts';
+import { approvalSpecs, interventionsFor } from '../interventions/index.ts';
 import { openMcpServers } from '../mcp/index.ts';
 import { historyToMessages } from './history.ts';
 import { BUDGET_REFUSAL, LIMIT_REPLY, overBudget, stepLimit, UsageMeter } from './limits.ts';
@@ -128,6 +129,7 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
   const agent = new Agent({
     model: deps.model,
     tools: mcp.tools,
+    interventions: interventionsFor(approvalSpecs(request)),
     conversationManager: new SlidingWindowConversationManager({ proactiveCompression: true }),
     retryStrategy: null,
     sandbox: false,
