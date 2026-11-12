@@ -68,6 +68,48 @@ type ResolvedModel struct {
 	Vision bool
 }
 
+// KnowledgeSource is one knowledge source an agent version searches.
+type KnowledgeSource struct {
+	ID       uuid.UUID
+	PublicID string
+}
+
+// KnowledgeBindings lists the knowledge sources an agent version is bound to; none is an empty list.
+type KnowledgeBindings interface {
+	BoundSources(ctx context.Context, versionID uuid.UUID) ([]KnowledgeSource, error)
+}
+
+// KnowledgeQuery is one search before a turn: the turn's text against the version's sources in its project.
+type KnowledgeQuery struct {
+	ProjectID uuid.UUID
+	Sources   []uuid.UUID
+	Text      string
+}
+
+// KnowledgeHit is one passage a search returned, best first. SECURITY: project content; never log it.
+type KnowledgeHit struct {
+	Text, Title, Heading, URL string
+	Page                      int
+	Score                     float64
+	Source                    uuid.UUID
+}
+
+// KnowledgeUsage is what one search spent.
+type KnowledgeUsage struct {
+	EmbeddingTokens int64
+	RetrieveCalls   int
+}
+
+// KnowledgeRetriever searches a project's sources and returns at most the retriever's default number of hits.
+type KnowledgeRetriever interface {
+	Search(ctx context.Context, q KnowledgeQuery) ([]KnowledgeHit, KnowledgeUsage, error)
+}
+
+// EmbeddingPrices gives the input price of a project's embedding model, nil when the project has none.
+type EmbeddingPrices interface {
+	EmbeddingPrice(ctx context.Context, projectID uuid.UUID) (*int64, error)
+}
+
 // Providers resolves a provider's model with its opened key.
 type Providers interface {
 	ResolveModel(ctx context.Context, providerID uuid.UUID, model string) (ResolvedModel, error)

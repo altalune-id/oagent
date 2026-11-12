@@ -83,6 +83,10 @@ type runRow struct {
 	PriceOutputMicros     *int64     `alias:"runs.price_output_micros"`
 	PriceCacheReadMicros  *int64     `alias:"runs.price_cache_read_micros"`
 	PriceCacheWriteMicros *int64     `alias:"runs.price_cache_write_micros"`
+	EmbeddingTokens       int64      `alias:"runs.embedding_tokens"`
+	PriceEmbeddingMicros  *int64     `alias:"runs.embedding_price_input_micros"`
+	RetrieveCalls         int32      `alias:"runs.knowledge_retrieve_calls"`
+	RetrieveMs            int64      `alias:"runs.knowledge_retrieve_ms"`
 	ErrorCode             *string    `alias:"runs.error_code"`
 	StartedAt             time.Time  `alias:"runs.started_at"`
 	EndedAt               *time.Time `alias:"runs.ended_at"`
@@ -95,8 +99,9 @@ func (r *runRow) toRun() *Run {
 		AgentVersionID: r.AgentVersionID, Status: Status(r.Status), Attempt: r.Attempt, Group: r.IsGroup,
 		Usage: Usage{
 			InputTokens: r.InputTokens, OutputTokens: r.OutputTokens, CacheReadTokens: r.CacheReadTokens,
-			CacheWriteTokens: r.CacheWriteTokens, Estimated: r.UsageEstimated,
+			CacheWriteTokens: r.CacheWriteTokens, EmbeddingTokens: r.EmbeddingTokens, Estimated: r.UsageEstimated,
 		},
+		KnowledgeRetrieveCalls: r.RetrieveCalls, KnowledgeRetrieveMs: r.RetrieveMs,
 		StartedAt: r.StartedAt.UTC(), UpdatedAt: r.UpdatedAt.UTC(),
 	}
 	if r.IdempotencyKey != nil {
@@ -108,10 +113,11 @@ func (r *runRow) toRun() *Run {
 	if r.EndedAt != nil {
 		out.EndedAt = new(r.EndedAt.UTC())
 	}
-	if r.PriceInputMicros != nil || r.PriceOutputMicros != nil || r.PriceCacheReadMicros != nil || r.PriceCacheWriteMicros != nil {
+	if r.PriceInputMicros != nil || r.PriceOutputMicros != nil || r.PriceCacheReadMicros != nil || r.PriceCacheWriteMicros != nil ||
+		r.PriceEmbeddingMicros != nil {
 		out.Prices = &Prices{
 			Input: r.PriceInputMicros, Output: r.PriceOutputMicros,
-			CacheRead: r.PriceCacheReadMicros, CacheWrite: r.PriceCacheWriteMicros,
+			CacheRead: r.PriceCacheReadMicros, CacheWrite: r.PriceCacheWriteMicros, Embedding: r.PriceEmbeddingMicros,
 		}
 	}
 	return out

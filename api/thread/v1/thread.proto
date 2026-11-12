@@ -115,6 +115,8 @@ message Usage {
   int64 cache_read_tokens = 3;
   int64 cache_write_tokens = 4;
   bool estimated = 5;
+  // embedding_tokens are the tokens the run's knowledge searches embedded.
+  int64 embedding_tokens = 6;
 }
 
 // Run is one agent turn on a thread; cost_micros is unset when the run is unpriced, latency_ms and ended_at while it runs.
@@ -133,6 +135,9 @@ message Run {
   google.protobuf.Timestamp ended_at = 11;
   // agent_version_kind is published, or draft for a console Try it run on the unpublished draft (agent_version is then 0).
   string agent_version_kind = 12;
+  // knowledge_retrieve_calls and knowledge_retrieve_ms add up the run's knowledge searches.
+  int32 knowledge_retrieve_calls = 13;
+  int64 knowledge_retrieve_ms = 14;
 }
 
 message ListThreadsRequest {

@@ -5,6 +5,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 // ContractVersion is the turn contract version; a breaking change bumps it, an optional field old peers refuse only when set does not.
@@ -21,6 +24,86 @@ type TurnRequest struct {
 	Input           TurnInput         `json:"input"`
 	StoredResults   []StoredResult    `json:"storedResults"`
 	Limits          Limits            `json:"limits"`
+	Knowledge       []Passage         `json:"knowledge,omitempty"`
+}
+
+// The runtime refuses a turn whose knowledge passes these bounds.
+const (
+	MaxPassages          = 5
+	MaxPassageTextBytes  = 20000
+	MaxPassageLabelBytes = 500
+	MaxPassageURLBytes   = 2048
+	// MaxKnowledgeTextBytes bounds the passage text of one turn, about 4,000 tokens.
+	MaxKnowledgeTextBytes = 16000
+)
+
+// UntitledPassage is the title NormalizePassages gives a passage that has none.
+const UntitledPassage = "Untitled"
+
+// NormalizePassages returns at most MaxPassages copies cut to the runtime's bounds, dropping passages without text.
+func NormalizePassages(in []Passage) []Passage {
+	out := make([]Passage, 0, min(len(in), MaxPassages))
+	total := 0
+	for _, p := range in {
+		if len(out) == MaxPassages {
+			break
+		}
+		n := Passage{
+			Text:    cutUTF8(p.Text, MaxPassageTextBytes),
+			Title:   cutUTF8(p.Title, MaxPassageLabelBytes),
+			Heading: cutUTF8(p.Heading, MaxPassageLabelBytes),
+		}
+		if blank(n.Text) {
+			continue
+		}
+		if blank(n.Title) {
+			n.Title = UntitledPassage
+		}
+		if blank(n.Heading) {
+			n.Heading = ""
+		}
+		if p.Page != nil && *p.Page >= 1 {
+			n.Page = new(*p.Page)
+		}
+		if len(p.URL) <= MaxPassageURLBytes && utf8.ValidString(p.URL) {
+			n.URL = p.URL
+		}
+		room := MaxKnowledgeTextBytes - total - len(n.Title) - len(n.Heading) - len(n.URL)
+		if len(n.Text) > room {
+			if len(out) > 0 || room <= 0 {
+				break
+			}
+			n.Text = cutUTF8(n.Text, room)
+		}
+		total += len(n.Text) + len(n.Title) + len(n.Heading) + len(n.URL)
+		out = append(out, n)
+	}
+	return out
+}
+
+func blank(s string) bool {
+	return strings.TrimFunc(s, func(r rune) bool { return unicode.IsSpace(r) || unicode.Is(unicode.Cf, r) }) == ""
+}
+
+func cutUTF8(s string, maxBytes int) string {
+	s = strings.ToValidUTF8(s, "\uFFFD")
+	if len(s) <= maxBytes {
+		return s
+	}
+	i := maxBytes
+	for i > 0 && !utf8.RuneStart(s[i]) {
+		i--
+	}
+	return s[:i]
+}
+
+// Passage is one retrieved knowledge passage with its source. SECURITY: project content; never log or store it.
+type Passage struct {
+	Text    string `json:"text"`
+	Title   string `json:"title"`
+	Heading string `json:"heading,omitempty"`
+	Page    *int32 `json:"page,omitempty"`
+	URL     string `json:"url,omitempty"`
 }
 
 // TurnIDs names the turn; Thread and Agent are "t" and "a" plus 32 lowercase hex, Project is a cache key only.

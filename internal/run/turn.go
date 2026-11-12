@@ -33,6 +33,7 @@ func (s *Service) request(ctx context.Context, t *turn) (runtime.TurnRequest, []
 		History:       []json.RawMessage{},
 		StoredResults: []runtime.StoredResult{},
 		Limits:        runtime.Limits{DeadlineMs: (s.turnTimeout - deadlineMargin).Milliseconds(), Budget: s.budget(t)},
+		Knowledge:     t.knowledge,
 	}
 	t.grants = map[string]ToolGrant{}
 	servers, err := s.mcpServers(ctx, v, t.grants)
@@ -556,7 +557,7 @@ func add(a, b Usage) Usage {
 	return Usage{
 		InputTokens: a.InputTokens + b.InputTokens, OutputTokens: a.OutputTokens + b.OutputTokens,
 		CacheReadTokens: a.CacheReadTokens + b.CacheReadTokens, CacheWriteTokens: a.CacheWriteTokens + b.CacheWriteTokens,
-		Estimated: a.Estimated || b.Estimated,
+		EmbeddingTokens: a.EmbeddingTokens + b.EmbeddingTokens, Estimated: a.Estimated || b.Estimated,
 	}
 }
 

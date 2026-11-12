@@ -153,3 +153,16 @@ func TestErrors_NameTheirSubject(t *testing.T) {
 		assert.True(t, c.is(fmt.Errorf("wrapped: %w", c.err)))
 	}
 }
+
+func TestCost_EmbeddingClassOwnPrice(t *testing.T) {
+	p := &Prices{Input: new(int64(2_500_000)), Output: new(int64(10_000_000)), Embedding: new(int64(20_000))}
+	micros, priced := Cost(Usage{InputTokens: 1_000_000, EmbeddingTokens: 1_000_000}, p)
+	require.True(t, priced)
+	assert.Equal(t, int64(2_500_000+20_000), micros, "embedding tokens at the embedding price, never the main input price")
+
+	_, priced = Cost(Usage{EmbeddingTokens: 1}, &Prices{Input: new(int64(1))})
+	assert.False(t, priced, "embedding tokens with no embedding price leave the run unpriced")
+	micros, priced = Cost(Usage{InputTokens: 10}, &Prices{Input: new(int64(1_000_000))})
+	assert.True(t, priced, "no embedding tokens need no embedding price")
+	assert.Equal(t, int64(10), micros)
+}

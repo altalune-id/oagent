@@ -712,6 +712,17 @@ components:
           type: string
           title: agent_version_kind
           description: agent_version_kind is published, or draft for a console Try it run on the unpublished draft (agent_version is then 0).
+        knowledgeRetrieveCalls:
+          type: integer
+          title: knowledge_retrieve_calls
+          format: int32
+          description: knowledge_retrieve_calls and knowledge_retrieve_ms add up the run's knowledge searches.
+        knowledgeRetrieveMs:
+          type:
+            - integer
+            - string
+          title: knowledge_retrieve_ms
+          format: int64
       title: Run
       additionalProperties: false
       description: Run is one agent turn on a thread; cost_micros is unset when the run is unpriced, latency_ms and ended_at while it runs.
@@ -857,6 +868,13 @@ components:
         estimated:
           type: boolean
           title: estimated
+        embeddingTokens:
+          type:
+            - integer
+            - string
+          title: embedding_tokens
+          format: int64
+          description: embedding_tokens are the tokens the run's knowledge searches embedded.
       title: Usage
       additionalProperties: false
       description: Usage is a run's token usage by class; estimated is true when the provider did not report it.

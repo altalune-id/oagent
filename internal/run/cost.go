@@ -7,7 +7,7 @@ import (
 
 // Prices are the price snapshot of a run in micro-USD per 1M tokens; a nil class is unpriced.
 type Prices struct {
-	Input, Output, CacheRead, CacheWrite *int64
+	Input, Output, CacheRead, CacheWrite, Embedding *int64
 }
 
 const tokensPerPrice = 1_000_000
@@ -20,7 +20,10 @@ func Cost(u Usage, p *Prices) (micros int64, priced bool) {
 	for _, c := range []struct {
 		tokens int64
 		price  *int64
-	}{{u.InputTokens, p.Input}, {u.OutputTokens, p.Output}, {u.CacheReadTokens, p.CacheRead}, {u.CacheWriteTokens, p.CacheWrite}} {
+	}{
+		{u.InputTokens, p.Input}, {u.OutputTokens, p.Output}, {u.CacheReadTokens, p.CacheRead}, {u.CacheWriteTokens, p.CacheWrite},
+		{u.EmbeddingTokens, p.Embedding},
+	} {
 		if c.tokens == 0 {
 			continue
 		}

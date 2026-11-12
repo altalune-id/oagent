@@ -660,12 +660,13 @@ func (s *postgresStore) insertRun(ctx context.Context, tx *sql.Tx, r *Run) error
 	t := s.runs
 	stmt := t.INSERT(
 		t.ID, t.PublicID, t.OrgID, t.ProjectID, t.ThreadID, t.AgentVersionID, t.Status, t.IdempotencyKey, t.Attempt, t.IsGroup,
-		t.PriceInputMicros, t.PriceOutputMicros, t.PriceCacheReadMicros, t.PriceCacheWriteMicros,
+		t.PriceInputMicros, t.PriceOutputMicros, t.PriceCacheReadMicros, t.PriceCacheWriteMicros, t.EmbeddingPriceInputMicros,
 		t.StartedAt, t.CreatedAt, t.UpdatedAt,
 	).VALUES(
 		r.ID, r.PublicID, r.OrgID, r.ProjectID, r.ThreadID, r.AgentVersionID, string(r.Status), textOrNull(r.IdempotencyKey), r.Attempt, r.Group,
 		price(func(p *Prices) *int64 { return p.Input }), price(func(p *Prices) *int64 { return p.Output }),
 		price(func(p *Prices) *int64 { return p.CacheRead }), price(func(p *Prices) *int64 { return p.CacheWrite }),
+		price(func(p *Prices) *int64 { return p.Embedding }),
 		r.StartedAt.UTC(), r.StartedAt.UTC(), r.UpdatedAt.UTC(),
 	)
 	if _, err := stmt.ExecContext(ctx, tx); err != nil {
@@ -829,11 +830,13 @@ func (s *postgresStore) settleRun(ctx context.Context, tx *sql.Tx, orgID uuid.UU
 	}
 	stmt := t.UPDATE(
 		t.Status, t.Attempt, t.InputTokens, t.OutputTokens, t.CacheReadTokens, t.CacheWriteTokens, t.UsageEstimated,
+		t.EmbeddingTokens, t.KnowledgeRetrieveCalls, t.KnowledgeRetrieveMS,
 		t.CostMicros, t.LatencyMS, t.ErrorCode, t.EndedAt, t.UpdatedAt, t.ReplyState, t.ReplyNextAt, t.ReplyKind,
 		t.ReplyPartsSent, t.ReplyAttempts,
 	).SET(
 		postgres.String(string(r.Status)), postgres.Int32(r.Attempt), postgres.Int(u.InputTokens), postgres.Int(u.OutputTokens),
 		postgres.Int(u.CacheReadTokens), postgres.Int(u.CacheWriteTokens), postgres.Bool(u.Estimated),
+		postgres.Int(u.EmbeddingTokens), postgres.Int32(r.KnowledgeRetrieveCalls), postgres.Int(r.KnowledgeRetrieveMs),
 		cost, latency, textOrNull(r.ErrorCode), ended, postgres.TimestampzT(r.UpdatedAt.UTC()), textOrNull(r.ReplyState), next,
 		textOrNull(r.ReplyKind), parts, attempts,
 	).WHERE(t.ID.EQ(postgres.UUID(r.ID)).AND(t.OrgID.EQ(postgres.UUID(orgID))))

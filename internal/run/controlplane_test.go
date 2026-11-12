@@ -351,3 +351,17 @@ func TestRunView_NamesADraftRun(t *testing.T) {
 	require.Len(t, runs.Msg.GetRuns(), 1)
 	assert.Equal(t, "draft", runs.Msg.GetRuns()[0].GetAgentVersionKind())
 }
+
+func TestThreadService_RunShowsKnowledgeUsage(t *testing.T) {
+	w := newCPWorld(t)
+	w.running.Usage = run.Usage{InputTokens: 100, EmbeddingTokens: 1_000_000}
+	w.running.Prices = &run.Prices{Input: new(int64(1_000_000)), Embedding: new(int64(20_000))}
+	w.running.KnowledgeRetrieveCalls, w.running.KnowledgeRetrieveMs = 2, 340
+	one, err := w.cp.GetRun(member(w.org), connect.NewRequest(&threadv1.GetRunRequest{RunId: w.running.PublicID}))
+	require.NoError(t, err)
+	r := one.Msg.GetRun()
+	assert.Equal(t, int64(1_000_000), r.GetUsage().GetEmbeddingTokens())
+	assert.Equal(t, int32(2), r.GetKnowledgeRetrieveCalls())
+	assert.Equal(t, int64(340), r.GetKnowledgeRetrieveMs())
+	assert.Equal(t, int64(100+20_000), r.GetCostMicros(), "embedding tokens priced at the embedding price")
+}
