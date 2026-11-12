@@ -1,5 +1,6 @@
 import type { TurnRequest } from './request.ts';
 
+export { argsHash, canonicalJson } from './canonical.ts';
 export { TurnRefusedError } from './errors.ts';
 export { checkImages, inputParts } from './images.ts';
 export type { ImageMime, InputImage, InputPart } from './images.ts';
