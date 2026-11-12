@@ -4,6 +4,8 @@ import { z } from 'zod';
 export const CONTRACT_VERSION = 3;
 export const IMAGE_CONTRACT_VERSION = 2;
 export const APPROVAL_CONTRACT_VERSION = 3;
+export const MAX_PASSAGES = 5;
+export const MAX_PASSAGE_CHARS = 20_000;
 
 export const ModelProvider = {
   OPENAI_COMPATIBLE: 'openai_compatible',
@@ -81,6 +83,16 @@ const Budget = z.strictObject({
   prices: z.strictObject({ input: micros, output: micros, cacheRead: micros, cacheWrite: micros }),
 });
 
+const KnowledgePassageSchema = z.strictObject({
+  text: z.string().min(1).max(MAX_PASSAGE_CHARS),
+  title: z.string().min(1).max(500),
+  heading: z.string().max(500).optional(),
+  page: z.number().int().positive().optional(),
+  url: z.string().max(2048).optional(),
+});
+
+export type KnowledgePassage = z.infer<typeof KnowledgePassageSchema>;
+
 const TurnRequestShape = z.strictObject({
   contractVersion: z.union([z.literal(1), z.literal(IMAGE_CONTRACT_VERSION), z.literal(APPROVAL_CONTRACT_VERSION)]),
   ids: z.strictObject({
@@ -103,6 +115,7 @@ const TurnRequestShape = z.strictObject({
   input: TurnInput,
   storedResults: z.array(z.strictObject({ toolUseId: z.string().min(1), result: ToolResult })),
   limits: z.strictObject({ deadlineMs: ms, budget: Budget.nullable() }),
+  knowledge: z.array(KnowledgePassageSchema).max(MAX_PASSAGES).optional(),
 });
 
 function isJsonObjectText(text: string): boolean {

@@ -59,6 +59,10 @@ export class UsageMeter {
     this.outputChars = 0;
   }
 
+  addInput(chars: number): void {
+    this.inputChars += chars;
+  }
+
   addOutput(text: string): void {
     this.outputChars += text.length;
   }

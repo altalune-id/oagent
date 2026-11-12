@@ -7,9 +7,11 @@ import { FunctionTool } from '@strands-agents/sdk';
 import { describe, expect, it } from 'vitest';
 
 import { createModels } from '../models/index.ts';
+import { assertStructure } from '../test/probes.ts';
 import { ScriptedModel } from '../test/scripted-model.ts';
 import { fakeMcp, goldenRequest, pendingSnapshot, quiet } from '../test/turn-fixtures.ts';
 import { createRunTurn } from './index.ts';
+import { knowledgeBlock } from './knowledge.ts';
 import { SDK_VERSION } from './snapshot.ts';
 
 const dir = fileURLToPath(new URL('../../../../internal/kernel/runtime/testdata/turn/', import.meta.url));
@@ -63,6 +65,10 @@ const cases: Record<string, Case> = {
   approval_resume_approved: { pending: true, schema: withoutConfirm, steps: [{ text: ['Recorded lunch: 25,000 from cash.'], usage: { inputTokens: 905, outputTokens: 12 } }] },
   approval_resume_rejected: { pending: true, schema: withoutConfirm, steps: [{ text: ['Understood, I will use 20,000 instead.'], usage: { inputTokens: 910, outputTokens: 11 } }] },
   approval_hash_mismatch: { pending: true, schema: withoutConfirm, steps: [{ text: ['That approval did not match, so nothing was recorded.'], usage: { inputTokens: 905, outputTokens: 12 } }] },
+  knowledge_injected: { steps: [{ text: ['Refunds take up to 7 days (Refund policy, page 2).'], usage: { inputTokens: 260, outputTokens: 14 } }] },
+  knowledge_absent: { steps: [{ text: ['Hi!'], usage: { inputTokens: 100, outputTokens: 2 } }] },
+  knowledge_empty: { steps: [{ text: ['Hi!'], usage: { inputTokens: 100, outputTokens: 2 } }] },
+  knowledge_hostile: { steps: [{ text: ['Refunds take 7 days (Refund policy, page 2).'], usage: { inputTokens: 260, outputTokens: 14 } }] },
 };
 
 type Event = Record<string, unknown>;
@@ -99,10 +105,11 @@ describe('golden replay', () => {
       }
     });
     const events: Event[] = [];
+    const model = new ScriptedModel(c.steps);
     const runTurn = createRunTurn({
       models: createModels(),
       log: quiet,
-      modelFor: () => new ScriptedModel(c.steps),
+      modelFor: () => model,
       openMcp: fakeMcp(c.down ? [] : [expenseTool(c.schema)], c.down
         ? { notes: [{ kind: 'mcp_server_unavailable', server: 'yasaku' }], promptLines: ['Tools from yasaku are unavailable in this turn.'] }
         : {}),
@@ -111,5 +118,12 @@ describe('golden replay', () => {
       events.push(JSON.parse(JSON.stringify(e)) as Event);
     }, new AbortController().signal);
     expect(normalize(events)).toEqual(normalize(goldenStream(name)));
+    const firstCall = JSON.stringify(model.calls[0]?.messages ?? []);
+    if (request.knowledge?.length) {
+      expect(firstCall).toContain(JSON.stringify(knowledgeBlock(request.knowledge)).slice(1, -1));
+      assertStructure(knowledgeBlock(request.knowledge), request.knowledge.length);
+    } else {
+      expect(firstCall).not.toContain('tool_output');
+    }
   });
 });

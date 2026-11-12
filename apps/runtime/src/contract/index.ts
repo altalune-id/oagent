@@ -4,8 +4,8 @@ export { argsHash, canonicalJson } from './canonical.ts';
 export { TurnRefusedError } from './errors.ts';
 export { checkImages, inputParts } from './images.ts';
 export type { ImageMime, InputImage, InputPart } from './images.ts';
-export { APPROVAL_CONTRACT_VERSION, ApprovalSpecSchema, CONTRACT_VERSION, IMAGE_CONTRACT_VERSION, MCPAuthKind, ModelProvider, ToolResultStatus, TurnRequestSchema, validateRequest } from './request.ts';
-export type { ApprovalSpec, TurnRequest, Validation } from './request.ts';
+export { APPROVAL_CONTRACT_VERSION, ApprovalSpecSchema, CONTRACT_VERSION, IMAGE_CONTRACT_VERSION, MAX_PASSAGE_CHARS, MAX_PASSAGES, MCPAuthKind, ModelProvider, ToolResultStatus, TurnRequestSchema, validateRequest } from './request.ts';
+export type { ApprovalSpec, KnowledgePassage, TurnRequest, Validation } from './request.ts';
 
 export type Emit = (event: Record<string, unknown>) => Promise<void>;
 
