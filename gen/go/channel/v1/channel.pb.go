@@ -110,9 +110,13 @@ type Connection struct {
 	CreatedAt          *timestamppb.Timestamp `protobuf:"bytes,21,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt          *timestamppb.Timestamp `protobuf:"bytes,22,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// secret_set is false until the signing secret OpenWA mints is set; deliveries are refused until then.
-	SecretSet     bool `protobuf:"varint,23,opt,name=secret_set,json=secretSet,proto3" json:"secret_set,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SecretSet bool `protobuf:"varint,23,opt,name=secret_set,json=secretSet,proto3" json:"secret_set,omitempty"`
+	// approval_prompt is the WhatsApp approval prompt; {preview} is replaced by what the agent asks to do.
+	ApprovalPrompt string `protobuf:"bytes,24,opt,name=approval_prompt,json=approvalPrompt,proto3" json:"approval_prompt,omitempty"`
+	// approval_expired is sent when an approval expires before the requester answers.
+	ApprovalExpired string `protobuf:"bytes,25,opt,name=approval_expired,json=approvalExpired,proto3" json:"approval_expired,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Connection) Reset() {
@@ -304,6 +308,20 @@ func (x *Connection) GetSecretSet() bool {
 		return x.SecretSet
 	}
 	return false
+}
+
+func (x *Connection) GetApprovalPrompt() string {
+	if x != nil {
+		return x.ApprovalPrompt
+	}
+	return ""
+}
+
+func (x *Connection) GetApprovalExpired() string {
+	if x != nil {
+		return x.ApprovalExpired
+	}
+	return ""
 }
 
 type CreateConnectionRequest struct {
@@ -684,8 +702,11 @@ type UpdateConnectionRequest struct {
 	ReplyVoice           string  `protobuf:"bytes,10,opt,name=reply_voice,json=replyVoice,proto3" json:"reply_voice,omitempty"`
 	ReplyPhotoUnreadable string  `protobuf:"bytes,11,opt,name=reply_photo_unreadable,json=replyPhotoUnreadable,proto3" json:"reply_photo_unreadable,omitempty"`
 	Enabled              *bool   `protobuf:"varint,12,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// approval_prompt and approval_expired left unset keep the stored text; the prompt must show the preview.
+	ApprovalPrompt  *string `protobuf:"bytes,13,opt,name=approval_prompt,json=approvalPrompt,proto3,oneof" json:"approval_prompt,omitempty"`
+	ApprovalExpired *string `protobuf:"bytes,14,opt,name=approval_expired,json=approvalExpired,proto3,oneof" json:"approval_expired,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *UpdateConnectionRequest) Reset() {
@@ -800,6 +821,20 @@ func (x *UpdateConnectionRequest) GetEnabled() bool {
 		return *x.Enabled
 	}
 	return false
+}
+
+func (x *UpdateConnectionRequest) GetApprovalPrompt() string {
+	if x != nil && x.ApprovalPrompt != nil {
+		return *x.ApprovalPrompt
+	}
+	return ""
+}
+
+func (x *UpdateConnectionRequest) GetApprovalExpired() string {
+	if x != nil && x.ApprovalExpired != nil {
+		return *x.ApprovalExpired
+	}
+	return ""
 }
 
 type UpdateConnectionResponse struct {
@@ -1077,6 +1112,8 @@ type GetChannelSettingsResponse struct {
 	QuietWindowMs        int32                  `protobuf:"varint,5,opt,name=quiet_window_ms,json=quietWindowMs,proto3" json:"quiet_window_ms,omitempty"`
 	QuietMaxMs           int32                  `protobuf:"varint,6,opt,name=quiet_max_ms,json=quietMaxMs,proto3" json:"quiet_max_ms,omitempty"`
 	MaxMessageAgeMinutes int32                  `protobuf:"varint,7,opt,name=max_message_age_minutes,json=maxMessageAgeMinutes,proto3" json:"max_message_age_minutes,omitempty"`
+	ApprovalPrompt       string                 `protobuf:"bytes,8,opt,name=approval_prompt,json=approvalPrompt,proto3" json:"approval_prompt,omitempty"`
+	ApprovalExpired      string                 `protobuf:"bytes,9,opt,name=approval_expired,json=approvalExpired,proto3" json:"approval_expired,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -1160,12 +1197,26 @@ func (x *GetChannelSettingsResponse) GetMaxMessageAgeMinutes() int32 {
 	return 0
 }
 
+func (x *GetChannelSettingsResponse) GetApprovalPrompt() string {
+	if x != nil {
+		return x.ApprovalPrompt
+	}
+	return ""
+}
+
+func (x *GetChannelSettingsResponse) GetApprovalExpired() string {
+	if x != nil {
+		return x.ApprovalExpired
+	}
+	return ""
+}
+
 var File_channel_v1_channel_proto protoreflect.FileDescriptor
 
 const file_channel_v1_channel_proto_rawDesc = "" +
 	"\n" +
 	"\x18channel/v1/channel.proto\x12\n" +
-	"channel.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\x1a\x15oagent/v1/rules.proto\"\x89\a\n" +
+	"channel.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\x1a\x15oagent/v1/rules.proto\"\xdd\a\n" +
 	"\n" +
 	"Connection\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
@@ -1199,7 +1250,9 @@ const file_channel_v1_channel_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\x16 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1d\n" +
 	"\n" +
-	"secret_set\x18\x17 \x01(\bR\tsecretSet\"\x87\a\n" +
+	"secret_set\x18\x17 \x01(\bR\tsecretSet\x12'\n" +
+	"\x0fapproval_prompt\x18\x18 \x01(\tR\x0eapprovalPrompt\x12)\n" +
+	"\x10approval_expired\x18\x19 \x01(\tR\x0fapprovalExpired\"\x87\a\n" +
 	"\x17CreateConnectionRequest\x12+\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\x12'\n" +
@@ -1240,7 +1293,7 @@ const file_channel_v1_channel_proto_rawDesc = "" +
 	"project_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\x12$\n" +
 	"\bagent_id\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x88\xe42\x01R\aagentId\"S\n" +
 	"\x17ListConnectionsResponse\x128\n" +
-	"\vconnections\x18\x01 \x03(\v2\x16.channel.v1.ConnectionR\vconnections\"\xd6\a\n" +
+	"\vconnections\x18\x01 \x03(\v2\x16.channel.v1.ConnectionR\vconnections\"\x80\t\n" +
 	"\x17UpdateConnectionRequest\x12\x1c\n" +
 	"\x02id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\x12\xa0\x02\n" +
 	"\bbase_url\x18\x02 \x01(\tB\xff\x01\xbaH\xfb\x01\xba\x01d\n" +
@@ -1265,7 +1318,10 @@ const file_channel_v1_channel_proto_rawDesc = "" +
 	" \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\n" +
 	"replyVoice\x12>\n" +
 	"\x16reply_photo_unreadable\x18\v \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\x14replyPhotoUnreadable\x12\x1d\n" +
-	"\aenabled\x18\f \x01(\bH\aR\aenabled\x88\x01\x01B\v\n" +
+	"\aenabled\x18\f \x01(\bH\aR\aenabled\x88\x01\x01\x12C\n" +
+	"\x0fapproval_prompt\x18\r \x01(\tB\x15\xbaH\x12r\x10\x10\x01\x18\xe8\aJ\t{preview}H\bR\x0eapprovalPrompt\x88\x01\x01\x12:\n" +
+	"\x10approval_expired\x18\x0e \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\xe8\aH\tR\x0fapprovalExpired\x88\x01\x01B\v\n" +
 	"\t_base_urlB\r\n" +
 	"\v_openwa_orgB\x11\n" +
 	"\x0f_openwa_projectB\f\n" +
@@ -1275,7 +1331,9 @@ const file_channel_v1_channel_proto_rawDesc = "" +
 	"\x10_quiet_window_msB\x0f\n" +
 	"\r_quiet_max_msB\n" +
 	"\n" +
-	"\b_enabled\"R\n" +
+	"\b_enabledB\x12\n" +
+	"\x10_approval_promptB\x13\n" +
+	"\x11_approval_expired\"R\n" +
 	"\x18UpdateConnectionResponse\x126\n" +
 	"\n" +
 	"connection\x18\x01 \x01(\v2\x16.channel.v1.ConnectionR\n" +
@@ -1291,7 +1349,7 @@ const file_channel_v1_channel_proto_rawDesc = "" +
 	"\x17DeleteConnectionRequest\x12\x1c\n" +
 	"\x02id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\"\x1a\n" +
 	"\x18DeleteConnectionResponse\"\x1b\n" +
-	"\x19GetChannelSettingsRequest\"\xd0\x02\n" +
+	"\x19GetChannelSettingsRequest\"\xa4\x03\n" +
 	"\x1aGetChannelSettingsResponse\x125\n" +
 	"\x17default_openwa_base_url\x18\x01 \x01(\tR\x14defaultOpenwaBaseUrl\x12#\n" +
 	"\rreply_failure\x18\x02 \x01(\tR\freplyFailure\x12\x1f\n" +
@@ -1301,7 +1359,9 @@ const file_channel_v1_channel_proto_rawDesc = "" +
 	"\x0fquiet_window_ms\x18\x05 \x01(\x05R\rquietWindowMs\x12 \n" +
 	"\fquiet_max_ms\x18\x06 \x01(\x05R\n" +
 	"quietMaxMs\x125\n" +
-	"\x17max_message_age_minutes\x18\a \x01(\x05R\x14maxMessageAgeMinutes*\xbf\x01\n" +
+	"\x17max_message_age_minutes\x18\a \x01(\x05R\x14maxMessageAgeMinutes\x12'\n" +
+	"\x0fapproval_prompt\x18\b \x01(\tR\x0eapprovalPrompt\x12)\n" +
+	"\x10approval_expired\x18\t \x01(\tR\x0fapprovalExpired*\xbf\x01\n" +
 	"\x10ConnectionStatus\x12!\n" +
 	"\x1dCONNECTION_STATUS_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19CONNECTION_STATUS_WAITING\x10\x01\x12\x1f\n" +

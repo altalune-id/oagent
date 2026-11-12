@@ -134,6 +134,7 @@ func (s *ChannelService) UpdateConnection(
 		BaseURL: keep(m.BaseUrl, c.BaseURL), OpenWAOrg: keep(m.OpenwaOrg, c.OpenWAOrg), OpenWAProject: keep(m.OpenwaProject, c.OpenWAProject),
 		DeviceID: keep(m.DeviceId, c.DeviceID), QuietWindow: millis(m.QuietWindowMs), QuietMax: millis(m.QuietMaxMs),
 		ReplyFailure: m.GetReplyFailure(), ReplyVoice: m.GetReplyVoice(), ReplyPhotoUnreadable: m.GetReplyPhotoUnreadable(),
+		ApprovalPrompt: m.ApprovalPrompt, ApprovalExpired: m.ApprovalExpired,
 	}
 	if m.Enabled != nil {
 		in.Status = StatusDisabled
@@ -195,6 +196,7 @@ func (s *ChannelService) GetChannelSettings(
 		ReplyFailure:         DefaultReplyFailure, ReplyVoice: DefaultReplyVoice, ReplyPhotoUnreadable: DefaultReplyPhotoUnreadable,
 		QuietWindowMs: ms(defaultQuietWindow), QuietMaxMs: ms(defaultQuietMax),
 		MaxMessageAgeMinutes: int32(min(s.opts.MaxMessageAge.Minutes(), math.MaxInt32)),
+		ApprovalPrompt:       DefaultApprovalPrompt, ApprovalExpired: DefaultApprovalExpired,
 	}), nil
 }
 
@@ -264,6 +266,7 @@ func (s *ChannelService) toProto(ctx context.Context, c *Connection) (*channelv1
 		SecretSet: len(c.SigningPrimarySealed) > 0, SecondarySet: len(c.SigningSecondarySealed) > 0,
 		QuietWindowMs: ms(c.QuietWindow), QuietMaxMs: ms(c.QuietMax),
 		ReplyFailure: c.ReplyFailure, ReplyVoice: c.ReplyVoice, ReplyPhotoUnreadable: c.ReplyPhotoUnreadable,
+		ApprovalPrompt: c.ApprovalPrompt, ApprovalExpired: c.ApprovalExpired,
 		LastResultAt: stamp(c.LastResultAt), LastBadSignatureAt: stamp(c.LastBadSignatureAt),
 		CreatedAt: timestamppb.New(c.CreatedAt), UpdatedAt: timestamppb.New(c.UpdatedAt),
 	}

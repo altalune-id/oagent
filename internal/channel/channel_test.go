@@ -74,3 +74,34 @@ func TestConnection_ReportedStatusComesFromVerifiedOutcomes(t *testing.T) {
 	c.LastBadSignatureAt = new(time.Now())
 	assert.Equal(t, "connected", c.ReportedStatus(), "a bad signature never changes the status")
 }
+
+func TestApply_ApprovalTexts(t *testing.T) {
+	c, err := channel.New(uuid.New(), uuid.New(), uuid.New(), input(), time.Now())
+	require.NoError(t, err)
+	assert.Equal(t, channel.DefaultApprovalPrompt, c.ApprovalPrompt)
+	assert.Equal(t, channel.DefaultApprovalExpired, c.ApprovalExpired)
+
+	require.NoError(t, c.Apply(input(), time.Now()))
+	assert.Equal(t, channel.DefaultApprovalPrompt, c.ApprovalPrompt, "unset keeps the stored text")
+
+	in := input()
+	in.ApprovalPrompt, in.ApprovalExpired = new(" {preview}\n\nBalas YA atau TIDAK "), new("Permintaan ini kedaluwarsa.")
+	require.NoError(t, c.Apply(in, time.Now()))
+	assert.Equal(t, "{preview}\n\nBalas YA atau TIDAK", c.ApprovalPrompt)
+	assert.Equal(t, "Permintaan ini kedaluwarsa.", c.ApprovalExpired)
+
+	for name, v := range map[string]string{"blank": "  ", "1001 runes": strings.Repeat("é", 1001)} {
+		for field, set := range map[string]func(*channel.Input){
+			"approval_prompt":  func(i *channel.Input) { i.ApprovalPrompt = &v },
+			"approval_expired": func(i *channel.Input) { i.ApprovalExpired = &v },
+		} {
+			bad := input()
+			set(&bad)
+			err := c.Apply(bad, time.Now())
+			var invalid *channel.InvalidError
+			require.ErrorAs(t, err, &invalid, "%s %s", field, name)
+			assert.Equal(t, field, invalid.Field)
+		}
+	}
+	assert.Equal(t, "{preview}\n\nBalas YA atau TIDAK", c.ApprovalPrompt, "a refused update changes nothing")
+}

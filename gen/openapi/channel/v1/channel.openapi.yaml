@@ -327,6 +327,14 @@ components:
           type: boolean
           title: secret_set
           description: secret_set is false until the signing secret OpenWA mints is set; deliveries are refused until then.
+        approvalPrompt:
+          type: string
+          title: approval_prompt
+          description: approval_prompt is the WhatsApp approval prompt; {preview} is replaced by what the agent asks to do.
+        approvalExpired:
+          type: string
+          title: approval_expired
+          description: approval_expired is sent when an approval expires before the requester answers.
       title: Connection
       additionalProperties: false
       description: Connection binds an agent to an OpenWA device; enabled is the admin switch, separate from the reported status.
@@ -469,6 +477,12 @@ components:
           type: integer
           title: max_message_age_minutes
           format: int32
+        approvalPrompt:
+          type: string
+          title: approval_prompt
+        approvalExpired:
+          type: string
+          title: approval_expired
       title: GetChannelSettingsResponse
       additionalProperties: false
       description: 'GetChannelSettingsResponse is what a new connection starts with: the operator''s default OpenWA URL (empty when unset), the set replies and quiet times, and the message age limit.'
@@ -626,6 +640,23 @@ components:
             - boolean
             - "null"
           title: enabled
+        approvalPrompt:
+          type:
+            - string
+            - "null"
+          title: approval_prompt
+          maxLength: 1000
+          minLength: 1
+          description: |
+            approval_prompt and approval_expired left unset keep the stored text; the prompt must show the preview.
+            string.contains = "{preview}"
+        approvalExpired:
+          type:
+            - string
+            - "null"
+          title: approval_expired
+          maxLength: 1000
+          minLength: 1
       title: UpdateConnectionRequest
       required:
         - id

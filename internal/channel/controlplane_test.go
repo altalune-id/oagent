@@ -255,6 +255,28 @@ func TestGetChannelSettings(t *testing.T) {
 	assert.Equal(t, int32(3000), m.GetQuietWindowMs())
 	assert.Equal(t, int32(10000), m.GetQuietMaxMs())
 	assert.Equal(t, int32(20), m.GetMaxMessageAgeMinutes())
+	assert.Equal(t, channel.DefaultApprovalPrompt, m.GetApprovalPrompt())
+	assert.Equal(t, channel.DefaultApprovalExpired, m.GetApprovalExpired())
+}
+
+func TestUpdateConnection_ApprovalTexts(t *testing.T) {
+	w := newCPWorld(t)
+	c := w.create(t)
+	assert.Equal(t, channel.DefaultApprovalPrompt, c.GetApprovalPrompt())
+	assert.Equal(t, channel.DefaultApprovalExpired, c.GetApprovalExpired())
+
+	got, err := w.client.UpdateConnection(t.Context(), connect.NewRequest(&channelv1.UpdateConnectionRequest{Id: c.GetId(), ApprovalPrompt: new("{preview}\n\nYA / TIDAK")}))
+	require.NoError(t, err)
+	out := got.Msg.GetConnection()
+	assert.Equal(t, "{preview}\n\nYA / TIDAK", out.GetApprovalPrompt())
+	assert.Equal(t, channel.DefaultApprovalExpired, out.GetApprovalExpired(), "unset keeps the stored text")
+
+	got, err = w.client.UpdateConnection(t.Context(), connect.NewRequest(&channelv1.UpdateConnectionRequest{Id: c.GetId(), Enabled: new(true)}))
+	require.NoError(t, err)
+	assert.Equal(t, "{preview}\n\nYA / TIDAK", got.Msg.GetConnection().GetApprovalPrompt(), "an update that leaves it unset keeps it")
+
+	_, err = w.client.UpdateConnection(t.Context(), connect.NewRequest(&channelv1.UpdateConnectionRequest{Id: c.GetId(), ApprovalExpired: new("")}))
+	assert.ErrorContains(t, err, "invalid approval_expired", "an empty text is refused")
 }
 
 func TestChannelReach_IDOnlyRPCs(t *testing.T) {

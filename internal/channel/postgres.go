@@ -58,6 +58,8 @@ type connRow struct {
 	LastBadSignatureAt     *time.Time `alias:"channel_connections.last_bad_signature_at"`
 	CreatedAt              time.Time  `alias:"channel_connections.created_at"`
 	UpdatedAt              time.Time  `alias:"channel_connections.updated_at"`
+	ApprovalPrompt         string     `alias:"channel_connections.approval_prompt"`
+	ApprovalExpired        string     `alias:"channel_connections.approval_expired"`
 }
 
 func (r *connRow) toConnection() *Connection {
@@ -67,6 +69,7 @@ func (r *connRow) toConnection() *Connection {
 		SigningPrimarySealed: r.SigningPrimarySealed, SigningSecondarySealed: r.SigningSecondarySealed, DeviceKeySealed: r.DeviceKeySealed,
 		QuietWindow: time.Duration(r.QuietWindowMS) * time.Millisecond, QuietMax: time.Duration(r.QuietMaxMS) * time.Millisecond,
 		ReplyFailure: r.ReplyFailure, ReplyVoice: r.ReplyVoice, ReplyPhotoUnreadable: r.ReplyPhotoUnreadable,
+		ApprovalPrompt: r.ApprovalPrompt, ApprovalExpired: r.ApprovalExpired,
 		LastResultAt: utcPtr(r.LastResultAt), LastBadSignatureAt: utcPtr(r.LastBadSignatureAt),
 		CreatedAt: r.CreatedAt.UTC(), UpdatedAt: r.UpdatedAt.UTC(),
 	}

@@ -54,6 +54,7 @@ func (s *postgresStore) Insert(ctx context.Context, c *Connection) error {
 		bytesOrNull(c.SigningPrimarySealed), bytesOrNull(c.SigningSecondarySealed), postgres.Bytea(c.DeviceKeySealed),
 		ms(c.QuietWindow), ms(c.QuietMax), c.ReplyFailure, c.ReplyVoice, c.ReplyPhotoUnreadable,
 		textOrNull(c.LastResult), timeOrNull(c.LastResultAt), timeOrNull(c.LastBadSignatureAt), c.CreatedAt.UTC(), c.UpdatedAt.UTC(),
+		c.ApprovalPrompt, c.ApprovalExpired,
 	)
 	err = db.Write(ctx, s.pool, func(q qrm.DB) error {
 		_, err := stmt.ExecContext(ctx, q)
@@ -78,11 +79,12 @@ func (s *postgresStore) Update(ctx context.Context, c *Connection) error {
 	stmt := t.UPDATE(
 		t.Status, t.BaseURL, t.OpenwaOrg, t.OpenwaProject, t.DeviceID,
 		t.SigningSecretPrimarySealed, t.SigningSecretSecondarySealed, t.DeviceKeySealed,
-		t.QuietWindowMS, t.QuietMaxMS, t.ReplyFailure, t.ReplyVoice, t.ReplyPhotoUnreadable, t.UpdatedAt,
+		t.QuietWindowMS, t.QuietMaxMS, t.ReplyFailure, t.ReplyVoice, t.ReplyPhotoUnreadable, t.ApprovalPrompt, t.ApprovalExpired, t.UpdatedAt,
 	).SET(
 		c.Status, c.BaseURL, c.OpenWAOrg, c.OpenWAProject, c.DeviceID,
 		bytesOrNull(c.SigningPrimarySealed), bytesOrNull(c.SigningSecondarySealed), postgres.Bytea(c.DeviceKeySealed),
-		ms(c.QuietWindow), ms(c.QuietMax), c.ReplyFailure, c.ReplyVoice, c.ReplyPhotoUnreadable, c.UpdatedAt.UTC(),
+		ms(c.QuietWindow), ms(c.QuietMax), c.ReplyFailure, c.ReplyVoice, c.ReplyPhotoUnreadable, c.ApprovalPrompt, c.ApprovalExpired,
+		c.UpdatedAt.UTC(),
 	).
 		WHERE(t.ID.EQ(postgres.UUID(c.ID)).AND(t.OrgID.EQ(postgres.UUID(tc.OrgID))))
 	return s.affectOne(ctx, "Update", stmt)
