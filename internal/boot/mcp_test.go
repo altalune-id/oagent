@@ -17,6 +17,7 @@ import (
 
 	"altalune.id/oagent/config"
 	agentv1mcp "altalune.id/oagent/gen/go/agent/v1/agentv1mcp"
+	approvalv1mcp "altalune.id/oagent/gen/go/approval/v1/approvalv1mcp"
 	authv1mcp "altalune.id/oagent/gen/go/auth/v1/authv1mcp"
 	channelv1mcp "altalune.id/oagent/gen/go/channel/v1/channelv1mcp"
 	enduserv1mcp "altalune.id/oagent/gen/go/enduser/v1/enduserv1mcp"
@@ -242,6 +243,9 @@ func TestMCPTools_PermissionsComeFromTheTable(t *testing.T) {
 	}
 	want := map[string][]string{
 		orgv1mcp.OrgCreateToolName:              {scope.OrgWrite},
+		approvalv1mcp.ApprovalListToolName:      {scope.ThreadRead},
+		approvalv1mcp.ApprovalGetToolName:       {scope.ThreadRead},
+		approvalv1mcp.ApprovalDecideToolName:    {scope.ApprovalDecide},
 		orgv1mcp.OrgGetToolName:                 {scope.OrgRead},
 		orgv1mcp.OrgListToolName:                {scope.OrgRead},
 		projectv1mcp.ProjectCreateToolName:      {scope.ProjectWrite},
