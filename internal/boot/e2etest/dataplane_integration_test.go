@@ -5,6 +5,7 @@ package e2etest
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -45,6 +46,8 @@ type dpStack struct {
 	svcs     *boot.Services
 	lims     boot.Limiters
 	in       context.Context
+	admin    *sql.DB
+	sch      string
 	org      uuid.UUID
 	agentID  uuid.UUID
 	provider uuid.UUID
@@ -60,7 +63,7 @@ func newDPStack(t *testing.T, rt *runtimetest.Runtime) *dpStack {
 		SweepEvery: time.Hour, MaxAttempts: 3, MaxConcurrentPerInstance: 4, MaxConcurrentPerProject: 4, MaxPerMinutePerProject: 100,
 	}
 	cfg.RateLimit.DataPlane = config.DataPlaneLimitConfig{PerKeyPerMinute: 600, PerIPPerMinute: 600}
-	pool, _, schema := pgtest.MigratedRLS(t)
+	pool, admin, schema := pgtest.MigratedRLS(t)
 	cfg.Postgres.Schema = schema
 	k := kernel.Kernel{Pool: pool, Reporter: apperror.NewReporter(nil, false)}
 	svcs := boot.BuildServices(k, cfg)
@@ -97,7 +100,7 @@ func newDPStack(t *testing.T, rt *runtimetest.Runtime) *dpStack {
 	exp := time.Now().Add(time.Hour)
 	_, key, err := svcs.APIKeys.Create(t.Context(), apikey.CreateRequest{
 		OrgID: o.ID, Kind: apikey.KindOrg, AllProjects: true, Name: "integrator", ExpiresAt: &exp,
-		Scopes: []string{scope.RunCreate, scope.RunRead},
+		Scopes: []string{scope.RunCreate, scope.RunRead, scope.ApprovalDecide},
 	})
 	require.NoError(t, err)
 
@@ -122,7 +125,7 @@ func newDPStack(t *testing.T, rt *runtimetest.Runtime) *dpStack {
 	})
 	return &dpStack{
 		url: srv.URL, key: key, agentPub: a.PublicID, second: srv2.URL,
-		cfg: cfg, k: k, svcs: svcs, lims: lims, in: in, org: o.ID, agentID: a.ID, provider: provider.ID,
+		cfg: cfg, k: k, svcs: svcs, lims: lims, in: in, admin: admin, sch: schema, org: o.ID, agentID: a.ID, provider: provider.ID,
 	}
 }
 
