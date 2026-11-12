@@ -1,7 +1,9 @@
 import { MessageSchema, UserMessageSchema } from '@ag-ui/core/schemas';
 import { z } from 'zod';
 
-export const CONTRACT_VERSION = 2;
+export const CONTRACT_VERSION = 3;
+export const IMAGE_CONTRACT_VERSION = 2;
+export const APPROVAL_CONTRACT_VERSION = 3;
 
 export const ModelProvider = {
   OPENAI_COMPATIBLE: 'openai_compatible',
@@ -36,11 +38,26 @@ const MCPAuth = z.strictObject({
   value: z.string().min(1).optional(),
 });
 
+const FreeCondition = z.strictObject({
+  arg: z.string().regex(/^[A-Z_]\w{0,63}$/i),
+  values: z.array(z.unknown()).max(16),
+  absent: z.boolean().optional(),
+});
+
+export const ApprovalSpecSchema = z.discriminatedUnion('mode', [
+  z.strictObject({ mode: z.literal('never') }),
+  z.strictObject({ mode: z.literal('always') }),
+  z.strictObject({ mode: z.literal('conditional'), freeWhen: z.array(FreeCondition).min(1).max(8) }),
+]);
+
+export type ApprovalSpec = z.infer<typeof ApprovalSpecSchema>;
+
 const MCPServerSpec = z.strictObject({
   name: z.string().min(1),
   url: z.string().min(1),
   auth: MCPAuth,
-  allowedTools: z.array(z.string().min(1)),
+  allowedTools: z.array(z.string().min(1)).optional(),
+  tools: z.array(z.strictObject({ name: z.string().min(1), approval: ApprovalSpecSchema })).optional(),
   connectTimeoutMs: ms,
   callTimeoutMs: ms,
 });
@@ -65,7 +82,7 @@ const Budget = z.strictObject({
 });
 
 const TurnRequestShape = z.strictObject({
-  contractVersion: z.union([z.literal(1), z.literal(CONTRACT_VERSION)]),
+  contractVersion: z.union([z.literal(1), z.literal(IMAGE_CONTRACT_VERSION), z.literal(APPROVAL_CONTRACT_VERSION)]),
   ids: z.strictObject({
     run: z.string().min(1),
     thread: z.string().min(1),
@@ -101,6 +118,15 @@ function isJsonObjectText(text: string): boolean {
 }
 
 export const TurnRequestSchema = TurnRequestShape.superRefine((req, ctx) => {
+  req.mcpServers.forEach((server, i) => {
+    const v3 = req.contractVersion >= APPROVAL_CONTRACT_VERSION;
+    if (v3 ? server.tools === undefined || server.allowedTools !== undefined : server.allowedTools === undefined || server.tools !== undefined) {
+      ctx.addIssue({ code: 'custom', path: ['mcpServers', i], message: v3 ? 'v3 takes tools with approval specs' : 'v1 and v2 take allowedTools' });
+    }
+  });
+  if (req.input.kind === 'resume' && req.snapshot === null) {
+    ctx.addIssue({ code: 'custom', path: ['snapshot'], message: 'resume needs the snapshot it resumes' });
+  }
   if (req.input.kind === 'continue' && (req.snapshot !== null || req.history.at(-1)?.role !== 'tool')) {
     ctx.addIssue({ code: 'custom', path: ['input', 'kind'], message: 'continue needs no snapshot and a history ending in a tool result' });
   }

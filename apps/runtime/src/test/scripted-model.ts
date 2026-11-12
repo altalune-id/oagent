@@ -4,6 +4,7 @@ import { Model } from '@strands-agents/sdk';
 export type Step = {
   text?: string[],
   toolUse?: { name: string, id: string, input: Record<string, unknown> },
+  toolUses?: { name: string, id: string, input: Record<string, unknown> }[],
   usage?: { inputTokens: number, outputTokens: number, cacheReadInputTokens?: number, cacheWriteInputTokens?: number },
   hang?: boolean,
   error?: Error,
@@ -71,12 +72,12 @@ export class ScriptedModel extends Model<BaseModelConfig> {
     if (step.text) {
       yield { type: 'modelContentBlockStopEvent' };
     }
-    if (step.toolUse) {
-      yield { type: 'modelContentBlockStartEvent', start: { type: 'toolUseStart', name: step.toolUse.name, toolUseId: step.toolUse.id } };
-      yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'toolUseInputDelta', input: JSON.stringify(step.toolUse.input) } };
+    for (const use of [...(step.toolUse ? [step.toolUse] : []), ...(step.toolUses ?? [])]) {
+      yield { type: 'modelContentBlockStartEvent', start: { type: 'toolUseStart', name: use.name, toolUseId: use.id } };
+      yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'toolUseInputDelta', input: JSON.stringify(use.input) } };
       yield { type: 'modelContentBlockStopEvent' };
     }
-    yield { type: 'modelMessageStopEvent', stopReason: step.toolUse ? 'toolUse' : 'endTurn' };
+    yield { type: 'modelMessageStopEvent', stopReason: step.toolUse || step.toolUses?.length ? 'toolUse' : 'endTurn' };
     if (step.usage) {
       yield { type: 'modelMetadataEvent', usage: { totalTokens: step.usage.inputTokens + step.usage.outputTokens, ...step.usage } };
     }

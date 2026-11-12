@@ -55,12 +55,32 @@ type ModelSpec struct {
 
 // MCPServerSpec is one MCP server a turn may call; AllowedTools are the server-side tool names.
 type MCPServerSpec struct {
-	Name             string   `json:"name"`
-	URL              string   `json:"url"`
-	Auth             MCPAuth  `json:"auth"`
-	AllowedTools     []string `json:"allowedTools"`
-	ConnectTimeoutMs int32    `json:"connectTimeoutMs"`
-	CallTimeoutMs    int32    `json:"callTimeoutMs"`
+	Name             string      `json:"name"`
+	URL              string      `json:"url"`
+	Auth             MCPAuth     `json:"auth"`
+	AllowedTools     []string    `json:"allowedTools,omitempty"`
+	Tools            []ToolGrant `json:"tools,omitempty"`
+	ConnectTimeoutMs int32       `json:"connectTimeoutMs"`
+	CallTimeoutMs    int32       `json:"callTimeoutMs"`
+}
+
+// ToolGrant is one granted tool with its approval spec; contract version 3 sends it instead of AllowedTools.
+type ToolGrant struct {
+	Name     string       `json:"name"`
+	Approval ApprovalSpec `json:"approval"`
+}
+
+// ApprovalSpec is when a person must approve a call: mode never, always or conditional with FreeWhen.
+type ApprovalSpec struct {
+	Mode     string          `json:"mode"`
+	FreeWhen []FreeCondition `json:"freeWhen,omitempty"`
+}
+
+// FreeCondition lets a call run free when Arg equals one of Values, or is missing and Absent is set.
+type FreeCondition struct {
+	Arg    string            `json:"arg"`
+	Values []json.RawMessage `json:"values"`
+	Absent bool              `json:"absent,omitempty"`
 }
 
 // MCPAuth is how the runtime authenticates to an MCP server: kind none, bearer or header.

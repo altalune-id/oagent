@@ -11,6 +11,15 @@ import { ScriptedModel } from './scripted-model.ts';
 
 export const quiet = captureLogger();
 
+export function oldGoRequest(name: string): TurnRequest {
+  const path = fileURLToPath(new URL(`./fixtures/${name}.request.json`, import.meta.url));
+  const result = validateRequest(JSON.parse(readFileSync(path, 'utf8')));
+  if (!result.ok) {
+    throw new Error(`old Go request ${name} refused: ${result.fields.join(',')}`);
+  }
+  return result.request;
+}
+
 export function goldenRequest(name: string, over: (r: TurnRequest) => void = () => {}): TurnRequest {
   const path = fileURLToPath(new URL(`../../../../internal/kernel/runtime/testdata/turn/${name}.request.json`, import.meta.url));
   const result = validateRequest(JSON.parse(readFileSync(path, 'utf8')));

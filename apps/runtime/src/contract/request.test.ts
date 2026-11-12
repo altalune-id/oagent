@@ -48,11 +48,43 @@ describe('validateRequest', () => {
     expect(result).toEqual({ ok: false, fields: ['agent.model.proxy'] });
   });
 
-  it('accepts contract versions 1 and 2 during the rollout and refuses any other', () => {
-    expect(CONTRACT_VERSION).toBe(2);
-    expect(validateRequest({ ...golden('plain_reply.request.json'), contractVersion: 1 }).ok).toBe(true);
-    expect(validateRequest({ ...golden('plain_reply.request.json'), contractVersion: 2 }).ok).toBe(true);
-    expect(validateRequest({ ...golden('plain_reply.request.json'), contractVersion: 3 })).toEqual({ ok: false, fields: ['contractVersion'] });
+  it('accepts contract versions 1 to 3 during the rollout and refuses any other', () => {
+    expect(CONTRACT_VERSION).toBe(3);
+    for (const v of [1, 2, 3]) {
+      expect(validateRequest({ ...golden('plain_reply.request.json'), contractVersion: v }).ok, `v${v}`).toBe(true);
+    }
+    expect(validateRequest({ ...golden('plain_reply.request.json'), contractVersion: 4 })).toEqual({ ok: false, fields: ['contractVersion'] });
+  });
+
+  it('takes tool approval specs on v3 and allowedTools before it, never both', () => {
+    const v3 = golden('tool_call.request.json');
+    v3.contractVersion = 3;
+    const server = (v3.mcpServers as Record<string, unknown>[])[0]!;
+    delete server.allowedTools;
+    server.tools = [{ name: 'record_expense', approval: { mode: 'conditional', freeWhen: [{ arg: 'confirm', values: [false], absent: true }] } }];
+    expect(validateRequest(v3).ok).toBe(true);
+
+    expect(validateRequest({ ...v3, contractVersion: 2 })).toEqual({ ok: false, fields: ['mcpServers.0'] });
+    const allowed = structuredClone(v3);
+    const allowedServer = (allowed.mcpServers as Record<string, unknown>[])[0]!;
+    delete allowedServer.tools;
+    allowedServer.allowedTools = ['record_expense'];
+    expect(validateRequest({ ...allowed, contractVersion: 2 }).ok).toBe(true);
+    expect(validateRequest({ ...allowed, contractVersion: 3 })).toEqual({ ok: false, fields: ['mcpServers.0'] });
+    const both = structuredClone(v3);
+    (both.mcpServers as Record<string, unknown>[])[0]!.allowedTools = ['record_expense'];
+    expect(validateRequest(both)).toEqual({ ok: false, fields: ['mcpServers.0'] });
+  });
+
+  it('refuses a conditional spec without conditions, an unknown mode and an unknown spec field', () => {
+    const base = golden('tool_call.request.json');
+    base.contractVersion = 3;
+    const server = (base.mcpServers as Record<string, unknown>[])[0]!;
+    delete server.allowedTools;
+    for (const approval of [{ mode: 'conditional' }, { mode: 'conditional', freeWhen: [] }, { mode: 'sometimes' }, { mode: 'never', extra: 1 }]) {
+      server.tools = [{ name: 'record_expense', approval }];
+      expect(validateRequest(base).ok, JSON.stringify(approval)).toBe(false);
+    }
   });
 
   it('reports field paths and never the values', () => {
@@ -109,6 +141,12 @@ describe('validateRequest', () => {
     const extra = golden('resume_after_crash.request.json');
     extra.input = { kind: 'continue', message: { id: 'm', role: 'user', content: 'x' } };
     expect(validateRequest(extra)).toEqual({ ok: false, fields: ['input.message'] });
+  });
+
+  it('accepts resume only with a snapshot', () => {
+    expect(validateRequest(golden('resume.request.json')).ok).toBe(true);
+    const bare = { ...golden('resume.request.json'), snapshot: null };
+    expect(validateRequest(bare)).toEqual({ ok: false, fields: ['snapshot'] });
   });
 
   it('refuses a non-object body', () => {

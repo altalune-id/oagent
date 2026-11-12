@@ -4,10 +4,10 @@ The agent runtime: one HTTP service that runs one agent turn per request with St
 
 ## Endpoints
 
-| Route        | Auth                                    | Answer                                                                                                                                                                                                                                                                                                                                 |
-| ------------ | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /ping`  | none                                    | `200 ok`                                                                                                                                                                                                                                                                                                                               |
-| `POST /turn` | `Authorization: Bearer <RUNTIME_TOKEN>` | `200 application/x-ndjson`: AG-UI events plus the private `OAGENT_HEARTBEAT`, `OAGENT_CHECKPOINT` and `OAGENT_TERMINAL` (always last). Before the stream: `400` (field paths), `401`, `413` (24 MiB), `422` (snapshot cannot load, or image input refused: `image_invalid`, `image_too_large`, `too_many_images`), `503` (at capacity) |
+| Route        | Auth                                    | Answer                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /ping`  | none                                    | `200 ok`                                                                                                                                                                                                                                                                                                                                                                                               |
+| `POST /turn` | `Authorization: Bearer <RUNTIME_TOKEN>` | `200 application/x-ndjson`: AG-UI events plus the private `OAGENT_HEARTBEAT`, `OAGENT_CHECKPOINT` and `OAGENT_TERMINAL` (always last). Before the stream: `400` (field paths), `401`, `413` (24 MiB), `422` (snapshot cannot load, or image input refused: `image_invalid`, `image_too_large`, `too_many_images`; or a gated tool with no approval check: `approval_unavailable`), `503` (at capacity) |
 
 The request and stream contract is shared with Go through the goldens in `internal/kernel/runtime/testdata/turn/`.
 
@@ -44,18 +44,19 @@ The platform's stop timeout must be longer than the grace period.
 
 ## Layout
 
-| Path              | Owns                                                                  |
-| ----------------- | --------------------------------------------------------------------- |
-| `src/main.ts`     | composition root: config, logger, egress guard, server, shutdown      |
-| `src/config.ts`   | the environment schema                                                |
-| `src/log.ts`      | pino logger with the field allow-list                                 |
-| `src/shutdown.ts` | signals, ordered close, force exit                                    |
-| `src/contract/`   | the turn request schema shared with Go, image checks, refusals        |
-| `src/http/`       | routes, bearer check, body cap, NDJSON stream, drain                  |
-| `src/turn/`       | one agent turn: execution, AG-UI events, history, snapshot, limits    |
-| `src/models/`     | model factory, OpenAI-compatible and Anthropic clients, client caches |
-| `src/mcp/`        | per-turn MCP clients, auth headers, description and schema sanitizing |
-| `src/egress/`     | SSRF guard and guarded fetch                                          |
+| Path                 | Owns                                                                                        |
+| -------------------- | ------------------------------------------------------------------------------------------- |
+| `src/main.ts`        | composition root: config, logger, egress guard, server, shutdown                            |
+| `src/config.ts`      | the environment schema                                                                      |
+| `src/log.ts`         | pino logger with the field allow-list                                                       |
+| `src/shutdown.ts`    | signals, ordered close, force exit                                                          |
+| `src/contract/`      | the turn request schema shared with Go, canonical JSON and argsHash, image checks, refusals |
+| `src/http/`          | routes, bearer check, body cap, NDJSON stream, drain                                        |
+| `src/turn/`          | one agent turn: execution, AG-UI events, history, snapshot, limits                          |
+| `src/models/`        | model factory, OpenAI-compatible and Anthropic clients, client caches                       |
+| `src/mcp/`           | per-turn MCP clients, auth headers, description and schema sanitizing                       |
+| `src/interventions/` | the approval rule and `oagent:approval`, and the order every intervention runs in           |
+| `src/egress/`        | SSRF guard and guarded fetch                                                                |
 
 Each folder's `index.ts` is its entry point; other folders import only that file.
 
