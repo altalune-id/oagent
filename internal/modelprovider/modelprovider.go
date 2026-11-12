@@ -38,11 +38,12 @@ type Prices struct {
 	CacheWriteMicros int64 `json:"cache_write_micros"`
 }
 
-// Model is one model a provider serves; nil Prices means unpriced.
+// Model is one model a provider serves; nil Prices means unpriced, and Embedding marks a model that turns text into vectors.
 type Model struct {
-	ID     string  `json:"id"`
-	Vision bool    `json:"vision,omitempty"`
-	Prices *Prices `json:"prices,omitempty"`
+	ID        string  `json:"id"`
+	Vision    bool    `json:"vision,omitempty"`
+	Embedding bool    `json:"embedding,omitempty"`
+	Prices    *Prices `json:"prices,omitempty"`
 }
 
 // Input is the editable part of a provider.

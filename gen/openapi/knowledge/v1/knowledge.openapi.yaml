@@ -1,0 +1,1258 @@
+openapi: 3.1.0
+info:
+  title: knowledge.v1
+paths:
+  /knowledge.v1.KnowledgeService/BeginUpload:
+    post:
+      tags:
+        - knowledge.v1.KnowledgeService
+      summary: BeginUpload
+      operationId: knowledge.v1.KnowledgeService.BeginUpload
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/knowledge.v1.BeginUploadRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/knowledge.v1.BeginUploadResponse'
+  /knowledge.v1.KnowledgeService/CompleteUpload:
+    post:
+      tags:
+        - knowledge.v1.KnowledgeService
+      summary: CompleteUpload
+      operationId: knowledge.v1.KnowledgeService.CompleteUpload
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/knowledge.v1.CompleteUploadRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/knowledge.v1.CompleteUploadResponse'
+  /knowledge.v1.KnowledgeService/CreateURLSource:
+    post:
+      tags:
+        - knowledge.v1.KnowledgeService
+      summary: CreateURLSource
+      operationId: knowledge.v1.KnowledgeService.CreateURLSource
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/knowledge.v1.CreateURLSourceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/knowledge.v1.CreateURLSourceResponse'
+  /knowledge.v1.KnowledgeService/CreateUploadSource:
+    post:
+      tags:
+        - knowledge.v1.KnowledgeService
+      summary: CreateUploadSource
+      operationId: knowledge.v1.KnowledgeService.CreateUploadSource
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/knowledge.v1.CreateUploadSourceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/knowledge.v1.CreateUploadSourceResponse'
+  /knowledge.v1.KnowledgeService/DeleteKnowledgeDocument:
+    post:
+      tags:
+        - knowledge.v1.KnowledgeService
+      summary: DeleteKnowledgeDocument
+      operationId: knowledge.v1.KnowledgeService.DeleteKnowledgeDocument
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/knowledge.v1.DeleteKnowledgeDocumentRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/knowledge.v1.DeleteKnowledgeDocumentResponse'
+  /knowledge.v1.KnowledgeService/DeleteKnowledgeSource:
+    post:
+      tags:
+        - knowledge.v1.KnowledgeService
+      summary: DeleteKnowledgeSource
+      operationId: knowledge.v1.KnowledgeService.DeleteKnowledgeSource
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/knowledge.v1.DeleteKnowledgeSourceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/knowledge.v1.DeleteKnowledgeSourceResponse'
+  /knowledge.v1.KnowledgeService/GetKnowledgeDocument:
+    post:
+      tags:
+        - knowledge.v1.KnowledgeService
+      summary: GetKnowledgeDocument
+      operationId: knowledge.v1.KnowledgeService.GetKnowledgeDocument
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/knowledge.v1.GetKnowledgeDocumentRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/knowledge.v1.GetKnowledgeDocumentResponse'
+  /knowledge.v1.KnowledgeService/GetKnowledgeSource:
+    post:
+      tags:
+        - knowledge.v1.KnowledgeService
+      summary: GetKnowledgeSource
+      operationId: knowledge.v1.KnowledgeService.GetKnowledgeSource
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/knowledge.v1.GetKnowledgeSourceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/knowledge.v1.GetKnowledgeSourceResponse'
+  /knowledge.v1.KnowledgeService/ListKnowledgeDocuments:
+    post:
+      tags:
+        - knowledge.v1.KnowledgeService
+      summary: ListKnowledgeDocuments
+      operationId: knowledge.v1.KnowledgeService.ListKnowledgeDocuments
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/knowledge.v1.ListKnowledgeDocumentsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/knowledge.v1.ListKnowledgeDocumentsResponse'
+  /knowledge.v1.KnowledgeService/ListKnowledgeSources:
+    post:
+      tags:
+        - knowledge.v1.KnowledgeService
+      summary: ListKnowledgeSources
+      operationId: knowledge.v1.KnowledgeService.ListKnowledgeSources
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/knowledge.v1.ListKnowledgeSourcesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/knowledge.v1.ListKnowledgeSourcesResponse'
+  /knowledge.v1.KnowledgeService/RefreshKnowledgeSource:
+    post:
+      tags:
+        - knowledge.v1.KnowledgeService
+      summary: RefreshKnowledgeSource
+      operationId: knowledge.v1.KnowledgeService.RefreshKnowledgeSource
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/knowledge.v1.RefreshKnowledgeSourceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/knowledge.v1.RefreshKnowledgeSourceResponse'
+  /knowledge.v1.KnowledgeService/SetEmbeddingModel:
+    post:
+      tags:
+        - knowledge.v1.KnowledgeService
+      summary: SetEmbeddingModel
+      operationId: knowledge.v1.KnowledgeService.SetEmbeddingModel
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/knowledge.v1.SetEmbeddingModelRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/knowledge.v1.SetEmbeddingModelResponse'
+  /knowledge.v1.KnowledgeService/TestSearch:
+    post:
+      tags:
+        - knowledge.v1.KnowledgeService
+      summary: TestSearch
+      operationId: knowledge.v1.KnowledgeService.TestSearch
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/knowledge.v1.TestSearchRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/knowledge.v1.TestSearchResponse'
+components:
+  schemas:
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          oneOf:
+            - type: object
+              title: Any
+              additionalProperties: true
+              description: Detailed error information.
+          discriminator:
+            propertyName: type
+          title: Debug
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+    google.protobuf.Timestamp:
+      type: string
+      examples:
+        - "2023-01-15T01:30:15.01Z"
+        - "2024-12-25T12:00:00Z"
+      format: date-time
+      description: |-
+        A Timestamp represents a point in time independent of any time zone or local
+         calendar, encoded as a count of seconds and fractions of seconds at
+         nanosecond resolution. The count is relative to an epoch at UTC midnight on
+         January 1, 1970, in the proleptic Gregorian calendar which extends the
+         Gregorian calendar backwards to year one.
+
+         All minutes are 60 seconds long. Leap seconds are "smeared" so that no leap
+         second table is needed for interpretation, using a [24-hour linear
+         smear](https://developers.google.com/time/smear).
+
+         The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By
+         restricting to that range, we ensure that we can convert to and from [RFC
+         3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.
+
+         # Examples
+
+         Example 1: Compute Timestamp from POSIX `time()`.
+
+             Timestamp timestamp;
+             timestamp.set_seconds(time(NULL));
+             timestamp.set_nanos(0);
+
+         Example 2: Compute Timestamp from POSIX `gettimeofday()`.
+
+             struct timeval tv;
+             gettimeofday(&tv, NULL);
+
+             Timestamp timestamp;
+             timestamp.set_seconds(tv.tv_sec);
+             timestamp.set_nanos(tv.tv_usec * 1000);
+
+         Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.
+
+             FILETIME ft;
+             GetSystemTimeAsFileTime(&ft);
+             UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+
+             // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z
+             // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.
+             Timestamp timestamp;
+             timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));
+             timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));
+
+         Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.
+
+             long millis = System.currentTimeMillis();
+
+             Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
+                 .setNanos((int) ((millis % 1000) * 1000000)).build();
+
+         Example 5: Compute Timestamp from Java `Instant.now()`.
+
+             Instant now = Instant.now();
+
+             Timestamp timestamp =
+                 Timestamp.newBuilder().setSeconds(now.getEpochSecond())
+                     .setNanos(now.getNano()).build();
+
+         Example 6: Compute Timestamp from current time in Python.
+
+             timestamp = Timestamp()
+             timestamp.GetCurrentTime()
+
+         # JSON Mapping
+
+         In JSON format, the Timestamp type is encoded as a string in the
+         [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the
+         format is "{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z"
+         where {year} is always expressed using four digits while {month}, {day},
+         {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
+         seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
+         are optional. The "Z" suffix indicates the timezone ("UTC"); the timezone
+         is required. A ProtoJSON serializer should always use UTC (as indicated by
+         "Z") when printing the Timestamp type and a ProtoJSON parser should be
+         able to accept both UTC and other timezones (as indicated by an offset).
+
+         For example, "2017-01-15T01:30:15.01Z" encodes 15.01 seconds past
+         01:30 UTC on January 15, 2017.
+
+         In JavaScript, one can convert a Date object to this format using the
+         standard
+         [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
+         method. In Python, a standard `datetime.datetime` object can be converted
+         to this format using
+         [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with
+         the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
+         the Joda Time's [`ISODateTimeFormat.dateTime()`](
+         http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
+         ) to obtain a formatter capable of generating timestamps in this format.
+    knowledge.v1.BeginUploadRequest:
+      type: object
+      properties:
+        sourceId:
+          type: string
+          title: source_id
+          description: |
+            oagent.public_id = true
+        filename:
+          type: string
+          title: filename
+          maxLength: 255
+          description: |
+            knowledge.filename.blank
+            knowledge.filename.control
+        contentType:
+          type: string
+          title: content_type
+          enum:
+            - application/pdf
+            - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+            - text/markdown
+            - text/plain
+        sizeBytes:
+          type:
+            - integer
+            - string
+          title: size_bytes
+          maximum: 10485760
+          minimum: 1
+          format: int64
+      title: BeginUploadRequest
+      required:
+        - sourceId
+        - filename
+        - contentType
+      additionalProperties: false
+    knowledge.v1.BeginUploadResponse:
+      type: object
+      properties:
+        document:
+          title: document
+          $ref: '#/components/schemas/knowledge.v1.KnowledgeDocument'
+        upload:
+          title: upload
+          $ref: '#/components/schemas/knowledge.v1.SignedUpload'
+      title: BeginUploadResponse
+      additionalProperties: false
+    knowledge.v1.CompleteUploadRequest:
+      type: object
+      properties:
+        documentId:
+          type: string
+          title: document_id
+          description: |
+            oagent.public_id = true
+      title: CompleteUploadRequest
+      required:
+        - documentId
+      additionalProperties: false
+    knowledge.v1.CompleteUploadResponse:
+      type: object
+      properties:
+        document:
+          title: document
+          $ref: '#/components/schemas/knowledge.v1.KnowledgeDocument'
+      title: CompleteUploadResponse
+      additionalProperties: false
+    knowledge.v1.CreateURLSourceRequest:
+      type: object
+      properties:
+        orgId:
+          type: string
+          title: org_id
+          description: |
+            oagent.public_id = true
+        projectId:
+          type: string
+          title: project_id
+          description: |
+            oagent.public_id = true
+        name:
+          type: string
+          title: name
+          description: |
+            oagent.name.blank = true
+            oagent.name.max_len.200 = true
+        seedUrl:
+          type: string
+          title: seed_url
+          description: |
+            knowledge.seed_url.format
+            knowledge.seed_url.max_len.2048
+        backend:
+          title: backend
+          $ref: '#/components/schemas/knowledge.v1.KnowledgeBackend'
+      title: CreateURLSourceRequest
+      required:
+        - orgId
+        - projectId
+        - name
+        - seedUrl
+      additionalProperties: false
+    knowledge.v1.CreateURLSourceResponse:
+      type: object
+      properties:
+        source:
+          title: source
+          $ref: '#/components/schemas/knowledge.v1.KnowledgeSource'
+      title: CreateURLSourceResponse
+      additionalProperties: false
+    knowledge.v1.CreateUploadSourceRequest:
+      type: object
+      properties:
+        orgId:
+          type: string
+          title: org_id
+          description: |
+            oagent.public_id = true
+        projectId:
+          type: string
+          title: project_id
+          description: |
+            oagent.public_id = true
+        name:
+          type: string
+          title: name
+          description: |
+            oagent.name.blank = true
+            oagent.name.max_len.200 = true
+        backend:
+          title: backend
+          $ref: '#/components/schemas/knowledge.v1.KnowledgeBackend'
+      title: CreateUploadSourceRequest
+      required:
+        - orgId
+        - projectId
+        - name
+      additionalProperties: false
+    knowledge.v1.CreateUploadSourceResponse:
+      type: object
+      properties:
+        source:
+          title: source
+          $ref: '#/components/schemas/knowledge.v1.KnowledgeSource'
+      title: CreateUploadSourceResponse
+      additionalProperties: false
+    knowledge.v1.DeleteKnowledgeDocumentRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: |
+            oagent.public_id = true
+      title: DeleteKnowledgeDocumentRequest
+      required:
+        - id
+      additionalProperties: false
+    knowledge.v1.DeleteKnowledgeDocumentResponse:
+      type: object
+      title: DeleteKnowledgeDocumentResponse
+      additionalProperties: false
+    knowledge.v1.DeleteKnowledgeSourceRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: |
+            oagent.public_id = true
+      title: DeleteKnowledgeSourceRequest
+      required:
+        - id
+      additionalProperties: false
+    knowledge.v1.DeleteKnowledgeSourceResponse:
+      type: object
+      title: DeleteKnowledgeSourceResponse
+      additionalProperties: false
+    knowledge.v1.EmbeddingModel:
+      type: object
+      properties:
+        providerId:
+          type: string
+          title: provider_id
+        model:
+          type: string
+          title: model
+        dims:
+          type: integer
+          title: dims
+          format: int32
+        updatedAt:
+          title: updated_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        providerMissing:
+          type: boolean
+          title: provider_missing
+      title: EmbeddingModel
+      additionalProperties: false
+      description: EmbeddingModel is the project's embedding model; every passage is embedded with it. provider_missing is true when the provider no longer exists, and provider_id is then empty.
+    knowledge.v1.GetKnowledgeDocumentRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: |
+            oagent.public_id = true
+      title: GetKnowledgeDocumentRequest
+      required:
+        - id
+      additionalProperties: false
+    knowledge.v1.GetKnowledgeDocumentResponse:
+      type: object
+      properties:
+        document:
+          title: document
+          $ref: '#/components/schemas/knowledge.v1.KnowledgeDocument'
+      title: GetKnowledgeDocumentResponse
+      additionalProperties: false
+    knowledge.v1.GetKnowledgeSourceRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: |
+            oagent.public_id = true
+      title: GetKnowledgeSourceRequest
+      required:
+        - id
+      additionalProperties: false
+    knowledge.v1.GetKnowledgeSourceResponse:
+      type: object
+      properties:
+        source:
+          title: source
+          $ref: '#/components/schemas/knowledge.v1.KnowledgeSource'
+      title: GetKnowledgeSourceResponse
+      additionalProperties: false
+    knowledge.v1.KnowledgeBackend:
+      type: string
+      title: KnowledgeBackend
+      enum:
+        - KNOWLEDGE_BACKEND_UNSPECIFIED
+        - KNOWLEDGE_BACKEND_PGVECTOR
+      description: KnowledgeBackend is the store that indexes and searches a source; a new source must use an enabled one, and unset picks the only enabled one.
+    knowledge.v1.KnowledgeDocument:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        sourceId:
+          type: string
+          title: source_id
+        title:
+          type: string
+          title: title
+        url:
+          type: string
+          title: url
+        status:
+          title: status
+          $ref: '#/components/schemas/knowledge.v1.KnowledgeDocumentStatus'
+        failure:
+          oneOf:
+            - $ref: '#/components/schemas/knowledge.v1.KnowledgeFailure'
+            - type: "null"
+          title: failure
+        pageCount:
+          type: integer
+          title: page_count
+          format: int32
+        embedTokens:
+          type:
+            - integer
+            - string
+          title: embed_tokens
+          format: int64
+        embedCostMicros:
+          type:
+            - integer
+            - string
+          title: embed_cost_micros
+          format: int64
+        createdAt:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        updatedAt:
+          title: updated_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        sizeBytes:
+          type:
+            - integer
+            - string
+          title: size_bytes
+          format: int64
+          description: size_bytes is the uploaded file's size; 0 for a crawled page.
+        chunkCount:
+          type: integer
+          title: chunk_count
+          format: int32
+      title: KnowledgeDocument
+      additionalProperties: false
+      description: KnowledgeDocument is one uploaded file or crawled page.
+    knowledge.v1.KnowledgeDocumentStatus:
+      type: string
+      title: KnowledgeDocumentStatus
+      enum:
+        - KNOWLEDGE_DOCUMENT_STATUS_UNSPECIFIED
+        - KNOWLEDGE_DOCUMENT_STATUS_UPLOADING
+        - KNOWLEDGE_DOCUMENT_STATUS_PENDING
+        - KNOWLEDGE_DOCUMENT_STATUS_PROCESSING
+        - KNOWLEDGE_DOCUMENT_STATUS_READY
+        - KNOWLEDGE_DOCUMENT_STATUS_FAILED
+      description: KnowledgeDocumentStatus is where a document is in ingestion.
+    knowledge.v1.KnowledgeFailure:
+      type: object
+      properties:
+        code:
+          type: string
+          title: code
+        reason:
+          type: string
+          title: reason
+      title: KnowledgeFailure
+      additionalProperties: false
+      description: KnowledgeFailure is the error code, and its reason if any, that failed a source or a document.
+    knowledge.v1.KnowledgeHit:
+      type: object
+      properties:
+        text:
+          type: string
+          title: text
+        title:
+          type: string
+          title: title
+        heading:
+          type: string
+          title: heading
+        page:
+          type: integer
+          title: page
+          format: int32
+        url:
+          type: string
+          title: url
+        score:
+          type: number
+          title: score
+          format: double
+      title: KnowledgeHit
+      additionalProperties: false
+      description: KnowledgeHit is one passage a search found; score is the cosine similarity.
+    knowledge.v1.KnowledgeSource:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        orgId:
+          type: string
+          title: org_id
+        projectId:
+          type: string
+          title: project_id
+        kind:
+          title: kind
+          $ref: '#/components/schemas/knowledge.v1.KnowledgeSourceKind'
+        backend:
+          title: backend
+          $ref: '#/components/schemas/knowledge.v1.KnowledgeBackend'
+        name:
+          type: string
+          title: name
+        seedUrl:
+          type: string
+          title: seed_url
+        status:
+          title: status
+          $ref: '#/components/schemas/knowledge.v1.KnowledgeSourceStatus'
+        failure:
+          oneOf:
+            - $ref: '#/components/schemas/knowledge.v1.KnowledgeFailure'
+            - type: "null"
+          title: failure
+        documentCount:
+          type: integer
+          title: document_count
+          format: int32
+        readyCount:
+          type: integer
+          title: ready_count
+          format: int32
+        failedCount:
+          type: integer
+          title: failed_count
+          format: int32
+        usedBy:
+          type: array
+          items:
+            $ref: '#/components/schemas/knowledge.v1.KnowledgeUsedBy'
+          title: used_by
+        createdAt:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        updatedAt:
+          title: updated_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: KnowledgeSource
+      additionalProperties: false
+      description: KnowledgeSource is a named set of documents in a project.
+    knowledge.v1.KnowledgeSourceKind:
+      type: string
+      title: KnowledgeSourceKind
+      enum:
+        - KNOWLEDGE_SOURCE_KIND_UNSPECIFIED
+        - KNOWLEDGE_SOURCE_KIND_UPLOAD
+        - KNOWLEDGE_SOURCE_KIND_URL
+      description: KnowledgeSourceKind says where a source's documents come from.
+    knowledge.v1.KnowledgeSourceStatus:
+      type: string
+      title: KnowledgeSourceStatus
+      enum:
+        - KNOWLEDGE_SOURCE_STATUS_UNSPECIFIED
+        - KNOWLEDGE_SOURCE_STATUS_IDLE
+        - KNOWLEDGE_SOURCE_STATUS_CRAWLING
+        - KNOWLEDGE_SOURCE_STATUS_FAILED
+      description: KnowledgeSourceStatus is where a source's crawl is; an upload source stays idle.
+    knowledge.v1.KnowledgeUsedBy:
+      type: object
+      properties:
+        agentId:
+          type: string
+          title: agent_id
+        agentName:
+          type: string
+          title: agent_name
+      title: KnowledgeUsedBy
+      additionalProperties: false
+      description: KnowledgeUsedBy names an agent whose published version searches a source.
+    knowledge.v1.ListKnowledgeDocumentsRequest:
+      type: object
+      properties:
+        sourceId:
+          type: string
+          title: source_id
+          description: |
+            oagent.public_id = true
+      title: ListKnowledgeDocumentsRequest
+      required:
+        - sourceId
+      additionalProperties: false
+    knowledge.v1.ListKnowledgeDocumentsResponse:
+      type: object
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/knowledge.v1.KnowledgeDocument'
+          title: documents
+      title: ListKnowledgeDocumentsResponse
+      additionalProperties: false
+    knowledge.v1.ListKnowledgeSourcesRequest:
+      type: object
+      properties:
+        projectId:
+          type: string
+          title: project_id
+          description: |
+            oagent.public_id = true
+      title: ListKnowledgeSourcesRequest
+      required:
+        - projectId
+      additionalProperties: false
+    knowledge.v1.ListKnowledgeSourcesResponse:
+      type: object
+      properties:
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/knowledge.v1.KnowledgeSource'
+          title: sources
+        storageConfigured:
+          type: boolean
+          title: storage_configured
+          description: 'storage_configured is false when this server has no object storage: upload sources can''t take files.'
+        enabledBackends:
+          type: array
+          items:
+            $ref: '#/components/schemas/knowledge.v1.KnowledgeBackend'
+          title: enabled_backends
+        embeddingModel:
+          oneOf:
+            - $ref: '#/components/schemas/knowledge.v1.EmbeddingModel'
+            - type: "null"
+          title: embedding_model
+          description: embedding_model is unset until the project picks one; documents wait until then.
+        maxUploadBytes:
+          type:
+            - integer
+            - string
+          title: max_upload_bytes
+          format: int64
+          description: max_upload_bytes and allowed_content_types are what BeginUpload accepts.
+        allowedContentTypes:
+          type: array
+          items:
+            type: string
+          title: allowed_content_types
+      title: ListKnowledgeSourcesResponse
+      additionalProperties: false
+    knowledge.v1.RefreshKnowledgeSourceRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: |
+            oagent.public_id = true
+      title: RefreshKnowledgeSourceRequest
+      required:
+        - id
+      additionalProperties: false
+    knowledge.v1.RefreshKnowledgeSourceResponse:
+      type: object
+      properties:
+        source:
+          title: source
+          $ref: '#/components/schemas/knowledge.v1.KnowledgeSource'
+      title: RefreshKnowledgeSourceResponse
+      additionalProperties: false
+    knowledge.v1.SetEmbeddingModelRequest:
+      type: object
+      properties:
+        projectId:
+          type: string
+          title: project_id
+          description: |
+            oagent.public_id = true
+        providerId:
+          type: string
+          title: provider_id
+          description: |
+            oagent.public_id = true
+        model:
+          type: string
+          title: model
+          pattern: ^[A-Za-z0-9._:/-]+$
+          description: |
+            knowledge.model.max_len.128
+      title: SetEmbeddingModelRequest
+      required:
+        - projectId
+        - providerId
+        - model
+      additionalProperties: false
+    knowledge.v1.SetEmbeddingModelResponse:
+      type: object
+      properties:
+        embeddingModel:
+          title: embedding_model
+          $ref: '#/components/schemas/knowledge.v1.EmbeddingModel'
+      title: SetEmbeddingModelResponse
+      additionalProperties: false
+    knowledge.v1.SignedUpload:
+      type: object
+      properties:
+        url:
+          type: string
+          title: url
+        method:
+          type: string
+          title: method
+        headers:
+          type: object
+          title: headers
+          additionalProperties:
+            type: string
+            title: value
+        expiresAt:
+          title: expires_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: SignedUpload
+      additionalProperties: false
+      description: 'SignedUpload is where the browser PUTs the file: the method, the URL and the exact headers to send.'
+    knowledge.v1.SignedUpload.HeadersEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: HeadersEntry
+      additionalProperties: false
+    knowledge.v1.TestSearchRequest:
+      type: object
+      properties:
+        sourceId:
+          type: string
+          title: source_id
+          description: |
+            oagent.public_id = true
+        query:
+          type: string
+          title: query
+          description: |
+            knowledge.query.blank
+            knowledge.query.max_len.2000
+      title: TestSearchRequest
+      required:
+        - sourceId
+        - query
+      additionalProperties: false
+    knowledge.v1.TestSearchResponse:
+      type: object
+      properties:
+        hits:
+          type: array
+          items:
+            $ref: '#/components/schemas/knowledge.v1.KnowledgeHit'
+          title: hits
+      title: TestSearchResponse
+      additionalProperties: false
+security: []
+tags:
+  - name: knowledge.v1.KnowledgeService
+    description: 'KnowledgeService manages a project''s knowledge sources, their documents and the embedding model agents search them with. Every id is a public id; file bytes never pass through it: a browser uploads them straight to storage.'

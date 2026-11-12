@@ -114,9 +114,10 @@ type InUseReason string
 
 // The causes of an InUseError.
 const (
-	InUseDelete       InUseReason = "delete"
-	InUseModelRemoved InUseReason = "model_removed"
-	InUsePriceRemoved InUseReason = "price_removed"
+	InUseDelete         InUseReason = "delete"
+	InUseModelRemoved   InUseReason = "model_removed"
+	InUsePriceRemoved   InUseReason = "price_removed"
+	InUseEmbeddingModel InUseReason = "embedding_model"
 )
 
 func (r InUseReason) text() string {
@@ -127,6 +128,8 @@ func (r InUseReason) text() string {
 		return "cannot drop a model an agent uses"
 	case InUsePriceRemoved:
 		return "cannot drop the price of a model a capped agent uses"
+	case InUseEmbeddingModel:
+		return "cannot drop the project's embedding model, its embedding flag or its price"
 	default:
 		return "is in use"
 	}

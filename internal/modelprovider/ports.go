@@ -11,10 +11,11 @@ type Usage interface {
 	ProviderUse(ctx context.Context, providerID uuid.UUID) (ProviderUse, error)
 }
 
-// ProviderUse says whether any published version uses a provider and, per model id it uses, whether it needs that model's price.
+// ProviderUse says who uses a provider: published versions (per model id, whether its price is needed) and the project's embedding model.
 type ProviderUse struct {
-	InUse  bool
-	Models map[string]bool
+	InUse          bool
+	Models         map[string]bool
+	EmbeddingModel string
 }
 
 // Refs turns org and project public ids into ids and back for the handler.

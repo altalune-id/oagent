@@ -144,13 +144,14 @@ type GrantReason string
 
 // The causes of an InvalidGrantError.
 const (
-	GrantProvider       GrantReason = "provider"
-	GrantModel          GrantReason = "model"
-	GrantHelperModel    GrantReason = "helper_model"
-	GrantServer         GrantReason = "server"
-	GrantToolName       GrantReason = "tool_name"
-	GrantLegacyTools    GrantReason = "legacy_tools"
-	GrantBudgetUnpriced GrantReason = "budget_unpriced"
+	GrantProvider        GrantReason = "provider"
+	GrantModel           GrantReason = "model"
+	GrantHelperModel     GrantReason = "helper_model"
+	GrantServer          GrantReason = "server"
+	GrantToolName        GrantReason = "tool_name"
+	GrantLegacyTools     GrantReason = "legacy_tools"
+	GrantBudgetUnpriced  GrantReason = "budget_unpriced"
+	GrantKnowledgeSource GrantReason = "knowledge_source"
 )
 
 func (r GrantReason) text() string {
@@ -169,6 +170,8 @@ func (r GrantReason) text() string {
 		return "uses the old top-level tool list; grant tools per MCP server"
 	case GrantBudgetUnpriced:
 		return "has a cost limit on a model without prices"
+	case GrantKnowledgeSource:
+		return "names a knowledge source this project does not have"
 	default:
 		return "is invalid"
 	}

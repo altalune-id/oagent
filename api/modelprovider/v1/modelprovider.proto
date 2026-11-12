@@ -66,6 +66,8 @@ message Model {
   bool vision = 2;
   // prices are micro-USD per 1M tokens.
   optional ModelPrices prices = 3;
+  // embedding marks a model that turns text into vectors, for knowledge search.
+  bool embedding = 4;
 }
 
 // ModelProvider is a model endpoint of a project; api_key_set says whether a key is stored, and the key is never returned.

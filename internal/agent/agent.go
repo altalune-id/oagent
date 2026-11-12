@@ -81,6 +81,8 @@ type Config struct {
 	ProviderID  uuid.UUID  `json:"provider_id,omitzero"`
 	HelperModel string     `json:"helper_model,omitempty"`
 	MCPServers  []MCPGrant `json:"mcp_servers,omitempty"`
+	// KnowledgeSourceIDs are the knowledge sources searched before each turn.
+	KnowledgeSourceIDs []uuid.UUID `json:"knowledge_source_ids,omitempty"`
 }
 
 // MCPGrant lets the agent call the listed tools of one MCP server.
@@ -233,6 +235,16 @@ func validFreeWhen(conds []FreeCondition) (apperror.FieldReason, bool) {
 }
 
 func (c Config) validateGrants(invalid func(string, apperror.FieldReason) error) error {
+	if len(c.KnowledgeSourceIDs) > maxGrants {
+		return invalid("knowledge_source_ids", apperror.FieldTooMany)
+	}
+	sources := make(map[uuid.UUID]bool, len(c.KnowledgeSourceIDs))
+	for _, id := range c.KnowledgeSourceIDs {
+		if sources[id] {
+			return invalid("knowledge_source_ids", apperror.FieldInvalid)
+		}
+		sources[id] = true
+	}
 	if len(c.MCPServers) > maxGrants {
 		return invalid("mcp_servers", apperror.FieldTooMany)
 	}
@@ -274,7 +286,7 @@ func (c Config) Equal(o Config) bool {
 		c.ProviderID == o.ProviderID && c.HelperModel == o.HelperModel &&
 		slices.EqualFunc(c.MCPServers, o.MCPServers, func(a, b MCPGrant) bool {
 			return a.ServerID == b.ServerID && slices.EqualFunc(a.Tools, b.Tools, Tool.Equal)
-		})
+		}) && slices.Equal(c.KnowledgeSourceIDs, o.KnowledgeSourceIDs)
 }
 
 // SetDraft replaces the draft with a valid cfg edited at now; the published version is unchanged.

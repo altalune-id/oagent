@@ -247,3 +247,42 @@ func codeOf(err error) apperror.Code {
 	}
 	return ""
 }
+
+func TestPublish_KnowledgeSourceOtherProjectRefused(t *testing.T) {
+	a, err := agent.New(uuid.New(), uuid.New(), "acme", "Acme", "", uuid.New())
+	require.NoError(t, err)
+	store := &fakes.AgentStore{Agent: a}
+	provider, own, foreign := uuid.New(), uuid.New(), uuid.New()
+	grants := &fakes.AgentGrants{
+		Providers: map[uuid.UUID]fakes.GrantProvider{provider: {ProjectID: a.ProjectID, Models: []agent.ModelRef{{ID: "m"}}}},
+		Sources:   map[uuid.UUID]uuid.UUID{own: a.ProjectID, foreign: uuid.New()},
+	}
+	svc := agent.NewService(store, fakes.Transactor{}, testUnexpected()).WithProviders(grants).WithMCPServers(grants).WithLocker(grants).WithKnowledge(grants)
+	ctx := context.Background()
+
+	_, err = svc.UpdateDraft(ctx, a.ID, agent.Config{ProviderID: provider, Model: "m", KnowledgeSourceIDs: []uuid.UUID{own, foreign}})
+	assert.Equal(t, apperror.CodeAgentInvalidGrant, codeOf(err))
+	assert.Equal(t, "knowledge_source", reasonOf(err))
+
+	_, err = svc.UpdateDraft(ctx, a.ID, agent.Config{ProviderID: provider, Model: "m", KnowledgeSourceIDs: []uuid.UUID{own}})
+	require.NoError(t, err)
+	_, v, _, err := svc.Publish(ctx, a.ID, uuid.Nil)
+	require.NoError(t, err)
+	assert.Equal(t, []uuid.UUID{own}, v.Config.KnowledgeSourceIDs)
+	assert.Contains(t, grants.LockedSources, []uuid.UUID{own}, "the bound sources are share-locked while publishing")
+
+	delete(grants.Sources, own)
+	_, _, _, err = svc.Publish(ctx, a.ID, uuid.Nil)
+	assert.Equal(t, "knowledge_source", reasonOf(err), "a source deleted before publish is refused")
+
+	noKnowledge := agent.NewService(store, fakes.Transactor{}, testUnexpected()).WithProviders(grants).WithMCPServers(grants).WithLocker(grants)
+	_, err = noKnowledge.UpdateDraft(ctx, a.ID, agent.Config{ProviderID: provider, Model: "m", KnowledgeSourceIDs: []uuid.UUID{own}})
+	assert.Equal(t, "knowledge_source", reasonOf(err), "without the knowledge module every source is unknown")
+}
+
+func reasonOf(err error) string {
+	if ae, ok := apperror.AsAppError(err); ok {
+		return ae.Meta()["reason"]
+	}
+	return ""
+}

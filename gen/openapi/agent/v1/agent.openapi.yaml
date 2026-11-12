@@ -390,9 +390,22 @@ components:
         providerMissing:
           type: boolean
           title: provider_missing
+        knowledgeSourceIds:
+          type: array
+          items:
+            type: string
+            description: |
+              oagent.public_id = true
+          title: knowledge_source_ids
+          maxItems: 16
+          uniqueItems: true
+        knowledgeSourcesMissing:
+          type: integer
+          title: knowledge_sources_missing
+          format: int32
       title: AgentConfig
       additionalProperties: false
-      description: AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider's public id; provider_missing is output only.
+      description: 'AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider''s public id; provider_missing is output only; knowledge_source_ids are the knowledge sources searched before each turn, leaving out a deleted one, and knowledge_sources_missing is output only: how many bound sources no longer exist.'
     agent.v1.AgentTool:
       type: object
       properties:

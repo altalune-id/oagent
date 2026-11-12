@@ -14,6 +14,8 @@ import (
 	channelv1 "altalune.id/oagent/gen/go/channel/v1"
 	enduserv1 "altalune.id/oagent/gen/go/enduser/v1"
 	invitev1 "altalune.id/oagent/gen/go/invite/v1"
+	knowledgev1 "altalune.id/oagent/gen/go/knowledge/v1"
+	"altalune.id/oagent/gen/go/knowledge/v1/knowledgev1connect"
 	mcpserverv1 "altalune.id/oagent/gen/go/mcpserver/v1"
 	memberv1 "altalune.id/oagent/gen/go/member/v1"
 	modelproviderv1 "altalune.id/oagent/gen/go/modelprovider/v1"
@@ -22,6 +24,7 @@ import (
 	threadv1 "altalune.id/oagent/gen/go/thread/v1"
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
 	"altalune.id/oagent/internal/kernel/authz"
+	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/scope"
 )
 
@@ -35,6 +38,7 @@ func allProcedures() []string {
 		enduserv1.File_enduser_v1_enduser_proto,
 		approvalv1.File_approval_v1_approval_proto,
 		invitev1.File_invite_v1_invite_proto,
+		knowledgev1.File_knowledge_v1_knowledge_proto,
 		mcpserverv1.File_mcpserver_v1_mcpserver_proto,
 		memberv1.File_member_v1_member_proto,
 		modelproviderv1.File_modelprovider_v1_modelprovider_proto,
@@ -56,7 +60,7 @@ func allProcedures() []string {
 
 func TestEveryRPCHasAPermission(t *testing.T) {
 	procs := allProcedures()
-	require.Len(t, procs, 77, "Org 4, Project 5, Agent 8, APIKey 3, Webhook 11, Auth 6, Member 4, Invite 7, ModelProvider 5, McpServer 6, Thread 6, Channel 7, EndUser 2, Approval 3")
+	require.Len(t, procs, 90, "Org 4, Project 5, Agent 8, APIKey 3, Webhook 11, Auth 6, Member 4, Invite 7, ModelProvider 5, McpServer 6, Thread 6, Channel 7, EndUser 2, Approval 3, Knowledge 13")
 	table := Table()
 	for _, proc := range procs {
 		perms := table[proc]
@@ -109,6 +113,19 @@ func TestPermissionTable_Spec15(t *testing.T) {
 		"/approval.v1.ApprovalService/ListApprovals":                 "thread:read",
 		"/approval.v1.ApprovalService/GetApproval":                   "thread:read",
 		"/approval.v1.ApprovalService/DecideApproval":                "approval:decide",
+		"/knowledge.v1.KnowledgeService/CreateURLSource":             "knowledge:write",
+		"/knowledge.v1.KnowledgeService/CreateUploadSource":          "knowledge:write",
+		"/knowledge.v1.KnowledgeService/RefreshKnowledgeSource":      "knowledge:write",
+		"/knowledge.v1.KnowledgeService/DeleteKnowledgeSource":       "knowledge:write",
+		"/knowledge.v1.KnowledgeService/BeginUpload":                 "knowledge:write",
+		"/knowledge.v1.KnowledgeService/CompleteUpload":              "knowledge:write",
+		"/knowledge.v1.KnowledgeService/DeleteKnowledgeDocument":     "knowledge:write",
+		"/knowledge.v1.KnowledgeService/SetEmbeddingModel":           "knowledge:write",
+		"/knowledge.v1.KnowledgeService/TestSearch":                  "knowledge:read",
+		"/knowledge.v1.KnowledgeService/ListKnowledgeSources":        "knowledge:read",
+		"/knowledge.v1.KnowledgeService/GetKnowledgeSource":          "knowledge:read",
+		"/knowledge.v1.KnowledgeService/ListKnowledgeDocuments":      "knowledge:read",
+		"/knowledge.v1.KnowledgeService/GetKnowledgeDocument":        "knowledge:read",
 		"/thread.v1.ThreadService/ListThreads":                       "thread:read",
 		"/thread.v1.ThreadService/GetThread":                         "thread:read",
 		"/thread.v1.ThreadService/ListThreadMessages":                "thread:read",
@@ -146,4 +163,12 @@ func TestPermissionTable_Spec15(t *testing.T) {
 func TestFor(t *testing.T) {
 	assert.Equal(t, []string{scope.AgentRead}, For("/agent.v1.AgentService/GetAgent"))
 	assert.Nil(t, For("/nope.v1.Nope/Nothing"), "an unknown procedure has no permission, so it is denied")
+}
+
+// A member may run a test search; it spends embedding tokens but changes nothing.
+func TestTestSearch_AMemberMayRunIt(t *testing.T) {
+	perms := For(knowledgev1connect.KnowledgeServiceTestSearchProcedure)
+	require.NotEmpty(t, perms)
+	assert.True(t, scope.Covers(member.BuiltinPermissions(member.RoleMember), perms))
+	assert.False(t, scope.Covers(member.BuiltinPermissions(member.RoleMember), For(knowledgev1connect.KnowledgeServiceSetEmbeddingModelProcedure)), "a member still changes nothing")
 }

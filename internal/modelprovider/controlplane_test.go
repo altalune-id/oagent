@@ -57,6 +57,7 @@ func createRequest(orgPub, projectPub string) *modelproviderv1.CreateModelProvid
 		Models: []*modelproviderv1.Model{
 			{Id: "gpt-4o", Vision: true, Prices: &modelproviderv1.ModelPrices{InputMicros: 2_500_000, OutputMicros: 10_000_000, CacheReadMicros: 1, CacheWriteMicros: 2}},
 			{Id: "llama-3"},
+			{Id: "text-embedding-3-small", Embedding: true, Prices: &modelproviderv1.ModelPrices{InputMicros: 20_000}},
 		},
 	}
 }
@@ -72,8 +73,10 @@ func TestModelProviderService_CreateReturnsNoKey(t *testing.T) {
 	assert.Equal(t, "openrouter", mp.GetName())
 	assert.Equal(t, modelproviderv1.ModelProviderKind_MODEL_PROVIDER_KIND_OPENAI_COMPATIBLE, mp.GetKind())
 	assert.Equal(t, "https://openrouter.ai/api/v1", mp.GetBaseUrl())
-	require.Len(t, mp.GetModels(), 2)
+	require.Len(t, mp.GetModels(), 3)
 	assert.True(t, mp.GetModels()[0].GetVision())
+	assert.False(t, mp.GetModels()[0].GetEmbedding())
+	assert.True(t, mp.GetModels()[2].GetEmbedding(), "the embedding flag round-trips")
 	assert.Equal(t, int64(2_500_000), mp.GetModels()[0].GetPrices().GetInputMicros())
 	assert.Nil(t, mp.GetModels()[1].Prices, "an unpriced model has no prices")
 	assert.NotEmpty(t, mp.GetCreatedAt())

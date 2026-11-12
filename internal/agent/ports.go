@@ -13,7 +13,7 @@ type Publisher interface {
 	Enqueue(ctx context.Context, t events.Type, data any) error
 }
 
-// Refs turns org, project, provider and MCP server public ids into ids and back; ok is false for an unknown id.
+// Refs turns org, project, provider, MCP server and knowledge source public ids into ids and back; ok is false for an unknown id.
 type Refs interface {
 	OrgID(ctx context.Context, publicID string) (id uuid.UUID, ok bool, err error)
 	OrgPublicID(ctx context.Context, id uuid.UUID) (string, error)
@@ -24,6 +24,8 @@ type Refs interface {
 	ProviderPublicID(ctx context.Context, id uuid.UUID) (publicID string, ok bool, err error)
 	MCPServerID(ctx context.Context, publicID string) (id, projectID uuid.UUID, ok bool, err error)
 	MCPServerPublicID(ctx context.Context, id uuid.UUID) (publicID string, ok bool, err error)
+	KnowledgeSourceID(ctx context.Context, publicID string) (id, projectID uuid.UUID, ok bool, err error)
+	KnowledgeSourcePublicID(ctx context.Context, id uuid.UUID) (publicID string, ok bool, err error)
 }
 
 // ModelRef is one model a provider lists; Priced is true when it has prices.
@@ -40,6 +42,12 @@ type Providers interface {
 // MCPServers names a project's MCP server; an unknown or foreign server answers *InvalidGrantError (server).
 type MCPServers interface {
 	Exists(ctx context.Context, projectID, serverID uuid.UUID) (name string, err error)
+}
+
+// Knowledge checks a config's knowledge sources; an unknown, foreign or gone one answers *InvalidGrantError (knowledge_source).
+type Knowledge interface {
+	SourceExists(ctx context.Context, projectID, sourceID uuid.UUID) error
+	LockSourcesShared(ctx context.Context, ids []uuid.UUID) error
 }
 
 // Locker share-locks a version's providers and servers until the unit of work ends; a gone one answers *InvalidGrantError.

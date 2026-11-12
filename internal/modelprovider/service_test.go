@@ -499,3 +499,38 @@ func TestService_BaseURLWithControlCharactersIsInvalid(t *testing.T) {
 	assert.Len(t, f.store.Providers, 1)
 	assert.Equal(t, input().BaseURL, f.store.Providers[p.ID].BaseURL)
 }
+
+func TestProvider_EmbeddingModelInUse(t *testing.T) {
+	embeddingUse := func(f *fixture, p *modelprovider.Provider) {
+		f.usage.Uses = map[uuid.UUID]modelprovider.ProviderUse{p.ID: {EmbeddingModel: "gpt-4o"}}
+	}
+	for name, change := range map[string]func(in *modelprovider.Input){
+		"model removed": func(in *modelprovider.Input) { in.Models = in.Models[1:] },
+		"flag cleared":  func(in *modelprovider.Input) { in.Models[0].Embedding = false },
+		"price removed": func(in *modelprovider.Input) { in.Models[0].Prices = nil },
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t)
+			p := f.create(t)
+			embeddingUse(f, p)
+			in := input()
+			in.Models[0].Embedding = true
+			change(&in)
+			_, err := f.svc.Update(f.ctx, p.ID, in, nil)
+			assert.Equal(t, apperror.CodeModelProviderInUse, codeOf(t, err))
+			assert.Equal(t, "embedding_model", reasonOf(t, err))
+		})
+	}
+
+	f := newFixture(t)
+	p := f.create(t)
+	embeddingUse(f, p)
+	in := input()
+	in.Models[0].Embedding = true
+	_, err := f.svc.Update(f.ctx, p.ID, in, nil)
+	require.NoError(t, err, "keeping the model, its flag and its price is fine")
+
+	err = f.svc.Delete(f.ctx, p.ID)
+	assert.Equal(t, "embedding_model", reasonOf(t, err), "a project's embedding provider can't be deleted")
+	assert.Contains(t, f.store.Providers, p.ID)
+}

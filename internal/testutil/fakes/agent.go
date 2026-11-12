@@ -25,6 +25,8 @@ type AgentStore struct {
 	// Usage and ServerInUse answer the usage queries.
 	Usage       agent.ProviderUsage
 	ServerInUse bool
+	SourceInUse bool
+	Knowledge   map[uuid.UUID][]agent.Named
 }
 
 // SaveDraft implements agent.Store like Save.
@@ -150,6 +152,16 @@ func (f *AgentStore) Resolve(_ context.Context, publicID string) (agent.Ref, err
 // ProviderUse implements agent.Store; Usage answers it.
 func (f *AgentStore) ProviderUse(context.Context, uuid.UUID) (agent.ProviderUsage, error) {
 	return f.Usage, f.Err
+}
+
+// KnowledgeSourceInUse implements agent.Store; SourceInUse answers it.
+func (f *AgentStore) KnowledgeSourceInUse(context.Context, uuid.UUID) (bool, error) {
+	return f.SourceInUse, f.Err
+}
+
+// KnowledgeUse implements agent.Store; Knowledge answers it.
+func (f *AgentStore) KnowledgeUse(context.Context, uuid.UUID) (map[uuid.UUID][]agent.Named, error) {
+	return f.Knowledge, f.Err
 }
 
 // MCPServerInUse implements agent.Store; ServerInUse answers it.

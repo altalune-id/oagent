@@ -308,6 +308,17 @@ func (s *AgentService) fillRefs(ctx context.Context, c Config, out *agentv1.Agen
 		}
 		out.McpServers[i].ServerId, out.McpServers[i].Missing = pub, !ok
 	}
+	for _, id := range c.KnowledgeSourceIDs {
+		pub, ok, err := s.refs.KnowledgeSourcePublicID(ctx, id)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			out.KnowledgeSourcesMissing++
+			continue
+		}
+		out.KnowledgeSourceIds = append(out.KnowledgeSourceIds, pub)
+	}
 	return nil
 }
 
@@ -335,6 +346,16 @@ func (s *AgentService) configFrom(ctx context.Context, a *Agent, in *agentv1.Age
 			return Config{}, &InvalidGrantError{Reason: GrantServer}
 		}
 		cfg.MCPServers[i].ServerID = id
+	}
+	for _, pub := range in.GetKnowledgeSourceIds() {
+		id, owner, ok, err := s.refs.KnowledgeSourceID(ctx, pub)
+		if err != nil {
+			return Config{}, err
+		}
+		if !ok || owner != a.ProjectID || !mayBind(ctx, a, id, slices.Contains(a.Draft.KnowledgeSourceIDs, id), scope.KnowledgeRead) {
+			return Config{}, &InvalidGrantError{Reason: GrantKnowledgeSource}
+		}
+		cfg.KnowledgeSourceIDs = append(cfg.KnowledgeSourceIDs, id)
 	}
 	return cfg, nil
 }
