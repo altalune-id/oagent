@@ -95,6 +95,19 @@ func (h *Handler) postRuns(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, r, err)
 		return
 	}
+	if in.Resume != nil {
+		stream, err := h.resume(c, in, actor, h.d.Store.ThreadByExternalKey)
+		if err != nil {
+			h.writeError(w, r, err)
+			return
+		}
+		h.relay(w, r, stream, in.ThreadID)
+		return
+	}
+	if err := h.refusePending(c, in, actor, h.d.Store.ThreadByExternalKey); err != nil {
+		h.writeError(w, r, err)
+		return
+	}
 	stream, err := h.start(c, r, in, actor)
 	if replay, ok := errors.AsType[*settledReplay](err); ok {
 		if err := h.replay(c.ctx, w, in.ThreadID, replay.run.ThreadID, replay.run); err != nil {

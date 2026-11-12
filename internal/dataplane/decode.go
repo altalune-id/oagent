@@ -45,6 +45,8 @@ type turnInput struct {
 	ThreadID  string
 	MessageID string
 	Text      string
+	// Resume is the raw resume[] answering the thread's pending approval; a resume carries no new message.
+	Resume json.RawMessage
 }
 
 func invalid(field string, reason apperror.FieldReason) error {
@@ -72,6 +74,9 @@ func decodeInput(r *http.Request) (turnInput, error) {
 	}
 	if !idPattern.MatchString(in.ThreadID) {
 		return turnInput{}, invalid("threadId", apperror.FieldInvalidFormat)
+	}
+	if len(in.Resume) > 0 && string(in.Resume) != "null" {
+		return turnInput{ThreadID: in.ThreadID, Resume: in.Resume}, nil
 	}
 	if len(in.Messages) == 0 {
 		return turnInput{}, invalid("messages", apperror.FieldRequired)

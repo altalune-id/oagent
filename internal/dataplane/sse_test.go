@@ -185,3 +185,13 @@ func TestRelay_AStreamWithNoTerminalEndsDetached(t *testing.T) {
 	require.NoError(t, dataplane.Relay(t.Context(), finished, dataplane.NewSSEWriter(done), dataplane.IDMap{ThreadID: clientThread}, nil))
 	assert.NotContains(t, done.Body.String(), "detached", "a stream that ended is left as it is")
 }
+
+func TestRelay_InterruptOutcomeNoStrandsID(t *testing.T) {
+	in := string(readGolden(t, "interrupt_outcome.ndjson"))
+	require.Contains(t, in, "hook:beforeToolCall", "the runtime's terminal carries the Strands id")
+	out := string(relayAll(t, goldenEvents(t, "interrupt_outcome")))
+	assert.NotContains(t, out, "hook:", "the relay's allow-list keeps it in Go")
+	assert.NotContains(t, out, "OAGENT_")
+	assert.Contains(t, out, `"outcome":{"type":"interrupt"`)
+	assert.Contains(t, out, `"id":"call_1"`)
+}
