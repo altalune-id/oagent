@@ -61,11 +61,11 @@ func TestBuiltinPermissions_NoRoleLosesAccess(t *testing.T) {
 		RoleOwner: {"*"},
 		RoleAdmin: {
 			scope.OrgRead, "project:*", "agent:*", "webhook:*", "member:*", "apikey:*", "provider:*", "mcpserver:*", "run:*", scope.ThreadRead,
-			"channel:*",
+			"channel:*", scope.ApprovalDecide,
 		},
 		RoleMember: {
 			scope.OrgRead, scope.ProjectRead, "agent:*", "webhook:*", scope.MemberRead, scope.ApikeyRead,
-			scope.ProviderRead, scope.McpserverRead, "run:*", scope.ThreadRead, scope.ChannelRead,
+			scope.ProviderRead, scope.McpserverRead, "run:*", scope.ThreadRead, scope.ChannelRead, scope.ApprovalDecide,
 		},
 	}
 	for r, old := range before {
@@ -86,4 +86,12 @@ func TestBuiltinPermissions_Approvals(t *testing.T) {
 		assert.True(t, scope.Grants(BuiltinPermissions(r), scope.ApprovalDecide), "%s decides approvals, as it runs agents", r)
 		assert.True(t, scope.Grants(BuiltinPermissions(r), scope.ThreadRead), "%s reads approvals through thread:read", r)
 	}
+}
+
+func TestBuiltinPermissions_Knowledge(t *testing.T) {
+	admin, m := BuiltinPermissions(RoleAdmin), BuiltinPermissions(RoleMember)
+	assert.True(t, scope.Covers(BuiltinPermissions(RoleOwner), []string{scope.KnowledgeRead, scope.KnowledgeWrite}))
+	assert.True(t, scope.Covers(admin, []string{scope.KnowledgeRead, scope.KnowledgeWrite}), "an admin manages knowledge sources")
+	assert.True(t, scope.Grants(m, scope.KnowledgeRead), "a member binds knowledge sources to agents")
+	assert.False(t, scope.Grants(m, scope.KnowledgeWrite), "a member never changes one")
 }

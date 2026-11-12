@@ -23,6 +23,12 @@ func TestCatalog(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, LevelProject, level)
 
+	for _, name := range []string{"knowledge:read", "knowledge:write"} {
+		level, ok = LevelOf(name)
+		assert.True(t, ok, name)
+		assert.Equal(t, LevelProject, level, name)
+	}
+
 	_, ok = LevelOf("nope")
 	assert.False(t, ok)
 

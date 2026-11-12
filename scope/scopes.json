@@ -17,6 +17,8 @@
   { "name": "channel:read", "level": "project", "labelKey": "scope.channel_read" },
   { "name": "channel:write", "level": "project", "labelKey": "scope.channel_write" },
   { "name": "approval:decide", "level": "project", "labelKey": "scope.approval_decide" },
+  { "name": "knowledge:read", "level": "project", "labelKey": "scope.knowledge_read" },
+  { "name": "knowledge:write", "level": "project", "labelKey": "scope.knowledge_write" },
   { "name": "member:read", "level": "org", "labelKey": "scope.member_read" },
   { "name": "member:write", "level": "org", "labelKey": "scope.member_write", "holder": "person" },
   { "name": "apikey:read", "level": "org", "labelKey": "scope.apikey_read" },
