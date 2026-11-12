@@ -41,6 +41,8 @@ const (
 	DefaultReplyFailure         = "Sorry, something went wrong on my side. Please try again in a moment."
 	DefaultReplyVoice           = "Sorry, I can't listen to voice messages yet. Please type your message."
 	DefaultReplyPhotoUnreadable = "Sorry, I couldn't read that photo. Please send it again, or describe it in text."
+	DefaultApprovalPrompt       = "{preview}\n\nReply YES or NO"
+	DefaultApprovalExpired      = "This request expired. Please ask again."
 )
 
 var deviceIDPattern = regexp.MustCompile(`^dev_[A-Za-z0-9_-]{16}$`)
@@ -54,16 +56,18 @@ type Connection struct {
 	DeviceKeySealed                                []byte
 	QuietWindow, QuietMax                          time.Duration
 	ReplyFailure, ReplyVoice, ReplyPhotoUnreadable string
+	ApprovalPrompt, ApprovalExpired                string
 	LastResult                                     string
 	LastResultAt, LastBadSignatureAt               *time.Time
 	CreatedAt, UpdatedAt                           time.Time
 }
 
-// Input is a connection's editable settings; a nil duration or an empty reply or status keeps the default or stored value.
+// Input is a connection's editable settings; a nil duration or approval text, or an empty reply or status, keeps the value.
 type Input struct {
 	BaseURL, OpenWAOrg, OpenWAProject, DeviceID    string
 	QuietWindow, QuietMax                          *time.Duration
 	ReplyFailure, ReplyVoice, ReplyPhotoUnreadable string
+	ApprovalPrompt, ApprovalExpired                *string
 	Status                                         string
 }
 
@@ -96,6 +100,7 @@ func New(orgID, projectID, agentID uuid.UUID, in Input, now time.Time, opts ...O
 		ID: uuid.Must(uuid.NewV7()), PublicID: nanoid.MustNew(publicIDLen), OrgID: orgID, ProjectID: projectID, AgentID: agentID,
 		Provider: ProviderOpenWA, Status: StatusActive, QuietWindow: defaultQuietWindow, QuietMax: defaultQuietMax,
 		ReplyFailure: DefaultReplyFailure, ReplyVoice: DefaultReplyVoice, ReplyPhotoUnreadable: DefaultReplyPhotoUnreadable,
+		ApprovalPrompt: DefaultApprovalPrompt, ApprovalExpired: DefaultApprovalExpired,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := c.apply(in, now, opts...); err != nil {
@@ -131,6 +136,12 @@ func (c *Connection) apply(in Input, now time.Time, opts ...Option) error {
 			*r.dst = strings.TrimSpace(r.v)
 		}
 	}
+	if in.ApprovalPrompt != nil {
+		next.ApprovalPrompt = strings.TrimSpace(*in.ApprovalPrompt)
+	}
+	if in.ApprovalExpired != nil {
+		next.ApprovalExpired = strings.TrimSpace(*in.ApprovalExpired)
+	}
 	if in.Status != "" {
 		next.Status = in.Status
 	}
@@ -163,6 +174,10 @@ func (c *Connection) validate(o options) error {
 		return &InvalidError{Field: "reply_voice"}
 	case len([]rune(c.ReplyPhotoUnreadable)) > maxSetReply:
 		return &InvalidError{Field: "reply_photo_unreadable"}
+	case c.ApprovalPrompt == "" || len([]rune(c.ApprovalPrompt)) > maxSetReply:
+		return &InvalidError{Field: "approval_prompt"}
+	case c.ApprovalExpired == "" || len([]rune(c.ApprovalExpired)) > maxSetReply:
+		return &InvalidError{Field: "approval_expired"}
 	case c.Status != StatusActive && c.Status != StatusDisabled:
 		return &InvalidError{Field: "status"}
 	}

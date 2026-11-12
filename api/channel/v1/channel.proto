@@ -78,6 +78,10 @@ message Connection {
   google.protobuf.Timestamp updated_at = 22;
   // secret_set is false until the signing secret OpenWA mints is set; deliveries are refused until then.
   bool secret_set = 23;
+  // approval_prompt is the WhatsApp approval prompt; {preview} is replaced by what the agent asks to do.
+  string approval_prompt = 24;
+  // approval_expired is sent when an approval expires before the requester answers.
+  string approval_expired = 25;
 }
 
 message CreateConnectionRequest {
@@ -190,6 +194,16 @@ message UpdateConnectionRequest {
   string reply_voice = 10 [(buf.validate.field).string.max_len = 1000];
   string reply_photo_unreadable = 11 [(buf.validate.field).string.max_len = 1000];
   optional bool enabled = 12;
+  // approval_prompt and approval_expired left unset keep the stored text; the prompt must show the preview.
+  optional string approval_prompt = 13 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 1000,
+    (buf.validate.field).string.contains = "{preview}"
+  ];
+  optional string approval_expired = 14 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 1000
+  ];
 }
 
 message UpdateConnectionResponse {
@@ -233,4 +247,6 @@ message GetChannelSettingsResponse {
   int32 quiet_window_ms = 5;
   int32 quiet_max_ms = 6;
   int32 max_message_age_minutes = 7;
+  string approval_prompt = 8;
+  string approval_expired = 9;
 }

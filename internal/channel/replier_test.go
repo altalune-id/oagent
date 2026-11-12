@@ -68,7 +68,7 @@ func (s *replyStore) DueReplies(ctx context.Context, now time.Time, _ int) ([]uu
 	return out, nil
 }
 
-func (s *replyStore) ReplyProgress(_ context.Context, id uuid.UUID, parts int) error {
+func (s *replyStore) ReplyProgress(_ context.Context, id uuid.UUID, _ string, parts int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.failParts > 0 {
@@ -79,7 +79,7 @@ func (s *replyStore) ReplyProgress(_ context.Context, id uuid.UUID, parts int) e
 	return nil
 }
 
-func (s *replyStore) ReplyRetry(_ context.Context, id uuid.UUID, next time.Time) error {
+func (s *replyStore) ReplyRetry(_ context.Context, id uuid.UUID, _ string, next time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.jobs[id].Attempts++
@@ -87,7 +87,7 @@ func (s *replyStore) ReplyRetry(_ context.Context, id uuid.UUID, next time.Time)
 	return nil
 }
 
-func (s *replyStore) ReplyEnd(_ context.Context, id uuid.UUID, state string) error {
+func (s *replyStore) ReplyEnd(_ context.Context, id uuid.UUID, _, state string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.jobs[id].State = state

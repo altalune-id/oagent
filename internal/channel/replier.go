@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,12 +19,13 @@ import (
 var _ worker.Worker = (*Replier)(nil)
 
 const (
-	replyJobName  = "channel-reply"
-	replyEvery    = 15 * time.Second
-	replyBatch    = 50
-	replyGiveUp   = 10 * time.Minute
-	replyFirstTry = 15 * time.Second
-	replyMaxWait  = 2 * time.Minute
+	previewPlaceholder = "{preview}"
+	replyJobName       = "channel-reply"
+	replyEvery         = 15 * time.Second
+	replyBatch         = 50
+	replyGiveUp        = 10 * time.Minute
+	replyFirstTry      = 15 * time.Second
+	replyMaxWait       = 2 * time.Minute
 )
 
 // Tenants enumerates the org scopes one reply sweep covers, binding each to the ctx it passes to fn.
@@ -31,11 +33,24 @@ type Tenants interface {
 	Each(ctx context.Context, fn func(ctx context.Context, tenantID string) error) error
 }
 
+// Prompt is an awaiting run's pending approval as its WhatsApp prompt needs it; Preview is already escaped for WhatsApp.
+type Prompt struct {
+	ApprovalID        uuid.UUID
+	PublicID, Preview string
+}
+
+// Prompts reads an awaiting run's pending approval for its prompt, nil when none is pending, and records the sent prompt's provider id.
+type Prompts interface {
+	Prompt(ctx context.Context, runID uuid.UUID) (*Prompt, error)
+	PromptSent(ctx context.Context, approvalID uuid.UUID, externalID string, afterSeq int64) error
+}
+
 // Replier sends a settled channel run's reply through its connection, part by part, and retries it from its channel-reply loop.
 type Replier struct {
 	conns    Connections
 	store    ReplyStore
 	provider Provider
+	prompts  Prompts
 	log      *slog.Logger
 
 	tenants  Tenants
@@ -53,6 +68,12 @@ func NewReplier(conns Connections, store ReplyStore, provider Provider, log *slo
 		log = slog.Default()
 	}
 	return &Replier{conns: conns, store: store, provider: provider, log: log, idlePoll: replyEvery, wake: make(chan struct{}, 1)}
+}
+
+// WithPrompts lets the replier send approval prompts; without it a due prompt is never sent.
+func (r *Replier) WithPrompts(p Prompts) *Replier {
+	r.prompts = p
+	return r
 }
 
 // WithSweep lets Run sweep due replies of every tenant, at least every idlePoll; a non-positive idlePoll keeps 15 s.
@@ -193,31 +214,52 @@ func (r *Replier) send(ctx context.Context, runID uuid.UUID) error {
 	log := r.log.With("run", job.RunPublicID)
 	if !job.EndedAt.IsZero() && now.Sub(job.EndedAt) >= replyGiveUp {
 		log.ErrorContext(ctx, "channel: reply not delivered in time; giving up")
-		return r.store.ReplyEnd(ctx, runID, run.ReplyFailed)
+		return r.store.ReplyEnd(ctx, runID, job.ReplyKind, run.ReplyFailed)
 	}
 	if job.ConnectionID == uuid.Nil {
 		log.WarnContext(ctx, "channel: reply skipped; the thread is detached from its connection")
-		return r.store.ReplyEnd(ctx, runID, run.ReplyFailed)
+		return r.store.ReplyEnd(ctx, runID, job.ReplyKind, run.ReplyFailed)
 	}
 	conn, secrets, err := r.conns.Open(ctx, job.ConnectionID)
 	if IsNotFoundError(err) {
 		log.WarnContext(ctx, "channel: reply skipped; the connection is disabled or gone")
-		return r.store.ReplyEnd(ctx, runID, run.ReplyFailed)
+		return r.store.ReplyEnd(ctx, runID, job.ReplyKind, run.ReplyFailed)
 	}
 	if err != nil {
 		return r.retry(ctx, log, job, err)
 	}
-	parts := Format(job.Text)
+	text, key := job.Text, "run:"+job.RunPublicID
+	var prompt *Prompt
+	if job.ReplyKind == run.ReplyKindPrompt {
+		if r.prompts != nil {
+			if prompt, err = r.prompts.Prompt(ctx, runID); err != nil {
+				return r.retry(ctx, log, job, err)
+			}
+		}
+		if prompt == nil {
+			log.InfoContext(ctx, "channel: prompt skipped; the approval is no longer pending")
+			return r.store.ReplyEnd(ctx, runID, job.ReplyKind, run.ReplyFailed)
+		}
+		text, key = promptText(conn.ApprovalPrompt, prompt.Preview), "approval:"+prompt.PublicID
+	}
+	if job.ReplyKind == run.ReplyKindExpired {
+		text = conn.ApprovalExpired
+	}
+	parts := Format(text)
 	if job.To == "" || len(parts) == 0 {
 		log.WarnContext(ctx, "channel: reply skipped; no address or no text")
-		return r.store.ReplyEnd(ctx, runID, run.ReplyFailed)
+		return r.store.ReplyEnd(ctx, runID, job.ReplyKind, run.ReplyFailed)
 	}
 	for i := job.PartsSent; i < len(parts); i++ {
-		reply := Reply{To: job.To, Text: parts[i], IdempotencyKey: "run:" + job.RunPublicID + ":" + strconv.Itoa(i)}
+		reply := Reply{To: job.To, Text: parts[i], IdempotencyKey: partKey(key, prompt != nil, i)}
 		if job.Kind == string(KindGroup) && i == 0 {
 			reply.ReplyTo = job.QuoteID
 		}
-		if _, err := r.provider.Send(ctx, *conn, secrets, reply); err != nil {
+		sentID, err := r.provider.Send(ctx, *conn, secrets, reply)
+		if err == nil && prompt != nil && i == 0 {
+			err = r.prompts.PromptSent(ctx, prompt.ApprovalID, sentID, job.LastSeq)
+		}
+		if err != nil {
 			if IsKeyRefusedError(err) {
 				if err := r.conns.Record(ctx, conn.ID, ResultKeyRefused); err != nil {
 					log.WarnContext(ctx, "channel: record result", "err", err.Error())
@@ -225,23 +267,39 @@ func (r *Replier) send(ctx context.Context, runID uuid.UUID) error {
 			}
 			return r.retry(ctx, log, job, err)
 		}
-		if err := r.store.ReplyProgress(ctx, runID, i+1); err != nil {
+		if err := r.store.ReplyProgress(ctx, runID, job.ReplyKind, i+1); err != nil {
 			return err
 		}
 	}
 	log.DebugContext(ctx, "channel: reply sent", "parts", len(parts))
-	return r.store.ReplyEnd(ctx, runID, run.ReplySent)
+	return r.store.ReplyEnd(ctx, runID, job.ReplyKind, run.ReplySent)
+}
+
+// SECURITY: a stored prompt without {preview} still shows the preview first, so a person never approves blind.
+func promptText(template, preview string) string {
+	if !strings.Contains(template, previewPlaceholder) {
+		return preview + "\n\n" + template
+	}
+	return strings.ReplaceAll(template, previewPlaceholder, preview)
+}
+
+// NOTE: a prompt's first part is keyed by the approval alone, as the spec names it; reply parts and later prompt parts carry their index.
+func partKey(key string, prompt bool, i int) string {
+	if prompt && i == 0 {
+		return key
+	}
+	return key + ":" + strconv.Itoa(i)
 }
 
 func (r *Replier) retry(ctx context.Context, log *slog.Logger, job *run.ReplyJob, cause error) error {
 	now := time.Now()
 	if now.Sub(job.EndedAt) >= replyGiveUp {
 		log.ErrorContext(ctx, "channel: reply not delivered; giving up", "attempts", job.Attempts+1, "err", cause.Error())
-		return r.store.ReplyEnd(ctx, job.RunID, run.ReplyFailed)
+		return r.store.ReplyEnd(ctx, job.RunID, job.ReplyKind, run.ReplyFailed)
 	}
 	log.WarnContext(ctx, "channel: reply not delivered; retrying", "attempt", job.Attempts+1, "err", cause.Error())
 	next := now.Add(backoff(job.Attempts))
-	if err := r.store.ReplyRetry(ctx, job.RunID, next); err != nil {
+	if err := r.store.ReplyRetry(ctx, job.RunID, job.ReplyKind, next); err != nil {
 		return err
 	}
 	db.AfterCommit(ctx, func() { r.noteRetry(next) })

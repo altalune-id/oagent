@@ -371,3 +371,18 @@ func TestStore_RecordResultIsThrottledUnlessTheResultChanges(t *testing.T) {
 	_, at = state()
 	assert.True(t, at.Equal(later), "the same result a minute later moves the stamp")
 }
+
+func TestService_UpdateStoresTheApprovalTexts(t *testing.T) {
+	w := newPgWorld(t)
+	s := w.seed(t)
+	c, err := create(in(s), w.svc, s.project, s.agent, input(), "whsec_1", "owk_1")
+	require.NoError(t, err)
+	next := input()
+	next.ApprovalPrompt, next.ApprovalExpired = new("{preview}\n\nBalas YA atau TIDAK"), new("Kedaluwarsa.")
+	_, err = w.svc.Update(in(s), c.ID, next, nil)
+	require.NoError(t, err)
+	got, err := w.svc.Get(in(s), c.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "{preview}\n\nBalas YA atau TIDAK", got.ApprovalPrompt)
+	assert.Equal(t, "Kedaluwarsa.", got.ApprovalExpired)
+}

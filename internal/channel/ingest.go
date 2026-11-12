@@ -329,10 +329,11 @@ type contentPart struct {
 	ID     string       `json:"id,omitempty"`
 }
 
-// ChannelMeta is the storage-only note on a channel message: its provider type and whether it was a voice note.
+// ChannelMeta is the storage-only note on a channel message: its provider type, whether it was a voice note, and the message it quoted.
 type ChannelMeta struct {
-	Type  string `json:"type"`
-	Voice bool   `json:"voice,omitempty"`
+	Type   string `json:"type"`
+	Voice  bool   `json:"voice,omitempty"`
+	Quoted string `json:"quoted,omitempty"`
 }
 
 func inboxMessage(in Inbound, text string, speaker uuid.UUID) (run.Message, error) {
@@ -348,7 +349,7 @@ func inboxMessage(in Inbound, text string, speaker uuid.UUID) (run.Message, erro
 		parts = append(parts, contentPart{Type: "image", Source: &imageSource{Type: "data", MimeType: in.Media.Mime}, ID: in.ExternalID})
 		content = parts
 	}
-	meta := ChannelMeta{Type: in.Type, Voice: in.Media != nil && in.Media.Voice}
+	meta := ChannelMeta{Type: in.Type, Voice: in.Media != nil && in.Media.Voice, Quoted: in.QuotedID}
 	body, err := json.Marshal(map[string]any{"id": uuid.NewString(), "role": "user", "content": content, "channel": meta})
 	if err != nil {
 		return run.Message{}, err
