@@ -6,6 +6,7 @@ import type { AuthService } from '#gen/auth/v1/auth_pb';
 import type { ChannelService } from '#gen/channel/v1/channel_pb';
 import type { EndUserService } from '#gen/enduser/v1/enduser_pb';
 import type { InviteService } from '#gen/invite/v1/invite_pb';
+import type { KnowledgeService } from '#gen/knowledge/v1/knowledge_pb';
 import type { McpServerService } from '#gen/mcpserver/v1/mcpserver_pb';
 import type { MemberService } from '#gen/member/v1/member_pb';
 import type { ModelProviderService } from '#gen/modelprovider/v1/modelprovider_pb';
@@ -29,6 +30,7 @@ declare module '#app' {
     $webhookClient: Client<typeof WebhookService>;
     $memberClient: Client<typeof MemberService>;
     $inviteClient: Client<typeof InviteService>;
+    $knowledgeClient: Client<typeof KnowledgeService>;
     $authClient: Client<typeof AuthService>;
   }
 }

@@ -1,11 +1,13 @@
 import type { AgentConfig } from './agentConfig';
 import type { McpServer } from '~/stores/mcpServers';
 import { describe, expect, it } from 'vitest';
+import { sourcePBs } from '~~/test/fixtures/knowledge';
 import { providers as fixtureProviders, servers as fixtureServers } from '~~/test/fixtures/runtime';
-import { sampleKnowledgeSources } from '~/preview/samples';
 import { emptyRuntime } from '~/stores/agentRuntime';
+import { toSource } from '~/stores/knowledge';
 import { emptyConfig } from './agentConfig';
 import {
+  bindable,
   chosenModel,
   costCapError,
   grantFor,
@@ -16,7 +18,6 @@ import {
   parseDomains,
   publishBlockers,
   readsPrivateData,
-  readySources,
   withAllGrants,
   withApproval,
   withGrant,
@@ -110,7 +111,7 @@ describe('grants', () => {
     expect(readsPrivateData(emptyConfig(), emptyRuntime())).toBe(false);
     expect(readsPrivateData(withGrant(emptyConfig(), yasaku, tool('list_wallets'), true), emptyRuntime())).toBe(true);
     expect(readsPrivateData(emptyConfig(), { ...emptyRuntime(), memory: true })).toBe(true);
-    expect(readsPrivateData(emptyConfig(), { ...emptyRuntime(), knowledgeIds: ['k'] })).toBe(true);
+    expect(readsPrivateData({ ...emptyConfig(), knowledgeSourceIds: ['k'] }, emptyRuntime())).toBe(true);
   });
 });
 
@@ -127,8 +128,8 @@ describe('inputs', () => {
     expect(parseDomains(' BCA.co.id\n\nmandiri.co.id \n')).toEqual(['bca.co.id', 'mandiri.co.id']);
   });
 
-  it('keeps only ready sources', () => {
-    expect(readySources(sampleKnowledgeSources()).map(s => s.name)).toEqual(['Panduan kategori yasaku']);
+  it('lets an agent bind a source once it has a ready document', () => {
+    expect(sourcePBs().map(toSource).filter(bindable).map(s => s.name)).toEqual(['Refund policy']);
   });
 
   it('finds the chosen provider, model and helper model', () => {
@@ -158,7 +159,7 @@ describe('publishBlockers', () => {
   });
 
   it('names an unpriced helper model on its own field and blocker, not the main model\'s', () => {
-    const groqHelper = { ...providers[0]!, models: [...providers[0]!.models, { id: 'free-helper', vision: false }] };
+    const groqHelper = { ...providers[0]!, models: [...providers[0]!.models, { id: 'free-helper', vision: false, embedding: false }] };
     const config = ready({ helperModel: 'free-helper', maxCostCents: 20 });
     expect(costCapError(config, [groqHelper])).toBe('');
     expect(helperCapError(config, [groqHelper])).toBe('limits.helper_unpriced');

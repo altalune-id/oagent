@@ -1,8 +1,8 @@
 import type { ShownError } from '#base/lib/apperror/message';
-import type { CreateModelProviderRequest, ModelProviderKind, ModelProvider as ModelProviderPB, UpdateModelProviderRequest } from '#gen/modelprovider/v1/modelprovider_pb';
+import type { CreateModelProviderRequest, ModelProvider as ModelProviderPB, UpdateModelProviderRequest } from '#gen/modelprovider/v1/modelprovider_pb';
 import { create } from '@bufbuild/protobuf';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
-import { CreateModelProviderRequestSchema, UpdateModelProviderRequestSchema } from '#gen/modelprovider/v1/modelprovider_pb';
+import { CreateModelProviderRequestSchema, ModelProviderKind, UpdateModelProviderRequestSchema } from '#gen/modelprovider/v1/modelprovider_pb';
 
 export interface ModelPrices {
   inputMicros: bigint;
@@ -14,6 +14,7 @@ export interface ModelPrices {
 export interface ProviderModel {
   id: string;
   vision: boolean;
+  embedding: boolean;
   prices?: ModelPrices;
 }
 
@@ -48,24 +49,25 @@ export function toModelProvider(p: ModelProviderPB): ModelProvider {
     models: p.models.map(m => ({
       id: m.id,
       vision: m.vision,
+      embedding: m.embedding,
       prices: m.prices && { inputMicros: m.prices.inputMicros, outputMicros: m.prices.outputMicros, cacheReadMicros: m.prices.cacheReadMicros, cacheWriteMicros: m.prices.cacheWriteMicros },
     })),
   };
 }
 
-function wireModels(models: ProviderModel[]) {
-  return models.map(m => ({ id: m.id.trim(), vision: m.vision, prices: m.prices && { ...m.prices } }));
+function wireModels(models: ProviderModel[], kind: ModelProviderKind) {
+  return models.map(m => ({ id: m.id.trim(), vision: m.vision, embedding: kind !== ModelProviderKind.ANTHROPIC && m.embedding, prices: m.prices && { ...m.prices } }));
 }
 
 // createRequest builds the create call for a provider; the key is trimmed.
 export function createRequest(orgId: string, projectId: string, input: ProviderInput): CreateModelProviderRequest {
-  return create(CreateModelProviderRequestSchema, { orgId, projectId, name: input.name.trim(), kind: input.kind, baseUrl: input.baseUrl.trim(), apiKey: input.apiKey.trim(), models: wireModels(input.models) });
+  return create(CreateModelProviderRequestSchema, { orgId, projectId, name: input.name.trim(), kind: input.kind, baseUrl: input.baseUrl.trim(), apiKey: input.apiKey.trim(), models: wireModels(input.models, input.kind) });
 }
 
 // updateRequest builds the update call for a provider; an empty key keeps the stored one.
 export function updateRequest(id: string, input: ProviderInput): UpdateModelProviderRequest {
   const apiKey = input.apiKey.trim();
-  return create(UpdateModelProviderRequestSchema, { id, name: input.name.trim(), kind: input.kind, baseUrl: input.baseUrl.trim(), models: wireModels(input.models), ...(apiKey ? { apiKey } : {}) });
+  return create(UpdateModelProviderRequestSchema, { id, name: input.name.trim(), kind: input.kind, baseUrl: input.baseUrl.trim(), models: wireModels(input.models, input.kind), ...(apiKey ? { apiKey } : {}) });
 }
 
 export const useModelProvidersStore = defineStore('modelProviders', () => {

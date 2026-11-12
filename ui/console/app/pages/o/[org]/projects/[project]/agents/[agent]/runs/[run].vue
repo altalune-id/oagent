@@ -85,6 +85,22 @@ useHead({ title: () => `${t('run.title', { id: runId.value })} · OAgent` });
             {{ run.estimated ? t('thread.tokens_estimated', { n: count(run.tokens) }) : count(run.tokens) }}
           </dd>
         </div>
+        <div v-if="run.embeddingTokens" class="flex items-baseline gap-1.5">
+          <dt class="text-base-content/70">
+            {{ t('run.embedding_tokens') }}
+          </dt>
+          <dd class="font-medium tabular-nums">
+            {{ count(run.embeddingTokens) }}
+          </dd>
+        </div>
+        <div v-if="run.retrieveCalls" class="flex items-baseline gap-1.5">
+          <dt class="text-base-content/70">
+            {{ t('run.knowledge_search') }}
+          </dt>
+          <dd class="font-medium tabular-nums">
+            {{ t('run.knowledge_calls', { n: run.retrieveCalls, ms: count(run.retrieveMs ?? 0) }, run.retrieveCalls) }}
+          </dd>
+        </div>
         <div class="flex items-baseline gap-1.5">
           <dt class="text-base-content/70">
             {{ t('run.cost') }}

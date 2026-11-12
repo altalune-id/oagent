@@ -13,7 +13,7 @@ const provider = 'Pv6tQm2ZxR8wKp3VbNc4K';
 const server = 'Ms2bVn7QxK4pRt9KwZc3H';
 const names = { provider: (p: string) => (p === provider ? 'OpenRouter' : '?'), server: (x: string) => (x === server ? 'yasaku' : x) };
 type Wire = ReturnType<typeof toWire> & { providerMissing: boolean, tools: { name: string, requireApproval: boolean }[], mcpServers: { serverId: string, tools: { name: string, requireApproval: boolean }[], missing: boolean }[] };
-const liveWire: Wire = { instructions: 'Help.', providerId: provider, model: 'large-2', helperModel: '', temperature: 0.2, maxSteps: 12, maxCostCents: 10, mcpServers: [{ serverId: server, tools: [{ name: 'orders_lookup', requireApproval: false, freeWhen: [] }, { name: 'refunds_create', requireApproval: false, freeWhen: [] }], missing: false }], providerMissing: false, tools: [] };
+const liveWire: Wire = { instructions: 'Help.', providerId: provider, model: 'large-2', helperModel: '', temperature: 0.2, maxSteps: 12, maxCostCents: 10, mcpServers: [{ serverId: server, tools: [{ name: 'orders_lookup', requireApproval: false, freeWhen: [] }, { name: 'refunds_create', requireApproval: false, freeWhen: [] }], missing: false }], knowledgeSourceIds: [], providerMissing: false, tools: [] };
 const draftWire: Wire = { ...liveWire, instructions: 'Help. Never promise a date.' };
 const live = fromWire(liveWire);
 const draft = fromWire(draftWire);
@@ -84,6 +84,20 @@ describe('agentConfig', () => {
     const relaxed = { ...live, grants: [{ ...live.grants[0]!, tools: [{ name: 'orders_lookup', requireApproval: false }, { name: 'refunds_create', requireApproval: false }] }] };
     const strict = { ...live, grants: [{ ...live.grants[0]!, tools: [{ name: 'orders_lookup', requireApproval: true }, { name: 'refunds_create', requireApproval: false }] }] };
     expect(changes(relaxed, strict, usd, names)).toEqual([{ key: 'configure.change_tool_no_approval', params: { tool: 'yasaku__orders_lookup' } }]);
+  });
+});
+
+describe('agentConfig: knowledge sources', () => {
+  it('reads, sends and lists a change of the bound knowledge sources, in any order', () => {
+    const bound = fromWire({ ...liveWire, knowledgeSourceIds: ['Ks1', 'Ks2'] });
+    expect(bound.knowledgeSourceIds).toEqual(['Ks1', 'Ks2']);
+    expect(fromWire(liveWire).knowledgeSourceIds).toEqual([]);
+    expect(toWire(bound).knowledgeSourceIds).toEqual(['Ks1', 'Ks2']);
+    expect(changes({ ...bound, knowledgeSourceIds: ['Ks2', 'Ks1'] }, bound, usd, names)).toEqual([]);
+    expect(changes({ ...bound, knowledgeSourceIds: ['Ks2'] }, bound, usd, names)).toEqual([{ key: 'configure.change_knowledge' }]);
+    const gone = fromWire({ ...liveWire, knowledgeSourcesMissing: 2 });
+    expect([gone.knowledgeSourcesMissing, fromWire(liveWire).knowledgeSourcesMissing]).toEqual([2, 0]);
+    expect(toWire(gone)).not.toHaveProperty('knowledgeSourcesMissing');
   });
 });
 

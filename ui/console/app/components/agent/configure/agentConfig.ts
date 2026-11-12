@@ -28,6 +28,8 @@ export interface AgentConfig {
   maxSteps: number;
   maxCostCents: number;
   grants: AgentGrant[];
+  knowledgeSourceIds: string[];
+  knowledgeSourcesMissing: number;
   providerMissing: boolean;
   tools: AgentToolConfig[];
 }
@@ -59,6 +61,8 @@ interface WireConfig {
   maxSteps: number;
   maxCostCents: number;
   mcpServers: { serverId: string, tools: WireTool[], missing: boolean }[];
+  knowledgeSourceIds?: string[];
+  knowledgeSourcesMissing?: number;
   providerMissing: boolean;
   tools: WireTool[];
 }
@@ -76,7 +80,7 @@ interface WireAgent {
 }
 
 export function emptyConfig(): AgentConfig {
-  return { instructions: '', providerId: '', model: '', helperModel: '', temperature: 0, maxSteps: 0, maxCostCents: 0, grants: [], providerMissing: false, tools: [] };
+  return { instructions: '', providerId: '', model: '', helperModel: '', temperature: 0, maxSteps: 0, maxCostCents: 0, grants: [], knowledgeSourceIds: [], knowledgeSourcesMissing: 0, providerMissing: false, tools: [] };
 }
 
 export function fromWire(c?: WireConfig): AgentConfig {
@@ -93,6 +97,8 @@ export function fromWire(c?: WireConfig): AgentConfig {
     maxSteps: c.maxSteps,
     maxCostCents: c.maxCostCents,
     grants: c.mcpServers.map(g => ({ serverId: g.serverId, tools: g.tools.map(tool), missing: g.missing })),
+    knowledgeSourceIds: [...(c.knowledgeSourceIds ?? [])],
+    knowledgeSourcesMissing: c.knowledgeSourcesMissing ?? 0,
     providerMissing: c.providerMissing,
     tools: c.tools.map(tool),
   };
@@ -109,6 +115,7 @@ export function toWire(c: AgentConfig) {
     maxSteps: c.maxSteps,
     maxCostCents: c.maxCostCents,
     mcpServers: c.grants.filter(g => !g.missing).map(g => ({ serverId: g.serverId, tools: g.tools.map(t => ({ name: t.name, requireApproval: t.requireApproval, freeWhen: t.requireApproval ? (t.freeWhen ?? []) : [] })) })),
+    knowledgeSourceIds: [...c.knowledgeSourceIds],
   };
 }
 
@@ -165,6 +172,9 @@ export function changes(draft: AgentConfig, live: AgentConfig | undefined, money
     if (!after.has(name)) {
       out.push({ key: 'configure.change_tool_removed', params: { tool: name } });
     }
+  }
+  if ([...draft.knowledgeSourceIds].sort().join() !== [...live.knowledgeSourceIds].sort().join()) {
+    out.push({ key: 'configure.change_knowledge' });
   }
   return out;
 }

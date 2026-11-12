@@ -25,6 +25,7 @@ export interface ModelRow {
   key: number;
   id: string;
   vision: boolean;
+  embedding: boolean;
   prices: Record<PriceKey, string>;
 }
 
@@ -47,15 +48,16 @@ export function hasMorePrices(row: ModelRow): boolean {
 
 export type ParsedPrices = { kind: 'unpriced' } | { kind: 'priced', prices: ModelPrices } | { kind: 'invalid' };
 
-// toPrices reads a row's dollar prices into micro-USD: all empty is unpriced, a blank cache price is zero.
-export function toPrices(prices: Record<PriceKey, string>): ParsedPrices {
+// toPrices reads a row's dollar prices into micro-USD: all empty is unpriced, a blank cache price is zero, and so is a blank output price on an embedding model.
+export function toPrices(prices: Record<PriceKey, string>, embedding = false): ParsedPrices {
   if (priceKeys.every(k => prices[k].trim() === '')) {
     return { kind: 'unpriced' };
   }
   const out = {} as ModelPrices;
   for (const k of priceKeys) {
     const text = prices[k].trim();
-    const micros = text === '' && morePriceKeys.includes(k as typeof morePriceKeys[number]) ? 0n : parseUsd(text);
+    const optional = morePriceKeys.includes(k as typeof morePriceKeys[number]) || (embedding && k === 'output');
+    const micros = text === '' && optional ? 0n : parseUsd(text);
     if (micros === null) {
       return { kind: 'invalid' };
     }
@@ -65,8 +67,8 @@ export function toPrices(prices: Record<PriceKey, string>): ParsedPrices {
 }
 
 function rowModel(row: ModelRow): ProviderModel {
-  const parsed = toPrices(row.prices);
-  return { id: row.id, vision: row.vision, prices: parsed.kind === 'priced' ? parsed.prices : undefined };
+  const parsed = toPrices(row.prices, row.embedding);
+  return { id: row.id, vision: row.vision, embedding: row.embedding, prices: parsed.kind === 'priced' ? parsed.prices : undefined };
 }
 
 function rowError(row: ModelRow, ids: string[]): string {
@@ -77,7 +79,7 @@ function rowError(row: ModelRow, ids: string[]): string {
   if (ids.filter(other => other === id).length > 1) {
     return 'providers.model_id_taken';
   }
-  return toPrices(row.prices).kind === 'invalid' ? 'providers.price_invalid' : '';
+  return toPrices(row.prices, row.embedding).kind === 'invalid' ? 'providers.price_invalid' : '';
 }
 
 // useProviderForm holds the add and edit form of a model provider; the key is write-only, never kept after a save, and a new URL needs it again.
@@ -100,6 +102,7 @@ export function useProviderForm(orgId: string, projectId: string) {
   const models = ref<ModelRow[]>([]);
   const keyMissing = ref(false);
   const modelErrors = ref<Record<number, string>>({});
+  const priceErrors = ref<number[]>([]);
   const formError = ref<ShownError | null>(null);
   const busy = ref(false);
   let nextKey = 1;
@@ -118,7 +121,7 @@ export function useProviderForm(orgId: string, projectId: string) {
   function row(model?: ProviderModel): ModelRow {
     const p = model?.prices;
     const text = (k: PriceKey) => (p ? usdText(p[microsKeys[k]]) : '');
-    return { key: nextKey++, id: model?.id ?? '', vision: model?.vision ?? false, prices: { input: text('input'), output: text('output'), cacheRead: text('cacheRead'), cacheWrite: text('cacheWrite') } };
+    return { key: nextKey++, id: model?.id ?? '', vision: model?.vision ?? false, embedding: model?.embedding ?? false, prices: { input: text('input'), output: text('output'), cacheRead: text('cacheRead'), cacheWrite: text('cacheWrite') } };
   }
 
   function show(provider?: ModelProvider) {
@@ -131,6 +134,7 @@ export function useProviderForm(orgId: string, projectId: string) {
     models.value = provider ? provider.models.map(row) : [row()];
     keyMissing.value = false;
     modelErrors.value = {};
+    priceErrors.value = [];
     formError.value = null;
     validation.clear();
     open.value = true;
@@ -168,13 +172,18 @@ export function useProviderForm(orgId: string, projectId: string) {
   function input(): ProviderInput | null {
     const ids = models.value.map(m => m.id.trim());
     const rows: Record<number, string> = {};
+    const prices: number[] = [];
     for (const m of models.value) {
       const err = rowError(m, ids);
       if (err) {
         rows[m.key] = t(err);
       }
+      if (err === 'providers.price_invalid') {
+        prices.push(m.key);
+      }
     }
     modelErrors.value = rows;
+    priceErrors.value = prices;
     keyMissing.value = keyRequired.value && !key.value.trim();
     const out = { name: name.value, kind: kind.value, baseUrl: baseUrl.value, apiKey: key.value, models: models.value.map(rowModel) };
     const storedKey = 'kept';
@@ -207,5 +216,5 @@ export function useProviderForm(orgId: string, projectId: string) {
     }
   }
 
-  return { open, editing, name, kind, anthropic, urlV1, setKind, baseUrl, key, replacingKey, models, errors, modelErrors, formError, busy, urlChanged, keyRequired, keyShown, show, hide, addModel, removeModel, submit };
+  return { open, editing, name, kind, anthropic, urlV1, setKind, baseUrl, key, replacingKey, models, errors, modelErrors, priceErrors, formError, busy, urlChanged, keyRequired, keyShown, show, hide, addModel, removeModel, submit };
 }

@@ -11,11 +11,11 @@ import FieldError from '#base/components/ui/FieldError.vue';
 import Section from '#base/components/ui/Section.vue';
 import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { ModelProviderKind } from '#gen/modelprovider/v1/modelprovider_pb';
-import { knowledgeTone } from '~/components/knowledge/knowledge';
+import { sourceState } from '~/components/knowledge/knowledge';
 import { usdText } from '~/lib/money/usd';
 import { describedBy } from '~/lib/names/names';
 import McpGrants from './McpGrants.vue';
-import { chosenModel, costCapError, helperCapError, parseDollars, parseDomains, readsPrivateData } from './runtime';
+import { bindable, chosenModel, costCapError, helperCapError, parseDollars, parseDomains, readsPrivateData } from './runtime';
 
 const { providers, servers, sources, searchReady, embeddings, links, legacyModel = '', disabled = false, fieldError = null } = defineProps<{
   providers: ModelProvider[],
@@ -47,7 +47,7 @@ const sections = computed(() => [
 const chosen = computed(() => chosenModel(config.value, providers));
 const temperatureOff = computed(() => chosen.value.provider?.kind === ModelProviderKind.ANTHROPIC);
 const temperatureText = computed(() => (temperatureOff.value ? t('configure.temperature_off') : config.value.temperature.toFixed(1)));
-const chatModels = computed(() => chosen.value.provider?.models ?? []);
+const chatModels = computed(() => (chosen.value.provider?.models ?? []).filter(m => !m.embedding || m.id === config.value.model || m.id === config.value.helperModel));
 const allowListRequired = computed(() => readsPrivateData(config.value, runtime.value));
 const serverError = (...reasons: string[]) => (fieldError && reasons.includes(fieldError.reason) ? fieldError.message : '');
 
@@ -107,8 +107,8 @@ function setProvider(id: string) {
 }
 
 function toggleSource(id: string, on: boolean) {
-  const rest = runtime.value.knowledgeIds.filter(k => k !== id);
-  runtime.value = { ...runtime.value, knowledgeIds: on ? [...rest, id] : rest };
+  const rest = config.value.knowledgeSourceIds.filter(k => k !== id);
+  config.value = { ...config.value, knowledgeSourceIds: on ? [...rest, id] : rest };
 }
 </script>
 
@@ -293,24 +293,34 @@ function toggleSource(id: string, on: boolean) {
           </div>
         </Section>
 
-        <Section id="configure-memory" :title="t('configure.memory_knowledge')" :description="t('configure.preview_section')" class="scroll-mt-14">
+        <Section id="configure-memory" :title="t('configure.memory_knowledge')" class="scroll-mt-14">
           <div class="flex flex-col gap-1">
             <label class="label cursor-pointer gap-2 text-ui text-base-content">
               <input v-model="runtime.memory" type="checkbox" class="toggle toggle-sm">
               {{ t('configure.memory') }}
             </label>
             <p class="ps-12 text-xs text-base-content/70">
-              {{ t('configure.memory_hint') }}
+              {{ t('configure.memory_hint') }} {{ t('configure.preview_section') }}
             </p>
           </div>
           <fieldset class="flex flex-col gap-2">
             <legend class="text-ui font-semibold">
               {{ t('configure.knowledge') }}
             </legend>
+            <p class="text-xs text-base-content/70">
+              {{ t('configure.knowledge_hint') }}
+              <NuxtLink :to="links.knowledge" class="link">
+                {{ t('configure.knowledge_manage') }}
+              </NuxtLink>
+            </p>
+            <p v-if="config.knowledgeSourcesMissing" role="note" class="flex items-center gap-1.5 text-xs">
+              <Icon name="lucide:triangle-alert" size="14" class="shrink-0 text-warning" aria-hidden="true" />
+              {{ t('configure.knowledge_missing', { n: config.knowledgeSourcesMissing }, config.knowledgeSourcesMissing) }}
+            </p>
             <p v-if="!embeddings" class="text-xs text-base-content/70">
               {{ t('configure.knowledge_needs_embedding') }}
-              <NuxtLink :to="links.providers" class="link">
-                {{ t('providers.title') }}
+              <NuxtLink :to="links.knowledge" class="link">
+                {{ t('knowledge.title') }}
               </NuxtLink>
             </p>
             <p v-else-if="!sources.length" class="text-xs text-base-content/70">
@@ -321,15 +331,15 @@ function toggleSource(id: string, on: boolean) {
             </p>
             <ul v-else class="flex flex-col gap-2">
               <li v-for="s in sources" :key="s.id" class="flex flex-wrap items-center gap-x-3 gap-y-1 text-ui">
-                <label class="flex items-center gap-2" :class="{ 'text-base-content/70': s.status !== 'ready' }">
+                <label class="flex items-center gap-2" :class="{ 'text-base-content/70': !bindable(s) }">
                   <input
-                    type="checkbox" class="checkbox checkbox-sm rounded-sm" :checked="runtime.knowledgeIds.includes(s.id)" :disabled="!embeddings || s.status !== 'ready'"
+                    type="checkbox" class="checkbox checkbox-sm rounded-sm" :checked="config.knowledgeSourceIds.includes(s.id)" :disabled="!config.knowledgeSourceIds.includes(s.id) && (!embeddings || !bindable(s))"
                     @change="toggleSource(s.id, ($event.target as HTMLInputElement).checked)"
                   >
                   {{ s.name }}
                 </label>
-                <span v-if="s.status === 'ready'" class="text-xs text-base-content/70">{{ t('configure.knowledge_chunks', { n: s.chunks }, s.chunks) }}</span>
-                <StatusLabel v-else :tone="knowledgeTone[s.status]" :label="t(`knowledge.status_${s.status}`)" />
+                <span v-if="bindable(s)" class="text-xs text-base-content/70">{{ t('configure.knowledge_ready_docs', { n: s.ready }, s.ready) }}</span>
+                <StatusLabel v-else :tone="sourceState(s).tone" :label="t(sourceState(s).key)" />
               </li>
             </ul>
           </fieldset>

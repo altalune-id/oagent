@@ -22,7 +22,7 @@ export function useProjectNav() {
         { key: 'agents', label: t('nav.agents'), to: `${base}/agents`, icon: 'lucide:bot', active: route.path.startsWith(`${base}/agents`) },
         { key: 'approvals', label: t('approvals.title'), to: `${base}/approvals`, icon: 'lucide:hand', active: route.path.startsWith(`${base}/approvals`), badge: pendingCount || undefined },
         { key: 'end-users', label: t('endusers.title'), to: `${base}/end-users`, icon: 'lucide:users-round', active: route.path.startsWith(`${base}/end-users`) },
-        { key: 'knowledge', label: t('knowledge.title'), to: `${base}/knowledge`, icon: 'lucide:library', active: route.path.startsWith(`${base}/knowledge`) },
+        { key: 'knowledge', label: t('knowledge.title'), to: `${base}/knowledge`, icon: 'lucide:book-open', active: route.path.startsWith(`${base}/knowledge`) },
         { key: 'webhooks', label: t('webhooks.title'), to: `${base}/webhooks`, icon: 'lucide:webhook', active: route.path.startsWith(`${base}/webhooks`) },
       ],
     }, {

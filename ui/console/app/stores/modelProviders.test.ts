@@ -10,9 +10,9 @@ import { createRequest, toModelProvider, updateRequest, useModelProvidersStore }
 const orgId = 'V3StGXR8Z5jdHj6BmyT2a';
 const projectId = 'x6MH9WPWjktMwCBKHy4pF';
 const prices = { inputMicros: 400_000n, outputMicros: 1_600_000n, cacheReadMicros: 100_000n, cacheWriteMicros: 0n };
-const providerPB = create(ModelProviderSchema, { id: 'UxVy4UK3vmrHzPZ273hCA', orgId, projectId, name: 'OpenRouter', kind: ModelProviderKind.OPENAI_COMPATIBLE, baseUrl: 'https://openrouter.ai/api/v1', apiKeySet: true, models: [{ id: 'openai/gpt-4.1-mini', vision: true, prices }, { id: 'llama', vision: false }] });
-const provider: ModelProvider = { id: 'UxVy4UK3vmrHzPZ273hCA', orgId, projectId, name: 'OpenRouter', kind: ModelProviderKind.OPENAI_COMPATIBLE, baseUrl: 'https://openrouter.ai/api/v1', keySet: true, models: [{ id: 'openai/gpt-4.1-mini', vision: true, prices }, { id: 'llama', vision: false, prices: undefined }] };
-const input: ProviderInput = { name: ' OpenRouter ', kind: ModelProviderKind.OPENAI_COMPATIBLE, baseUrl: ' https://openrouter.ai/api/v1 ', apiKey: '  sk-or-1  ', models: [{ id: ' openai/gpt-4.1-mini ', vision: true, prices }] };
+const providerPB = create(ModelProviderSchema, { id: 'UxVy4UK3vmrHzPZ273hCA', orgId, projectId, name: 'OpenRouter', kind: ModelProviderKind.OPENAI_COMPATIBLE, baseUrl: 'https://openrouter.ai/api/v1', apiKeySet: true, models: [{ id: 'openai/gpt-4.1-mini', vision: true, prices }, { id: 'llama', vision: false }, { id: 'text-embedding-3-small', vision: false, embedding: true, prices }] });
+const provider: ModelProvider = { id: 'UxVy4UK3vmrHzPZ273hCA', orgId, projectId, name: 'OpenRouter', kind: ModelProviderKind.OPENAI_COMPATIBLE, baseUrl: 'https://openrouter.ai/api/v1', keySet: true, models: [{ id: 'openai/gpt-4.1-mini', vision: true, embedding: false, prices }, { id: 'llama', vision: false, embedding: false, prices: undefined }, { id: 'text-embedding-3-small', vision: false, embedding: true, prices }] };
+const input: ProviderInput = { name: ' OpenRouter ', kind: ModelProviderKind.OPENAI_COMPATIBLE, baseUrl: ' https://openrouter.ai/api/v1 ', apiKey: '  sk-or-1  ', models: [{ id: ' openai/gpt-4.1-mini ', vision: true, embedding: false, prices }, { id: 'text-embedding-3-small', vision: false, embedding: true, prices }] };
 
 describe('model provider mapping', () => {
   it('copies the fields it needs, keeping prices in micro-USD and never a key', () => {
@@ -22,7 +22,9 @@ describe('model provider mapping', () => {
   it('trims the request and sends a key only when one is typed', () => {
     const add = createRequest(orgId, projectId, input);
     expect(add).toMatchObject({ orgId, projectId, name: 'OpenRouter', kind: ModelProviderKind.OPENAI_COMPATIBLE, baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-1' });
-    expect(add.models[0]).toMatchObject({ id: 'openai/gpt-4.1-mini', prices });
+    expect(add.models[0]).toMatchObject({ id: 'openai/gpt-4.1-mini', embedding: false, prices });
+    expect(add.models[1]).toMatchObject({ id: 'text-embedding-3-small', embedding: true });
+    expect(updateRequest(provider.id, input).models[1]!.embedding).toBe(true);
     expect(updateRequest(provider.id, { ...input, apiKey: '   ' }).apiKey).toBeUndefined();
     expect(updateRequest(provider.id, input).apiKey).toBe('sk-or-1');
   });
@@ -33,6 +35,12 @@ describe('model provider mapping', () => {
     expect(createRequest(orgId, projectId, anthropic).kind).toBe(ModelProviderKind.ANTHROPIC);
     expect(updateRequest(provider.id, anthropic).kind).toBe(ModelProviderKind.ANTHROPIC);
     expect(updateRequest(provider.id, input).kind).toBe(ModelProviderKind.OPENAI_COMPATIBLE);
+  });
+
+  it('never sends the embedding flag for an Anthropic provider, which has no embeddings API', () => {
+    const anthropic = { ...input, kind: ModelProviderKind.ANTHROPIC };
+    expect(createRequest(orgId, projectId, anthropic).models.map(m => m.embedding)).toEqual([false, false]);
+    expect(updateRequest(provider.id, anthropic).models.map(m => m.embedding)).toEqual([false, false]);
   });
 });
 

@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { sampleAgentRuntime } from '~/preview/samples';
 import { emptyRuntime } from '~/stores/agentRuntime';
 import { useAgentRuntimeStore } from './agentRuntime';
-import { useKnowledgeStore } from './knowledge';
 
 describe('useAgentRuntimeStore', () => {
   beforeEach(() => {
@@ -20,21 +19,5 @@ describe('useAgentRuntimeStore', () => {
     expect(store.usesSample('a2')).toBe(false);
     expect(store.draftFor('a1', 'yasaku-keuangan')).toBe(store.drafts.a1);
     expect(store.sampled).toEqual(['a1']);
-  });
-});
-
-describe('useKnowledgeStore', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia());
-  });
-
-  it('loads the sample sources once per project', async () => {
-    const store = useKnowledgeStore();
-    await store.ensureLoaded('p1');
-    expect(store.items).toHaveLength(3);
-    store.items = [];
-    await store.ensureLoaded('p1');
-    expect(store.items).toHaveLength(0);
-    expect(store.loading).toBe(false);
   });
 });
