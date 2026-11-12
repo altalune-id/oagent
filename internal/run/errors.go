@@ -153,6 +153,9 @@ func (e *RuntimeFailedError) ToAppError() *apperror.AppError {
 // ErrNothingPending reports a new run with no pending message to take; nothing was stored.
 var ErrNothingPending = errors.New("run: no pending message to start a run from")
 
+// ErrResourceGone reports that a run's pinned agent version or a granted MCP server no longer exists.
+var ErrResourceGone = errors.New("run: the pinned version or a granted MCP server is gone")
+
 // SettleError reports that a turn's end could not be written; the lease is kept so it expires and the sweeper reclaims the run.
 type SettleError struct{ Cause error }
 

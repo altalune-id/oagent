@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"altalune.id/oagent/internal/run"
+	"altalune.id/oagent/internal/testutil/fakes"
 )
 
 type chat struct {
@@ -26,8 +27,8 @@ func (f *pgFixture) chat(t *testing.T, s scope, kind string) chat {
 	t.Helper()
 	c := chat{s: s, conn: uuid.New(), person: f.endUser(t, s), kind: kind}
 	f.exec(t, `INSERT INTO `+f.schema+`.channel_connections (id, public_id, org_id, project_id, agent_id, provider, status, base_url, openwa_org, openwa_project, device_id,
-		signing_secret_primary_sealed, device_key_sealed, reply_failure, reply_voice, reply_photo_unreadable, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, 'openwa', 'active', 'https://wa.example.com', 'acme', 'main', 'dev_1', '\x01', '\x02', 'f', 'v', 'p', now(), now())`,
+		signing_secret_primary_sealed, device_key_sealed, reply_failure, reply_voice, reply_photo_unreadable, approval_prompt, approval_expired, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, 'openwa', 'active', 'https://wa.example.com', 'acme', 'main', 'dev_1', '\x01', '\x02', 'f', 'v', 'p', 'ap', 'ae', now(), now())`,
 		c.conn, "c"+c.conn.String()[:12], s.org, s.project, s.agent)
 	return c
 }
@@ -218,4 +219,40 @@ func TestStore_ThreadCarriesItsConnection(t *testing.T) {
 	th, err = f.store.Thread(in(s.org), thread)
 	require.NoError(t, err)
 	assert.Equal(t, uuid.Nil, th.ConnectionID, "a detached thread has no connection")
+}
+
+func TestWhatsAppApproval_DecidesInChannelOrderOnPostgres(t *testing.T) {
+	p := newPgRunner(t)
+	a := &fakes.RunApprovals{}
+	p.svc.WithApprovals(a)
+	c := p.chat(t, p.s, "dm")
+	now := time.Now().Add(-time.Minute)
+	thread := p.arrive(t, c, "wamid-1", "record lunch 25000", now)
+	parked, err := p.turn(t, thread, fakes.RuntimeReply{Stream: awaitStream(t, "call_1")})
+	require.NoError(t, err)
+	require.Equal(t, run.StatusAwaitingApproval, parked.Status)
+	var last int64
+	require.NoError(t, p.admin.QueryRowContext(t.Context(), `SELECT max(seq) FROM `+p.schema+`.messages WHERE thread_id = $1`, thread).Scan(&last))
+	a.PromptSent(parked.ID, "", last)
+
+	p.arrive(t, c, "wamid-3", "tidak", now.Add(2*time.Second))
+	p.arrive(t, c, "wamid-2", "ya", now.Add(time.Second))
+	r, err := p.turn(t, thread, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	assert.Equal(t, parked.ID, r.ID)
+	assert.Equal(t, run.StatusCompleted, r.Status)
+	answers := a.Answers()
+	require.Len(t, answers, 1)
+	assert.True(t, answers[0].Approved, "the earlier WhatsApp time decides, not the earlier insert")
+
+	pending, err := p.store.PendingMessages(in(p.s.org), thread, c.person, last, 10)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"wamid-3"}, externalIDs(pending), "the later message waits")
+	var runID uuid.UUID
+	require.NoError(t, p.admin.QueryRowContext(t.Context(), `SELECT run_id FROM `+p.schema+`.messages WHERE external_message_id = 'wamid-2'`).Scan(&runID))
+	assert.Equal(t, parked.ID, runID, "the answer is the run's message")
+
+	var lost *run.LeaseLostError
+	require.ErrorAs(t, p.store.AnswerMessage(in(p.s.org), "not-the-lease", thread, uuid.New(), parked.ID), &lost, "only the lease holder consumes an answer")
 }

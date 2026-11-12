@@ -21,6 +21,9 @@ const (
 	ChannelConnectionUpdated Type = "channel.connection.updated"
 	ChannelConnectionDeleted Type = "channel.connection.deleted"
 
+	ApprovalRequested Type = "approval.requested"
+	ApprovalDecided   Type = "approval.decided"
+
 	WebhookPing Type = "webhook.ping"
 )
 
@@ -47,6 +50,8 @@ func All() []Spec {
 		{Type: ChannelConnectionCreated, Version: 1, Subscribable: true},
 		{Type: ChannelConnectionUpdated, Version: 1, Subscribable: true},
 		{Type: ChannelConnectionDeleted, Version: 1, Subscribable: true},
+		{Type: ApprovalRequested, Version: 1, Subscribable: true},
+		{Type: ApprovalDecided, Version: 1, Subscribable: true},
 		{Type: WebhookPing, Version: 1},
 	}
 }
@@ -116,6 +121,14 @@ func CheckPayload(t Type, data any) error {
 		}
 	case ChannelConnectionDeleted:
 		if _, ok := data.(ChannelConnectionDeletedV1); !ok {
+			return &PayloadMismatchError{Type: t, Data: data}
+		}
+	case ApprovalRequested:
+		if _, ok := data.(ApprovalRequestedV1); !ok {
+			return &PayloadMismatchError{Type: t, Data: data}
+		}
+	case ApprovalDecided:
+		if _, ok := data.(ApprovalDecidedV1); !ok {
 			return &PayloadMismatchError{Type: t, Data: data}
 		}
 	case WebhookPing:

@@ -71,7 +71,9 @@ func (s *postgresStore) insertMessages(
 			textOrNull(msg.SkipReason),
 		)
 	}
-	if _, err := stmt.ExecContext(ctx, tx); err != nil {
+	// NOTE: a tool message is stored once per call: a later leg or replay repeats it, and messages_run_tool_call_id_key skips the repeat.
+	conflict := stmt.ON_CONFLICT(m.RunID, m.ToolCallID).WHERE(m.ToolCallID.IS_NOT_NULL()).DO_NOTHING()
+	if _, err := conflict.ExecContext(ctx, tx); err != nil {
 		return nil, fmt.Errorf("run.postgres: insert messages: %w", err)
 	}
 	t := s.threads
@@ -672,13 +674,40 @@ func (s *postgresStore) insertRun(ctx context.Context, tx *sql.Tx, r *Run) error
 	return nil
 }
 
+// ResumeApproval moves an awaiting run back to running under token's lease, with the same attempt; it returns the run's messages.
+func (s *postgresStore) ResumeApproval(ctx context.Context, token string, r *Run) ([]Message, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var taken []Message
+	err = db.InTx(ctx, s.pool, func(tx *sql.Tx) error {
+		if _, err := s.lock(ctx, tx, tc.OrgID, r.ThreadID, &token); err != nil {
+			return err
+		}
+		return s.resumeFrom(ctx, tx, tc.OrgID, r, StatusAwaitingApproval, &taken)
+	})
+	return taken, err
+}
+
 func (s *postgresStore) resume(ctx context.Context, tx *sql.Tx, orgID uuid.UUID, r *Run, taken *[]Message) error {
+	return s.resumeFrom(ctx, tx, orgID, r, StatusInterrupted, taken)
+}
+
+func (s *postgresStore) resumeFrom(ctx context.Context, tx *sql.Tx, orgID uuid.UUID, r *Run, from Status, taken *[]Message) error {
 	t := s.runs
 	stmt := t.UPDATE(t.Status, t.Attempt, t.UpdatedAt).
-		SET(postgres.String(string(r.Status)), postgres.Int32(r.Attempt), postgres.TimestampzT(r.UpdatedAt.UTC())).
+		SET(postgres.String(string(r.Status)), postgres.Int32(r.Attempt), postgres.TimestampzT(r.UpdatedAt.UTC()))
+	if from == StatusAwaitingApproval {
+		// NOTE: the decision is made, so a prompt still due or retrying must never go out after it.
+		stmt = t.UPDATE(t.Status, t.Attempt, t.UpdatedAt, t.ReplyState, t.ReplyKind, t.ReplyNextAt).
+			SET(postgres.String(string(r.Status)), postgres.Int32(r.Attempt), postgres.TimestampzT(r.UpdatedAt.UTC()),
+				postgres.NULL, postgres.NULL, postgres.NULL)
+	}
+	stmt = stmt.
 		WHERE(t.ID.EQ(postgres.UUID(r.ID)).
 			AND(t.OrgID.EQ(postgres.UUID(orgID))).
-			AND(t.Status.EQ(postgres.String(string(StatusInterrupted)))))
+			AND(t.Status.EQ(postgres.String(string(from)))))
 	res, err := stmt.ExecContext(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("run.postgres: resume: %w", err)
@@ -759,7 +788,7 @@ func (s *postgresStore) threadOf(ctx context.Context, tx *sql.Tx, orgID, runID u
 
 // Settle commits r's end under token's lease, joining the transaction on ctx: status, usage u, cost and the final messages.
 func (s *postgresStore) Settle(ctx context.Context, token string, r *Run, u Usage, final []Message) error {
-	if !r.Status.Terminal() && r.Status != StatusInterrupted {
+	if !r.Status.Terminal() && r.Status != StatusInterrupted && r.Status != StatusAwaitingApproval {
 		return &UnsettledError{Status: r.Status}
 	}
 	tc, err := tenant.From(ctx)
@@ -791,18 +820,22 @@ func (s *postgresStore) settleRun(ctx context.Context, tx *sql.Tx, orgID uuid.UU
 		latency = postgres.Int(min(r.EndedAt.Sub(r.StartedAt).Milliseconds(), int64(1<<31-1)))
 		ended = postgres.TimestampzT(r.EndedAt.UTC())
 	}
-	var next = postgres.NULL
-	if r.ReplyState == ReplyDue {
-		next = postgres.TimestampzT(r.UpdatedAt.Add(replyGrace).UTC())
-	}
 	t := s.runs
+	var next = postgres.NULL
+	parts, attempts := postgres.Expression(t.ReplyPartsSent), postgres.Expression(t.ReplyAttempts)
+	if r.ReplyState == ReplyDue {
+		// NOTE: a new due reply starts fresh; a prompt sent while the run waited must never skip or slow it.
+		next, parts, attempts = postgres.TimestampzT(r.UpdatedAt.Add(replyGrace).UTC()), postgres.Int(0), postgres.Int(0)
+	}
 	stmt := t.UPDATE(
 		t.Status, t.Attempt, t.InputTokens, t.OutputTokens, t.CacheReadTokens, t.CacheWriteTokens, t.UsageEstimated,
-		t.CostMicros, t.LatencyMS, t.ErrorCode, t.EndedAt, t.UpdatedAt, t.ReplyState, t.ReplyNextAt,
+		t.CostMicros, t.LatencyMS, t.ErrorCode, t.EndedAt, t.UpdatedAt, t.ReplyState, t.ReplyNextAt, t.ReplyKind,
+		t.ReplyPartsSent, t.ReplyAttempts,
 	).SET(
 		postgres.String(string(r.Status)), postgres.Int32(r.Attempt), postgres.Int(u.InputTokens), postgres.Int(u.OutputTokens),
 		postgres.Int(u.CacheReadTokens), postgres.Int(u.CacheWriteTokens), postgres.Bool(u.Estimated),
 		cost, latency, textOrNull(r.ErrorCode), ended, postgres.TimestampzT(r.UpdatedAt.UTC()), textOrNull(r.ReplyState), next,
+		textOrNull(r.ReplyKind), parts, attempts,
 	).WHERE(t.ID.EQ(postgres.UUID(r.ID)).AND(t.OrgID.EQ(postgres.UUID(orgID))))
 	res, err := stmt.ExecContext(ctx, tx)
 	if err != nil {
@@ -853,35 +886,80 @@ func (s *postgresStore) recordIdempotencyKey(ctx context.Context, tx *sql.Tx, r 
 }
 
 // ReplyProgress records that the first parts of a run's reply were sent.
-func (s *postgresStore) ReplyProgress(ctx context.Context, runID uuid.UUID, partsSent int) error {
+func (s *postgresStore) ReplyProgress(ctx context.Context, runID uuid.UUID, kind string, partsSent int) error {
 	t := s.runs
-	return s.updateReply(ctx, "ReplyProgress", runID, t.UPDATE(t.ReplyPartsSent).SET(postgres.Int(int64(partsSent))))
+	return s.updateReply(ctx, "ReplyProgress", runID, kind, t.UPDATE(t.ReplyPartsSent).SET(postgres.Int(int64(partsSent))))
 }
 
 // ReplyRetry counts a failed send of a due reply and sets its next try.
-func (s *postgresStore) ReplyRetry(ctx context.Context, runID uuid.UUID, next time.Time) error {
+func (s *postgresStore) ReplyRetry(ctx context.Context, runID uuid.UUID, kind string, next time.Time) error {
 	t := s.runs
-	return s.updateReply(ctx, "ReplyRetry", runID,
+	return s.updateReply(ctx, "ReplyRetry", runID, kind,
 		t.UPDATE(t.ReplyAttempts, t.ReplyNextAt).SET(t.ReplyAttempts.ADD(postgres.Int(1)), postgres.TimestampzT(next.UTC())))
 }
 
 // ReplyEnd ends a due reply as ReplySent or ReplyFailed.
-func (s *postgresStore) ReplyEnd(ctx context.Context, runID uuid.UUID, state string) error {
+func (s *postgresStore) ReplyEnd(ctx context.Context, runID uuid.UUID, kind, state string) error {
 	t := s.runs
-	return s.updateReply(ctx, "ReplyEnd", runID, t.UPDATE(t.ReplyState, t.ReplyNextAt).SET(postgres.String(state), postgres.NULL))
+	return s.updateReply(ctx, "ReplyEnd", runID, kind, t.UPDATE(t.ReplyState, t.ReplyNextAt).SET(postgres.String(state), postgres.NULL))
 }
 
-func (s *postgresStore) updateReply(ctx context.Context, op string, runID uuid.UUID, stmt postgres.UpdateStatement) error {
+// SECURITY: an update matches only the due reply of the kind its job read, so a slow prompt send never ends or advances the final reply.
+func (s *postgresStore) updateReply(ctx context.Context, op string, runID uuid.UUID, kind string, stmt postgres.UpdateStatement) error {
 	tc, err := tenant.From(ctx)
 	if err != nil {
 		return err
 	}
 	t := s.runs
-	stmt = stmt.WHERE(t.ID.EQ(postgres.UUID(runID)).AND(t.OrgID.EQ(postgres.UUID(tc.OrgID))).AND(t.ReplyState.EQ(postgres.String(ReplyDue))))
+	sameKind := t.ReplyKind.IS_NULL()
+	if kind != "" {
+		sameKind = t.ReplyKind.EQ(postgres.String(kind))
+	}
+	stmt = stmt.WHERE(t.ID.EQ(postgres.UUID(runID)).AND(t.OrgID.EQ(postgres.UUID(tc.OrgID))).
+		AND(t.ReplyState.EQ(postgres.String(ReplyDue))).AND(sameKind))
 	return db.Write(ctx, s.pool, func(q qrm.DB) error {
 		if _, err := stmt.ExecContext(ctx, q); err != nil {
 			return fmt.Errorf("run.postgres: %s: %w", op, err)
 		}
 		return nil
+	})
+}
+
+// AnswerMessage consumes pending message msgID into runID while token holds the thread's lease.
+func (s *postgresStore) AnswerMessage(ctx context.Context, token string, threadID, msgID, runID uuid.UUID) error {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return err
+	}
+	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error {
+		if _, err := s.lock(ctx, tx, tc.OrgID, threadID, &token); err != nil {
+			return err
+		}
+		m := s.messages
+		stmt := m.UPDATE(m.Status, m.RunID).SET(postgres.String(string(MessageConsumed)), postgres.UUID(runID)).
+			WHERE(m.ID.EQ(postgres.UUID(msgID)).
+				AND(m.OrgID.EQ(postgres.UUID(tc.OrgID))).
+				AND(m.ThreadID.EQ(postgres.UUID(threadID))).
+				AND(m.Status.EQ(postgres.String(string(MessagePending)))))
+		res, err := stmt.ExecContext(ctx, tx)
+		if err != nil {
+			return fmt.Errorf("run.postgres: AnswerMessage: %w", err)
+		}
+		if n, err := res.RowsAffected(); err != nil || n != 1 {
+			return ErrNothingPending
+		}
+		return nil
+	})
+}
+
+// HoldLease takes the thread lock with token in ctx's unit of work, failing with a *LeaseLostError when the lease moved.
+func (s *postgresStore) HoldLease(ctx context.Context, token string, threadID uuid.UUID) error {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return err
+	}
+	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error {
+		_, err := s.lock(ctx, tx, tc.OrgID, threadID, &token)
+		return err
 	})
 }

@@ -245,3 +245,12 @@ func TestWithoutProxy_NeverReadsProxyEnv(t *testing.T) {
 	assert.Nil(t, transport(New(WithOtel(false), WithAllowPrivateHosts(true), WithoutProxy())).Proxy,
 		"WithoutProxy keeps a secret-bearing body off any proxy")
 }
+
+func TestWithIdleConnTimeout(t *testing.T) {
+	tr, ok := New(WithOtel(false)).Transport.(*http.Transport)
+	require.True(t, ok)
+	assert.Equal(t, 90*time.Second, tr.IdleConnTimeout, "the default stays")
+	tr, ok = New(WithOtel(false), WithIdleConnTimeout(4*time.Second)).Transport.(*http.Transport)
+	require.True(t, ok)
+	assert.Equal(t, 4*time.Second, tr.IdleConnTimeout)
+}

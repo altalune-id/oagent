@@ -1,0 +1,10 @@
+{
+  "id": "Vb3Kq8Rt2Wy5Zp9Hm7Nc4",
+  "project_id": "Pj4kW9sQ2mN7vB3xC8zKr",
+  "agent_id": "AgTn6Hs3Jd4Kf7Mp5Qw3E",
+  "thread_id": "ThQ2wE4rT6yU8jP9pA3sD",
+  "run_id": "RnZ3xC5vB7nM9qW2eR2tY",
+  "tools": ["record_expense"],
+  "status": "approved",
+  "channel": "whatsapp"
+}

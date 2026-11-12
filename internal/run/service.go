@@ -2,6 +2,7 @@ package run
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,6 +13,7 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/metric"
 
 	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/db"
@@ -36,6 +38,7 @@ var ErrCancelRequested = errors.New("run: cancel requested")
 
 // Service runs agent turns on leased threads.
 type Service struct {
+	approvals   Approvals
 	store       Store
 	uow         db.Transactor
 	unexpected  apperror.UnexpectedFunc
@@ -49,6 +52,7 @@ type Service struct {
 	names       Names
 	media       Media
 	log         *slog.Logger
+	mismatches  metric.Int64Counter
 	turnTimeout time.Duration
 	maxAttempts int
 	// noRuntimeWarned holds the last no-runtime warning per thread, so a reconcile tick does not log it every time.
@@ -93,6 +97,21 @@ func (s *Service) WithMedia(m Media) *Service { s.media = m; return s }
 // WithLogger logs turn outcomes to l.
 func (s *Service) WithLogger(l *slog.Logger) *Service { s.log = l; return s }
 
+// WithMeter counts approval audit mismatches (approval.audit_mismatch) on m; a nil m counts nothing.
+func (s *Service) WithMeter(m metric.Meter) *Service {
+	if m == nil {
+		return s
+	}
+	c, err := m.Int64Counter("approval.audit_mismatch", metric.WithDescription("Gated tool calls that ran with no consumed approval."))
+	if err == nil {
+		s.mismatches = c
+	}
+	return s
+}
+
+// WithApprovals raises an approval at an awaiting settle and resumes a decided one; without it an awaiting run stays parked.
+func (s *Service) WithApprovals(a Approvals) *Service { s.approvals = a; return s }
+
 // WithTurnTimeout sets the turn deadline; the runtime gets d less a 30 s margin.
 func (s *Service) WithTurnTimeout(d time.Duration) *Service {
 	if d > deadlineMargin {
@@ -124,6 +143,18 @@ type turn struct {
 	// texts are the channel connection's set replies; imageRefused marks a turn the model failed for its images.
 	texts        ReplyTexts
 	imageRefused bool
+	// approval is the decided approval this turn answers, snap the snapshot it was raised in, raise the one an awaiting settle records.
+	approval *RunApproval
+	// grants maps each "<server>__<tool>" sent to the runtime to its grant; marked lists the calls this request made executing.
+	grants map[string]ToolGrant
+	marked []string
+	snap   *Snapshot
+	raise  *RaiseApproval
+	// voidApproval is the approval a settle expires with its unresumable run; rejectApproval the one a cancel rejects.
+	voidApproval, rejectApproval *uuid.UUID
+	rejectBySystem               bool
+	// outcome is the interrupt outcome an awaiting run's RUN_FINISHED carries to the client.
+	outcome json.RawMessage
 }
 
 func (t *turn) see(e runtime.Event) {
@@ -144,6 +175,20 @@ func (t *turn) end() {
 		return
 	}
 	switch t.run.Status {
+	case StatusAwaitingApproval:
+		if t.outcome == nil {
+			// NOTE: without its outcome a RUN_FINISHED reads as a completed run; the client is told the run waits instead.
+			t.observe(&runtime.RunError{
+				Type: runtime.EventRunError, Code: "awaiting_approval",
+				Message: "The run is waiting for an approval; reload the thread to see it.",
+			})
+			return
+		}
+		fin := &runtime.RunFinished{Type: runtime.EventRunFinished, RunID: t.run.PublicID, Outcome: t.outcome}
+		if f, ok := t.final.(*runtime.RunFinished); ok {
+			fin.ThreadID, fin.RunID = f.ThreadID, f.RunID
+		}
+		t.observe(fin)
 	case StatusCancelled:
 		t.observe(&runtime.RunError{Type: runtime.EventRunError, Message: "The run was cancelled.", Code: "cancelled"})
 	case StatusInterrupted:
@@ -281,8 +326,11 @@ func (s *Service) Cancel(ctx context.Context, runID uuid.UUID) error {
 		return s.errOrReport(ctx, "run: cancel open run", err)
 	}
 	t := &turn{run: r, thread: th, token: token, stored: map[string]bool{}}
-	if t.version, err = s.agents.Version(ctx, r.AgentVersionID); err != nil {
+	if t.version, err = s.agents.Version(ctx, r.AgentVersionID); err != nil && !errors.Is(err, ErrResourceGone) {
 		return s.errOrReport(ctx, "run: cancel version", err)
+	}
+	if err := s.rejectOnCancel(ctx, t, false); err != nil {
+		return s.errOrReport(ctx, "run: cancel approval", err)
 	}
 	if err := r.Move(StatusCancelled, time.Now()); err != nil {
 		return s.errOrReport(ctx, "run: cancel", err)
@@ -298,6 +346,13 @@ func (s *Service) open(ctx context.Context, th *Thread, token string, obs Observ
 	}
 	t := &turn{run: r, thread: th, token: token, stored: map[string]bool{}, observe: obs}
 	if r != nil {
+		if r.Status == StatusAwaitingApproval && th.CancelRequested {
+			return s.resume(ctx, t)
+		}
+		parked, err := s.approvalOf(ctx, t)
+		if err != nil || parked {
+			return nil, nil, s.errOrReport(ctx, "run: approval", err)
+		}
 		return s.resume(ctx, t)
 	}
 	pending, err := s.store.HasPending(ctx, th.ID)
@@ -331,6 +386,32 @@ func (s *Service) open(ctx context.Context, th *Thread, token string, obs Observ
 	return t, nil, nil
 }
 
+// NOTE: an awaiting run parks while its approval waits; a decided one, or an interrupted run after a decision, answers it on resume.
+func (s *Service) approvalOf(ctx context.Context, t *turn) (parked bool, err error) {
+	r := t.run
+	awaiting := r.Status == StatusAwaitingApproval
+	if s.approvals == nil {
+		return awaiting, nil
+	}
+	a, err := s.approvals.Latest(ctx, r.ID)
+	if err != nil {
+		return true, err
+	}
+	switch {
+	case a == nil && awaiting:
+		// SECURITY: an awaiting run with no approval row has nothing to answer, so it fails the snapshot check and expires.
+		a = &RunApproval{Status: "expired"}
+	case a == nil, a.Status == approvalPending && !awaiting:
+		return false, nil
+	case a.Status == approvalPending:
+		if a, err = s.pendingDecision(ctx, t, a); err != nil || a == nil {
+			return true, err
+		}
+	}
+	t.approval = a
+	return false, nil
+}
+
 func (s *Service) pin(ctx context.Context, th *Thread) (*AgentVersion, error) {
 	if th.Kind == threadKindTry {
 		return s.agents.Draft(ctx, th.AgentID)
@@ -352,26 +433,72 @@ func (s *Service) resume(ctx context.Context, t *turn) (*turn, *Run, error) {
 	r := t.run
 	var err error
 	if t.version, err = s.agents.Version(ctx, r.AgentVersionID); err != nil {
+		if r.Status == StatusAwaitingApproval && errors.Is(err, ErrResourceGone) {
+			done, err := s.unresumable(ctx, t)
+			return nil, done, err
+		}
 		return nil, nil, s.errOrReport(ctx, "run: pinned version", err)
 	}
 	if t.thread.CancelRequested {
+		if err := s.rejectOnCancel(ctx, t, true); err != nil {
+			return nil, nil, s.errOrReport(ctx, "run: cancel approval", err)
+		}
 		if err := r.Move(StatusCancelled, time.Now()); err != nil {
 			return nil, nil, s.errOrReport(ctx, "run: cancel", err)
 		}
 		done, err := s.settle(ctx, t, r.Usage, nil, nil)
 		return nil, done, err
 	}
-	if int(r.Attempt) >= s.maxAttempts {
+	// NOTE: only an interrupted run starts a new attempt; an approval wait resumes the same one.
+	if r.Status == StatusInterrupted && int(r.Attempt) >= s.maxAttempts {
+		// NOTE: a crash on the last attempt leaves calls executing; settle them first, so none stays executing on a failed run.
+		if err := s.settleExecuting(ctx, t); err != nil {
+			return nil, nil, s.errOrReport(ctx, "run: settle executing", err)
+		}
 		done, err := s.fail(ctx, t, apperror.CodeRunAttemptsExhausted)
 		return nil, done, err
+	}
+	if t.approval != nil {
+		snap, ok, err := s.raisedSnapshot(ctx, t)
+		switch {
+		case err != nil:
+			return nil, nil, s.errOrReport(ctx, "run: snapshot", err)
+		case ok && r.Status == StatusAwaitingApproval:
+			t.snap = snap
+			if gone, err := s.serverGone(ctx, t.version); err != nil || gone {
+				if err != nil {
+					return nil, nil, s.errOrReport(ctx, "run: mcp server", err)
+				}
+				done, err := s.unresumable(ctx, t)
+				return nil, done, err
+			}
+		case ok:
+			t.snap = snap
+		case r.Status == StatusAwaitingApproval:
+			// SECURITY: the snapshot moved or is gone, so the answers belong to no interrupt that still exists: expire, send nothing.
+			done, err := s.unresumable(ctx, t)
+			return nil, done, err
+		default:
+			t.approval = nil
+		}
 	}
 	if err := s.charge(ctx, t); err != nil {
 		return nil, nil, err
 	}
+	awaiting := r.Status == StatusAwaitingApproval
 	if err := r.Move(StatusRunning, time.Now()); err != nil {
 		return nil, nil, s.errOrReport(ctx, "run: resume", err)
 	}
-	t.taken, err = s.store.StartRun(ctx, t.token, r)
+	err = s.uow.RunInTx(ctx, func(ctx context.Context) error {
+		if awaiting {
+			t.taken, err = s.store.ResumeApproval(ctx, t.token, r)
+			return err
+		}
+		if t.taken, err = s.store.StartRun(ctx, t.token, r); err != nil {
+			return err
+		}
+		return s.settleExecuting(ctx, t)
+	})
 	if errors.Is(err, ErrNothingPending) {
 		return nil, nil, nil
 	}
@@ -379,6 +506,51 @@ func (s *Service) resume(ctx context.Context, t *turn) (*turn, *Run, error) {
 		return nil, nil, s.errOrReport(ctx, "run: resume", err)
 	}
 	return t, nil, nil
+}
+
+// NOTE: unresumable expires an awaiting run whose snapshot, version or granted server is gone, with its approval, in one settle.
+func (s *Service) unresumable(ctx context.Context, t *turn) (*Run, error) {
+	if t.approval != nil && mayHaveRun(t.approval) {
+		// SECURITY: a call may have run, so the run fails and the approval stays; "expired, ask again" could run it twice.
+		return s.fail(ctx, t, apperror.CodeRunRuntimeFailed)
+	}
+	if err := t.run.Move(StatusExpired, time.Now()); err != nil {
+		return nil, s.errOrReport(ctx, "run: expire", err)
+	}
+	if voidable(t.approval) {
+		t.voidApproval = &t.approval.ID
+	}
+	return s.settle(ctx, t, t.run.Usage, nil, nil)
+}
+
+func (s *Service) serverGone(ctx context.Context, v *AgentVersion) (bool, error) {
+	for _, g := range v.MCPServers {
+		if _, err := s.servers.Open(ctx, g.ServerID); err != nil {
+			if errors.Is(err, ErrResourceGone) {
+				return true, nil
+			}
+			return false, err
+		}
+	}
+	return false, nil
+}
+
+// NOTE: rejectOnCancel rejects a pending approval with the cancel (by the system when bySystem); an approved one expires.
+func (s *Service) rejectOnCancel(ctx context.Context, t *turn, bySystem bool) error {
+	if t.run.Status != StatusAwaitingApproval || s.approvals == nil {
+		return nil
+	}
+	a, err := s.approvals.Latest(ctx, t.run.ID)
+	if err != nil || a == nil {
+		return err
+	}
+	switch a.Status {
+	case approvalPending:
+		t.rejectApproval, t.rejectBySystem = &a.ID, bySystem
+	case "approved":
+		t.voidApproval = &a.ID
+	}
+	return nil
 }
 
 func (s *Service) refusal(ctx context.Context, t *turn) (apperror.Code, error) {
@@ -408,6 +580,10 @@ func (s *Service) fail(ctx context.Context, t *turn, code apperror.Code) (*Run, 
 		return nil, s.errOrReport(ctx, "run: fail", err)
 	}
 	t.run.ErrorCode = string(code)
+	// SECURITY: an approval whose calls never ran must not stay approved on a failed run; it expires, keeping its approver.
+	if a := t.approval; a != nil && a.Status == "approved" && voidable(a) {
+		t.voidApproval = &a.ID
+	}
 	return s.settle(ctx, t, t.run.Usage, nil, nil)
 }
 
@@ -423,6 +599,21 @@ func (s *Service) settle(ctx context.Context, t *turn, u Usage, final []Message,
 				return err
 			}
 		}
+		if t.raise != nil {
+			if err := s.approvals.Raise(ctx, *t.raise); err != nil {
+				return err
+			}
+		}
+		if t.voidApproval != nil {
+			if err := s.approvals.ExpireUnresumable(ctx, *t.voidApproval); err != nil {
+				return err
+			}
+		}
+		if t.rejectApproval != nil {
+			if err := s.approvals.RejectOnCancel(ctx, *t.rejectApproval, t.rejectBySystem); err != nil {
+				return err
+			}
+		}
 		return s.emit(ctx, t, u)
 	})
 	if IsLeaseLostError(err) {
@@ -430,6 +621,9 @@ func (s *Service) settle(ctx context.Context, t *turn, u Usage, final []Message,
 	}
 	if err != nil {
 		return nil, &SettleError{Cause: s.errOrReport(ctx, "run: settle", err)}
+	}
+	if t.run.Status == StatusAwaitingApproval && t.observe != nil {
+		t.outcome = s.interruptOutcome(ctx, t)
 	}
 	t.end()
 	return t.run, nil
@@ -453,8 +647,12 @@ func (s *Service) emit(ctx context.Context, t *turn, u Usage) error {
 	if kind == "" || s.publisher == nil || t.thread.Kind == threadKindTry {
 		return nil
 	}
+	agentPub := ""
+	if t.version != nil {
+		agentPub = t.version.AgentPublicID
+	}
 	payload := events.RunSettledV1{
-		RunID: r.PublicID, ThreadID: t.thread.PublicID, AgentID: t.version.AgentPublicID, Status: string(r.Status),
+		RunID: r.PublicID, ThreadID: t.thread.PublicID, AgentID: agentPub, Status: string(r.Status),
 		Usage: events.RunUsageV1{
 			InputTokens: u.InputTokens, OutputTokens: u.OutputTokens, CacheReadInputTokens: u.CacheReadTokens,
 			CacheWriteInputTokens: u.CacheWriteTokens, Estimated: u.Estimated,

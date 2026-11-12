@@ -20,6 +20,7 @@ type postgresStore struct {
 	messages      *entity.Messages
 	conns         *entity.ChannelConnections
 	identities    *entity.EndUserIdentities
+	approvals     *entity.Approvals
 	resolveThread string
 	resolveRun    string
 }
@@ -40,6 +41,7 @@ func NewStore(pool db.Pool, schema, tablePrefix string) *postgresStore {
 		messages:      entity.NewMessages(schema, tablePrefix),
 		conns:         entity.NewChannelConnections(schema, tablePrefix),
 		identities:    entity.NewEndUserIdentities(schema, tablePrefix),
+		approvals:     entity.NewApprovals(schema, tablePrefix),
 		resolveThread: resolveSQL(schema, tablePrefix, "thread"),
 		resolveRun:    resolveSQL(schema, tablePrefix, "run"),
 	}
