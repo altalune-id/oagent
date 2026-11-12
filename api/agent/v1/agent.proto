@@ -105,10 +105,22 @@ message Agent {
   bool unpublished_changes = 13;
 }
 
-// AgentTool is a tool the agent may call; require_approval makes a person approve each call.
+// AgentTool is a tool the agent may call; require_approval makes a person approve each call, and free_when lets a call run without asking when every condition holds.
 message AgentTool {
   string name = 1 [(buf.validate.field).string.pattern = "^[a-zA-Z0-9_.-]{1,64}$"];
   bool require_approval = 2;
+  repeated FreeCondition free_when = 3 [(buf.validate.field).repeated.max_items = 8];
+}
+
+// FreeCondition holds when the call's argument arg equals one of values, each a JSON value such as false or "draft", or when the argument is absent and absent is true.
+message FreeCondition {
+  string arg = 1 [(buf.validate.field).string.pattern = "^[A-Za-z_][A-Za-z0-9_]{0,63}$"];
+  repeated string values = 2 [
+    (buf.validate.field).repeated.max_items = 16,
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.max_bytes = 256
+  ];
+  bool absent = 3;
 }
 
 // McpGrant lets an agent call the listed tools of one MCP server; missing is output only and true when the server no longer exists.

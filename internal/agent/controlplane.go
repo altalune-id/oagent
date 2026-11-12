@@ -339,11 +339,18 @@ func (s *AgentService) configFrom(ctx context.Context, a *Agent, in *agentv1.Age
 	return cfg, nil
 }
 
-// SECURITY: a new tool or an approval turned off on a bound server widens the grant; removing a tool or requiring approval narrows it.
+// SECURITY: a new tool, an approval turned off, or a gated tool's free_when added or changed widens a bound grant; the rest narrows it.
 func widens(current, next MCPGrant) bool {
 	for _, t := range next.Tools {
 		i := slices.IndexFunc(current.Tools, func(c Tool) bool { return c.Name == t.Name })
-		if i < 0 || (current.Tools[i].RequireApproval && !t.RequireApproval) {
+		if i < 0 {
+			return true
+		}
+		was := current.Tools[i]
+		switch {
+		case was.RequireApproval && !t.RequireApproval:
+			return true
+		case was.RequireApproval && len(t.FreeWhen) > 0 && !slices.EqualFunc(was.FreeWhen, t.FreeWhen, FreeCondition.Equal):
 			return true
 		}
 	}
