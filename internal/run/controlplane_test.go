@@ -356,12 +356,13 @@ func TestThreadService_RunShowsKnowledgeUsage(t *testing.T) {
 	w := newCPWorld(t)
 	w.running.Usage = run.Usage{InputTokens: 100, EmbeddingTokens: 1_000_000}
 	w.running.Prices = &run.Prices{Input: new(int64(1_000_000)), Embedding: new(int64(20_000))}
-	w.running.KnowledgeRetrieveCalls, w.running.KnowledgeRetrieveMs = 2, 340
+	w.running.KnowledgeRetrieveCalls, w.running.KnowledgeRetrieveMs, w.running.KnowledgePassages = 2, 340, 7
 	one, err := w.cp.GetRun(member(w.org), connect.NewRequest(&threadv1.GetRunRequest{RunId: w.running.PublicID}))
 	require.NoError(t, err)
 	r := one.Msg.GetRun()
 	assert.Equal(t, int64(1_000_000), r.GetUsage().GetEmbeddingTokens())
 	assert.Equal(t, int32(2), r.GetKnowledgeRetrieveCalls())
 	assert.Equal(t, int64(340), r.GetKnowledgeRetrieveMs())
+	assert.Equal(t, int32(7), r.GetKnowledgePassages())
 	assert.Equal(t, int64(100+20_000), r.GetCostMicros(), "embedding tokens priced at the embedding price")
 }

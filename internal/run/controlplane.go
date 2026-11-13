@@ -360,6 +360,7 @@ func (s *ThreadService) runProto(ctx context.Context, r *Run, threadPub string) 
 		},
 		ErrorCode: r.ErrorCode, StartedAt: timestamppb.New(r.StartedAt),
 		KnowledgeRetrieveCalls: r.KnowledgeRetrieveCalls, KnowledgeRetrieveMs: r.KnowledgeRetrieveMs,
+		KnowledgePassages: r.KnowledgePassages,
 	}
 	if cost, ok := Cost(r.Usage, r.Prices); ok {
 		out.CostMicros = &cost

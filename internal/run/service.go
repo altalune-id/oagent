@@ -276,6 +276,7 @@ func (s *Service) execute(ctx context.Context, threadID uuid.UUID, token string,
 	if err != nil {
 		return s.abandon(ctx, t, t.run.Usage, err)
 	}
+	t.run.KnowledgePassages += int32(len(req.Knowledge)) //nolint:gosec // G115: at most runtime.MaxPassages.
 	return s.stream(ctx, t, req, history)
 }
 

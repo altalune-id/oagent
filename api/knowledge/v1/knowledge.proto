@@ -242,6 +242,29 @@ message ListKnowledgeSourcesResponse {
   // max_upload_bytes and allowed_content_types are what BeginUpload accepts.
   int64 max_upload_bytes = 5;
   repeated string allowed_content_types = 6;
+  // retrieval_defaults are the recommended agent retrieval tuning, its ranges and its presets.
+  RetrievalDefaults retrieval_defaults = 7;
+}
+
+// RetrievalDefaults are the recommended values for an agent's knowledge tuning, the allowed ranges and the named presets.
+message RetrievalDefaults {
+  int32 top_k = 1;
+  double min_score = 2;
+  int32 max_tokens = 3;
+  int32 min_top_k = 4;
+  int32 max_top_k = 5;
+  double min_min_score = 6;
+  double max_min_score = 7;
+  int32 min_max_tokens = 8;
+  int32 max_max_tokens = 9;
+  repeated RetrievalPreset presets = 10;
+}
+
+// RetrievalPreset is a named tuning: top_k passages per answer at min_score minimum relevance.
+message RetrievalPreset {
+  string name = 1;
+  int32 top_k = 2;
+  double min_score = 3;
 }
 
 message GetKnowledgeSourceRequest {

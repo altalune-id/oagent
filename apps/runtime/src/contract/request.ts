@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const CONTRACT_VERSION = 3;
 export const IMAGE_CONTRACT_VERSION = 2;
 export const APPROVAL_CONTRACT_VERSION = 3;
-export const MAX_PASSAGES = 5;
+export const MAX_PASSAGES = 10;
 export const MAX_PASSAGE_CHARS = 20_000;
 
 export const ModelProvider = {

@@ -60,6 +60,18 @@ Use this to let agents answer from a project's documents and websites. Agents se
 
 Scanned PDFs have no text layer and fail with KNW005. A seed that redirects to another host (for example to `www.`) fails with KNW014; paste the final address.
 
+## Retrieval tuning per agent
+
+Each agent version may tune its knowledge search (`AgentConfig.knowledge_tuning`). Changes publish like any other config change. A value left at 0 or unset follows the current recommended value at run time, so a new recommended value reaches live agents without a republish.
+
+| Setting             | Field        | Recommended | Range    |
+| ------------------- | ------------ | ----------- | -------- |
+| Passages per answer | `top_k`      | 5           | 1-10     |
+| Minimum relevance   | `min_score`  | 0.20        | 0-1      |
+| Knowledge budget    | `max_tokens` | 4000        | 500-8000 |
+
+Presets: precise 3 / 0.35, balanced 5 / 0.20 (the recommended values), broad 8 / 0.10. `ListKnowledgeSources` returns all of these in `retrieval_defaults`. Test search always uses the recommended values.
+
 ## Reference code
 
 - [internal/knowledge](../../internal/knowledge): service, ingest and crawl workers, `controlplane.go`

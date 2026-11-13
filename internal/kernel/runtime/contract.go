@@ -29,19 +29,20 @@ type TurnRequest struct {
 
 // The runtime refuses a turn whose knowledge passes these bounds.
 const (
-	MaxPassages          = 5
+	MaxPassages          = 10
 	MaxPassageTextBytes  = 20000
 	MaxPassageLabelBytes = 500
 	MaxPassageURLBytes   = 2048
-	// MaxKnowledgeTextBytes bounds the passage text of one turn, about 4,000 tokens.
-	MaxKnowledgeTextBytes = 16000
+	// MaxKnowledgeTextBytes bounds the passage text of one turn, about 8,000 tokens; an agent's budget may be lower.
+	MaxKnowledgeTextBytes = 32000
 )
 
 // UntitledPassage is the title NormalizePassages gives a passage that has none.
 const UntitledPassage = "Untitled"
 
-// NormalizePassages returns at most MaxPassages copies cut to the runtime's bounds, dropping passages without text.
-func NormalizePassages(in []Passage) []Passage {
+// NormalizePassages returns at most MaxPassages copies cut to the runtime's bounds and budgetBytes, dropping passages without text.
+func NormalizePassages(in []Passage, budgetBytes int) []Passage {
+	budget := min(budgetBytes, MaxKnowledgeTextBytes)
 	out := make([]Passage, 0, min(len(in), MaxPassages))
 	total := 0
 	for _, p := range in {
@@ -68,7 +69,7 @@ func NormalizePassages(in []Passage) []Passage {
 		if len(p.URL) <= MaxPassageURLBytes && utf8.ValidString(p.URL) {
 			n.URL = p.URL
 		}
-		room := MaxKnowledgeTextBytes - total - len(n.Title) - len(n.Heading) - len(n.URL)
+		room := budget - total - len(n.Title) - len(n.Heading) - len(n.URL)
 		if len(n.Text) > room {
 			if len(out) > 0 || room <= 0 {
 				break

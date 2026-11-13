@@ -1136,6 +1136,10 @@ components:
           items:
             type: string
           title: allowed_content_types
+        retrievalDefaults:
+          title: retrieval_defaults
+          description: retrieval_defaults are the recommended agent retrieval tuning, its ranges and its presets.
+          $ref: '#/components/schemas/knowledge.v1.RetrievalDefaults'
       title: ListKnowledgeSourcesResponse
       additionalProperties: false
     knowledge.v1.RefreshKnowledgeSourceRequest:
@@ -1158,6 +1162,70 @@ components:
           $ref: '#/components/schemas/knowledge.v1.KnowledgeSource'
       title: RefreshKnowledgeSourceResponse
       additionalProperties: false
+    knowledge.v1.RetrievalDefaults:
+      type: object
+      properties:
+        topK:
+          type: integer
+          title: top_k
+          format: int32
+        minScore:
+          type: number
+          title: min_score
+          format: double
+        maxTokens:
+          type: integer
+          title: max_tokens
+          format: int32
+        minTopK:
+          type: integer
+          title: min_top_k
+          format: int32
+        maxTopK:
+          type: integer
+          title: max_top_k
+          format: int32
+        minMinScore:
+          type: number
+          title: min_min_score
+          format: double
+        maxMinScore:
+          type: number
+          title: max_min_score
+          format: double
+        minMaxTokens:
+          type: integer
+          title: min_max_tokens
+          format: int32
+        maxMaxTokens:
+          type: integer
+          title: max_max_tokens
+          format: int32
+        presets:
+          type: array
+          items:
+            $ref: '#/components/schemas/knowledge.v1.RetrievalPreset'
+          title: presets
+      title: RetrievalDefaults
+      additionalProperties: false
+      description: RetrievalDefaults are the recommended values for an agent's knowledge tuning, the allowed ranges and the named presets.
+    knowledge.v1.RetrievalPreset:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        topK:
+          type: integer
+          title: top_k
+          format: int32
+        minScore:
+          type: number
+          title: min_score
+          format: double
+      title: RetrievalPreset
+      additionalProperties: false
+      description: 'RetrievalPreset is a named tuning: top_k passages per answer at min_score minimum relevance.'
     knowledge.v1.SetEmbeddingModelRequest:
       type: object
       properties:

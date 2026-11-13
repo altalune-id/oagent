@@ -8,19 +8,22 @@ import (
 	"github.com/google/uuid"
 )
 
-// The search bounds every Retriever keeps.
-const (
-	DefaultSearchK = 5
-	MaxSearchK     = 20
-	MinSearchScore = 0.2
-)
-
-// Query asks for the passages of Sources in ProjectID closest to Text; K above MaxSearchK or below 1 is clamped.
+// Query asks for the passages of Sources in ProjectID closest to Text; K is clamped to 1..MaxTopK; nil MinScore means RecommendedMinScore.
 type Query struct {
 	ProjectID uuid.UUID
 	Sources   []uuid.UUID
 	Text      string
+	Context   string
 	K         int
+	MinScore  *float64
+}
+
+// Inputs are the texts a search embeds together: Text alone, then Context when it is set and differs.
+func (q Query) Inputs() []string {
+	if c := strings.TrimSpace(q.Context); c != "" && c != strings.TrimSpace(q.Text) {
+		return []string{q.Text, q.Context}
+	}
+	return []string{q.Text}
 }
 
 // Hit is one retrieved passage with its document and source; Score is the cosine similarity. SECURITY: project content; never log it.
@@ -40,17 +43,25 @@ type Usage struct {
 	RetrieveCalls   int
 }
 
-// Retriever searches one backend: hits best first, at most K, none below MinSearchScore, none outside q's project and sources.
+// Retriever searches one backend: hits best first, at most K, none below MinScoreOf(q), none outside q's project and sources.
 type Retriever interface {
 	Search(ctx context.Context, q Query) ([]Hit, Usage, error)
+}
+
+// MinScoreOf is q's minimum score clamped to 0..1, or RecommendedMinScore when q sets none.
+func MinScoreOf(q Query) float64 {
+	if q.MinScore == nil {
+		return RecommendedMinScore
+	}
+	return min(max(*q.MinScore, 0), 1)
 }
 
 // SearchK clamps a requested K to the search bounds.
 func SearchK(k int) int {
 	if k < 1 {
-		return DefaultSearchK
+		return RecommendedTopK
 	}
-	return min(k, MaxSearchK)
+	return min(k, MaxTopK)
 }
 
 // VectorText is v in pgvector's text form, for a $n::public.vector parameter.

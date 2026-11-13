@@ -83,6 +83,15 @@ type Config struct {
 	MCPServers  []MCPGrant `json:"mcp_servers,omitempty"`
 	// KnowledgeSourceIDs are the knowledge sources searched before each turn.
 	KnowledgeSourceIDs []uuid.UUID `json:"knowledge_source_ids,omitempty"`
+	// KnowledgeTuning shapes the knowledge search before each turn; zero values are the recommended ones.
+	KnowledgeTuning KnowledgeTuning `json:"knowledge_tuning,omitzero"`
+}
+
+// KnowledgeTuning is an agent's retrieval tuning; a zero TopK or MaxTokens and a nil MinScore use the recommended values.
+type KnowledgeTuning struct {
+	TopK      int32    `json:"top_k,omitempty"`
+	MinScore  *float64 `json:"min_score,omitempty"`
+	MaxTokens int32    `json:"max_tokens,omitempty"`
 }
 
 // MCPGrant lets the agent call the listed tools of one MCP server.
@@ -194,6 +203,9 @@ func (c Config) Validate() error {
 	case len(c.Tools) > maxTools:
 		return invalid("tools", apperror.FieldTooMany)
 	}
+	if err := c.KnowledgeTuning.validate(invalid); err != nil {
+		return err
+	}
 	seen := make(map[string]bool, len(c.Tools))
 	for _, t := range c.Tools {
 		if !toolNameRe.MatchString(t.Name) {
@@ -286,7 +298,7 @@ func (c Config) Equal(o Config) bool {
 		c.ProviderID == o.ProviderID && c.HelperModel == o.HelperModel &&
 		slices.EqualFunc(c.MCPServers, o.MCPServers, func(a, b MCPGrant) bool {
 			return a.ServerID == b.ServerID && slices.EqualFunc(a.Tools, b.Tools, Tool.Equal)
-		}) && slices.Equal(c.KnowledgeSourceIDs, o.KnowledgeSourceIDs)
+		}) && slices.Equal(c.KnowledgeSourceIDs, o.KnowledgeSourceIDs) && c.KnowledgeTuning.equal(o.KnowledgeTuning)
 }
 
 // SetDraft replaces the draft with a valid cfg edited at now; the published version is unchanged.
@@ -542,10 +554,26 @@ func versionToProto(v *Version, agentPublicID, createdBy string) *agentv1.AgentV
 func configToProto(c Config) *agentv1.AgentConfig {
 	out := &agentv1.AgentConfig{
 		Instructions: c.Instructions, Model: c.Model, Temperature: c.Temperature, MaxSteps: c.MaxSteps, MaxCostCents: c.MaxCostCents,
-		HelperModel: c.HelperModel, Tools: toolsToProto(c.Tools),
+		HelperModel: c.HelperModel, Tools: toolsToProto(c.Tools), KnowledgeTuning: tuningToProto(c.KnowledgeTuning),
 	}
 	for _, g := range c.MCPServers {
 		out.McpServers = append(out.McpServers, &agentv1.McpGrant{Tools: toolsToProto(g.Tools)})
+	}
+	return out
+}
+
+func tuningToProto(k KnowledgeTuning) *agentv1.KnowledgeTuning {
+	out := &agentv1.KnowledgeTuning{TopK: k.TopK, MaxTokens: k.MaxTokens}
+	if k.MinScore != nil {
+		out.MinScore = new(*k.MinScore)
+	}
+	return out
+}
+
+func tuningFromProto(k *agentv1.KnowledgeTuning) KnowledgeTuning {
+	out := KnowledgeTuning{TopK: k.GetTopK(), MaxTokens: k.GetMaxTokens()}
+	if k != nil && k.MinScore != nil {
+		out.MinScore = new(k.GetMinScore())
 	}
 	return out
 }
@@ -573,7 +601,7 @@ func configFromProto(c *agentv1.AgentConfig) Config {
 	out := Config{
 		Instructions: c.GetInstructions(), Model: c.GetModel(), Temperature: c.GetTemperature(),
 		MaxSteps: c.GetMaxSteps(), MaxCostCents: c.GetMaxCostCents(), HelperModel: c.GetHelperModel(),
-		Tools: toolsFromProto(c.GetTools()),
+		Tools: toolsFromProto(c.GetTools()), KnowledgeTuning: tuningFromProto(c.GetKnowledgeTuning()),
 	}
 	for _, g := range c.GetMcpServers() {
 		out.MCPServers = append(out.MCPServers, MCPGrant{Tools: toolsFromProto(g.GetTools())})

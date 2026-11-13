@@ -41,6 +41,7 @@ type Runs struct {
 	EmbeddingPriceInputMicros postgres.ColumnInteger
 	KnowledgeRetrieveCalls    postgres.ColumnInteger
 	KnowledgeRetrieveMS       postgres.ColumnInteger
+	KnowledgePassages         postgres.ColumnInteger
 
 	AllColumns postgres.ColumnList
 }
@@ -86,12 +87,13 @@ func NewRuns(schema, tablePrefix string) *Runs {
 		embeddingPriceInputMicros = postgres.IntegerColumn("embedding_price_input_micros")
 		knowledgeRetrieveCalls    = postgres.IntegerColumn("knowledge_retrieve_calls")
 		knowledgeRetrieveMS       = postgres.IntegerColumn("knowledge_retrieve_ms")
+		knowledgePassages         = postgres.IntegerColumn("knowledge_passages")
 		all                       = postgres.ColumnList{
 			id, publicID, orgID, projectID, threadID, agentVersionID, status, idempotencyKey, attempt, inputTokens, outputTokens,
 			cacheReadTokens, cacheWriteTokens, usageEstimated, priceInputMicros, priceOutputMicros, priceCacheReadMicros,
 			priceCacheWriteMicros, costMicros, latencyMS, errorCode, startedAt, endedAt, createdAt, updatedAt, replyState,
 			replyPartsSent, replyAttempts, replyNextAt, isGroup, replyKind, embeddingTokens, embeddingPriceInputMicros,
-			knowledgeRetrieveCalls, knowledgeRetrieveMS,
+			knowledgeRetrieveCalls, knowledgeRetrieveMS, knowledgePassages,
 		}
 	)
 	return &Runs{
@@ -131,6 +133,7 @@ func NewRuns(schema, tablePrefix string) *Runs {
 		EmbeddingPriceInputMicros: embeddingPriceInputMicros,
 		KnowledgeRetrieveCalls:    knowledgeRetrieveCalls,
 		KnowledgeRetrieveMS:       knowledgeRetrieveMS,
+		KnowledgePassages:         knowledgePassages,
 		AllColumns:                all,
 	}
 }

@@ -226,6 +226,18 @@ func TestRetriever_ScoreThreshold(t *testing.T) {
 	assert.Equal(t, []string{"same", "c30"}, []string{hits[0].Text, hits[1].Text})
 	assert.InDelta(t, 1, hits[0].Score, 1e-4)
 	assert.InDelta(t, 0.3, hits[1].Score, 1e-4)
+
+	search := func(minScore float64) []string {
+		hits, _, err := b.Retriever().Search(ctx, knowledge.Query{ProjectID: prj, Sources: []uuid.UUID{src}, Text: "q", K: 10, MinScore: &minScore})
+		require.NoError(t, err)
+		out := []string{}
+		for _, h := range hits {
+			out = append(out, h.Text)
+		}
+		return out
+	}
+	assert.Equal(t, []string{"same"}, search(0.5), "the agent's minimum, not the recommended one")
+	assert.Equal(t, []string{"same", "c30", "c10", "orthogonal"}, search(0), "0 keeps every passage")
 }
 
 func (b *backend) bulk(t *testing.T, ctx context.Context, project, source uuid.UUID, n, dims int, cosine float64) {
@@ -263,7 +275,7 @@ func TestRetriever_SmallProjectGetsHitsBesideLargeOne(t *testing.T) {
 	r := pgvector.New(b.pool, b.schema, "", b.emb)
 	tc, err := tenant.From(ctx)
 	require.NoError(t, err)
-	args := []any{knowledge.VectorText(vec("q")), small, "{" + src.String() + "}", b.emb.settings(small).ModelKey(), knowledge.DefaultSearchK}
+	args := []any{knowledge.VectorText(vec("q")), small, "{" + src.String() + "}", b.emb.settings(small).ModelKey(), knowledge.RecommendedTopK}
 	tx, err := conn.BeginTx(t.Context(), &sql.TxOptions{ReadOnly: true})
 	require.NoError(t, err)
 	_, err = tx.ExecContext(t.Context(), "SELECT set_config('app.current_org_id', $1, true)", tc.OrgID.String())
@@ -277,14 +289,14 @@ func TestRetriever_SmallProjectGetsHitsBesideLargeOne(t *testing.T) {
 		require.NoError(t, tx.QueryRowContext(t.Context(), "SELECT count(*) FROM ("+pgvector.Statement(r, 768)+") x", args...).Scan(&n))
 		return n
 	}
-	assert.Less(t, count("off"), knowledge.DefaultSearchK, "without an iterative scan the other project's closer chunks fill the candidates")
-	assert.Equal(t, knowledge.DefaultSearchK, count("relaxed_order"))
+	assert.Less(t, count("off"), knowledge.RecommendedTopK, "without an iterative scan the other project's closer chunks fill the candidates")
+	assert.Equal(t, knowledge.RecommendedTopK, count("relaxed_order"))
 	require.NoError(t, tx.Rollback())
 	require.NoError(t, conn.Close())
 
 	hits, _, err := r.Search(ctx, knowledge.Query{ProjectID: small, Sources: []uuid.UUID{src}, Text: "q"})
 	require.NoError(t, err)
-	require.Len(t, hits, knowledge.DefaultSearchK, "the driver turns the iterative scan on")
+	require.Len(t, hits, knowledge.RecommendedTopK, "the driver turns the iterative scan on")
 	for _, h := range hits {
 		assert.Equal(t, src, h.Source)
 		assert.InDelta(t, 0.8, h.Score, 0.01)

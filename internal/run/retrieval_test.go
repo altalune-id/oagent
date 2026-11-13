@@ -82,6 +82,7 @@ func (f *svcFixture) withKnowledge() *fakeKnowledge {
 		price:   new(int64(20_000)),
 	}
 	f.svc.WithKnowledge(k, k, k)
+	f.version.Knowledge = run.KnowledgeTuning{MaxBytes: 16000}
 	return k
 }
 
@@ -104,7 +105,7 @@ func TestRun_KnowledgeSearchedOncePerTurn(t *testing.T) {
 	assert.Equal(t, []runtime.Passage{{Text: secretPassage, Title: "Refund policy", Heading: "Timing", Page: new(int32(2))}}, req.Knowledge)
 }
 
-func TestRun_KnowledgeQueryJoinsTurnAndPreviousMessage(t *testing.T) {
+func TestRun_KnowledgeQuerySendsTheTurnAndTheConversation(t *testing.T) {
 	f := newSvc(t)
 	k := f.withKnowledge()
 	f.say(t, "my order is 42")
@@ -114,15 +115,19 @@ func TestRun_KnowledgeQueryJoinsTurnAndPreviousMessage(t *testing.T) {
 	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
 
 	require.Len(t, k.queries, 2)
-	assert.Equal(t, "my order is 42\nwhen does it ship\nand to Bandung?", k.queries[1].Text,
-		"the thread's previous user message, then this turn's text")
+	assert.Equal(t, "my order is 42", k.queries[0].Text)
+	assert.Empty(t, k.queries[0].Context, "no previous message, no conversation input")
+	assert.Equal(t, "when does it ship\nand to Bandung?", k.queries[1].Text, "this turn's text alone keeps its score")
+	assert.Equal(t, "my order is 42\nwhen does it ship\nand to Bandung?", k.queries[1].Context,
+		"the thread's previous user message, then this turn's text, carries a follow-up")
 
 	f.say(t, "OLD-HEAD "+strings.Repeat("é", 3000))
 	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
-	got := k.texts()[2]
-	assert.Equal(t, 2000, utf8.RuneCountInString(got), "the query is cut at 2,000 characters")
-	assert.True(t, utf8.ValidString(got))
-	assert.Equal(t, strings.Repeat("é", 2000), got, "the oldest text is cut first, the newest kept")
+	for name, got := range map[string]string{"text": k.queries[2].Text, "context": k.queries[2].Context} {
+		assert.Equal(t, 2000, utf8.RuneCountInString(got), "%s is cut at 2,000 characters", name)
+		assert.True(t, utf8.ValidString(got), name)
+		assert.Equal(t, strings.Repeat("é", 2000), got, "%s: the oldest text is cut first, the newest kept", name)
+	}
 }
 
 func imageOnly() run.Message {
@@ -163,6 +168,7 @@ func TestRun_ResumeLegRepeatsSearch(t *testing.T) {
 	assert.Equal(t, []string{"record lunch", "record lunch"}, k.texts(), "a continue leg searches again with the run's own messages")
 	assert.NotEmpty(t, f.rt.LastRequest().Knowledge)
 	assert.Equal(t, int32(2), again.KnowledgeRetrieveCalls)
+	assert.Equal(t, int32(2), again.KnowledgePassages, "one passage sent on each leg")
 	assert.Equal(t, int64(14), again.Usage.EmbeddingTokens, "both legs' query tokens")
 
 	g := newSvc(t)
@@ -360,4 +366,53 @@ func TestRun_EmbeddingPriceReadOnlyWithBoundSources(t *testing.T) {
 	r = g.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
 	assert.Equal(t, 1, gk.priceRead)
 	assert.Equal(t, int64(20_000), *r.Prices.Embedding)
+}
+
+func TestRun_KnowledgeUsesTheAgentsTuning(t *testing.T) {
+	f := newSvc(t)
+	k := f.withKnowledge()
+	floor := 0.4
+	f.version.Knowledge = run.KnowledgeTuning{K: 3, MinScore: &floor, MaxBytes: 16000}
+	f.say(t, "refunds")
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+
+	require.Len(t, k.queries, 1)
+	assert.Equal(t, 3, k.queries[0].K)
+	require.NotNil(t, k.queries[0].MinScore)
+	assert.InDelta(t, 0.4, *k.queries[0].MinScore, 1e-9)
+}
+
+func TestRun_KnowledgeUnsetTuningLeavesTheRecommendedValuesToTheRetriever(t *testing.T) {
+	f := newSvc(t)
+	k := f.withKnowledge()
+	f.say(t, "refunds")
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+
+	require.Len(t, k.queries, 1)
+	assert.Zero(t, k.queries[0].K)
+	assert.Nil(t, k.queries[0].MinScore)
+}
+
+func TestRun_KnowledgeBudgetCutsThePassages(t *testing.T) {
+	big := strings.Repeat("a", 6000)
+	for budget, want := range map[int]int{7000: 1, 16000: 2, 32000: 3} {
+		f := newSvc(t)
+		k := f.withKnowledge()
+		k.hits = []run.KnowledgeHit{{Text: big, Title: "1"}, {Text: big, Title: "2"}, {Text: big, Title: "3"}}
+		f.version.Knowledge.MaxBytes = budget
+		f.say(t, "refunds")
+		r := f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+		assert.Len(t, f.rt.LastRequest().Knowledge, want, "a budget of %d bytes", budget)
+		assert.Equal(t, int32(want), r.KnowledgePassages, "only the passages actually sent are counted")
+	}
+}
+
+func TestRun_KnowledgePassagesCountOnlyWhatASentRequestCarried(t *testing.T) {
+	f := newSvc(t)
+	k := f.withKnowledge()
+	delete(f.servers.Servers, f.server)
+	f.say(t, "refunds")
+	r := f.execute(t)
+	require.Len(t, k.queries, 1, "the search ran")
+	assert.Zero(t, r.KnowledgePassages, "the request failed to build, so no passage was sent")
 }

@@ -18,7 +18,7 @@ func (s *Service) TestSearch(ctx context.Context, src *Source, query string) ([]
 	if !ok {
 		return nil, &InvalidSourceError{Reason: SourceBackendDisabled}
 	}
-	hits, _, err := r.Search(ctx, Query{ProjectID: src.ProjectID, Sources: []uuid.UUID{src.ID}, Text: query, K: DefaultSearchK})
+	hits, _, err := r.Search(ctx, Query{ProjectID: src.ProjectID, Sources: []uuid.UUID{src.ID}, Text: query, K: RecommendedTopK})
 	if err != nil {
 		return nil, s.errOrReport(ctx, "knowledge: test search", err)
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"testing"
 
@@ -138,17 +139,46 @@ func TestSearch_RefusesAnotherProjectThanTheContexts(t *testing.T) {
 }
 
 func TestKeep_DropsLowAndNaNScores(t *testing.T) {
-	hits := []knowledge.Hit{{Text: "low", Score: 0.1}, {Text: "nan", Score: math.NaN()}, {Text: "b", Score: 0.5}, {Text: "a", Score: 0.9}, {Text: "edge", Score: knowledge.MinSearchScore}}
-	got := pgvector.Keep(hits)
-	texts := make([]string, len(got))
-	for i, h := range got {
-		texts[i] = h.Text
+	hits := []knowledge.Hit{{Text: "low", Score: 0.1}, {Text: "nan", Score: math.NaN()}, {Text: "b", Score: 0.5}, {Text: "a", Score: 0.9}, {Text: "edge", Score: knowledge.RecommendedMinScore}}
+	texts := func(floor float64) []string {
+		got := pgvector.Keep(slices.Clone(hits), floor)
+		out := make([]string, len(got))
+		for i, h := range got {
+			out[i] = h.Text
+		}
+		return out
 	}
-	assert.Equal(t, []string{"a", "b", "edge"}, texts, "best first; NaN and low scores dropped")
+	assert.Equal(t, []string{"a", "b", "edge"}, texts(knowledge.RecommendedMinScore), "best first; NaN and low scores dropped")
+	assert.Equal(t, []string{"a"}, texts(0.6), "an agent's higher minimum drops more")
+	assert.Equal(t, []string{"a", "b", "edge", "low"}, texts(0), "a minimum of 0 keeps every scored passage, never NaN")
 }
 
 func TestVersionAtLeast(t *testing.T) {
 	for v, ok := range map[string]bool{"0.8.0": true, "0.8.7": true, "0.10.1": true, "1.0": true, "0.7.4": false, "0.5": false, "": false, "x.y": false} {
 		assert.Equal(t, ok, pgvector.VersionSupported(v), "%q", v)
 	}
+}
+
+type recordingEmbedder struct{ calls [][]string }
+
+func (r *recordingEmbedder) Probe(context.Context) (int, error) { return 768, nil }
+
+func (r *recordingEmbedder) Embed(_ context.Context, texts []string) (embed.Result, error) {
+	r.calls = append(r.calls, texts)
+	return embed.Result{Vectors: [][]float32{{1}}, Tokens: 9}, nil
+}
+
+func TestSearch_EmbedsTheTurnAndTheConversationInOneCall(t *testing.T) {
+	rec := &recordingEmbedder{}
+	r := pgvector.New(db.Pool{}, "", "", stubEmbedders{dims: 768, emb: rec})
+	ctx := tenant.Into(t.Context(), tenant.Context{OrgID: uuid.New()})
+	q := knowledge.Query{ProjectID: uuid.New(), Sources: []uuid.UUID{uuid.New()}, Text: "and the second one?", Context: "what is the card policy?\nand the second one?"}
+	_, usage, err := r.Search(ctx, q)
+	require.Error(t, err, "the stub's vectors are the wrong size, so the search stops before the database")
+	assert.Equal(t, [][]string{{q.Text, q.Context}}, rec.calls, "one embeddings call carries both inputs")
+	assert.Equal(t, int64(9), usage.EmbeddingTokens)
+
+	rec.calls = nil
+	_, _, _ = r.Search(ctx, knowledge.Query{ProjectID: q.ProjectID, Sources: q.Sources, Text: "refunds"})
+	assert.Equal(t, [][]string{{"refunds"}}, rec.calls, "no conversation, one input")
 }

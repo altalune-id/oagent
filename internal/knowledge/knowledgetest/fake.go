@@ -1,9 +1,11 @@
 package knowledgetest
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"errors"
+	"math"
 	"slices"
 	"strings"
 	"sync"
@@ -20,6 +22,7 @@ const currentModelKey = "current"
 
 type stored struct {
 	Passage
+	id       uuid.UUID
 	org      uuid.UUID
 	modelKey string
 	dims     int
@@ -71,7 +74,9 @@ func (f *Fake) Add(t *testing.T, ctx context.Context, p Passage) {
 	require.NoError(t, err)
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	sp := stored{Passage: p, org: tc.OrgID, modelKey: currentModelKey, dims: f.Embedder.Dims, vector: Vector(f.Embedder.Dims, p.Text)}
+	sp := stored{
+		Passage: p, id: uuid.New(), org: tc.OrgID, modelKey: currentModelKey, dims: f.Embedder.Dims, vector: Vector(f.Embedder.Dims, p.Text),
+	}
 	if p.Stale {
 		sp.modelKey = "stale"
 	}
@@ -93,26 +98,40 @@ func (f *Fake) Search(ctx context.Context, q knowledge.Query) ([]knowledge.Hit, 
 	if tc.ProjectID != uuid.Nil && tc.ProjectID != q.ProjectID {
 		return nil, knowledge.Usage{}, errors.New("knowledgetest: the query's project is not the context's project")
 	}
-	res, err := f.Embedder.Embed(ctx, []string{q.Text})
+	res, err := f.Embedder.Embed(ctx, q.Inputs())
 	if err != nil {
 		return nil, knowledge.Usage{}, err
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	var hits []knowledge.Hit
+	type ranked struct {
+		id  uuid.UUID
+		hit knowledge.Hit
+	}
+	var found []ranked
 	for _, p := range f.passages {
 		if p.org != tc.OrgID || p.ProjectID != q.ProjectID || !slices.Contains(q.Sources, p.SourceID) ||
 			p.modelKey != currentModelKey || p.dims != f.Embedder.Dims {
 			continue
 		}
-		if score := cosine(res.Vectors[0], p.vector); score >= knowledge.MinSearchScore {
-			hits = append(hits, knowledge.Hit{
+		score := math.Inf(-1)
+		for _, v := range res.Vectors {
+			score = max(score, cosine(v, p.vector))
+		}
+		if score >= knowledge.MinScoreOf(q) {
+			found = append(found, ranked{id: p.id, hit: knowledge.Hit{
 				Text: p.Text, Title: p.Title, Heading: p.Heading, Page: p.Page, URL: p.URL, Score: score, Source: p.SourceID,
-			})
+			}})
 		}
 	}
-	slices.SortStableFunc(hits, func(a, b knowledge.Hit) int { return cmp.Compare(b.Score, a.Score) })
-	return hits[:min(len(hits), knowledge.SearchK(q.K))], knowledge.Usage{EmbeddingTokens: res.Tokens, RetrieveCalls: 1}, nil
+	slices.SortFunc(found, func(a, b ranked) int {
+		return cmp.Or(cmp.Compare(b.hit.Score, a.hit.Score), bytes.Compare(a.id[:], b.id[:]))
+	})
+	hits := make([]knowledge.Hit, 0, len(found))
+	for _, r := range found[:min(len(found), knowledge.SearchK(q.K))] {
+		hits = append(hits, r.hit)
+	}
+	return hits, knowledge.Usage{EmbeddingTokens: res.Tokens, RetrieveCalls: 1}, nil
 }
 
 func cosine(a, b []float32) float64 {

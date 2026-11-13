@@ -155,7 +155,7 @@ func assertNoBytes(t *testing.T, m protoreflect.MessageDescriptor, seen map[prot
 type fakeRetriever struct{ hits []knowledge.Hit }
 
 func (f fakeRetriever) Search(_ context.Context, q knowledge.Query) ([]knowledge.Hit, knowledge.Usage, error) {
-	if len(q.Sources) != 1 || q.K != knowledge.DefaultSearchK {
+	if len(q.Sources) != 1 || q.K != knowledge.RecommendedTopK {
 		return nil, knowledge.Usage{}, apperror.New(apperror.CodeUnexpected, "bad query")
 	}
 	return f.hits, knowledge.Usage{RetrieveCalls: 1}, nil

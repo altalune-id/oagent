@@ -264,6 +264,7 @@ erDiagram
         bigint embedding_price_input_micros "pinned at run open; NULL = unpriced"
         int knowledge_retrieve_calls
         bigint knowledge_retrieve_ms
+        int knowledge_passages
     }
     files {
         uuid id PK

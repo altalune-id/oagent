@@ -111,6 +111,7 @@ func (s *KnowledgeService) ListKnowledgeSources(
 	out := &knowledgev1.ListKnowledgeSourcesResponse{
 		StorageConfigured: s.svc.StorageConfigured(),
 		MaxUploadBytes:    UploadPurpose.MaxBytes, AllowedContentTypes: slices.Clone(UploadPurpose.Types),
+		RetrievalDefaults: retrievalDefaults(),
 	}
 	for _, b := range s.svc.Backends() {
 		out.EnabledBackends = append(out.EnabledBackends, backendToProto(b))

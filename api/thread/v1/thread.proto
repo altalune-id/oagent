@@ -138,6 +138,8 @@ message Run {
   // knowledge_retrieve_calls and knowledge_retrieve_ms add up the run's knowledge searches.
   int32 knowledge_retrieve_calls = 13;
   int64 knowledge_retrieve_ms = 14;
+  // knowledge_passages counts the passages the run's legs sent to the model.
+  int32 knowledge_passages = 15;
 }
 
 message ListThreadsRequest {

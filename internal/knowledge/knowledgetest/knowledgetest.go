@@ -98,6 +98,12 @@ func Run(t *testing.T, newBackend func(t *testing.T) Backend) {
 	t.Run("NeverAnotherProject", func(t *testing.T) { neverAnotherProject(t, newBackend(t)) })
 	t.Run("NothingToSearch", func(t *testing.T) { nothingToSearch(t, newBackend(t)) })
 	t.Run("KIsClamped", func(t *testing.T) { kIsClamped(t, newBackend(t)) })
+	t.Run("ACustomMinScoreDropsAHitJustBelowIt", func(t *testing.T) { customMinScore(t, newBackend(t)) })
+	t.Run("AFocusedQuestionKeepsItsScoreInAConversation", func(t *testing.T) { focusedInConversation(t, newBackend(t)) })
+	t.Run("AShortFollowUpFindsThroughTheConversation", func(t *testing.T) { followUp(t, newBackend(t)) })
+	t.Run("TiedScoresKeepOneOrder", func(t *testing.T) { tiedOrder(t, newBackend(t)) })
+	t.Run("TwoInputsReturnAtMostK", func(t *testing.T) { mergedK(t, newBackend(t)) })
+	t.Run("AChunkKeepsItsBestScore", func(t *testing.T) { bestScore(t, newBackend(t)) })
 	t.Run("OnlyTheCurrentModelAndSize", func(t *testing.T) { onlyCurrentModel(t, newBackend(t)) })
 	t.Run("NoTenantFindsNothing", func(t *testing.T) { noTenant(t, newBackend(t)) })
 	t.Run("AnotherProjectOnTheContextRefused", func(t *testing.T) { contextProject(t, newBackend(t)) })
@@ -160,9 +166,116 @@ func closestFirst(t *testing.T, b Backend) {
 	want := knowledge.Hit{Text: policy.Text, Title: policy.Title, Heading: policy.Heading, Page: 2, Score: hits[1].Score, Source: src}
 	assert.Equal(t, want, hits[1])
 	assert.Greater(t, hits[0].Score, hits[1].Score)
-	assert.GreaterOrEqual(t, hits[1].Score, knowledge.MinSearchScore)
+	assert.GreaterOrEqual(t, hits[1].Score, knowledge.RecommendedMinScore)
 	assert.Equal(t, 1, usage.RetrieveCalls)
 	assert.Equal(t, int64(6), usage.EmbeddingTokens, "the query's tokens")
+}
+
+func focusedInConversation(t *testing.T, b Backend) {
+	ctx, prj := b.Project(t)
+	src := b.Source(t, ctx, prj)
+	b.Add(t, ctx, Passage{ProjectID: prj, SourceID: src, Title: "Refunds", Text: "Refunds are paid within seven days."})
+	floor := 0.5
+	ask := "How many days until refunds are paid?"
+	joined := "Tell me about the office cat and the parking rules.\n" + ask
+	alone, _ := search(ctx, t, b, knowledge.Query{ProjectID: prj, Sources: []uuid.UUID{src}, Text: joined, MinScore: &floor})
+	require.Empty(t, alone, "the joined text alone scores under the minimum")
+
+	hits, usage := search(ctx, t, b, knowledge.Query{ProjectID: prj, Sources: []uuid.UUID{src}, Text: ask, Context: joined, MinScore: &floor})
+	require.Len(t, hits, 1, "this turn's text alone keeps its score")
+	assert.Equal(t, "Refunds", hits[0].Title)
+	assert.Equal(t, 1, usage.RetrieveCalls, "both inputs make one search")
+	assert.Equal(t, int64(len(words(ask))+len(words(joined))), usage.EmbeddingTokens, "both inputs are embedded and paid for")
+
+	low := 0.2
+	both, _ := search(ctx, t, b, knowledge.Query{ProjectID: prj, Sources: []uuid.UUID{src}, Text: ask, Context: joined, MinScore: &low})
+	assert.Len(t, both, 1, "a chunk both inputs find comes back once")
+}
+
+func followUp(t *testing.T, b Backend) {
+	ctx, prj := b.Project(t)
+	src := b.Source(t, ctx, prj)
+	b.Add(t, ctx, Passage{ProjectID: prj, SourceID: src, Title: "Card refunds", Text: "The card refund policy allows thirty days."})
+	ask := "And the second one?"
+	none, _ := search(ctx, t, b, knowledge.Query{ProjectID: prj, Sources: []uuid.UUID{src}, Text: ask})
+	require.Empty(t, none, "the follow-up alone matches nothing")
+
+	conversation := "What is the card refund policy?\n" + ask
+	hits, _ := search(ctx, t, b, knowledge.Query{ProjectID: prj, Sources: []uuid.UUID{src}, Text: ask, Context: conversation})
+	require.Len(t, hits, 1, "the conversation carries the follow-up")
+	assert.Equal(t, "Card refunds", hits[0].Title)
+}
+
+func titles(hits []knowledge.Hit) []string {
+	out := make([]string, len(hits))
+	for i, h := range hits {
+		out[i] = h.Title
+	}
+	return out
+}
+
+func tiedOrder(t *testing.T, b Backend) {
+	ctx, prj := b.Project(t)
+	src := b.Source(t, ctx, prj)
+	for _, title := range []string{"A", "B", "C", "D"} {
+		b.Add(t, ctx, Passage{ProjectID: prj, SourceID: src, Title: title, Text: "Refunds are paid within seven days."})
+	}
+	q := knowledge.Query{ProjectID: prj, Sources: []uuid.UUID{src}, Text: "refunds paid", Context: "cards?\nrefunds paid"}
+	first, _ := search(ctx, t, b, q)
+	require.Len(t, first, 4)
+	for range 20 {
+		again, _ := search(ctx, t, b, q)
+		require.Equal(t, titles(first), titles(again), "tied scores come back in one order every time")
+	}
+}
+
+func mergedK(t *testing.T, b Backend) {
+	ctx, prj := b.Project(t)
+	src := b.Source(t, ctx, prj)
+	for _, p := range []Passage{
+		{Title: "refund 1", Text: "refund policy days"}, {Title: "refund 2", Text: "refund policy days paid"},
+		{Title: "shipping 1", Text: "shipping parcels abroad"}, {Title: "shipping 2", Text: "shipping parcels abroad weekly"},
+	} {
+		p.ProjectID, p.SourceID = prj, src
+		b.Add(t, ctx, p)
+	}
+	low := 0.3
+	hits, _ := search(ctx, t, b, knowledge.Query{
+		ProjectID: prj, Sources: []uuid.UUID{src}, Text: "refund policy days", Context: "shipping parcels abroad", K: 2, MinScore: &low,
+	})
+	require.Len(t, hits, 2, "each input finds two chunks, and the merged result still holds K")
+	assert.GreaterOrEqual(t, hits[0].Score, hits[1].Score, "best first")
+}
+
+func bestScore(t *testing.T, b Backend) {
+	ctx, prj := b.Project(t)
+	src := b.Source(t, ctx, prj)
+	b.Add(t, ctx, Passage{ProjectID: prj, SourceID: src, Title: "Card refunds", Text: "card refund policy thirty days"})
+	q := knowledge.Query{ProjectID: prj, Sources: []uuid.UUID{src}, Text: "and the policy?", Context: "card refund policy thirty days"}
+	conversationOnly, _ := search(ctx, t, b, knowledge.Query{ProjectID: prj, Sources: q.Sources, Text: q.Context})
+	require.Len(t, conversationOnly, 1)
+	hits, _ := search(ctx, t, b, q)
+	require.Len(t, hits, 1)
+	assert.InDelta(t, conversationOnly[0].Score, hits[0].Score, 1e-6, "the merged score is the higher of the two inputs")
+}
+
+func customMinScore(t *testing.T, b Backend) {
+	ctx, prj := b.Project(t)
+	src := b.Source(t, ctx, prj)
+	b.Add(t, ctx, Passage{ProjectID: prj, SourceID: src, Title: "Refund FAQ", Text: "Refunds take days."})
+	b.Add(t, ctx, Passage{ProjectID: prj, SourceID: src, Title: "Refund policy", Text: "Refunds take seven days for card payments."})
+	q := knowledge.Query{ProjectID: prj, Sources: []uuid.UUID{src}, Text: "how many days do refunds take", K: 5}
+	all, _ := search(ctx, t, b, q)
+	require.Len(t, all, 2)
+	second := all[1].Score
+	above, below := second+1e-4, second-1e-4
+	q.MinScore = &above
+	hits, _ := search(ctx, t, b, q)
+	require.Len(t, hits, 1, "a hit just below the agent's minimum is dropped")
+	assert.Equal(t, all[0].Text, hits[0].Text)
+	q.MinScore = &below
+	hits, _ = search(ctx, t, b, q)
+	assert.Len(t, hits, 2, "a hit just above it is kept")
 }
 
 func onlyListedSources(t *testing.T, b Backend) {
@@ -213,11 +326,11 @@ func nothingToSearch(t *testing.T, b Backend) {
 func kIsClamped(t *testing.T, b Backend) {
 	ctx, prj := b.Project(t)
 	src := b.Source(t, ctx, prj)
-	for i := range knowledge.MaxSearchK + 3 {
+	for i := range knowledge.MaxTopK + 3 {
 		b.Add(t, ctx, Passage{ProjectID: prj, SourceID: src, Title: "T", Text: strings.Repeat("refund ", i+1) + "policy"})
 	}
 	q := knowledge.Query{ProjectID: prj, Sources: []uuid.UUID{src}, Text: "refund policy"}
-	for k, want := range map[int]int{3: 3, 0: knowledge.DefaultSearchK, -1: knowledge.DefaultSearchK, 100: knowledge.MaxSearchK} {
+	for k, want := range map[int]int{3: 3, 0: knowledge.RecommendedTopK, -1: knowledge.RecommendedTopK, 100: knowledge.MaxTopK} {
 		q.K = k
 		hits, _ := search(ctx, t, b, q)
 		assert.Len(t, hits, want, "k=%d", k)

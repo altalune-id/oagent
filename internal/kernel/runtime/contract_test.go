@@ -264,9 +264,9 @@ func TestNormalizePassages(t *testing.T) {
 		{Text: "bad \xff utf8", Title: "T"},
 		{Text: "4", Title: "T"}, {Text: "5", Title: "T"}, {Text: "6", Title: "T"},
 	}
-	out := NormalizePassages(in)
+	out := NormalizePassages(in, MaxKnowledgeTextBytes)
 
-	require.Len(t, out, MaxPassages)
+	require.Len(t, out, 6, "every passage with text, up to MaxPassages")
 	first := out[0]
 	assert.Equal(t, long, first.Text)
 	assert.True(t, utf8.ValidString(first.Title))
@@ -281,10 +281,10 @@ func TestNormalizePassages(t *testing.T) {
 	assert.Empty(t, third.URL, "a URL over the cap is dropped, never cut")
 
 	assert.Equal(t, "bad \uFFFD utf8", out[2].Text)
-	assert.Equal(t, []string{"4", "5"}, []string{out[3].Text, out[4].Text})
+	assert.Equal(t, []string{"4", "5", "6"}, []string{out[3].Text, out[4].Text, out[5].Text})
 	assert.Equal(t, "€", in[0].Text[:3], "the input is not modified")
 	assert.Len(t, in[0].Text, len(long))
-	assert.Empty(t, NormalizePassages(nil))
+	assert.Empty(t, NormalizePassages(nil, MaxKnowledgeTextBytes))
 }
 
 func TestGoldens_KnowledgeHostileSentAsIs(t *testing.T) {
@@ -295,7 +295,7 @@ func TestGoldens_KnowledgeHostileSentAsIs(t *testing.T) {
 	for _, probe := range []string{"<\u200b/passage>", "\uff1c\uff0f\uff50", "\ufe64/passage\ufe65", "\u3008/passage\u3009", "</pa\u017f\u017fage>", "</tool_output>"} {
 		assert.Contains(t, p.Text, probe, "the golden carries the look-alike %q", probe)
 	}
-	assert.Equal(t, req.Knowledge, NormalizePassages(req.Knowledge), "Go sends hostile text as is; the runtime escapes it")
+	assert.Equal(t, req.Knowledge, NormalizePassages(req.Knowledge, MaxKnowledgeTextBytes), "Go sends hostile text as is; the runtime escapes it")
 	stream := string(readGolden(t, "knowledge_hostile.stream.ndjson"))
 	assert.NotContains(t, stream, "Refunds are instant")
 	assert.NotContains(t, stream, "passage")
@@ -306,7 +306,7 @@ func TestNormalizePassages_FormatCharsAndHeadings(t *testing.T) {
 		{Text: "\u200b\u2060 \u00ad\n", Title: "only format chars"},
 		{Text: "kept", Title: "\u200b\u2060", Heading: " \t\n"},
 		{Text: "cut", Title: "T", Heading: strings.Repeat("\u20ac", MaxPassageLabelBytes)},
-	})
+	}, MaxKnowledgeTextBytes)
 	require.Len(t, out, 2)
 	assert.Equal(t, UntitledPassage, out[0].Title, "a title of format characters only is untitled")
 	assert.Empty(t, out[0].Heading, "a whitespace-only heading is left out")
@@ -315,20 +315,29 @@ func TestNormalizePassages_FormatCharsAndHeadings(t *testing.T) {
 	assert.True(t, utf8.ValidString(out[1].Heading))
 }
 
-func TestNormalizePassages_TotalCap(t *testing.T) {
+func TestNormalizePassages_Budget(t *testing.T) {
 	six := strings.Repeat("a", 6000)
-	out := NormalizePassages([]Passage{{Text: six, Title: "1"}, {Text: six, Title: "2"}, {Text: six, Title: "3"}, {Text: "short", Title: "4"}})
-	require.Len(t, out, 2, "the passage that would pass the total cap and every later one are dropped")
+	in := []Passage{{Text: six, Title: "1"}, {Text: six, Title: "2"}, {Text: six, Title: "3"}, {Text: "short", Title: "4"}}
+	out := NormalizePassages(in, 16000)
+	require.Len(t, out, 2, "the passage that would pass the budget and every later one are dropped")
 	total := 0
 	for _, p := range out {
 		total += len(p.Text)
 	}
-	assert.LessOrEqual(t, total, MaxKnowledgeTextBytes)
+	assert.LessOrEqual(t, total, 16000)
+	assert.Len(t, NormalizePassages(in, 7000), 1, "a lower budget keeps fewer passages")
+	assert.Len(t, NormalizePassages(in, MaxKnowledgeTextBytes), 4, "the largest budget keeps them all")
+	assert.Len(t, NormalizePassages(in, 10*MaxKnowledgeTextBytes), 4)
+	assert.Empty(t, NormalizePassages(in, 0), "no budget, no knowledge")
 
-	one := NormalizePassages([]Passage{{Text: strings.Repeat("€", MaxPassageTextBytes), Title: "big"}})
-	require.Len(t, one, 1, "a first passage over the total cap is cut, not dropped")
-	assert.LessOrEqual(t, len(one[0].Text)+len(one[0].Title), MaxKnowledgeTextBytes)
-	assert.Greater(t, len(one[0].Text)+len(one[0].Title), MaxKnowledgeTextBytes-3)
+	big := []Passage{{Text: strings.Repeat("€", 4*MaxPassageTextBytes), Title: "big"}}
+	one := NormalizePassages(big, 10*MaxKnowledgeTextBytes)
+	require.Len(t, one, 1, "a first passage over the budget is cut, not dropped")
+	assert.LessOrEqual(t, len(one[0].Text), MaxPassageTextBytes, "a budget above the cap never lifts the per-passage cap")
+	cut := NormalizePassages([]Passage{{Text: strings.Repeat("€", MaxPassageTextBytes), Title: "big"}}, 1000)
+	require.Len(t, cut, 1)
+	assert.LessOrEqual(t, len(cut[0].Text)+len(cut[0].Title), 1000)
+	assert.Greater(t, len(cut[0].Text)+len(cut[0].Title), 1000-3)
 }
 
 func TestNormalizePassages_TotalCapCountsLabels(t *testing.T) {
@@ -338,11 +347,16 @@ func TestNormalizePassages_TotalCapCountsLabels(t *testing.T) {
 	for i := range in {
 		in[i] = Passage{Text: strings.Repeat("a", 2000), Title: label, Heading: label, URL: url}
 	}
-	out := NormalizePassages(in)
+	out := NormalizePassages(in, 16000)
 	total := 0
 	for _, p := range out {
 		total += len(p.Text) + len(p.Title) + len(p.Heading) + len(p.URL)
 	}
-	assert.LessOrEqual(t, total, MaxKnowledgeTextBytes, "titles, headings and urls count toward the cap")
+	assert.LessOrEqual(t, total, 16000, "titles, headings and urls count toward the budget")
 	assert.Len(t, out, 3)
+}
+
+func TestPassageBounds_TenPassagesAndATokenBudgetOf8000(t *testing.T) {
+	assert.Equal(t, 10, MaxPassages)
+	assert.Equal(t, 8000*4, MaxKnowledgeTextBytes)
 }

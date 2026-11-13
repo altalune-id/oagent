@@ -723,6 +723,11 @@ components:
             - string
           title: knowledge_retrieve_ms
           format: int64
+        knowledgePassages:
+          type: integer
+          title: knowledge_passages
+          format: int32
+          description: knowledge_passages counts the passages the run's legs sent to the model.
       title: Run
       additionalProperties: false
       description: Run is one agent turn on a thread; cost_micros is unset when the run is unpriced, latency_ms and ended_at while it runs.

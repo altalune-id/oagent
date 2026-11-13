@@ -1079,7 +1079,7 @@ func TestStore_KnowledgeUsageRoundTrips(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, r.Move(run.StatusCompleted, time.Now()))
-	r.KnowledgeRetrieveCalls, r.KnowledgeRetrieveMs = 2, 340
+	r.KnowledgeRetrieveCalls, r.KnowledgeRetrieveMs, r.KnowledgePassages = 2, 340, 7
 	require.NoError(t, f.store.Settle(ctx, token, r, run.Usage{InputTokens: 100, EmbeddingTokens: 1_000_000}, nil))
 
 	got, err := f.store.RunByID(ctx, r.ID)
@@ -1089,6 +1089,7 @@ func TestStore_KnowledgeUsageRoundTrips(t *testing.T) {
 	assert.Equal(t, int64(1_000_000), got.Usage.EmbeddingTokens)
 	assert.Equal(t, int32(2), got.KnowledgeRetrieveCalls)
 	assert.Equal(t, int64(340), got.KnowledgeRetrieveMs)
+	assert.Equal(t, int32(7), got.KnowledgePassages)
 	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.runs WHERE id = $1 AND cost_micros = 20100`, r.ID),
 		"the stored cost prices embedding tokens at the embedding price")
 }

@@ -33,6 +33,14 @@ type AgentVersion struct {
 	MaxCostCents int32
 	ProviderID   uuid.UUID
 	MCPServers   []MCPGrant
+	Knowledge    KnowledgeTuning
+}
+
+// KnowledgeTuning is how a version searches: K and MinScore go to the retriever (0 or nil: its default); MaxBytes is the budget.
+type KnowledgeTuning struct {
+	K        int
+	MinScore *float64
+	MaxBytes int
 }
 
 // MCPGrant is the tools of one MCP server a version may call.
@@ -84,6 +92,9 @@ type KnowledgeQuery struct {
 	ProjectID uuid.UUID
 	Sources   []uuid.UUID
 	Text      string
+	Context   string
+	K         int
+	MinScore  *float64
 }
 
 // KnowledgeHit is one passage a search returned, best first. SECURITY: project content; never log it.

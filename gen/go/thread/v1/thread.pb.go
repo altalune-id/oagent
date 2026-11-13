@@ -472,8 +472,10 @@ type Run struct {
 	// knowledge_retrieve_calls and knowledge_retrieve_ms add up the run's knowledge searches.
 	KnowledgeRetrieveCalls int32 `protobuf:"varint,13,opt,name=knowledge_retrieve_calls,json=knowledgeRetrieveCalls,proto3" json:"knowledge_retrieve_calls,omitempty"`
 	KnowledgeRetrieveMs    int64 `protobuf:"varint,14,opt,name=knowledge_retrieve_ms,json=knowledgeRetrieveMs,proto3" json:"knowledge_retrieve_ms,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// knowledge_passages counts the passages the run's legs sent to the model.
+	KnowledgePassages int32 `protobuf:"varint,15,opt,name=knowledge_passages,json=knowledgePassages,proto3" json:"knowledge_passages,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Run) Reset() {
@@ -600,6 +602,13 @@ func (x *Run) GetKnowledgeRetrieveCalls() int32 {
 func (x *Run) GetKnowledgeRetrieveMs() int64 {
 	if x != nil {
 		return x.KnowledgeRetrieveMs
+	}
+	return 0
+}
+
+func (x *Run) GetKnowledgePassages() int32 {
+	if x != nil {
+		return x.KnowledgePassages
 	}
 	return 0
 }
@@ -1283,7 +1292,7 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\x11cache_read_tokens\x18\x03 \x01(\x03R\x0fcacheReadTokens\x12,\n" +
 	"\x12cache_write_tokens\x18\x04 \x01(\x03R\x10cacheWriteTokens\x12\x1c\n" +
 	"\testimated\x18\x05 \x01(\bR\testimated\x12)\n" +
-	"\x10embedding_tokens\x18\x06 \x01(\x03R\x0fembeddingTokens\"\xdd\x04\n" +
+	"\x10embedding_tokens\x18\x06 \x01(\x03R\x0fembeddingTokens\"\x8c\x05\n" +
 	"\x03Run\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12,\n" +
@@ -1303,7 +1312,8 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\bended_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\x12,\n" +
 	"\x12agent_version_kind\x18\f \x01(\tR\x10agentVersionKind\x128\n" +
 	"\x18knowledge_retrieve_calls\x18\r \x01(\x05R\x16knowledgeRetrieveCalls\x122\n" +
-	"\x15knowledge_retrieve_ms\x18\x0e \x01(\x03R\x13knowledgeRetrieveMsB\x0e\n" +
+	"\x15knowledge_retrieve_ms\x18\x0e \x01(\x03R\x13knowledgeRetrieveMs\x12-\n" +
+	"\x12knowledge_passages\x18\x0f \x01(\x05R\x11knowledgePassagesB\x0e\n" +
 	"\f_cost_microsB\r\n" +
 	"\v_latency_ms\"\xec\x01\n" +
 	"\x12ListThreadsRequest\x12+\n" +

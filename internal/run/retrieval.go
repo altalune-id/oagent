@@ -61,7 +61,11 @@ func (s *Service) retrieve(ctx context.Context, t *turn) {
 	for i, src := range sources {
 		ids[i] = src.ID
 	}
-	q := KnowledgeQuery{ProjectID: t.run.ProjectID, Sources: ids, Text: s.queryText(ctx, t, text)}
+	tuning := t.version.Knowledge
+	q := KnowledgeQuery{
+		ProjectID: t.run.ProjectID, Sources: ids, Text: lastRunes(text, maxKnowledgeQueryRunes), Context: s.conversation(ctx, t, text),
+		K: tuning.K, MinScore: tuning.MinScore,
+	}
 	searchCtx, cancel := context.WithTimeout(ctx, knowledgeBudget)
 	defer cancel()
 	start := time.Now()
@@ -77,7 +81,7 @@ func (s *Service) retrieve(ctx context.Context, t *turn) {
 		s.retrieveFailed(ctx, t, sources, err)
 		return
 	}
-	t.knowledge = passages(hits)
+	t.knowledge = passages(hits, tuning.MaxBytes)
 }
 
 func (s *Service) retrieveFailed(ctx context.Context, t *turn, sources []KnowledgeSource, err error) {
@@ -94,23 +98,27 @@ func (s *Service) retrieveFailed(ctx context.Context, t *turn, sources []Knowled
 	s.log.WarnContext(ctx, "run: knowledge search failed; the turn runs without it", "run", t.run.PublicID, "sources", ids, "err", err.Error())
 }
 
-func (s *Service) queryText(ctx context.Context, t *turn, text string) string {
+func (s *Service) conversation(ctx context.Context, t *turn, text string) string {
 	msgs, err := s.store.History(ctx, t.run.ThreadID, t.run.ID)
 	if err != nil {
 		s.log.WarnContext(ctx, "run: knowledge query without the previous message", "run", t.run.PublicID, "err", err.Error())
-		msgs = nil
+		return ""
 	}
 	for _, m := range slices.Backward(msgs) {
 		if m.Role != RoleUser {
 			continue
 		}
 		if prev := userText(m); prev != "" {
-			text = prev + "\n" + text
+			return lastRunes(prev+"\n"+text, maxKnowledgeQueryRunes)
 		}
 		break
 	}
-	if n := utf8.RuneCountInString(text); n > maxKnowledgeQueryRunes {
-		text = string([]rune(text)[n-maxKnowledgeQueryRunes:])
+	return ""
+}
+
+func lastRunes(text string, n int) string {
+	if c := utf8.RuneCountInString(text); c > n {
+		return string([]rune(text)[c-n:])
 	}
 	return text
 }
@@ -146,7 +154,7 @@ func userText(m Message) string {
 	return strings.Join(texts, "\n")
 }
 
-func passages(hits []KnowledgeHit) []runtime.Passage {
+func passages(hits []KnowledgeHit, budgetBytes int) []runtime.Passage {
 	out := make([]runtime.Passage, 0, len(hits))
 	for _, h := range hits {
 		p := runtime.Passage{Text: h.Text, Title: h.Title, Heading: h.Heading, URL: h.URL}
@@ -155,5 +163,5 @@ func passages(hits []KnowledgeHit) []runtime.Passage {
 		}
 		out = append(out, p)
 	}
-	return runtime.NormalizePassages(out)
+	return runtime.NormalizePassages(out, budgetBytes)
 }

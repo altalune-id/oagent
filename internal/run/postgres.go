@@ -87,6 +87,7 @@ type runRow struct {
 	PriceEmbeddingMicros  *int64     `alias:"runs.embedding_price_input_micros"`
 	RetrieveCalls         int32      `alias:"runs.knowledge_retrieve_calls"`
 	RetrieveMs            int64      `alias:"runs.knowledge_retrieve_ms"`
+	Passages              int32      `alias:"runs.knowledge_passages"`
 	ErrorCode             *string    `alias:"runs.error_code"`
 	StartedAt             time.Time  `alias:"runs.started_at"`
 	EndedAt               *time.Time `alias:"runs.ended_at"`
@@ -101,7 +102,7 @@ func (r *runRow) toRun() *Run {
 			InputTokens: r.InputTokens, OutputTokens: r.OutputTokens, CacheReadTokens: r.CacheReadTokens,
 			CacheWriteTokens: r.CacheWriteTokens, EmbeddingTokens: r.EmbeddingTokens, Estimated: r.UsageEstimated,
 		},
-		KnowledgeRetrieveCalls: r.RetrieveCalls, KnowledgeRetrieveMs: r.RetrieveMs,
+		KnowledgeRetrieveCalls: r.RetrieveCalls, KnowledgeRetrieveMs: r.RetrieveMs, KnowledgePassages: r.Passages,
 		StartedAt: r.StartedAt.UTC(), UpdatedAt: r.UpdatedAt.UTC(),
 	}
 	if r.IdempotencyKey != nil {

@@ -2,6 +2,7 @@
 package pgvector
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"database/sql"
@@ -56,11 +57,11 @@ func statement(prefix string, dims int) string {
 	}
 	cast := typ + "(" + strconv.Itoa(dims) + ")"
 	distance := "c.embedding::" + cast + " OPERATOR(public.<=>) $1::" + cast
-	nearest := "SELECT c.org_id, c.document_id, c.text, c.heading_path, c.page, c.url, c.source_id, 1 - (" + distance + ") AS score" +
+	nearest := "SELECT c.id, c.org_id, c.document_id, c.text, c.heading_path, c.page, c.url, c.source_id, 1 - (" + distance + ") AS score" +
 		" FROM " + prefix + "knowledge_chunks c" +
 		" WHERE c.dims = " + strconv.Itoa(dims) + " AND c.project_id = $2 AND c.source_id = ANY($3::uuid[]) AND c.model_key = $4" +
 		" ORDER BY " + distance + " LIMIT $5"
-	return "SELECT n.text, d.title, n.heading_path, COALESCE(n.page, 0), COALESCE(n.url, d.url, ''), n.source_id, n.score" +
+	return "SELECT n.id, n.text, d.title, n.heading_path, COALESCE(n.page, 0), COALESCE(n.url, d.url, ''), n.source_id, n.score" +
 		" FROM (" + nearest + ") n JOIN " + prefix + "knowledge_documents d ON d.org_id = n.org_id AND d.id = n.document_id"
 }
 
@@ -87,30 +88,49 @@ func (r *Retriever) Search(ctx context.Context, q knowledge.Query) ([]knowledge.
 	if err != nil {
 		return nil, knowledge.Usage{}, err
 	}
-	res, err := e.Embed(ctx, []string{q.Text})
+	inputs := q.Inputs()
+	res, err := e.Embed(ctx, inputs)
 	if err != nil {
 		return nil, knowledge.Usage{EmbeddingTokens: res.Tokens}, knowledge.EmbedError(err)
 	}
 	usage := knowledge.Usage{EmbeddingTokens: res.Tokens}
-	if len(res.Vectors) != 1 || len(res.Vectors[0]) != st.Dims {
-		cause := errors.New("the query vector is not the project's size")
-		return nil, usage, &knowledge.EmbeddingFailedError{Reason: knowledge.EmbeddingWrongDims, Cause: cause}
+	if len(res.Vectors) != len(inputs) {
+		return nil, usage, &knowledge.EmbeddingFailedError{Reason: knowledge.EmbeddingWrongDims, Cause: errors.New("one query vector per input")}
 	}
-	if !slices.ContainsFunc(res.Vectors[0], func(x float32) bool { return x != 0 }) {
-		return nil, usage, &knowledge.EmbeddingFailedError{Reason: knowledge.EmbeddingRejected, Cause: errors.New("the query vector is all zero")}
+	vectors := make([]string, len(res.Vectors))
+	for i, v := range res.Vectors {
+		if len(v) != st.Dims {
+			cause := errors.New("a query vector is not the project's size")
+			return nil, usage, &knowledge.EmbeddingFailedError{Reason: knowledge.EmbeddingWrongDims, Cause: cause}
+		}
+		if !slices.ContainsFunc(v, func(x float32) bool { return x != 0 }) {
+			return nil, usage, &knowledge.EmbeddingFailedError{Reason: knowledge.EmbeddingRejected, Cause: errors.New("a query vector is all zero")}
+		}
+		vectors[i] = knowledge.VectorText(v)
 	}
 	usage.RetrieveCalls = 1
-	hits, err := r.query(ctx, stmt, knowledge.VectorText(res.Vectors[0]), q, st.ModelKey())
+	hits, err := r.query(ctx, stmt, vectors, q, st.ModelKey())
 	if err != nil {
 		return nil, usage, err
 	}
-	return keep(hits), usage, nil
+	return keep(hits, knowledge.MinScoreOf(q), knowledge.SearchK(q.K)), usage, nil
 }
 
-func keep(hits []knowledge.Hit) []knowledge.Hit {
-	hits = slices.DeleteFunc(hits, func(h knowledge.Hit) bool { return !(h.Score >= knowledge.MinSearchScore) })
-	slices.SortStableFunc(hits, func(a, b knowledge.Hit) int { return cmp.Compare(b.Score, a.Score) })
-	return hits
+type ranked struct {
+	id  uuid.UUID
+	hit knowledge.Hit
+}
+
+func keep(hits []ranked, minScore float64, k int) []knowledge.Hit {
+	hits = slices.DeleteFunc(hits, func(r ranked) bool { return !(r.hit.Score >= minScore) })
+	slices.SortFunc(hits, func(a, b ranked) int {
+		return cmp.Or(cmp.Compare(b.hit.Score, a.hit.Score), bytes.Compare(a.id[:], b.id[:]))
+	})
+	out := make([]knowledge.Hit, 0, min(len(hits), k))
+	for _, r := range hits[:min(len(hits), k)] {
+		out = append(out, r.hit)
+	}
+	return out
 }
 
 // NOTE: an iterative scan stops after max_scan_tuples index tuples, so a project with fewer matches can still come back short.
@@ -118,31 +138,50 @@ func keep(hits []knowledge.Hit) []knowledge.Hit {
 //nolint:gochecknoglobals // a fixed list.
 var tune = []db.Setting{{Name: "hnsw.iterative_scan", Value: "relaxed_order"}, {Name: "hnsw.max_scan_tuples", Value: "100000"}}
 
-func (r *Retriever) query(ctx context.Context, stmt, vector string, q knowledge.Query, modelKey string) ([]knowledge.Hit, error) {
+func (r *Retriever) query(ctx context.Context, stmt string, vectors []string, q knowledge.Query, modelKey string) ([]ranked, error) {
 	sources := make([]string, len(q.Sources))
 	for i, s := range q.Sources {
 		sources[i] = s.String()
 	}
-	var hits []knowledge.Hit
+	list, k := "{"+strings.Join(sources, ",")+"}", knowledge.SearchK(q.K)
+	best := map[uuid.UUID]knowledge.Hit{}
 	err := db.ReadTuned(ctx, r.pool, tune, func(tx qrm.DB) error {
-		rows, err := tx.QueryContext(ctx, stmt, vector, q.ProjectID, "{"+strings.Join(sources, ",")+"}", modelKey, knowledge.SearchK(q.K))
-		if err != nil {
-			return err
-		}
-		defer func() { _ = rows.Close() }()
-		for rows.Next() {
-			var h knowledge.Hit
-			if err := rows.Scan(&h.Text, &h.Title, &h.Heading, &h.Page, &h.URL, &h.Source, &h.Score); err != nil {
+		for _, vector := range vectors {
+			if err := scanNearest(ctx, tx, stmt, best, vector, q.ProjectID, list, modelKey, k); err != nil {
 				return err
 			}
-			hits = append(hits, h)
 		}
-		return rows.Err()
+		return nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("pgvector: search: %w", err)
 	}
+	hits := make([]ranked, 0, len(best))
+	for id, h := range best {
+		hits = append(hits, ranked{id: id, hit: h})
+	}
 	return hits, nil
+}
+
+func scanNearest(ctx context.Context, tx qrm.DB, stmt string, best map[uuid.UUID]knowledge.Hit, args ...any) error {
+	rows, err := tx.QueryContext(ctx, stmt, args...)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var (
+			id uuid.UUID
+			h  knowledge.Hit
+		)
+		if err := rows.Scan(&id, &h.Text, &h.Title, &h.Heading, &h.Page, &h.URL, &h.Source, &h.Score); err != nil {
+			return err
+		}
+		if prev, ok := best[id]; !ok || h.Score > prev.Score {
+			best[id] = h
+		}
+	}
+	return rows.Err()
 }
 
 // CheckVersion fails when the database's pgvector extension is missing or older than 0.8, which iterative index scans need.

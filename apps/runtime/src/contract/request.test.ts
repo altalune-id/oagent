@@ -153,7 +153,7 @@ describe('validateRequest', () => {
     expect(validateRequest('hello')).toEqual({ ok: false, fields: [''] });
   });
 
-  it('takes knowledge on v3 as an optional field of at most 5 strict passages', () => {
+  it('takes knowledge on v3 as an optional field of at most 10 strict passages', () => {
     const p = { text: 'Refunds take 7 days.', title: 'Refund policy', heading: 'Timing', page: 2, url: 'https://help.example.com/r' };
     const withKnowledge = (knowledge: unknown) => ({ ...golden('plain_reply.request.json'), knowledge });
     expect(CONTRACT_VERSION).toBe(3);
@@ -161,6 +161,8 @@ describe('validateRequest', () => {
     expect(validateRequest(withKnowledge([p])).ok).toBe(true);
     expect(validateRequest(withKnowledge([])).ok).toBe(true);
     expect(validateRequest(withKnowledge([{ text: 'x', title: 't' }])).ok).toBe(true);
+    expect(MAX_PASSAGES).toBe(10);
+    expect(validateRequest(withKnowledge(Array.from({ length: MAX_PASSAGES }).fill(p))).ok).toBe(true);
     expect(validateRequest(withKnowledge(Array.from({ length: MAX_PASSAGES + 1 }).fill(p)))).toEqual({ ok: false, fields: ['knowledge'] });
     expect(validateRequest(withKnowledge([{ ...p, score: 0.9 }]))).toEqual({ ok: false, fields: ['knowledge.0.score'] });
     expect(validateRequest(withKnowledge([{ ...p, text: 'x'.repeat(MAX_PASSAGE_CHARS + 1) }]))).toEqual({ ok: false, fields: ['knowledge.0.text'] });
