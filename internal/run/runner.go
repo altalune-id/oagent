@@ -203,6 +203,13 @@ func (r *Runner) Offer(k Kick) bool {
 	}
 }
 
+// Running reports whether Run has started and not yet stopped, so RunHeld is accepted.
+func (r *Runner) Running() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.turns != nil
+}
+
 // Run takes kicks and held leases until ctx ends, drains in-flight turns, then interrupts the rest; it returns once every turn has.
 func (r *Runner) Run(ctx context.Context) error {
 	turns, stop := context.WithCancelCause(context.WithoutCancel(ctx))
@@ -251,16 +258,16 @@ loop:
 }
 
 func (r *Runner) held(ctx context.Context, k Kick, token string, exec ObservedExecutor, sink *Sink) {
+	// NOTE: the stream ends only after loop released the lease, so a client that saw it end can claim the thread at once.
+	defer sink.Close()
 	first := true
 	r.loop(tenant.Into(ctx, tenant.Context{OrgID: k.OrgID}), k, token, func(ctx context.Context) (*Run, error) {
 		if !first {
 			return r.exec.Execute(ctx, k.ThreadID, token)
 		}
 		first = false
-		defer sink.Close()
 		return exec.ExecuteObserved(ctx, k.ThreadID, token, sink.Observe)
 	})
-	sink.Close()
 }
 
 func (r *Runner) lease(ctx context.Context, k Kick) {

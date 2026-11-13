@@ -78,6 +78,7 @@ func newDPStack(t *testing.T, rt *runtimetest.Runtime) *dpStack {
 		defer close(done)
 		_ = runs.Runner.Run(ctx)
 	}()
+	require.Eventually(t, runs.Runner.Running, 10*time.Second, time.Millisecond, "the runner starts")
 
 	o, err := org.NewOrg("org-"+uuid.NewString()[:8], "Org", uuid.Nil)
 	require.NoError(t, err)
@@ -115,6 +116,7 @@ func newDPStack(t *testing.T, rt *runtimetest.Runtime) *dpStack {
 		defer close(otherDone)
 		_ = otherRuns.Runner.Run(ctx)
 	}()
+	require.Eventually(t, otherRuns.Runner.Running, 10*time.Second, time.Millisecond, "the runner starts")
 	srv2 := httptest.NewServer(boot.BuildDataPlane(cfg, &other, lims, k.Reporter.Unexpected, testLogger()))
 	t.Cleanup(srv2.Close)
 	// NOTE: registered last so it runs first: the runners drain, which ends every held stream, before the servers close.

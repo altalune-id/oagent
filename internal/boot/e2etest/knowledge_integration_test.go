@@ -167,6 +167,7 @@ func newKnowledgeStack(t *testing.T, rt *runtimetest.Runtime, site *httptest.Ser
 		defer close(done)
 		_ = runs.Runner.Run(ctx)
 	}()
+	require.Eventually(t, runs.Runner.Running, 10*time.Second, time.Millisecond, "the runner starts")
 
 	o, err := org.NewOrg("org-"+uuid.NewString()[:8], "Org", uuid.Nil)
 	require.NoError(t, err)
