@@ -78,7 +78,9 @@ type Run struct {
 	// ReplyState is a channel run's reply: ReplyDue, ReplySent, ReplyFailed or ReplyNone; empty for an API or unsettled run.
 	ReplyState string
 	// ReplyKind is what a due channel reply sends: ReplyKindPrompt for an approval prompt, else empty (the run's reply).
-	ReplyKind            string
+	ReplyKind string
+	// NoReplyReason says why a completed or limit-reached channel run sent no reply, one of the NoReply reasons; empty otherwise.
+	NoReplyReason        string
 	StartedAt, UpdatedAt time.Time
 	EndedAt              *time.Time
 }

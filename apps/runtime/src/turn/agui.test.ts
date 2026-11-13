@@ -3,8 +3,9 @@ import { Message as Msg, TextBlock, ToolResultBlock, ToolUseBlock } from '@stran
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createModels } from '../models/index.ts';
+import { captureLogger } from '../test/logger.ts';
 import { ScriptedModel } from '../test/scripted-model.ts';
-import { fakeMcp, goldenRequest, quiet } from '../test/turn-fixtures.ts';
+import { fakeMcp, goldenRequest, quiet, recordTool } from '../test/turn-fixtures.ts';
 import { toAgUiMessages } from './agui.ts';
 import { createRunTurn, HEARTBEAT_MS } from './index.ts';
 
@@ -37,6 +38,48 @@ describe('heartbeat', () => {
     await vi.advanceTimersByTimeAsync(HEARTBEAT_MS * 3);
     expect(events.filter(e => e.type === 'OAGENT_HEARTBEAT')).toHaveLength(count);
     expect(events.at(-1)!.type).toBe('OAGENT_TERMINAL');
+  });
+});
+
+describe('turn outcome log', () => {
+  it('logs the stop reason, tokens and the kinds of parts the model returned, never the text', async () => {
+    const lines: string[] = [];
+    const runTurn = createRunTurn({
+      models: createModels(),
+      log: captureLogger(lines),
+      modelFor: () => new ScriptedModel([
+        { toolUse: { name: 'yasaku__record_expense', id: 'call_1', input: { amount: 25000 } }, usage: { inputTokens: 900, outputTokens: 12 } },
+        { text: ['Good morning!'], usage: { inputTokens: 950, outputTokens: 5 } },
+      ]),
+      openMcp: fakeMcp([recordTool([])]),
+    });
+    const request = goldenRequest('tool_call');
+    await runTurn(request, async () => {}, new AbortController().signal);
+    const outcome = lines.map(l => JSON.parse(l) as Record<string, unknown>).find(l => l.msg === 'turn outcome');
+    expect(outcome).toMatchObject({
+      level: 'info',
+      run: request.ids.run,
+      status: 'completed',
+      stopReason: 'endTurn',
+      inputTokens: 1850,
+      outputTokens: 17,
+      parts: ['toolUseBlock', 'textBlock'],
+    });
+    expect(lines.join('\n')).not.toContain('Good morning!');
+    expect(lines.join('\n')).not.toContain('25000');
+  });
+
+  it('logs an empty answer as an empty part list', async () => {
+    const lines: string[] = [];
+    const runTurn = createRunTurn({
+      models: createModels(),
+      log: captureLogger(lines),
+      modelFor: () => new ScriptedModel([{ text: ['  '] }]),
+      openMcp: fakeMcp([]),
+    });
+    await runTurn(goldenRequest('plain_reply'), async () => {}, new AbortController().signal);
+    const outcome = lines.map(l => JSON.parse(l) as Record<string, unknown>).find(l => l.msg === 'turn outcome');
+    expect(outcome).toMatchObject({ status: 'completed', stopReason: 'endTurn', parts: ['empty'] });
   });
 });
 

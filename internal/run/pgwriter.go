@@ -832,13 +832,13 @@ func (s *postgresStore) settleRun(ctx context.Context, tx *sql.Tx, orgID uuid.UU
 		t.Status, t.Attempt, t.InputTokens, t.OutputTokens, t.CacheReadTokens, t.CacheWriteTokens, t.UsageEstimated,
 		t.EmbeddingTokens, t.KnowledgeRetrieveCalls, t.KnowledgeRetrieveMS, t.KnowledgePassages,
 		t.CostMicros, t.LatencyMS, t.ErrorCode, t.EndedAt, t.UpdatedAt, t.ReplyState, t.ReplyNextAt, t.ReplyKind,
-		t.ReplyPartsSent, t.ReplyAttempts,
+		t.ReplyPartsSent, t.ReplyAttempts, t.NoReplyReason,
 	).SET(
 		postgres.String(string(r.Status)), postgres.Int32(r.Attempt), postgres.Int(u.InputTokens), postgres.Int(u.OutputTokens),
 		postgres.Int(u.CacheReadTokens), postgres.Int(u.CacheWriteTokens), postgres.Bool(u.Estimated),
 		postgres.Int(u.EmbeddingTokens), postgres.Int32(r.KnowledgeRetrieveCalls), postgres.Int(r.KnowledgeRetrieveMs),
 		postgres.Int32(r.KnowledgePassages), cost, latency, textOrNull(r.ErrorCode), ended, postgres.TimestampzT(r.UpdatedAt.UTC()),
-		textOrNull(r.ReplyState), next, textOrNull(r.ReplyKind), parts, attempts,
+		textOrNull(r.ReplyState), next, textOrNull(r.ReplyKind), parts, attempts, textOrNull(r.NoReplyReason),
 	).WHERE(t.ID.EQ(postgres.UUID(r.ID)).AND(t.OrgID.EQ(postgres.UUID(orgID))))
 	res, err := stmt.ExecContext(ctx, tx)
 	if err != nil {

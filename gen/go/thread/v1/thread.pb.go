@@ -474,8 +474,10 @@ type Run struct {
 	KnowledgeRetrieveMs    int64 `protobuf:"varint,14,opt,name=knowledge_retrieve_ms,json=knowledgeRetrieveMs,proto3" json:"knowledge_retrieve_ms,omitempty"`
 	// knowledge_passages counts the passages the run's legs sent to the model.
 	KnowledgePassages int32 `protobuf:"varint,15,opt,name=knowledge_passages,json=knowledgePassages,proto3" json:"knowledge_passages,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// no_reply_reason says why a completed or limit-reached channel run sent no reply: no_text, set_reply_empty or step_limit; empty otherwise.
+	NoReplyReason string `protobuf:"bytes,16,opt,name=no_reply_reason,json=noReplyReason,proto3" json:"no_reply_reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Run) Reset() {
@@ -611,6 +613,13 @@ func (x *Run) GetKnowledgePassages() int32 {
 		return x.KnowledgePassages
 	}
 	return 0
+}
+
+func (x *Run) GetNoReplyReason() string {
+	if x != nil {
+		return x.NoReplyReason
+	}
+	return ""
 }
 
 type ListThreadsRequest struct {
@@ -1292,7 +1301,7 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\x11cache_read_tokens\x18\x03 \x01(\x03R\x0fcacheReadTokens\x12,\n" +
 	"\x12cache_write_tokens\x18\x04 \x01(\x03R\x10cacheWriteTokens\x12\x1c\n" +
 	"\testimated\x18\x05 \x01(\bR\testimated\x12)\n" +
-	"\x10embedding_tokens\x18\x06 \x01(\x03R\x0fembeddingTokens\"\x8c\x05\n" +
+	"\x10embedding_tokens\x18\x06 \x01(\x03R\x0fembeddingTokens\"\xb4\x05\n" +
 	"\x03Run\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12,\n" +
@@ -1313,7 +1322,8 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\x12agent_version_kind\x18\f \x01(\tR\x10agentVersionKind\x128\n" +
 	"\x18knowledge_retrieve_calls\x18\r \x01(\x05R\x16knowledgeRetrieveCalls\x122\n" +
 	"\x15knowledge_retrieve_ms\x18\x0e \x01(\x03R\x13knowledgeRetrieveMs\x12-\n" +
-	"\x12knowledge_passages\x18\x0f \x01(\x05R\x11knowledgePassagesB\x0e\n" +
+	"\x12knowledge_passages\x18\x0f \x01(\x05R\x11knowledgePassages\x12&\n" +
+	"\x0fno_reply_reason\x18\x10 \x01(\tR\rnoReplyReasonB\x0e\n" +
 	"\f_cost_microsB\r\n" +
 	"\v_latency_ms\"\xec\x01\n" +
 	"\x12ListThreadsRequest\x12+\n" +

@@ -19,7 +19,7 @@ func (s *Service) reply(t *turn, final []Message) []Message {
 	switch r.Status {
 	case StatusCompleted, StatusLimitReached:
 		if sr.voice {
-			return withSetReply(r, final, t.texts.Voice)
+			return emptySetReplySaysWhy(withSetReply(r, final, t.texts.Voice), r)
 		}
 		if i := lastText(final); i >= 0 {
 			if sr.photoUnreadable {
@@ -29,9 +29,12 @@ func (s *Service) reply(t *turn, final []Message) []Message {
 			return final
 		}
 		if sr.photoUnreadable && !group {
-			return withSetReply(r, final, t.texts.PhotoUnreadable)
+			return emptySetReplySaysWhy(withSetReply(r, final, t.texts.PhotoUnreadable), r)
 		}
-		r.ReplyState = ReplyNone
+		r.ReplyState, r.NoReplyReason = ReplyNone, NoReplyNoText
+		if r.Status == StatusLimitReached {
+			r.NoReplyReason = NoReplyStepLimit
+		}
 	case StatusFailed:
 		switch {
 		case group:
@@ -52,6 +55,13 @@ func (s *Service) reply(t *turn, final []Message) []Message {
 		if !group {
 			r.ReplyState, r.ReplyKind = ReplyDue, ReplyKindExpired
 		}
+	}
+	return final
+}
+
+func emptySetReplySaysWhy(final []Message, r *Run) []Message {
+	if r.ReplyState == ReplyNone {
+		r.NoReplyReason = NoReplySetReplyEmpty
 	}
 	return final
 }

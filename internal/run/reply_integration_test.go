@@ -67,6 +67,24 @@ func TestSettle_ReplyStateCommitsWithTheRun(t *testing.T) {
 	assert.Nil(t, state, "a settle that rolls back sets no reply")
 }
 
+func TestReply_NoReplyReasonReloadsWithTheRun(t *testing.T) {
+	p := newPgRunner(t)
+	thread := p.arrive(t, p.chat(t, p.s, "group"), "wamid-1", "morning", time.Now())
+	r, err := p.turn(t, thread, fakes.RuntimeReply{Stream: withoutMessages(t, stream(t, "plain_reply"))})
+	require.NoError(t, err)
+	got, err := p.store.RunByID(in(p.s.org), r.ID)
+	require.NoError(t, err)
+	assert.Equal(t, run.NoReplyNoText, got.NoReplyReason)
+	state, _ := p.replyState(t, r.ID)
+	require.NotNil(t, state)
+	assert.Equal(t, run.ReplyNone, *state)
+
+	listed, err := p.store.ListRuns(in(p.s.org), thread, run.Cursor{}, 10)
+	require.NoError(t, err)
+	require.Len(t, listed, 1)
+	assert.Equal(t, run.NoReplyNoText, listed[0].NoReplyReason)
+}
+
 func TestReply_VoiceOnlyDMReloadsWithTheSetReply(t *testing.T) {
 	p := newPgRunner(t)
 	c := p.chat(t, p.s, "dm")

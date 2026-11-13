@@ -486,6 +486,53 @@ func TestRun_ZeroMaxStepsLeavesTheDefaultToTheRuntime(t *testing.T) {
 	assert.Zero(t, f.rt.LastRequest().Agent.MaxSteps, "0 asks for the runtime's own default; one source of truth")
 }
 
+func TestRun_TurnEndLogsShapeNotText(t *testing.T) {
+	f := newSvc(t)
+	var logs bytes.Buffer
+	f.svc.WithLogger(slog.New(slog.NewTextHandler(&logs, nil)))
+	f.say(t, "record lunch")
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "tool_call")})
+	line := logs.String()
+	assert.Contains(t, line, "run: turn finished")
+	assert.Contains(t, line, "status=completed runtime_status=completed stop_reason=endTurn input_tokens=910 output_tokens=64")
+	assert.Contains(t, line, `parts=assistant:tool_calls,tool,assistant:text`)
+	assert.NotContains(t, line, "Recorded lunch", "never the message text")
+	assert.NotContains(t, line, "yasaku__record_expense", "never a tool name or its input")
+
+	g := newSvc(t)
+	_, conn := g.channel(t, "group", true)
+	g.withTexts(conn)
+	logs.Reset()
+	g.svc.WithLogger(slog.New(slog.NewTextHandler(&logs, nil)))
+	g.say(t, "morning")
+	g.execute(t, fakes.RuntimeReply{Stream: withoutMessages(t, stream(t, "plain_reply"))})
+	assert.Contains(t, logs.String(), "parts=none no_reply_reason=no_text")
+}
+
+func TestRun_TurnEndLogsOnlyKnownStopReasons(t *testing.T) {
+	f := newSvc(t)
+	var logs bytes.Buffer
+	f.svc.WithLogger(slog.New(slog.NewTextHandler(&logs, nil)))
+	f.say(t, "halo")
+	hostile := strings.Repeat("x", 5000) + " phone=+6281234567890"
+	f.execute(t, fakes.RuntimeReply{Stream: withStopReason(t, stream(t, "plain_reply"), hostile)})
+	assert.Contains(t, logs.String(), "stop_reason=other ")
+	assert.NotContains(t, logs.String(), "xxxx")
+	assert.NotContains(t, logs.String(), "6281234567890")
+}
+
+func withStopReason(t *testing.T, raw []byte, reason string) []byte {
+	t.Helper()
+	lines := bytes.Split(bytes.TrimSpace(raw), []byte("\n"))
+	var term map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(lines[len(lines)-1], &term))
+	term["stopReason"], _ = json.Marshal(reason)
+	last, err := json.Marshal(term)
+	require.NoError(t, err)
+	lines[len(lines)-1] = last
+	return append(bytes.Join(lines, []byte("\n")), '\n')
+}
+
 func TestRun_NoRuntimeLeavesMessagesPending(t *testing.T) {
 	f := newSvc(t)
 	var logs bytes.Buffer

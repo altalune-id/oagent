@@ -51,7 +51,7 @@ describe('runs page', () => {
     const c = {
       listThreads: vi.fn().mockResolvedValue({ threads: [create(ThreadSchema, { id: threadId, projectId, agentId: tagihan.id, kind: 'dm', endUserLabel: 'Sari', runCount: 2n })], nextPageToken: '' }),
       listRuns: vi.fn().mockResolvedValue({ runs: [
-        create(RunSchema, { id: 'Rn2wQ8mX4vZ9tB3nC7kPq', threadId, status: RunStatus.COMPLETED, agentVersion: 2, usage: { inputTokens: 800n, outputTokens: 76n }, latencyMs: 2400n, costMicros: 1200n, startedAt: at(9) }),
+        create(RunSchema, { id: 'Rn2wQ8mX4vZ9tB3nC7kPq', threadId, status: RunStatus.COMPLETED, noReplyReason: 'no_text', agentVersion: 2, usage: { inputTokens: 800n, outputTokens: 76n }, latencyMs: 2400n, costMicros: 1200n, startedAt: at(9) }),
         create(RunSchema, { id: 'Rn5tH2kW8pQ3mXv7ZcB4n', threadId: 'Th9zZ9zZ9zZ9zZ9zZ9zZ9', status: RunStatus.FAILED, errorCode: 'RUN004', agentVersion: 0, agentVersionKind: 'draft', usage: {}, startedAt: at(3) }),
       ], nextPageToken: '' }),
     };
@@ -63,6 +63,8 @@ describe('runs page', () => {
     expect(w.get('caption').text()).toBe('run.caption');
     const rows = w.findAll('tbody tr');
     expect(rows.map(r => r.text().includes('Sari'))).toEqual([true, false]);
+    expect(rows[0]!.text()).toContain('runstatus.completed');
+    expect(rows[0]!.text()).toContain('runstatus.detail_no_reply_no_text');
     expect(rows[1]!.text()).toContain('runs.thread_untitled');
     expect(rows[1]!.text()).toContain('runstatus.detail_error|{"code":"RUN004"}');
     expect(rows[1]!.text()).toContain('thread.unpriced');

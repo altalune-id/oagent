@@ -65,6 +65,14 @@ export function createRunTurn(deps: RunTurnDeps): RunTurn {
     } finally {
       clearInterval(beat);
     }
+    deps.log.info({
+      run: request.ids.run,
+      status: outcome.status,
+      stopReason: outcome.stopReason,
+      inputTokens: outcome.usage.inputTokens,
+      outputTokens: outcome.usage.outputTokens,
+      parts: outcome.newMessages.filter(m => m.role === 'assistant').map(m => m.content.map(b => b.type).join('+') || 'empty'),
+    }, 'turn outcome');
     if (outcome.stopReason === 'budget') {
       await mapper.reply(LIMIT_REPLY);
     }

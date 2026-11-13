@@ -74,6 +74,22 @@ export function toThread(th: ThreadPB, t: Translate): ThreadDetail {
   };
 }
 
+const NO_REPLY: Record<string, string> = {
+  no_text: 'runstatus.detail_no_reply_no_text',
+  set_reply_empty: 'runstatus.detail_no_reply_set_reply_empty',
+  step_limit: 'runstatus.detail_no_reply_step_limit',
+};
+
+function runDetail(r: RunPB): RunSummary['detail'] {
+  if (r.errorCode) {
+    return { key: 'runstatus.detail_error', params: { code: r.errorCode } };
+  }
+  if (r.noReplyReason) {
+    return { key: NO_REPLY[r.noReplyReason] ?? 'runstatus.detail_no_reply' };
+  }
+  return undefined;
+}
+
 // toRunSummary maps a run, keeping whether its cost is unknown (unpriced) and its tokens estimated.
 export function toRunSummary(r: RunPB, threadTitle: string): RunSummary {
   const u = r.usage;
@@ -83,7 +99,7 @@ export function toRunSummary(r: RunPB, threadTitle: string): RunSummary {
     threadId: r.threadId,
     threadTitle,
     status: runStatus(r.status) ?? 'running',
-    detail: r.errorCode ? { key: 'runstatus.detail_error', params: { code: r.errorCode } } : undefined,
+    detail: runDetail(r),
     startedAt: r.startedAt ? timestampDate(r.startedAt) : new Date(0),
     seconds: r.latencyMs === undefined ? 0 : Number(r.latencyMs) / 1000,
     tokens,

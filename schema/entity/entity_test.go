@@ -105,7 +105,7 @@ func TestBindings(t *testing.T) {
 			[]string{
 				"id", "public_id", "org_id", "project_id", "thread_id", "agent_version_id", "status", "idempotency_key", "attempt", "input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "usage_estimated", "price_input_micros", "price_output_micros", "price_cache_read_micros", "price_cache_write_micros", "cost_micros", "latency_ms", "error_code", "started_at", "ended_at", "created_at", "updated_at",
 				"reply_state", "reply_parts_sent", "reply_attempts", "reply_next_at", "is_group", "reply_kind",
-				"embedding_tokens", "embedding_price_input_micros", "knowledge_retrieve_calls", "knowledge_retrieve_ms", "knowledge_passages",
+				"embedding_tokens", "embedding_price_input_micros", "knowledge_retrieve_calls", "knowledge_retrieve_ms", "knowledge_passages", "no_reply_reason",
 			},
 		},
 		{
