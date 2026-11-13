@@ -678,6 +678,8 @@ func (s *Service) emit(ctx context.Context, t *turn, u Usage) error {
 		Usage: events.RunUsageV1{
 			InputTokens: u.InputTokens, OutputTokens: u.OutputTokens, CacheReadInputTokens: u.CacheReadTokens,
 			CacheWriteInputTokens: u.CacheWriteTokens, EmbeddingTokens: u.EmbeddingTokens, Estimated: u.Estimated,
+			HelperInputTokens: u.HelperInputTokens, HelperOutputTokens: u.HelperOutputTokens,
+			HelperCacheReadInputTokens: u.HelperCacheReadTokens, HelperCacheWriteInputTokens: u.HelperCacheWriteTokens,
 		},
 	}
 	if micros, priced := Cost(u, r.Prices); priced {

@@ -129,7 +129,31 @@ func TestGoldens_OnlyAnthropicNamesAProvider(t *testing.T) {
 	}
 }
 
+const helperTerminal = `{"type":"OAGENT_TERMINAL","status":"completed","stopReason":"endTurn","snapshot":{},` +
+	`"usage":{"inputTokens":120,"outputTokens":9,"cacheReadInputTokens":0,"cacheWriteInputTokens":0,"estimated":false%s},` +
+	`"messagesAppended":[],"interrupts":[],"notes":[]}`
+
+func TestDecode_TerminalHelperUsage(t *testing.T) {
+	ev, err := DecodeEvent(fmt.Appendf(nil, helperTerminal,
+		`,"helper":{"inputTokens":50,"outputTokens":7,"cacheReadInputTokens":10,"cacheWriteInputTokens":2}`))
+	require.NoError(t, err)
+	term, ok := ev.(*Terminal)
+	require.True(t, ok)
+	assert.Equal(t, &HelperUsage{InputTokens: 50, OutputTokens: 7, CacheReadInputTokens: 10, CacheWriteInputTokens: 2}, term.Usage.Helper)
+
+	ev, err = DecodeEvent(fmt.Appendf(nil, helperTerminal, ""))
+	require.NoError(t, err)
+	assert.Nil(t, ev.(*Terminal).Usage.Helper, "a turn that used no helper sends no helper usage")
+}
+
 func TestDecode_RefusesUnknownFieldsAndTypes(t *testing.T) {
+	for _, helper := range []string{
+		`,"helper":{"inputTokens":1,"outputTokens":0,"cacheReadInputTokens":0,"cacheWriteInputTokens":0,"estimated":false}`,
+		`,"helper":{"inputTokens":1,"outputTokens":0,"cacheReadInputTokens":0,"cacheWriteInputTokens":0,"surprise":1}`,
+	} {
+		_, err := DecodeEvent(fmt.Appendf(nil, helperTerminal, helper))
+		assert.Error(t, err, "helper usage is strict: %s", helper)
+	}
 	_, err := DecodeRequest([]byte(`{"contractVersion":1,"surprise":true}`))
 	assert.Error(t, err)
 	_, err = DecodeEvent([]byte(`{"type":"RUN_STARTED","threadId":"t","runId":"r","surprise":1}`))

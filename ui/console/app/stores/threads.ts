@@ -24,6 +24,7 @@ export interface RunSummary {
   seconds: number;
   tokens: number;
   embeddingTokens?: number;
+  helperTokens?: number;
   retrieveCalls?: number;
   retrieveMs?: number;
   retrievePassages?: number;

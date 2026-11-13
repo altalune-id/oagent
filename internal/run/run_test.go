@@ -166,3 +166,59 @@ func TestCost_EmbeddingClassOwnPrice(t *testing.T) {
 	assert.True(t, priced, "no embedding tokens need no embedding price")
 	assert.Equal(t, int64(10), micros)
 }
+
+func TestCost_HelperClassesOwnPrice(t *testing.T) {
+	main := &Prices{Input: price(2_500_000), Output: price(10_000_000), CacheRead: price(1_250_000), CacheWrite: price(3_000_000)}
+	for _, c := range []struct {
+		name  string
+		usage Usage
+		set   func(p *Prices)
+		want  int64
+	}{
+		{"input", Usage{HelperInputTokens: 1_000_000}, func(p *Prices) { p.HelperInput = price(150_000) }, 150_000},
+		{"output", Usage{HelperOutputTokens: 1_000_000}, func(p *Prices) { p.HelperOutput = price(600_000) }, 600_000},
+		{"cache read", Usage{HelperCacheReadTokens: 1_000_000}, func(p *Prices) { p.HelperCacheRead = price(75_000) }, 75_000},
+		{"cache write", Usage{HelperCacheWriteTokens: 1_000_000}, func(p *Prices) { p.HelperCacheWrite = price(190_000) }, 190_000},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			p := *main
+			c.set(&p)
+			u := c.usage
+			u.InputTokens = 1_000_000
+			micros, priced := Cost(u, &p)
+			require.True(t, priced)
+			assert.Equal(t, 2_500_000+c.want, micros, "helper tokens at the helper price, never the main one")
+		})
+	}
+}
+
+func TestCost_UnpricedHelperClassIsUnpriced(t *testing.T) {
+	main := &Prices{Input: price(1_000_000), Output: price(1_000_000), CacheRead: price(1), CacheWrite: price(1)}
+	for _, u := range []Usage{{HelperInputTokens: 1}, {HelperOutputTokens: 1}, {HelperCacheReadTokens: 1}, {HelperCacheWriteTokens: 1}} {
+		_, priced := Cost(u, main)
+		assert.False(t, priced, "helper tokens with no helper price leave the run unpriced: %+v", u)
+	}
+	micros, priced := Cost(Usage{InputTokens: 10}, main)
+	assert.True(t, priced, "no helper tokens need no helper price")
+	assert.Equal(t, int64(10), micros)
+}
+
+func TestAdd_SumsHelperClasses(t *testing.T) {
+	a := Usage{InputTokens: 1, HelperInputTokens: 2, HelperOutputTokens: 3, HelperCacheReadTokens: 4, HelperCacheWriteTokens: 5}
+	b := Usage{InputTokens: 10, HelperInputTokens: 20, HelperOutputTokens: 30, HelperCacheReadTokens: 40, HelperCacheWriteTokens: 50}
+	assert.Equal(t, Usage{InputTokens: 11, HelperInputTokens: 22, HelperOutputTokens: 33, HelperCacheReadTokens: 44, HelperCacheWriteTokens: 55}, add(a, b))
+}
+
+func TestBudget_UnpricedSpendLeavesNothing(t *testing.T) {
+	s := &Service{}
+	tr := &turn{
+		run:     &Run{Prices: &Prices{Input: price(2_500_000)}, Usage: Usage{InputTokens: 10, HelperInputTokens: 1_000}},
+		version: &AgentVersion{MaxCostCents: 50},
+	}
+	b := s.budget(tr)
+	require.NotNil(t, b)
+	assert.Zero(t, b.RemainingMicros, "spend the run can't price leaves no budget, never the full cap")
+
+	tr.run.Usage = Usage{InputTokens: 10}
+	assert.Equal(t, int64(50*10_000-25), s.budget(tr).RemainingMicros, "a priced spend still counts down")
+}

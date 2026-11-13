@@ -293,6 +293,42 @@ describe('configure page', () => {
     w.unmount();
   });
 
+  it('offers the main model as the empty helper choice, names it in the hint, and leaves it out of the helper list', async () => {
+    asSample();
+    const w = await mountPage(ConfigurePage);
+    await flushPromises();
+    const helper = w.get('#configure-model select[data-field="helper"]');
+    const options = helper.findAll('option');
+    expect(options[0]!.text()).toBe('configure.helper_same');
+    expect(options[0]!.attributes('value')).toBe('');
+    expect((helper.element as HTMLSelectElement).value).toBe('');
+    expect(options.map(o => o.attributes('value'))).not.toContain('openai/gpt-4.1-mini');
+    const hint = () => w.get(`#${helper.attributes('aria-describedby')!.split(' ')[0]}`).text();
+    expect(hint()).toBe('configure.helper_uses|{"model":"openai/gpt-4.1-mini"} configure.helper_hint');
+    expect(w.text()).not.toContain('configure.helper_none');
+    await helper.setValue('google/gemini-2.5-flash');
+    expect(hint()).toBe('configure.helper_hint');
+    await helper.setValue('');
+    await w.get('#configure-model select:not([data-field])').setValue('');
+    expect(hint()).toBe('configure.helper_hint');
+    w.unmount();
+  });
+
+  it('keeps a stored helper that equals the main model listed and selected, and never saves a change for it', async () => {
+    vi.useFakeTimers();
+    const client = asSample({ ...sampleDraft, helperModel: 'openai/gpt-4.1-mini' });
+    const w = await mountPage(ConfigurePage);
+    await flushPromises();
+    const helper = w.get('#configure-model select[data-field="helper"]');
+    expect((helper.element as HTMLSelectElement).value).toBe('openai/gpt-4.1-mini');
+    expect(helper.findAll('option').map(o => o.attributes('value'))).toContain('openai/gpt-4.1-mini');
+    expect(w.get(`#${helper.attributes('aria-describedby')!.split(' ')[0]}`).text()).toBe('configure.helper_hint');
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(client.updateAgentDraft).not.toHaveBeenCalled();
+    vi.useRealTimers();
+    w.unmount();
+  });
+
   it('puts an unpriced helper model\'s cap error on the helper field, and its fix focuses the helper', async () => {
     const { useModelProvidersStore } = await import('~/stores/modelProviders');
     asSample({ ...sampleDraft, helperModel: 'free-helper' });
@@ -321,6 +357,72 @@ describe('configure page', () => {
     [...dialog.querySelectorAll('button')].find(b => b.textContent?.includes('configure.publish_n'))!.click();
     await flushPromises();
     expect(openDialog().textContent).toContain('apperror.AGT006');
+    w.unmount();
+  });
+
+  it('marks each tool that runs without approval once a knowledge source is bound, and warns at Publish without blocking it', async () => {
+    asSample();
+    const w = await mountPage(ConfigurePage, { attachTo: document.body });
+    await flushPromises();
+    const tools = w.get('#configure-tools');
+    expect(tools.text()).not.toContain('grants.runs_unattended');
+    await w.get('#configure-memory').findAll('li input')[0]!.setValue(true);
+    expect(tools.text().match(/grants\.runs_unattended/g)).toHaveLength(3);
+    await button(w, 'configure.publish').trigger('click');
+    const dialog = openDialog();
+    const warning = dialog.querySelector('[role="status"] li button')!;
+    expect(warning.textContent!.trim()).toBe('publish.warning_unapproved_tool|{"tool":"yasaku__list_wallets","n":"2"}');
+    expect(dialog.querySelector('[role="alert"]')).toBeNull();
+    expect([...dialog.querySelectorAll('button')].find(b => b.textContent?.includes('configure.publish_n'))!.disabled).toBe(false);
+    w.unmount();
+  });
+
+  it('jumps from the warning to the tool, opening its server', async () => {
+    asSample({ ...sampleDraft, knowledgeSourceIds: ['Ks1Upl0adQ8sWx3YcLm7D'] });
+    const w = await mountPage(ConfigurePage, { attachTo: document.body });
+    await flushPromises();
+    const yasakuTools = w.get('#configure-tools').findAll('details')[0]!.element as HTMLDetailsElement;
+    expect(yasakuTools.open).toBe(false);
+    await button(w, 'configure.publish').trigger('click');
+    (openDialog().querySelector('[role="status"] li button') as HTMLButtonElement).click();
+    await flushPromises();
+    expect(yasakuTools.open).toBe(true);
+    expect(document.activeElement).toBe(yasakuTools.querySelector('[data-field="yasaku__list_wallets"]'));
+    w.unmount();
+  });
+
+  it('places an unapproved_tool refusal under the named tool', async () => {
+    setKnownKeys('apperror.AGT007_unapproved_tool');
+    const client = asSample({ ...sampleDraft, knowledgeSourceIds: ['Ks1Upl0adQ8sWx3YcLm7D'] });
+    client.publishAgent.mockRejectedValue(connectError('AGT007', { reason: 'unapproved_tool', name: 'yasaku__search_tx' }));
+    const w = await mountPage(ConfigurePage, { attachTo: document.body });
+    await flushPromises();
+    await button(w, 'configure.publish').trigger('click');
+    [...openDialog().querySelectorAll('button')].find(b => b.textContent?.includes('configure.publish_n'))!.click();
+    await flushPromises();
+    const message = 'apperror.AGT007_unapproved_tool|{"name":"yasaku__search_tx"}';
+    expect(openDialog().textContent).toContain(message);
+    const tools = w.get('#configure-tools');
+    expect(tools.text().match(/apperror\.AGT007_unapproved_tool/g)).toHaveLength(1);
+    const box = tools.get('[data-field="yasaku__search_tx"]');
+    const errId = box.attributes('aria-describedby')!.split(' ').find(id => document.getElementById(id)?.textContent?.trim() === message);
+    expect(errId).toBeDefined();
+    expect(tools.get('[data-field="yasaku__list_wallets"]').attributes('aria-describedby') ?? '').not.toContain(errId!);
+    expect(box.attributes('aria-invalid')).toBe('true');
+    expect(tools.get('[data-field="yasaku__list_wallets"]').attributes('aria-invalid')).toBeUndefined();
+    w.unmount();
+  });
+
+  it('shows an unapproved_tool refusal once at the top of the tools when its row is not listed', async () => {
+    setKnownKeys('apperror.AGT007_unapproved_tool');
+    const client = asSample({ ...sampleDraft, knowledgeSourceIds: ['Ks1Upl0adQ8sWx3YcLm7D'] });
+    client.publishAgent.mockRejectedValue(connectError('AGT007', { reason: 'unapproved_tool', name: 'tagihan__list_bills' }));
+    const w = await mountPage(ConfigurePage, { attachTo: document.body });
+    await flushPromises();
+    await button(w, 'configure.publish').trigger('click');
+    [...openDialog().querySelectorAll('button')].find(b => b.textContent?.includes('configure.publish_n'))!.click();
+    await flushPromises();
+    expect(w.get('#configure-tools').text().match(/apperror\.AGT007_unapproved_tool/g)).toHaveLength(1);
     w.unmount();
   });
 

@@ -2,6 +2,9 @@ package run_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -9,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/run"
 	"altalune.id/oagent/internal/testutil/fakes"
@@ -227,6 +231,22 @@ func TestTryRun_PinsTheDraftAndEmitsNoWebhook(t *testing.T) {
 	assert.Positive(t, r.Usage.InputTokens, "its usage is recorded like any run")
 }
 
+func TestRun_HelperUsageInTheRunEvent(t *testing.T) {
+	f := newSvc(t)
+	pub := &fakes.Publisher{}
+	f.svc.WithPublisher(pub)
+	f.say(t, "hello")
+	f.execute(t, fakes.RuntimeReply{Stream: withHelperUsage(t, stream(t, "plain_reply"),
+		`{"inputTokens":50,"outputTokens":7,"cacheReadInputTokens":10,"cacheWriteInputTokens":2}`)})
+	require.Len(t, pub.Events(), 1)
+	p := events.RunSettledV1(pub.Events()[0].Data.(events.RunCompletedV1))
+	assert.Equal(t, events.RunUsageV1{
+		InputTokens: 120, OutputTokens: 9,
+		HelperInputTokens: 38, HelperOutputTokens: 7, HelperCacheReadInputTokens: 10, HelperCacheWriteInputTokens: 2,
+	}, p.Usage)
+	assert.Nil(t, p.CostMicros, "helper tokens without pinned helper prices leave the run unpriced")
+}
+
 func TestTryRun_WaitsWithoutAPinnableDraft(t *testing.T) {
 	f := newSvc(t)
 	f.store.Kinds = map[uuid.UUID]string{f.thread: "try"}
@@ -236,6 +256,24 @@ func TestTryRun_WaitsWithoutAPinnableDraft(t *testing.T) {
 	_, err := f.svc.Execute(f.ctx, f.thread, token)
 	require.Error(t, err)
 	assert.Empty(t, f.store.Runs, "no run starts on a draft that can't be pinned")
+}
+
+func TestTryRun_RefusedDraftIsNotReportedAsUnexpected(t *testing.T) {
+	f := newSvc(t)
+	var reported atomic.Int32
+	f.svc = run.NewService(f.store, fakes.Transactor{}, func(ctx context.Context, msg string, err error, attrs ...any) *apperror.AppError {
+		reported.Add(1)
+		return apperror.NewReporter(nil, false).Unexpected(ctx, msg, err, attrs...)
+	}).WithRuntime(f.rt).WithAgents(f.agents).WithProviders(f.providers).WithMCPServers(f.servers).WithSnapshots(f.snaps)
+	f.store.Kinds = map[uuid.UUID]string{f.thread: "try"}
+	f.agents.DraftErr = fmt.Errorf("%w: %w", run.ErrDraftRefused, errors.New("refused like a publish"))
+	f.say(t, "hello")
+	token := f.claim(t)
+	_, err := f.svc.Execute(f.ctx, f.thread, token)
+	require.ErrorIs(t, err, run.ErrDraftRefused)
+	assert.True(t, run.IsExpectedError(err))
+	assert.Zero(t, reported.Load(), "a draft refused like a publish is expected, not an incident")
+	assert.Empty(t, f.store.Runs, "the message waits; no run starts")
 }
 
 func TestTryRun_KeepsItsDraftRowWhenTheDraftIsEdited(t *testing.T) {

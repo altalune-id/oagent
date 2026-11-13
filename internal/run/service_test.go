@@ -239,6 +239,28 @@ func TestRun_LimitReachedWritesUsage(t *testing.T) {
 	assert.Equal(t, int64(2_500_000), budget.Prices.Input)
 }
 
+func withHelperUsage(t *testing.T, raw []byte, helper string) []byte {
+	t.Helper()
+	trimmed := bytes.TrimSpace(raw)
+	i := bytes.LastIndexByte(trimmed, '\n') + 1
+	last := bytes.Replace(trimmed[i:], []byte(`"estimated":false}`), []byte(`"estimated":false,"helper":`+helper+`}`), 1)
+	require.NotEqual(t, trimmed[i:], last, "the terminal carries usage")
+	return append(append([]byte(nil), trimmed[:i]...), last...)
+}
+
+func TestRun_TerminalHelperUsageStored(t *testing.T) {
+	f := newSvc(t)
+	f.say(t, "hello")
+	r := f.execute(t, fakes.RuntimeReply{Stream: withHelperUsage(t, stream(t, "plain_reply"),
+		`{"inputTokens":50,"outputTokens":7,"cacheReadInputTokens":10,"cacheWriteInputTokens":2}`)})
+	assert.Equal(t, run.Usage{
+		InputTokens: 120, OutputTokens: 9,
+		HelperInputTokens: 38, HelperOutputTokens: 7, HelperCacheReadTokens: 10, HelperCacheWriteTokens: 2,
+	}, r.Usage, "helper input is net of cache, like the main input")
+	_, priced := run.Cost(r.Usage, r.Prices)
+	assert.False(t, priced, "helper tokens without pinned helper prices leave the run unpriced")
+}
+
 func (f *svcFixture) priorTurn(t *testing.T) {
 	t.Helper()
 	f.say(t, "hello")

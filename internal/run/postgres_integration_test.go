@@ -1066,6 +1066,58 @@ func TestStore_HoldLeaseOnlyForTheHolder(t *testing.T) {
 	require.ErrorAs(t, f.store.HoldLease(in(s.org), "another-claim", thread), &lost)
 }
 
+func TestStore_HelperUsageRoundTrips(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	thread := f.thread(t, s)
+	ctx := in(s.org)
+	f.say(t, s, thread)
+	token := f.claimed(t, s, thread)
+	r := run.New(s.org, s.project, thread, s.version, time.Now())
+	r.Prices = &run.Prices{
+		Input: new(int64(1_000_000)), Output: new(int64(1_000_000)), CacheRead: new(int64(1_000_000)), CacheWrite: new(int64(1_000_000)),
+		HelperInput: new(int64(100_000)), HelperOutput: new(int64(400_000)), HelperCacheRead: new(int64(10_000)), HelperCacheWrite: new(int64(125_000)),
+	}
+	_, err := f.store.StartRun(ctx, token, r)
+	require.NoError(t, err)
+
+	require.NoError(t, r.Move(run.StatusCompleted, time.Now()))
+	u := run.Usage{
+		InputTokens: 100, HelperInputTokens: 1_000_000, HelperOutputTokens: 1_000_000, HelperCacheReadTokens: 1_000_000, HelperCacheWriteTokens: 1_000_000,
+	}
+	require.NoError(t, f.store.Settle(ctx, token, r, u, nil))
+
+	got, err := f.store.RunByID(ctx, r.ID)
+	require.NoError(t, err)
+	require.NotNil(t, got.Prices)
+	assert.Equal(t, r.Prices, got.Prices, "the pinned helper prices are stored at run open")
+	assert.Equal(t, u, got.Usage)
+	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.runs WHERE id = $1 AND cost_micros = 635100`, r.ID),
+		"the stored cost prices helper tokens at the helper prices")
+}
+
+func TestStore_RunWithoutHelperReadsZeros(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	thread := f.thread(t, s)
+	ctx := in(s.org)
+	f.say(t, s, thread)
+	token := f.claimed(t, s, thread)
+	r := run.New(s.org, s.project, thread, s.version, time.Now())
+	r.Prices = &run.Prices{Input: new(int64(1_000_000))}
+	_, err := f.store.StartRun(ctx, token, r)
+	require.NoError(t, err)
+
+	got, err := f.store.RunByID(ctx, r.ID)
+	require.NoError(t, err)
+	require.NotNil(t, got.Prices)
+	assert.Nil(t, got.Prices.HelperInput, "a run opened without helper prices, or by the app before them, has none")
+	assert.Nil(t, got.Prices.HelperOutput)
+	assert.Nil(t, got.Prices.HelperCacheRead)
+	assert.Nil(t, got.Prices.HelperCacheWrite)
+	assert.Equal(t, run.Usage{}, got.Usage, "helper token columns default to 0")
+}
+
 func TestStore_KnowledgeUsageRoundTrips(t *testing.T) {
 	f := newPgFixture(t)
 	s := f.seed(t)

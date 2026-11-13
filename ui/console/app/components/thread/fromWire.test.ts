@@ -40,6 +40,11 @@ describe('thread wire mapping', () => {
     expect(toThread(create(ThreadSchema, { id: 't', kind: 'other' })).kind).toBe('api');
   });
 
+  it('sums a run\'s helper tokens apart from the main tokens, zero without usage', () => {
+    expect(toRunSummary(create(RunSchema, { id: 'r', usage: { inputTokens: 10n, helperInputTokens: 300n, helperOutputTokens: 20n, helperCacheReadTokens: 5n, helperCacheWriteTokens: 1n } }), 'T')).toMatchObject({ tokens: 10, helperTokens: 326 });
+    expect(toRunSummary(create(RunSchema, { id: 'r' }), 'T')).toMatchObject({ helperTokens: 0 });
+  });
+
   it('keeps a run unpriced without cost micros, and its error code', () => {
     expect(toRunSummary(create(RunSchema, { id: 'r', status: RunStatus.FAILED, errorCode: 'RUN005' }), 'T')).toMatchObject({ status: 'failed', unpriced: true, estimated: false, tokens: 0, seconds: 0, costCents: 0, detail: { key: 'runstatus.detail_error', params: { code: 'RUN005' } }, startedAt: new Date(0) });
     expect(toRunSummary(create(RunSchema, { id: 'r', status: RunStatus.UNSPECIFIED }), 'T').status).toBe('running');

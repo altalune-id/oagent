@@ -122,6 +122,9 @@ func (a runAgents) Latest(ctx context.Context, agentID uuid.UUID) (*run.AgentVer
 func (a runAgents) Draft(ctx context.Context, agentID uuid.UUID) (*run.AgentVersion, error) {
 	v, err := a.agents.DraftVersion(ctx, agentID, uuid.Nil)
 	if err != nil {
+		if agent.IsNeedsRepublishError(err) || agent.IsInvalidGrantError(err) {
+			return nil, fmt.Errorf("%w: %w", run.ErrDraftRefused, err)
+		}
 		return nil, err
 	}
 	return a.pinned(ctx, v)

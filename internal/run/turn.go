@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 	"time"
@@ -107,7 +108,11 @@ func (s *Service) budget(t *turn) *runtime.Budget {
 	if t.version.MaxCostCents <= 0 || p == nil {
 		return nil
 	}
-	spent, _ := Cost(t.run.Usage, p)
+	spent, priced := Cost(t.run.Usage, p)
+	if !priced {
+		// SECURITY: spend the run can't price leaves no budget, so the cap holds.
+		spent = math.MaxInt64
+	}
 	val := func(v *int64) int64 {
 		if v == nil {
 			return 0
@@ -149,6 +154,7 @@ func (s *Service) mcpServers(ctx context.Context, v *AgentVersion, grants map[st
 func approvalSpec(tool ToolGrant) runtime.ApprovalSpec {
 	switch {
 	case !tool.RequireApproval:
+		// SECURITY: unattended = !RequireApproval; keep in step with agent.newUnattendedTool.
 		return runtime.ApprovalSpec{Mode: "never"}
 	case len(tool.FreeWhen) == 0:
 		return runtime.ApprovalSpec{Mode: "always"}
@@ -553,11 +559,31 @@ func (s *Service) cut(ctx context.Context, t *turn, est estimate, cause error) (
 	return s.settle(ctx, t, add(t.run.Usage, est.usage()), nil, nil)
 }
 
+func terminalUsage(u runtime.Usage) Usage {
+	out := Usage{
+		InputTokens:     netInput(u.InputTokens, u.CacheReadInputTokens, u.CacheWriteInputTokens),
+		OutputTokens:    u.OutputTokens,
+		CacheReadTokens: u.CacheReadInputTokens, CacheWriteTokens: u.CacheWriteInputTokens,
+		Estimated: u.Estimated,
+	}
+	if h := u.Helper; h != nil {
+		out.HelperInputTokens = netInput(h.InputTokens, h.CacheReadInputTokens, h.CacheWriteInputTokens)
+		out.HelperOutputTokens = h.OutputTokens
+		out.HelperCacheReadTokens, out.HelperCacheWriteTokens = h.CacheReadInputTokens, h.CacheWriteInputTokens
+	}
+	return out
+}
+
+func netInput(input, cacheRead, cacheWrite int64) int64 { return max(input-cacheRead-cacheWrite, 0) }
+
 func add(a, b Usage) Usage {
 	return Usage{
 		InputTokens: a.InputTokens + b.InputTokens, OutputTokens: a.OutputTokens + b.OutputTokens,
 		CacheReadTokens: a.CacheReadTokens + b.CacheReadTokens, CacheWriteTokens: a.CacheWriteTokens + b.CacheWriteTokens,
 		EmbeddingTokens: a.EmbeddingTokens + b.EmbeddingTokens, Estimated: a.Estimated || b.Estimated,
+		HelperInputTokens: a.HelperInputTokens + b.HelperInputTokens, HelperOutputTokens: a.HelperOutputTokens + b.HelperOutputTokens,
+		HelperCacheReadTokens:  a.HelperCacheReadTokens + b.HelperCacheReadTokens,
+		HelperCacheWriteTokens: a.HelperCacheWriteTokens + b.HelperCacheWriteTokens,
 	}
 }
 
@@ -577,12 +603,7 @@ func (s *Service) finish(ctx context.Context, t *turn, term *runtime.Terminal) (
 		return nil, s.errOrReport(ctx, "run: finish", err)
 	}
 	t.run.ErrorCode = string(code)
-	u := add(t.run.Usage, Usage{
-		InputTokens:     max(term.Usage.InputTokens-term.Usage.CacheReadInputTokens-term.Usage.CacheWriteInputTokens, 0),
-		OutputTokens:    term.Usage.OutputTokens,
-		CacheReadTokens: term.Usage.CacheReadInputTokens, CacheWriteTokens: term.Usage.CacheWriteInputTokens,
-		Estimated: term.Usage.Estimated,
-	})
+	u := add(t.run.Usage, terminalUsage(term.Usage))
 	r, err := s.settle(ctx, t, u, finalMessages(term.MessagesAppended, t.stored), snap)
 	if err == nil {
 		s.log.InfoContext(ctx, "run: turn finished", "run", t.run.PublicID, "status", string(t.run.Status),

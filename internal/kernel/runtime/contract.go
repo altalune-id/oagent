@@ -367,11 +367,20 @@ type Terminal struct {
 
 // Usage is the tokens a turn used; Estimated is true when a cut model call was estimated.
 type Usage struct {
+	InputTokens           int64        `json:"inputTokens"`
+	OutputTokens          int64        `json:"outputTokens"`
+	CacheReadInputTokens  int64        `json:"cacheReadInputTokens"`
+	CacheWriteInputTokens int64        `json:"cacheWriteInputTokens"`
+	Estimated             bool         `json:"estimated"`
+	Helper                *HelperUsage `json:"helper,omitempty"`
+}
+
+// HelperUsage is the tokens the agent's helper model used in a turn, counted like Usage.
+type HelperUsage struct {
 	InputTokens           int64 `json:"inputTokens"`
 	OutputTokens          int64 `json:"outputTokens"`
 	CacheReadInputTokens  int64 `json:"cacheReadInputTokens"`
 	CacheWriteInputTokens int64 `json:"cacheWriteInputTokens"`
-	Estimated             bool  `json:"estimated"`
 }
 
 // Interrupt is one pending question the turn stopped on; an approval's Reason is {tool, input}.

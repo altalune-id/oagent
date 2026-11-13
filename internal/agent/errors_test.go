@@ -69,3 +69,12 @@ func TestValidateSlugReasons(t *testing.T) {
 		(&InvalidNameError{Reason: NameLength}).ToAppError().Meta())
 	assert.Equal(t, map[string]string{"slug": "taken"}, (&AlreadyExistsError{Slug: "taken"}).ToAppError().Meta())
 }
+
+func TestAgentInvalidGrant_SendsTheName(t *testing.T) {
+	ae := (&InvalidGrantError{Reason: GrantUnapprovedTool, Name: "yasaku__send"}).ToAppError()
+	assert.Equal(t, map[string]string{"reason": "unapproved_tool", "name": "yasaku__send"}, ae.Meta())
+	for _, r := range []GrantReason{GrantModel, GrantHelperModel, GrantToolName, GrantBudgetUnpriced} {
+		ae := (&InvalidGrantError{Reason: r, Name: "m"}).ToAppError()
+		assert.Equal(t, map[string]string{"reason": string(r)}, ae.Meta(), "only unapproved_tool sends the name")
+	}
+}

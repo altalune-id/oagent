@@ -117,6 +117,14 @@ message Usage {
   bool estimated = 5;
   // embedding_tokens are the tokens the run's knowledge searches embedded.
   int64 embedding_tokens = 6;
+  // helper_input_tokens are the input tokens the agent's helper model used, net of cache.
+  int64 helper_input_tokens = 7;
+  // helper_output_tokens are the output tokens the agent's helper model used.
+  int64 helper_output_tokens = 8;
+  // helper_cache_read_tokens are the cache read tokens the agent's helper model used.
+  int64 helper_cache_read_tokens = 9;
+  // helper_cache_write_tokens are the cache write tokens the agent's helper model used.
+  int64 helper_cache_write_tokens = 10;
 }
 
 // Run is one agent turn on a thread; cost_micros is unset when the run is unpriced, latency_ms and ended_at while it runs.

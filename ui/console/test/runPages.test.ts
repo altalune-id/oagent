@@ -158,6 +158,15 @@ describe('run viewer', () => {
     expect(w.findAll('header dl dd').map(d => d.text())).toEqual(['runstatus.completed', '2.4s', '876', '12', 'run.knowledge_calls|{"n":1,"ms":"340"} run.knowledge_passages|{"n":"5"}', 'thread.unpriced']);
   });
 
+  it('shows helper tokens right after the tokens when the run used a helper', async () => {
+    threadClient().getRun.mockResolvedValue({ run: create(RunSchema, { id: runId, threadId, status: RunStatus.COMPLETED, attempt: 1, agentVersion: 4, usage: { inputTokens: 812n, outputTokens: 64n, embeddingTokens: 12n, helperInputTokens: 300n, helperOutputTokens: 20n, helperCacheReadTokens: 5n, helperCacheWriteTokens: 1n }, knowledgeRetrieveCalls: 1, knowledgeRetrieveMs: 340n, latencyMs: 2400n, startedAt: at(3), endedAt: at(4) }) });
+    const w = await mountPage(RunPage);
+    await flushPromises();
+    expect(w.findAll('header dl dt').map(d => d.text())).toEqual(['run.status', 'run.duration', 'run.tokens', 'run.helper_tokens', 'run.embedding_tokens', 'run.knowledge_search', 'run.cost']);
+    expect(w.findAll('header dl dd')[3]!.text()).toBe('326');
+    expect(w.findAll('header dl dd')[2]!.text()).toBe('876');
+  });
+
   it('leaves the passage count off a knowledge search line when the run recorded none', async () => {
     threadClient().getRun.mockResolvedValue({ run: create(RunSchema, { id: runId, threadId, status: RunStatus.COMPLETED, attempt: 1, agentVersion: 4, usage: {}, knowledgeRetrieveCalls: 1, knowledgeRetrieveMs: 340n, startedAt: at(3), endedAt: at(4) }) });
     const w = await mountPage(RunPage);

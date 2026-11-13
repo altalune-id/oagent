@@ -266,6 +266,14 @@ erDiagram
         bigint knowledge_retrieve_ms
         int knowledge_passages
         text no_reply_reason "no_text, set_reply_empty or step_limit: why a completed or limit-reached channel run sent no reply"
+        bigint helper_input_tokens "helper model input, net of cache"
+        bigint helper_output_tokens
+        bigint helper_cache_read_tokens
+        bigint helper_cache_write_tokens
+        bigint helper_price_input_micros "NULL = unpriced"
+        bigint helper_price_output_micros
+        bigint helper_price_cache_read_micros
+        bigint helper_price_cache_write_micros
     }
     files {
         uuid id PK

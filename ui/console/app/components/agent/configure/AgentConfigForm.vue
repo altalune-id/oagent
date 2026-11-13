@@ -54,6 +54,7 @@ const chosen = computed(() => chosenModel(config.value, providers));
 const temperatureOff = computed(() => chosen.value.provider?.kind === ModelProviderKind.ANTHROPIC);
 const temperatureText = computed(() => (temperatureOff.value ? t('configure.temperature_off') : config.value.temperature.toFixed(1)));
 const chatModels = computed(() => (chosen.value.provider?.models ?? []).filter(m => !m.embedding || m.id === config.value.model || m.id === config.value.helperModel));
+const helperModels = computed(() => chatModels.value.filter(m => m.id !== config.value.model || m.id === config.value.helperModel));
 const allowListRequired = computed(() => readsPrivateData(config.value, runtime.value));
 const serverError = (...reasons: string[]) => (fieldError && reasons.includes(fieldError.reason) ? fieldError.message : '');
 
@@ -219,14 +220,17 @@ function toggleSource(id: string, on: boolean) {
                   :aria-invalid="!!helperError" :aria-describedby="describedBy(`${ids.helper}-hint`, !!helperError && `${ids.helper}-err`)"
                 >
                   <option value="">
-                    {{ t('configure.helper_none') }}
+                    {{ t('configure.helper_same') }}
                   </option>
-                  <option v-for="m in chatModels" :key="m.id" :value="m.id">
+                  <option v-for="m in helperModels" :key="m.id" :value="m.id">
                     {{ modelLabel(m) }}
                   </option>
                 </select>
               </label>
               <p :id="`${ids.helper}-hint`" class="text-xs text-base-content/70">
+                <template v-if="!config.helperModel && config.model">
+                  {{ t('configure.helper_uses', { model: config.model }) }}
+                </template>
                 {{ t('configure.helper_hint') }}
               </p>
               <FieldError :id="`${ids.helper}-err`" :message="helperError" />
@@ -250,7 +254,7 @@ function toggleSource(id: string, on: boolean) {
         </Section>
 
         <Section id="configure-tools" :title="t('grants.title')" :description="t('grants.hint')" class="scroll-mt-14">
-          <McpGrants v-model="config" :servers="servers" :disabled="disabled" :servers-link="links.servers" />
+          <McpGrants v-model="config" :servers="servers" :disabled="disabled" :servers-link="links.servers" :field-error="fieldError" />
           <FieldError :id="ids.tools" :message="serverError('server', 'tool_name', 'legacy_tools')" />
           <div v-if="config.tools.length" class="flex flex-col gap-2 rounded-box border border-base-300 px-4 py-3">
             <h3 class="text-ui font-semibold">

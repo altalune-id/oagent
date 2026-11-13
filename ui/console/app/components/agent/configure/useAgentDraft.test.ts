@@ -1,6 +1,7 @@
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick } from 'vue';
 import { connectError, deferred, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { useAgentsStore } from '~/stores/agents';
 import { changes, emptyConfig, fromWire, stateOf, toWire } from './agentConfig';
@@ -79,7 +80,7 @@ describe('agentConfig', () => {
     ]);
     expect(changes({ ...live, providerId: '', model: '', helperModel: '' }, { ...live, helperModel: 'tiny-1' }, usd, names).slice(0, 2)).toEqual([
       { key: 'configure.change_provider_model', params: { provider: '—', model: '—' } },
-      { key: 'configure.change_helper', params: { model: '—' } },
+      { key: 'configure.change_helper_same' },
     ]);
     const relaxed = { ...live, grants: [{ ...live.grants[0]!, tools: [{ name: 'orders_lookup', requireApproval: false }, { name: 'refunds_create', requireApproval: false }] }] };
     const strict = { ...live, grants: [{ ...live.grants[0]!, tools: [{ name: 'orders_lookup', requireApproval: true }, { name: 'refunds_create', requireApproval: false }] }] };
@@ -266,6 +267,37 @@ describe('useAgentDraft', () => {
     client.publishAgent!.mockRejectedValueOnce(connectError('AGT007', { reason: 'budget_unpriced' }));
     await d.publish();
     expect(d.fieldError.value?.reason).toBe('budget_unpriced');
+  });
+
+  it('keeps the refused tool name with an AGT007 publish refusal', async () => {
+    setKnownKeys('apperror.AGT007_unapproved_tool');
+    const d = useAgentDraft(id, names);
+    await d.load();
+    client.publishAgent!.mockRejectedValueOnce(connectError('AGT007', { reason: 'unapproved_tool', name: 'yasaku__refunds_create' }));
+    expect(await d.publish()).toBeNull();
+    expect(d.fieldError.value).toEqual({ reason: 'unapproved_tool', name: 'yasaku__refunds_create', message: 'apperror.AGT007_unapproved_tool|{"name":"yasaku__refunds_create"}' });
+  });
+
+  it('drops a publish refusal as soon as the draft changes', async () => {
+    setKnownKeys('apperror.AGT007_unapproved_tool');
+    const d = useAgentDraft(id, names);
+    await d.load();
+    client.publishAgent!.mockRejectedValueOnce(connectError('AGT007', { reason: 'unapproved_tool', name: 'yasaku__refunds_create' }));
+    await d.publish();
+    expect(d.fieldError.value?.name).toBe('yasaku__refunds_create');
+    d.config.value = { ...d.config.value, instructions: 'Changed.' };
+    await nextTick();
+    expect(d.fieldError.value).toBeNull();
+    expect(d.publishError.value).toBeNull();
+  });
+
+  it('never puts an AGT007 tool_name refusal under a tool row', async () => {
+    const d = useAgentDraft(id, names);
+    await d.load();
+    client.publishAgent!.mockRejectedValueOnce(connectError('AGT007', { reason: 'tool_name', name: 'yasaku__refunds_create' }));
+    await d.publish();
+    expect(d.fieldError.value?.reason).toBe('tool_name');
+    expect(d.fieldError.value?.name).toBeUndefined();
   });
 
   it('reports a failed publish', async () => {

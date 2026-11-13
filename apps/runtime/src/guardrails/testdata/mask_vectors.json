@@ -1,0 +1,525 @@
+{
+  "description": "Vectors for maskText. Defaults: every flag on and no keyPrefix (the default oagent_ applies). Passes run in order: secrets, email, card, phone. A card starts with 1-9 and never follows a + sign; a Luhn-valid run of 13-19 digits is a card unless it starts with 0 or follows +, so phone vectors use Luhn-invalid numbers or those prefixes. Known false positives are pinned: +150000000 and a bare run starting 628 are phones. notCaught marks a known gap: the input stays unchanged.",
+  "vectors": [
+    {
+      "name": "email plain",
+      "input": "write to budi@example.com",
+      "want": "write to [EMAIL]"
+    },
+    {
+      "name": "email dots and plus",
+      "input": "first.last+tag@mail.example.org",
+      "want": "[EMAIL]"
+    },
+    {
+      "name": "email co.id",
+      "input": "sales@toko-maju.co.id ok",
+      "want": "[EMAIL] ok"
+    },
+    {
+      "name": "email local host untouched",
+      "input": "user@localhost",
+      "want": "user@localhost"
+    },
+    {
+      "name": "email short untouched",
+      "input": "a@b",
+      "want": "a@b"
+    },
+    {
+      "name": "email handle untouched",
+      "input": "ping @handle",
+      "want": "ping @handle"
+    },
+    {
+      "name": "email local part over 64 chars",
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com",
+      "want": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com",
+      "notCaught": true
+    },
+    {
+      "name": "phone 0 prefix",
+      "input": "call 08123456789",
+      "want": "call [PHONE]"
+    },
+    {
+      "name": "phone dashes",
+      "input": "0812-3456-789",
+      "want": "[PHONE]"
+    },
+    {
+      "name": "phone spaces",
+      "input": "0812 3456 7890",
+      "want": "[PHONE]"
+    },
+    {
+      "name": "phone plus spaced",
+      "input": "+62 812 3456 7890",
+      "want": "[PHONE]"
+    },
+    {
+      "name": "phone plus compact",
+      "input": "+6281234567890",
+      "want": "[PHONE]"
+    },
+    {
+      "name": "money plain untouched",
+      "input": "150000000",
+      "want": "150000000"
+    },
+    {
+      "name": "money dotted untouched",
+      "input": "25.000",
+      "want": "25.000"
+    },
+    {
+      "name": "money rupiah untouched",
+      "input": "Rp1.500.000",
+      "want": "Rp1.500.000"
+    },
+    {
+      "name": "money rupiah spaced untouched",
+      "input": "Rp 150000000",
+      "want": "Rp 150000000"
+    },
+    {
+      "name": "money with plus is a phone",
+      "input": "+150000000",
+      "want": "[PHONE]"
+    },
+    {
+      "name": "money-like 628 run is a phone",
+      "input": "6280000000",
+      "want": "[PHONE]"
+    },
+    {
+      "name": "phone too short untouched",
+      "input": "0812",
+      "want": "0812"
+    },
+    {
+      "name": "digits without prefix untouched",
+      "input": "order 12345678",
+      "want": "order 12345678"
+    },
+    {
+      "name": "luhn-valid 0-prefixed run is a phone, never a card",
+      "input": "0812345678906",
+      "want": "[PHONE]"
+    },
+    {
+      "name": "luhn-valid plus-prefixed run is a phone, never a card",
+      "input": "+6281234567808",
+      "want": "[PHONE]"
+    },
+    {
+      "name": "luhn-valid 628 run without plus is a card",
+      "input": "6281234567899",
+      "want": "[CARD]"
+    },
+    {
+      "name": "phone bare 62 mobile",
+      "input": "6281234567890",
+      "want": "[PHONE]"
+    },
+    {
+      "name": "phone in a wa.me link",
+      "input": "wa.me/6281234567890",
+      "want": "wa.me/[PHONE]"
+    },
+    {
+      "name": "phone dotted",
+      "input": "0812.3456.7890",
+      "want": "[PHONE]"
+    },
+    {
+      "name": "phone plus dashed",
+      "input": "+62-812-3456-7890",
+      "want": "[PHONE]"
+    },
+    {
+      "name": "phone landline",
+      "input": "021-5551234",
+      "want": "[PHONE]"
+    },
+    {
+      "name": "phone landline in parentheses",
+      "input": "(021) 555-1234",
+      "want": "(021) 555-1234",
+      "notCaught": true
+    },
+    {
+      "name": "phone plus with parentheses",
+      "input": "+62 (812) 3456 7890",
+      "want": "+62 (812) 3456 7890",
+      "notCaught": true
+    },
+    {
+      "name": "card spaced",
+      "input": "pay with 4111 1111 1111 1111",
+      "want": "pay with [CARD]"
+    },
+    {
+      "name": "card dashed",
+      "input": "4111-1111-1111-1111",
+      "want": "[CARD]"
+    },
+    {
+      "name": "card compact",
+      "input": "4111111111111111",
+      "want": "[CARD]"
+    },
+    {
+      "name": "card mastercard",
+      "input": "5500 0000 0000 0004",
+      "want": "[CARD]"
+    },
+    {
+      "name": "card 19 digits",
+      "input": "4111111111111111110",
+      "want": "[CARD]"
+    },
+    {
+      "name": "card luhn-invalid untouched",
+      "input": "4111111111111112",
+      "want": "4111111111111112"
+    },
+    {
+      "name": "card 12 digits untouched",
+      "input": "411111111111",
+      "want": "411111111111"
+    },
+    {
+      "name": "card 20 digits untouched",
+      "input": "41111111111111111111",
+      "want": "41111111111111111111"
+    },
+    {
+      "name": "card inside a longer luhn-invalid run",
+      "input": "94111111111111111",
+      "want": "94111111111111111",
+      "notCaught": true
+    },
+    {
+      "name": "secret sk-proj-",
+      "input": "token sk-proj-abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "secret sk_live_",
+      "input": "token sk_live_abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "secret sk_test_",
+      "input": "token sk_test_abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "secret key_",
+      "input": "token key_abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "secret ghp_",
+      "input": "token ghp_abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "secret gho_",
+      "input": "token gho_abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "secret ghs_",
+      "input": "token ghs_abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "secret ghu_",
+      "input": "token ghu_abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "secret github_pat_",
+      "input": "token github_pat_abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "secret xoxa-",
+      "input": "token xoxa-abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "secret xoxb-",
+      "input": "token xoxb-abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "secret xoxp-",
+      "input": "token xoxp-abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "secret xoxr-",
+      "input": "token xoxr-abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "secret xoxs-",
+      "input": "token xoxs-abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "secret AKIA",
+      "input": "AKIAIOSFODNN7EXAMPLE",
+      "want": "[SECRET]"
+    },
+    {
+      "name": "secret ASIA",
+      "input": "id ASIAJEXAMPLEXEG2JICE.",
+      "want": "id [SECRET]."
+    },
+    {
+      "name": "secret bearer keeps its word",
+      "input": "Authorization: Bearer abcdefghijklmnop1234",
+      "want": "Authorization: Bearer [SECRET]"
+    },
+    {
+      "name": "secret jwt",
+      "input": "jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U",
+      "want": "jwt [SECRET]"
+    },
+    {
+      "name": "secret bearer jwt",
+      "input": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U",
+      "want": "Bearer [SECRET]"
+    },
+    {
+      "name": "secret default key prefix",
+      "input": "my key oagent_Ab3dEf6hIj9kLm2nOp5qRs8tUv1wXy4zAb7cDe0fGh2",
+      "want": "my key [SECRET]"
+    },
+    {
+      "name": "secret custom key prefix",
+      "input": "acme_Ab3dEf6hIj9kLm2nOp5qRs8tUv1wXy4zAb7cDe0fGh2",
+      "want": "[SECRET]",
+      "options": {
+        "keyPrefix": "acme_"
+      }
+    },
+    {
+      "name": "custom key prefix leaves the default alone",
+      "input": "oagent_Ab3dEf6hIj9kLm2nOp5qRs8tUv1wXy4zAb7cDe0fGh2",
+      "want": "oagent_Ab3dEf6hIj9kLm2nOp5qRs8tUv1wXy4zAb7cDe0fGh2",
+      "options": {
+        "keyPrefix": "acme_"
+      }
+    },
+    {
+      "name": "escapes a prefix with a regex metacharacter (direct callers)",
+      "input": "a.b_Ab3dEf6hIj9kLm2nOp5qRs8tUv1wXy4zAb7cDe0fGh2 axb_Ab3dEf6hIj9kLm2nOp5qRs8tUv1wXy4zAb7cDe0fGh2",
+      "want": "[SECRET] axb_Ab3dEf6hIj9kLm2nOp5qRs8tUv1wXy4zAb7cDe0fGh2",
+      "options": {
+        "keyPrefix": "a.b_"
+      }
+    },
+    {
+      "name": "secret bearer base64 tail",
+      "input": "Authorization: Bearer ab/cdefghijklmnopqrs+tuvwx==",
+      "want": "Authorization: Bearer [SECRET]"
+    },
+    {
+      "name": "secret pem private key",
+      "input": "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0Z3VS5JJcds3xfn/ygWyF8PbnGy0AHB7MbQ+H6Jfqh0g\nYqU1w2wlFOW5x3s4Q0Cf3Xq2m8vLwX8Yb5N1oP9rS7tU+vW3xY1zA2bC4dE=\n-----END RSA PRIVATE KEY-----\nthanks",
+      "want": "[SECRET]\nthanks"
+    },
+    {
+      "name": "secret pem truncated private key",
+      "input": "key: -----BEGIN PRIVATE KEY-----\nMIIEowIBAAKCAQEA0Z3VS5JJcds3xfn/ygWyF8PbnGy0AHB7MbQ+H6Jfqh0g\nYqU1w2wlFOW5x3s4Q0Cf3Xq2m8vLwX8Yb5N1oP9rS7tU+vW3xY1zA2bC4dE=",
+      "want": "key: [SECRET]"
+    },
+    {
+      "name": "pem certificate untouched",
+      "input": "-----BEGIN CERTIFICATE-----\nMIIBszCCAVmgAwIBAgIU\n-----END CERTIFICATE-----",
+      "want": "-----BEGIN CERTIFICATE-----\nMIIBszCCAVmgAwIBAgIU\n-----END CERTIFICATE-----"
+    },
+    {
+      "name": "secret basic auth",
+      "input": "Authorization: Basic dXNlcjpwYXNzd29yZA==",
+      "want": "Authorization: Basic [SECRET]"
+    },
+    {
+      "name": "basic plan untouched",
+      "input": "Basic plan costs Rp150.000",
+      "want": "Basic plan costs Rp150.000"
+    },
+    {
+      "name": "secret google api key",
+      "input": "key=AIzaSyB1c2D3e4F5g6H7i8J9k0L1m2N3o4P5q6R&x=1",
+      "want": "key=[SECRET]&x=1"
+    },
+    {
+      "name": "google prefix with 34 chars untouched",
+      "input": "AIzaSyB1c2D3e4F5g6H7i8J9k0L1m2N3o4P5q6",
+      "want": "AIzaSyB1c2D3e4F5g6H7i8J9k0L1m2N3o4P5q6"
+    },
+    {
+      "name": "secret rk_live_",
+      "input": "token rk_live_abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "secret rk_test_",
+      "input": "token rk_test_abcdefghijklmnop1234",
+      "want": "token [SECRET]"
+    },
+    {
+      "name": "rk_live_ short untouched",
+      "input": "rk_live_short",
+      "want": "rk_live_short"
+    },
+    {
+      "name": "empty key prefix falls back to the default",
+      "input": "oagent_Ab3dEf6hIj9kLm2nOp5qRs8tUv1wXy4zAb7cDe0fGh2 plain_abcdefghijklmnopqrst",
+      "want": "[SECRET] plain_abcdefghijklmnopqrst",
+      "options": {
+        "keyPrefix": ""
+      }
+    },
+    {
+      "name": "aws secret access key",
+      "input": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+      "want": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+      "notCaught": true
+    },
+    {
+      "name": "us phone in parentheses",
+      "input": "(415) 555-1234",
+      "want": "(415) 555-1234",
+      "notCaught": true
+    },
+    {
+      "name": "us phone dashed",
+      "input": "415-555-1234",
+      "want": "415-555-1234",
+      "notCaught": true
+    },
+    {
+      "name": "us phone plus with parentheses",
+      "input": "+1 (415) 555-1234",
+      "want": "+1 (415) 555-1234",
+      "notCaught": true
+    },
+    {
+      "name": "secret too short untouched",
+      "input": "sk-short",
+      "want": "sk-short"
+    },
+    {
+      "name": "keyboard untouched",
+      "input": "keyboard",
+      "want": "keyboard"
+    },
+    {
+      "name": "ghost untouched",
+      "input": "ghost",
+      "want": "ghost"
+    },
+    {
+      "name": "bare bearer untouched",
+      "input": "Bearer",
+      "want": "Bearer"
+    },
+    {
+      "name": "bearer short token untouched",
+      "input": "Bearer token",
+      "want": "Bearer token"
+    },
+    {
+      "name": "prefix inside a word untouched",
+      "input": "task-abcdefghijklmnopqrstuvwx",
+      "want": "task-abcdefghijklmnopqrstuvwx"
+    },
+    {
+      "name": "jwt header alone untouched",
+      "input": "eyJhbGciOiJIUzI1NiJ9",
+      "want": "eyJhbGciOiJIUzI1NiJ9"
+    },
+    {
+      "name": "jwt two segments untouched",
+      "input": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0",
+      "want": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0"
+    },
+    {
+      "name": "email off",
+      "input": "budi@example.com",
+      "want": "budi@example.com",
+      "options": {
+        "email": false
+      }
+    },
+    {
+      "name": "phone off",
+      "input": "08123456789",
+      "want": "08123456789",
+      "options": {
+        "phone": false
+      }
+    },
+    {
+      "name": "card off",
+      "input": "4111 1111 1111 1111",
+      "want": "4111 1111 1111 1111",
+      "options": {
+        "card": false
+      }
+    },
+    {
+      "name": "card off leaves a 0-prefixed run to phone",
+      "input": "0812345678906",
+      "want": "[PHONE]",
+      "options": {
+        "card": false
+      }
+    },
+    {
+      "name": "secrets off",
+      "input": "sk-proj-abcdefghijklmnop1234",
+      "want": "sk-proj-abcdefghijklmnop1234",
+      "options": {
+        "secrets": false
+      }
+    },
+    {
+      "name": "secrets off leaves the key prefix",
+      "input": "oagent_Ab3dEf6hIj9kLm2nOp5qRs8tUv1wXy4zAb7cDe0fGh2",
+      "want": "oagent_Ab3dEf6hIj9kLm2nOp5qRs8tUv1wXy4zAb7cDe0fGh2",
+      "options": {
+        "secrets": false
+      }
+    },
+    {
+      "name": "free-text password",
+      "input": "my password is hunter2",
+      "want": "my password is hunter2",
+      "notCaught": true
+    },
+    {
+      "name": "unknown token",
+      "input": "tok_9f8e7d6c5b4a39281706",
+      "want": "tok_9f8e7d6c5b4a39281706",
+      "notCaught": true
+    },
+    {
+      "name": "mixed",
+      "input": "Email budi@example.com, call 08123456789, card 4111 1111 1111 1111, key sk-proj-abcdefghijklmnop1234.",
+      "want": "Email [EMAIL], call [PHONE], card [CARD], key [SECRET]."
+    },
+    {
+      "name": "empty",
+      "input": "",
+      "want": ""
+    }
+  ]
+}

@@ -104,6 +104,7 @@ export function toRunSummary(r: RunPB, threadTitle: string): RunSummary {
     seconds: r.latencyMs === undefined ? 0 : Number(r.latencyMs) / 1000,
     tokens,
     embeddingTokens: u ? Number(u.embeddingTokens) : 0,
+    helperTokens: u ? Number(u.helperInputTokens + u.helperOutputTokens + u.helperCacheReadTokens + u.helperCacheWriteTokens) : 0,
     retrieveCalls: r.knowledgeRetrieveCalls,
     retrieveMs: Number(r.knowledgeRetrieveMs),
     retrievePassages: r.knowledgePassages,

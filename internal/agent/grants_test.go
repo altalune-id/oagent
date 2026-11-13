@@ -271,3 +271,115 @@ func TestService_DraftVersionPinsAndReusesTheDraft(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, v.ID, again.ID, "an unchanged draft reuses its row")
 }
+
+func newKnowledgeFixture(t *testing.T) (*grantsFixture, uuid.UUID) {
+	t.Helper()
+	f := newGrantsFixture(t)
+	src := uuid.New()
+	f.grants.Sources = map[uuid.UUID]uuid.UUID{src: f.agent.ProjectID}
+	f.svc.WithKnowledge(f.grants)
+	return f, src
+}
+
+func (f *grantsFixture) withTools(c agent.Config, tools ...agent.Tool) agent.Config {
+	c.MCPServers = []agent.MCPGrant{{ServerID: f.server, Tools: tools}}
+	return c
+}
+
+func (f *grantsFixture) published(t *testing.T, c agent.Config) {
+	t.Helper()
+	f.store.Published = []*agent.Version{{ID: uuid.New(), AgentID: f.agent.ID, Version: 1, Config: c, Kind: agent.VersionPublished}}
+}
+
+func refusedTool(t *testing.T, err error) string {
+	t.Helper()
+	assert.Equal(t, "unapproved_tool", grantReason(t, err))
+	e, _ := errors.AsType[*agent.InvalidGrantError](err)
+	return e.ToAppError().Meta()["name"]
+}
+
+func TestService_KnowledgeWithAnUnapprovedToolIsRefused(t *testing.T) {
+	f, src := newKnowledgeFixture(t)
+	f.agent.Draft = f.withTools(f.config(), agent.Tool{Name: "send"})
+	f.agent.Draft.KnowledgeSourceIDs = []uuid.UUID{src}
+
+	_, _, _, err := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	assert.Equal(t, "yasaku__send", refusedTool(t, err))
+	assert.Empty(t, f.store.Published, "nothing is published")
+	_, err = f.svc.DraftVersion(context.Background(), f.agent.ID, uuid.Nil)
+	assert.Equal(t, "yasaku__send", refusedTool(t, err), "Try it refuses the same draft")
+	assert.Empty(t, f.store.Drafts)
+}
+
+func TestService_KnowledgeWithApprovedOrConditionalToolsPublishes(t *testing.T) {
+	f, src := newKnowledgeFixture(t)
+	f.agent.Draft = f.withTools(f.config(), agent.Tool{Name: "a", RequireApproval: true},
+		agent.Tool{Name: "b", RequireApproval: true, FreeWhen: []agent.FreeCondition{{Arg: "x", Absent: true}}})
+	f.agent.Draft.KnowledgeSourceIDs = []uuid.UUID{src}
+	_, _, _, err := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	require.NoError(t, err)
+}
+
+func TestService_UnapprovedToolWithoutKnowledgePublishes(t *testing.T) {
+	f, _ := newKnowledgeFixture(t)
+	f.agent.Draft = f.withTools(f.config(), agent.Tool{Name: "send"})
+	_, _, _, err := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	require.NoError(t, err)
+}
+
+func TestService_GrandfatheredAgentRepublishesAnInstructionsChange(t *testing.T) {
+	f, src := newKnowledgeFixture(t)
+	live := f.withTools(f.config(), agent.Tool{Name: "send"})
+	live.KnowledgeSourceIDs = []uuid.UUID{src}
+	f.published(t, live)
+	f.agent.Draft = live
+	f.agent.Draft.Instructions = "Be briefer."
+	_, v, created, err := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	require.NoError(t, err)
+	assert.True(t, created)
+	assert.Equal(t, "Be briefer.", v.Config.Instructions)
+	_, err = f.svc.DraftVersion(context.Background(), f.agent.ID, uuid.Nil)
+	require.NoError(t, err, "Try it uses the same grandfathered tools")
+}
+
+func TestService_GrandfatheredAgentAddingAnUnapprovedToolIsRefused(t *testing.T) {
+	f, src := newKnowledgeFixture(t)
+	live := f.withTools(f.config(), agent.Tool{Name: "send"})
+	live.KnowledgeSourceIDs = []uuid.UUID{src}
+	f.published(t, live)
+	f.agent.Draft = f.withTools(live, agent.Tool{Name: "send"}, agent.Tool{Name: "delete"})
+	_, _, _, err := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	assert.Equal(t, "yasaku__delete", refusedTool(t, err))
+}
+
+func TestService_TurningKnowledgeOnOverAnUnapprovedToolIsRefused(t *testing.T) {
+	f, src := newKnowledgeFixture(t)
+	live := f.withTools(f.config(), agent.Tool{Name: "send"})
+	f.published(t, live)
+	f.agent.Draft = live
+	f.agent.Draft.KnowledgeSourceIDs = []uuid.UUID{src}
+	_, _, _, err := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	assert.Equal(t, "yasaku__send", refusedTool(t, err))
+}
+
+func TestService_FixedAgentCannotRegress(t *testing.T) {
+	f, src := newKnowledgeFixture(t)
+	live := f.withTools(f.config(), agent.Tool{Name: "send", RequireApproval: true})
+	live.KnowledgeSourceIDs = []uuid.UUID{src}
+	f.published(t, live)
+	f.agent.Draft = f.withTools(live, agent.Tool{Name: "send"})
+	_, _, _, err := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	assert.Equal(t, "yasaku__send", refusedTool(t, err))
+}
+
+func TestService_ServerRenameKeepsTheGrandfather(t *testing.T) {
+	f, src := newKnowledgeFixture(t)
+	live := f.withTools(f.config(), agent.Tool{Name: "send"})
+	live.KnowledgeSourceIDs = []uuid.UUID{src}
+	f.published(t, live)
+	f.grants.Servers[f.server] = fakes.GrantServer{ProjectID: f.agent.ProjectID, Name: "renamed"}
+	f.agent.Draft = live
+	f.agent.Draft.Instructions = "Be briefer."
+	_, _, _, err := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	require.NoError(t, err, "tools are keyed by server id, so a rename grandfathers nothing new and refuses nothing")
+}

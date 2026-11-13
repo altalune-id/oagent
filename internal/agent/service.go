@@ -189,7 +189,7 @@ func (s *Service) UpdateDraft(ctx context.Context, id uuid.UUID, cfg Config) (*A
 		if a, err = s.store.LockForPublish(ctx, id); err != nil {
 			return err
 		}
-		if err := s.checkReferences(ctx, a.ProjectID, cfg, false); err != nil {
+		if _, err := s.checkReferences(ctx, a.ProjectID, cfg, false); err != nil {
 			return err
 		}
 		if err := a.SetDraft(cfg, time.Now().UTC()); err != nil {
@@ -209,11 +209,11 @@ func (s *Service) Publish(ctx context.Context, id, by uuid.UUID) (a *Agent, v *V
 		if a, err = s.store.LockForPublish(ctx, id); err != nil {
 			return err
 		}
-		if err := s.publishable(ctx, a); err != nil {
-			return err
-		}
 		latest, err := s.store.LatestVersion(ctx, id)
 		if err != nil {
+			return err
+		}
+		if err := s.publishable(ctx, a, latest); err != nil {
 			return err
 		}
 		if v, created, err = a.Publish(latest, by, time.Now().UTC()); err != nil {
@@ -240,7 +240,11 @@ func (s *Service) DraftVersion(ctx context.Context, id, by uuid.UUID) (*Version,
 		if err != nil {
 			return err
 		}
-		if err := s.publishable(ctx, a); err != nil {
+		latest, err := s.store.LatestVersion(ctx, id)
+		if err != nil {
+			return err
+		}
+		if err := s.publishable(ctx, a, latest); err != nil {
 			return err
 		}
 		draft, err := a.DraftVersion(by, time.Now().UTC())
@@ -256,7 +260,7 @@ func (s *Service) DraftVersion(ctx context.Context, id, by uuid.UUID) (*Version,
 	return v, nil
 }
 
-func (s *Service) publishable(ctx context.Context, a *Agent) error {
+func (s *Service) publishable(ctx context.Context, a *Agent, latest *Version) error {
 	if a.Draft.Legacy() {
 		return &NeedsRepublishError{}
 	}
@@ -271,38 +275,51 @@ func (s *Service) publishable(ctx context.Context, a *Agent) error {
 			return err
 		}
 	}
-	return s.checkReferences(ctx, a.ProjectID, a.Draft, true)
+	names, err := s.checkReferences(ctx, a.ProjectID, a.Draft, true)
+	if err != nil {
+		return err
+	}
+	var published *Config
+	if latest != nil {
+		published = &latest.Config
+	}
+	if k, ok := newUnattendedTool(a.Draft, published); ok {
+		return &InvalidGrantError{Reason: GrantUnapprovedTool, Name: names[k.server] + "__" + k.name}
+	}
+	return nil
 }
 
-func (s *Service) checkReferences(ctx context.Context, projectID uuid.UUID, cfg Config, publishing bool) error {
+func (s *Service) checkReferences(ctx context.Context, projectID uuid.UUID, cfg Config, publishing bool) (map[uuid.UUID]string, error) {
 	if cfg.ProviderID != uuid.Nil {
 		if err := s.checkModels(ctx, projectID, cfg, publishing); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	for _, id := range cfg.KnowledgeSourceIDs {
 		if s.knowledge == nil {
-			return &InvalidGrantError{Reason: GrantKnowledgeSource}
+			return nil, &InvalidGrantError{Reason: GrantKnowledgeSource}
 		}
 		if err := s.knowledge.SourceExists(ctx, projectID, id); err != nil {
-			return err
+			return nil, err
 		}
 	}
+	names := make(map[uuid.UUID]string, len(cfg.MCPServers))
 	for _, g := range cfg.MCPServers {
 		if s.servers == nil {
-			return &InvalidGrantError{Reason: GrantServer}
+			return nil, &InvalidGrantError{Reason: GrantServer}
 		}
 		name, err := s.servers.Exists(ctx, projectID, g.ServerID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, t := range g.Tools {
 			if !grantNameRe.MatchString(name + "__" + t.Name) {
-				return &InvalidGrantError{Reason: GrantToolName, Name: t.Name}
+				return nil, &InvalidGrantError{Reason: GrantToolName, Name: t.Name}
 			}
 		}
+		names[g.ServerID] = name
 	}
-	return nil
+	return names, nil
 }
 
 func (s *Service) checkModels(ctx context.Context, projectID uuid.UUID, cfg Config, publishing bool) error {

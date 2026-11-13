@@ -53,6 +53,11 @@ type Usage struct {
 	CacheWriteTokens int64
 	EmbeddingTokens  int64
 	Estimated        bool
+
+	HelperInputTokens      int64
+	HelperOutputTokens     int64
+	HelperCacheReadTokens  int64
+	HelperCacheWriteTokens int64
 }
 
 // Run is the aggregate root: one turn of an agent version on a thread.

@@ -2,6 +2,7 @@ package boot
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -66,6 +67,27 @@ func testSealer(t *testing.T) sealer.Sealer {
 	sl, err := sealer.New(key)
 	require.NoError(t, err)
 	return sl
+}
+
+func TestRunAgents_DraftRefusalIsExpected(t *testing.T) {
+	ag := &agent.Agent{ID: uuid.New(), PublicID: "agent-pub", Draft: agent.Config{Model: "gpt-4o"}}
+	store := &fakes.AgentStore{Agent: ag}
+	a := runAgents{store: store, agents: agent.NewService(store, fakes.Transactor{}, apperror.NewReporter(nil, false).Unexpected)}
+
+	_, err := a.Draft(t.Context(), ag.ID)
+	require.ErrorIs(t, err, run.ErrDraftRefused, "a draft refused like a publish")
+	assert.True(t, agent.IsNeedsRepublishError(err), "the refusal stays readable")
+	assert.True(t, run.IsExpectedError(err))
+
+	store.Err = errors.New("db down")
+	_, err = a.Draft(t.Context(), ag.ID)
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, run.ErrDraftRefused, "a failure that is not a refusal is still reported")
+
+	store.Err, store.Agent = nil, nil
+	_, err = a.Draft(t.Context(), ag.ID)
+	assert.True(t, agent.IsNotFoundError(err), "a deleted agent keeps its old path")
+	assert.NotErrorIs(t, err, run.ErrDraftRefused, "a deleted agent's Try message never waits as refused")
 }
 
 func TestRunProviders_ResolveWithPrices(t *testing.T) {
