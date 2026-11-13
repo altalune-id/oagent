@@ -26,6 +26,7 @@
   {"rule": "agent.knowledge_tuning.max_tokens.range", "reason": "invalid"},
   {"rule": "knowledge.filename.blank", "reason": "required"},
   {"rule": "knowledge.filename.control", "reason": "invalid"},
+  {"rule": "mcpserver.timeout_ms.range", "reason": "invalid"},
   {"rule": "modelprovider.models.unique", "reason": "invalid"},
   {"rule": "webhook.url.max_len.2048", "reason": "too_long", "param": "2048"},
   {"rule": "webhook.description.max_len.200", "reason": "too_long", "param": "200"},

@@ -103,6 +103,24 @@ message Agent {
   google.protobuf.Timestamp draft_updated_at = 12;
   // unpublished_changes is true when the draft was edited after the last publish.
   bool unpublished_changes = 13;
+  // effective_config is the draft with unset values resolved to the current recommended values.
+  AgentEffective effective_config = 14;
+}
+
+// AgentEffective is what a run uses for a config: unset values resolved to the recommended values current at read time, so it is never stored or frozen per version.
+message AgentEffective {
+  int32 max_steps = 1;
+  int32 knowledge_top_k = 2;
+  double knowledge_min_score = 3;
+  int32 knowledge_max_tokens = 4;
+}
+
+// AgentDefaults are the recommended agent config values and their ranges; the knowledge tuning defaults come from ListKnowledgeSources.
+message AgentDefaults {
+  int32 max_steps = 1;
+  int32 max_max_steps = 2;
+  double max_temperature = 3;
+  int32 max_cost_cents = 4;
 }
 
 // AgentTool is a tool the agent may call; require_approval makes a person approve each call, and free_when lets a call run without asking when every condition holds.
@@ -136,7 +154,7 @@ message McpGrant {
   bool missing = 3;
 }
 
-// AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider's public id; provider_missing is output only; knowledge_source_ids are the knowledge sources searched before each turn, leaving out a deleted one, and knowledge_sources_missing is output only: how many bound sources no longer exist. knowledge_tuning shapes that search; unset fields use the recommended values.
+// AgentConfig is what an agent runs with; zero values mean the recommended value (max_steps, from GetAgent's defaults) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider's public id; provider_missing is output only; knowledge_source_ids are the knowledge sources searched before each turn, leaving out a deleted one, and knowledge_sources_missing is output only: how many bound sources no longer exist. knowledge_tuning shapes that search; unset fields use the recommended values.
 message AgentConfig {
   string instructions = 1 [
     (buf.validate.field).cel = {id: "agent.instructions.max_len.32000", expression: "this.size() <= 32000 ? '' : 'must be at most 32000 characters'"}
@@ -203,6 +221,8 @@ message AgentVersion {
   google.protobuf.Timestamp created_at = 5;
   // created_by is the publishing person's user public id, empty for an API key.
   string created_by = 6;
+  // effective_config is config with unset values resolved to the current recommended values.
+  AgentEffective effective_config = 7;
 }
 
 message CreateAgentRequest {
@@ -239,6 +259,7 @@ message GetAgentRequest {
 
 message GetAgentResponse {
   Agent agent = 1;
+  AgentDefaults defaults = 2;
 }
 
 message ListAgentsRequest {
@@ -250,6 +271,7 @@ message ListAgentsRequest {
 
 message ListAgentsResponse {
   repeated Agent agents = 1;
+  AgentDefaults defaults = 2;
 }
 
 message UpdateAgentRequest {

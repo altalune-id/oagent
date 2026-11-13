@@ -1114,8 +1114,10 @@ type GetChannelSettingsResponse struct {
 	MaxMessageAgeMinutes int32                  `protobuf:"varint,7,opt,name=max_message_age_minutes,json=maxMessageAgeMinutes,proto3" json:"max_message_age_minutes,omitempty"`
 	ApprovalPrompt       string                 `protobuf:"bytes,8,opt,name=approval_prompt,json=approvalPrompt,proto3" json:"approval_prompt,omitempty"`
 	ApprovalExpired      string                 `protobuf:"bytes,9,opt,name=approval_expired,json=approvalExpired,proto3" json:"approval_expired,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// max_quiet_ms caps both quiet times.
+	MaxQuietMs    int32 `protobuf:"varint,10,opt,name=max_quiet_ms,json=maxQuietMs,proto3" json:"max_quiet_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetChannelSettingsResponse) Reset() {
@@ -1209,6 +1211,13 @@ func (x *GetChannelSettingsResponse) GetApprovalExpired() string {
 		return x.ApprovalExpired
 	}
 	return ""
+}
+
+func (x *GetChannelSettingsResponse) GetMaxQuietMs() int32 {
+	if x != nil {
+		return x.MaxQuietMs
+	}
+	return 0
 }
 
 var File_channel_v1_channel_proto protoreflect.FileDescriptor
@@ -1349,7 +1358,7 @@ const file_channel_v1_channel_proto_rawDesc = "" +
 	"\x17DeleteConnectionRequest\x12\x1c\n" +
 	"\x02id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\"\x1a\n" +
 	"\x18DeleteConnectionResponse\"\x1b\n" +
-	"\x19GetChannelSettingsRequest\"\xa4\x03\n" +
+	"\x19GetChannelSettingsRequest\"\xc6\x03\n" +
 	"\x1aGetChannelSettingsResponse\x125\n" +
 	"\x17default_openwa_base_url\x18\x01 \x01(\tR\x14defaultOpenwaBaseUrl\x12#\n" +
 	"\rreply_failure\x18\x02 \x01(\tR\freplyFailure\x12\x1f\n" +
@@ -1361,7 +1370,10 @@ const file_channel_v1_channel_proto_rawDesc = "" +
 	"quietMaxMs\x125\n" +
 	"\x17max_message_age_minutes\x18\a \x01(\x05R\x14maxMessageAgeMinutes\x12'\n" +
 	"\x0fapproval_prompt\x18\b \x01(\tR\x0eapprovalPrompt\x12)\n" +
-	"\x10approval_expired\x18\t \x01(\tR\x0fapprovalExpired*\xbf\x01\n" +
+	"\x10approval_expired\x18\t \x01(\tR\x0fapprovalExpired\x12 \n" +
+	"\fmax_quiet_ms\x18\n" +
+	" \x01(\x05R\n" +
+	"maxQuietMs*\xbf\x01\n" +
 	"\x10ConnectionStatus\x12!\n" +
 	"\x1dCONNECTION_STATUS_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19CONNECTION_STATUS_WAITING\x10\x01\x12\x1f\n" +

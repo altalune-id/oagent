@@ -100,7 +100,7 @@ func TestConfig_KnowledgeSources(t *testing.T) {
 }
 
 func TestConfig_Validate(t *testing.T) {
-	require.NoError(t, Config{}.Validate(), "the zero config is the runtime default")
+	require.NoError(t, Config{}.Validate(), "the zero config runs with the recommended values")
 	require.NoError(t, validConfig().Validate())
 
 	manyTools := make([]Tool, maxTools+1)
@@ -113,7 +113,7 @@ func TestConfig_Validate(t *testing.T) {
 		"config.temperature":     func(c *Config) { c.Temperature = 2.1 },
 		"config.temperature.nan": func(c *Config) { c.Temperature = math.NaN() },
 		"config.max_steps":       func(c *Config) { c.MaxSteps = -1 },
-		"config.max_cost_cents":  func(c *Config) { c.MaxCostCents = maxCostCents + 1 },
+		"config.max_cost_cents":  func(c *Config) { c.MaxCostCents = MaxCostCents + 1 },
 		"config.tools":           func(c *Config) { c.Tools = manyTools },
 		"config.tools.name":      func(c *Config) { c.Tools = []Tool{{Name: "Bad Name"}} },
 	} {

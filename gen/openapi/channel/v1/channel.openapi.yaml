@@ -483,6 +483,11 @@ components:
         approvalExpired:
           type: string
           title: approval_expired
+        maxQuietMs:
+          type: integer
+          title: max_quiet_ms
+          format: int32
+          description: max_quiet_ms caps both quiet times.
       title: GetChannelSettingsResponse
       additionalProperties: false
       description: 'GetChannelSettingsResponse is what a new connection starts with: the operator''s default OpenWA URL (empty when unset), the set replies and quiet times, and the message age limit.'

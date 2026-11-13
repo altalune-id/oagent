@@ -1,6 +1,28 @@
 package knowledge
 
-import knowledgev1 "altalune.id/oagent/gen/go/knowledge/v1"
+import (
+	"time"
+
+	knowledgev1 "altalune.id/oagent/gen/go/knowledge/v1"
+)
+
+// The caps that bound a project's knowledge and its upkeep.
+const (
+	// MaxUploadBytes caps one uploaded file.
+	MaxUploadBytes = 10 << 20
+	// MaxDocumentsPerSource caps the live documents of one source; failed ones don't count.
+	MaxDocumentsPerSource = 100
+	// MaxSourcesPerProject caps a project's knowledge sources.
+	MaxSourcesPerProject = 50
+	// MaxChunksPerProject caps the chunks a project stores.
+	MaxChunksPerProject = 20000
+	// MaxPageContentBytes bounds a crawled page's extracted sections, as JSON.
+	MaxPageContentBytes = 2 << 20
+	// MaxIngestAttempts is how many claims a document gets before it fails as crashed.
+	MaxIngestAttempts = 8
+	// RefreshInterval is the least time between two refreshes of one source.
+	RefreshInterval = 10 * time.Minute
+)
 
 // The retrieval tuning an agent may set: the recommended values, the allowed ranges and the presets.
 const (
@@ -42,4 +64,12 @@ func retrievalDefaults() *knowledgev1.RetrievalDefaults {
 		out.Presets = append(out.Presets, &knowledgev1.RetrievalPreset{Name: p.Name, TopK: int32(p.TopK), MinScore: p.MinScore})
 	}
 	return out
+}
+
+// MaxTokensOf resolves a knowledge budget: unset is RecommendedMaxTokens, anything else is clamped to the range.
+func MaxTokensOf(n int) int {
+	if n < 1 {
+		return RecommendedMaxTokens
+	}
+	return min(max(n, MinMaxTokens), MaxMaxTokens)
 }

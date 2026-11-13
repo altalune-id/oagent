@@ -321,8 +321,6 @@ var (
 const (
 	// MaxIngestPerProject caps a project's documents in ingest at once.
 	MaxIngestPerProject = 2
-	// MaxChunksPerProject caps the chunks a project stores.
-	MaxChunksPerProject = 20000
 	chunkInsertBatch    = 500
 )
 

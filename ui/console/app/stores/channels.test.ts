@@ -39,7 +39,20 @@ describe('channels store', () => {
     expect(client.listConnections).toHaveBeenCalledOnce();
     expect(client.listConnections).toHaveBeenCalledWith({ projectId, agentId });
     expect(store.connection(agentId)?.deviceId).toBe('dev_8fK2pQ7mXr9Lt4Wv');
-    expect(store.settings).toEqual({ defaultOpenwaBaseUrl: 'https://openwa.altalune.id', defaultReplies: { failure: channelDefaults.replyFailure, voice: channelDefaults.replyVoice, photo: channelDefaults.replyPhotoUnreadable, approvalPrompt: channelDefaults.approvalPrompt, approvalExpired: channelDefaults.approvalExpired }, timing: { quietMs: 3_000, quietMaxMs: 10_000, maxMessageAgeMinutes: 30 } });
+    expect(store.settings).toEqual({ defaultOpenwaBaseUrl: 'https://openwa.altalune.id', defaultReplies: { failure: channelDefaults.replyFailure, voice: channelDefaults.replyVoice, photo: channelDefaults.replyPhotoUnreadable, approvalPrompt: channelDefaults.approvalPrompt, approvalExpired: channelDefaults.approvalExpired }, timing: { quietMs: 3_000, quietMaxMs: 10_000, maxMessageAgeMinutes: 30, maxQuietMs: 15_000 } });
+  });
+
+  it('keeps no quiet limit when the server sends none or the settings fail to load', async () => {
+    const { client } = fakeChannelClient([connectionPB()]);
+    client.getChannelSettings.mockResolvedValue({ ...channelDefaults, maxQuietMs: 0 });
+    const store = useChannelsStore();
+    await store.load(projectId, agentId);
+    expect(store.settings.timing.maxQuietMs).toBe(0);
+    setActivePinia(createPinia());
+    client.getChannelSettings.mockRejectedValue(new Error('offline'));
+    const failed = useChannelsStore();
+    await failed.load(projectId, agentId);
+    expect(failed.settings.timing.maxQuietMs).toBe(0);
   });
 
   it('creates with the key trimmed, no secret and the operator defaults, and keeps no key', async () => {

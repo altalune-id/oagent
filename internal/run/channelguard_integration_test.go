@@ -18,8 +18,9 @@ func TestStore_ChannelThreadOfAnotherOrgIsRefused(t *testing.T) {
 	a, b := f.seed(t), f.seed(t)
 	conn := uuid.New()
 	f.exec(t, `INSERT INTO `+f.schema+`.channel_connections (id, public_id, org_id, project_id, agent_id, provider, status, base_url, openwa_org, openwa_project, device_id,
-		signing_secret_primary_sealed, device_key_sealed, reply_failure, reply_voice, reply_photo_unreadable, approval_prompt, approval_expired, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, 'openwa', 'active', 'https://wa.example.com', 'acme', 'main', 'dev_1', '\x01', '\x02', 'f', 'v', 'p', 'ap', 'ae', now(), now())`,
+		signing_secret_primary_sealed, device_key_sealed, reply_failure, reply_voice, reply_photo_unreadable, approval_prompt, approval_expired, quiet_window_ms, quiet_max_ms,
+		created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, 'openwa', 'active', 'https://wa.example.com', 'acme', 'main', 'dev_1', '\x01', '\x02', 'f', 'v', 'p', 'ap', 'ae', `+quietDefaults+`, now(), now())`,
 		conn, "c"+conn.String()[:12], a.org, a.project, a.agent)
 	msg := func(s scope, address string) run.ChannelMessage {
 		return run.ChannelMessage{

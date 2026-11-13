@@ -55,20 +55,8 @@ const (
 	publicIDLen = 21
 	// MaxNameLen bounds a source name, in characters.
 	MaxNameLen = 200
-	// MaxPageContentBytes bounds a crawled page's extracted sections, as JSON.
-	MaxPageContentBytes = 2 << 20
-	// MaxIngestAttempts is how many claims a document gets before it fails as crashed.
-	MaxIngestAttempts = 8
-	// MaxSourcesPerProject caps a project's knowledge sources.
-	MaxSourcesPerProject = 50
-	// RefreshInterval is the least time between two refreshes of one source.
-	RefreshInterval = 10 * time.Minute
 	// MaxTitleLen bounds a document title, in characters.
 	MaxTitleLen = 255
-	// MaxUploadBytes caps one uploaded file.
-	MaxUploadBytes = 10 << 20
-	// MaxDocumentsPerSource caps the live documents of one source; failed ones don't count.
-	MaxDocumentsPerSource = 100
 )
 
 // Upload content types.

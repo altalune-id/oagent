@@ -152,11 +152,14 @@ const yasakuServer = 'Ms2bVn7QxK4pRt9KwZc3H';
 const sampleGrants = ['record_expense', 'record_income', 'record_transfer', 'delete_tx', 'list_wallets', 'search_tx', 'period_report'].map(name => ({ name, requireApproval: !['list_wallets', 'search_tx', 'period_report'].includes(name) }));
 const sampleDraft = wireConfig({ instructions: 'Catat pengeluaran.', providerId: openrouter, model: 'openai/gpt-4.1-mini', maxCostCents: 10, mcpServers: [{ serverId: yasakuServer, tools: sampleGrants, missing: false }] });
 
+// agentDefaults differ from the shipped ones, so a hard-coded number fails a test.
+const agentDefaults = { maxSteps: 25, maxMaxSteps: 60, maxTemperature: 1.5, maxCostCents: 50_000 };
+
 function withDraft(publishedVersion = 12, extra: Record<string, unknown> = {}, liveConfig = live) {
   const agent = { ...support, draft: { ...live, instructions: 'Help more.' }, publishedVersion, unpublishedChanges: true, ...extra };
   const client = {
     listAgents: vi.fn().mockResolvedValue({ agents: [support] }),
-    getAgent: vi.fn().mockResolvedValue({ agent }),
+    getAgent: vi.fn().mockResolvedValue({ agent, defaults: agentDefaults }),
     listAgentVersions: vi.fn().mockResolvedValue({ versions: publishedVersion ? [{ version: publishedVersion, config: liveConfig }] : [] }),
     updateAgentDraft: vi.fn().mockImplementation(async ({ config }) => ({ agent: { ...agent, draft: wireConfig({ ...config, mcpServers: config.mcpServers.map((g: object) => ({ ...g, missing: false })) }) } })),
     publishAgent: vi.fn().mockResolvedValue({ agent: { ...agent, publishedVersion: publishedVersion + 1, unpublishedChanges: false }, version: { version: publishedVersion + 1, config: agent.draft }, created: true }),
@@ -181,7 +184,7 @@ describe('configure page', () => {
     setRoute({ path: '/o/acme/projects/web/agents/yasaku-keuangan', params: { org: 'acme', project: 'web', agent: 'yasaku-keuangan' } });
     const client = withDraft(4, {}, sampleDraft);
     client.listAgents.mockResolvedValue({ agents: [yasaku] });
-    client.getAgent.mockResolvedValue({ agent: { ...yasaku, draft, publishedVersion: 4, unpublishedChanges: true } });
+    client.getAgent.mockResolvedValue({ agent: { ...yasaku, draft, publishedVersion: 4, unpublishedChanges: true }, defaults: agentDefaults });
     return client;
   }
 
@@ -533,6 +536,52 @@ describe('configure page', () => {
     useKnowledgeStore().embedding = null;
     await flushPromises();
     expect(w.get('#configure-memory').text()).toContain('configure.knowledge_needs_embedding');
+  });
+
+  it('bounds the steps, temperature and cost cap by the server\'s defaults, and names the recommended steps', async () => {
+    asSample();
+    const w = await mountPage(ConfigurePage);
+    const steps = w.get('#configure-limits input[type="number"]');
+    expect(steps.attributes('max')).toBe('60');
+    expect(w.get(`#${steps.attributes('aria-describedby')}`).text()).toBe('configure.max_steps_hint|{"n":25}');
+    expect(w.get('#configure-model input[type="range"]').attributes('max')).toBe('1.5');
+    const cost = w.get('#configure-limits input[inputmode="decimal"]');
+    await cost.setValue('500');
+    expect(w.get('#configure-limits').text()).not.toContain('limits.max_cost_over');
+    await cost.setValue('500.01');
+    expect(cost.attributes('aria-invalid')).toBe('true');
+    expect(w.get('#configure-limits').text()).toContain('limits.max_cost_over|{"max":"$500.00"}');
+    expect(w.get('.mockup-code').text(), 'an amount over the cap is not saved').toContain('"maxCostCents":50000');
+    expect(button(w, 'configure.publish').attributes('disabled'), 'an amount over the cap blocks Publish').toBeDefined();
+    expect(button(w, 'publish.fix_count|{"n":1}').exists()).toBe(true);
+    await cost.setValue('400');
+    expect(button(w, 'configure.publish').attributes('disabled')).toBeUndefined();
+  });
+
+  for (const [label, defaults] of [['missing', undefined], ['all 0', { maxSteps: 0, maxMaxSteps: 0, maxTemperature: 0, maxCostCents: 0 }]] as const) {
+    it(`sets no bound, hint or cap check from ${label} agent defaults, and keeps the temperature off`, async () => {
+      const client = asSample();
+      client.getAgent.mockResolvedValue({ agent: { ...yasaku, draft: sampleDraft, publishedVersion: 4, unpublishedChanges: true }, defaults });
+      const w = await mountPage(ConfigurePage);
+      const steps = w.get('#configure-limits input[type="number"]');
+      expect(steps.attributes('max')).toBeUndefined();
+      expect(steps.attributes('aria-describedby')).toBeUndefined();
+      expect(w.get('#configure-limits').text()).not.toContain('configure.max_steps_hint');
+      const range = w.get('#configure-model input[type="range"]');
+      expect(range.attributes('max')).toBeUndefined();
+      expect(range.attributes('disabled')).toBeDefined();
+      await w.get('#configure-limits input[inputmode="decimal"]').setValue('999999');
+      expect(w.get('#configure-limits').text()).not.toContain('limits.max_cost_over');
+    });
+  }
+
+  it('keeps the temperature off and sets no bounds after a failed load', async () => {
+    const client = asSample();
+    client.getAgent.mockRejectedValue(new Error('offline'));
+    const w = await mountPage(ConfigurePage);
+    expect(w.get('#configure-model input[type="range"]').attributes('disabled')).toBeDefined();
+    expect(w.get('#configure-model input[type="range"]').attributes('max')).toBeUndefined();
+    expect(w.get('#configure-limits input[type="number"]').attributes('max')).toBeUndefined();
   });
 
   it('guards a move to another agent\'s Configure page like a leave', async () => {

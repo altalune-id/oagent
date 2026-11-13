@@ -2,6 +2,7 @@ package knowledge_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -23,4 +24,23 @@ func TestPresets_InsideTheRangesWithBalancedRecommended(t *testing.T) {
 	assert.Equal(t, 5, knowledge.RecommendedTopK)
 	assert.InDelta(t, 0.20, knowledge.RecommendedMinScore, 1e-9)
 	assert.Equal(t, 4000, knowledge.RecommendedMaxTokens)
+}
+
+func TestDefaults_Caps(t *testing.T) {
+	assert.Equal(t, 10<<20, knowledge.MaxUploadBytes)
+	assert.Equal(t, 100, knowledge.MaxDocumentsPerSource)
+	assert.Equal(t, 50, knowledge.MaxSourcesPerProject)
+	assert.Equal(t, 20000, knowledge.MaxChunksPerProject)
+	assert.Equal(t, 2<<20, knowledge.MaxPageContentBytes)
+	assert.Equal(t, 8, knowledge.MaxIngestAttempts)
+	assert.Equal(t, 10*time.Minute, knowledge.RefreshInterval)
+}
+
+func TestMaxTokensOf_RecommendedWhenUnsetAndClamped(t *testing.T) {
+	for in, want := range map[int]int{
+		0: knowledge.RecommendedMaxTokens, -5: knowledge.RecommendedMaxTokens, 600: 600,
+		100: knowledge.MinMaxTokens, 99999: knowledge.MaxMaxTokens,
+	} {
+		assert.Equal(t, want, knowledge.MaxTokensOf(in), "%d", in)
+	}
 }

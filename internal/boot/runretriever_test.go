@@ -51,4 +51,5 @@ func TestRunKnowledgeTuning_ResolvesTheBudgetAndPassesTheRest(t *testing.T) {
 	require.NotNil(t, got.MinScore, "a set minimum of 0 is kept")
 	assert.Zero(t, *got.MinScore)
 	assert.Equal(t, 4000, got.MaxBytes, "tokens × 4 bytes")
+	assert.Equal(t, knowledge.MaxMaxTokens*4, runKnowledgeTuning(agent.KnowledgeTuning{MaxTokens: 99999}).MaxBytes, "the budget is clamped like the effective view")
 }

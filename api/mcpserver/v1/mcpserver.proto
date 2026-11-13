@@ -87,6 +87,7 @@ message McpServerTool {
   google.protobuf.Struct input_schema = 6;
 }
 
+// CreateMcpServerRequest adds an MCP server to a project; timeout_ms 0 stores the recommended timeout from ListMcpServers' defaults.
 message CreateMcpServerRequest {
   string org_id = 1 [
     (buf.validate.field).required = true,
@@ -115,8 +116,7 @@ message CreateMcpServerRequest {
   // auth_value is write-only: sealed at rest and never returned; required unless auth_kind is none.
   string auth_value = 7 [(buf.validate.field).string.max_len = 4096];
   int32 timeout_ms = 8 [
-    (buf.validate.field).int32.gte = 1000,
-    (buf.validate.field).int32.lte = 20000
+    (buf.validate.field).cel = {id: "mcpserver.timeout_ms.range", expression: "this == 0 || (this >= 1000 && this <= 20000) ? '' : 'must be 0 or 1000 to 20000'"}
   ];
   bool trusted = 9;
 }
@@ -145,9 +145,17 @@ message ListMcpServersRequest {
 
 message ListMcpServersResponse {
   repeated McpServer mcp_servers = 1;
+  McpServerDefaults defaults = 2;
 }
 
-// UpdateMcpServerRequest replaces a server's editable fields; the name never changes, and leaving auth_value unset keeps the credential, which a url or auth_kind change refuses.
+// McpServerDefaults are the recommended call timeout and its range; a create with timeout_ms 0 stores the recommended value.
+message McpServerDefaults {
+  int32 timeout_ms = 1;
+  int32 min_timeout_ms = 2;
+  int32 max_timeout_ms = 3;
+}
+
+// UpdateMcpServerRequest replaces a server's editable fields; the name never changes, timeout_ms 0 keeps the stored timeout, and leaving auth_value unset keeps the credential, which a url or auth_kind change refuses.
 message UpdateMcpServerRequest {
   string id = 1 [
     (buf.validate.field).required = true,
@@ -170,8 +178,7 @@ message UpdateMcpServerRequest {
     (buf.validate.field).string.max_len = 4096
   ];
   int32 timeout_ms = 6 [
-    (buf.validate.field).int32.gte = 1000,
-    (buf.validate.field).int32.lte = 20000
+    (buf.validate.field).cel = {id: "mcpserver.timeout_ms.range", expression: "this == 0 || (this >= 1000 && this <= 20000) ? '' : 'must be 0 or 1000 to 20000'"}
   ];
   bool trusted = 7;
 }

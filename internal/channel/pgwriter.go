@@ -35,7 +35,7 @@ func timeOrNull(t *time.Time) postgres.Expression {
 }
 
 func ms(d time.Duration) int32 {
-	return int32(min(max(d/time.Millisecond, 0), maxQuiet/time.Millisecond))
+	return int32(min(max(d/time.Millisecond, 0), MaxQuiet/time.Millisecond))
 }
 
 // Insert stores a new connection in the bound org; an agent outside the project is refused.

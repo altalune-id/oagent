@@ -135,7 +135,7 @@ func (a runAgents) pinned(ctx context.Context, v *agent.Version) (*run.AgentVers
 	c := v.Config
 	out := &run.AgentVersion{
 		ID: v.ID, AgentID: v.AgentID, AgentPublicID: ag.PublicID, Version: v.Version, Draft: v.Kind == agent.VersionDraft, Legacy: c.Legacy(),
-		Instructions: c.Instructions, Model: c.Model, Temperature: c.Temperature, MaxSteps: c.MaxSteps,
+		Instructions: c.Instructions, Model: c.Model, Temperature: c.Temperature, MaxSteps: c.EffectiveMaxSteps(),
 		MaxCostCents: c.MaxCostCents, ProviderID: c.ProviderID, Knowledge: runKnowledgeTuning(c.KnowledgeTuning),
 	}
 	for _, g := range c.MCPServers {

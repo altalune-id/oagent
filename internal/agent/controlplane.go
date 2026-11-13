@@ -72,7 +72,7 @@ func (s *AgentService) GetAgent(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&agentv1.GetAgentResponse{Agent: out}), nil
+	return connect.NewResponse(&agentv1.GetAgentResponse{Agent: out, Defaults: defaultsToProto()}), nil
 }
 
 // ListAgents lists the project's agents the caller reaches, ordered by creation time.
@@ -105,7 +105,7 @@ func (s *AgentService) ListAgents(
 		}
 		out = append(out, item)
 	}
-	return connect.NewResponse(&agentv1.ListAgentsResponse{Agents: out}), nil
+	return connect.NewResponse(&agentv1.ListAgentsResponse{Agents: out, Defaults: defaultsToProto()}), nil
 }
 
 // UpdateAgent updates an agent's name and description.

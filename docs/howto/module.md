@@ -12,6 +12,7 @@ Use this when oagent needs a new bounded context: a new aggregate with its own t
 - [ ] **Units of work.** Does a use case write more than one row, or a row plus an event? Then the service takes a `db.Transactor`.
 - [ ] **Events.** Does it emit webhook events? See [webhook-event.md](webhook-event.md).
 - [ ] **Errors.** List the failures a user can see; each one is a typed error and an error code ([error-code.md](error-code.md)).
+- [ ] **Defaults.** Recommended values and ranges live once, as exported constants in the domain's `defaults.go` (`internal/agent/defaults.go` is the reference). A column `DEFAULT`, a console constant or a runtime fallback never holds them; a proto rule or SQL `CHECK` that must repeat a range gets a test pinning it to the constant. A list or get response returns them (`AgentDefaults`, `McpServerDefaults`, `retrieval_defaults`). Where 0 is a real value, the field is a Go pointer and a proto `optional`.
 
 ## Build
 

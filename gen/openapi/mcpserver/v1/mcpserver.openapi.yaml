@@ -491,9 +491,9 @@ components:
         timeoutMs:
           type: integer
           title: timeout_ms
-          maximum: 20000
-          minimum: 1000
           format: int32
+          description: |
+            mcpserver.timeout_ms.range
         trusted:
           type: boolean
           title: trusted
@@ -505,6 +505,7 @@ components:
         - url
         - authKind
       additionalProperties: false
+      description: CreateMcpServerRequest adds an MCP server to a project; timeout_ms 0 stores the recommended timeout from ListMcpServers' defaults.
     mcpserver.v1.CreateMcpServerResponse:
       type: object
       properties:
@@ -591,6 +592,9 @@ components:
           items:
             $ref: '#/components/schemas/mcpserver.v1.McpServer'
           title: mcp_servers
+        defaults:
+          title: defaults
+          $ref: '#/components/schemas/mcpserver.v1.McpServerDefaults'
       title: ListMcpServersResponse
       additionalProperties: false
     mcpserver.v1.McpServer:
@@ -647,6 +651,24 @@ components:
         - MCP_SERVER_AUTH_KIND_BEARER
         - MCP_SERVER_AUTH_KIND_HEADER
       description: McpServerAuthKind says how oagent authenticates to a server.
+    mcpserver.v1.McpServerDefaults:
+      type: object
+      properties:
+        timeoutMs:
+          type: integer
+          title: timeout_ms
+          format: int32
+        minTimeoutMs:
+          type: integer
+          title: min_timeout_ms
+          format: int32
+        maxTimeoutMs:
+          type: integer
+          title: max_timeout_ms
+          format: int32
+      title: McpServerDefaults
+      additionalProperties: false
+      description: McpServerDefaults are the recommended call timeout and its range; a create with timeout_ms 0 stores the recommended value.
     mcpserver.v1.McpServerTool:
       type: object
       properties:
@@ -705,9 +727,9 @@ components:
         timeoutMs:
           type: integer
           title: timeout_ms
-          maximum: 20000
-          minimum: 1000
           format: int32
+          description: |
+            mcpserver.timeout_ms.range
         trusted:
           type: boolean
           title: trusted
@@ -717,7 +739,7 @@ components:
         - url
         - authKind
       additionalProperties: false
-      description: UpdateMcpServerRequest replaces a server's editable fields; the name never changes, and leaving auth_value unset keeps the credential, which a url or auth_kind change refuses.
+      description: UpdateMcpServerRequest replaces a server's editable fields; the name never changes, timeout_ms 0 keeps the stored timeout, and leaving auth_value unset keeps the credential, which a url or auth_kind change refuses.
     mcpserver.v1.UpdateMcpServerResponse:
       type: object
       properties:

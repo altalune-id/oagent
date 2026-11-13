@@ -99,7 +99,9 @@ func (s *McpServerService) ListMcpServers(
 		}
 		out = append(out, serverToProto(srv, orgPublicID, req.Msg.GetProjectId()))
 	}
-	return connect.NewResponse(&mcpserverv1.ListMcpServersResponse{McpServers: out}), nil
+	return connect.NewResponse(&mcpserverv1.ListMcpServersResponse{McpServers: out, Defaults: &mcpserverv1.McpServerDefaults{
+		TimeoutMs: RecommendedTimeoutMS, MinTimeoutMs: MinTimeoutMS, MaxTimeoutMs: MaxTimeoutMS,
+	}}), nil
 }
 
 // UpdateMcpServer replaces a server's editable fields; the name never changes, and an unset auth_value keeps the credential.

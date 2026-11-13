@@ -43,13 +43,18 @@ describe('set replies', () => {
     expect(['', 'abc', '-1', '2.55', '3s'].map(toMs)).toEqual([null, null, null, null, null]);
   });
 
-  it('keeps the quiet window and its maximum within 0-10 s, the window no longer than the maximum', () => {
-    expect(timingErrors(3_000, 10_000)).toEqual({});
-    expect(timingErrors(0, 0)).toEqual({});
-    expect(timingErrors(null, 10_000)).toEqual({ quiet: 'channels.error_quiet_range' });
-    expect(timingErrors(3_000, 10_500)).toEqual({ quietMax: 'channels.error_quiet_range' });
-    expect(timingErrors(6_000, 4_000)).toEqual({ quietMax: 'channels.error_quiet_order' });
-    expect(timingErrors(11_000, null)).toEqual({ quiet: 'channels.error_quiet_range', quietMax: 'channels.error_quiet_range' });
+  it('keeps the quiet window and its maximum within the server\'s limit, the window no longer than the maximum', () => {
+    const limit = 15_000;
+    expect(timingErrors(3_000, 10_000, limit)).toEqual({});
+    expect(timingErrors(12_000, 15_000, limit), 'the limit comes from the server').toEqual({});
+    expect(timingErrors(0, 0, limit)).toEqual({});
+    expect(timingErrors(null, 10_000, limit)).toEqual({ quiet: 'channels.error_quiet_range' });
+    expect(timingErrors(3_000, 15_500, limit)).toEqual({ quietMax: 'channels.error_quiet_range' });
+    expect(timingErrors(6_000, 4_000, limit)).toEqual({ quietMax: 'channels.error_quiet_order' });
+    expect(timingErrors(16_000, null, limit)).toEqual({ quiet: 'channels.error_quiet_range', quietMax: 'channels.error_quiet_range' });
+    expect(timingErrors(99_000, 99_000, 0), 'no limit from the server: no range check').toEqual({});
+    expect(timingErrors(null, 5_000, 0)).toEqual({ quiet: 'channels.error_quiet_number' });
+    expect(timingErrors(6_000, 4_000, 0)).toEqual({ quietMax: 'channels.error_quiet_order' });
   });
 
   it('tells the admin that {preview} stands for the request, in both locales, as literal text vue-i18n won\'t treat as a placeholder', () => {

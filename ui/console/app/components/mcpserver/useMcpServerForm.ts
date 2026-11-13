@@ -6,8 +6,6 @@ import { CreateMcpServerRequestSchema } from '#gen/mcpserver/v1/mcpserver_pb';
 import { createRequest, useMcpServersStore } from '~/stores/mcpServers';
 import { headerNameError } from './tools';
 
-export const defaultTimeoutSeconds = 10;
-
 export interface ServerErrors {
   name?: string;
   url?: string;
@@ -35,7 +33,8 @@ export function useMcpServerForm(orgId: string, projectId: string) {
   const secret = ref('');
   const replacingSecret = ref(false);
   const trusted = ref(false);
-  const timeout = ref(defaultTimeoutSeconds);
+  const timeout = ref<number | ''>('');
+  const defaults = computed(() => servers.defaults);
   const local = ref<ServerErrors>({});
   const formError = ref<ShownError | null>(null);
   const busy = ref(false);
@@ -62,7 +61,7 @@ export function useMcpServerForm(orgId: string, projectId: string) {
     secret.value = '';
     replacingSecret.value = false;
     trusted.value = server?.trusted ?? false;
-    timeout.value = server ? server.timeoutMs / 1000 : defaultTimeoutSeconds;
+    timeout.value = server ? server.timeoutMs / 1000 : '';
     local.value = {};
     formError.value = null;
     validation.clear();
@@ -121,5 +120,5 @@ export function useMcpServerForm(orgId: string, projectId: string) {
     }
   }
 
-  return { open, editing, name, url, auth, headerName, secret, replacingSecret, trusted, timeout, errors, formError, busy, urlChanged, needsSecret, secretRequired, secretShown, show, hide, submit };
+  return { open, editing, name, url, auth, headerName, secret, replacingSecret, trusted, timeout, defaults, errors, formError, busy, urlChanged, needsSecret, secretRequired, secretShown, show, hide, submit };
 }

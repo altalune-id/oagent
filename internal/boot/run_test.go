@@ -49,6 +49,7 @@ func TestRunAgents_MapsThePinnedVersion(t *testing.T) {
 	got, err = a.Latest(ctx, ag.ID)
 	require.NoError(t, err)
 	assert.True(t, got.Legacy, "a version without a provider is legacy")
+	assert.Equal(t, int32(agent.RecommendedMaxSteps), got.MaxSteps, "an unset step cap runs with the Go recommended value, never 0")
 
 	store.Published = nil
 	got, err = a.Latest(ctx, ag.ID)

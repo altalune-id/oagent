@@ -16,6 +16,7 @@ export const channelDefaults = {
   quietWindowMs: 3_000,
   quietMaxMs: 10_000,
   maxMessageAgeMinutes: 30,
+  maxQuietMs: 15_000,
 };
 
 export function connectionPB(over: MessageInitShape<typeof ConnectionSchema> = {}): Connection {
