@@ -90,6 +90,70 @@ func TestRunner_RunHeldFeedsSinkAndSettles(t *testing.T) {
 	})
 }
 
+type gatedRelease struct {
+	*fakes.RunStore
+	once          sync.Once
+	entered, gate chan struct{}
+}
+
+func (l *gatedRelease) Release(ctx context.Context, threadID uuid.UUID, token string) error {
+	l.once.Do(func() { close(l.entered) })
+	<-l.gate
+	return l.RunStore.Release(ctx, threadID, token)
+}
+
+func streamOpen(s *run.Sink) bool {
+	for {
+		select {
+		case _, ok := <-s.Events():
+			if !ok {
+				return false
+			}
+		default:
+			return true
+		}
+	}
+}
+
+func TestRunner_RunHeldEndsTheStreamOnlyOnceTheLeaseIsReleased(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newSvc(t)
+		f.rt.Replies = []fakes.RuntimeReply{{Stream: stream(t, "plain_reply")}}
+		leases := &gatedRelease{RunStore: f.store, entered: make(chan struct{}), gate: make(chan struct{})}
+		r := run.NewRunner(f.svc, leases, runnerOpts())
+		stop := startRunner(t, r)
+		defer stop()
+		synctest.Wait()
+		token := f.holdLease(t, "hello")
+		slot, ok := r.Reserve()
+		require.True(t, ok)
+		sink := run.NewSink(run.SinkCapacity)
+		require.NoError(t, r.RunHeld(slot, f.kick(), token, sink))
+		<-leases.entered
+		synctest.Wait()
+		assert.True(t, streamOpen(sink), "a client that saw the stream end could not yet claim the thread")
+		close(leases.gate)
+		drainSink(sink)
+		assert.Empty(t, f.store.LeaseOwner(f.thread), "the stream ends after the lease is free")
+	})
+}
+
+func TestRunner_RunningSaysWhenRunHeldIsAccepted(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newSvc(t)
+		r := run.NewRunner(f.svc, f.store, runnerOpts())
+		assert.False(t, r.Running())
+		slot, ok := r.Reserve()
+		require.True(t, ok)
+		require.Error(t, r.RunHeld(slot, f.kick(), uuid.NewString(), run.NewSink(1)), "a held turn before Run starts is refused")
+		stop := startRunner(t, r)
+		synctest.Wait()
+		assert.True(t, r.Running(), "once Run has started, RunHeld is accepted")
+		stop()
+		assert.False(t, r.Running())
+	})
+}
+
 func TestRunner_SlowSinkDetachesRunSettles(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		f := newSvc(t)
