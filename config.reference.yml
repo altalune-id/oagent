@@ -141,6 +141,11 @@ mcp:
   # env: OAGENT_MCP_ENABLED
   enabled: false
 
+memory:
+  native:
+    # env: OAGENT_MEMORY_NATIVE_ENABLED
+    enabled: true
+
 # [required, bootstrap] env: OAGENT_MODE
 mode: selfhosted
 

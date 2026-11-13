@@ -15,6 +15,8 @@ type postgresStore struct {
 	serverUse   string
 	sourceUse   string
 	projectUse  string
+	storeUse    string
+	memoryUse   string
 }
 
 // NewStore builds the Postgres store over pool.
@@ -29,14 +31,20 @@ func NewStore(pool db.Pool, schema, tablePrefix string) *postgresStore {
 			schema + "." + tablePrefix + "resolve_agent_by_public_id(#publicID) x",
 		providerUse: latestVersions(schema, tablePrefix, "jsonb_build_object('provider_id', #id::text)"),
 		sourceUse:   latestVersions(schema, tablePrefix, "jsonb_build_object('knowledge_source_ids', jsonb_build_array(#id::text))"),
-		projectUse: `SELECT a.id AS "agents.id", a.public_id AS "agents.public_id", a.name AS "agents.name", ` +
-			`v.config AS "agent_versions.config" FROM ` +
-			schema + "." + tablePrefix + `agent_versions v JOIN ` + schema + "." + tablePrefix +
-			`agents a ON a.id = v.agent_id AND a.published_version = v.version ` +
-			`WHERE v.org_id = #org AND a.project_id = #project AND v.kind = 'published' AND v.config ? 'knowledge_source_ids'`,
+		projectUse:  projectVersions(schema, tablePrefix, "knowledge_source_ids"),
+		storeUse:    latestVersions(schema, tablePrefix, "jsonb_build_object('memory_store_id', #id::text)"),
+		memoryUse:   projectVersions(schema, tablePrefix, "memory_store_id"),
 		serverUse: latestVersions(schema, tablePrefix,
 			"jsonb_build_object('mcp_servers', jsonb_build_array(jsonb_build_object('server_id', #id::text)))"),
 	}
+}
+
+func projectVersions(schema, tablePrefix, key string) string {
+	return `SELECT a.id AS "agents.id", a.public_id AS "agents.public_id", a.name AS "agents.name", ` +
+		`v.config AS "agent_versions.config" FROM ` +
+		schema + "." + tablePrefix + `agent_versions v JOIN ` + schema + "." + tablePrefix +
+		`agents a ON a.id = v.agent_id AND a.published_version = v.version ` +
+		`WHERE v.org_id = #org AND a.project_id = #project AND v.kind = 'published' AND v.config ? '` + key + `'`
 }
 
 func latestVersions(schema, tablePrefix, contains string) string {

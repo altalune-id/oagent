@@ -18,6 +18,7 @@ A conversation belongs to one end user, called the actor.
 - **Reserved prefixes:** `Oagent-User` values starting with `key:` or `person:` (any case) are refused with `400`; those prefixes name oagent's own actors.
 - **Default actor:** without the header, the actor is the key itself.
 - **Personal keys:** the actor is always the key's owner, and sending `Oagent-User` answers `403`.
+- **Memory:** an agent remembers an `Oagent-User` only on a memory store created with `remember_api_users`, because any key of the project can name the same user; a personal key's owner is remembered on any store.
 - **Binding:** a thread is bound to its first actor. Another actor asking for the same `threadId` gets `404 THR001`, exactly as if the thread did not exist.
 
 ## Endpoints

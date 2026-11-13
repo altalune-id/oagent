@@ -319,6 +319,13 @@ func (s *AgentService) fillRefs(ctx context.Context, c Config, out *agentv1.Agen
 		}
 		out.KnowledgeSourceIds = append(out.KnowledgeSourceIds, pub)
 	}
+	if c.MemoryStoreID != uuid.Nil {
+		pub, ok, err := s.refs.MemoryStorePublicID(ctx, c.MemoryStoreID)
+		if err != nil {
+			return err
+		}
+		out.MemoryStoreId, out.MemoryStoreMissing = pub, !ok
+	}
 	return nil
 }
 
@@ -356,6 +363,16 @@ func (s *AgentService) configFrom(ctx context.Context, a *Agent, in *agentv1.Age
 			return Config{}, &InvalidGrantError{Reason: GrantKnowledgeSource}
 		}
 		cfg.KnowledgeSourceIDs = append(cfg.KnowledgeSourceIDs, id)
+	}
+	if pub := in.GetMemoryStoreId(); pub != "" {
+		id, owner, ok, err := s.refs.MemoryStoreID(ctx, pub)
+		if err != nil {
+			return Config{}, err
+		}
+		if !ok || owner != a.ProjectID || !mayBind(ctx, a, id, a.Draft.MemoryStoreID == id, scope.MemoryRead) {
+			return Config{}, &InvalidGrantError{Reason: GrantMemoryStore}
+		}
+		cfg.MemoryStoreID = id
 	}
 	return cfg, nil
 }

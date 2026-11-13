@@ -29,6 +29,7 @@ type Service struct {
 	servers    MCPServers
 	locker     Locker
 	knowledge  Knowledge
+	memory     Memory
 }
 
 // NewService builds a Service over store; a save and its event run as one unit of work on uow.
@@ -57,6 +58,12 @@ func (s *Service) WithProviders(p Providers) *Service {
 // WithMCPServers checks a config's MCP server grants against m; without it every server is unknown.
 func (s *Service) WithMCPServers(m MCPServers) *Service {
 	s.servers = m
+	return s
+}
+
+// WithMemory checks and locks a config's memory store with m; without it every store is unknown.
+func (s *Service) WithMemory(m Memory) *Service {
+	s.memory = m
 	return s
 }
 
@@ -275,6 +282,11 @@ func (s *Service) publishable(ctx context.Context, a *Agent, latest *Version) er
 			return err
 		}
 	}
+	if a.Draft.MemoryStoreID != uuid.Nil && s.memory != nil {
+		if err := s.memory.LockStoreShared(ctx, a.Draft.MemoryStoreID); err != nil {
+			return err
+		}
+	}
 	names, err := s.checkReferences(ctx, a.ProjectID, a.Draft, true)
 	if err != nil {
 		return err
@@ -290,6 +302,14 @@ func (s *Service) publishable(ctx context.Context, a *Agent, latest *Version) er
 }
 
 func (s *Service) checkReferences(ctx context.Context, projectID uuid.UUID, cfg Config, publishing bool) (map[uuid.UUID]string, error) {
+	if cfg.MemoryStoreID != uuid.Nil {
+		if s.memory == nil {
+			return nil, &InvalidGrantError{Reason: GrantMemoryStore}
+		}
+		if err := s.memory.StoreUsable(ctx, projectID, cfg.MemoryStoreID); err != nil {
+			return nil, err
+		}
+	}
 	if cfg.ProviderID != uuid.Nil {
 		if err := s.checkModels(ctx, projectID, cfg, publishing); err != nil {
 			return nil, err

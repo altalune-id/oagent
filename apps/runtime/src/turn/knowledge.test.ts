@@ -11,8 +11,9 @@ import { assertStructure, PROBES } from '../test/probes.ts';
 import { ScriptedModel } from '../test/scripted-model.ts';
 import { fakeMcp, goldenRequest, pendingSnapshot, quiet, recordTool } from '../test/turn-fixtures.ts';
 import { executeTurn } from './execute.ts';
+import { injectOnFirstCall } from './firstcall.ts';
 import { createRunTurn } from './index.ts';
-import { installKnowledge, KNOWLEDGE_LINE, knowledgeBlock } from './knowledge.ts';
+import { KNOWLEDGE_LINE, knowledgeBlock } from './knowledge.ts';
 import { UsageMeter } from './limits.ts';
 import { SDK_VERSION } from './snapshot.ts';
 
@@ -139,14 +140,14 @@ describe('knowledge injection', () => {
     const ctx = (messages: Message[]) => ({ messages, dynamicTrailingBlocks: 2 }) as unknown as InvokeModelContext;
 
     const injected: number[] = [];
-    const folded = register(() => installKnowledge(agent, block, n => injected.push(n)))(ctx([assistant, user]));
+    const folded = register(() => injectOnFirstCall(agent, block, n => injected.push(n)))(ctx([assistant, user]));
     expect(folded.dynamicTrailingBlocks).toBe(3);
     expect(folded.messages.at(-1)!.content).toHaveLength(2);
     expect(injected).toEqual([block.length + 2]);
     const older = ctx([user, assistant]);
-    expect(register(() => installKnowledge(agent, block, n => injected.push(n)))(older)).toBe(older);
+    expect(register(() => injectOnFirstCall(agent, block, n => injected.push(n)))(older)).toBe(older);
     expect(injected).toHaveLength(1);
-    expect(register(() => installKnowledge(agent, '', n => injected.push(n)))).toBeUndefined();
+    expect(register(() => injectOnFirstCall(agent, '', n => injected.push(n)))).toBeUndefined();
   });
 
   it('keeps the block on a call a later hook retries after the model answered', async () => {
@@ -159,7 +160,7 @@ describe('knowledge injection', () => {
         event.retry = true;
       }
     });
-    installKnowledge(agent, knowledgeBlock(PASSAGES), () => {});
+    injectOnFirstCall(agent, knowledgeBlock(PASSAGES), () => {});
     await agent.invoke('hi');
     await agent.invoke('again');
     expect(texts(model, 0)).toContain('<passage n="1"');
@@ -207,7 +208,7 @@ describe('the usage meter', () => {
     add.mockClear();
     const agent = { addMiddleware: (_: unknown, h: (ctx: InvokeModelContext) => InvokeModelContext) => h({ messages: [new Message({ role: 'assistant', content: [new TextBlock('yo')] })] } as unknown as InvokeModelContext), addHook: () => {} } as unknown as Agent;
     const meter = new UsageMeter();
-    installKnowledge(agent, knowledgeBlock(PASSAGES), n => meter.addInput(n));
+    injectOnFirstCall(agent, knowledgeBlock(PASSAGES), n => meter.addInput(n));
     expect(add).not.toHaveBeenCalled();
   });
 

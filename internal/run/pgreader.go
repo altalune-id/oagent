@@ -3,6 +3,7 @@ package run
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/go-jet/jet/v2/postgres"
@@ -291,23 +292,49 @@ func (s *postgresStore) MessageByExternalID(ctx context.Context, threadID uuid.U
 }
 
 // History returns the thread's consumed messages in seq order, leaving out those of exceptRun.
-func (s *postgresStore) History(ctx context.Context, threadID, exceptRun uuid.UUID) ([]Message, error) {
+func (s *postgresStore) History(ctx context.Context, threadID, exceptRun uuid.UUID, limit int) ([]Message, error) {
 	tc, err := tenant.From(ctx)
 	if err != nil {
 		return nil, err
 	}
 	m := s.messages
 	stmt := postgres.SELECT(m.AllColumns).FROM(m).
-		WHERE(m.ThreadID.EQ(postgres.UUID(threadID)).
-			AND(m.OrgID.EQ(postgres.UUID(tc.OrgID))).
-			AND(m.Status.EQ(postgres.String(string(MessageConsumed)))).
-			AND(m.RunID.IS_NULL().OR(m.RunID.NOT_EQ(postgres.UUID(exceptRun))))).
-		ORDER_BY(m.Seq.ASC())
+		WHERE(s.historyRows(tc.OrgID, threadID, exceptRun)).
+		ORDER_BY(m.Seq.DESC()).
+		LIMIT(int64(limit))
 	var rows []messageRow
 	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
 		return nil, fmt.Errorf("run.postgres: History: %w", err)
 	}
+	slices.Reverse(rows)
 	return toMessages(rows), nil
+}
+
+// HistoryFrom returns the thread's consumed messages from its newest user message on, except run exceptRun's own.
+func (s *postgresStore) HistoryFrom(ctx context.Context, threadID, exceptRun uuid.UUID) ([]Message, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	m := s.messages
+	newestUser := postgres.SELECT(postgres.MAX(m.Seq)).FROM(m).
+		WHERE(s.historyRows(tc.OrgID, threadID, exceptRun).AND(m.Role.EQ(postgres.String(string(RoleUser)))))
+	stmt := postgres.SELECT(m.AllColumns).FROM(m).
+		WHERE(s.historyRows(tc.OrgID, threadID, exceptRun).AND(m.Seq.GT_EQ(postgres.IntExp(newestUser)))).
+		ORDER_BY(m.Seq.ASC())
+	var rows []messageRow
+	if err := db.ReadPrimary(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
+		return nil, fmt.Errorf("run.postgres: HistoryFrom: %w", err)
+	}
+	return toMessages(rows), nil
+}
+
+func (s *postgresStore) historyRows(orgID, threadID, exceptRun uuid.UUID) postgres.BoolExpression {
+	m := s.messages
+	return m.ThreadID.EQ(postgres.UUID(threadID)).
+		AND(m.OrgID.EQ(postgres.UUID(orgID))).
+		AND(m.Status.EQ(postgres.String(string(MessageConsumed)))).
+		AND(m.RunID.IS_NULL().OR(m.RunID.NOT_EQ(postgres.UUID(exceptRun))))
 }
 
 // HasPending reports whether the thread has a message no run has taken yet.
@@ -361,6 +388,35 @@ func (s *postgresStore) RunByID(ctx context.Context, id uuid.UUID) (*Run, error)
 	}
 	r := s.runs
 	return s.oneRun(ctx, r.ID.EQ(postgres.UUID(id)).AND(r.OrgID.EQ(postgres.UUID(tc.OrgID))), &NotFoundError{ID: id.String()})
+}
+
+// RunPublicIDs names runs of the org on ctx by public id in one read; a run that is gone is left out.
+func (s *postgresStore) RunPublicIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error) {
+	out := make(map[uuid.UUID]string, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	r := s.runs
+	in := make([]postgres.Expression, len(ids))
+	for i, id := range ids {
+		in[i] = postgres.UUID(id)
+	}
+	stmt := postgres.SELECT(r.ID, r.PublicID).FROM(r).WHERE(r.OrgID.EQ(postgres.UUID(tc.OrgID)).AND(r.ID.IN(in...)))
+	var rows []struct {
+		ID       uuid.UUID `alias:"runs.id"`
+		PublicID string    `alias:"runs.public_id"`
+	}
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
+		return nil, fmt.Errorf("run.postgres: RunPublicIDs: %w", err)
+	}
+	for _, row := range rows {
+		out[row.ID] = row.PublicID
+	}
+	return out, nil
 }
 
 // ThreadMessages returns up to limit of the thread's messages after afterSeq, oldest first, pending ones included.

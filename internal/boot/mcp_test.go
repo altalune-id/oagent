@@ -25,6 +25,7 @@ import (
 	"altalune.id/oagent/gen/go/knowledge/v1/knowledgev1mcp"
 	mcpserverv1mcp "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1mcp"
 	memberv1mcp "altalune.id/oagent/gen/go/member/v1/memberv1mcp"
+	memoryv1mcp "altalune.id/oagent/gen/go/memory/v1/memoryv1mcp"
 	modelproviderv1mcp "altalune.id/oagent/gen/go/modelprovider/v1/modelproviderv1mcp"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
@@ -288,6 +289,13 @@ func TestMCPTools_PermissionsComeFromTheTable(t *testing.T) {
 		channelv1mcp.ChannelConnectionDeleteToolName:    {scope.ChannelWrite},
 		enduserv1mcp.EndUserListToolName:                {scope.ThreadRead},
 		enduserv1mcp.EndUserGetToolName:                 {scope.ThreadRead},
+		memoryv1mcp.MemoryListToolName:                  {scope.MemoryRead},
+		memoryv1mcp.MemoryDeleteToolName:                {scope.MemoryWrite},
+		memoryv1mcp.MemoryClearToolName:                 {scope.MemoryWrite},
+		memoryv1mcp.MemoryStoreCreateToolName:           {scope.MemoryWrite},
+		memoryv1mcp.MemoryStoreListToolName:             {scope.MemoryRead},
+		memoryv1mcp.MemoryStoreGetToolName:              {scope.MemoryRead},
+		memoryv1mcp.MemoryStoreDeleteToolName:           {scope.MemoryWrite},
 
 		threadv1mcp.ThreadListToolName:     {scope.ThreadRead},
 		threadv1mcp.ThreadGetToolName:      {scope.ThreadRead},

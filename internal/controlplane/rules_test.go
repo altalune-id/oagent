@@ -43,11 +43,12 @@ var unruled = map[string]string{
 	"channel.v1.SetConnectionSecretRequest.drop_previous": "a bool; true retires the previous secret",
 	"approval.v1.DecideApprovalRequest.approved":          "a bool; false rejects",
 
-	"apikey.v1.CreateAPIKeyRequest.all_projects":    "a bool; the domain checks it against project_ids (KEY005)",
-	"webhook.v1.UpdateWebhookRequest.active":        "a bool; false deactivates",
-	"mcpserver.v1.CreateMcpServerRequest.trusted":   "a bool; true lets read-only hints skip approval",
-	"mcpserver.v1.UpdateMcpServerRequest.trusted":   "a bool; true lets read-only hints skip approval",
-	"webhook.v1.ListWebhookDeliveriesRequest.limit": "any int32 works today: clamped to 1..50",
+	"apikey.v1.CreateAPIKeyRequest.all_projects":            "a bool; the domain checks it against project_ids (KEY005)",
+	"webhook.v1.UpdateWebhookRequest.active":                "a bool; false deactivates",
+	"mcpserver.v1.CreateMcpServerRequest.trusted":           "a bool; true lets read-only hints skip approval",
+	"mcpserver.v1.UpdateMcpServerRequest.trusted":           "a bool; true lets read-only hints skip approval",
+	"memory.v1.CreateMemoryStoreRequest.remember_api_users": "a bool; true lets agents remember named API users",
+	"webhook.v1.ListWebhookDeliveriesRequest.limit":         "any int32 works today: clamped to 1..50",
 }
 
 // SECURITY: every RPC request is checked before its handler; a field with no rule must be allowlisted with a reason.

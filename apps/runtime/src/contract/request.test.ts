@@ -3,10 +3,11 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { CONTRACT_VERSION, MAX_PASSAGE_CHARS, MAX_PASSAGES, validateRequest } from './request.ts';
+import { CONTRACT_VERSION, MAX_FACT_RUNES, MAX_MEMORY_FACTS, MAX_PASSAGE_CHARS, MAX_PASSAGES, validateRequest } from './request.ts';
 
 const goldens = fileURLToPath(new URL('../../../../internal/kernel/runtime/testdata/turn/', import.meta.url));
 const requests = readdirSync(goldens).filter(f => f.endsWith('.request.json')).sort();
+const beforeMemory = requests.filter(f => !f.startsWith('memory_'));
 
 function golden(name: string): Record<string, unknown> {
   return JSON.parse(readFileSync(join(goldens, name), 'utf8')) as Record<string, unknown>;
@@ -220,7 +221,7 @@ describe('validateRequest', () => {
     expect(withGuardrails({ mode: 'builtin' })).toEqual({ ok: false, fields: ['guardrails.mode'] });
   });
 
-  it.each(requests)('adds none of the optional fields to the golden %s', (name) => {
+  it.each(beforeMemory)('adds none of the optional fields to the golden %s', (name) => {
     const result = validateRequest(golden(name));
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -229,5 +230,59 @@ describe('validateRequest', () => {
       expect(result.request.limits.budget?.helperPrices).toBeUndefined();
       expect('helperModel' in result.request.agent || 'guardrails' in result.request).toBe(false);
     }
+  });
+
+  describe('memory', () => {
+    const fact = { text: 'Prefers WhatsApp after 6pm.', createdAt: '2026-11-01T09:30:00.123456789Z' };
+    const withMemory = (memory: unknown, name = 'plain_reply.request.json') => validateRequest({ ...golden(name), memory });
+
+    it('takes an optional memory block of at most 5 dated facts', () => {
+      expect(MAX_MEMORY_FACTS).toBe(5);
+      expect(withMemory({ facts: [], extract: 'facts' }).ok).toBe(true);
+      expect(withMemory({ facts: Array.from({ length: 5 }).fill(fact), extract: 'facts' }).ok).toBe(true);
+      expect(withMemory({ facts: Array.from({ length: 6 }).fill(fact), extract: 'facts' })).toEqual({ ok: false, fields: ['memory.facts'] });
+      expect(withMemory({ facts: [{ ...fact, score: 1 }], extract: 'facts' })).toEqual({ ok: false, fields: ['memory.facts.0.score'] });
+      expect(withMemory({ facts: [], extract: 'facts', recall: true })).toEqual({ ok: false, fields: ['memory.recall'] });
+    });
+
+    it('counts fact length in runes, not UTF-16 units', () => {
+      expect(MAX_FACT_RUNES).toBe(500);
+      expect(withMemory({ facts: [{ ...fact, text: '😀'.repeat(500) }], extract: 'facts' }).ok).toBe(true);
+      expect(withMemory({ facts: [{ ...fact, text: '😀'.repeat(501) }], extract: 'facts' })).toEqual({ ok: false, fields: ['memory.facts.0.text'] });
+      expect(withMemory({ facts: [{ ...fact, text: '  ' }], extract: 'facts' })).toEqual({ ok: false, fields: ['memory.facts.0.text'] });
+    });
+
+    it('refuses a fact without an RFC 3339 date', () => {
+      expect(withMemory({ facts: [{ ...fact, createdAt: 'yesterday' }], extract: 'facts' })).toEqual({ ok: false, fields: ['memory.facts.0.createdAt'] });
+    });
+
+    it('accepts Go time.Time JSON with nanoseconds and an offset', () => {
+      for (const createdAt of ['2026-11-01T09:30:00.123456789Z', '2026-11-01T16:30:00+07:00', '2026-11-01T09:30:00Z']) {
+        expect(withMemory({ facts: [{ ...fact, createdAt }], extract: 'facts' }).ok, createdAt).toBe(true);
+      }
+    });
+
+    it('requires extract', () => {
+      expect(withMemory({ facts: [] })).toEqual({ ok: false, fields: ['memory.extract'] });
+    });
+
+    it('takes only the three extract modes', () => {
+      for (const extract of ['facts', 'userTexts', 'none']) {
+        expect(withMemory({ facts: [], extract }).ok, extract).toBe(true);
+      }
+      for (const extract of [true, 'all']) {
+        expect(withMemory({ facts: [], extract })).toEqual({ ok: false, fields: ['memory.extract'] });
+      }
+    });
+
+    it('refuses memory on a resume or continue leg', () => {
+      expect(withMemory({ facts: [], extract: 'none' }, 'resume.request.json')).toEqual({ ok: false, fields: ['memory'] });
+      expect(withMemory({ facts: [], extract: 'none' }, 'resume_after_crash.request.json')).toEqual({ ok: false, fields: ['memory'] });
+    });
+
+    it.each(beforeMemory)('adds no memory to the golden %s', (name) => {
+      const result = validateRequest(golden(name));
+      expect(result.ok && 'memory' in result.request).toBe(false);
+    });
   });
 });

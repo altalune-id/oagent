@@ -383,3 +383,78 @@ func TestService_ServerRenameKeepsTheGrandfather(t *testing.T) {
 	_, _, _, err := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
 	require.NoError(t, err, "tools are keyed by server id, so a rename grandfathers nothing new and refuses nothing")
 }
+
+func newMemoryFixture(t *testing.T) (*grantsFixture, uuid.UUID) {
+	t.Helper()
+	f := newGrantsFixture(t)
+	store := uuid.New()
+	f.grants.Stores = map[uuid.UUID]uuid.UUID{store: f.agent.ProjectID}
+	f.svc.WithMemory(f.grants)
+	return f, store
+}
+
+func TestService_MemoryStoreMustBeTheProjects(t *testing.T) {
+	f, store := newMemoryFixture(t)
+	for name, id := range map[string]uuid.UUID{"unknown": uuid.New(), "another project's": func() uuid.UUID {
+		other := uuid.New()
+		f.grants.Stores[other] = uuid.New()
+		return other
+	}()} {
+		c := f.config()
+		c.MemoryStoreID = id
+		_, err := f.svc.UpdateDraft(context.Background(), f.agent.ID, c)
+		assert.Equal(t, "memory_store", grantReason(t, err), "%s store on save", name)
+		f.agent.Draft = c
+		_, _, _, err = f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+		assert.Equal(t, "memory_store", grantReason(t, err), "%s store on publish", name)
+	}
+	c := f.config()
+	c.MemoryStoreID = store
+	_, err := f.svc.UpdateDraft(context.Background(), f.agent.ID, c)
+	require.NoError(t, err)
+	f.agent.Draft = c
+	f.grants.LockedStores = nil
+	_, _, _, err = f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	require.NoError(t, err)
+	assert.Equal(t, []uuid.UUID{store}, f.grants.LockedStores, "publish share-locks the store so it cannot be deleted under the version")
+}
+
+func TestService_MemoryStoreOnADisabledBackendIsRefused(t *testing.T) {
+	f, store := newMemoryFixture(t)
+	f.grants.DisabledStores = map[uuid.UUID]bool{store: true}
+	c := f.config()
+	c.MemoryStoreID = store
+	_, err := f.svc.UpdateDraft(context.Background(), f.agent.ID, c)
+	assert.Equal(t, "memory_store_disabled", grantReason(t, err))
+	f.agent.Draft = c
+	_, _, _, err = f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	assert.Equal(t, "memory_store_disabled", grantReason(t, err))
+}
+
+func TestService_MemoryStoreWithoutAMemoryPortIsRefused(t *testing.T) {
+	f := newGrantsFixture(t)
+	c := f.config()
+	c.MemoryStoreID = uuid.New()
+	_, err := f.svc.UpdateDraft(context.Background(), f.agent.ID, c)
+	assert.Equal(t, "memory_store", grantReason(t, err))
+}
+
+func TestService_AStoreGoneBeforePublishIsRefused(t *testing.T) {
+	f, store := newMemoryFixture(t)
+	c := f.config()
+	c.MemoryStoreID = store
+	f.agent.Draft = c
+	delete(f.grants.Stores, store)
+	_, _, _, err := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	assert.Equal(t, "memory_store", grantReason(t, err))
+	assert.Empty(t, f.grants.LockedStores)
+}
+
+func TestService_AMemoryStoreRefusesAnUnapprovedTool(t *testing.T) {
+	f, store := newMemoryFixture(t)
+	c := f.withTools(f.config(), agent.Tool{Name: "send"})
+	c.MemoryStoreID = store
+	f.agent.Draft = c
+	_, _, _, err := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	assert.Equal(t, "yasaku__send", refusedTool(t, err), "remembered facts are untrusted input")
+}

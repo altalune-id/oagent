@@ -35,6 +35,7 @@ import (
 	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/mcpserver"
+	"altalune.id/oagent/internal/memory"
 	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
@@ -75,7 +76,7 @@ type reachOrg struct {
 
 type reachIDs struct {
 	org, project, otherProject, agent, webhook, delivery, member, invite, keyHint, provider, server, thread, run, connection, endUser string
-	approval, source, document                                                                                                        string
+	approval, source, document, memory, memoryStore                                                                                   string
 }
 
 func (ids reachIDs) serviceID(service protoreflect.FullName) string {
@@ -100,6 +101,8 @@ func (ids reachIDs) serviceID(service protoreflect.FullName) string {
 		return ids.approval
 	case "knowledge.v1.KnowledgeService":
 		return ids.source
+	case "memory.v1.MemoryService":
+		return ids.memory
 	}
 	return ""
 }
@@ -142,6 +145,15 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 	}, "owk_probe")
 	require.NoError(t, err)
 	th, r, who := seedThread(inB, t, f, prj.ID, ag.ID)
+	store, err := memory.NewStore(b.ID, prj.ID, memory.StoreInput{Name: "People", Backend: memory.BackendNative}, []memory.Backend{memory.BackendNative}, time.Now())
+	require.NoError(t, err)
+	require.NoError(t, f.svcs.MemoryStores.InsertStore(inB, store))
+	factScope := memory.Scope{OrgID: b.ID, ProjectID: prj.ID, StoreID: store.ID, AgentID: ag.ID, EndUserID: who.ID}
+	native := f.svcs.MemoryDrivers[memory.BackendNative]
+	require.NoError(t, native.Record(inB, factScope, memory.Turn{RunID: r.ID, Facts: []string{"Lives in Bandung."}}))
+	facts, _, _, err := native.List(inB, factScope, "", 1)
+	require.NoError(t, err)
+	require.Len(t, facts, 1)
 	apr, err := f.svcs.Approvals.Create(inB, approval.CreateInput{
 		OrgID: b.ID, ProjectID: prj.ID, AgentID: ag.ID, RunID: r.ID, ThreadID: th.ID, ThreadKind: th.Kind,
 		Calls:              []approval.Call{{ToolCallID: "call_1", InterruptID: "intr_1", Server: "yasaku", Tool: "record_expense", Args: []byte(`{"amount":1}`)}},
@@ -170,7 +182,7 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 		org: b.PublicID, project: prj.PublicID, otherProject: other.PublicID, agent: ag.PublicID, webhook: hook.PublicID, delivery: delivery,
 		member: u.PublicID, invite: c.Invite.PublicID, keyHint: hintOf(key), provider: provider.PublicID, server: server.PublicID,
 		thread: th.PublicID, run: r.PublicID, connection: conn.PublicID, endUser: who.PublicID, approval: apr.PublicID,
-		source: sourcePub, document: documentPub,
+		source: sourcePub, document: documentPub, memory: facts[0].ID, memoryStore: store.PublicID,
 	}
 	var keyID string
 	require.NoError(t, f.db.QueryRowContext(ctx, `SELECT id::text FROM api_keys WHERE org_id = $1 AND secret_hint = $2`, b.ID, hintOf(key)).Scan(&keyID))
@@ -178,7 +190,7 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 		org: b.ID.String(), project: prj.ID.String(), otherProject: other.ID.String(), agent: ag.ID.String(), webhook: hook.ID.String(),
 		delivery: deliveryID, member: u.ID.String(), invite: c.Invite.ID.String(), keyHint: keyID,
 		provider: provider.ID.String(), server: server.ID.String(), thread: th.ID.String(), run: r.ID.String(), connection: conn.ID.String(), endUser: who.ID.String(),
-		approval: apr.ID.String(), source: source.String(), document: document.String(),
+		approval: apr.ID.String(), source: source.String(), document: document.String(), memory: uuid.NewString(), memoryStore: store.ID.String(),
 	}
 	return s
 }
@@ -201,7 +213,9 @@ func (s reachOrg) snapshot(t *testing.T, f *apiFixture) string {
 		(SELECT count(*) || md5(string_agg(url || auth_kind || coalesce(auth_sealed::text, '') || updated_at, ',' ORDER BY id)) FROM mcp_servers WHERE org_id = $1),
 		(SELECT count(*) || md5(string_agg(status || base_url || device_id || signing_secret_primary_sealed::text || coalesce(signing_secret_secondary_sealed::text, '') || device_key_sealed::text || updated_at, ',' ORDER BY id)) FROM channel_connections WHERE org_id = $1),
 		(SELECT count(*) || md5(string_agg(cancel_requested || coalesce(lease_owner, '') || next_seq, ',' ORDER BY id)) FROM threads WHERE org_id = $1),
-		(SELECT count(*) || md5(string_agg(status || attempt || coalesce(ended_at::text, ''), ',' ORDER BY id)) FROM runs WHERE org_id = $1))`, s.orgB).Scan(&got))
+		(SELECT count(*) || md5(string_agg(status || attempt || coalesce(ended_at::text, ''), ',' ORDER BY id)) FROM runs WHERE org_id = $1),
+		(SELECT count(*) || md5(string_agg(name || backend || updated_at, ',' ORDER BY id)) FROM memory_stores WHERE org_id = $1),
+		(SELECT count(*) FROM memory_facts WHERE org_id = $1))`, s.orgB).Scan(&got))
 	return got
 }
 
@@ -223,10 +237,14 @@ func (ids reachIDs) request(t *testing.T, procedure string) (protoreflect.Method
 	tenantIDs := map[protoreflect.Name]string{
 		"org_id": ids.org, "project_id": ids.project, "user_id": ids.member, "invite_id": ids.invite,
 		"delivery_id": ids.delivery, "hint": ids.keyHint, "agent_id": ids.agent, "id": ids.serviceID(method.Parent().FullName()),
-		"thread_id": ids.thread, "run_id": ids.run, "source_id": ids.source, "document_id": ids.document, "provider_id": ids.provider,
+		"thread_id": ids.thread, "run_id": ids.run, "source_id": ids.source, "document_id": ids.document, "provider_id": ids.provider, "end_user_id": ids.endUser,
+		"store_id": ids.memoryStore,
 	}
 	if strings.Contains(string(method.Name()), "Document") {
 		tenantIDs["id"] = ids.document
+	}
+	if strings.Contains(string(method.Name()), "MemoryStore") {
+		tenantIDs["id"] = ids.memoryStore
 	}
 	aimed := false
 	fields := method.Input().Fields()
@@ -386,10 +404,10 @@ func TestReach_UUIDsAndGarbageAreRefused(t *testing.T) {
 	s := seedReach(t, f)
 	cookie, _, _ := f.personCookieIn(t, s.orgB, "b-owner@example.com", member.RoleOwner)
 	garbage := reachIDs{"nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope",
-		"nope", "nope"}
+		"nope", "nope", "nope", "nope"}
 	const unknownID = "unknwnunknwnunknwnabc"
 	unknown := reachIDs{unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, "zzzz", unknownID, unknownID, unknownID,
-		unknownID, unknownID, unknownID, unknownID, unknownID, unknownID}
+		unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID}
 	before := s.snapshot(t, f)
 	for name, tc := range map[string]struct {
 		ids  reachIDs

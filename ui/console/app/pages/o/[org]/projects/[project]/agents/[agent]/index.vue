@@ -17,6 +17,7 @@ import { useAgentsStore } from '~/stores/agents';
 import { useAuthStore } from '~/stores/auth';
 import { useKnowledgeStore } from '~/stores/knowledge';
 import { useMcpServersStore } from '~/stores/mcpServers';
+import { useMemoryStoresStore } from '~/stores/memoryStores';
 import { useModelProvidersStore } from '~/stores/modelProviders';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
@@ -32,6 +33,7 @@ const agents = useAgentsStore();
 const providers = useModelProvidersStore();
 const servers = useMcpServersStore();
 const knowledge = useKnowledgeStore();
+const memoryStores = useMemoryStoresStore();
 const webSearch = useWebSearchStore();
 const runtimes = useAgentRuntimeStore();
 const canEdit = useCan('agent:write');
@@ -54,6 +56,7 @@ await Promise.all([
   servers.ensureLoaded(project.value.id),
   knowledge.ensureLoaded(project.value.id),
   webSearch.ensureLoaded(project.value.id),
+  memoryStores.ensureLoaded(project.value.id),
 ]);
 
 if (agents.error) {
@@ -69,6 +72,7 @@ if (!agent.value) {
 const names = {
   provider: (id: string) => providers.items.find(p => p.id === id)?.name ?? '—',
   server: (id: string) => servers.items.find(s => s.id === id)?.name ?? id,
+  memoryStore: (id: string) => memoryStores.items.find(s => s.id === id)?.name,
 };
 const draft = useAgentDraft(agent.value.id, names);
 await draft.load();
@@ -86,7 +90,7 @@ const runtime = computed({
   },
 });
 const base = computed(() => `/o/${route.params.org}/projects/${route.params.project}`);
-const links = computed(() => ({ providers: `${base.value}/settings/model-providers`, servers: `${base.value}/settings/mcp-servers`, webSearch: `${base.value}/settings/web-search`, knowledge: `${base.value}/knowledge` }));
+const links = computed(() => ({ providers: `${base.value}/settings/model-providers`, servers: `${base.value}/settings/mcp-servers`, webSearch: `${base.value}/settings/web-search`, knowledge: `${base.value}/knowledge`, endUsers: `${base.value}/end-users`, memoryStores: `${base.value}/memory-stores` }));
 const legacy = computed(() => current.value > 0 && !!draft.live.value && !draft.live.value.providerId);
 const costInvalid = ref(false);
 const costBlocker: Blocker = { key: 'publish.blocker_cost', target: 'limits' };
@@ -205,7 +209,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
       <AgentConfigForm
         v-model="config" v-model:runtime="runtime" v-model:cost-invalid="costInvalid" :providers="providers.items" :servers="servers.items" :sources="knowledge.sources"
         :search-ready="!!webSearch.setting.provider" :embeddings="!!knowledge.embedding" :retrieval="knowledge.retrievalDefaults" :limits="draft.limits.value" :links="links" :legacy-model="legacy ? (draft.live.value?.model ?? '') : ''" :disabled="!canEdit || !loaded"
-        :field-error="draft.fieldError.value"
+        :field-error="draft.fieldError.value" :memory-stores="memoryStores.items"
       />
       <ConfigurePane :agent-id="agent.id" :config="config" />
     </div>

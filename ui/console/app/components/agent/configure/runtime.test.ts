@@ -3,7 +3,6 @@ import type { McpServer } from '~/stores/mcpServers';
 import { describe, expect, it } from 'vitest';
 import { sourcePBs } from '~~/test/fixtures/knowledge';
 import { providers as fixtureProviders, servers as fixtureServers } from '~~/test/fixtures/runtime';
-import { emptyRuntime } from '~/stores/agentRuntime';
 import { toSource } from '~/stores/knowledge';
 import { emptyConfig } from './agentConfig';
 import {
@@ -111,10 +110,10 @@ describe('grants', () => {
   });
 
   it('counts any granted tool, memory or knowledge as private data', () => {
-    expect(readsPrivateData(emptyConfig(), emptyRuntime())).toBe(false);
-    expect(readsPrivateData(withGrant(emptyConfig(), yasaku, tool('list_wallets'), true), emptyRuntime())).toBe(true);
-    expect(readsPrivateData(emptyConfig(), { ...emptyRuntime(), memory: true })).toBe(true);
-    expect(readsPrivateData({ ...emptyConfig(), knowledgeSourceIds: ['k'] }, emptyRuntime())).toBe(true);
+    expect(readsPrivateData(emptyConfig())).toBe(false);
+    expect(readsPrivateData(withGrant(emptyConfig(), yasaku, tool('list_wallets'), true))).toBe(true);
+    expect(readsPrivateData({ ...emptyConfig(), memoryStoreId: 'Ms4tR7wQ2xKp9VbNc3HzL' })).toBe(true);
+    expect(readsPrivateData({ ...emptyConfig(), knowledgeSourceIds: ['k'] })).toBe(true);
   });
 });
 
@@ -189,6 +188,12 @@ describe('publishWarnings', () => {
     expect(publishWarnings(ready({ grants }), ctx)).toEqual([]);
     expect(readsUntrusted(bound({ grants }))).toBe(true);
     expect(publishWarnings(bound({ grants }), ctx)).toEqual([{ key: 'publish.warning_unapproved_tool', target: 'tools', field: 'yasaku__list_wallets', params: { tool: 'yasaku__list_wallets', n: '0' } }]);
+  });
+
+  it('warns about a tool without approval when the agent remembers people', () => {
+    const grants = [grant(yasaku.id, free('list_wallets'))];
+    expect(readsUntrusted(ready({ memoryStoreId: 'Ms4tR7wQ2xKp9VbNc3HzL' }))).toBe(true);
+    expect(publishWarnings(ready({ grants, memoryStoreId: 'Ms4tR7wQ2xKp9VbNc3HzL' }), ctx)[0]?.field).toBe('yasaku__list_wallets');
   });
 
   it('counts an approved or conditional tool as attended', () => {

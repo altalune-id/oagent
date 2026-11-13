@@ -19,7 +19,7 @@ import KnowledgeTuningForm from './KnowledgeTuning.vue';
 import McpGrants from './McpGrants.vue';
 import { bindable, chosenModel, costCapError, helperCapError, parseDollars, parseDomains, readsPrivateData } from './runtime';
 
-const { providers, servers, sources, searchReady, embeddings, links, retrieval = null, limits = {}, legacyModel = '', disabled = false, fieldError = null } = defineProps<{
+const { providers, servers, sources, searchReady, embeddings, links, retrieval = null, limits = {}, legacyModel = '', disabled = false, fieldError = null, memoryStores = [] } = defineProps<{
   providers: ModelProvider[],
   servers: McpServer[],
   sources: KnowledgeSource[],
@@ -31,6 +31,7 @@ const { providers, servers, sources, searchReady, embeddings, links, retrieval =
   legacyModel?: string,
   disabled?: boolean,
   fieldError?: DraftFieldError | null,
+  memoryStores?: { id: string, name: string }[],
 }>();
 
 const config = defineModel<AgentConfig>({ required: true });
@@ -39,7 +40,7 @@ const costInvalid = defineModel<boolean>('costInvalid', { default: false });
 const { t } = useI18n();
 const { money } = useUnits();
 const uid = useId();
-const ids = { count: `${uid}-count`, temperature: `${uid}-temp`, helper: `${uid}-helper`, provider: `${uid}-provider`, model: `${uid}-model`, tools: `${uid}-tools`, domains: `${uid}-domains`, steps: `${uid}-steps`, cost: `${uid}-cost` };
+const ids = { count: `${uid}-count`, temperature: `${uid}-temp`, helper: `${uid}-helper`, provider: `${uid}-provider`, model: `${uid}-model`, tools: `${uid}-tools`, domains: `${uid}-domains`, steps: `${uid}-steps`, cost: `${uid}-cost`, memory: `${uid}-memory` };
 
 const sections = computed(() => [
   { id: 'configure-instructions', label: t('configure.instructions') },
@@ -55,8 +56,9 @@ const temperatureOff = computed(() => chosen.value.provider?.kind === ModelProvi
 const temperatureText = computed(() => (temperatureOff.value ? t('configure.temperature_off') : config.value.temperature.toFixed(1)));
 const chatModels = computed(() => (chosen.value.provider?.models ?? []).filter(m => !m.embedding || m.id === config.value.model || m.id === config.value.helperModel));
 const helperModels = computed(() => chatModels.value.filter(m => m.id !== config.value.model || m.id === config.value.helperModel));
-const allowListRequired = computed(() => readsPrivateData(config.value, runtime.value));
+const allowListRequired = computed(() => readsPrivateData(config.value));
 const serverError = (...reasons: string[]) => (fieldError && reasons.includes(fieldError.reason) ? fieldError.message : '');
+const memoryError = computed(() => serverError('memory_store', 'memory_store_disabled'));
 
 function modelLabel(m: ProviderModel) {
   const name = m.vision ? t('configure.model_vision', { model: m.id }) : m.id;
@@ -312,13 +314,36 @@ function toggleSource(id: string, on: boolean) {
 
         <Section id="configure-memory" :title="t('configure.memory_knowledge')" class="scroll-mt-14">
           <div class="flex flex-col gap-1">
-            <label class="label cursor-pointer gap-2 text-ui text-base-content">
-              <input v-model="runtime.memory" type="checkbox" class="toggle toggle-sm">
-              {{ t('configure.memory') }}
+            <label class="flex max-w-sm flex-col gap-1">
+              <span class="label text-ui text-base-content">{{ t('configure.memory') }}</span>
+              <select
+                v-model="config.memoryStoreId" data-field="memory" class="select select-sm w-full text-ui" :class="{ 'select-error': memoryError }" :disabled="disabled"
+                :aria-invalid="!!memoryError" :aria-describedby="describedBy(`${ids.memory}-hint`, !!memoryError && `${ids.memory}-err`)"
+              >
+                <option value="">
+                  {{ t('configure.memory_off') }}
+                </option>
+                <option v-if="config.memoryStoreId && !memoryStores.some(s => s.id === config.memoryStoreId)" :value="config.memoryStoreId">
+                  {{ config.memoryStoreId }}
+                </option>
+                <option v-for="s in memoryStores" :key="s.id" :value="s.id">
+                  {{ s.name }}
+                </option>
+              </select>
             </label>
-            <p class="ps-12 text-xs text-base-content/70">
-              {{ t('configure.memory_hint') }} {{ t('configure.preview_section') }}
+            <p :id="`${ids.memory}-hint`" class="text-xs text-base-content/70">
+              <template v-if="config.memoryStoreMissing">
+                {{ t('configure.memory_store_missing') }}
+              </template>
+              {{ t('configure.memory_hint') }}
+              <NuxtLink :to="links.memoryStores" class="link inline-flex min-h-6 items-center">
+                {{ t('configure.memory_manage') }}
+              </NuxtLink>
+              <NuxtLink v-if="config.memoryStoreId" :to="links.endUsers" class="link inline-flex min-h-6 items-center">
+                {{ t('configure.memory_see') }}
+              </NuxtLink>
             </p>
+            <FieldError :id="`${ids.memory}-err`" :message="memoryError" />
           </div>
           <fieldset class="flex flex-col gap-2">
             <legend class="text-ui font-semibold">

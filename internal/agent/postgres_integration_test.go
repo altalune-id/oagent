@@ -553,6 +553,46 @@ func TestUsage_KnowledgeSources(t *testing.T) {
 	assert.NotContains(t, use, drafted, "drafts never count")
 }
 
+func TestUsage_MemoryStores(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
+	provider, used, dropped, drafted := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+
+	a := newAgent(t, orgID, projectID, "uses")
+	require.NoError(t, f.store.Save(ctx, a))
+	f.publish(t, ctx, a, agent.Config{ProviderID: provider, Model: "m", MemoryStoreID: used})
+
+	b := newAgent(t, orgID, projectID, "switched")
+	require.NoError(t, f.store.Save(ctx, b))
+	f.publish(t, ctx, b, agent.Config{ProviderID: provider, Model: "m", MemoryStoreID: dropped})
+	f.publish(t, ctx, b, agent.Config{ProviderID: provider, Model: "m", MemoryStoreID: used})
+
+	c := newAgent(t, orgID, projectID, "drafted")
+	require.NoError(t, f.store.Save(ctx, c))
+	require.NoError(t, c.SetDraft(agent.Config{ProviderID: provider, MemoryStoreID: drafted}, time.Now()))
+	require.NoError(t, f.store.SaveDraft(ctx, c))
+
+	d := newAgent(t, orgID, projectID, "none")
+	require.NoError(t, f.store.Save(ctx, d))
+	f.publish(t, ctx, d, agent.Config{ProviderID: provider, Model: "m"})
+
+	for id, want := range map[uuid.UUID]bool{used: true, dropped: false, drafted: false, uuid.New(): false} {
+		got, err := f.store.MemoryStoreInUse(ctx, id)
+		require.NoError(t, err)
+		assert.Equal(t, want, got, id.String())
+	}
+	use, err := f.store.MemoryUse(ctx, projectID)
+	require.NoError(t, err)
+	want := []agent.Named{{ID: a.ID, PublicID: a.PublicID, Name: a.Name}, {ID: b.ID, PublicID: b.PublicID, Name: b.Name}}
+	assert.ElementsMatch(t, want, use[used])
+	assert.Len(t, use, 1, "only latest published versions count, drafts never, and an agent with no store names none")
+
+	other, err := f.store.MemoryStoreInUse(in(uuid.New()), used)
+	require.NoError(t, err)
+	assert.False(t, other, "another org's versions never count")
+}
+
 func TestPostgres_VersionByIDIsTenantScoped(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)
@@ -658,4 +698,22 @@ func TestPostgres_VersionKindShape(t *testing.T) {
 	assert.Equal(t, "23514", pgCode(insert("other", 1, nil)))
 	require.NoError(t, insert("draft", nil, []byte{2}))
 	assert.Equal(t, "23505", pgCode(insert("draft", nil, []byte{2})), "one draft row per agent and hash")
+}
+
+func TestPostgres_AgentPublicIDsInOneRead(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	a := newAgent(t, orgID, projectID, "named")
+	require.NoError(t, f.store.Save(in(orgID), a))
+	got, err := f.store.AgentPublicIDs(in(orgID), []uuid.UUID{a.ID, uuid.New()})
+	require.NoError(t, err)
+	assert.Equal(t, map[uuid.UUID]string{a.ID: a.PublicID}, got, "a gone agent is left out")
+	other, err := f.store.AgentPublicIDs(in(uuid.New()), []uuid.UUID{a.ID})
+	require.NoError(t, err)
+	assert.Empty(t, other, "another org names nothing")
+	none, err := f.store.AgentPublicIDs(in(orgID), nil)
+	require.NoError(t, err)
+	assert.Empty(t, none)
+	_, err = f.store.AgentPublicIDs(context.Background(), []uuid.UUID{a.ID})
+	require.Error(t, err)
 }

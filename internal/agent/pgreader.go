@@ -151,13 +151,64 @@ func (s *postgresStore) KnowledgeSourceInUse(ctx context.Context, sourceID uuid.
 	return len(cfgs) > 0, err
 }
 
-// KnowledgeUse names, per knowledge source of a project, the agents whose latest published version searches it.
-func (s *postgresStore) KnowledgeUse(ctx context.Context, projectID uuid.UUID) (map[uuid.UUID][]Named, error) {
+// AgentPublicIDs names agents of the org on ctx by public id in one read; an agent that is gone is left out.
+func (s *postgresStore) AgentPublicIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error) {
+	out := make(map[uuid.UUID]string, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
 	tc, err := tenant.From(ctx)
 	if err != nil {
 		return nil, err
 	}
-	stmt := postgres.RawStatement(s.projectUse, postgres.RawArgs{"#org": tc.OrgID, "#project": projectID})
+	a := s.agents
+	in := make([]postgres.Expression, len(ids))
+	for i, id := range ids {
+		in[i] = postgres.UUID(id)
+	}
+	stmt := postgres.SELECT(a.ID, a.PublicID).FROM(a).WHERE(a.OrgID.EQ(postgres.UUID(tc.OrgID)).AND(a.ID.IN(in...)))
+	var rows []struct {
+		ID       uuid.UUID `alias:"agents.id"`
+		PublicID string    `alias:"agents.public_id"`
+	}
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
+		return nil, fmt.Errorf("agent.postgres: AgentPublicIDs: %w", err)
+	}
+	for _, row := range rows {
+		out[row.ID] = row.PublicID
+	}
+	return out, nil
+}
+
+// MemoryStoreInUse reports whether a latest published version in the org on ctx remembers people in a memory store.
+func (s *postgresStore) MemoryStoreInUse(ctx context.Context, storeID uuid.UUID) (bool, error) {
+	cfgs, err := s.latestConfigs(ctx, "MemoryStoreInUse", s.storeUse, storeID)
+	return len(cfgs) > 0, err
+}
+
+// KnowledgeUse names, per knowledge source of a project, the agents whose latest published version searches it.
+func (s *postgresStore) KnowledgeUse(ctx context.Context, projectID uuid.UUID) (map[uuid.UUID][]Named, error) {
+	return s.usedBy(ctx, "KnowledgeUse", s.projectUse, projectID, func(c Config) []uuid.UUID { return c.KnowledgeSourceIDs })
+}
+
+// MemoryUse names, per memory store of a project, the agents whose latest published version remembers people in it.
+func (s *postgresStore) MemoryUse(ctx context.Context, projectID uuid.UUID) (map[uuid.UUID][]Named, error) {
+	return s.usedBy(ctx, "MemoryUse", s.memoryUse, projectID, func(c Config) []uuid.UUID {
+		if c.MemoryStoreID == uuid.Nil {
+			return nil
+		}
+		return []uuid.UUID{c.MemoryStoreID}
+	})
+}
+
+func (s *postgresStore) usedBy(
+	ctx context.Context, op, query string, projectID uuid.UUID, refs func(Config) []uuid.UUID,
+) (map[uuid.UUID][]Named, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stmt := postgres.RawStatement(query, postgres.RawArgs{"#org": tc.OrgID, "#project": projectID})
 	var rows []struct {
 		ID       uuid.UUID `alias:"agents.id"`
 		PublicID string    `alias:"agents.public_id"`
@@ -165,15 +216,15 @@ func (s *postgresStore) KnowledgeUse(ctx context.Context, projectID uuid.UUID) (
 		Config   string    `alias:"agent_versions.config"`
 	}
 	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
-		return nil, fmt.Errorf("agent.postgres: KnowledgeUse: %w", err)
+		return nil, fmt.Errorf("agent.postgres: %s: %w", op, err)
 	}
 	out := map[uuid.UUID][]Named{}
 	for _, r := range rows {
 		var c Config
 		if err := json.Unmarshal([]byte(r.Config), &c); err != nil {
-			return nil, fmt.Errorf("agent.postgres: KnowledgeUse: %w", err)
+			return nil, fmt.Errorf("agent.postgres: %s: %w", op, err)
 		}
-		for _, id := range c.KnowledgeSourceIDs {
+		for _, id := range refs(c) {
 			out[id] = append(out[id], Named{ID: r.ID, PublicID: r.PublicID, Name: r.Name})
 		}
 	}

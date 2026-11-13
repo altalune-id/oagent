@@ -48,6 +48,15 @@ describe('helperModel', () => {
     expect(models.model).toHaveBeenCalledWith(request.ids.project, helperSpec, request.agent.temperature);
   });
 
+  it('caps the helper output tokens only when asked', () => {
+    const { models, request } = setup([], (r) => {
+      r.agent.helperModel = helperSpec;
+    });
+    helperModel(request, models, emptyUsage(), 1500);
+    expect(models.model).toHaveBeenLastCalledWith(request.ids.project, { ...helperSpec, maxTokens: 1500 }, request.agent.temperature);
+    expect(models.model.mock.calls[0]![1]).toEqual(helperSpec);
+  });
+
   it('falls back to the main model spec', () => {
     const { models, request } = setup([]);
     expect(models.model).toHaveBeenCalledWith(request.ids.project, request.agent.model, request.agent.temperature);

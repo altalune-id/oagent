@@ -36,7 +36,7 @@ describe('project sidebar', () => {
     const lists = w.findAll('nav > ul').map(ul => ul.findAll('li').map(li => li.text()));
     expect(lists).toEqual([
       ['nav.org_overview', 'nav.projects', 'members.title', 'apikeys.title', 'nav.org_settings'],
-      ['nav.overview', 'nav.agents', 'approvals.title1', 'endusers.title', 'knowledge.title', 'webhooks.title', 'nav.project_settings', 'nav.general', 'providers.title', 'mcpservers.title', 'websearch.title'],
+      ['nav.overview', 'nav.agents', 'approvals.title1', 'endusers.title', 'knowledge.title', 'memorystores.title', 'webhooks.title', 'nav.project_settings', 'nav.general', 'providers.title', 'mcpservers.title', 'websearch.title'],
     ]);
     expect(w.get('nav > ul:last-child a.menu-active').text()).toBe('nav.agents');
     expect(w.get('[data-sidebar-footer]').text()).toContain('Sam Rivera');
@@ -51,6 +51,14 @@ describe('project sidebar', () => {
     useApprovalsStore().countProject = 'another-project';
     await flushPromises();
     expect(approvalsItem()).toBe('approvals.title');
+  });
+
+  it('marks Memory stores active on its pages', async () => {
+    setRoute({ path: '/o/acme/projects/support/memory-stores', params: { org: 'acme', project: 'support' } });
+    const w = await mountPage(ProjectSidebar);
+    const item = w.get('nav > ul:last-child a.menu-active');
+    expect(item.text()).toBe('memorystores.title');
+    expect(w.findAllComponents(RouterLinkStub).find(l => l.text() === 'memorystores.title')!.props('to')).toBe('/o/acme/projects/support/memory-stores');
   });
 });
 

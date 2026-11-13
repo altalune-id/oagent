@@ -19,6 +19,8 @@
   { "name": "approval:decide", "level": "project", "labelKey": "scope.approval_decide" },
   { "name": "knowledge:read", "level": "project", "labelKey": "scope.knowledge_read" },
   { "name": "knowledge:write", "level": "project", "labelKey": "scope.knowledge_write" },
+  { "name": "memory:read", "level": "project", "labelKey": "scope.memory_read" },
+  { "name": "memory:write", "level": "project", "labelKey": "scope.memory_write" },
   { "name": "member:read", "level": "org", "labelKey": "scope.member_read" },
   { "name": "member:write", "level": "org", "labelKey": "scope.member_write", "holder": "person" },
   { "name": "apikey:read", "level": "org", "labelKey": "scope.apikey_read" },

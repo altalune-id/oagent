@@ -37,6 +37,7 @@ import (
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/knowledge"
 	"altalune.id/oagent/internal/mcpserver"
+	"altalune.id/oagent/internal/memory"
 	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/invite"
@@ -245,6 +246,16 @@ func samples() []error {
 		&approval.AnsweredByAppError{},
 		&agent.InvalidGrantError{Reason: agent.GrantKnowledgeSource},
 		&agent.InvalidGrantError{Reason: agent.GrantUnapprovedTool, Name: "yasaku__send"},
+		&agent.InvalidGrantError{Reason: agent.GrantMemoryStore},
+		&agent.InvalidGrantError{Reason: agent.GrantMemoryStoreDisabled},
+		&memory.NotFoundError{ID: "f1"},
+		&memory.StoreNotFoundError{},
+		&memory.InvalidStoreError{Reason: memory.StoreNameRequired},
+		&memory.InvalidStoreError{Reason: memory.StoreNameTooLong},
+		&memory.InvalidStoreError{Reason: memory.StoreBackendDisabled},
+		&memory.StoreInUseError{},
+		&memory.StoreAlreadyExistsError{Name: "People"},
+		&memory.StoreBackendOffError{Backend: "mem0"},
 		&modelprovider.InUseError{Reason: modelprovider.InUseEmbeddingModel, Model: "a"},
 		&knowledge.SourceNotFoundError{},
 		&knowledge.InvalidSourceError{Reason: knowledge.SourceURLRequired},

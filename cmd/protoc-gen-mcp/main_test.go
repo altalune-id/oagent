@@ -24,6 +24,7 @@ import (
 	knowledgev1 "altalune.id/oagent/gen/go/knowledge/v1"
 	mcpserverv1 "altalune.id/oagent/gen/go/mcpserver/v1"
 	memberv1 "altalune.id/oagent/gen/go/member/v1"
+	memoryv1 "altalune.id/oagent/gen/go/memory/v1"
 	modelproviderv1 "altalune.id/oagent/gen/go/modelprovider/v1"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	projectv1 "altalune.id/oagent/gen/go/project/v1"
@@ -42,6 +43,7 @@ func committedFiles() []protoreflect.FileDescriptor {
 		approvalv1.File_approval_v1_approval_proto,
 		invitev1.File_invite_v1_invite_proto,
 		knowledgev1.File_knowledge_v1_knowledge_proto,
+		memoryv1.File_memory_v1_memory_proto,
 		mcpserverv1.File_mcpserver_v1_mcpserver_proto,
 		memberv1.File_member_v1_member_proto,
 		modelproviderv1.File_modelprovider_v1_modelprovider_proto,

@@ -26,6 +26,8 @@ type Refs interface {
 	MCPServerPublicID(ctx context.Context, id uuid.UUID) (publicID string, ok bool, err error)
 	KnowledgeSourceID(ctx context.Context, publicID string) (id, projectID uuid.UUID, ok bool, err error)
 	KnowledgeSourcePublicID(ctx context.Context, id uuid.UUID) (publicID string, ok bool, err error)
+	MemoryStoreID(ctx context.Context, publicID string) (id, projectID uuid.UUID, ok bool, err error)
+	MemoryStorePublicID(ctx context.Context, id uuid.UUID) (publicID string, ok bool, err error)
 }
 
 // ModelRef is one model a provider lists; Priced is true when it has prices.
@@ -48,6 +50,12 @@ type MCPServers interface {
 type Knowledge interface {
 	SourceExists(ctx context.Context, projectID, sourceID uuid.UUID) error
 	LockSourcesShared(ctx context.Context, ids []uuid.UUID) error
+}
+
+// Memory checks a config's memory store; a bad one answers *InvalidGrantError (memory_store or memory_store_disabled).
+type Memory interface {
+	StoreUsable(ctx context.Context, projectID, storeID uuid.UUID) error
+	LockStoreShared(ctx context.Context, id uuid.UUID) error
 }
 
 // Locker share-locks a version's providers and servers until the unit of work ends; a gone one answers *InvalidGrantError.

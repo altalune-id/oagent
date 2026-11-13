@@ -21,6 +21,7 @@ import (
 	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
 	"altalune.id/oagent/gen/go/knowledge/v1/knowledgev1connect"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
+	"altalune.id/oagent/gen/go/memory/v1/memoryv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
@@ -32,6 +33,7 @@ import (
 	"altalune.id/oagent/internal/boot"
 	"altalune.id/oagent/internal/channel"
 	"altalune.id/oagent/internal/knowledge"
+	"altalune.id/oagent/internal/memory"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
@@ -172,6 +174,9 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 	knowledgeCmd := knowledge.NewCmd(knowledgeClientFn(bootClient))
 	markClientTree(knowledgeCmd)
 
+	memoryCmd := memory.NewCmd(memoryClientFn(bootClient))
+	markClientTree(memoryCmd)
+
 	authCmd := auth.NewCmd(sessionProfiles{}, authClientFn(bootClient), authSessionClientFn(bootClient))
 	markClientTree(authCmd)
 
@@ -190,6 +195,7 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 		channelCmd,
 		approvalCmd,
 		knowledgeCmd,
+		memoryCmd,
 		newVersionCmd(),
 		newExtractCmd(),
 	)
@@ -301,6 +307,16 @@ func knowledgeClientFn(bootClient ClientBootFn) knowledge.ClientFn {
 			return nil, err
 		}
 		return client.Knowledge, nil
+	}
+}
+
+func memoryClientFn(bootClient ClientBootFn) memory.ClientFn {
+	return func(cmd *cobra.Command) (memoryv1connect.MemoryServiceClient, error) {
+		client, err := connectClient(cmd, bootClient)
+		if err != nil {
+			return nil, err
+		}
+		return client.Memory, nil
 	}
 }
 

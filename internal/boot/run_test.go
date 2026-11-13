@@ -24,9 +24,10 @@ import (
 
 func TestRunAgents_MapsThePinnedVersion(t *testing.T) {
 	ag := &agent.Agent{ID: uuid.New(), PublicID: "agent-pub"}
-	provider, server := uuid.New(), uuid.New()
+	provider, server, memStore := uuid.New(), uuid.New(), uuid.New()
 	v := &agent.Version{ID: uuid.New(), AgentID: ag.ID, Version: 4, Config: agent.Config{
 		Instructions: "be brief", Model: "gpt-4o", Temperature: 0.3, MaxSteps: 7, MaxCostCents: 50, ProviderID: provider,
+		HelperModel: "mini", MemoryStoreID: memStore,
 		MCPServers: []agent.MCPGrant{{ServerID: server, Tools: []agent.Tool{{Name: "a"}, {Name: "b", RequireApproval: true}}}},
 	}}
 	store := &fakes.AgentStore{Agent: ag, Published: []*agent.Version{v}}
@@ -37,7 +38,7 @@ func TestRunAgents_MapsThePinnedVersion(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, &run.AgentVersion{
 		ID: v.ID, AgentID: ag.ID, AgentPublicID: "agent-pub", Version: 4, Instructions: "be brief", Model: "gpt-4o",
-		Temperature: 0.3, MaxSteps: 7, MaxCostCents: 50, ProviderID: provider,
+		Temperature: 0.3, MaxSteps: 7, MaxCostCents: 50, ProviderID: provider, HelperModel: "mini", MemoryStoreID: memStore,
 		MCPServers: []run.MCPGrant{{ServerID: server, Tools: []run.ToolGrant{{Name: "a"}, {Name: "b", RequireApproval: true}}}},
 		Knowledge:  run.KnowledgeTuning{MaxBytes: knowledge.RecommendedMaxTokens * 4},
 	}, got)

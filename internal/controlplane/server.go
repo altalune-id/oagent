@@ -19,6 +19,7 @@ import (
 	"altalune.id/oagent/gen/go/knowledge/v1/knowledgev1connect"
 	mcpserverv1connect "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1connect"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
+	"altalune.id/oagent/gen/go/memory/v1/memoryv1connect"
 	modelproviderv1connect "altalune.id/oagent/gen/go/modelprovider/v1/modelproviderv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
@@ -33,6 +34,7 @@ import (
 	"altalune.id/oagent/internal/kernel/authn"
 	"altalune.id/oagent/internal/knowledge"
 	"altalune.id/oagent/internal/mcpserver"
+	"altalune.id/oagent/internal/memory"
 	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/invite"
@@ -70,6 +72,7 @@ type Services struct {
 	EndUsers run.People
 	// People and PeopleActivity serve the end-user read API.
 	People         *enduser.Service
+	Memory         *memory.Service
 	PeopleActivity enduser.Activity
 	// Approvals, with its public-id lookups and the label rule, serves the approval API.
 	Approvals     *approval.Service
@@ -94,6 +97,7 @@ type Refs interface {
 	modelprovider.Refs
 	mcpserver.Refs
 	knowledge.Refs
+	memory.Refs
 	channel.Refs
 	enduser.Refs
 	run.Refs
@@ -123,6 +127,7 @@ type Server struct {
 	KnowledgeSvc     *knowledge.KnowledgeService
 	ChannelSvc       *channel.ChannelService
 	EndUserSvc       *enduser.EndUserService
+	MemorySvc        *memory.MemoryService
 	ApprovalSvc      *approval.ApprovalService
 	ThreadSvc        *run.ThreadService
 
@@ -175,6 +180,9 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 	}
 	if svcs.People != nil && svcs.PeopleActivity != nil {
 		s.EndUserSvc = enduser.NewControlPlane(svcs.People, svcs.Refs, svcs.PeopleActivity)
+	}
+	if svcs.Memory != nil {
+		s.MemorySvc = memory.NewControlPlane(svcs.Memory, svcs.Refs)
 	}
 	if svcs.Approvals != nil && svcs.ApprovalRefs != nil && svcs.ApprovalNames != nil {
 		s.ApprovalSvc = approval.NewControlPlane(svcs.Approvals, svcs.ApprovalRefs, svcs.ApprovalNames)
@@ -230,6 +238,10 @@ func (s *Server) Handler(basePath string) http.Handler {
 	if s.EndUserSvc != nil {
 		peoplePath, peopleHandler := enduserv1connect.NewEndUserServiceHandler(s.EndUserSvc, s.handlerOptions()...)
 		inner.Handle(peoplePath, peopleHandler)
+	}
+	if s.MemorySvc != nil {
+		memoryPath, memoryHandler := memoryv1connect.NewMemoryServiceHandler(s.MemorySvc, s.handlerOptions()...)
+		inner.Handle(memoryPath, memoryHandler)
 	}
 	if s.ApprovalSvc != nil {
 		approvalPath, approvalHandler := approvalv1connect.NewApprovalServiceHandler(s.ApprovalSvc, s.handlerOptions()...)

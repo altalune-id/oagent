@@ -15,6 +15,8 @@ const ALLOWED = new Set([
   'stopReason',
   'inputTokens',
   'outputTokens',
+  'extracted',
+  'extractSkip',
   'parts',
   'fields',
   'host',

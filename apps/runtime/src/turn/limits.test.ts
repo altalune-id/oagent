@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { addHelperUsage, costMicros, DEFAULT_MAX_STEPS, emptyUsage, overBudget, stepLimit, UsageMeter } from './limits.ts';
+import { addHelperUsage, costMicros, DEFAULT_MAX_STEPS, emptyUsage, EXTRACT_OUTPUT_TOKENS, extractionFits, overBudget, stepLimit, UsageMeter } from './limits.ts';
 
 const prices = { input: 2_500_000, output: 10_000_000, cacheRead: 1_250_000, cacheWrite: 0 };
 
@@ -38,6 +38,32 @@ describe('overBudget', () => {
     const usage = { ...emptyUsage(), outputTokens: 100, helper: { inputTokens: 0, outputTokens: 100, cacheReadInputTokens: 0, cacheWriteInputTokens: 0 } };
     expect(overBudget(usage, { remainingMicros: 2001, prices })).toBe(false);
     expect(overBudget(usage, { remainingMicros: 2000, prices })).toBe(true);
+  });
+});
+
+describe('extractionFits', () => {
+  const estimate = 1_000 + 15_000;
+
+  it('always fits without a budget', () => {
+    expect(extractionFits({ ...emptyUsage(), outputTokens: 10 ** 9 }, null, 10 ** 9)).toBe(true);
+  });
+
+  it('fits only when spent plus 4 chars per input token and 1500 output tokens stays under the remaining amount', () => {
+    expect(EXTRACT_OUTPUT_TOKENS).toBe(1500);
+    const usage = { ...emptyUsage(), outputTokens: 100 };
+    expect(extractionFits(usage, { remainingMicros: 1_000 + estimate + 1, prices }, 1600)).toBe(true);
+    expect(extractionFits(usage, { remainingMicros: 1_000 + estimate, prices }, 1600)).toBe(false);
+  });
+
+  it('prices the estimate at the helper prices', () => {
+    const helperPrices = { input: 0, output: 1_000_000, cacheRead: 0, cacheWrite: 0 };
+    expect(extractionFits(emptyUsage(), { remainingMicros: 1_501, prices, helperPrices }, 1600)).toBe(true);
+    expect(extractionFits(emptyUsage(), { remainingMicros: 1_500, prices, helperPrices }, 1600)).toBe(false);
+  });
+
+  it('counts helper usage already spent', () => {
+    const usage = { ...emptyUsage(), helper: { inputTokens: 0, outputTokens: 100, cacheReadInputTokens: 0, cacheWriteInputTokens: 0 } };
+    expect(extractionFits(usage, { remainingMicros: 1_000 + estimate, prices }, 1600)).toBe(false);
   });
 });
 

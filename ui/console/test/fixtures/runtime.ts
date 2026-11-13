@@ -3,6 +3,7 @@ import type { ModelProvider } from '~/stores/modelProviders';
 import { create } from '@bufbuild/protobuf';
 import { vi } from 'vitest';
 import { McpServerAuthKind, McpServerSchema, McpServerToolSchema } from '#gen/mcpserver/v1/mcpserver_pb';
+import { MemoryBackend, MemoryStoreSchema } from '#gen/memory/v1/memory_pb';
 import { ModelProviderKind, ModelProviderSchema } from '#gen/modelprovider/v1/modelprovider_pb';
 import { setClient } from '#test/nuxt-globals';
 import { toMcpServer, toMcpTool } from '~/stores/mcpServers';
@@ -88,6 +89,8 @@ export function servers(): McpServer[] {
 export const mcpDefaults = { timeoutMs: 7_000, minTimeoutMs: 2_000, maxTimeoutMs: 18_000 };
 
 // fakeRuntimeClients answers the model provider and MCP server RPCs with the fixtures.
+export const memoryStoreId = 'Ms4tR7wQ2xKp9VbNc3HzL';
+
 export function fakeRuntimeClients() {
   const provider = {
     listModelProviders: vi.fn().mockResolvedValue({ modelProviders: providerPBs() }),
@@ -102,7 +105,11 @@ export function fakeRuntimeClients() {
     updateMcpServer: vi.fn(),
     deleteMcpServer: vi.fn().mockResolvedValue({}),
   };
+  const memory = {
+    listMemoryStores: vi.fn().mockResolvedValue({ stores: [create(MemoryStoreSchema, { id: memoryStoreId, projectId, name: 'People', backend: MemoryBackend.NATIVE })], enabledBackends: [MemoryBackend.NATIVE] }),
+  };
   setClient('$modelProviderClient', provider);
   setClient('$mcpServerClient', server);
-  return { provider, server };
+  setClient('$memoryClient', memory);
+  return { provider, server, memory };
 }

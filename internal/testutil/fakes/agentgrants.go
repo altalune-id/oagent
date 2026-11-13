@@ -27,9 +27,13 @@ type AgentGrants struct {
 	Servers   map[uuid.UUID]GrantServer
 	// Sources maps a knowledge source to its project.
 	Sources map[uuid.UUID]uuid.UUID
-	// Locked records each LockShared call's provider and server ids; LockedSources each LockSourcesShared call's ids.
+	// Stores maps a memory store to its project; DisabledStores are those whose backend is off.
+	Stores         map[uuid.UUID]uuid.UUID
+	DisabledStores map[uuid.UUID]bool
+	// Locked records each LockShared call's provider and server ids; LockedSources and LockedStores the other locks' ids.
 	Locked        [][]uuid.UUID
 	LockedSources [][]uuid.UUID
+	LockedStores  []uuid.UUID
 	Err           error
 }
 
@@ -38,6 +42,7 @@ var (
 	_ agent.MCPServers = (*AgentGrants)(nil)
 	_ agent.Locker     = (*AgentGrants)(nil)
 	_ agent.Knowledge  = (*AgentGrants)(nil)
+	_ agent.Memory     = (*AgentGrants)(nil)
 )
 
 // Models implements agent.Providers.
@@ -108,5 +113,31 @@ func (f *AgentGrants) LockSourcesShared(ctx context.Context, ids []uuid.UUID) er
 		}
 	}
 	f.LockedSources = append(f.LockedSources, append([]uuid.UUID{}, ids...))
+	return nil
+}
+
+// StoreUsable implements agent.Memory.
+func (f *AgentGrants) StoreUsable(_ context.Context, projectID, storeID uuid.UUID) error {
+	if f.Err != nil {
+		return f.Err
+	}
+	if p, ok := f.Stores[storeID]; !ok || p != projectID {
+		return &agent.InvalidGrantError{Reason: agent.GrantMemoryStore}
+	}
+	if f.DisabledStores[storeID] {
+		return &agent.InvalidGrantError{Reason: agent.GrantMemoryStoreDisabled}
+	}
+	return nil
+}
+
+// LockStoreShared implements agent.Memory; it needs a unit of work, like the row lock it stands for.
+func (f *AgentGrants) LockStoreShared(ctx context.Context, id uuid.UUID) error {
+	if !InTx(ctx) {
+		return errors.New("fakes: a row lock needs a unit of work")
+	}
+	if _, ok := f.Stores[id]; !ok {
+		return &agent.InvalidGrantError{Reason: agent.GrantMemoryStore}
+	}
+	f.LockedStores = append(f.LockedStores, id)
 	return nil
 }

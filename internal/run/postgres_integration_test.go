@@ -631,11 +631,21 @@ func TestStore_ThreadAndHistory(t *testing.T) {
 	_, err = f.store.StartRun(ctx, token, second)
 	require.NoError(t, err)
 
-	history, err := f.store.History(ctx, thread, second.ID)
+	history, err := f.store.History(ctx, thread, second.ID, 40)
 	require.NoError(t, err)
 	require.Len(t, history, 2, "the earlier turn only, in order")
 	assert.Equal(t, run.RoleUser, history[0].Role)
 	assert.Equal(t, run.RoleAssistant, history[1].Role)
+
+	newest, err := f.store.History(ctx, thread, second.ID, 1)
+	require.NoError(t, err)
+	require.Len(t, newest, 1, "the limit keeps the newest rows")
+	assert.Equal(t, run.RoleAssistant, newest[0].Role)
+
+	from, err := f.store.HistoryFrom(ctx, thread, second.ID)
+	require.NoError(t, err)
+	require.Len(t, from, 2, "the newest user row of the history, not the excepted run's own, starts it")
+	assert.Equal(t, history[0].ID, from[0].ID)
 }
 
 func TestStore_SweepRecoversAnOrphanRunningRun(t *testing.T) {
@@ -1144,4 +1154,26 @@ func TestStore_KnowledgeUsageRoundTrips(t *testing.T) {
 	assert.Equal(t, int32(7), got.KnowledgePassages)
 	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.runs WHERE id = $1 AND cost_micros = 20100`, r.ID),
 		"the stored cost prices embedding tokens at the embedding price")
+}
+
+func TestPostgres_RunPublicIDsInOneRead(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	thread := f.thread(t, s)
+	_, err := f.store.AppendMessage(in(s.org), thread, userMsg("hello", ""))
+	require.NoError(t, err)
+	r := run.New(s.org, s.project, thread, s.version, time.Now())
+	_, err = f.store.StartRun(in(s.org), f.claimed(t, s, thread), r)
+	require.NoError(t, err)
+	got, err := f.store.RunPublicIDs(in(s.org), []uuid.UUID{r.ID, uuid.New()})
+	require.NoError(t, err)
+	assert.Equal(t, map[uuid.UUID]string{r.ID: r.PublicID}, got, "a gone run is left out")
+	other, err := f.store.RunPublicIDs(in(uuid.New()), []uuid.UUID{r.ID})
+	require.NoError(t, err)
+	assert.Empty(t, other, "another org names nothing")
+	none, err := f.store.RunPublicIDs(in(s.org), nil)
+	require.NoError(t, err)
+	assert.Empty(t, none)
+	_, err = f.store.RunPublicIDs(context.Background(), []uuid.UUID{r.ID})
+	require.Error(t, err)
 }

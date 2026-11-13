@@ -11,6 +11,7 @@ import (
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/knowledge"
 	"altalune.id/oagent/internal/mcpserver"
+	"altalune.id/oagent/internal/memory"
 	"altalune.id/oagent/internal/modelprovider"
 )
 
@@ -125,6 +126,28 @@ func (g grantKnowledge) LockSourcesShared(ctx context.Context, ids []uuid.UUID) 
 func knowledgeGrantErr(err error) error {
 	if knowledge.IsSourceNotFoundError(err) {
 		return &agent.InvalidGrantError{Reason: agent.GrantKnowledgeSource}
+	}
+	return err
+}
+
+type grantMemory struct{ memory *memory.Service }
+
+// StoreUsable implements agent.Memory; an unknown, foreign or disabled store answers the agent's grant error.
+func (g grantMemory) StoreUsable(ctx context.Context, projectID, storeID uuid.UUID) error {
+	return memoryGrantErr(g.memory.StoreUsable(ctx, projectID, storeID))
+}
+
+// LockStoreShared implements agent.Memory; a gone store answers the agent's grant error.
+func (g grantMemory) LockStoreShared(ctx context.Context, id uuid.UUID) error {
+	return memoryGrantErr(g.memory.LockStoreShared(ctx, id))
+}
+
+func memoryGrantErr(err error) error {
+	switch {
+	case memory.IsStoreNotFoundError(err):
+		return &agent.InvalidGrantError{Reason: agent.GrantMemoryStore}
+	case memory.IsInvalidStoreError(err):
+		return &agent.InvalidGrantError{Reason: agent.GrantMemoryStoreDisabled}
 	}
 	return err
 }

@@ -49,6 +49,10 @@ func buildRun(k kernel.Kernel, cfg config.Config, s *Services, limiter ratelimit
 	if s.EndUsers != nil {
 		svc.WithNames(endUserNames{users: s.EndUsers})
 	}
+	svc.WithKeyPrefix(s.KeyScheme.Prefix())
+	if s.Memory != nil {
+		svc.WithMemory(runMemory{memory: s.Memory}, runRememberers{users: s.EndUsers})
+	}
 	if s.Knowledge != nil {
 		svc.WithKnowledge(runKnowledge{agents: s.AgentStore, knowledge: s.Knowledge}, runRetriever{s.KnowledgeRetriever}, s.Knowledge)
 	}
@@ -140,6 +144,7 @@ func (a runAgents) pinned(ctx context.Context, v *agent.Version) (*run.AgentVers
 		ID: v.ID, AgentID: v.AgentID, AgentPublicID: ag.PublicID, Version: v.Version, Draft: v.Kind == agent.VersionDraft, Legacy: c.Legacy(),
 		Instructions: c.Instructions, Model: c.Model, Temperature: c.Temperature, MaxSteps: c.EffectiveMaxSteps(),
 		MaxCostCents: c.MaxCostCents, ProviderID: c.ProviderID, Knowledge: runKnowledgeTuning(c.KnowledgeTuning),
+		HelperModel: c.HelperModel, MemoryStoreID: c.MemoryStoreID,
 	}
 	for _, g := range c.MCPServers {
 		grant := run.MCPGrant{ServerID: g.ServerID}

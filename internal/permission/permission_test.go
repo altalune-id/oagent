@@ -18,6 +18,8 @@ import (
 	"altalune.id/oagent/gen/go/knowledge/v1/knowledgev1connect"
 	mcpserverv1 "altalune.id/oagent/gen/go/mcpserver/v1"
 	memberv1 "altalune.id/oagent/gen/go/member/v1"
+	memoryv1 "altalune.id/oagent/gen/go/memory/v1"
+	"altalune.id/oagent/gen/go/memory/v1/memoryv1connect"
 	modelproviderv1 "altalune.id/oagent/gen/go/modelprovider/v1"
 	orgv1 "altalune.id/oagent/gen/go/org/v1"
 	projectv1 "altalune.id/oagent/gen/go/project/v1"
@@ -39,6 +41,7 @@ func allProcedures() []string {
 		approvalv1.File_approval_v1_approval_proto,
 		invitev1.File_invite_v1_invite_proto,
 		knowledgev1.File_knowledge_v1_knowledge_proto,
+		memoryv1.File_memory_v1_memory_proto,
 		mcpserverv1.File_mcpserver_v1_mcpserver_proto,
 		memberv1.File_member_v1_member_proto,
 		modelproviderv1.File_modelprovider_v1_modelprovider_proto,
@@ -60,7 +63,7 @@ func allProcedures() []string {
 
 func TestEveryRPCHasAPermission(t *testing.T) {
 	procs := allProcedures()
-	require.Len(t, procs, 90, "Org 4, Project 5, Agent 8, APIKey 3, Webhook 11, Auth 6, Member 4, Invite 7, ModelProvider 5, McpServer 6, Thread 6, Channel 7, EndUser 2, Approval 3, Knowledge 13")
+	require.Len(t, procs, 97, "Org 4, Project 5, Agent 8, APIKey 3, Webhook 11, Auth 6, Member 4, Invite 7, ModelProvider 5, McpServer 6, Thread 6, Channel 7, EndUser 2, Approval 3, Knowledge 13, Memory 7")
 	table := Table()
 	for _, proc := range procs {
 		perms := table[proc]
@@ -171,4 +174,25 @@ func TestTestSearch_AMemberMayRunIt(t *testing.T) {
 	require.NotEmpty(t, perms)
 	assert.True(t, scope.Covers(member.BuiltinPermissions(member.RoleMember), perms))
 	assert.False(t, scope.Covers(member.BuiltinPermissions(member.RoleMember), For(knowledgev1connect.KnowledgeServiceSetEmbeddingModelProcedure)), "a member still changes nothing")
+}
+
+func TestPermissionTable_MembersReadMemoryAdminsErase(t *testing.T) {
+	list, del, wipe := For(memoryv1connect.MemoryServiceListMemoriesProcedure), For(memoryv1connect.MemoryServiceDeleteMemoryProcedure),
+		For(memoryv1connect.MemoryServiceClearMemoriesProcedure)
+	memberPerms, adminPerms := member.BuiltinPermissions(member.RoleMember), member.BuiltinPermissions(member.RoleAdmin)
+	assert.True(t, scope.Covers(memberPerms, list), "a member reads what agents remember")
+	assert.False(t, scope.Covers(memberPerms, del), "a member never deletes a fact")
+	assert.False(t, scope.Covers(memberPerms, wipe), "nor clears a person's facts")
+	for _, perms := range [][]string{list, del, wipe} {
+		assert.True(t, scope.Covers(adminPerms, perms), "an admin lists, deletes and clears")
+	}
+	for proc, memberMay := range map[string]bool{
+		memoryv1connect.MemoryServiceListMemoryStoresProcedure:  true,
+		memoryv1connect.MemoryServiceGetMemoryStoreProcedure:    true,
+		memoryv1connect.MemoryServiceCreateMemoryStoreProcedure: false,
+		memoryv1connect.MemoryServiceDeleteMemoryStoreProcedure: false,
+	} {
+		assert.Equal(t, memberMay, scope.Covers(memberPerms, For(proc)), "a member sees stores but never creates or deletes one: %s", proc)
+		assert.True(t, scope.Covers(adminPerms, For(proc)), proc)
+	}
 }

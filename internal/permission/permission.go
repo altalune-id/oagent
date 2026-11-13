@@ -12,6 +12,7 @@ import (
 	"altalune.id/oagent/gen/go/knowledge/v1/knowledgev1connect"
 	mcpserverv1connect "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1connect"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
+	"altalune.id/oagent/gen/go/memory/v1/memoryv1connect"
 	modelproviderv1connect "altalune.id/oagent/gen/go/modelprovider/v1/modelproviderv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
@@ -63,6 +64,13 @@ func Table() map[string][]string {
 		knowledgev1connect.KnowledgeServiceDeleteKnowledgeDocumentProcedure: {scope.KnowledgeWrite},
 		knowledgev1connect.KnowledgeServiceSetEmbeddingModelProcedure:       {scope.KnowledgeWrite},
 		knowledgev1connect.KnowledgeServiceTestSearchProcedure:              {scope.KnowledgeRead},
+		memoryv1connect.MemoryServiceListMemoriesProcedure:                  {scope.MemoryRead},
+		memoryv1connect.MemoryServiceDeleteMemoryProcedure:                  {scope.MemoryWrite},
+		memoryv1connect.MemoryServiceClearMemoriesProcedure:                 {scope.MemoryWrite},
+		memoryv1connect.MemoryServiceCreateMemoryStoreProcedure:             {scope.MemoryWrite},
+		memoryv1connect.MemoryServiceListMemoryStoresProcedure:              {scope.MemoryRead},
+		memoryv1connect.MemoryServiceGetMemoryStoreProcedure:                {scope.MemoryRead},
+		memoryv1connect.MemoryServiceDeleteMemoryStoreProcedure:             {scope.MemoryWrite},
 		mcpserverv1connect.McpServerServiceCreateMcpServerProcedure:         {scope.McpserverWrite},
 		mcpserverv1connect.McpServerServiceGetMcpServerProcedure:            {scope.McpserverRead},
 		mcpserverv1connect.McpServerServiceListMcpServersProcedure:          {scope.McpserverRead},

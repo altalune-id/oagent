@@ -254,6 +254,7 @@ func TestConfig_EqualNewFields(t *testing.T) {
 		"server":         func(c *Config) { c.MCPServers[0].ServerID = uuid.New() },
 		"grant tool":     func(c *Config) { c.MCPServers[0].Tools[0].Name = "z" },
 		"grant approval": func(c *Config) { c.MCPServers[0].Tools[1].RequireApproval = false },
+		"memory store":   func(c *Config) { c.MemoryStoreID = uuid.New() },
 		"one grant more": func(c *Config) { c.MCPServers = append(c.MCPServers, MCPGrant{ServerID: uuid.New()}) },
 	} {
 		c := clone()
@@ -329,6 +330,7 @@ func TestNewUnattendedTool(t *testing.T) {
 		{"a new unapproved tool next to a grandfathered one", cfg(true, grant(s1, open("send"), open("delete"))), cfg(true, grant(s1, open("send"))), toolKey{s1, "delete"}, true},
 		{"knowledge turned on over an existing unapproved tool", cfg(true, grant(s1, open("send"))), cfg(false, grant(s1, open("send"))), toolKey{s1, "send"}, true},
 		{"the same tool name on a new server id", cfg(true, grant(s2, open("send"))), cfg(true, grant(s1, open("send"))), toolKey{s2, "send"}, true},
+		{"a memory store over an unapproved tool", &Config{MemoryStoreID: uuid.New(), MCPServers: []MCPGrant{grant(s1, open("send"))}}, nil, toolKey{s1, "send"}, true},
 		{"first in grant order", cfg(true, grant(s1, Tool{Name: "a", RequireApproval: true}, open("b")), grant(s2, open("c"))), nil, toolKey{s1, "b"}, true},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -337,4 +339,17 @@ func TestNewUnattendedTool(t *testing.T) {
 			assert.Equal(t, c.want, got)
 		})
 	}
+}
+
+func TestConfig_MemoryStoreStoresItsID(t *testing.T) {
+	var old Config
+	require.NoError(t, json.Unmarshal([]byte(`{"model":"m"}`), &old))
+	assert.Equal(t, uuid.Nil, old.MemoryStoreID, "a stored config from before memory has none")
+	raw, err := json.Marshal(Config{Model: "m"})
+	require.NoError(t, err)
+	assert.NotContains(t, string(raw), "memory", "an agent without memory stores the same JSON as before")
+	id := uuid.New()
+	raw, err = json.Marshal(Config{Model: "m", MemoryStoreID: id})
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), `"memory_store_id":"`+id.String()+`"`)
 }

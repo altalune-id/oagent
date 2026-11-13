@@ -82,6 +82,8 @@ type Config struct {
 	KnowledgeSourceIDs []uuid.UUID `json:"knowledge_source_ids,omitempty"`
 	// KnowledgeTuning shapes the knowledge search before each turn; zero values are the recommended ones.
 	KnowledgeTuning KnowledgeTuning `json:"knowledge_tuning,omitzero"`
+	// MemoryStoreID is the memory store the agent recalls and records facts about each end user in; uuid.Nil is none.
+	MemoryStoreID uuid.UUID `json:"memory_store_id,omitzero"`
 }
 
 // KnowledgeTuning is an agent's retrieval tuning; a zero TopK or MaxTokens and a nil MinScore use the recommended values.
@@ -97,7 +99,9 @@ type MCPGrant struct {
 	Tools    []Tool    `json:"tools,omitempty"`
 }
 
-func readsUntrusted(c Config) bool { return len(c.KnowledgeSourceIDs) > 0 }
+func readsUntrusted(c Config) bool {
+	return len(c.KnowledgeSourceIDs) > 0 || c.MemoryStoreID != uuid.Nil
+}
 
 type toolKey struct {
 	server uuid.UUID
@@ -327,7 +331,8 @@ func (c Config) Equal(o Config) bool {
 		c.ProviderID == o.ProviderID && c.HelperModel == o.HelperModel &&
 		slices.EqualFunc(c.MCPServers, o.MCPServers, func(a, b MCPGrant) bool {
 			return a.ServerID == b.ServerID && slices.EqualFunc(a.Tools, b.Tools, Tool.Equal)
-		}) && slices.Equal(c.KnowledgeSourceIDs, o.KnowledgeSourceIDs) && c.KnowledgeTuning.equal(o.KnowledgeTuning)
+		}) && slices.Equal(c.KnowledgeSourceIDs, o.KnowledgeSourceIDs) && c.KnowledgeTuning.equal(o.KnowledgeTuning) &&
+		c.MemoryStoreID == o.MemoryStoreID
 }
 
 // SetDraft replaces the draft with a valid cfg edited at now; the published version is unchanged.

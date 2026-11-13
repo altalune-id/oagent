@@ -128,11 +128,12 @@ func TestMCP_ToolResultsHoldNoUUID(t *testing.T) {
 		"org_id": s.pub.org, "project_id": s.pub.project, "invite_id": s.pub.invite, "user_id": s.pub.member,
 		"delivery_id": s.pub.delivery, "name": "Probe", "email": "probe@example.com", "role": "member",
 		"url": "https://example.com/probe", "event_types": []string{"agent.created"},
-		"source_id": s.pub.source, "seed_url": "https://example.com/docs", "query": "refunds",
+		"source_id": s.pub.source, "seed_url": "https://example.com/docs", "query": "refunds", "end_user_id": s.pub.endUser,
+		"store_id": s.pub.memoryStore,
 	}
 	ids := map[string]string{
 		"org": s.pub.org, "project": s.pub.project, "agent": s.pub.agent, "webhook": s.pub.webhook, "channel": s.pub.connection,
-		"mcp_server": s.pub.server, "model_provider": s.pub.provider, "knowledge_source": s.pub.source,
+		"mcp_server": s.pub.server, "model_provider": s.pub.provider, "knowledge_source": s.pub.source, "memory": s.pub.memory, "memory_store": s.pub.memoryStore,
 	}
 	answered := 0
 	for _, tool := range list.Result.Tools {

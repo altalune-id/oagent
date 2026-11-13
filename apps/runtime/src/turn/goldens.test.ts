@@ -12,6 +12,7 @@ import { ScriptedModel } from '../test/scripted-model.ts';
 import { fakeMcp, goldenRequest, pendingSnapshot, quiet } from '../test/turn-fixtures.ts';
 import { createRunTurn } from './index.ts';
 import { knowledgeBlock } from './knowledge.ts';
+import { memoryBlock } from './memory.ts';
 import { SDK_VERSION } from './snapshot.ts';
 
 const dir = fileURLToPath(new URL('../../../../internal/kernel/runtime/testdata/turn/', import.meta.url));
@@ -34,6 +35,7 @@ function expenseTool(schema: Record<string, unknown> = { type: 'object' }): Func
 
 type Case = {
   steps: Step[],
+  helper?: Step[],
   schema?: Record<string, unknown>,
   pending?: boolean,
   down?: boolean,
@@ -69,6 +71,16 @@ const cases: Record<string, Case> = {
   knowledge_absent: { steps: [{ text: ['Hi!'], usage: { inputTokens: 100, outputTokens: 2 } }] },
   knowledge_empty: { steps: [{ text: ['Hi!'], usage: { inputTokens: 100, outputTokens: 2 } }] },
   knowledge_hostile: { steps: [{ text: ['Refunds take 7 days (Refund policy, page 2).'], usage: { inputTokens: 260, outputTokens: 14 } }] },
+  memory_extract: {
+    steps: [{ text: ['Noted, I will remember that.'], usage: { inputTokens: 300, outputTokens: 8 } }],
+    helper: [{ toolUse: { name: 'strands_structured_output', id: 'so_1', input: { facts: ['Office number is 022 1234 5678.', 'API key is oagent_live_abc123def456ghi789.'] } }, usage: { inputTokens: 180, outputTokens: 22 } }],
+  },
+  memory_extract_failed: {
+    steps: [{ text: ['Have a good trip.'], usage: { inputTokens: 90, outputTokens: 5 } }],
+    helper: [{ text: ['I cannot.'], usage: { inputTokens: 60, outputTokens: 3 } }, { text: ['No.'], usage: { inputTokens: 70, outputTokens: 2 } }],
+  },
+  memory_recall_only: { steps: [{ text: ['WhatsApp after 6pm works best for you.'], usage: { inputTokens: 220, outputTokens: 9 } }] },
+  memory_user_texts: { steps: [{ text: ['Got it, after 6.'], usage: { inputTokens: 90, outputTokens: 5 } }] },
 };
 
 type Event = Record<string, unknown>;
@@ -106,8 +118,9 @@ describe('golden replay', () => {
     });
     const events: Event[] = [];
     const model = new ScriptedModel(c.steps);
+    const helper = new ScriptedModel(c.helper ?? []);
     const runTurn = createRunTurn({
-      models: createModels(),
+      models: c.helper ? { model: () => helper } : createModels(),
       log: quiet,
       modelFor: () => model,
       openMcp: fakeMcp(c.down ? [] : [expenseTool(c.schema)], c.down
@@ -124,6 +137,14 @@ describe('golden replay', () => {
       assertStructure(knowledgeBlock(request.knowledge), request.knowledge.length);
     } else {
       expect(firstCall).not.toContain('tool_output');
+    }
+    if (request.memory?.facts.length) {
+      expect(firstCall).toContain(JSON.stringify(memoryBlock(request.memory.facts)).slice(1, -1));
+      for (const fact of request.memory.facts) {
+        expect(JSON.stringify(helper.calls)).not.toContain(fact.text);
+      }
+    } else {
+      expect(firstCall).not.toContain('<memory>');
     }
   });
 });

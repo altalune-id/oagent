@@ -37,6 +37,8 @@ export interface AgentConfig {
   knowledgeSourceIds: string[];
   knowledgeSourcesMissing: number;
   knowledgeTuning: KnowledgeTuning;
+  memoryStoreId: string;
+  memoryStoreMissing: boolean;
   providerMissing: boolean;
   tools: AgentToolConfig[];
 }
@@ -84,6 +86,8 @@ interface WireConfig {
   knowledgeSourceIds?: string[];
   knowledgeSourcesMissing?: number;
   knowledgeTuning?: KnowledgeTuning;
+  memoryStoreId?: string;
+  memoryStoreMissing?: boolean;
   providerMissing: boolean;
   tools: WireTool[];
 }
@@ -91,6 +95,7 @@ interface WireConfig {
 export interface ChangeNames {
   provider: (id: string) => string;
   server: (id: string) => string;
+  memoryStore?: (id: string) => string | undefined;
 }
 
 interface WireAgent {
@@ -101,7 +106,7 @@ interface WireAgent {
 }
 
 export function emptyConfig(): AgentConfig {
-  return { instructions: '', providerId: '', model: '', helperModel: '', temperature: 0, maxSteps: 0, maxCostCents: 0, grants: [], knowledgeSourceIds: [], knowledgeSourcesMissing: 0, knowledgeTuning: { topK: 0, maxTokens: 0 }, providerMissing: false, tools: [] };
+  return { instructions: '', providerId: '', model: '', helperModel: '', temperature: 0, maxSteps: 0, maxCostCents: 0, grants: [], knowledgeSourceIds: [], knowledgeSourcesMissing: 0, knowledgeTuning: { topK: 0, maxTokens: 0 }, memoryStoreId: '', memoryStoreMissing: false, providerMissing: false, tools: [] };
 }
 
 export function fromWire(c?: WireConfig): AgentConfig {
@@ -121,6 +126,8 @@ export function fromWire(c?: WireConfig): AgentConfig {
     knowledgeSourceIds: [...(c.knowledgeSourceIds ?? [])],
     knowledgeSourcesMissing: c.knowledgeSourcesMissing ?? 0,
     knowledgeTuning: tuningOf(c.knowledgeTuning),
+    memoryStoreId: c.memoryStoreId ?? '',
+    memoryStoreMissing: c.memoryStoreMissing ?? false,
     providerMissing: c.providerMissing,
     tools: c.tools.map(tool),
   };
@@ -139,6 +146,7 @@ export function toWire(c: AgentConfig) {
     mcpServers: c.grants.filter(g => !g.missing).map(g => ({ serverId: g.serverId, tools: g.tools.map(t => ({ name: t.name, requireApproval: t.requireApproval, freeWhen: t.requireApproval ? (t.freeWhen ?? []) : [] })) })),
     knowledgeSourceIds: [...c.knowledgeSourceIds],
     knowledgeTuning: tuningOf(c.knowledgeTuning),
+    memoryStoreId: c.memoryStoreId,
   };
 }
 
@@ -206,6 +214,17 @@ export function changes(draft: AgentConfig, live: AgentConfig | undefined, money
   }
   if (JSON.stringify(tuningOf(draft.knowledgeTuning)) !== JSON.stringify(tuningOf(live.knowledgeTuning))) {
     out.push({ key: 'configure.change_knowledge_tuning' });
+  }
+  if (draft.memoryStoreId !== live.memoryStoreId) {
+    const from = names.memoryStore?.(live.memoryStoreId);
+    const to = names.memoryStore?.(draft.memoryStoreId);
+    if (!live.memoryStoreId) {
+      out.push({ key: 'configure.change_memory_on' });
+    } else if (!draft.memoryStoreId) {
+      out.push({ key: 'configure.change_memory_off' });
+    } else {
+      out.push(from && to ? { key: 'configure.change_memory_store_named', params: { from, to } } : { key: 'configure.change_memory_store' });
+    }
   }
   return out;
 }

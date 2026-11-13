@@ -32,6 +32,7 @@ import (
 	"altalune.id/oagent/internal/knowledge"
 	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/mcpserver"
+	"altalune.id/oagent/internal/memory"
 	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/invite"
@@ -67,6 +68,9 @@ type Services struct {
 	MCPServers         *mcpserver.Service
 	Knowledge          *knowledge.Service
 	KnowledgeRetriever knowledge.Retriever
+	MemoryDrivers      map[memory.Backend]memory.Facts
+	MemoryStores       memory.Store
+	Memory             *memory.Service
 	Files              *storage.Service
 	MCPServerStore     mcpserver.Store
 	Channels           *channel.Service
@@ -223,6 +227,8 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		EndUsers: enduser.NewService(enduser.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix), uow, k.Reporter.Unexpected).
 			WithLogger(orDiscard(k.Log)).WithKeyHints(keyHints{keys: apiKeyStore}).WithMembers(memberNames{users: users}),
 		MCPServerStore: serverStore,
+		MemoryDrivers:  memoryDrivers(cfg, k),
+		MemoryStores:   memory.NewPostgresStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix),
 		Sealer:         sl,
 		MailQueue:      mailQueue,
 		Users:          users,
@@ -260,6 +266,8 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		WithPublisher(webhooks).WithKicker(approvalKicker{svcs: svcs})
 	members.WithEffects(memberEffects(cfg, svcs)).WithDirectory(memberDirectory{users: users, orgs: orgs})
 	installer.WithTerms(svcs.Legal)
+	svcs.Memory = memoryService(svcs, cfg, uow, k.Reporter.Unexpected)
+	svcs.Agents.WithMemory(grantMemory{memory: svcs.Memory})
 	return svcs
 }
 

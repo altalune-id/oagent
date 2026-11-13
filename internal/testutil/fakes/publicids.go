@@ -29,6 +29,7 @@ const (
 	kindProvider = "provider"
 	kindServer   = "mcpserver"
 	kindSource   = "knowledge_source"
+	kindStore    = "memory_store"
 )
 
 // NewPublicIDs returns an empty lookup.
@@ -51,6 +52,22 @@ func (f *PublicIDs) Resource(id, orgID uuid.UUID) string { return f.add(kindReso
 // KnowledgeSource registers a knowledge source of projectID and returns its public id.
 func (f *PublicIDs) KnowledgeSource(id, projectID uuid.UUID) string {
 	return f.add(kindSource, id, projectID)
+}
+
+// MemoryStore registers a memory store of projectID and returns its public id.
+func (f *PublicIDs) MemoryStore(id, projectID uuid.UUID) string {
+	return f.add(kindStore, id, projectID)
+}
+
+// MemoryStoreID implements agent.Refs; it answers the store's project.
+func (f *PublicIDs) MemoryStoreID(_ context.Context, publicID string) (id, projectID uuid.UUID, ok bool, err error) {
+	r, ok, err := f.find(kindStore, publicID)
+	return r.id, r.orgID, ok, err
+}
+
+// MemoryStorePublicID implements agent.Refs; an unregistered store is not ok.
+func (f *PublicIDs) MemoryStorePublicID(_ context.Context, id uuid.UUID) (publicID string, ok bool, err error) {
+	return f.optionalPublicID(kindStore, id)
 }
 
 // KnowledgeSourceID implements agent.Refs; it answers the source's project.
