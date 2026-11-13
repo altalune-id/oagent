@@ -173,7 +173,7 @@ export function changes(draft: AgentConfig, live: AgentConfig | undefined, money
     out.push({ key: 'configure.change_provider_model', params: { provider: draft.providerId ? names.provider(draft.providerId) : '—', model: draft.model || '—' } });
   }
   if (draft.helperModel !== live.helperModel) {
-    out.push({ key: 'configure.change_helper', params: { model: draft.helperModel || '—' } });
+    out.push(draft.helperModel ? { key: 'configure.change_helper', params: { model: draft.helperModel } } : { key: 'configure.change_helper_same' });
   }
   if (draft.temperature !== live.temperature) {
     out.push({ key: 'configure.change_temperature', params: { from: live.temperature, to: draft.temperature } });

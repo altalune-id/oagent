@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { costMicros, DEFAULT_MAX_STEPS, emptyUsage, overBudget, stepLimit, UsageMeter } from './limits.ts';
+import { addHelperUsage, costMicros, DEFAULT_MAX_STEPS, emptyUsage, overBudget, stepLimit, UsageMeter } from './limits.ts';
 
 const prices = { input: 2_500_000, output: 10_000_000, cacheRead: 1_250_000, cacheWrite: 0 };
 
@@ -25,6 +25,43 @@ describe('overBudget', () => {
     expect(overBudget(usage, { remainingMicros: 1001, prices })).toBe(false);
     expect(overBudget(usage, { remainingMicros: 1000, prices })).toBe(true);
     expect(overBudget(emptyUsage(), { remainingMicros: 0, prices })).toBe(true);
+  });
+
+  it('adds helper usage at the helper prices', () => {
+    const helperPrices = { input: 0, output: 1_000_000, cacheRead: 0, cacheWrite: 0 };
+    const usage = { ...emptyUsage(), outputTokens: 100, helper: { inputTokens: 0, outputTokens: 100, cacheReadInputTokens: 0, cacheWriteInputTokens: 0 } };
+    expect(overBudget(usage, { remainingMicros: 1101, prices, helperPrices })).toBe(false);
+    expect(overBudget(usage, { remainingMicros: 1100, prices, helperPrices })).toBe(true);
+  });
+
+  it('prices helper usage at the main prices without helper prices', () => {
+    const usage = { ...emptyUsage(), outputTokens: 100, helper: { inputTokens: 0, outputTokens: 100, cacheReadInputTokens: 0, cacheWriteInputTokens: 0 } };
+    expect(overBudget(usage, { remainingMicros: 2001, prices })).toBe(false);
+    expect(overBudget(usage, { remainingMicros: 2000, prices })).toBe(true);
+  });
+});
+
+describe('addHelperUsage', () => {
+  const call = (over: Partial<ReturnType<typeof emptyUsage>>) => ({ ...emptyUsage(), ...over });
+
+  it('creates the helper usage on the first call with tokens', () => {
+    const usage = emptyUsage();
+    addHelperUsage(usage, call({ inputTokens: 120, outputTokens: 9, cacheReadInputTokens: 80, cacheWriteInputTokens: 4 }));
+    expect(usage).toEqual({ ...emptyUsage(), helper: { inputTokens: 120, outputTokens: 9, cacheReadInputTokens: 80, cacheWriteInputTokens: 4 } });
+  });
+
+  it('leaves usage without a helper key when the call had no tokens', () => {
+    const usage = emptyUsage();
+    addHelperUsage(usage, call({ estimated: true }));
+    expect(Object.keys(usage)).not.toContain('helper');
+    expect(usage.estimated).toBe(false);
+  });
+
+  it('sums helper calls and marks the turn estimated when a helper call was', () => {
+    const usage = emptyUsage();
+    addHelperUsage(usage, call({ inputTokens: 10, outputTokens: 1 }));
+    addHelperUsage(usage, call({ inputTokens: 5, outputTokens: 2, cacheReadInputTokens: 3, cacheWriteInputTokens: 1, estimated: true }));
+    expect(usage).toEqual({ ...emptyUsage(), estimated: true, helper: { inputTokens: 15, outputTokens: 3, cacheReadInputTokens: 3, cacheWriteInputTokens: 1 } });
   });
 });
 

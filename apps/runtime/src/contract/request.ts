@@ -78,9 +78,12 @@ const TurnInput = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('continue') }),
 ]);
 
+const Prices = z.strictObject({ input: micros, output: micros, cacheRead: micros, cacheWrite: micros });
+
 const Budget = z.strictObject({
   remainingMicros: z.number().int(),
-  prices: z.strictObject({ input: micros, output: micros, cacheRead: micros, cacheWrite: micros }),
+  prices: Prices,
+  helperPrices: Prices.optional(),
 });
 
 const KnowledgePassageSchema = z.strictObject({
@@ -108,6 +111,7 @@ const TurnRequestShape = z.strictObject({
     temperature: z.number().min(0).max(2),
     maxSteps: z.number().int().nonnegative(),
     model: ModelSpec,
+    helperModel: ModelSpec.optional(),
   }),
   mcpServers: z.array(MCPServerSpec),
   snapshot: z.record(z.string(), z.unknown()).nullable(),
@@ -116,6 +120,7 @@ const TurnRequestShape = z.strictObject({
   storedResults: z.array(z.strictObject({ toolUseId: z.string().min(1), result: ToolResult })),
   limits: z.strictObject({ deadlineMs: ms, budget: Budget.nullable() }),
   knowledge: z.array(KnowledgePassageSchema).max(MAX_PASSAGES).optional(),
+  guardrails: z.strictObject({ keyPrefix: z.string().regex(/^[\w-]{1,32}$/).optional() }).optional(),
 });
 
 function isJsonObjectText(text: string): boolean {
@@ -137,6 +142,9 @@ export const TurnRequestSchema = TurnRequestShape.superRefine((req, ctx) => {
       ctx.addIssue({ code: 'custom', path: ['mcpServers', i], message: v3 ? 'v3 takes tools with approval specs' : 'v1 and v2 take allowedTools' });
     }
   });
+  if (req.agent.helperModel && req.limits.budget && !req.limits.budget.helperPrices) {
+    ctx.addIssue({ code: 'custom', path: ['limits', 'budget', 'helperPrices'], message: 'a helper model under a budget needs its prices' });
+  }
   if (req.input.kind === 'resume' && req.snapshot === null) {
     ctx.addIssue({ code: 'custom', path: ['snapshot'], message: 'resume needs the snapshot it resumes' });
   }

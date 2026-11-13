@@ -11,7 +11,13 @@ export const autosaveDelayMs = 1000;
 
 export interface FieldError {
   reason: string;
+  name?: string;
   message: string;
+}
+
+function fieldErrorOf(e: unknown, message: string): FieldError {
+  const { reason = '', name } = errorMeta(e);
+  return reason === 'unapproved_tool' ? { reason, name, message } : { reason, message };
 }
 
 // useAgentDraft loads an agent's draft and live version, autosaves edits through UpdateAgentDraft and publishes them.
@@ -94,7 +100,7 @@ export function useAgentDraft(agentId: string, names: ChangeNames) {
     } catch (e) {
       saveError.value = errorMessage(e, 'error.save_draft');
       if (errorCode(e) === 'AGT007') {
-        fieldError.value = { reason: errorMeta(e).reason ?? '', message: saveError.value.message };
+        fieldError.value = fieldErrorOf(e, saveError.value.message);
       }
       return false;
     } finally {
@@ -137,6 +143,8 @@ export function useAgentDraft(agentId: string, names: ChangeNames) {
       return;
     }
     dirty.value = true;
+    fieldError.value = null;
+    publishError.value = null;
     schedule();
   }, { deep: true });
 
@@ -169,7 +177,7 @@ export function useAgentDraft(agentId: string, names: ChangeNames) {
     } catch (e) {
       publishError.value = errorMessage(e, 'error.publish_agent');
       if (errorCode(e) === 'AGT007') {
-        fieldError.value = { reason: errorMeta(e).reason ?? '', message: publishError.value.message };
+        fieldError.value = fieldErrorOf(e, publishError.value.message);
       }
       return null;
     } finally {

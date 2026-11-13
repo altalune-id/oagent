@@ -8,9 +8,10 @@ import { useToast } from '#base/components/ui/toast';
 import { useDates } from '#base/composables/useDates';
 import AgentConfigForm from '~/components/agent/configure/AgentConfigForm.vue';
 import ConfigurePane from '~/components/agent/configure/ConfigurePane.vue';
-import { publishBlockers } from '~/components/agent/configure/runtime';
+import { publishBlockers, publishWarnings } from '~/components/agent/configure/runtime';
 import { useAgentDraft } from '~/components/agent/configure/useAgentDraft';
 import { useCan } from '~/composables/useCan';
+import { focusWhenShown } from '~/lib/focus/focus';
 import { useAgentRuntimeStore } from '~/stores/agentRuntime';
 import { useAgentsStore } from '~/stores/agents';
 import { useAuthStore } from '~/stores/auth';
@@ -90,6 +91,7 @@ const legacy = computed(() => current.value > 0 && !!draft.live.value && !draft.
 const costInvalid = ref(false);
 const costBlocker: Blocker = { key: 'publish.blocker_cost', target: 'limits' };
 const blockers = computed(() => [...publishBlockers(config.value, { providers: providers.items, servers: servers.items }), ...(costInvalid.value ? [costBlocker] : [])]);
+const warnings = computed(() => publishWarnings(config.value, { providers: providers.items, servers: servers.items }));
 const loaded = computed(() => !!state.value && !draft.loadError.value);
 const canPublish = computed(() => loaded.value && blockers.value.length === 0);
 const blockersId = useId();
@@ -104,7 +106,11 @@ function jump(target: string, field = target) {
   void nextTick(() => {
     const section = document.getElementById(`configure-${target}`);
     section?.scrollIntoView({ block: 'start' });
-    (section?.querySelector<HTMLElement>(`[data-field="${field}"]`) ?? section?.querySelector<HTMLElement>('select, input, textarea, button'))?.focus({ preventScroll: true });
+    const el = section?.querySelector<HTMLElement>(`[data-field="${field}"]`) ?? section?.querySelector<HTMLElement>('select, input, textarea, button');
+    el?.closest('details')?.setAttribute('open', '');
+    if (el) {
+      focusWhenShown(el);
+    }
   });
 }
 
@@ -220,6 +226,16 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
           </ul>
         </div>
       </div>
+      <div v-if="warnings.length" role="status" class="alert alert-warning alert-soft mb-3 items-start text-start text-base-content text-ui">
+        <Icon name="lucide:triangle-alert" size="16" class="mt-0.5 shrink-0" aria-hidden="true" />
+        <ul class="flex flex-col gap-1">
+          <li v-for="w in warnings" :key="w.key">
+            <button type="button" class="link text-start" @click="jump(w.target, w.field)">
+              {{ t(w.key, w.params ?? {}, Number(w.params?.n ?? 0) + 1) }}
+            </button>
+          </li>
+        </ul>
+      </div>
       <p class="text-ui text-base-content/70">
         {{ current ? t('configure.publish_body', { n: current + 1, current }) : t('configure.publish_first') }}
       </p>
@@ -236,9 +252,9 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
         <Icon name="lucide:flask-conical" size="14" class="shrink-0" aria-hidden="true" />
         {{ t('configure.preview_not_published') }}
       </p>
-      <ErrorText :error="draft.publishError.value" />
+      <ErrorText class="mt-2" :error="draft.publishError.value" />
       <template #footer>
-        <AppButton variant="plain" size="sm" :disabled="draft.publishing.value" @click="publishOpen = false">
+        <AppButton variant="plain" size="sm" autofocus :disabled="draft.publishing.value" @click="publishOpen = false">
           {{ t('configure.keep_editing') }}
         </AppButton>
         <AppButton size="sm" :busy="draft.publishing.value" :aria-busy="draft.publishing.value || undefined" :disabled="!canPublish" :aria-describedby="blockers.length ? blockersId : reasonId" @click="publish()">

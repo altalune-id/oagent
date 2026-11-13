@@ -112,6 +112,7 @@ func IsExpectedError(err error) bool {
 		func(err error) bool { _, ok := errors.AsType[*TimedOutError](err); return ok },
 		func(err error) bool { _, ok := errors.AsType[*AttemptsExhaustedError](err); return ok },
 		func(err error) bool { _, ok := errors.AsType[*RuntimeFailedError](err); return ok },
+		func(err error) bool { return errors.Is(err, ErrDraftRefused) },
 	} {
 		if is(err) {
 			return true
@@ -152,6 +153,9 @@ func (e *RuntimeFailedError) ToAppError() *apperror.AppError {
 
 // ErrNothingPending reports a new run with no pending message to take; nothing was stored.
 var ErrNothingPending = errors.New("run: no pending message to start a run from")
+
+// ErrDraftRefused reports that the agent's draft is refused like a publish, so a Try it run can't pin it.
+var ErrDraftRefused = errors.New("run: the agent's draft can't run as it is")
 
 // ErrResourceGone reports that a run's pinned agent version or a granted MCP server no longer exists.
 var ErrResourceGone = errors.New("run: the pinned version or a granted MCP server is gone")

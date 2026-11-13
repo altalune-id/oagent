@@ -361,6 +361,25 @@ func TestRunView_NamesADraftRun(t *testing.T) {
 	assert.Equal(t, "draft", runs.Msg.GetRuns()[0].GetAgentVersionKind())
 }
 
+func TestThreadService_RunShowsHelperUsage(t *testing.T) {
+	w := newCPWorld(t)
+	w.running.Usage = run.Usage{
+		InputTokens: 100, HelperInputTokens: 1_000_000, HelperOutputTokens: 2_000, HelperCacheReadTokens: 30, HelperCacheWriteTokens: 4,
+	}
+	w.running.Prices = &run.Prices{
+		Input: new(int64(1_000_000)), HelperInput: new(int64(100_000)), HelperOutput: new(int64(500_000)),
+		HelperCacheRead: new(int64(0)), HelperCacheWrite: new(int64(0)),
+	}
+	one, err := w.cp.GetRun(member(w.org), connect.NewRequest(&threadv1.GetRunRequest{RunId: w.running.PublicID}))
+	require.NoError(t, err)
+	u := one.Msg.GetRun().GetUsage()
+	assert.Equal(t, int64(1_000_000), u.GetHelperInputTokens())
+	assert.Equal(t, int64(2_000), u.GetHelperOutputTokens())
+	assert.Equal(t, int64(30), u.GetHelperCacheReadTokens())
+	assert.Equal(t, int64(4), u.GetHelperCacheWriteTokens())
+	assert.Equal(t, int64(100+100_000+1_000), one.Msg.GetRun().GetCostMicros(), "the run cost includes the helper classes")
+}
+
 func TestThreadService_RunShowsKnowledgeUsage(t *testing.T) {
 	w := newCPWorld(t)
 	w.running.Usage = run.Usage{InputTokens: 100, EmbeddingTokens: 1_000_000}

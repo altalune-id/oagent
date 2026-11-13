@@ -85,6 +85,14 @@ useHead({ title: () => `${t('run.title', { id: runId.value })} · OAgent` });
             {{ run.estimated ? t('thread.tokens_estimated', { n: count(run.tokens) }) : count(run.tokens) }}
           </dd>
         </div>
+        <div v-if="run.helperTokens" class="flex items-baseline gap-1.5">
+          <dt class="text-base-content/70">
+            {{ t('run.helper_tokens') }}
+          </dt>
+          <dd class="font-medium tabular-nums">
+            {{ count(run.helperTokens) }}
+          </dd>
+        </div>
         <div v-if="run.embeddingTokens" class="flex items-baseline gap-1.5">
           <dt class="text-base-content/70">
             {{ t('run.embedding_tokens') }}

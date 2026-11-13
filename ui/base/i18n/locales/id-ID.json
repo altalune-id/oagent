@@ -18,6 +18,7 @@
   "apperror.AGT007_provider": "Pilih penyedia model dari proyek ini",
   "apperror.AGT007_server": "Pilih server MCP dari proyek ini",
   "apperror.AGT007_tool_name": "Nama alat terlalu panjang atau memakai karakter yang tidak diizinkan",
+  "apperror.AGT007_unapproved_tool": "{name} berjalan tanpa persetujuan padahal agen ini membaca dokumen; wajibkan persetujuan, boleh dengan syarat",
   "apperror.AUT001": "Email atau kata sandi salah",
   "apperror.AUT002": "Kata sandi harus terdiri dari {min} sampai {max} karakter",
   "apperror.AUT002_too_short": "Kata sandi minimal {min} karakter",

@@ -8,14 +8,19 @@ export type Prices = {
 export type Budget = {
   remainingMicros: number,
   prices: Prices,
+  helperPrices?: Prices,
 };
 
-export type TurnUsage = {
+export type TokenUsage = {
   inputTokens: number,
   outputTokens: number,
   cacheReadInputTokens: number,
   cacheWriteInputTokens: number,
+};
+
+export type TurnUsage = TokenUsage & {
   estimated: boolean,
+  helper?: TokenUsage,
 };
 
 export const LIMIT_REPLY = 'This agent reached its spending limit for this conversation.';
@@ -35,7 +40,7 @@ function classMicros(tokens: number, pricePerMillion: number): number {
   return Math.ceil((tokens * pricePerMillion) / 1_000_000);
 }
 
-export function costMicros(usage: TurnUsage, prices: Prices): number {
+export function costMicros(usage: TokenUsage, prices: Prices): number {
   return classMicros(usage.inputTokens, prices.input)
     + classMicros(usage.outputTokens, prices.output)
     + classMicros(usage.cacheReadInputTokens, prices.cacheRead)
@@ -43,7 +48,23 @@ export function costMicros(usage: TurnUsage, prices: Prices): number {
 }
 
 export function overBudget(usage: TurnUsage, budget: Budget | null): boolean {
-  return budget !== null && costMicros(usage, budget.prices) >= budget.remainingMicros;
+  if (budget === null) {
+    return false;
+  }
+  const helper = usage.helper ? costMicros(usage.helper, budget.helperPrices ?? budget.prices) : 0;
+  return costMicros(usage, budget.prices) + helper >= budget.remainingMicros;
+}
+
+export function addHelperUsage(usage: TurnUsage, call: TurnUsage): void {
+  if (call.inputTokens + call.outputTokens + call.cacheReadInputTokens + call.cacheWriteInputTokens === 0) {
+    return;
+  }
+  const helper = usage.helper ??= { inputTokens: 0, outputTokens: 0, cacheReadInputTokens: 0, cacheWriteInputTokens: 0 };
+  helper.inputTokens += call.inputTokens;
+  helper.outputTokens += call.outputTokens;
+  helper.cacheReadInputTokens += call.cacheReadInputTokens;
+  helper.cacheWriteInputTokens += call.cacheWriteInputTokens;
+  usage.estimated ||= call.estimated;
 }
 
 export class UsageMeter {

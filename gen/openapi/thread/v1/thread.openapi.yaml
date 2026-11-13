@@ -884,6 +884,34 @@ components:
           title: embedding_tokens
           format: int64
           description: embedding_tokens are the tokens the run's knowledge searches embedded.
+        helperInputTokens:
+          type:
+            - integer
+            - string
+          title: helper_input_tokens
+          format: int64
+          description: helper_input_tokens are the input tokens the agent's helper model used, net of cache.
+        helperOutputTokens:
+          type:
+            - integer
+            - string
+          title: helper_output_tokens
+          format: int64
+          description: helper_output_tokens are the output tokens the agent's helper model used.
+        helperCacheReadTokens:
+          type:
+            - integer
+            - string
+          title: helper_cache_read_tokens
+          format: int64
+          description: helper_cache_read_tokens are the cache read tokens the agent's helper model used.
+        helperCacheWriteTokens:
+          type:
+            - integer
+            - string
+          title: helper_cache_write_tokens
+          format: int64
+          description: helper_cache_write_tokens are the cache write tokens the agent's helper model used.
       title: Usage
       additionalProperties: false
       description: Usage is a run's token usage by class; estimated is true when the provider did not report it.

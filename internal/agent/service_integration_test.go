@@ -307,3 +307,66 @@ func TestService_ConcurrentCreatesShareNoExpression(t *testing.T) {
 		require.NoError(t, err)
 	}
 }
+
+func (f *pgFixture) knowledgeAgent(t *testing.T) (context.Context, *agent.Service, *agent.Agent, agent.Config) {
+	t.Helper()
+	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
+	provider, server, src := uuid.New(), uuid.New(), uuid.New()
+	grants := &fakes.AgentGrants{
+		Providers: map[uuid.UUID]fakes.GrantProvider{provider: {ProjectID: projectID, Models: []agent.ModelRef{{ID: "m-1"}}}},
+		Servers:   map[uuid.UUID]fakes.GrantServer{server: {ProjectID: projectID, Name: "billing"}},
+		Sources:   map[uuid.UUID]uuid.UUID{src: projectID},
+	}
+	svc := f.service(nil).WithProviders(grants).WithMCPServers(grants).WithLocker(grants).WithKnowledge(grants)
+	a, err := svc.Create(ctx, agent.CreateRequest{OrgID: orgID, ProjectID: projectID, Slug: "support", Name: "Support"})
+	require.NoError(t, err)
+	violating := agent.Config{
+		Instructions: "Be brief.", ProviderID: provider, Model: "m-1", KnowledgeSourceIDs: []uuid.UUID{src},
+		MCPServers: []agent.MCPGrant{{ServerID: server, Tools: []agent.Tool{{Name: "refund"}}}},
+	}
+	return ctx, svc, a, violating
+}
+
+func TestService_PublishRefusesAnUnapprovedToolInPostgres(t *testing.T) {
+	f := newPgFixture(t)
+	ctx, svc, a, violating := f.knowledgeAgent(t)
+	compliant := violating
+	compliant.MCPServers = []agent.MCPGrant{{ServerID: violating.MCPServers[0].ServerID, Tools: []agent.Tool{{Name: "refund", RequireApproval: true}}}}
+	_, err := svc.UpdateDraft(ctx, a.ID, compliant)
+	require.NoError(t, err)
+	_, _, _, err = svc.Publish(ctx, a.ID, uuid.Nil)
+	require.NoError(t, err)
+
+	_, err = svc.UpdateDraft(ctx, a.ID, violating)
+	require.NoError(t, err, "a draft may hold the violation; publish refuses it")
+	_, _, _, err = svc.Publish(ctx, a.ID, uuid.Nil)
+	e, ok := errors.AsType[*agent.InvalidGrantError](err)
+	require.True(t, ok, "got %v", err)
+	assert.Equal(t, agent.GrantUnapprovedTool, e.Reason)
+	assert.Equal(t, "billing__refund", e.Name)
+	vs, err := svc.Versions(ctx, a.ID, 0)
+	require.NoError(t, err)
+	assert.Len(t, vs, 1, "the refused publish inserts no version")
+	got, err := f.store.ByID(ctx, a.ID)
+	require.NoError(t, err)
+	assert.Equal(t, int32(1), got.PublishedVersion)
+}
+
+func TestService_TryDraftRowIsNeverTheGrandfather(t *testing.T) {
+	f := newPgFixture(t)
+	ctx, svc, a, violating := f.knowledgeAgent(t)
+	_, err := svc.UpdateDraft(ctx, a.ID, violating)
+	require.NoError(t, err)
+	got, err := f.store.ByID(ctx, a.ID)
+	require.NoError(t, err)
+	draft, err := got.DraftVersion(uuid.Nil, time.Now().UTC())
+	require.NoError(t, err)
+	_, err = f.store.UpsertDraftVersion(ctx, draft)
+	require.NoError(t, err)
+
+	_, _, _, err = svc.Publish(ctx, a.ID, uuid.Nil)
+	e, ok := errors.AsType[*agent.InvalidGrantError](err)
+	require.True(t, ok, "a Try it draft row never grandfathers its tools: %v", err)
+	assert.Equal(t, agent.GrantUnapprovedTool, e.Reason)
+}

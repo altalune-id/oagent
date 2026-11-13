@@ -168,4 +168,66 @@ describe('validateRequest', () => {
     expect(validateRequest(withKnowledge([{ ...p, text: 'x'.repeat(MAX_PASSAGE_CHARS + 1) }]))).toEqual({ ok: false, fields: ['knowledge.0.text'] });
     expect(validateRequest(withKnowledge([{ ...p, page: 0 }]))).toEqual({ ok: false, fields: ['knowledge.0.page'] });
   });
+
+  it('takes an optional helper model with the model shape', () => {
+    const helper = { baseUrl: 'https://helper.example.com/v1', apiKey: 'sk-helper', modelId: 'small' };
+    const withHelper = (helperModel: unknown) => {
+      const req = golden('plain_reply.request.json');
+      (req.agent as Record<string, unknown>).helperModel = helperModel;
+      return validateRequest(req);
+    };
+    const plain = withHelper(helper);
+    expect(plain.ok && plain.request.agent.helperModel?.provider).toBe('openai_compatible');
+    const anthropic = withHelper({ ...helper, provider: 'anthropic' });
+    expect(anthropic.ok && anthropic.request.agent.helperModel?.provider).toBe('anthropic');
+    expect(withHelper({ ...helper, prices: {} })).toEqual({ ok: false, fields: ['agent.helperModel.prices'] });
+    expect(withHelper({ baseUrl: helper.baseUrl, modelId: helper.modelId })).toEqual({ ok: false, fields: ['agent.helperModel.apiKey'] });
+  });
+
+  it('takes optional helper prices next to the budget prices', () => {
+    const prices = { input: 1, output: 2, cacheRead: 0, cacheWrite: 0 };
+    const withHelperPrices = (helperPrices: unknown) => {
+      const req = golden('limit_reached.request.json');
+      (req.limits as { budget: Record<string, unknown> }).budget.helperPrices = helperPrices;
+      return validateRequest(req);
+    };
+    expect(withHelperPrices(prices).ok).toBe(true);
+    expect(withHelperPrices({ ...prices, embedding: 1 })).toEqual({ ok: false, fields: ['limits.budget.helperPrices.embedding'] });
+    expect(withHelperPrices({ ...prices, input: -1 })).toEqual({ ok: false, fields: ['limits.budget.helperPrices.input'] });
+  });
+
+  it('refuses a helper model under a budget without helper prices', () => {
+    const helper = { baseUrl: 'https://helper.example.com/v1', apiKey: 'sk-helper', modelId: 'small' };
+    const budgeted = golden('limit_reached.request.json');
+    (budgeted.agent as Record<string, unknown>).helperModel = helper;
+    expect(validateRequest(budgeted)).toEqual({ ok: false, fields: ['limits.budget.helperPrices'] });
+    (budgeted.limits as { budget: Record<string, unknown> }).budget.helperPrices = { input: 1, output: 2, cacheRead: 0, cacheWrite: 0 };
+    expect(validateRequest(budgeted).ok).toBe(true);
+    const unbudgeted = golden('plain_reply.request.json');
+    (unbudgeted.agent as Record<string, unknown>).helperModel = helper;
+    expect(validateRequest(unbudgeted).ok).toBe(true);
+  });
+
+  it('takes optional guardrails with a key prefix', () => {
+    const withGuardrails = (guardrails: unknown) => validateRequest({ ...golden('plain_reply.request.json'), guardrails });
+    const ok = withGuardrails({ keyPrefix: 'oagent_' });
+    expect(ok.ok && ok.request.guardrails?.keyPrefix).toBe('oagent_');
+    expect(withGuardrails({}).ok).toBe(true);
+    for (const keyPrefix of ['', 'a b', 'a.b_', 'x'.repeat(33)]) {
+      expect(withGuardrails({ keyPrefix }), keyPrefix).toEqual({ ok: false, fields: ['guardrails.keyPrefix'] });
+    }
+    expect(withGuardrails({ keyPrefix: 'x'.repeat(32) }).ok).toBe(true);
+    expect(withGuardrails({ mode: 'builtin' })).toEqual({ ok: false, fields: ['guardrails.mode'] });
+  });
+
+  it.each(requests)('adds none of the optional fields to the golden %s', (name) => {
+    const result = validateRequest(golden(name));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.request.agent.helperModel).toBeUndefined();
+      expect(result.request.guardrails).toBeUndefined();
+      expect(result.request.limits.budget?.helperPrices).toBeUndefined();
+      expect('helperModel' in result.request.agent || 'guardrails' in result.request).toBe(false);
+    }
+  });
 });

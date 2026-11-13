@@ -376,8 +376,16 @@ type Usage struct {
 	Estimated        bool                   `protobuf:"varint,5,opt,name=estimated,proto3" json:"estimated,omitempty"`
 	// embedding_tokens are the tokens the run's knowledge searches embedded.
 	EmbeddingTokens int64 `protobuf:"varint,6,opt,name=embedding_tokens,json=embeddingTokens,proto3" json:"embedding_tokens,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// helper_input_tokens are the input tokens the agent's helper model used, net of cache.
+	HelperInputTokens int64 `protobuf:"varint,7,opt,name=helper_input_tokens,json=helperInputTokens,proto3" json:"helper_input_tokens,omitempty"`
+	// helper_output_tokens are the output tokens the agent's helper model used.
+	HelperOutputTokens int64 `protobuf:"varint,8,opt,name=helper_output_tokens,json=helperOutputTokens,proto3" json:"helper_output_tokens,omitempty"`
+	// helper_cache_read_tokens are the cache read tokens the agent's helper model used.
+	HelperCacheReadTokens int64 `protobuf:"varint,9,opt,name=helper_cache_read_tokens,json=helperCacheReadTokens,proto3" json:"helper_cache_read_tokens,omitempty"`
+	// helper_cache_write_tokens are the cache write tokens the agent's helper model used.
+	HelperCacheWriteTokens int64 `protobuf:"varint,10,opt,name=helper_cache_write_tokens,json=helperCacheWriteTokens,proto3" json:"helper_cache_write_tokens,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Usage) Reset() {
@@ -448,6 +456,34 @@ func (x *Usage) GetEstimated() bool {
 func (x *Usage) GetEmbeddingTokens() int64 {
 	if x != nil {
 		return x.EmbeddingTokens
+	}
+	return 0
+}
+
+func (x *Usage) GetHelperInputTokens() int64 {
+	if x != nil {
+		return x.HelperInputTokens
+	}
+	return 0
+}
+
+func (x *Usage) GetHelperOutputTokens() int64 {
+	if x != nil {
+		return x.HelperOutputTokens
+	}
+	return 0
+}
+
+func (x *Usage) GetHelperCacheReadTokens() int64 {
+	if x != nil {
+		return x.HelperCacheReadTokens
+	}
+	return 0
+}
+
+func (x *Usage) GetHelperCacheWriteTokens() int64 {
+	if x != nil {
+		return x.HelperCacheWriteTokens
 	}
 	return 0
 }
@@ -1294,14 +1330,19 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\x14speaker_display_name\x18\n" +
 	" \x01(\tR\x12speakerDisplayName\x12L\n" +
 	"\x15speaker_identity_kind\x18\v \x01(\x0e2\x18.enduser.v1.IdentityKindR\x13speakerIdentityKind\x122\n" +
-	"\x15speaker_identity_hint\x18\f \x01(\tR\x13speakerIdentityHint\"\xf2\x01\n" +
+	"\x15speaker_identity_hint\x18\f \x01(\tR\x13speakerIdentityHint\"\xc8\x03\n" +
 	"\x05Usage\x12!\n" +
 	"\finput_tokens\x18\x01 \x01(\x03R\vinputTokens\x12#\n" +
 	"\routput_tokens\x18\x02 \x01(\x03R\foutputTokens\x12*\n" +
 	"\x11cache_read_tokens\x18\x03 \x01(\x03R\x0fcacheReadTokens\x12,\n" +
 	"\x12cache_write_tokens\x18\x04 \x01(\x03R\x10cacheWriteTokens\x12\x1c\n" +
 	"\testimated\x18\x05 \x01(\bR\testimated\x12)\n" +
-	"\x10embedding_tokens\x18\x06 \x01(\x03R\x0fembeddingTokens\"\xb4\x05\n" +
+	"\x10embedding_tokens\x18\x06 \x01(\x03R\x0fembeddingTokens\x12.\n" +
+	"\x13helper_input_tokens\x18\a \x01(\x03R\x11helperInputTokens\x120\n" +
+	"\x14helper_output_tokens\x18\b \x01(\x03R\x12helperOutputTokens\x127\n" +
+	"\x18helper_cache_read_tokens\x18\t \x01(\x03R\x15helperCacheReadTokens\x129\n" +
+	"\x19helper_cache_write_tokens\x18\n" +
+	" \x01(\x03R\x16helperCacheWriteTokens\"\xb4\x05\n" +
 	"\x03Run\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12,\n" +

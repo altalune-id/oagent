@@ -300,3 +300,41 @@ func TestConfig_ValidateGrants(t *testing.T) {
 		assert.Equal(t, field, ae.Violations()[0].Field)
 	}
 }
+
+func TestNewUnattendedTool(t *testing.T) {
+	s1, s2, src := uuid.New(), uuid.New(), uuid.New()
+	free := []FreeCondition{{Arg: "amount", Values: []json.RawMessage{json.RawMessage("1")}}}
+	cfg := func(knowledge bool, grants ...MCPGrant) *Config {
+		c := &Config{MCPServers: grants}
+		if knowledge {
+			c.KnowledgeSourceIDs = []uuid.UUID{src}
+		}
+		return c
+	}
+	grant := func(server uuid.UUID, tools ...Tool) MCPGrant { return MCPGrant{ServerID: server, Tools: tools} }
+	open := func(name string) Tool { return Tool{Name: name} }
+	for _, c := range []struct {
+		name   string
+		draft  *Config
+		latest *Config
+		want   toolKey
+		found  bool
+	}{
+		{"knowledge and an unapproved tool", cfg(true, grant(s1, open("send"))), nil, toolKey{s1, "send"}, true},
+		{"knowledge and an approved tool", cfg(true, grant(s1, Tool{Name: "send", RequireApproval: true})), nil, toolKey{}, false},
+		{"knowledge and a conditional tool", cfg(true, grant(s1, Tool{Name: "send", RequireApproval: true, FreeWhen: free})), nil, toolKey{}, false},
+		{"free_when without require_approval runs unattended", cfg(true, grant(s1, Tool{Name: "send", FreeWhen: free})), nil, toolKey{s1, "send"}, true},
+		{"no knowledge", cfg(false, grant(s1, open("send"))), nil, toolKey{}, false},
+		{"grandfathered by a latest that read knowledge", cfg(true, grant(s1, open("send"))), cfg(true, grant(s1, open("send"))), toolKey{}, false},
+		{"a new unapproved tool next to a grandfathered one", cfg(true, grant(s1, open("send"), open("delete"))), cfg(true, grant(s1, open("send"))), toolKey{s1, "delete"}, true},
+		{"knowledge turned on over an existing unapproved tool", cfg(true, grant(s1, open("send"))), cfg(false, grant(s1, open("send"))), toolKey{s1, "send"}, true},
+		{"the same tool name on a new server id", cfg(true, grant(s2, open("send"))), cfg(true, grant(s1, open("send"))), toolKey{s2, "send"}, true},
+		{"first in grant order", cfg(true, grant(s1, Tool{Name: "a", RequireApproval: true}, open("b")), grant(s2, open("c"))), nil, toolKey{s1, "b"}, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			got, found := newUnattendedTool(*c.draft, c.latest)
+			assert.Equal(t, c.found, found)
+			assert.Equal(t, c.want, got)
+		})
+	}
+}

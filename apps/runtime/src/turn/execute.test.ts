@@ -376,3 +376,31 @@ describe('anthropic model errors', () => {
     await expect(stream[Symbol.asyncIterator]().next()).rejects.toBeInstanceOf(ModelThrottledError);
   });
 });
+
+describe('optional helper and guardrail fields', () => {
+  it('runs a turn with helper model, helper prices and key prefix exactly as without', async () => {
+    const prices = { input: 2_500_000, output: 10_000_000, cacheRead: 1_250_000, cacheWrite: 0 };
+    const run = async (withFields: boolean) => {
+      const model = new ScriptedModel([{ text: ['Hi, how can I help?'], usage: { inputTokens: 120, outputTokens: 9 } }]);
+      const request = goldenRequest('plain_reply', (r) => {
+        r.limits.budget = { remainingMicros: 500_000, prices };
+        if (withFields) {
+          r.agent.helperModel = { provider: ModelProvider.OPENAI_COMPATIBLE, baseUrl: 'https://helper.example.com/v1', apiKey: 'sk-helper', modelId: 'small' };
+          r.limits.budget.helperPrices = { input: 1, output: 2, cacheRead: 0, cacheWrite: 0 };
+          r.guardrails = { keyPrefix: 'oagent_' };
+        }
+      });
+      const out = await executeTurn(request, never, { model, log: quiet, openMcp: fakeMcp([]) });
+      const stable = (v: unknown) => JSON.stringify(v, (k, x: unknown) => (k === 'trackingId' ? undefined : x));
+      return { out, messages: stable(out.newMessages), calls: stable(model.calls) };
+    };
+    const without = await run(false);
+    const withFields = await run(true);
+    expect(withFields.out.status).toBe(without.out.status);
+    expect(withFields.out.stopReason).toBe(without.out.stopReason);
+    expect(withFields.out.usage).toEqual(without.out.usage);
+    expect('helper' in withFields.out.usage).toBe(false);
+    expect(withFields.messages).toBe(without.messages);
+    expect(withFields.calls).toBe(without.calls);
+  });
+});

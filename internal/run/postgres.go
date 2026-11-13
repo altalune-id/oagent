@@ -64,35 +64,43 @@ func (s *postgresStore) WithMaxMessageAge(d time.Duration) *postgresStore {
 }
 
 type runRow struct {
-	ID                    uuid.UUID  `alias:"runs.id"`
-	PublicID              string     `alias:"runs.public_id"`
-	OrgID                 uuid.UUID  `alias:"runs.org_id"`
-	ProjectID             uuid.UUID  `alias:"runs.project_id"`
-	ThreadID              uuid.UUID  `alias:"runs.thread_id"`
-	AgentVersionID        uuid.UUID  `alias:"runs.agent_version_id"`
-	Status                string     `alias:"runs.status"`
-	IdempotencyKey        *string    `alias:"runs.idempotency_key"`
-	Attempt               int32      `alias:"runs.attempt"`
-	IsGroup               bool       `alias:"runs.is_group"`
-	InputTokens           int64      `alias:"runs.input_tokens"`
-	OutputTokens          int64      `alias:"runs.output_tokens"`
-	CacheReadTokens       int64      `alias:"runs.cache_read_tokens"`
-	CacheWriteTokens      int64      `alias:"runs.cache_write_tokens"`
-	UsageEstimated        bool       `alias:"runs.usage_estimated"`
-	PriceInputMicros      *int64     `alias:"runs.price_input_micros"`
-	PriceOutputMicros     *int64     `alias:"runs.price_output_micros"`
-	PriceCacheReadMicros  *int64     `alias:"runs.price_cache_read_micros"`
-	PriceCacheWriteMicros *int64     `alias:"runs.price_cache_write_micros"`
-	EmbeddingTokens       int64      `alias:"runs.embedding_tokens"`
-	PriceEmbeddingMicros  *int64     `alias:"runs.embedding_price_input_micros"`
-	RetrieveCalls         int32      `alias:"runs.knowledge_retrieve_calls"`
-	RetrieveMs            int64      `alias:"runs.knowledge_retrieve_ms"`
-	Passages              int32      `alias:"runs.knowledge_passages"`
-	ErrorCode             *string    `alias:"runs.error_code"`
-	NoReplyReason         *string    `alias:"runs.no_reply_reason"`
-	StartedAt             time.Time  `alias:"runs.started_at"`
-	EndedAt               *time.Time `alias:"runs.ended_at"`
-	UpdatedAt             time.Time  `alias:"runs.updated_at"`
+	ID                          uuid.UUID  `alias:"runs.id"`
+	PublicID                    string     `alias:"runs.public_id"`
+	OrgID                       uuid.UUID  `alias:"runs.org_id"`
+	ProjectID                   uuid.UUID  `alias:"runs.project_id"`
+	ThreadID                    uuid.UUID  `alias:"runs.thread_id"`
+	AgentVersionID              uuid.UUID  `alias:"runs.agent_version_id"`
+	Status                      string     `alias:"runs.status"`
+	IdempotencyKey              *string    `alias:"runs.idempotency_key"`
+	Attempt                     int32      `alias:"runs.attempt"`
+	IsGroup                     bool       `alias:"runs.is_group"`
+	InputTokens                 int64      `alias:"runs.input_tokens"`
+	OutputTokens                int64      `alias:"runs.output_tokens"`
+	CacheReadTokens             int64      `alias:"runs.cache_read_tokens"`
+	CacheWriteTokens            int64      `alias:"runs.cache_write_tokens"`
+	UsageEstimated              bool       `alias:"runs.usage_estimated"`
+	PriceInputMicros            *int64     `alias:"runs.price_input_micros"`
+	PriceOutputMicros           *int64     `alias:"runs.price_output_micros"`
+	PriceCacheReadMicros        *int64     `alias:"runs.price_cache_read_micros"`
+	PriceCacheWriteMicros       *int64     `alias:"runs.price_cache_write_micros"`
+	EmbeddingTokens             int64      `alias:"runs.embedding_tokens"`
+	PriceEmbeddingMicros        *int64     `alias:"runs.embedding_price_input_micros"`
+	HelperInputTokens           int64      `alias:"runs.helper_input_tokens"`
+	HelperOutputTokens          int64      `alias:"runs.helper_output_tokens"`
+	HelperCacheReadTokens       int64      `alias:"runs.helper_cache_read_tokens"`
+	HelperCacheWriteTokens      int64      `alias:"runs.helper_cache_write_tokens"`
+	HelperPriceInputMicros      *int64     `alias:"runs.helper_price_input_micros"`
+	HelperPriceOutputMicros     *int64     `alias:"runs.helper_price_output_micros"`
+	HelperPriceCacheReadMicros  *int64     `alias:"runs.helper_price_cache_read_micros"`
+	HelperPriceCacheWriteMicros *int64     `alias:"runs.helper_price_cache_write_micros"`
+	RetrieveCalls               int32      `alias:"runs.knowledge_retrieve_calls"`
+	RetrieveMs                  int64      `alias:"runs.knowledge_retrieve_ms"`
+	Passages                    int32      `alias:"runs.knowledge_passages"`
+	ErrorCode                   *string    `alias:"runs.error_code"`
+	NoReplyReason               *string    `alias:"runs.no_reply_reason"`
+	StartedAt                   time.Time  `alias:"runs.started_at"`
+	EndedAt                     *time.Time `alias:"runs.ended_at"`
+	UpdatedAt                   time.Time  `alias:"runs.updated_at"`
 }
 
 func (r *runRow) toRun() *Run {
@@ -102,6 +110,8 @@ func (r *runRow) toRun() *Run {
 		Usage: Usage{
 			InputTokens: r.InputTokens, OutputTokens: r.OutputTokens, CacheReadTokens: r.CacheReadTokens,
 			CacheWriteTokens: r.CacheWriteTokens, EmbeddingTokens: r.EmbeddingTokens, Estimated: r.UsageEstimated,
+			HelperInputTokens: r.HelperInputTokens, HelperOutputTokens: r.HelperOutputTokens,
+			HelperCacheReadTokens: r.HelperCacheReadTokens, HelperCacheWriteTokens: r.HelperCacheWriteTokens,
 		},
 		KnowledgeRetrieveCalls: r.RetrieveCalls, KnowledgeRetrieveMs: r.RetrieveMs, KnowledgePassages: r.Passages,
 		StartedAt: r.StartedAt.UTC(), UpdatedAt: r.UpdatedAt.UTC(),
@@ -119,10 +129,13 @@ func (r *runRow) toRun() *Run {
 		out.EndedAt = new(r.EndedAt.UTC())
 	}
 	if r.PriceInputMicros != nil || r.PriceOutputMicros != nil || r.PriceCacheReadMicros != nil || r.PriceCacheWriteMicros != nil ||
-		r.PriceEmbeddingMicros != nil {
+		r.PriceEmbeddingMicros != nil || r.HelperPriceInputMicros != nil || r.HelperPriceOutputMicros != nil ||
+		r.HelperPriceCacheReadMicros != nil || r.HelperPriceCacheWriteMicros != nil {
 		out.Prices = &Prices{
 			Input: r.PriceInputMicros, Output: r.PriceOutputMicros,
 			CacheRead: r.PriceCacheReadMicros, CacheWrite: r.PriceCacheWriteMicros, Embedding: r.PriceEmbeddingMicros,
+			HelperInput: r.HelperPriceInputMicros, HelperOutput: r.HelperPriceOutputMicros,
+			HelperCacheRead: r.HelperPriceCacheReadMicros, HelperCacheWrite: r.HelperPriceCacheWriteMicros,
 		}
 	}
 	return out

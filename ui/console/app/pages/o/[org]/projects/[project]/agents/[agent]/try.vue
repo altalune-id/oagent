@@ -4,7 +4,7 @@ import ErrorText from '#base/components/ui/ErrorText.vue';
 import LoadError from '#base/components/ui/LoadError.vue';
 import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
-import { publishBlockers } from '~/components/agent/configure/runtime';
+import { publishBlockers, publishWarnings } from '~/components/agent/configure/runtime';
 import { useAgentDraft } from '~/components/agent/configure/useAgentDraft';
 import { useAgentPage } from '~/components/agent/useAgentPage';
 import ChatTranscript from '~/components/try/ChatTranscript.vue';
@@ -26,6 +26,7 @@ const tab = ref<'draft' | 'live'>('draft');
 const text = ref('');
 const current = computed(() => draft.state.value?.publishedVersion ?? 0);
 const blockers = computed(() => publishBlockers(draft.config.value, { providers: providers.items, servers: servers.items }));
+const warnings = computed(() => publishWarnings(draft.config.value, { providers: providers.items, servers: servers.items }));
 
 const { $threadClient } = useNuxtApp();
 const errorMessage = useErrorMessage();
@@ -136,6 +137,19 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('try.title')} · OAgen
             <TryRunPane :tokens="count(tokens)" :cost="cost(costCents)" :model="draft.config.value.model || '—'" :tool-calls="toolCalls" />
           </div>
         </details>
+        <div v-if="warnings.length" class="px-4 pt-4 lg:px-6">
+          <div role="status" class="alert alert-warning alert-soft items-start text-base-content text-ui">
+            <Icon name="lucide:triangle-alert" size="16" class="mt-0.5 shrink-0" aria-hidden="true" />
+            <p>
+              <template v-for="w in warnings" :key="w.key">
+                {{ `${t(w.key, w.params ?? {}, Number(w.params?.n ?? 0) + 1)} ` }}
+              </template>
+              <NuxtLink :to="base" class="link">
+                {{ t('try.open_configure') }}
+              </NuxtLink>
+            </p>
+          </div>
+        </div>
         <div class="flex-1 p-4 lg:p-6">
           <div v-if="!items.length" class="flex flex-col items-start gap-3 py-8">
             <p class="text-ui text-base-content/70">

@@ -5,6 +5,7 @@ import type { KnowledgeSource } from '~/stores/knowledge';
 import type { McpServer, McpTool } from '~/stores/mcpServers';
 import type { ModelProvider, ProviderModel } from '~/stores/modelProviders';
 import { selectAllState } from '#base/components/ui/selectAll';
+import { toolName } from '~/components/mcpserver/tools';
 import { hasPrice } from '~/components/provider/useProviderForm';
 
 export type BlockerTarget = 'model' | 'tools' | 'limits';
@@ -87,6 +88,19 @@ export function readsPrivateData(config: AgentConfig, runtime: AgentRuntimeConfi
   return config.grants.length > 0 || runtime.memory || config.knowledgeSourceIds.length > 0;
 }
 
+// readsUntrusted reports whether the agent reads text a third party wrote, so its tools need a person's approval.
+export function readsUntrusted(config: AgentConfig): boolean {
+  return config.knowledgeSourceIds.length > 0;
+}
+
+// unattendedTools lists the granted tools that run without approval, as the model names them.
+export function unattendedTools(config: AgentConfig, servers: McpServer[]): string[] {
+  return config.grants.flatMap((g) => {
+    const server = servers.find(s => s.id === g.serverId);
+    return g.missing || !server ? [] : g.tools.filter(t => !t.requireApproval).map(t => toolName(server.name, t.name));
+  });
+}
+
 // parseDollars reads a typed dollar amount into cents: empty means no cap (0), and null means the text is not an amount.
 export function parseDollars(text: string): number | null {
   const clean = text.trim().replace(/^\$/, '').replace(',', '.');
@@ -146,4 +160,10 @@ export function publishBlockers(config: AgentConfig, ctx: RuntimeContext): Block
     out.push({ key: 'publish.blocker_legacy_tools', target: 'tools' });
   }
   return out;
+}
+
+// publishWarnings lists what the server may refuse while the draft can still save, each pointing at its section.
+export function publishWarnings(config: AgentConfig, ctx: RuntimeContext): Blocker[] {
+  const tools = readsUntrusted(config) ? unattendedTools(config, ctx.servers) : [];
+  return tools.length ? [{ key: 'publish.warning_unapproved_tool', target: 'tools', field: tools[0], params: { tool: tools[0]!, n: String(tools.length - 1) } }] : [];
 }

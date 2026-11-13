@@ -97,6 +97,38 @@ type MCPGrant struct {
 	Tools    []Tool    `json:"tools,omitempty"`
 }
 
+func readsUntrusted(c Config) bool { return len(c.KnowledgeSourceIDs) > 0 }
+
+type toolKey struct {
+	server uuid.UUID
+	name   string
+}
+
+// SECURITY: unattended = !RequireApproval; keep in step with run.approvalSpec.
+func newUnattendedTool(draft Config, latest *Config) (toolKey, bool) {
+	if !readsUntrusted(draft) {
+		return toolKey{}, false
+	}
+	grandfathered := map[toolKey]bool{}
+	if latest != nil && readsUntrusted(*latest) {
+		for _, g := range latest.MCPServers {
+			for _, t := range g.Tools {
+				if !t.RequireApproval {
+					grandfathered[toolKey{g.ServerID, t.Name}] = true
+				}
+			}
+		}
+	}
+	for _, g := range draft.MCPServers {
+		for _, t := range g.Tools {
+			if k := (toolKey{g.ServerID, t.Name}); !t.RequireApproval && !grandfathered[k] {
+				return k, true
+			}
+		}
+	}
+	return toolKey{}, false
+}
+
 // Legacy reports whether c predates provider grants: no provider, or a top-level tool list; it must be republished before it runs.
 func (c Config) Legacy() bool {
 	return c.ProviderID == uuid.Nil || len(c.Tools) > 0

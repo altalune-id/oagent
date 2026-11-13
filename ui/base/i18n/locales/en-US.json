@@ -18,6 +18,7 @@
   "apperror.AGT007_provider": "Choose a model provider from this project",
   "apperror.AGT007_server": "Choose an MCP server from this project",
   "apperror.AGT007_tool_name": "A tool name is too long or uses characters a tool name cannot have",
+  "apperror.AGT007_unapproved_tool": "{name} runs without approval while this agent reads documents; require approval, optionally with conditions",
   "apperror.AUT001": "Invalid email or password",
   "apperror.AUT002": "Password must be {min} to {max} characters",
   "apperror.AUT002_too_short": "Password must be at least {min} characters",

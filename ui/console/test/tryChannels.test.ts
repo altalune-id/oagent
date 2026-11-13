@@ -23,14 +23,14 @@ const projectId = 'x6MH9WPWjktMwCBKHy4pF';
 const yasaku = { id: 'Y4sKu8RmT2pLq6WnX9cVb', projectId, slug: 'yasaku-keuangan', name: 'Yasaku Keuangan', description: '', publishedVersion: 4 };
 const draftConfig = { instructions: 'Halo', providerId: 'Pv6tQm2ZxR8wKp3VbNc4K', model: 'openai/gpt-4.1-mini', helperModel: '', temperature: 0.3, maxSteps: 12, maxCostCents: 20, mcpServers: [], providerMissing: false, tools: [] as { name: string, requireApproval: boolean }[] };
 
-function seed(agent: Record<string, unknown> = yasaku, permissions = ['agent:read', 'agent:write'], tools = draftConfig.tools) {
+function seed(agent: Record<string, unknown> = yasaku, permissions = ['agent:read', 'agent:write'], tools = draftConfig.tools, draft: Record<string, unknown> = {}) {
   useOrgsStore().items = [{ id: orgId, slug: 'acme', name: 'Acme', role: 'owner', permissions: [] }];
   useProjectsStore().items = [{ id: projectId, orgId, slug: 'rumah', name: 'Rumah Tangga' }];
   setRoute({ path: `/o/acme/projects/rumah/agents/${agent.slug}/try`, params: { org: 'acme', project: 'rumah', agent: agent.slug as string } });
   setClient('$authClient', { whoami: vi.fn().mockResolvedValue(create(WhoamiResponseSchema, { name: 'Budi', permissions })) });
   setClient('$agentClient', {
     listAgents: vi.fn().mockResolvedValue({ agents: [agent] }),
-    getAgent: vi.fn().mockResolvedValue({ agent: { ...agent, draft: { ...draftConfig, tools }, unpublishedChanges: true } }),
+    getAgent: vi.fn().mockResolvedValue({ agent: { ...agent, draft: { ...draftConfig, tools, ...draft }, unpublishedChanges: true } }),
     listAgentVersions: vi.fn().mockResolvedValue({ versions: [] }),
   });
 }
@@ -165,6 +165,30 @@ describe('try it page', () => {
     expect(w.text()).not.toContain('try.stopped');
     s.push({ type: 'RUN_ERROR', code: 'cancelled' });
     await vi.waitFor(() => expect(w.text()).toContain('try.stopped'));
+  });
+
+  const unattended = { knowledgeSourceIds: ['Ks1Upl0adQ8sWx3YcLm7D'], mcpServers: [{ serverId: 'Ms2bVn7QxK4pRt9KwZc3H', tools: [{ name: 'list_wallets', requireApproval: false, freeWhen: [] }], missing: false }] };
+
+  it('warns without blocking the send', async () => {
+    seed(yasaku, undefined, undefined, unattended);
+    routes(() => ({ ok: true, status: 200, body: streamOf(events).body }));
+    const w = await mountPage(TryPage);
+    await flushPromises();
+    expect(w.findAll('[role="status"]').map(s => s.text()).find(s => s.includes('publish.warning_unapproved_tool'))).toContain('publish.warning_unapproved_tool|{"tool":"yasaku__list_wallets","n":"0"}');
+    expect(w.findAll('[role="status"]').map(s => s.text()).find(s => s.includes('publish.warning_unapproved_tool'))).toContain('"n":"0"} try.open_configure');
+    expect(w.text()).not.toContain('try.cant_run');
+    expect(w.get('textarea').attributes('disabled')).toBeUndefined();
+  });
+
+  it('shows the AGT007 unapproved_tool refusal of a send as the app error naming the tool', async () => {
+    seed(yasaku, undefined, undefined, unattended);
+    setKnownKeys('apperror.AGT007_unapproved_tool');
+    routes(() => ({ ok: false, status: 400, json: async () => ({ code: 'AGT007', message: 'refused', request_id: 'req1', meta: { reason: 'unapproved_tool', name: 'yasaku__list_wallets' } }) }));
+    const w = await mountPage(TryPage);
+    await w.get('textarea').setValue('halo');
+    await w.get('form').trigger('submit');
+    await vi.waitFor(() => expect(w.text()).toContain('apperror.AGT007_unapproved_tool|{"name":"yasaku__list_wallets"}'));
+    expect(w.text()).not.toContain('Siap, sudah saya catat.');
   });
 
   it('shows a refused turn as the app error, and Retry after a failed run', async () => {

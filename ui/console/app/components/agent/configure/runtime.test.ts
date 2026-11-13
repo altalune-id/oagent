@@ -17,7 +17,10 @@ import {
   parseDollars,
   parseDomains,
   publishBlockers,
+  publishWarnings,
   readsPrivateData,
+  readsUntrusted,
+  unattendedTools,
   withAllGrants,
   withApproval,
   withGrant,
@@ -171,5 +174,49 @@ describe('publishBlockers', () => {
     const config = ready({ grants: [{ serverId: 'GneZ23456789abcdefghj', missing: true, tools: [] }], tools: [{ name: 'old', requireApproval: false }] });
     expect(publishBlockers(config, ctx).map(b => b.key)).toEqual(['publish.blocker_server_missing', 'publish.blocker_legacy_tools']);
     expect(publishBlockers(ready(), { providers: [], servers: [] })[0]?.key).toBe('publish.blocker_model');
+  });
+});
+
+describe('publishWarnings', () => {
+  const grant = (serverId: string, ...tools: AgentConfig['grants'][number]['tools']) => ({ serverId, missing: false, tools });
+  const free = (name: string) => ({ name, requireApproval: false });
+  const asked = (name: string) => ({ name, requireApproval: true });
+  const bound = (over: Partial<AgentConfig>) => ready({ knowledgeSourceIds: ['Ks3dFg7HjK2mNp5QrT8vW'], ...over });
+
+  it('warns about a tool without approval only while the agent reads documents', () => {
+    const grants = [grant(yasaku.id, free('list_wallets'))];
+    expect(readsUntrusted(ready({ grants }))).toBe(false);
+    expect(publishWarnings(ready({ grants }), ctx)).toEqual([]);
+    expect(readsUntrusted(bound({ grants }))).toBe(true);
+    expect(publishWarnings(bound({ grants }), ctx)).toEqual([{ key: 'publish.warning_unapproved_tool', target: 'tools', field: 'yasaku__list_wallets', params: { tool: 'yasaku__list_wallets', n: '0' } }]);
+  });
+
+  it('counts an approved or conditional tool as attended', () => {
+    const conditional = { ...asked('refunds_create'), freeWhen: [{ arg: 'amount', values: ['0'], absent: false }] };
+    expect(publishWarnings(bound({ grants: [grant(yasaku.id, asked('list_wallets'), conditional)] }), ctx)).toEqual([]);
+  });
+
+  it('warns about a tool without approval even when it has free_when conditions', () => {
+    const loose = { ...free('refunds_create'), freeWhen: [{ arg: 'amount', values: ['0'], absent: false }] };
+    expect(unattendedTools(bound({ grants: [grant(yasaku.id, loose)] }), ctx.servers)).toEqual(['yasaku__refunds_create']);
+    expect(publishWarnings(bound({ grants: [grant(yasaku.id, loose)] }), ctx)[0]?.field).toBe('yasaku__refunds_create');
+  });
+
+  it('names the first unattended tool in grant order and counts the rest, skipping a missing server', () => {
+    const grants = [
+      { serverId: 'GneZ23456789abcdefghj', missing: true, tools: [free('gone')] },
+      grant(tagihan.id, asked('invoice_get'), free('invoice_send')),
+      grant(yasaku.id, free('list_wallets'), free('refunds_create')),
+    ];
+    expect(unattendedTools(bound({ grants }), ctx.servers)).toEqual(['tagihan__invoice_send', 'yasaku__list_wallets', 'yasaku__refunds_create']);
+    expect(publishWarnings(bound({ grants }), ctx)).toEqual([{ key: 'publish.warning_unapproved_tool', target: 'tools', field: 'tagihan__invoice_send', params: { tool: 'tagihan__invoice_send', n: '2' } }]);
+    expect(unattendedTools(bound({ grants: [grant('Ms0unknown000000000000', free('x'))] }), ctx.servers)).toEqual([]);
+    expect(unattendedTools(bound({ grants: [{ ...grant(tagihan.id, free('invoice_send')), missing: true }] }), ctx.servers)).toEqual([]);
+  });
+
+  it('never blocks: the same draft has no publish blocker for it', () => {
+    const config = bound({ grants: [grant(yasaku.id, free('list_wallets'))] });
+    expect(publishWarnings(config, ctx)).toHaveLength(1);
+    expect(publishBlockers(config, ctx)).toEqual([]);
   });
 });

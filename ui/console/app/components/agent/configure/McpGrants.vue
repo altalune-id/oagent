@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import type { AgentConfig, AgentToolConfig } from './agentConfig';
+import type { FieldError as DraftFieldError } from './useAgentDraft';
 import type { McpServer, McpTool } from '~/stores/mcpServers';
 import AppButton from '#base/components/ui/AppButton.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
+import FieldError from '#base/components/ui/FieldError.vue';
 import SearchInput from '#base/components/ui/SearchInput.vue';
 import SelectAllCheckbox from '#base/components/ui/SelectAllCheckbox.vue';
 import { hintBadges, nameParts, toolName } from '~/components/mcpserver/tools';
 import { useMcpServersStore } from '~/stores/mcpServers';
 import ApprovalRule from './ApprovalRule.vue';
-import { grantFor, grantState, missingServers, withAllGrants, withGrant, withoutGrant, withToolConfig } from './runtime';
+import { grantFor, grantState, missingServers, readsUntrusted, withAllGrants, withGrant, withoutGrant, withToolConfig } from './runtime';
 
-const { servers, disabled = false, serversLink } = defineProps<{ servers: McpServer[], disabled?: boolean, serversLink: string }>();
+const { servers, disabled = false, serversLink, fieldError = null } = defineProps<{ servers: McpServer[], disabled?: boolean, serversLink: string, fieldError?: DraftFieldError | null }>();
 
 const config = defineModel<AgentConfig>({ required: true });
 const { t } = useI18n();
@@ -35,6 +37,23 @@ function countLabel(server: McpServer) {
 
 function descId(server: McpServer, tool: McpTool) {
   return `${uid}-${server.id}-${tool.name}`;
+}
+
+const refused = computed(() => (fieldError?.reason === 'unapproved_tool' ? fieldError : null));
+const refusedShown = computed(() => !!refused.value && servers.some(s => s.tools.some(tool => toolName(s.name, tool.name) === refused.value!.name)));
+const untrusted = computed(() => readsUntrusted(config.value));
+
+function isRefused(server: McpServer, tool: McpTool) {
+  return refused.value?.name === toolName(server.name, tool.name);
+}
+
+function unattended(server: McpServer, tool: McpTool) {
+  const grant = grantFor(config.value, server.id, tool.name);
+  return untrusted.value && !!grant && !grant.requireApproval;
+}
+
+function describedBy(server: McpServer, tool: McpTool) {
+  return [tool.description && descId(server, tool), isRefused(server, tool) && `${descId(server, tool)}-err`].filter(Boolean).join(' ') || undefined;
 }
 
 function onNames(server: McpServer) {
@@ -96,6 +115,8 @@ function removeMissing(serverId: string) {
       </NuxtLink>
     </p>
 
+    <FieldError v-if="refused && !refusedShown" :id="`${uid}-refused`" :message="refused.message" />
+
     <div v-for="m in missing" :key="m.id" role="alert" class="alert alert-warning alert-soft alert-vertical text-base-content text-ui sm:alert-horizontal">
       <Icon name="lucide:triangle-alert" size="16" class="shrink-0" aria-hidden="true" />
       <span>
@@ -150,7 +171,7 @@ function removeMissing(serverId: string) {
             <div class="flex flex-wrap items-start gap-x-3 gap-y-1">
               <label v-if="tool.grantable" class="flex min-w-0 flex-1 basis-56 items-start gap-2">
                 <input
-                  type="checkbox" class="checkbox checkbox-sm mt-0.5 rounded-sm" :checked="!!grantFor(config, server.id, tool.name)" :disabled="disabled" :aria-describedby="tool.description ? descId(server, tool) : undefined"
+                  type="checkbox" class="checkbox checkbox-sm mt-0.5 rounded-sm" :data-field="toolName(server.name, tool.name)" :checked="!!grantFor(config, server.id, tool.name)" :disabled="disabled" :aria-describedby="describedBy(server, tool)" :aria-invalid="isRefused(server, tool) || undefined"
                   @change="setOn(server, tool, ($event.target as HTMLInputElement).checked)"
                 >
                 <span class="min-w-0">
@@ -166,6 +187,9 @@ function removeMissing(serverId: string) {
                   {{ t('mcptools.not_grantable') }}
                 </span>
               </div>
+              <span v-if="unattended(server, tool)" class="badge badge-sm badge-warning badge-soft text-base-content shrink-0">
+                <Icon name="lucide:triangle-alert" size="12" aria-hidden="true" />{{ t('grants.runs_unattended') }}
+              </span>
               <span v-if="tool.hint === 'destructive' && server.trusted" class="badge badge-sm badge-warning badge-soft text-base-content shrink-0">
                 <Icon :name="hintBadges[tool.hint].icon" size="12" aria-hidden="true" />{{ t(hintBadges[tool.hint].labelKey) }}
               </span>
@@ -180,6 +204,7 @@ function removeMissing(serverId: string) {
                 @change="setRule(server, $event)" @refresh="void store.loadTools(server.id)"
               />
             </div>
+            <FieldError v-if="isRefused(server, tool)" :id="`${descId(server, tool)}-err`" class="ps-7" :message="refused!.message" />
           </li>
         </ul>
       </div>

@@ -244,6 +244,7 @@ func samples() []error {
 		&approval.EditedArgsRefusedError{},
 		&approval.AnsweredByAppError{},
 		&agent.InvalidGrantError{Reason: agent.GrantKnowledgeSource},
+		&agent.InvalidGrantError{Reason: agent.GrantUnapprovedTool, Name: "yasaku__send"},
 		&modelprovider.InUseError{Reason: modelprovider.InUseEmbeddingModel, Model: "a"},
 		&knowledge.SourceNotFoundError{},
 		&knowledge.InvalidSourceError{Reason: knowledge.SourceURLRequired},

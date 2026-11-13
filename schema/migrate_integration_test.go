@@ -46,6 +46,19 @@ func TestMigrations_UpDownUp(t *testing.T) {
 	require.NoError(t, schema.MigrateUp(ctx, sqlDB, cfg), "Up must work again after a full Down")
 }
 
+func TestMigrations_NewestDownUndoesItsUp(t *testing.T) {
+	h := pgtest.New(t)
+	sqlDB := h.OpenDB(t)
+	cfg := migrator.Config{Schema: h.Schema, TablePrefix: "t_"}
+	ctx := t.Context()
+
+	require.NoError(t, schema.MigrateUp(ctx, sqlDB, cfg))
+	latest, err := schema.New(cfg).TargetVersion()
+	require.NoError(t, err)
+	require.NoError(t, schema.MigrateDownTo(ctx, sqlDB, cfg, latest-1), "the newest Down must run")
+	require.NoError(t, schema.MigrateUp(ctx, sqlDB, cfg), "the newest Up must apply again after its Down")
+}
+
 func TestMigrations_TwoPrefixesShareASchema(t *testing.T) {
 	h := pgtest.New(t)
 	sqlDB := h.OpenDB(t)

@@ -10,9 +10,21 @@ Use this when Go and the runtime must agree on a new field or shape in `POST /tu
 | 2       | images in the input                                                                                                                                            |
 | 3       | approvals: each MCP server sends `tools`, every tool with its `approval` spec (`never`, `always`, or `conditional` with `freeWhen`), instead of `allowedTools` |
 
+## Optional fields
+
+Version 3 also takes these optional fields. Go sends each optional field only when needed, and the runtime learns it first. A turn without them is unchanged:
+
+- `knowledge`: passages retrieved for the turn, at most 10.
+- `agent.helperModel`: the helper model, same shape as `agent.model`. Accepted and validated; nothing sends it yet.
+- `limits.budget.helperPrices`: the helper's prices, same shape as `prices`, required when both `agent.helperModel` and a budget are sent. Accepted and validated; nothing sends it yet.
+- `guardrails.keyPrefix`: the deployment's API key prefix. Accepted and validated; nothing sends it yet.
+- Terminal `usage.helper`: the helper's tokens, same classes as `usage`. Sent only when they are above zero.
+
+Go decodes the terminal strictly, so a Go release must learn a terminal field before any runtime emits it. The runtime emits a new terminal field only for a request that carried a field only a newer Go sends.
+
 ## Plan
 
-- [ ] **Is a new version needed?** An optional field the old runtime ignores needs none. A field the runtime must honour (or refuses when unknown) does.
+- [ ] **Is a new version needed?** Not for an optional field: Go sends it only when needed, and the runtime learns it first, because the strict runtime refuses any field it does not know. A field every request must carry, or a changed shape, needs a new version.
 - [ ] **Which side changes first?** Always the runtime: it learns the new version before Go sends it.
 - [ ] **What does an old peer do?** The old runtime refuses the new version with 400. Plan the deploy so that never happens in production.
 

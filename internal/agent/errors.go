@@ -152,6 +152,7 @@ const (
 	GrantLegacyTools     GrantReason = "legacy_tools"
 	GrantBudgetUnpriced  GrantReason = "budget_unpriced"
 	GrantKnowledgeSource GrantReason = "knowledge_source"
+	GrantUnapprovedTool  GrantReason = "unapproved_tool"
 )
 
 func (r GrantReason) text() string {
@@ -172,6 +173,8 @@ func (r GrantReason) text() string {
 		return "has a cost limit on a model without prices"
 	case GrantKnowledgeSource:
 		return "names a knowledge source this project does not have"
+	case GrantUnapprovedTool:
+		return "grants a tool that runs without approval while the agent reads knowledge"
 	default:
 		return "is invalid"
 	}
@@ -209,8 +212,11 @@ func (e *NeedsRepublishError) ToAppError() *apperror.AppError {
 
 // ToAppError maps InvalidGrantError to its own code with the reason.
 func (e *InvalidGrantError) ToAppError() *apperror.AppError {
-	return apperror.New(apperror.CodeAgentInvalidGrant, "Agent config "+e.Reason.text()).
-		WithMeta(map[string]string{"reason": string(e.Reason)}).WithCause(e)
+	meta := map[string]string{"reason": string(e.Reason)}
+	if e.Reason == GrantUnapprovedTool {
+		meta["name"] = apperror.Echo(e.Name)
+	}
+	return apperror.New(apperror.CodeAgentInvalidGrant, "Agent config "+e.Reason.text()).WithMeta(meta).WithCause(e)
 }
 
 // ToAppError maps NotFoundError to the canonical NotFound envelope.
