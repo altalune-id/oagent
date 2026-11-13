@@ -80,16 +80,29 @@ func withoutMessages(t *testing.T, raw []byte) []byte {
 
 func TestReply_CompletedWithoutTextSaysWhy(t *testing.T) {
 	for _, kind := range []string{"dm", "group"} {
-		f := newSvc(t)
-		_, conn := f.channel(t, kind, true)
-		f.withTexts(conn)
-		f.say(t, "morning")
-		r := f.execute(t, fakes.RuntimeReply{Stream: withoutMessages(t, stream(t, "plain_reply"))})
-		require.Equal(t, run.StatusCompleted, r.Status, kind)
-		assert.Equal(t, run.ReplyNone, f.stored(r).ReplyState, kind)
-		assert.Equal(t, run.NoReplyNoText, f.stored(r).NoReplyReason, kind)
-		assert.Empty(t, f.assistantTexts(t), kind)
+		t.Run(kind, func(t *testing.T) {
+			f := newSvc(t)
+			_, conn := f.channel(t, kind, true)
+			f.withTexts(conn)
+			f.say(t, "morning")
+			r := f.execute(t, fakes.RuntimeReply{Stream: withoutMessages(t, stream(t, "plain_reply"))})
+			require.Equal(t, run.StatusCompleted, r.Status)
+			assert.Equal(t, run.ReplyNone, f.stored(r).ReplyState)
+			assert.Equal(t, run.NoReplyNoText, f.stored(r).NoReplyReason)
+			assert.Empty(t, f.assistantTexts(t))
+		})
 	}
+}
+
+func TestReply_StepLimitWithoutTextSaysWhy(t *testing.T) {
+	f := newSvc(t)
+	_, conn := f.channel(t, "dm", true)
+	f.withTexts(conn)
+	f.say(t, "record lunch")
+	r := f.execute(t, fakes.RuntimeReply{Stream: stream(t, "limit_reached")})
+	require.Equal(t, run.StatusLimitReached, r.Status)
+	assert.Equal(t, run.ReplyNone, f.stored(r).ReplyState)
+	assert.Equal(t, run.NoReplyStepLimit, f.stored(r).NoReplyReason)
 }
 
 func TestReply_EmptySetReplySaysWhy(t *testing.T) {

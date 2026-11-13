@@ -143,6 +143,7 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
   }
   const knowledge = knowledgeBlock(request.knowledge ?? []);
   agent.systemPrompt = [request.agent.instructions, ...(knowledge === '' ? [] : [KNOWLEDGE_LINE]), ...mcp.promptLines].join('\n\n');
+  // NOTE: assumes no continuations; _appendContinuationMessages would report a merged message a second time.
   const added: Message[] = [];
   agent.addHook(MessageAddedEvent, (event) => {
     added.push(event.message);

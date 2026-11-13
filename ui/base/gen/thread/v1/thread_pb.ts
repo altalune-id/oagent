@@ -313,7 +313,7 @@ export type Run = Message<"thread.v1.Run"> & {
   knowledgePassages: number;
 
   /**
-   * no_reply_reason says why a completed or limit-reached channel run sent no reply: no_text or set_reply_empty; empty otherwise.
+   * no_reply_reason says why a completed or limit-reached channel run sent no reply: no_text, set_reply_empty or step_limit; empty otherwise.
    *
    * @generated from field: string no_reply_reason = 16;
    */

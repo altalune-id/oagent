@@ -32,6 +32,9 @@ func (s *Service) reply(t *turn, final []Message) []Message {
 			return emptySetReplySaysWhy(withSetReply(r, final, t.texts.PhotoUnreadable), r)
 		}
 		r.ReplyState, r.NoReplyReason = ReplyNone, NoReplyNoText
+		if r.Status == StatusLimitReached {
+			r.NoReplyReason = NoReplyStepLimit
+		}
 	case StatusFailed:
 		switch {
 		case group:

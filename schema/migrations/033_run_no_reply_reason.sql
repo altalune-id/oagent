@@ -3,7 +3,7 @@
 
 ALTER TABLE {{.Schema}}.{{.TablePrefix}}runs
   ADD COLUMN no_reply_reason TEXT,
-  ADD CONSTRAINT {{.TablePrefix}}runs_no_reply_reason_check CHECK (no_reply_reason IN ('no_text', 'set_reply_empty'));
+  ADD CONSTRAINT {{.TablePrefix}}runs_no_reply_reason_check CHECK (no_reply_reason IN ('no_text', 'set_reply_empty', 'step_limit'));
 
 -- +goose StatementEnd
 

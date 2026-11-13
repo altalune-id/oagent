@@ -585,11 +585,30 @@ func (s *Service) finish(ctx context.Context, t *turn, term *runtime.Terminal) (
 	})
 	r, err := s.settle(ctx, t, u, finalMessages(term.MessagesAppended, t.stored), snap)
 	if err == nil {
-		s.log.InfoContext(ctx, "run: turn finished", "run", t.run.PublicID, "status", term.Status, "stop_reason", term.StopReason,
+		s.log.InfoContext(ctx, "run: turn finished", "run", t.run.PublicID, "status", string(t.run.Status),
+			"runtime_status", knownRuntimeStatus(term.Status), "stop_reason", knownStopReason(term.StopReason),
 			"input_tokens", term.Usage.InputTokens, "output_tokens", term.Usage.OutputTokens, "parts", partKinds(term.MessagesAppended),
 			"no_reply_reason", t.run.NoReplyReason)
 	}
 	return r, err
+}
+
+func knownStopReason(v string) string {
+	switch v {
+	case "endTurn", "toolUse", "maxTokens", "stopSequence", "contentFiltered", "guardrailIntervened", "refusal", "cancelled",
+		"interrupt", "checkpoint", "pauseTurn", "modelContextWindowExceeded", "limitTurns", "limitOutputTokens", "limitTotalTokens",
+		"limitStructuredOutputAttempts", "budget", "error":
+		return v
+	}
+	return "other"
+}
+
+func knownRuntimeStatus(v string) string {
+	switch v {
+	case "completed", "awaiting_approval", "limit_reached", "cancelled", "failed":
+		return v
+	}
+	return "other"
 }
 
 func partKinds(appended []json.RawMessage) string {

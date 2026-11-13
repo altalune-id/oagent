@@ -265,7 +265,7 @@ erDiagram
         int knowledge_retrieve_calls
         bigint knowledge_retrieve_ms
         int knowledge_passages
-        text no_reply_reason "no_text or set_reply_empty: why a completed channel run sent no reply"
+        text no_reply_reason "no_text, set_reply_empty or step_limit: why a completed or limit-reached channel run sent no reply"
     }
     files {
         uuid id PK

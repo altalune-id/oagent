@@ -474,7 +474,7 @@ type Run struct {
 	KnowledgeRetrieveMs    int64 `protobuf:"varint,14,opt,name=knowledge_retrieve_ms,json=knowledgeRetrieveMs,proto3" json:"knowledge_retrieve_ms,omitempty"`
 	// knowledge_passages counts the passages the run's legs sent to the model.
 	KnowledgePassages int32 `protobuf:"varint,15,opt,name=knowledge_passages,json=knowledgePassages,proto3" json:"knowledge_passages,omitempty"`
-	// no_reply_reason says why a completed or limit-reached channel run sent no reply: no_text or set_reply_empty; empty otherwise.
+	// no_reply_reason says why a completed or limit-reached channel run sent no reply: no_text, set_reply_empty or step_limit; empty otherwise.
 	NoReplyReason string `protobuf:"bytes,16,opt,name=no_reply_reason,json=noReplyReason,proto3" json:"no_reply_reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

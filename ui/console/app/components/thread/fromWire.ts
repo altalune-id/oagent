@@ -77,6 +77,7 @@ export function toThread(th: ThreadPB, t: Translate): ThreadDetail {
 const NO_REPLY: Record<string, string> = {
   no_text: 'runstatus.detail_no_reply_no_text',
   set_reply_empty: 'runstatus.detail_no_reply_set_reply_empty',
+  step_limit: 'runstatus.detail_no_reply_step_limit',
 };
 
 function runDetail(r: RunPB): RunSummary['detail'] {

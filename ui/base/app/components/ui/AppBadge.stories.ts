@@ -59,6 +59,7 @@ export const Status: Story = {
       <div class="flex flex-col gap-2">
         <StatusLabel tone="warning" label="Waiting for approval" detail="refund over $200" />
         <StatusLabel tone="success" label="Completed" detail="8 steps, 14.2 s" />
+        <StatusLabel tone="success" label="Completed" detail="No reply sent: the model returned no text" />
         <StatusLabel tone="error" label="Failed" detail="Retry" />
       </div>`,
   }),

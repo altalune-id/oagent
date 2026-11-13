@@ -50,10 +50,11 @@ describe('thread wire mapping', () => {
 
   it('says why a completed channel run sent no reply, keeping an unknown reason generic', () => {
     const detail = (noReplyReason: string) => toRunSummary(create(RunSchema, { id: 'r', status: RunStatus.COMPLETED, noReplyReason }), 'T').detail;
-    expect(['', 'no_text', 'set_reply_empty', 'later'].map(detail)).toEqual([
+    expect(['', 'no_text', 'set_reply_empty', 'step_limit', 'later'].map(detail)).toEqual([
       undefined,
       { key: 'runstatus.detail_no_reply_no_text' },
       { key: 'runstatus.detail_no_reply_set_reply_empty' },
+      { key: 'runstatus.detail_no_reply_step_limit' },
       { key: 'runstatus.detail_no_reply' },
     ]);
   });
