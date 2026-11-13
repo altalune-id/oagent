@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentConfig } from './agentConfig';
+import type { AgentConfig, AgentLimits } from './agentConfig';
 import type { ConfigureLinks } from './runtime';
 import type { FieldError as DraftFieldError } from './useAgentDraft';
 import type { AgentRuntimeConfig } from '~/stores/agentRuntime';
@@ -12,13 +12,14 @@ import Section from '#base/components/ui/Section.vue';
 import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { ModelProviderKind } from '#gen/modelprovider/v1/modelprovider_pb';
 import { sourceState } from '~/components/knowledge/knowledge';
+import { useUnits } from '~/composables/useUnits';
 import { usdText } from '~/lib/money/usd';
 import { describedBy } from '~/lib/names/names';
 import KnowledgeTuningForm from './KnowledgeTuning.vue';
 import McpGrants from './McpGrants.vue';
 import { bindable, chosenModel, costCapError, helperCapError, parseDollars, parseDomains, readsPrivateData } from './runtime';
 
-const { providers, servers, sources, searchReady, embeddings, links, retrieval = null, legacyModel = '', disabled = false, fieldError = null } = defineProps<{
+const { providers, servers, sources, searchReady, embeddings, links, retrieval = null, limits = {}, legacyModel = '', disabled = false, fieldError = null } = defineProps<{
   providers: ModelProvider[],
   servers: McpServer[],
   sources: KnowledgeSource[],
@@ -26,6 +27,7 @@ const { providers, servers, sources, searchReady, embeddings, links, retrieval =
   embeddings: boolean,
   links: ConfigureLinks,
   retrieval?: RetrievalDefaults | null,
+  limits?: AgentLimits,
   legacyModel?: string,
   disabled?: boolean,
   fieldError?: DraftFieldError | null,
@@ -33,7 +35,9 @@ const { providers, servers, sources, searchReady, embeddings, links, retrieval =
 
 const config = defineModel<AgentConfig>({ required: true });
 const runtime = defineModel<AgentRuntimeConfig>('runtime', { required: true });
+const costInvalid = defineModel<boolean>('costInvalid', { default: false });
 const { t } = useI18n();
+const { money } = useUnits();
 const uid = useId();
 const ids = { count: `${uid}-count`, temperature: `${uid}-temp`, helper: `${uid}-helper`, provider: `${uid}-provider`, model: `${uid}-model`, tools: `${uid}-tools`, domains: `${uid}-domains`, steps: `${uid}-steps`, cost: `${uid}-cost` };
 
@@ -68,6 +72,10 @@ const priceLine = computed(() => {
 const allowListError = computed(() => runtime.value.webFetch && allowListRequired.value && runtime.value.allowedDomains.length === 0 ? t('webtools.allowlist_required') : '');
 const costText = ref(config.value.maxCostCents > 0 ? (config.value.maxCostCents / 100).toFixed(2) : '');
 const costTyped = computed(() => parseDollars(costText.value));
+const costOver = computed(() => limits.maxCostCents !== undefined && costTyped.value !== null && costTyped.value > limits.maxCostCents);
+watch(() => costTyped.value === null || costOver.value, (bad) => {
+  costInvalid.value = bad;
+}, { immediate: true });
 const helperError = computed(() => {
   const key = helperCapError(config.value, providers);
   return key ? t(key, { model: config.value.helperModel, provider: chosen.value.provider?.name ?? '' }) : serverError('helper_model');
@@ -76,12 +84,15 @@ const costError = computed(() => {
   if (costTyped.value === null) {
     return t('limits.not_amount');
   }
+  if (costOver.value) {
+    return t('limits.max_cost_over', { max: money(limits.maxCostCents!) });
+  }
   const key = costCapError(config.value, providers);
   return key ? t(key, { provider: chosen.value.provider?.name ?? '' }) : serverError('budget_unpriced');
 });
 
 watch(costTyped, (cents) => {
-  if (cents !== null && cents !== config.value.maxCostCents) {
+  if (cents !== null && !costOver.value && cents !== config.value.maxCostCents) {
     config.value = { ...config.value, maxCostCents: cents };
   }
 });
@@ -227,7 +238,7 @@ function toggleSource(id: string, on: boolean) {
                   <span class="text-xs tabular-nums" aria-hidden="true">{{ temperatureText }}</span>
                 </span>
                 <input
-                  v-model.number="config.temperature" type="range" min="0" max="2" step="0.1" class="range range-xs w-full" :disabled="temperatureOff"
+                  v-model.number="config.temperature" type="range" min="0" :max="limits.maxTemperature" step="0.1" class="range range-xs w-full" :disabled="temperatureOff || !limits.maxTemperature"
                   :aria-valuetext="temperatureText" :aria-describedby="`${ids.temperature}-hint`"
                 >
               </label>
@@ -356,10 +367,10 @@ function toggleSource(id: string, on: boolean) {
             <div class="flex flex-col gap-1">
               <label class="flex flex-col gap-1">
                 <span class="label text-ui text-base-content">{{ t('configure.max_steps') }}</span>
-                <input v-model.number="config.maxSteps" type="number" min="0" max="100" class="input input-sm w-full text-ui tabular-nums" :aria-describedby="`${ids.steps}-hint`">
+                <input v-model.number="config.maxSteps" type="number" min="0" :max="limits.maxMaxSteps" class="input input-sm w-full text-ui tabular-nums" :aria-describedby="describedBy(!!limits.maxSteps && `${ids.steps}-hint`)">
               </label>
-              <p :id="`${ids.steps}-hint`" class="text-xs text-base-content/70">
-                {{ t('configure.max_steps_hint') }}
+              <p v-if="limits.maxSteps" :id="`${ids.steps}-hint`" class="text-xs text-base-content/70">
+                {{ t('configure.max_steps_hint', { n: limits.maxSteps }) }}
               </p>
             </div>
             <div class="flex flex-col gap-1">

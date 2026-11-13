@@ -14,6 +14,7 @@ export interface ChannelTiming {
   quietMs: number;
   quietMaxMs: number;
   maxMessageAgeMinutes: number;
+  maxQuietMs: number;
 }
 
 // replyErrors flags each set reply left empty, since the agent would then send a blank message.
@@ -35,22 +36,22 @@ export function seconds(ms: number): number {
   return Math.round(ms / 100) / 10;
 }
 
-export const quietLimitMs = 10_000;
-
 // toMs reads a typed number of seconds, one decimal at most, into milliseconds, or null when it isn't one.
 export function toMs(text: string): number | null {
   const clean = text.trim().replace(',', '.');
   return /^\d+(?:\.\d)?$/.test(clean) ? Math.round(Number(clean) * 1000) : null;
 }
 
-// timingErrors flags a quiet window outside 0-10 s, or a window longer than its maximum.
-export function timingErrors(quietMs: number | null, quietMaxMs: number | null): Partial<Record<'quiet' | 'quietMax', string>> {
+// timingErrors flags a quiet time that is not a number or is over the server's limit (none when 0), or a window longer than its maximum.
+export function timingErrors(quietMs: number | null, quietMaxMs: number | null, limitMs: number): Partial<Record<'quiet' | 'quietMax', string>> {
   const out: Partial<Record<'quiet' | 'quietMax', string>> = {};
-  if (quietMs === null || quietMs > quietLimitMs) {
-    out.quiet = 'channels.error_quiet_range';
+  const range = limitMs > 0 ? 'channels.error_quiet_range' : 'channels.error_quiet_number';
+  const over = (ms: number) => limitMs > 0 && ms > limitMs;
+  if (quietMs === null || over(quietMs)) {
+    out.quiet = range;
   }
-  if (quietMaxMs === null || quietMaxMs > quietLimitMs) {
-    out.quietMax = 'channels.error_quiet_range';
+  if (quietMaxMs === null || over(quietMaxMs)) {
+    out.quietMax = range;
   } else if (quietMs !== null && quietMs > quietMaxMs) {
     out.quietMax = 'channels.error_quiet_order';
   }

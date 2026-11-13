@@ -5,7 +5,7 @@ import { flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { connectionPB, fakeChannelClient } from '~~/test/fixtures/channels';
+import { channelDefaults, connectionPB, fakeChannelClient } from '~~/test/fixtures/channels';
 import { fakeRuntimeClients } from '~~/test/fixtures/runtime';
 import { useToast } from '#base/components/ui/toast';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
@@ -396,16 +396,37 @@ describe('channels page', () => {
     w.unmount();
   });
 
-  it('edits the quiet window and its maximum in seconds, 0-10 s, the window no longer than the maximum', async () => {
+  it('drops the quiet range from the hints and the check when the server sends no limit', async () => {
+    seed(vision, writer);
+    channelsAt(vision);
+    fakeChannelClient([ofYasaku()]).client.getChannelSettings.mockResolvedValue({ ...channelDefaults, maxQuietMs: 0 });
+    const w = await mountPage(ChannelsPage, { attachTo: document.body });
+    await flushPromises();
+    const section = w.findAll('section').find(s => s.get('h2').text() === 'channels.windows')!;
+    expect(section.text()).toContain('channels.quiet_window_hint_open');
+    expect(section.text()).toContain('channels.quiet_max_hint_open');
+    expect(section.text()).not.toContain('{"max"');
+    const [quiet, max] = section.findAll('input');
+    await quiet!.setValue('16');
+    await max!.setValue('20');
+    await section.get('form').trigger('submit');
+    expect(quiet!.attributes('aria-invalid')).toBe('false');
+    expect(section.text()).not.toContain('channels.error_quiet');
+    w.unmount();
+  });
+
+  it('edits the quiet window and its maximum in seconds, up to the server\'s limit, the window no longer than the maximum', async () => {
     const { w, client } = await page(vision, writer, [ofYasaku()]);
     const section = w.findAll('section').find(s => s.get('h2').text() === 'channels.windows')!;
     const [quiet, max] = section.findAll('input');
     expect([(quiet!.element as HTMLInputElement).value, (max!.element as HTMLInputElement).value]).toEqual(['3', '10']);
     expect(section.text()).toContain('channels.late_cutoff_value|{"n":30}');
-    await quiet!.setValue('12');
+    expect(section.text()).toContain('channels.quiet_window_hint|{"max":15}');
+    expect(section.text()).toContain('channels.quiet_max_hint|{"max":15}');
+    await quiet!.setValue('16');
     await section.get('form').trigger('submit');
     expect(quiet!.attributes('aria-invalid')).toBe('true');
-    expect(section.text()).toContain('channels.error_quiet_range');
+    expect(section.text()).toContain('channels.error_quiet_range|{"max":15}');
     await quiet!.setValue('6');
     await max!.setValue('4');
     await section.get('form').trigger('submit');

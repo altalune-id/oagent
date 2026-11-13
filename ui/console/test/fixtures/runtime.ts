@@ -84,6 +84,9 @@ export function servers(): McpServer[] {
   return serverPBs().map(s => ({ ...toMcpServer(s), tools: (tools[s.id] ?? []).map(toMcpTool) }));
 }
 
+// mcpDefaults are server defaults that differ from the shipped ones, so a hard-coded number fails a test.
+export const mcpDefaults = { timeoutMs: 7_000, minTimeoutMs: 2_000, maxTimeoutMs: 18_000 };
+
 // fakeRuntimeClients answers the model provider and MCP server RPCs with the fixtures.
 export function fakeRuntimeClients() {
   const provider = {
@@ -93,7 +96,7 @@ export function fakeRuntimeClients() {
     deleteModelProvider: vi.fn().mockResolvedValue({}),
   };
   const server = {
-    listMcpServers: vi.fn().mockResolvedValue({ mcpServers: serverPBs() }),
+    listMcpServers: vi.fn().mockResolvedValue({ mcpServers: serverPBs(), defaults: mcpDefaults }),
     listMcpServerTools: vi.fn(async ({ id }: { id: string }) => ({ tools: toolPBs()[id] ?? [] })),
     createMcpServer: vi.fn(),
     updateMcpServer: vi.fn(),

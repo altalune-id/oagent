@@ -15,7 +15,8 @@ const { form, readOnly = false } = defineProps<{ form: ReturnType<typeof useMcpS
 const { t } = useI18n();
 const uid = useId();
 const ids = { name: `${uid}-name`, url: `${uid}-url`, header: `${uid}-header`, secret: `${uid}-secret`, timeout: `${uid}-timeout` };
-const { open, editing, name, url, auth, headerName, secret, replacingSecret, trusted, timeout, errors, formError, busy, urlChanged, needsSecret, secretShown, secretRequired } = form;
+const { open, editing, name, url, auth, headerName, secret, replacingSecret, trusted, timeout, defaults, errors, formError, busy, urlChanged, needsSecret, secretShown, secretRequired } = form;
+const timeoutPlaceholder = computed(() => (editing.value ? String(editing.value.timeoutMs / 1000) : defaults.value ? t('mcpservers.timeout_placeholder', { n: defaults.value.timeoutMs / 1000 }) : undefined));
 const servers = useMcpServersStore();
 
 const shownName = computed(() => editing.value?.name ?? (name.value.trim() || t('mcpservers.example_server')));
@@ -101,10 +102,10 @@ const saved = computed(() => servers.items.find(s => s.id === editing.value?.id)
         </div>
         <label class="flex flex-col gap-1">
           <span class="label text-ui font-semibold text-base-content">{{ t('mcpservers.timeout') }}</span>
-          <input v-model.number="timeout" type="number" min="1" max="20" step="any" class="input input-sm w-32 tabular-nums" :class="{ 'input-error': errors.timeout }" :aria-invalid="!!errors.timeout" :aria-describedby="describedBy(`${ids.timeout}-hint`, !!errors.timeout && `${ids.timeout}-err`)">
+          <input v-model.number="timeout" type="number" :min="defaults ? defaults.minTimeoutMs / 1000 : undefined" :max="defaults ? defaults.maxTimeoutMs / 1000 : undefined" :placeholder="timeoutPlaceholder" step="any" class="input input-sm w-32 tabular-nums" :class="{ 'input-error': errors.timeout }" :aria-invalid="!!errors.timeout" :aria-describedby="describedBy(!!defaults && `${ids.timeout}-hint`, !!errors.timeout && `${ids.timeout}-err`)">
         </label>
-        <p :id="`${ids.timeout}-hint`" class="-mt-2 text-xs text-base-content/70">
-          {{ t('mcpservers.timeout_hint') }}
+        <p v-if="defaults" :id="`${ids.timeout}-hint`" class="-mt-2 text-xs text-base-content/70">
+          {{ t('mcpservers.timeout_hint', { min: defaults.minTimeoutMs / 1000, max: defaults.maxTimeoutMs / 1000, n: defaults.timeoutMs / 1000 }) }}
         </p>
         <FieldError :id="`${ids.timeout}-err`" :message="errors.timeout" />
       </fieldset>

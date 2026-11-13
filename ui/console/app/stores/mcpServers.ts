@@ -10,6 +10,12 @@ export const secretRefusedCode = 'MCS008';
 
 export type McpAuth = 'none' | 'bearer' | 'header';
 
+export interface TimeoutDefaults {
+  timeoutMs: number;
+  minTimeoutMs: number;
+  maxTimeoutMs: number;
+}
+
 export type ToolHint = 'read_only' | 'changes' | 'destructive';
 
 export interface McpToolArg {
@@ -112,6 +118,7 @@ export const useMcpServersStore = defineStore('mcpServers', () => {
   const toolsLoading = ref<Record<string, boolean>>({});
   const toolsError = ref<Record<string, ShownError | null>>({});
   const toolsRefused = ref<Record<string, boolean>>({});
+  const defaults = ref<TimeoutDefaults | null>(null);
 
   const { $mcpServerClient: client } = useNuxtApp();
   const errorMessage = useErrorMessage();
@@ -138,6 +145,7 @@ export const useMcpServersStore = defineStore('mcpServers', () => {
       }
       toolsLoaded.clear();
       items.value = (res.mcpServers ?? []).map(s => toMcpServer(s));
+      defaults.value = res.defaults ? { timeoutMs: res.defaults.timeoutMs, minTimeoutMs: res.defaults.minTimeoutMs, maxTimeoutMs: res.defaults.maxTimeoutMs } : null;
       loadedFor = projectId;
     } catch (e) {
       if (mine === latest) {
@@ -207,5 +215,5 @@ export const useMcpServersStore = defineStore('mcpServers', () => {
     items.value = items.value.filter(s => s.id !== id);
   }
 
-  return { items, loading, error, toolsLoading, toolsError, toolsRefused, load, ensureLoaded, loadTools, ensureTools, add, update, remove };
+  return { items, loading, error, defaults, toolsLoading, toolsError, toolsRefused, load, ensureLoaded, loadTools, ensureTools, add, update, remove };
 });

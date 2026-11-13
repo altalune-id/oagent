@@ -268,6 +268,7 @@ describe('mcp server modal', () => {
     await button(w, 'yasaku').trigger('click');
     const dialog = w.findAll('dialog').find(d => d.text().includes('mcpservers.trusted_hint'))!;
     expect(dialog.get('input[placeholder="yasaku"]').attributes('disabled')).toBeDefined();
+    expect(dialog.get('input[type="number"]').attributes('placeholder'), 'editing shows the stored timeout').toBe('20');
     expect(dialog.text()).not.toContain('mcpservers.url_changed_secret');
     expect(dialog.find('input[type="password"]').exists()).toBe(false);
     await dialog.get('input[type="url"]').setValue('https://moved.example.id/mcp');
@@ -275,12 +276,16 @@ describe('mcp server modal', () => {
     expect(dialog.find('input[type="password"]').exists()).toBe(true);
   });
 
-  it('prefills a 10 s timeout for a new server and lists tools only after saving', async () => {
+  it('prefills the server\'s default timeout for a new server, bounds it by the server\'s range, and lists tools only after saving', async () => {
     seed();
     const w = await mountPage(McpServersPage);
     await button(w, 'mcpservers.add').trigger('click');
     const dialog = w.findAll('dialog').find(d => d.text().includes('mcpservers.trusted_hint'))!;
-    expect((dialog.get('input[type="number"]').element as HTMLInputElement).value).toBe('10');
+    const timeout = dialog.get('input[type="number"]');
+    expect((timeout.element as HTMLInputElement).value).toBe('');
+    expect(timeout.attributes('placeholder')).toBe('mcpservers.timeout_placeholder|{"n":7}');
+    expect([timeout.attributes('min'), timeout.attributes('max')]).toEqual(['2', '18']);
+    expect(dialog.text()).toContain('mcpservers.timeout_hint|{"min":2,"max":18,"n":7}');
     expect(dialog.text()).toContain('mcpservers.tools_after_save');
   });
 });

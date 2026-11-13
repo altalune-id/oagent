@@ -59,6 +59,19 @@ interface WireTool {
   freeWhen?: { arg: string, values: string[], absent: boolean }[];
 }
 
+export interface AgentLimits {
+  maxSteps?: number;
+  maxMaxSteps?: number;
+  maxTemperature?: number;
+  maxCostCents?: number;
+}
+
+// limitsOf reads the server's agent defaults, leaving out a missing or 0 field so no bound or hint is shown for it.
+export function limitsOf(d?: Required<AgentLimits>): AgentLimits {
+  const set = (n?: number) => (n && n > 0 ? n : undefined);
+  return { maxSteps: set(d?.maxSteps), maxMaxSteps: set(d?.maxMaxSteps), maxTemperature: set(d?.maxTemperature), maxCostCents: set(d?.maxCostCents) };
+}
+
 interface WireConfig {
   instructions: string;
   providerId: string;

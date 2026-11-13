@@ -7,7 +7,7 @@ import { useToast } from '#base/components/ui/toast';
 import { McpServerAuthKind, McpServerSchema } from '#gen/mcpserver/v1/mcpserver_pb';
 import { connectError, deferred, setKnownKeys } from '#test/nuxt-globals';
 import { useMcpServersStore } from '~/stores/mcpServers';
-import { defaultTimeoutSeconds, useMcpServerForm } from './useMcpServerForm';
+import { useMcpServerForm } from './useMcpServerForm';
 
 const orgId = 'V3StGXR8Z5jdHj6BmyT2a';
 const projectId = 'x6MH9WPWjktMwCBKHy4pF';
@@ -22,11 +22,11 @@ describe('useMcpServerForm', () => {
     await useMcpServersStore().load(projectId);
   });
 
-  it('adds a server with a trimmed secret and a 10 s default timeout, then lists its tools', async () => {
+  it('adds a server with a trimmed secret and the server\'s default timeout, then lists its tools', async () => {
     clients.server.createMcpServer.mockResolvedValue({ mcpServer: localPB });
     const form = useMcpServerForm(orgId, projectId);
     form.show();
-    expect(form.timeout.value).toBe(defaultTimeoutSeconds);
+    expect(form.timeout.value, 'a new server starts empty: the server\'s default applies').toBe('');
     expect(form.secretRequired.value).toBe(true);
     expect(await form.submit()).toBe(false);
     expect(form.errors.value).toMatchObject({ name: 'validation.required', secret: 'mcpservers.secret_required' });
@@ -34,12 +34,28 @@ describe('useMcpServerForm', () => {
     form.url.value = 'http://127.0.0.1:5190/mcp';
     form.secret.value = '  tok-1  ';
     expect(await form.submit()).toBe(true);
-    expect(clients.server.createMcpServer.mock.calls[0]![0]).toMatchObject({ orgId, projectId, name: 'local-yasaku', url: 'http://127.0.0.1:5190/mcp', authKind: McpServerAuthKind.BEARER, authValue: 'tok-1', timeoutMs: 10_000 });
+    expect(clients.server.createMcpServer.mock.calls[0]![0]).toMatchObject({ orgId, projectId, name: 'local-yasaku', url: 'http://127.0.0.1:5190/mcp', authKind: McpServerAuthKind.BEARER, authValue: 'tok-1', timeoutMs: 0 });
     expect(form.secret.value).toBe('');
     expect(form.open.value).toBe(false);
     expect(useToast().toasts.at(-1)?.text).toBe('mcpservers.saved|{"name":"local-yasaku"}');
     await flushPromises();
     expect(clients.server.listMcpServerTools).toHaveBeenCalledWith({ id: localPB.id });
+  });
+
+  it('keeps no timeout bounds when the server sends no defaults, or the list fails', async () => {
+    setActivePinia(createPinia());
+    clients = fakeRuntimeClients();
+    clients.server.listMcpServers.mockResolvedValue({ mcpServers: serverPBs() });
+    await useMcpServersStore().load(projectId);
+    expect(useMcpServerForm(orgId, projectId).defaults.value).toBeNull();
+    setActivePinia(createPinia());
+    clients = fakeRuntimeClients();
+    clients.server.listMcpServers.mockRejectedValue(new Error('offline'));
+    await useMcpServersStore().load(projectId);
+    const form = useMcpServerForm(orgId, projectId);
+    expect(form.defaults.value).toBeNull();
+    form.show();
+    expect(form.timeout.value).toBe('');
   });
 
   it('checks the header name, the timeout and the URL shape before sending', async () => {
@@ -69,11 +85,13 @@ describe('useMcpServerForm', () => {
     const form = useMcpServerForm(orgId, projectId);
     form.show(yasaku);
     expect(form.timeout.value).toBe(20);
+    form.timeout.value = '';
     expect(form.secretShown.value).toBe(false);
     form.name.value = 'renamed';
     form.trusted.value = false;
     expect(await form.submit()).toBe(true);
     const sent = clients.server.updateMcpServer.mock.calls[0]![0];
+    expect(sent.timeoutMs, 'an empty timeout on update keeps the stored one').toBe(0);
     expect(sent.authValue).toBeUndefined();
     expect('name' in sent).toBe(false);
     expect(servers.items[0]).toMatchObject({ name: 'yasaku', secretSet: true, trusted: false });

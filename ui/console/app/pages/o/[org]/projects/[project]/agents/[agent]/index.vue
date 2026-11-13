@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Blocker } from '~/components/agent/configure/runtime';
 import AppButton from '#base/components/ui/AppButton.vue';
 import AppModal from '#base/components/ui/AppModal.vue';
 import ErrorText from '#base/components/ui/ErrorText.vue';
@@ -86,7 +87,9 @@ const runtime = computed({
 const base = computed(() => `/o/${route.params.org}/projects/${route.params.project}`);
 const links = computed(() => ({ providers: `${base.value}/settings/model-providers`, servers: `${base.value}/settings/mcp-servers`, webSearch: `${base.value}/settings/web-search`, knowledge: `${base.value}/knowledge` }));
 const legacy = computed(() => current.value > 0 && !!draft.live.value && !draft.live.value.providerId);
-const blockers = computed(() => publishBlockers(config.value, { providers: providers.items, servers: servers.items }));
+const costInvalid = ref(false);
+const costBlocker: Blocker = { key: 'publish.blocker_cost', target: 'limits' };
+const blockers = computed(() => [...publishBlockers(config.value, { providers: providers.items, servers: servers.items }), ...(costInvalid.value ? [costBlocker] : [])]);
 const loaded = computed(() => !!state.value && !draft.loadError.value);
 const canPublish = computed(() => loaded.value && blockers.value.length === 0);
 const blockersId = useId();
@@ -194,8 +197,8 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
 
     <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(22rem,26rem)]">
       <AgentConfigForm
-        v-model="config" v-model:runtime="runtime" :providers="providers.items" :servers="servers.items" :sources="knowledge.sources"
-        :search-ready="!!webSearch.setting.provider" :embeddings="!!knowledge.embedding" :retrieval="knowledge.retrievalDefaults" :links="links" :legacy-model="legacy ? (draft.live.value?.model ?? '') : ''" :disabled="!canEdit || !loaded"
+        v-model="config" v-model:runtime="runtime" v-model:cost-invalid="costInvalid" :providers="providers.items" :servers="servers.items" :sources="knowledge.sources"
+        :search-ready="!!webSearch.setting.provider" :embeddings="!!knowledge.embedding" :retrieval="knowledge.retrievalDefaults" :limits="draft.limits.value" :links="links" :legacy-model="legacy ? (draft.live.value?.model ?? '') : ''" :disabled="!canEdit || !loaded"
         :field-error="draft.fieldError.value"
       />
       <ConfigurePane :agent-id="agent.id" :config="config" />

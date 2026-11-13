@@ -1,11 +1,11 @@
 import type { ShownError } from '#base/lib/apperror/message';
-import type { AgentConfig, AgentState, ChangeNames } from './agentConfig';
+import type { AgentConfig, AgentLimits, AgentState, ChangeNames } from './agentConfig';
 import { useToast } from '#base/components/ui/toast';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { errorCode, errorMeta } from '#base/lib/apperror/message';
 import { useUnits } from '~/composables/useUnits';
 import { useAgentsStore } from '~/stores/agents';
-import { changes, fromWire, stateOf, toWire } from './agentConfig';
+import { changes, fromWire, limitsOf, stateOf, toWire } from './agentConfig';
 
 export const autosaveDelayMs = 1000;
 
@@ -25,6 +25,7 @@ export function useAgentDraft(agentId: string, names: ChangeNames) {
   const config = ref<AgentConfig>(fromWire());
   const state = ref<AgentState | null>(null);
   const live = ref<AgentConfig | undefined>();
+  const limits = ref<AgentLimits>(limitsOf());
   const loadError = ref<ShownError | null>(null);
   const saveError = ref<ShownError | null>(null);
   const publishError = ref<ShownError | null>(null);
@@ -62,6 +63,7 @@ export function useAgentDraft(agentId: string, names: ChangeNames) {
       if (got.agent) {
         apply(stateOf(got.agent));
       }
+      limits.value = limitsOf(got.defaults);
       live.value = versions.versions?.[0]?.config ? fromWire(versions.versions[0].config) : undefined;
     } catch (e) {
       loadError.value = errorMessage(e, 'error.load_agent');
@@ -204,5 +206,5 @@ export function useAgentDraft(agentId: string, names: ChangeNames) {
     });
   });
 
-  return { config, state, live, diff, dirty, saving, publishing, loadError, saveError, fieldError, publishError, load, save, publish, warnUnload, leaveGuard };
+  return { config, state, live, limits, diff, dirty, saving, publishing, loadError, saveError, fieldError, publishError, load, save, publish, warnUnload, leaveGuard };
 }

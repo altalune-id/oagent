@@ -108,7 +108,7 @@ export function patchRequest(id: string, patch: ConnectionPatch) {
 export const useChannelsStore = defineStore('channels', () => {
   const { $channelClient: client } = useNuxtApp();
   const byAgent = ref<Record<string, WhatsAppConnection[]>>({});
-  const settings = ref<ChannelSettings>({ defaultOpenwaBaseUrl: '', defaultReplies: { failure: '', voice: '', photo: '', approvalPrompt: '', approvalExpired: '' }, timing: { quietMs: 0, quietMaxMs: 0, maxMessageAgeMinutes: 0 } });
+  const settings = ref<ChannelSettings>({ defaultOpenwaBaseUrl: '', defaultReplies: { failure: '', voice: '', photo: '', approvalPrompt: '', approvalExpired: '' }, timing: { quietMs: 0, quietMaxMs: 0, maxMessageAgeMinutes: 0, maxQuietMs: 0 } });
   const loading = ref(false);
   const error = ref<ShownError | null>(null);
   const errorMessage = useErrorMessage();
@@ -129,7 +129,7 @@ export const useChannelsStore = defineStore('channels', () => {
       settings.value = {
         defaultOpenwaBaseUrl: s.defaultOpenwaBaseUrl,
         defaultReplies: { failure: s.replyFailure, voice: s.replyVoice, photo: s.replyPhotoUnreadable, approvalPrompt: s.approvalPrompt, approvalExpired: s.approvalExpired },
-        timing: { quietMs: s.quietWindowMs, quietMaxMs: s.quietMaxMs, maxMessageAgeMinutes: s.maxMessageAgeMinutes },
+        timing: { quietMs: s.quietWindowMs, quietMaxMs: s.quietMaxMs, maxMessageAgeMinutes: s.maxMessageAgeMinutes, maxQuietMs: s.maxQuietMs },
       };
       loadedFor = agentId;
     } catch (e) {

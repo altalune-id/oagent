@@ -84,6 +84,7 @@ const savingReplies = ref(false);
 
 const quietText = ref('');
 const quietMaxText = ref('');
+const quietLimit = computed(() => seconds(channels.settings.timing.maxQuietMs));
 const timingErrs = ref<Partial<Record<'quiet' | 'quietMax', string>>>({});
 const savingTiming = ref(false);
 
@@ -123,7 +124,7 @@ async function saveReplies() {
 async function saveTiming() {
   const quietMs = toMs(quietText.value);
   const quietMaxMs = toMs(quietMaxText.value);
-  timingErrs.value = Object.fromEntries(Object.entries(timingErrors(quietMs, quietMaxMs)).map(([k, key]) => [k, t(key)]));
+  timingErrs.value = Object.fromEntries(Object.entries(timingErrors(quietMs, quietMaxMs, channels.settings.timing.maxQuietMs)).map(([k, key]) => [k, t(key, { max: quietLimit.value })]));
   if (Object.keys(timingErrs.value).length || !connection.value || savingTiming.value) {
     return;
   }
@@ -309,7 +310,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · 
                   </span>
                 </label>
                 <p :id="`${uid}-quiet-hint`" class="text-xs text-base-content/70">
-                  {{ t('channels.quiet_window_hint') }}
+                  {{ quietLimit ? t('channels.quiet_window_hint', { max: quietLimit }) : t('channels.quiet_window_hint_open') }}
                 </p>
                 <FieldError :id="`${uid}-quiet-err`" :message="timingErrs.quiet" />
               </div>
@@ -322,7 +323,7 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · 
                   </span>
                 </label>
                 <p :id="`${uid}-max-hint`" class="text-xs text-base-content/70">
-                  {{ t('channels.quiet_max_hint') }}
+                  {{ quietLimit ? t('channels.quiet_max_hint', { max: quietLimit }) : t('channels.quiet_max_hint_open') }}
                 </p>
                 <FieldError :id="`${uid}-max-err`" :message="timingErrs.quietMax" />
               </div>
