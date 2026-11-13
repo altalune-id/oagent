@@ -1,6 +1,5 @@
 import type { SelectAllState } from '#base/components/ui/selectAll';
 import type { AgentConfig, AgentToolConfig } from './agentConfig';
-import type { AgentRuntimeConfig } from '~/stores/agentRuntime';
 import type { KnowledgeSource } from '~/stores/knowledge';
 import type { McpServer, McpTool } from '~/stores/mcpServers';
 import type { ModelProvider, ProviderModel } from '~/stores/modelProviders';
@@ -22,6 +21,8 @@ export interface ConfigureLinks {
   servers: string;
   webSearch: string;
   knowledge: string;
+  endUsers: string;
+  memoryStores: string;
 }
 
 export interface RuntimeContext {
@@ -84,13 +85,13 @@ export function withoutGrant(config: AgentConfig, serverId: string): AgentConfig
 }
 
 // readsPrivateData reports whether the agent can see private data, so web_fetch needs an allow-list; any granted MCP tool counts.
-export function readsPrivateData(config: AgentConfig, runtime: AgentRuntimeConfig): boolean {
-  return config.grants.length > 0 || runtime.memory || config.knowledgeSourceIds.length > 0;
+export function readsPrivateData(config: AgentConfig): boolean {
+  return config.grants.length > 0 || !!config.memoryStoreId || config.knowledgeSourceIds.length > 0;
 }
 
 // readsUntrusted reports whether the agent reads text a third party wrote, so its tools need a person's approval.
 export function readsUntrusted(config: AgentConfig): boolean {
-  return config.knowledgeSourceIds.length > 0;
+  return config.knowledgeSourceIds.length > 0 || !!config.memoryStoreId;
 }
 
 // unattendedTools lists the granted tools that run without approval, as the model names them.

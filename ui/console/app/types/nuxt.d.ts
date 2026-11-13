@@ -9,6 +9,7 @@ import type { InviteService } from '#gen/invite/v1/invite_pb';
 import type { KnowledgeService } from '#gen/knowledge/v1/knowledge_pb';
 import type { McpServerService } from '#gen/mcpserver/v1/mcpserver_pb';
 import type { MemberService } from '#gen/member/v1/member_pb';
+import type { MemoryService } from '#gen/memory/v1/memory_pb';
 import type { ModelProviderService } from '#gen/modelprovider/v1/modelprovider_pb';
 import type { OrgService } from '#gen/org/v1/org_pb';
 import type { ProjectService } from '#gen/project/v1/project_pb';
@@ -31,6 +32,7 @@ declare module '#app' {
     $memberClient: Client<typeof MemberService>;
     $inviteClient: Client<typeof InviteService>;
     $knowledgeClient: Client<typeof KnowledgeService>;
+    $memoryClient: Client<typeof MemoryService>;
     $authClient: Client<typeof AuthService>;
   }
 }

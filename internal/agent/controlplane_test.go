@@ -42,7 +42,7 @@ func grantsFor(a *agent.Agent, refs *fakes.PublicIDs, models ...string) (*fakes.
 
 func newGrantedClient(t *testing.T, store agent.Store, refs agent.Refs, g *fakes.AgentGrants) agentv1connect.AgentServiceClient {
 	t.Helper()
-	svc := agent.NewService(store, fakes.Transactor{}, nil).WithProviders(g).WithMCPServers(g).WithLocker(g).WithKnowledge(g)
+	svc := agent.NewService(store, fakes.Transactor{}, nil).WithProviders(g).WithMCPServers(g).WithLocker(g).WithKnowledge(g).WithMemory(g)
 	_, handler := agentv1connect.NewAgentServiceHandler(agent.NewControlPlane(svc, refs), connect.WithInterceptors(fakes.OperatorInterceptor()))
 	ts := httptest.NewServer(handler)
 	t.Cleanup(ts.Close)
@@ -321,4 +321,45 @@ func TestAgentService_KnowledgeSourcesUsePublicIDs(t *testing.T) {
 	got, err = c.GetAgent(ctx, connect.NewRequest(&agentv1.GetAgentRequest{Id: a.PublicID}))
 	require.NoError(t, err)
 	assert.Equal(t, int32(0), got.Msg.GetAgent().GetDraft().GetKnowledgeSourcesMissing())
+}
+
+func TestAgentService_MemoryStoreUsesPublicIDs(t *testing.T) {
+	refs := fakes.NewPublicIDs()
+	a, _, _ := registeredAgent(t, refs, "acme")
+	store := &fakes.AgentStore{Agent: a}
+	g, _ := grantsWithServer(a, refs)
+	providerPub := ""
+	for id := range g.Providers {
+		providerPub, _, _ = refs.ProviderPublicID(context.Background(), id)
+	}
+	own, foreign := uuid.New(), uuid.New()
+	g.Stores = map[uuid.UUID]uuid.UUID{own: a.ProjectID, foreign: a.ProjectID}
+	ownPub, foreignPub := refs.MemoryStore(own, a.ProjectID), refs.MemoryStore(foreign, uuid.New())
+	c := newGrantedClient(t, store, refs, g)
+	ctx := context.Background()
+	draft := func(id string) (*connect.Response[agentv1.UpdateAgentDraftResponse], error) {
+		return c.UpdateAgentDraft(ctx, connect.NewRequest(&agentv1.UpdateAgentDraftRequest{Id: a.PublicID, Config: &agentv1.AgentConfig{
+			ProviderId: providerPub, Model: "anthropic/claude-sonnet-5-5", MemoryStoreId: id, MemoryStoreMissing: true,
+		}}))
+	}
+
+	_, err := draft(foreignPub)
+	assert.ErrorContains(t, err, "memory store", "the public id's project decides, even when the store check would pass")
+	_, err = draft("unknwnunknwnunknwnabc")
+	assert.ErrorContains(t, err, "memory store")
+	saved, err := draft(ownPub)
+	require.NoError(t, err)
+	assert.Equal(t, own, store.Saved.Draft.MemoryStoreID, "the internal id in the config")
+	assert.Equal(t, ownPub, saved.Msg.GetAgent().GetDraft().GetMemoryStoreId(), "the public id out")
+	assert.False(t, saved.Msg.GetAgent().GetDraft().GetMemoryStoreMissing(), "a client-sent flag is ignored")
+
+	refs.Forget(own)
+	got, err := c.GetAgent(ctx, connect.NewRequest(&agentv1.GetAgentRequest{Id: a.PublicID}))
+	require.NoError(t, err)
+	assert.Empty(t, got.Msg.GetAgent().GetDraft().GetMemoryStoreId(), "a deleted store renders empty, never as its UUID")
+	assert.True(t, got.Msg.GetAgent().GetDraft().GetMemoryStoreMissing(), "and flagged")
+
+	_, err = draft("")
+	require.NoError(t, err)
+	assert.Equal(t, uuid.Nil, store.Saved.Draft.MemoryStoreID, "no store turns memory off")
 }

@@ -410,9 +410,17 @@ components:
         knowledgeTuning:
           title: knowledge_tuning
           $ref: '#/components/schemas/agent.v1.KnowledgeTuning'
+        memoryStoreId:
+          type: string
+          title: memory_store_id
+          description: |
+            oagent.public_id = true
+        memoryStoreMissing:
+          type: boolean
+          title: memory_store_missing
       title: AgentConfig
       additionalProperties: false
-      description: 'AgentConfig is what an agent runs with; zero values mean the recommended value (max_steps, from GetAgent''s defaults) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider''s public id; provider_missing is output only; knowledge_source_ids are the knowledge sources searched before each turn, leaving out a deleted one, and knowledge_sources_missing is output only: how many bound sources no longer exist. knowledge_tuning shapes that search; unset fields use the recommended values.'
+      description: 'AgentConfig is what an agent runs with; zero values mean the recommended value (max_steps, from GetAgent''s defaults) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider''s public id; provider_missing is output only; knowledge_source_ids are the knowledge sources searched before each turn, leaving out a deleted one, and knowledge_sources_missing is output only: how many bound sources no longer exist. knowledge_tuning shapes that search; unset fields use the recommended values. memory_store_id is the public id of the memory store the agent remembers people in, empty for none; memory_store_missing is output only: the bound store no longer exists.'
     agent.v1.AgentDefaults:
       type: object
       properties:

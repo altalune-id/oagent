@@ -446,6 +446,55 @@ describe('configure page', () => {
     vi.useRealTimers();
   });
 
+  it('picks memory with a store select that is off by default and links to the stores page', async () => {
+    asSample();
+    const w = await mountPage(ConfigurePage);
+    const memory = w.get('#configure-memory');
+    const select = memory.get('select[data-field="memory"]');
+    expect((select.element as HTMLSelectElement).value).toBe('');
+    expect(select.findAll('option')[0]!.text()).toBe('configure.memory_off');
+    expect(memory.text()).toContain('configure.memory_hint');
+    const manage = memory.findAllComponents(RouterLinkStub).find(l => l.props('to') === '/o/acme/projects/web/memory-stores')!;
+    expect(manage.classes()).toContain('min-h-6');
+    expect(memory.text()).not.toContain('configure.memory_see');
+    w.unmount();
+  });
+
+  it('saves a picked memory store with the draft and lists it at Publish', async () => {
+    vi.useFakeTimers();
+    const client = asSample();
+    const w = await mountPage(ConfigurePage, { attachTo: document.body });
+    const select = w.get('#configure-memory select[data-field="memory"]');
+    expect(select.findAll('option').map(o => o.text())).toEqual(['configure.memory_off', 'People']);
+    await select.setValue('Ms4tR7wQ2xKp9VbNc3HzL');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(client.updateAgentDraft).toHaveBeenLastCalledWith(expect.objectContaining({ config: expect.objectContaining({ memoryStoreId: 'Ms4tR7wQ2xKp9VbNc3HzL' }) }));
+    expect(w.get('#configure-memory').text()).toContain('configure.memory_see');
+    await button(w, 'configure.publish').trigger('click');
+    expect(openDialog().textContent).toContain('configure.change_memory_on');
+    vi.useRealTimers();
+    w.unmount();
+  });
+
+  it('says when the bound memory store was deleted, and shows a memory_store refusal under the select', async () => {
+    vi.useFakeTimers();
+    setKnownKeys('apperror.AGT007_memory_store_disabled');
+    const client = asSample({ ...sampleDraft, memoryStoreMissing: true });
+    client.updateAgentDraft.mockRejectedValue(connectError('AGT007', { reason: 'memory_store_disabled' }));
+    const w = await mountPage(ConfigurePage);
+    const memory = w.get('#configure-memory');
+    expect(memory.text()).toContain('configure.memory_store_missing');
+    await w.get('#configure-instructions textarea').setValue('Catat semua.');
+    await vi.advanceTimersByTimeAsync(1000);
+    await flushPromises();
+    const select = memory.get('select[data-field="memory"]');
+    expect(select.attributes('aria-invalid')).toBe('true');
+    const err = select.attributes('aria-describedby')!.split(' ').map(id => w.find(`#${id}`)).find(e => e.exists() && e.text() === 'apperror.AGT007_memory_store_disabled');
+    expect(err).toBeDefined();
+    expect(w.text().match(/apperror\.AGT007_memory_store_disabled/g)).toHaveLength(1);
+    vi.useRealTimers();
+  });
+
   it('places an AGT007 refusal under the field it names', async () => {
     vi.useFakeTimers();
     setKnownKeys('apperror.AGT007_helper_model');

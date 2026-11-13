@@ -2,6 +2,8 @@ import type { AgentStreamEvent, ContentBlockData, InterruptResponseContentData, 
 import type { ImageMime, TurnRequest } from '../contract/index.ts';
 import type { Logger } from '../log.ts';
 import type { McpTurn, Note } from '../mcp/index.ts';
+import type { Models } from '../models/index.ts';
+import type { MemoryOutput } from './extract.ts';
 import type { TurnUsage } from './limits.ts';
 import {
   AfterToolCallEvent,
@@ -18,9 +20,12 @@ import {
 import { inputParts, ModelProvider } from '../contract/index.ts';
 import { approvalSpecs, interventionsFor } from '../interventions/index.ts';
 import { openMcpServers } from '../mcp/index.ts';
+import { rememberLeg } from './extract.ts';
+import { injectOnFirstCall } from './firstcall.ts';
 import { historyToMessages } from './history.ts';
-import { installKnowledge, KNOWLEDGE_LINE, knowledgeBlock } from './knowledge.ts';
+import { KNOWLEDGE_LINE, knowledgeBlock } from './knowledge.ts';
 import { BUDGET_REFUSAL, LIMIT_REPLY, overBudget, stepLimit, UsageMeter } from './limits.ts';
+import { MEMORY_LINE, memoryBlock } from './memory.ts';
 import { cleanSnapshot, SDK_VERSION } from './snapshot.ts';
 
 export type TurnStatus = 'completed' | 'awaiting_approval' | 'limit_reached' | 'cancelled' | 'failed';
@@ -45,10 +50,12 @@ export type TurnOutcome = {
   interrupts: { id: string, name: string, reason: JSONValue }[],
   notes: Note[],
   error?: { code: string },
+  memory?: MemoryOutput,
 };
 
 export interface TurnDeps {
   model: Model;
+  models?: Models;
   log: Logger;
   openMcp?: (specs: TurnRequest['mcpServers'], log: Logger) => Promise<McpTurn>;
   onEvent?: (event: AgentStreamEvent) => void | Promise<void>;
@@ -120,6 +127,7 @@ function isBudgetRefusal(m: Message): boolean {
 
 export async function executeTurn(request: TurnRequest, signal: AbortSignal, deps: TurnDeps): Promise<TurnOutcome> {
   const openMcp = deps.openMcp ?? openMcpServers;
+  const startedAt = Date.now();
   const deadline = AbortSignal.timeout(request.limits.deadlineMs);
   const mcp = await openMcp(request.mcpServers, deps.log);
   const meter = new UsageMeter();
@@ -141,8 +149,14 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
   if (request.snapshot !== null) {
     agent.loadSnapshot(request.snapshot as unknown as Snapshot);
   }
+  const memory = memoryBlock(request.memory?.facts ?? []);
   const knowledge = knowledgeBlock(request.knowledge ?? []);
-  agent.systemPrompt = [request.agent.instructions, ...(knowledge === '' ? [] : [KNOWLEDGE_LINE]), ...mcp.promptLines].join('\n\n');
+  agent.systemPrompt = [
+    request.agent.instructions,
+    ...(memory === '' ? [] : [MEMORY_LINE]),
+    ...(knowledge === '' ? [] : [KNOWLEDGE_LINE]),
+    ...mcp.promptLines,
+  ].join('\n\n');
   // NOTE: assumes no continuations; _appendContinuationMessages would report a merged message a second time.
   const added: Message[] = [];
   agent.addHook(MessageAddedEvent, (event) => {
@@ -157,7 +171,8 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
     }
     return yield* next(ctx);
   });
-  installKnowledge(agent, knowledge, chars => meter.addInput(chars));
+  injectOnFirstCall(agent, memory, chars => meter.addInput(chars));
+  injectOnFirstCall(agent, knowledge, chars => meter.addInput(chars));
   agent.addHook(BeforeModelCallEvent, (event) => {
     if (overBudget(meter.usage, request.limits.budget)) {
       budgetHit = true;
@@ -191,6 +206,21 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
     ...extra,
   });
 
+  const remember = async (done: TurnOutcome): Promise<TurnOutcome> => {
+    const memory = await rememberLeg({
+      request,
+      status: done.status,
+      budgetHit,
+      added,
+      usage: meter.usage,
+      models: deps.models,
+      remainingMs: request.limits.deadlineMs - (Date.now() - startedAt),
+      signal,
+      log: deps.log,
+    });
+    return memory === undefined ? done : { ...done, memory };
+  };
+
   try {
     const stream = agent.stream(inputOf(request), { limits: { turns: stepLimit(request.agent.maxSteps) }, cancelSignal });
     let next = await stream.next();
@@ -213,7 +243,7 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
     const interrupts = (result.interrupts ?? []).map(i => ({ id: i.id, name: i.name, reason: (i.reason ?? null) as JSONValue }));
     const status = statusOf(result.stopReason, interrupts.length > 0, budgetHit);
     if (status === 'failed') {
-      return outcome(status, result.stopReason, { newMessages: added.filter(m => m !== result.lastMessage), error: { code: 'model_error' } });
+      return await remember(outcome(status, result.stopReason, { newMessages: added.filter(m => m !== result.lastMessage), error: { code: 'model_error' } }));
     }
     const snapshot = cleanSnapshot(agent.takeSnapshot({ preset: 'session', appData: { thread: request.ids.thread, agentVersion: request.ids.agentVersion, sdk: SDK_VERSION } }), budgetHit ? BUDGET_REFUSAL : undefined);
     const done = outcome(status, budgetHit ? 'budget' : result.stopReason, { snapshot, interrupts });
@@ -226,11 +256,11 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
     if (status === 'cancelled' && deadline.aborted && !signal.aborted) {
       done.error = { code: 'deadline' };
     }
-    return done;
+    return await remember(done);
   } catch (error) {
     meter.closeFailedCall();
     deps.log.error({ run: request.ids.run, error }, 'turn failed');
-    return outcome('failed', 'error', { error: { code: imageRefused(request, error) ? 'image_unsupported' : 'model_error' } });
+    return await remember(outcome('failed', 'error', { error: { code: imageRefused(request, error) ? 'image_unsupported' : 'model_error' } }));
   } finally {
     await mcp.close();
   }

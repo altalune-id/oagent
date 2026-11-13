@@ -20,6 +20,7 @@ import (
 	"altalune.id/oagent/gen/go/knowledge/v1/knowledgev1mcp"
 	mcpserverv1mcp "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1mcp"
 	memberv1mcp "altalune.id/oagent/gen/go/member/v1/memberv1mcp"
+	memoryv1mcp "altalune.id/oagent/gen/go/memory/v1/memoryv1mcp"
 	modelproviderv1mcp "altalune.id/oagent/gen/go/modelprovider/v1/modelproviderv1mcp"
 	orgv1mcp "altalune.id/oagent/gen/go/org/v1/orgv1mcp"
 	projectv1mcp "altalune.id/oagent/gen/go/project/v1/projectv1mcp"
@@ -35,6 +36,7 @@ import (
 	mcpinternal "altalune.id/oagent/internal/mcp"
 	mcpui "altalune.id/oagent/internal/mcp/ui"
 	"altalune.id/oagent/internal/mcpserver"
+	"altalune.id/oagent/internal/memory"
 	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/invite"
@@ -68,6 +70,7 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger, allo
 	channelv1mcp.RegisterChannelServiceTools(registry, channels, permission.For, validate)
 	people := enduser.NewControlPlane(svcs.EndUsers, refs, endUserActivity{store: svcs.RunStore})
 	enduserv1mcp.RegisterEndUserServiceTools(registry, people, permission.For, validate)
+	memoryv1mcp.RegisterMemoryServiceTools(registry, memory.NewControlPlane(svcs.Memory, refs), permission.For, validate)
 	approvals := approval.NewControlPlane(svcs.Approvals, approvalRefs{publicIDs: refs, svcs: svcs}, approvalNames{svcs: svcs})
 	approvalv1mcp.RegisterApprovalServiceTools(registry, approvals, permission.For, validate)
 	threads := run.NewControlPlane(svcs.Runs, refs, runPeople{users: svcs.EndUsers})

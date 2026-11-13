@@ -31,6 +31,12 @@ type Reader interface {
 	KnowledgeSourceInUse(ctx context.Context, sourceID uuid.UUID) (bool, error)
 	// KnowledgeUse names, per knowledge source of a project, the agents whose latest published version searches it.
 	KnowledgeUse(ctx context.Context, projectID uuid.UUID) (map[uuid.UUID][]Named, error)
+	// MemoryStoreInUse reports whether a latest published version in the org on ctx remembers people in a memory store.
+	MemoryStoreInUse(ctx context.Context, storeID uuid.UUID) (bool, error)
+	// AgentPublicIDs names agents of the org on ctx by public id in one read; an agent that is gone is left out.
+	AgentPublicIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error)
+	// MemoryUse names, per memory store of a project, the agents whose latest published version remembers people in it.
+	MemoryUse(ctx context.Context, projectID uuid.UUID) (map[uuid.UUID][]Named, error)
 }
 
 // Named is an agent's public id and name.

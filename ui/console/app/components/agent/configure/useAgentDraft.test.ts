@@ -14,7 +14,7 @@ const provider = 'Pv6tQm2ZxR8wKp3VbNc4K';
 const server = 'Ms2bVn7QxK4pRt9KwZc3H';
 const names = { provider: (p: string) => (p === provider ? 'OpenRouter' : '?'), server: (x: string) => (x === server ? 'yasaku' : x) };
 type Wire = ReturnType<typeof toWire> & { providerMissing: boolean, tools: { name: string, requireApproval: boolean }[], mcpServers: { serverId: string, tools: { name: string, requireApproval: boolean }[], missing: boolean }[] };
-const liveWire: Wire = { instructions: 'Help.', providerId: provider, model: 'large-2', helperModel: '', temperature: 0.2, maxSteps: 12, maxCostCents: 10, mcpServers: [{ serverId: server, tools: [{ name: 'orders_lookup', requireApproval: false, freeWhen: [] }, { name: 'refunds_create', requireApproval: false, freeWhen: [] }], missing: false }], knowledgeSourceIds: [], knowledgeTuning: { topK: 0, maxTokens: 0 }, providerMissing: false, tools: [] };
+const liveWire: Wire = { instructions: 'Help.', providerId: provider, model: 'large-2', helperModel: '', temperature: 0.2, maxSteps: 12, maxCostCents: 10, mcpServers: [{ serverId: server, tools: [{ name: 'orders_lookup', requireApproval: false, freeWhen: [] }, { name: 'refunds_create', requireApproval: false, freeWhen: [] }], missing: false }], knowledgeSourceIds: [], knowledgeTuning: { topK: 0, maxTokens: 0 }, memoryStoreId: '', providerMissing: false, tools: [] };
 const draftWire: Wire = { ...liveWire, instructions: 'Help. Never promise a date.' };
 const live = fromWire(liveWire);
 const draft = fromWire(draftWire);
@@ -29,6 +29,25 @@ describe('agentConfig', () => {
     expect(s.publishedVersion).toBe(12);
     expect(s.draftUpdatedAt?.toISOString()).toBe('2026-11-02T01:00:00.000Z');
     expect(stateOf({ publishedVersion: 0, unpublishedChanges: false }).draftUpdatedAt).toBeUndefined();
+  });
+
+  it('reads, sends and lists a change of the memory store, off when the wire leaves it out', () => {
+    const storeA = 'Ms4tR7wQ2xKp9VbNc3HzL';
+    const storeB = 'Ms8kW3nV6yHp7ZxR5cJtQ';
+    const { memoryStoreId: _, ...none } = liveWire;
+    expect(fromWire(none as Wire).memoryStoreId).toBe('');
+    expect(emptyConfig().memoryStoreId).toBe('');
+    expect(fromWire({ ...liveWire, memoryStoreMissing: true }).memoryStoreMissing).toBe(true);
+    const on = { ...live, memoryStoreId: storeA };
+    expect(fromWire({ ...liveWire, memoryStoreId: storeA }).memoryStoreId).toBe(storeA);
+    expect(toWire(on).memoryStoreId).toBe(storeA);
+    expect(toWire({ ...on, memoryStoreMissing: true })).not.toHaveProperty('memoryStoreMissing');
+    expect(changes(on, live, usd, names)).toEqual([{ key: 'configure.change_memory_on' }]);
+    expect(changes(live, on, usd, names)).toEqual([{ key: 'configure.change_memory_off' }]);
+    expect(changes({ ...live, memoryStoreId: storeB }, on, usd, names)).toEqual([{ key: 'configure.change_memory_store' }]);
+    const stores = { ...names, memoryStore: (s: string) => ({ [storeA]: 'Customers', [storeB]: 'Archive' })[s] };
+    expect(changes({ ...live, memoryStoreId: storeB }, on, usd, stores)).toEqual([{ key: 'configure.change_memory_store_named', params: { from: 'Customers', to: 'Archive' } }]);
+    expect(changes({ ...live, memoryStoreId: 'Ms2bVn7QxK4pRt9KwZc3H' }, on, usd, stores)).toEqual([{ key: 'configure.change_memory_store' }]);
   });
 
   it('sends no legacy tools, output-only flags or grants of a deleted server', () => {

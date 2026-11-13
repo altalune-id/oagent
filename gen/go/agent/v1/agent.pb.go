@@ -489,7 +489,7 @@ func (x *McpGrant) GetMissing() bool {
 	return false
 }
 
-// AgentConfig is what an agent runs with; zero values mean the recommended value (max_steps, from GetAgent's defaults) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider's public id; provider_missing is output only; knowledge_source_ids are the knowledge sources searched before each turn, leaving out a deleted one, and knowledge_sources_missing is output only: how many bound sources no longer exist. knowledge_tuning shapes that search; unset fields use the recommended values.
+// AgentConfig is what an agent runs with; zero values mean the recommended value (max_steps, from GetAgent's defaults) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider's public id; provider_missing is output only; knowledge_source_ids are the knowledge sources searched before each turn, leaving out a deleted one, and knowledge_sources_missing is output only: how many bound sources no longer exist. knowledge_tuning shapes that search; unset fields use the recommended values. memory_store_id is the public id of the memory store the agent remembers people in, empty for none; memory_store_missing is output only: the bound store no longer exists.
 type AgentConfig struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
 	Instructions            string                 `protobuf:"bytes,1,opt,name=instructions,proto3" json:"instructions,omitempty"`
@@ -505,6 +505,8 @@ type AgentConfig struct {
 	KnowledgeSourceIds      []string               `protobuf:"bytes,11,rep,name=knowledge_source_ids,json=knowledgeSourceIds,proto3" json:"knowledge_source_ids,omitempty"`
 	KnowledgeSourcesMissing int32                  `protobuf:"varint,12,opt,name=knowledge_sources_missing,json=knowledgeSourcesMissing,proto3" json:"knowledge_sources_missing,omitempty"`
 	KnowledgeTuning         *KnowledgeTuning       `protobuf:"bytes,13,opt,name=knowledge_tuning,json=knowledgeTuning,proto3" json:"knowledge_tuning,omitempty"`
+	MemoryStoreId           string                 `protobuf:"bytes,14,opt,name=memory_store_id,json=memoryStoreId,proto3" json:"memory_store_id,omitempty"`
+	MemoryStoreMissing      bool                   `protobuf:"varint,15,opt,name=memory_store_missing,json=memoryStoreMissing,proto3" json:"memory_store_missing,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -628,6 +630,20 @@ func (x *AgentConfig) GetKnowledgeTuning() *KnowledgeTuning {
 		return x.KnowledgeTuning
 	}
 	return nil
+}
+
+func (x *AgentConfig) GetMemoryStoreId() string {
+	if x != nil {
+		return x.MemoryStoreId
+	}
+	return ""
+}
+
+func (x *AgentConfig) GetMemoryStoreMissing() bool {
+	if x != nil {
+		return x.MemoryStoreMissing
+	}
+	return false
 }
 
 // KnowledgeTuning shapes the knowledge search before each turn. top_k is the passages per answer and max_tokens the knowledge budget, 0 meaning the recommended value; min_score is the minimum relevance, unset meaning the recommended value (0 is a valid setting). ListKnowledgeSources returns the recommended values.
@@ -1625,7 +1641,8 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\tserver_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\bserverId\x12\x91\x01\n" +
 	"\x05tools\x18\x02 \x03(\v2\x13.agent.v1.AgentToolBf\xbaHc\xba\x01[\n" +
 	"\x18agent.grant_tools.unique\x1a?this.map(t, t.name).unique() ? '' : 'tool names must be unique'\x92\x01\x02\x10@R\x05tools\x12\x18\n" +
-	"\amissing\x18\x03 \x01(\bR\amissing\"\xac\t\n" +
+	"\amissing\x18\x03 \x01(\bR\amissing\"\x91\n" +
+	"\n" +
 	"\vAgentConfig\x12\x8c\x01\n" +
 	"\finstructions\x18\x01 \x01(\tBh\xbaHe\xba\x01b\n" +
 	" agent.instructions.max_len.32000\x1a>this.size() <= 32000 ? '' : 'must be at most 32000 characters'R\finstructions\x12\x88\x01\n" +
@@ -1647,7 +1664,9 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	" \x01(\bR\x0fproviderMissing\x12D\n" +
 	"\x14knowledge_source_ids\x18\v \x03(\tB\x12\xbaH\x0f\x92\x01\f\x10\x10\x18\x01\"\x06r\x04\x88\xe42\x01R\x12knowledgeSourceIds\x12:\n" +
 	"\x19knowledge_sources_missing\x18\f \x01(\x05R\x17knowledgeSourcesMissing\x12D\n" +
-	"\x10knowledge_tuning\x18\r \x01(\v2\x19.agent.v1.KnowledgeTuningR\x0fknowledgeTuning\"\x81\x03\n" +
+	"\x10knowledge_tuning\x18\r \x01(\v2\x19.agent.v1.KnowledgeTuningR\x0fknowledgeTuning\x121\n" +
+	"\x0fmemory_store_id\x18\x0e \x01(\tB\t\xbaH\x06r\x04\x88\xe42\x01R\rmemoryStoreId\x120\n" +
+	"\x14memory_store_missing\x18\x0f \x01(\bR\x12memoryStoreMissing\"\x81\x03\n" +
 	"\x0fKnowledgeTuning\x12\x85\x01\n" +
 	"\x05top_k\x18\x01 \x01(\x05Bp\xbaHm\xba\x01j\n" +
 	"\"agent.knowledge_tuning.top_k.range\x1aDthis == 0 || (this >= 1 && this <= 10) ? '' : 'must be 0 or 1 to 10'R\x04topK\x129\n" +

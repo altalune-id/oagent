@@ -1,8 +1,10 @@
 package run
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"regexp"
 	"testing"
@@ -11,6 +13,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"altalune.id/oagent/internal/kernel/runtime"
 )
 
 var legalMoves = map[Status][]Status{
@@ -221,4 +225,66 @@ func TestBudget_UnpricedSpendLeavesNothing(t *testing.T) {
 
 	tr.run.Usage = Usage{InputTokens: 10}
 	assert.Equal(t, int64(50*10_000-25), s.budget(tr).RemainingMicros, "a priced spend still counts down")
+}
+
+func TestWindow_StartsOnAUserRow(t *testing.T) {
+	msgs := []Message{{Role: RoleTool}, {Role: RoleAssistant}, {Role: RoleUser, Seq: 3}, {Role: RoleAssistant, Seq: 4}}
+	got := window(msgs)
+	require.Len(t, got, 2)
+	assert.Equal(t, int64(3), got[0].Seq)
+}
+
+func TestWindow_EmptyWithoutAUserRow(t *testing.T) {
+	assert.Empty(t, window([]Message{{Role: RoleAssistant}, {Role: RoleTool}}))
+}
+
+func TestExtractMode(t *testing.T) {
+	priced := func(helper bool) *Prices {
+		p := &Prices{Input: price(1)}
+		if helper {
+			p.HelperInput = price(1)
+		}
+		return p
+	}
+	helper := &ResolvedModel{}
+	for name, c := range map[string]struct {
+		extracts bool
+		prices   *Prices
+		helperOf string
+		resolved *ResolvedModel
+		want     runtime.ExtractMode
+	}{
+		"store extracts, priced, nil helper prices": {extracts: true, prices: priced(false), want: runtime.ExtractUserTexts},
+		"store extracts, unpriced":                  {extracts: true, want: runtime.ExtractUserTexts},
+		"native, priced, helper prices":             {prices: priced(true), helperOf: "mini", resolved: helper, want: runtime.ExtractFacts},
+		"native, priced, nil helper prices":         {prices: priced(false), want: runtime.ExtractNone},
+		"native, unpriced, no separate helper":      {want: runtime.ExtractFacts},
+		"native, helper set but not resolved":       {helperOf: "mini", want: runtime.ExtractNone},
+	} {
+		t.Run(name, func(t *testing.T) {
+			tr := &turn{run: &Run{Prices: c.prices}, version: &AgentVersion{Model: "main", HelperModel: c.helperOf}, helper: c.resolved}
+			assert.Equal(t, c.want, extractMode(tr, c.extracts))
+		})
+	}
+}
+
+type ctxMemory struct{ done []bool }
+
+func (m *ctxMemory) Store(context.Context, MemoryScope) (StoreMode, error) { return StoreMode{}, nil }
+func (m *ctxMemory) Recall(context.Context, MemoryScope, string) ([]RecalledFact, error) {
+	return nil, nil
+}
+func (m *ctxMemory) Record(ctx context.Context, _ MemoryScope, _ MemoryRecord) error {
+	m.done = append(m.done, ctx.Err() != nil)
+	return nil
+}
+
+func TestRecord_RunsOnItsOwnContext(t *testing.T) {
+	mem := &ctxMemory{}
+	s := &Service{memory: mem, log: slog.New(slog.DiscardHandler)}
+	tr := &turn{run: &Run{Status: StatusCompleted}, memory: &memoryLeg{mode: runtime.ExtractFacts}}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	s.record(ctx, tr, &runtime.Terminal{Memory: &runtime.TerminalMemory{Facts: []string{"a"}}})
+	assert.Equal(t, []bool{false}, mem.done, "a turn whose context ended still records its settled facts")
 }

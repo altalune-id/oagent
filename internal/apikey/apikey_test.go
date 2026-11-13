@@ -111,3 +111,7 @@ func TestDedupe(t *testing.T) {
 	require.Len(t, out, 2)
 	assert.Equal(t, id, out[0])
 }
+
+func TestDefaultPrefix_MatchesTheRuntimeRule(t *testing.T) {
+	assert.Regexp(t, `^[A-Za-z0-9_-]{1,32}$`, DefaultPrefix, "the runtime refuses a keyPrefix it cannot mask")
+}

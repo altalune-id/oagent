@@ -13,8 +13,9 @@ describe('useAgentRuntimeStore', () => {
     const store = useAgentRuntimeStore();
     expect(store.draftFor('a1', 'yasaku-keuangan')).toEqual(sampleAgentRuntime());
     expect(store.draftFor('a2', 'support')).toEqual(emptyRuntime());
-    store.drafts.a2!.memory = true;
-    expect(store.draftFor('a2', 'support').memory).toBe(true);
+    store.drafts.a2!.webFetch = true;
+    expect(store.draftFor('a2', 'support').webFetch).toBe(true);
+    expect(Object.keys(emptyRuntime())).toEqual(['webFetch', 'allowedDomains', 'webSearch']);
     expect(store.usesSample('a1')).toBe(true);
     expect(store.usesSample('a2')).toBe(false);
     expect(store.draftFor('a1', 'yasaku-keuangan')).toBe(store.drafts.a1);

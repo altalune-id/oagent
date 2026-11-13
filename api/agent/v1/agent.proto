@@ -154,7 +154,7 @@ message McpGrant {
   bool missing = 3;
 }
 
-// AgentConfig is what an agent runs with; zero values mean the recommended value (max_steps, from GetAgent's defaults) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider's public id; provider_missing is output only; knowledge_source_ids are the knowledge sources searched before each turn, leaving out a deleted one, and knowledge_sources_missing is output only: how many bound sources no longer exist. knowledge_tuning shapes that search; unset fields use the recommended values.
+// AgentConfig is what an agent runs with; zero values mean the recommended value (max_steps, from GetAgent's defaults) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider's public id; provider_missing is output only; knowledge_source_ids are the knowledge sources searched before each turn, leaving out a deleted one, and knowledge_sources_missing is output only: how many bound sources no longer exist. knowledge_tuning shapes that search; unset fields use the recommended values. memory_store_id is the public id of the memory store the agent remembers people in, empty for none; memory_store_missing is output only: the bound store no longer exists.
 message AgentConfig {
   string instructions = 1 [
     (buf.validate.field).cel = {id: "agent.instructions.max_len.32000", expression: "this.size() <= 32000 ? '' : 'must be at most 32000 characters'"}
@@ -196,6 +196,8 @@ message AgentConfig {
   ];
   int32 knowledge_sources_missing = 12;
   KnowledgeTuning knowledge_tuning = 13;
+  string memory_store_id = 14 [(buf.validate.field).string.(oagent.v1.public_id) = true];
+  bool memory_store_missing = 15;
 }
 
 // KnowledgeTuning shapes the knowledge search before each turn. top_k is the passages per answer and max_tokens the knowledge budget, 0 meaning the recommended value; min_score is the minimum relevance, unset meaning the recommended value (0 is a valid setting). ListKnowledgeSources returns the recommended values.

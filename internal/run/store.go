@@ -16,7 +16,12 @@ type Store interface {
 // Reader reads runs and the threads a sweep must act on.
 type Reader interface {
 	Thread(ctx context.Context, threadID uuid.UUID) (*Thread, error)
-	History(ctx context.Context, threadID, exceptRun uuid.UUID) ([]Message, error)
+	// History returns the thread's newest limit consumed messages in order, except run exceptRun's own.
+	History(ctx context.Context, threadID, exceptRun uuid.UUID, limit int) ([]Message, error)
+	// HistoryFrom returns the thread's consumed messages from its newest user message on, except run exceptRun's own.
+	HistoryFrom(ctx context.Context, threadID, exceptRun uuid.UUID) ([]Message, error)
+	// RunPublicIDs names runs of the org on ctx by public id in one read; a run that is gone is left out.
+	RunPublicIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error)
 	HasPending(ctx context.Context, threadID uuid.UUID) (bool, error)
 	// PendingMessages lists speaker's pending messages in a thread after seq afterSeq, in channel order, at most limit.
 	PendingMessages(ctx context.Context, threadID, speaker uuid.UUID, afterSeq int64, limit int) ([]Message, error)

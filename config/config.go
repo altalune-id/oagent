@@ -32,6 +32,7 @@ type Config struct {
 	Storage    StorageConfig    `yaml:"storage"    mapstructure:"storage"`
 	S3         S3Config         `yaml:"s3"         mapstructure:"s3"`
 	Knowledge  KnowledgeConfig  `yaml:"knowledge"  mapstructure:"knowledge"`
+	Memory     MemoryConfig     `yaml:"memory"     mapstructure:"memory"`
 	OIDC       OIDCConfig       `yaml:"oidc"       mapstructure:"oidc"`
 }
 

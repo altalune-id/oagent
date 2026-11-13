@@ -27,6 +27,8 @@ type AgentStore struct {
 	ServerInUse bool
 	SourceInUse bool
 	Knowledge   map[uuid.UUID][]agent.Named
+	StoreInUse  bool
+	Memory      map[uuid.UUID][]agent.Named
 }
 
 // SaveDraft implements agent.Store like Save.
@@ -162,6 +164,30 @@ func (f *AgentStore) KnowledgeSourceInUse(context.Context, uuid.UUID) (bool, err
 // KnowledgeUse implements agent.Store; Knowledge answers it.
 func (f *AgentStore) KnowledgeUse(context.Context, uuid.UUID) (map[uuid.UUID][]agent.Named, error) {
 	return f.Knowledge, f.Err
+}
+
+// AgentPublicIDs implements agent.Store over Agent and Agents.
+func (f *AgentStore) AgentPublicIDs(_ context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error) {
+	all := append([]*agent.Agent{f.Agent}, f.Agents...)
+	out := map[uuid.UUID]string{}
+	for _, id := range ids {
+		for _, a := range all {
+			if a != nil && a.ID == id {
+				out[id] = a.PublicID
+			}
+		}
+	}
+	return out, f.Err
+}
+
+// MemoryStoreInUse implements agent.Store; StoreInUse answers it.
+func (f *AgentStore) MemoryStoreInUse(context.Context, uuid.UUID) (bool, error) {
+	return f.StoreInUse, f.Err
+}
+
+// MemoryUse implements agent.Store; Memory answers it.
+func (f *AgentStore) MemoryUse(context.Context, uuid.UUID) (map[uuid.UUID][]agent.Named, error) {
+	return f.Memory, f.Err
 }
 
 // MCPServerInUse implements agent.Store; ServerInUse answers it.

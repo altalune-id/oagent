@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 )
@@ -25,6 +26,52 @@ type TurnRequest struct {
 	StoredResults   []StoredResult    `json:"storedResults"`
 	Limits          Limits            `json:"limits"`
 	Knowledge       []Passage         `json:"knowledge,omitempty"`
+	Memory          *MemoryRequest    `json:"memory,omitempty"`
+	Guardrails      *Guardrails       `json:"guardrails,omitempty"`
+}
+
+// MemoryRequest is a leg's recalled facts and how the runtime handles this leg's new memory; Facts is never nil.
+type MemoryRequest struct {
+	Facts   []MemoryFact `json:"facts"`
+	Extract ExtractMode  `json:"extract"`
+}
+
+// NewMemoryRequest builds a leg's memory request; no facts are sent as an empty list, never null.
+func NewMemoryRequest(facts []MemoryFact, mode ExtractMode) *MemoryRequest {
+	if facts == nil {
+		facts = []MemoryFact{}
+	}
+	return &MemoryRequest{Facts: facts, Extract: mode}
+}
+
+// MemoryFact is one recalled fact. SECURITY: the person's own words; never log it.
+type MemoryFact struct {
+	Text      string    `json:"text"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// ExtractMode says what the runtime returns from a memory leg.
+type ExtractMode string
+
+// The extract modes.
+const (
+	ExtractFacts     ExtractMode = "facts"
+	ExtractUserTexts ExtractMode = "userTexts"
+	ExtractNone      ExtractMode = "none"
+)
+
+// The memory bounds the runtime enforces on the request and terminal.
+const (
+	MaxMemoryFacts     = 5
+	MaxMemoryFactRunes = 500
+	MaxExtractedFacts  = 10
+	MaxUserTexts       = 10
+	MaxUserTextRunes   = 4000
+)
+
+// Guardrails are the masking settings of a turn.
+type Guardrails struct {
+	KeyPrefix string `json:"keyPrefix"`
 }
 
 // The runtime refuses a turn whose knowledge passes these bounds.
@@ -119,10 +166,11 @@ type TurnIDs struct {
 
 // AgentSpec is the agent config a turn runs with: a published version, or a draft for a Try it run.
 type AgentSpec struct {
-	Instructions string    `json:"instructions"`
-	Temperature  float64   `json:"temperature"`
-	MaxSteps     int32     `json:"maxSteps"`
-	Model        ModelSpec `json:"model"`
+	Instructions string     `json:"instructions"`
+	Temperature  float64    `json:"temperature"`
+	MaxSteps     int32      `json:"maxSteps"`
+	Model        ModelSpec  `json:"model"`
+	HelperModel  *ModelSpec `json:"helperModel,omitempty"`
 }
 
 // ProviderAnthropic is the ModelSpec provider of an Anthropic Messages API endpoint.
@@ -208,8 +256,9 @@ type Limits struct {
 
 // Budget is the money left for the run and the model's prices, all in micro-USD (prices per 1M tokens).
 type Budget struct {
-	RemainingMicros int64  `json:"remainingMicros"`
-	Prices          Prices `json:"prices"`
+	RemainingMicros int64   `json:"remainingMicros"`
+	Prices          Prices  `json:"prices"`
+	HelperPrices    *Prices `json:"helperPrices,omitempty"`
 }
 
 // Prices are micro-USD per 1M tokens, per token class.
@@ -363,6 +412,13 @@ type Terminal struct {
 	Interrupts       []Interrupt       `json:"interrupts"`
 	Notes            []Note            `json:"notes"`
 	Error            *TerminalError    `json:"error,omitempty"`
+	Memory           *TerminalMemory   `json:"memory,omitempty"`
+}
+
+// TerminalMemory is what a memory leg returns: Facts for facts mode, UserTexts for userTexts mode, neither when skipped.
+type TerminalMemory struct {
+	Facts     []string `json:"facts,omitempty"`
+	UserTexts []string `json:"userTexts,omitempty"`
 }
 
 // Usage is the tokens a turn used; Estimated is true when a cut model call was estimated.

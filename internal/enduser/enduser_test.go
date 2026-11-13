@@ -77,3 +77,27 @@ func TestList_AQueryIsABoundParameterNeverStatementText(t *testing.T) {
 	assert.Contains(t, args, "6281234567890")
 	assert.Contains(t, args, "%6281234567890%")
 }
+
+func TestClassOf(t *testing.T) {
+	for _, c := range []struct {
+		ids  []Identity
+		want MemoryClass
+	}{
+		{[]Identity{{Kind: KindWAPhone, Value: "+628"}}, MemoryPerson},
+		{[]Identity{{Kind: KindWALid, Value: "1@lid"}}, MemoryPerson},
+		{[]Identity{{Kind: KindWidgetSub, Value: "s"}}, MemoryPerson},
+		{[]Identity{{Kind: KindAPIUser, Value: "person:abc"}}, MemoryPerson},
+		{[]Identity{{Kind: KindAPIUser, Value: "u-42"}}, MemoryNamedAPIUser},
+		{[]Identity{{Kind: KindWAPhone, Value: "+628"}, {Kind: KindAPIUser, Value: "u-42"}}, MemoryNamedAPIUser},
+		{[]Identity{{Kind: KindAPIUser, Value: "u-42"}, {Kind: KindWAPhone, Value: "+628"}}, MemoryNamedAPIUser},
+		{[]Identity{{Kind: KindWAPhone, Value: "+628"}, {Kind: KindAPIUser, Value: "key:0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b"}}, MemoryNever},
+		{[]Identity{{Kind: KindWidgetSub, Value: "s"}, {Kind: KindWidgetAnon, Value: "cookie"}}, MemoryNever},
+		{[]Identity{{Kind: KindAPIUser, Value: "person:abc"}, {Kind: KindWALid, Value: "1@lid"}}, MemoryPerson},
+		{[]Identity{{Kind: "api_key", Value: "x"}}, MemoryNever},
+		{[]Identity{{Kind: KindAPIUser, Value: "key:0193a2b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b"}}, MemoryNever},
+		{[]Identity{{Kind: KindWidgetAnon, Value: "cookie"}}, MemoryNever},
+		{nil, MemoryNever},
+	} {
+		assert.Equal(t, c.want, ClassOf(c.ids), "%+v", c.ids)
+	}
+}

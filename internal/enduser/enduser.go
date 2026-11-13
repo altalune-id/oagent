@@ -1,6 +1,7 @@
 package enduser
 
 import (
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -138,4 +139,41 @@ func KindProto(k Kind) enduserv1.IdentityKind {
 		return enduserv1.IdentityKind_IDENTITY_KIND_WIDGET_SUB
 	}
 	return enduserv1.IdentityKind_IDENTITY_KIND_UNSPECIFIED
+}
+
+// MemoryClass is how far memory may follow an end user.
+type MemoryClass int
+
+// The memory classes.
+const (
+	// MemoryNever is an API key acting for itself or an anonymous widget visitor.
+	MemoryNever MemoryClass = iota
+	// MemoryPerson is a WhatsApp sender, a signed widget user or a member acting through a personal key.
+	MemoryPerson
+	// MemoryNamedAPIUser is an Oagent-User an integration names; any key of the project can name it, so a store must opt in.
+	MemoryNamedAPIUser
+)
+
+// ClassOf names how far memory may follow the end user ids belong to.
+func ClassOf(ids []Identity) MemoryClass {
+	if len(ids) == 0 {
+		return MemoryNever
+	}
+	// SECURITY: the lowest trust among the identities wins, so a person's identity never lifts a named or anonymous one.
+	out := MemoryPerson
+	for _, id := range ids {
+		switch id.Kind {
+		case KindWAPhone, KindWALid, KindWidgetSub:
+		case KindAPIUser:
+			switch {
+			case strings.HasPrefix(id.Value, keyActorPrefix):
+				return MemoryNever
+			case !strings.HasPrefix(id.Value, personActorPrefix):
+				out = MemoryNamedAPIUser
+			}
+		default:
+			return MemoryNever
+		}
+	}
+	return out
 }

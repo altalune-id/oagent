@@ -64,7 +64,8 @@ class MeteredModel extends Model<BaseModelConfig> {
   }
 }
 
-export function helperModel(request: TurnRequest, models: Models, usage: TurnUsage): Model {
-  const spec = request.agent.helperModel ?? request.agent.model;
+export function helperModel(request: TurnRequest, models: Models, usage: TurnUsage, maxTokens?: number): Model {
+  const base = request.agent.helperModel ?? request.agent.model;
+  const spec = maxTokens === undefined ? base : { ...base, maxTokens };
   return new MeteredModel(models.model(request.ids.project, spec, request.agent.temperature), usage, request.limits.budget);
 }

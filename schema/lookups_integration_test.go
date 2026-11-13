@@ -38,6 +38,7 @@ func lookups() map[string]lookup {
 		"resolve_approval_by_public_id(text)":           {"resolve_approval_by_public_id('x')", []string{"id", "org_id", "project_id", "agent_id"}},
 		"resolve_knowledge_source_by_public_id(text)":   {"resolve_knowledge_source_by_public_id('x')", []string{"id", "org_id", "project_id"}},
 		"resolve_knowledge_document_by_public_id(text)": {"resolve_knowledge_document_by_public_id('x')", []string{"id", "org_id", "project_id", "source_id"}},
+		"resolve_memory_store_by_public_id(text)":       {"resolve_memory_store_by_public_id('x')", []string{"id", "org_id", "project_id"}},
 		"resolve_invite_by_public_id(text)":             {"resolve_invite_by_public_id('x')", []string{"id", "public_id", "org_id", "email", "role", "draft", "invited_by", "expires_at", "accepted_at", "accepted_by", "revoked_at", "created_at", "updated_at"}},
 		"resolve_api_key_by_secret_hash(bytea)":         {"resolve_api_key_by_secret_hash('\\x00'::bytea)", []string{"id", "org_id", "project_id", "kind", "all_projects", "project_ids", "name", "secret_hint", "scopes", "resource_ids", "created_by", "created_at", "expires_at", "revoked_at", "last_used_at"}},
 	}
@@ -111,6 +112,8 @@ func TestLookups_ResolveTheMatchingRowOnly(t *testing.T) {
 	source, document := uuid.New(), uuid.New()
 	exec(`INSERT INTO `+s+`knowledge_sources (id, public_id, org_id, project_id, kind, backend, name, status, created_at, updated_at) VALUES ($1, 'ks1', $2, $3, 'upload', 'pgvector', 'Docs', 'idle', $4, $4)`, source, other, project, now)
 	exec(`INSERT INTO `+s+`knowledge_documents (id, public_id, org_id, project_id, source_id, title, status, created_at, updated_at) VALUES ($1, 'kd1', $2, $3, $4, 'Doc', 'pending', $5, $5)`, document, other, project, source, now)
+	store := uuid.New()
+	exec(`INSERT INTO `+s+`memory_stores (id, public_id, org_id, project_id, name, backend, created_at, updated_at) VALUES ($1, 'ms1', $2, $3, 'People', 'native', $4, $4)`, store, other, project, now)
 	invite := uuid.New()
 	exec(`INSERT INTO `+s+`invites (id, public_id, org_id, email, role, token_hash, expires_at, created_at, updated_at, email_only) VALUES ($1, 'i1', $2, 'a@example.com', 'member', 'tok', $3, $3, $3, false)`, invite, other, now.Add(time.Hour))
 	exec(`INSERT INTO `+s+`api_keys (id, org_id, kind, all_projects, name, secret_hash, secret_hint, created_at) VALUES ($1, $2, 'org', true, 'k', '\x01'::bytea, 'abcd', $3)`, uuid.New(), other, now)
@@ -165,6 +168,8 @@ func TestLookups_ResolveTheMatchingRowOnly(t *testing.T) {
 	assert.Empty(t, ids(`SELECT * FROM `+s+`resolve_knowledge_source_by_public_id($1)`, "nope"))
 	assert.Equal(t, []uuid.UUID{document}, ids(`SELECT * FROM `+s+`resolve_knowledge_document_by_public_id($1)`, "kd1"))
 	assert.Empty(t, ids(`SELECT * FROM `+s+`resolve_knowledge_document_by_public_id($1)`, "nope"))
+	assert.Equal(t, []uuid.UUID{store}, ids(`SELECT * FROM `+s+`resolve_memory_store_by_public_id($1)`, "ms1"))
+	assert.Empty(t, ids(`SELECT * FROM `+s+`resolve_memory_store_by_public_id($1)`, "nope"))
 }
 
 func TestLookups_TheServiceRoleMayExecuteThem(t *testing.T) {

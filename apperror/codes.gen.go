@@ -140,6 +140,13 @@ const (
 	CodeKnowledgeSourceAlreadyExists   Code = "KNW012"
 	CodeKnowledgeEmbeddingFailed       Code = "KNW013"
 	CodeKnowledgeCrawlFailed           Code = "KNW014"
+
+	CodeMemoryNotFound           Code = "MEM001"
+	CodeMemoryStoreNotFound      Code = "MEM002"
+	CodeMemoryStoreInvalid       Code = "MEM003"
+	CodeMemoryStoreInUse         Code = "MEM004"
+	CodeMemoryStoreAlreadyExists Code = "MEM005"
+	CodeMemoryStoreBackendOff    Code = "MEM006"
 )
 
 var kinds = map[Code]Kind{
@@ -279,4 +286,11 @@ var kinds = map[Code]Kind{
 	CodeKnowledgeSourceAlreadyExists:   KindAlreadyExists,
 	CodeKnowledgeEmbeddingFailed:       KindFailedPrecondition,
 	CodeKnowledgeCrawlFailed:           KindFailedPrecondition,
+
+	CodeMemoryNotFound:           KindNotFound,
+	CodeMemoryStoreNotFound:      KindNotFound,
+	CodeMemoryStoreInvalid:       KindInvalid,
+	CodeMemoryStoreInUse:         KindFailedPrecondition,
+	CodeMemoryStoreAlreadyExists: KindAlreadyExists,
+	CodeMemoryStoreBackendOff:    KindFailedPrecondition,
 }

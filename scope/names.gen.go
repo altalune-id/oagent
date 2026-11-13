@@ -24,6 +24,8 @@ const (
 	ApprovalDecide = "approval:decide"
 	KnowledgeRead  = "knowledge:read"
 	KnowledgeWrite = "knowledge:write"
+	MemoryRead     = "memory:read"
+	MemoryWrite    = "memory:write"
 	MemberRead     = "member:read"
 	MemberWrite    = "member:write"
 	ApikeyRead     = "apikey:read"

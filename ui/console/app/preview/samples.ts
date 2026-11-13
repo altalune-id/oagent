@@ -51,7 +51,6 @@ export function sampleAgentRuntime(): AgentRuntimeConfig {
     webFetch: true,
     allowedDomains: ['bca.co.id'],
     webSearch: false,
-    memory: true,
   };
 }
 

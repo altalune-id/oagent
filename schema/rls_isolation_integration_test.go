@@ -21,7 +21,7 @@ import (
 )
 
 type rlsTenant struct {
-	org, project, user, key, endpoint, agent, endUser, version, thread, run, connection, provider, file, source, document uuid.UUID
+	org, project, user, key, endpoint, agent, endUser, version, thread, run, connection, provider, file, source, document, memoryStore uuid.UUID
 }
 
 type rlsFixture struct {
@@ -43,7 +43,7 @@ func (f *rlsFixture) seed(t *testing.T, tag string) rlsTenant {
 	t.Helper()
 	tn := rlsTenant{org: uuid.New(), project: uuid.New(), user: uuid.New(), key: uuid.New(), endpoint: uuid.New(), agent: uuid.New(), endUser: uuid.New(),
 		version: uuid.New(), thread: uuid.New(), run: uuid.New(), connection: uuid.New(), provider: uuid.New(), file: uuid.New(), source: uuid.New(),
-		document: uuid.New()}
+		document: uuid.New(), memoryStore: uuid.New()}
 	for _, ins := range rlsInserts() {
 		_, err := f.admin.ExecContext(t.Context(), ins.sql(f.schema), ins.args(tn, tag)...)
 		require.NoError(t, err, ins.table)
@@ -162,6 +162,18 @@ func rlsInserts() []rlsInsert {
 			return `INSERT INTO ` + s + `.messages (id, org_id, project_id, thread_id, seq, role, body, speaker_id, status, run_id, created_at) VALUES ($1, $2, $3, $4, 1, 'user', '{}', $5, 'consumed', $6, $7)`
 		}, func(tn rlsTenant, _ string) []any {
 			return []any{uuid.New(), tn.org, tn.project, tn.thread, tn.endUser, tn.run, now}
+		}},
+		{"memory_stores", func(s string) string {
+			return `INSERT INTO ` + s + `.memory_stores (id, public_id, org_id, project_id, name, backend, created_at, updated_at)
+				VALUES ($1, $2, $3, $4, 'People', 'native', $5, $5)`
+		}, func(tn rlsTenant, _ string) []any {
+			return []any{tn.memoryStore, "m" + id()[:12], tn.org, tn.project, now}
+		}},
+		{"memory_facts", func(s string) string {
+			return `INSERT INTO ` + s + `.memory_facts (id, public_id, org_id, project_id, store_id, agent_id, end_user_id, text, text_hash, source_run_id, created_at)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, 'Lives in Bandung.', $8, $9, $10)`
+		}, func(tn rlsTenant, _ string) []any {
+			return []any{uuid.New(), "f" + id()[:12], tn.org, tn.project, tn.memoryStore, tn.agent, tn.endUser, []byte(id()), tn.run, now}
 		}},
 		{"approvals", func(s string) string {
 			return `INSERT INTO ` + s + `.approvals (id, public_id, org_id, project_id, agent_id, run_id, thread_id, calls, preview, channel, raised_snapshot_hash,
@@ -301,7 +313,7 @@ func TestRLS_EveryOrgOwnedTableIsolatesTenants(t *testing.T) {
 			assert.Positive(t, before)
 		})
 	}
-	assert.Equal(t, 27, tables, "every org-owned table is covered")
+	assert.Equal(t, 29, tables, "every org-owned table is covered")
 }
 
 // SECURITY: a user-only scope reads its own memberships and orgs, but every write needs the org itself.

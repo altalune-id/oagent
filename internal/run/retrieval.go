@@ -98,8 +98,21 @@ func (s *Service) retrieveFailed(ctx context.Context, t *turn, sources []Knowled
 	s.log.WarnContext(ctx, "run: knowledge search failed; the turn runs without it", "run", t.run.PublicID, "sources", ids, "err", err.Error())
 }
 
+type legHistory struct {
+	msgs []Message
+	err  error
+}
+
+func (s *Service) legHistory(ctx context.Context, t *turn) ([]Message, error) {
+	if t.hist == nil {
+		msgs, err := s.history(ctx, t.run.ThreadID, t.run.ID)
+		t.hist = &legHistory{msgs: msgs, err: err}
+	}
+	return t.hist.msgs, t.hist.err
+}
+
 func (s *Service) conversation(ctx context.Context, t *turn, text string) string {
-	msgs, err := s.store.History(ctx, t.run.ThreadID, t.run.ID)
+	msgs, err := s.legHistory(ctx, t)
 	if err != nil {
 		s.log.WarnContext(ctx, "run: knowledge query without the previous message", "run", t.run.PublicID, "err", err.Error())
 		return ""

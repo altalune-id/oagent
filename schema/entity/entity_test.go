@@ -111,6 +111,16 @@ func TestBindings(t *testing.T) {
 			},
 		},
 		{
+			"memory_facts",
+			func(s, p string) binding { b := entity.NewMemoryFacts(s, p); return binding{b, b.AllColumns} },
+			[]string{"id", "public_id", "org_id", "project_id", "store_id", "agent_id", "end_user_id", "text", "text_hash", "source_run_id", "created_at"},
+		},
+		{
+			"memory_stores",
+			func(s, p string) binding { b := entity.NewMemoryStores(s, p); return binding{b, b.AllColumns} },
+			[]string{"id", "public_id", "org_id", "project_id", "name", "backend", "remember_api_users", "created_at", "updated_at"},
+		},
+		{
 			"approvals",
 			func(s, p string) binding { b := entity.NewApprovals(s, p); return binding{b, b.AllColumns} },
 			[]string{

@@ -55,6 +55,7 @@ export function createRunTurn(deps: RunTurnDeps): RunTurn {
       outcome = await executeTurn(request, signal, {
         model,
         log: deps.log,
+        models: deps.models,
         ...(deps.openMcp && { openMcp: deps.openMcp }),
         onEvent: e => mapper.onEvent(e),
         onToolResult: r => mapper.onToolResult(r),
@@ -91,6 +92,7 @@ export function createRunTurn(deps: RunTurnDeps): RunTurn {
       interrupts: outcome.interrupts,
       notes: outcome.notes,
       ...(outcome.error && { error: outcome.error }),
+      ...(outcome.memory && { memory: outcome.memory }),
     });
   };
 }

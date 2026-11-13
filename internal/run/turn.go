@@ -67,15 +67,17 @@ func (s *Service) request(ctx context.Context, t *turn) (runtime.TurnRequest, []
 		req.Input, req.Snapshot = runtime.TurnInput{Kind: runtime.InputResume, Responses: responses}, t.snap.Blob
 		return req, nil, nil
 	}
+	// NOTE: a retried attempt with stored results continues the run and returns before remember, so that leg neither recalls nor records.
 	if r.Attempt > 1 && len(req.StoredResults) > 0 {
-		all, err := s.store.History(ctx, r.ThreadID, uuid.Nil)
+		all, err := s.history(ctx, r.ThreadID, uuid.Nil)
 		if err != nil {
 			return req, nil, err
 		}
 		req.Input, req.History = runtime.TurnInput{Kind: runtime.InputContinue}, rebuild(all)
 		return req, req.History, nil
 	}
-	msgs, err := s.store.History(ctx, r.ThreadID, r.ID)
+	s.remember(ctx, t, &req)
+	msgs, err := s.legHistory(ctx, t)
 	if err != nil {
 		return req, nil, err
 	}
@@ -606,6 +608,7 @@ func (s *Service) finish(ctx context.Context, t *turn, term *runtime.Terminal) (
 	u := add(t.run.Usage, terminalUsage(term.Usage))
 	r, err := s.settle(ctx, t, u, finalMessages(term.MessagesAppended, t.stored), snap)
 	if err == nil {
+		s.record(ctx, t, term)
 		s.log.InfoContext(ctx, "run: turn finished", "run", t.run.PublicID, "status", string(t.run.Status),
 			"runtime_status", knownRuntimeStatus(term.Status), "stop_reason", knownStopReason(term.StopReason),
 			"input_tokens", term.Usage.InputTokens, "output_tokens", term.Usage.OutputTokens, "parts", partKinds(term.MessagesAppended),

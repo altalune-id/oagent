@@ -32,8 +32,11 @@ type AgentVersion struct {
 	MaxSteps     int32
 	MaxCostCents int32
 	ProviderID   uuid.UUID
-	MCPServers   []MCPGrant
-	Knowledge    KnowledgeTuning
+	HelperModel  string
+	// MemoryStoreID is the memory store the agent remembers people in; uuid.Nil is none.
+	MemoryStoreID uuid.UUID
+	MCPServers    []MCPGrant
+	Knowledge     KnowledgeTuning
 }
 
 // KnowledgeTuning is how a version searches: K and MinScore go to the retriever (0 or nil: its default); MaxBytes is the budget.

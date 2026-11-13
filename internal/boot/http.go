@@ -74,6 +74,7 @@ func buildAPIHandler(
 		Runs:           svcs.Runs,
 		EndUsers:       runPeople{users: svcs.EndUsers},
 		People:         svcs.EndUsers,
+		Memory:         svcs.Memory,
 		PeopleActivity: endUserActivity{store: svcs.RunStore},
 		Approvals:      svcs.Approvals,
 		ApprovalRefs:   approvalRefs{publicIDs: newPublicIDs(svcs), svcs: svcs},

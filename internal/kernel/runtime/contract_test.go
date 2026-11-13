@@ -22,6 +22,7 @@ var goldenCases = []string{
 	"approval_interrupt", "approval_rule_broken", "approval_resume_approved", "approval_resume_rejected", "approval_hash_mismatch",
 	"approval_absent_only",
 	"knowledge_injected", "knowledge_absent", "knowledge_empty", "knowledge_hostile",
+	"memory_extract", "memory_extract_failed", "memory_user_texts", "memory_recall_only",
 }
 
 func readGolden(t *testing.T, name string) []byte {
@@ -108,6 +109,9 @@ func TestGoldens_SecretsAreTheFakeValues(t *testing.T) {
 		var req TurnRequest
 		require.NoError(t, json.Unmarshal([]byte(raw), &req))
 		assert.Equal(t, "sk-test", req.Agent.Model.APIKey, c)
+		if req.Agent.HelperModel != nil {
+			assert.Equal(t, "sk-test", req.Agent.HelperModel.APIKey, c)
+		}
 		for _, s := range req.MCPServers {
 			if s.Auth.Value != "" {
 				assert.Equal(t, "tok-test", s.Auth.Value, c)
@@ -383,4 +387,46 @@ func TestNormalizePassages_TotalCapCountsLabels(t *testing.T) {
 func TestPassageBounds_TenPassagesAndATokenBudgetOf8000(t *testing.T) {
 	assert.Equal(t, 10, MaxPassages)
 	assert.Equal(t, 8000*4, MaxKnowledgeTextBytes)
+}
+
+func TestDecode_TerminalMemoryShapes(t *testing.T) {
+	for memory, want := range map[string]*TerminalMemory{
+		`,"memory":{"facts":["Lives in Bandung."]}`:      {Facts: []string{"Lives in Bandung."}},
+		`,"memory":{"userTexts":["call after [PHONE]"]}`: {UserTexts: []string{"call after [PHONE]"}},
+		`,"memory":{}`: {},
+		``:             nil,
+	} {
+		line := strings.Replace(fmt.Sprintf(helperTerminal, ""), `,"messagesAppended"`, memory+`,"messagesAppended"`, 1)
+		ev, err := DecodeEvent([]byte(line))
+		require.NoError(t, err, memory)
+		assert.Equal(t, want, ev.(*Terminal).Memory, memory)
+	}
+	_, err := DecodeEvent([]byte(strings.Replace(fmt.Sprintf(helperTerminal, ""), `,"messagesAppended"`, `,"memory":{"surprise":1},"messagesAppended"`, 1)))
+	assert.Error(t, err, "terminal memory is strict")
+}
+
+func TestTurnRequest_MemoryFieldsOmittedWhenUnset(t *testing.T) {
+	req, err := DecodeRequest(readGolden(t, "plain_reply.request.json"))
+	require.NoError(t, err)
+	req.Limits.Budget = &Budget{RemainingMicros: 1}
+	raw, err := json.Marshal(req)
+	require.NoError(t, err)
+	for _, key := range []string{`"memory"`, `"guardrails"`, `"helperModel"`, `"helperPrices"`} {
+		assert.NotContains(t, string(raw), key, "a turn without memory sends no %s", key)
+	}
+}
+
+func TestTurnRequest_EmptyRecallSendsAnEmptyArray(t *testing.T) {
+	raw, err := json.Marshal(NewMemoryRequest(nil, ExtractFacts))
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"facts":[],"extract":"facts"}`, string(raw), "the runtime refuses null facts")
+}
+
+func TestGoldens_MemoryRecallOnlyHasNoTerminalMemory(t *testing.T) {
+	lines := streamLines(t, readGolden(t, "memory_recall_only.stream.ndjson"))
+	ev, err := DecodeEvent(lines[len(lines)-1])
+	require.NoError(t, err)
+	term := ev.(*Terminal)
+	assert.Nil(t, term.Memory, "recall only returns no memory")
+	assert.Nil(t, term.Usage.Helper, "and calls no helper")
 }

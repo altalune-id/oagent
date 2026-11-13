@@ -11,6 +11,7 @@ import (
 	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/knowledge"
 	"altalune.id/oagent/internal/mcpserver"
+	"altalune.id/oagent/internal/memory"
 	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/project"
@@ -29,6 +30,7 @@ type publicIDs struct {
 	providers *modelprovider.Service
 	servers   *mcpserver.Service
 	knowledge *knowledge.Service
+	memory    memory.Store
 }
 
 func newPublicIDs(s *Services) publicIDs {
@@ -43,7 +45,26 @@ func newPublicIDs(s *Services) publicIDs {
 		providers: s.ModelProviders,
 		servers:   s.MCPServers,
 		knowledge: s.Knowledge,
+		memory:    s.MemoryStores,
 	}
+}
+
+// MemoryStoreID resolves a memory store's public id to its id and project.
+func (p publicIDs) MemoryStoreID(ctx context.Context, publicID string) (id, projectID uuid.UUID, ok bool, err error) {
+	r, err := p.memory.ResolveStore(ctx, publicID)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, false, notFoundIsAbsent(err)
+	}
+	return r.ID, r.ProjectID, true, nil
+}
+
+// MemoryStorePublicID names a memory store of the org on ctx; a deleted one is not ok.
+func (p publicIDs) MemoryStorePublicID(ctx context.Context, id uuid.UUID) (publicID string, ok bool, err error) {
+	s, err := p.memory.StoreByID(ctx, id)
+	if err != nil {
+		return "", false, notFoundIsAbsent(err)
+	}
+	return s.PublicID, true, nil
 }
 
 // KnowledgeSourceID resolves a knowledge source's public id to its id and project.

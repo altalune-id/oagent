@@ -44,6 +44,8 @@ type RunStore struct {
 	LeaseStolen bool
 	// ClaimRefused makes every Claim lose, as a project at its concurrency cap does.
 	ClaimRefused bool
+	// RunPublicIDCalls and HistoryCalls count those calls.
+	RunPublicIDCalls, HistoryCalls int
 	// ExternalKeys and Actors hold each API thread's key and bound end user.
 	ExternalKeys map[uuid.UUID]string
 	Actors       map[uuid.UUID]uuid.UUID
@@ -96,7 +98,26 @@ func (f *RunStore) Thread(ctx context.Context, threadID uuid.UUID) (*run.Thread,
 }
 
 // History implements run.Store.
-func (f *RunStore) History(ctx context.Context, threadID, exceptRun uuid.UUID) ([]run.Message, error) {
+func (f *RunStore) History(ctx context.Context, threadID, exceptRun uuid.UUID, limit int) ([]run.Message, error) {
+	f.mu.Lock()
+	f.HistoryCalls++
+	f.mu.Unlock()
+	out, err := f.history(ctx, threadID, exceptRun)
+	return out[max(len(out)-limit, 0):], err
+}
+
+// HistoryFrom implements run.Store.
+func (f *RunStore) HistoryFrom(ctx context.Context, threadID, exceptRun uuid.UUID) ([]run.Message, error) {
+	out, err := f.history(ctx, threadID, exceptRun)
+	for i, m := range slices.Backward(out) {
+		if m.Role == run.RoleUser {
+			return out[i:], err
+		}
+	}
+	return nil, err
+}
+
+func (f *RunStore) history(ctx context.Context, threadID, exceptRun uuid.UUID) ([]run.Message, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if _, err := f.thread(ctx, threadID); err != nil {
@@ -706,6 +727,24 @@ func (f *RunStore) AnswerMessage(ctx context.Context, _ string, threadID, msgID,
 // RunByID implements run.Store.
 func (f *RunStore) RunByID(ctx context.Context, id uuid.UUID) (*run.Run, error) {
 	return f.findRun(ctx, func(r *run.Run) bool { return r.ID == id }, &run.NotFoundError{ID: id.String()})
+}
+
+// RunPublicIDs implements run.Store; RunPublicIDCalls counts the calls.
+func (f *RunStore) RunPublicIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.RunPublicIDCalls++
+	out := map[uuid.UUID]string{}
+	for _, id := range ids {
+		if r, ok := f.Runs[id]; ok && r.OrgID == tc.OrgID {
+			out[id] = r.PublicID
+		}
+	}
+	return out, f.Err
 }
 
 // ThreadMessages implements run.Store.

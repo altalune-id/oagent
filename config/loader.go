@@ -125,6 +125,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("queue.enabled", false)
 	v.SetDefault("queue.driver", string(QueueDriverNATS))
 	v.SetDefault("snapshot.driver", string(SnapshotDriverPostgres))
+	v.SetDefault("memory.native.enabled", true)
 	v.SetDefault("run.turnTimeout", "10m")
 	v.SetDefault("run.leaseTTL", "60s")
 	v.SetDefault("run.heartbeat", "20s")

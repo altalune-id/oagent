@@ -116,3 +116,9 @@ KNW011 KnowledgeEmbeddingModelNotSet
 KNW012 KnowledgeSourceAlreadyExists
 KNW013 KnowledgeEmbeddingFailed
 KNW014 KnowledgeCrawlFailed
+MEM001 MemoryNotFound
+MEM002 MemoryStoreNotFound
+MEM003 MemoryStoreInvalid
+MEM004 MemoryStoreInUse
+MEM005 MemoryStoreAlreadyExists
+MEM006 MemoryStoreBackendOff

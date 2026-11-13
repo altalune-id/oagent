@@ -300,3 +300,12 @@ func personActor(id Identity) (string, bool) {
 }
 
 const personActorPrefix = "person:"
+
+// Rememberable names how far memory may follow end user id.
+func (s *Service) Rememberable(ctx context.Context, id uuid.UUID) (MemoryClass, error) {
+	ids, err := s.store.IdentitiesOf(ctx, id)
+	if err != nil {
+		return MemoryNever, s.errOrReport(ctx, "enduser: rememberable", err)
+	}
+	return ClassOf(ids), nil
+}

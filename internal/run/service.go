@@ -58,6 +58,10 @@ type Service struct {
 	embedPrices EmbeddingPrices
 	retrieveErr metric.Int64Counter
 	retrieveMs  metric.Int64Histogram
+	memory      Memory
+	rememberers Rememberers
+	keyPrefix   string
+	recordErr   metric.Int64Counter
 	turnTimeout time.Duration
 	maxAttempts int
 	// noRuntimeWarned holds the last no-runtime warning per thread, so a reconcile tick does not log it every time.
@@ -112,6 +116,9 @@ func (s *Service) WithMeter(m metric.Meter) *Service {
 		s.mismatches = c
 	}
 	failed := metric.WithDescription("Knowledge searches that failed; the turn ran without knowledge.")
+	if c, err := m.Int64Counter("memory.record_failed", metric.WithDescription("Memory legs whose facts could not be recorded.")); err == nil {
+		s.recordErr = c
+	}
 	if c, err := m.Int64Counter("knowledge.retrieve_errors", failed); err == nil {
 		s.retrieveErr = c
 	}
@@ -147,12 +154,14 @@ func (s *Service) WithMaxAttempts(n int) *Service {
 }
 
 type turn struct {
-	run     *Run
-	thread  *Thread
-	version *AgentVersion
-	model   ResolvedModel
-	taken   []Message
-	token   string
+	memStore *storeMode
+	hist     *legHistory
+	run      *Run
+	thread   *Thread
+	version  *AgentVersion
+	model    ResolvedModel
+	taken    []Message
+	token    string
 	// stored holds the tool calls whose result this run already stored, from earlier attempts and this one.
 	stored map[string]bool
 	// observe sees the turn's events for a streaming client. final holds the runtime's own last event until the run settles.
@@ -173,6 +182,8 @@ type turn struct {
 	rejectBySystem               bool
 	// outcome is the interrupt outcome an awaiting run's RUN_FINISHED carries to the client.
 	outcome json.RawMessage
+	helper  *ResolvedModel
+	memory  *memoryLeg
 	// knowledge is this leg's retrieved passages. SECURITY: project content; sent to the runtime only, never stored or logged.
 	knowledge []runtime.Passage
 }
@@ -271,6 +282,7 @@ func (s *Service) execute(ctx context.Context, threadID uuid.UUID, token string,
 	if code != "" {
 		return s.fail(ctx, t, code)
 	}
+	t.hist = nil
 	s.retrieve(ctx, t)
 	req, history, err := s.request(ctx, t)
 	if err != nil {
@@ -395,7 +407,8 @@ func (s *Service) open(ctx context.Context, th *Thread, token string, obs Observ
 	t.run.Group = th.Kind == threadKindGroup
 	if !t.version.Legacy {
 		if m, err := s.providers.ResolveModel(ctx, t.version.ProviderID, t.version.Model); err == nil {
-			t.model, t.run.Prices = m, s.pinPrices(ctx, t, m.Prices)
+			t.model, t.run.Prices = m, s.pinPrices(ctx, t, s.pinHelper(ctx, t, m.Prices))
+			s.resolveHelper(ctx, t)
 		}
 	}
 	t.taken, err = s.store.StartRun(ctx, token, t.run)

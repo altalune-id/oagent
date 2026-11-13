@@ -12,6 +12,7 @@ import { InviteService } from '#gen/invite/v1/invite_pb';
 import { KnowledgeService } from '#gen/knowledge/v1/knowledge_pb';
 import { McpServerService } from '#gen/mcpserver/v1/mcpserver_pb';
 import { MemberService } from '#gen/member/v1/member_pb';
+import { MemoryService } from '#gen/memory/v1/memory_pb';
 import { ModelProviderService } from '#gen/modelprovider/v1/modelprovider_pb';
 import { OrgService } from '#gen/org/v1/org_pb';
 import { ProjectService } from '#gen/project/v1/project_pb';
@@ -60,6 +61,7 @@ export default defineNuxtPlugin({
         memberClient: createClient(MemberService, transport),
         inviteClient: createClient(InviteService, transport),
         knowledgeClient: createClient(KnowledgeService, transport),
+        memoryClient: createClient(MemoryService, transport),
         authClient: createClient(AuthService, whoamiTransport),
       },
     };

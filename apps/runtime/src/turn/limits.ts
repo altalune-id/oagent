@@ -47,12 +47,23 @@ export function costMicros(usage: TokenUsage, prices: Prices): number {
     + classMicros(usage.cacheWriteInputTokens, prices.cacheWrite);
 }
 
-export function overBudget(usage: TurnUsage, budget: Budget | null): boolean {
-  if (budget === null) {
-    return false;
-  }
+export const EXTRACT_OUTPUT_TOKENS = 1500;
+
+function spentMicros(usage: TurnUsage, budget: Budget): number {
   const helper = usage.helper ? costMicros(usage.helper, budget.helperPrices ?? budget.prices) : 0;
-  return costMicros(usage, budget.prices) + helper >= budget.remainingMicros;
+  return costMicros(usage, budget.prices) + helper;
+}
+
+export function overBudget(usage: TurnUsage, budget: Budget | null): boolean {
+  return budget !== null && spentMicros(usage, budget) >= budget.remainingMicros;
+}
+
+export function extractionFits(usage: TurnUsage, budget: Budget | null, inputChars: number): boolean {
+  if (budget === null) {
+    return true;
+  }
+  const estimate = { inputTokens: Math.ceil(inputChars / CHARS_PER_TOKEN), outputTokens: EXTRACT_OUTPUT_TOKENS, cacheReadInputTokens: 0, cacheWriteInputTokens: 0 };
+  return spentMicros(usage, budget) + costMicros(estimate, budget.helperPrices ?? budget.prices) < budget.remainingMicros;
 }
 
 export function addHelperUsage(usage: TurnUsage, call: TurnUsage): void {

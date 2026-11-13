@@ -1,0 +1,73 @@
+{
+  "contractVersion": 3,
+  "ids": {
+    "run": "Rn5Q8wYk2HhT3mVz7XcLp",
+    "thread": "t0193a2b4c5d67e8f9a0b1c2d3e4f5a6b",
+    "agent": "a0193a2b4c5d67e8f9a0b1c2d3e4f5a6c",
+    "agentVersion": 3,
+    "attempt": 1,
+    "project": "Pj4kW9sQ2mN7vB3xC8zLr"
+  },
+  "agent": {
+    "instructions": "You record expenses for the user. Be brief.",
+    "temperature": 0.2,
+    "maxSteps": 10,
+    "model": {
+      "baseUrl": "https://llm.example.com/v1",
+      "apiKey": "sk-test",
+      "modelId": "gpt-4o",
+      "maxTokens": 1024
+    },
+    "helperModel": {
+      "baseUrl": "https://llm.example.com/v1",
+      "apiKey": "sk-test",
+      "modelId": "gpt-4o-mini"
+    }
+  },
+  "mcpServers": [],
+  "snapshot": null,
+  "history": [],
+  "input": {
+    "kind": "message",
+    "message": {
+      "content": "Remember that my office number is 022 1234 5678 and my key is oagent_live_abc123def456ghi789.",
+      "id": "msg_user_1",
+      "role": "user"
+    }
+  },
+  "storedResults": [],
+  "limits": {
+    "deadlineMs": 270000,
+    "budget": {
+      "remainingMicros": 500000,
+      "prices": {
+        "input": 2500000,
+        "output": 10000000,
+        "cacheRead": 1250000,
+        "cacheWrite": 0
+      },
+      "helperPrices": {
+        "input": 150000,
+        "output": 600000,
+        "cacheRead": 75000,
+        "cacheWrite": 0
+      }
+    }
+  },
+  "memory": {
+    "facts": [
+      {
+        "text": "Prefers WhatsApp after 6pm.",
+        "createdAt": "2026-11-01T09:30:00.123456789Z"
+      },
+      {
+        "text": "Lives in Bandung.",
+        "createdAt": "2026-10-20T14:05:07Z"
+      }
+    ],
+    "extract": "facts"
+  },
+  "guardrails": {
+    "keyPrefix": "oagent_"
+  }
+}

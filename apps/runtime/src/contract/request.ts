@@ -6,6 +6,8 @@ export const IMAGE_CONTRACT_VERSION = 2;
 export const APPROVAL_CONTRACT_VERSION = 3;
 export const MAX_PASSAGES = 10;
 export const MAX_PASSAGE_CHARS = 20_000;
+export const MAX_MEMORY_FACTS = 5;
+export const MAX_FACT_RUNES = 500;
 
 export const ModelProvider = {
   OPENAI_COMPATIBLE: 'openai_compatible',
@@ -16,6 +18,12 @@ export const MCPAuthKind = {
   NONE: 'none',
   BEARER: 'bearer',
   HEADER: 'header',
+} as const;
+
+export const MemoryExtract = {
+  FACTS: 'facts',
+  USER_TEXTS: 'userTexts',
+  NONE: 'none',
 } as const;
 
 export const ToolResultStatus = {
@@ -96,6 +104,13 @@ const KnowledgePassageSchema = z.strictObject({
 
 export type KnowledgePassage = z.infer<typeof KnowledgePassageSchema>;
 
+const MemoryFactSchema = z.strictObject({
+  text: z.string().refine(t => t.trim() !== '' && [...t].length <= MAX_FACT_RUNES),
+  createdAt: z.iso.datetime({ offset: true }),
+});
+
+export type MemoryFact = z.infer<typeof MemoryFactSchema>;
+
 const TurnRequestShape = z.strictObject({
   contractVersion: z.union([z.literal(1), z.literal(IMAGE_CONTRACT_VERSION), z.literal(APPROVAL_CONTRACT_VERSION)]),
   ids: z.strictObject({
@@ -120,6 +135,7 @@ const TurnRequestShape = z.strictObject({
   storedResults: z.array(z.strictObject({ toolUseId: z.string().min(1), result: ToolResult })),
   limits: z.strictObject({ deadlineMs: ms, budget: Budget.nullable() }),
   knowledge: z.array(KnowledgePassageSchema).max(MAX_PASSAGES).optional(),
+  memory: z.strictObject({ facts: z.array(MemoryFactSchema).max(MAX_MEMORY_FACTS), extract: z.enum(MemoryExtract) }).optional(),
   guardrails: z.strictObject({ keyPrefix: z.string().regex(/^[\w-]{1,32}$/).optional() }).optional(),
 });
 
@@ -144,6 +160,9 @@ export const TurnRequestSchema = TurnRequestShape.superRefine((req, ctx) => {
   });
   if (req.agent.helperModel && req.limits.budget && !req.limits.budget.helperPrices) {
     ctx.addIssue({ code: 'custom', path: ['limits', 'budget', 'helperPrices'], message: 'a helper model under a budget needs its prices' });
+  }
+  if (req.memory && req.input.kind !== 'message') {
+    ctx.addIssue({ code: 'custom', path: ['memory'], message: 'memory only on a message leg' });
   }
   if (req.input.kind === 'resume' && req.snapshot === null) {
     ctx.addIssue({ code: 'custom', path: ['snapshot'], message: 'resume needs the snapshot it resumes' });

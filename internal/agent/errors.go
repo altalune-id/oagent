@@ -144,15 +144,17 @@ type GrantReason string
 
 // The causes of an InvalidGrantError.
 const (
-	GrantProvider        GrantReason = "provider"
-	GrantModel           GrantReason = "model"
-	GrantHelperModel     GrantReason = "helper_model"
-	GrantServer          GrantReason = "server"
-	GrantToolName        GrantReason = "tool_name"
-	GrantLegacyTools     GrantReason = "legacy_tools"
-	GrantBudgetUnpriced  GrantReason = "budget_unpriced"
-	GrantKnowledgeSource GrantReason = "knowledge_source"
-	GrantUnapprovedTool  GrantReason = "unapproved_tool"
+	GrantProvider            GrantReason = "provider"
+	GrantModel               GrantReason = "model"
+	GrantHelperModel         GrantReason = "helper_model"
+	GrantServer              GrantReason = "server"
+	GrantToolName            GrantReason = "tool_name"
+	GrantLegacyTools         GrantReason = "legacy_tools"
+	GrantBudgetUnpriced      GrantReason = "budget_unpriced"
+	GrantKnowledgeSource     GrantReason = "knowledge_source"
+	GrantUnapprovedTool      GrantReason = "unapproved_tool"
+	GrantMemoryStore         GrantReason = "memory_store"
+	GrantMemoryStoreDisabled GrantReason = "memory_store_disabled"
 )
 
 func (r GrantReason) text() string {
@@ -173,6 +175,10 @@ func (r GrantReason) text() string {
 		return "has a cost limit on a model without prices"
 	case GrantKnowledgeSource:
 		return "names a knowledge source this project does not have"
+	case GrantMemoryStore:
+		return "names a memory store this project does not have"
+	case GrantMemoryStoreDisabled:
+		return "names a memory store whose backend this deployment does not run"
 	case GrantUnapprovedTool:
 		return "grants a tool that runs without approval while the agent reads knowledge"
 	default:

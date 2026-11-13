@@ -18,6 +18,7 @@ import (
 	"altalune.id/oagent/gen/go/knowledge/v1/knowledgev1connect"
 	mcpserverv1connect "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1connect"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
+	"altalune.id/oagent/gen/go/memory/v1/memoryv1connect"
 	modelproviderv1connect "altalune.id/oagent/gen/go/modelprovider/v1/modelproviderv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
@@ -53,6 +54,7 @@ type Client struct {
 	EndUsers       enduserv1connect.EndUserServiceClient
 	Approvals      approvalv1connect.ApprovalServiceClient
 	Knowledge      knowledgev1connect.KnowledgeServiceClient
+	Memory         memoryv1connect.MemoryServiceClient
 	Threads        threadv1connect.ThreadServiceClient
 }
 
@@ -80,6 +82,7 @@ func New(baseURL string, cred Credential) *Client {
 		EndUsers:       enduserv1connect.NewEndUserServiceClient(httpClient, base, opts...),
 		Approvals:      approvalv1connect.NewApprovalServiceClient(httpClient, base, opts...),
 		Knowledge:      knowledgev1connect.NewKnowledgeServiceClient(httpClient, base, opts...),
+		Memory:         memoryv1connect.NewMemoryServiceClient(httpClient, base, opts...),
 		Threads:        threadv1connect.NewThreadServiceClient(httpClient, base, opts...),
 	}
 }
