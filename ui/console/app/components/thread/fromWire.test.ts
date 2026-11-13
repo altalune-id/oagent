@@ -48,6 +48,16 @@ describe('thread wire mapping', () => {
     expect([toRunSummary(create(RunSchema, { id: 'r', agentVersionKind: 'draft' }), 'T').draft, toRunSummary(create(RunSchema, { id: 'r', agentVersionKind: 'published' }), 'T').draft]).toEqual([true, false]);
   });
 
+  it('says why a completed channel run sent no reply, keeping an unknown reason generic', () => {
+    const detail = (noReplyReason: string) => toRunSummary(create(RunSchema, { id: 'r', status: RunStatus.COMPLETED, noReplyReason }), 'T').detail;
+    expect(['', 'no_text', 'set_reply_empty', 'later'].map(detail)).toEqual([
+      undefined,
+      { key: 'runstatus.detail_no_reply_no_text' },
+      { key: 'runstatus.detail_no_reply_set_reply_empty' },
+      { key: 'runstatus.detail_no_reply' },
+    ]);
+  });
+
   it('maps why a channel message was skipped, keeping an unknown reason as skipped', () => {
     expect(['', 'stale', 'sender_rate', 'quota'].map(skipReason)).toEqual([undefined, 'stale', 'sender_rate', 'other']);
     expect(toItems([create(ThreadMessageSchema, { seq: 1n, role: 'user', skipReason: 'stale', message: { content: 'late' } })], [])).toEqual([{ id: 0, kind: 'user', text: 'late', speaker: undefined, skipped: 'stale', at: new Date(0) }]);

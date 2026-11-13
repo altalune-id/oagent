@@ -68,6 +68,14 @@ const (
 	ReplyNone   = "none"
 )
 
+// The reasons a completed or limit-reached channel run sent no reply.
+const (
+	// NoReplyNoText means the turn ended without assistant text.
+	NoReplyNoText = "no_text"
+	// NoReplySetReplyEmpty means the set reply the run needed is empty on its connection.
+	NoReplySetReplyEmpty = "set_reply_empty"
+)
+
 const replyGrace = 30 * time.Second
 
 // ReplyJob is what sending a channel run's reply needs. SECURITY: To is a phone, LID or group address; never log it.

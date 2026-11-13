@@ -486,6 +486,29 @@ func TestRun_ZeroMaxStepsLeavesTheDefaultToTheRuntime(t *testing.T) {
 	assert.Zero(t, f.rt.LastRequest().Agent.MaxSteps, "0 asks for the runtime's own default; one source of truth")
 }
 
+func TestRun_TurnEndLogsShapeNotText(t *testing.T) {
+	f := newSvc(t)
+	var logs bytes.Buffer
+	f.svc.WithLogger(slog.New(slog.NewTextHandler(&logs, nil)))
+	f.say(t, "record lunch")
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "tool_call")})
+	line := logs.String()
+	assert.Contains(t, line, "run: turn finished")
+	assert.Contains(t, line, "status=completed stop_reason=endTurn input_tokens=910 output_tokens=64")
+	assert.Contains(t, line, `parts=assistant:tool_calls,tool,assistant:text`)
+	assert.NotContains(t, line, "Recorded lunch", "never the message text")
+	assert.NotContains(t, line, "yasaku__record_expense", "never a tool name or its input")
+
+	g := newSvc(t)
+	_, conn := g.channel(t, "group", true)
+	g.withTexts(conn)
+	logs.Reset()
+	g.svc.WithLogger(slog.New(slog.NewTextHandler(&logs, nil)))
+	g.say(t, "morning")
+	g.execute(t, fakes.RuntimeReply{Stream: withoutMessages(t, stream(t, "plain_reply"))})
+	assert.Contains(t, logs.String(), "parts=none no_reply_reason=no_text")
+}
+
 func TestRun_NoRuntimeLeavesMessagesPending(t *testing.T) {
 	f := newSvc(t)
 	var logs bytes.Buffer

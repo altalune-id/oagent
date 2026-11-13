@@ -89,6 +89,7 @@ type runRow struct {
 	RetrieveMs            int64      `alias:"runs.knowledge_retrieve_ms"`
 	Passages              int32      `alias:"runs.knowledge_passages"`
 	ErrorCode             *string    `alias:"runs.error_code"`
+	NoReplyReason         *string    `alias:"runs.no_reply_reason"`
 	StartedAt             time.Time  `alias:"runs.started_at"`
 	EndedAt               *time.Time `alias:"runs.ended_at"`
 	UpdatedAt             time.Time  `alias:"runs.updated_at"`
@@ -110,6 +111,9 @@ func (r *runRow) toRun() *Run {
 	}
 	if r.ErrorCode != nil {
 		out.ErrorCode = *r.ErrorCode
+	}
+	if r.NoReplyReason != nil {
+		out.NoReplyReason = *r.NoReplyReason
 	}
 	if r.EndedAt != nil {
 		out.EndedAt = new(r.EndedAt.UTC())

@@ -1,6 +1,7 @@
 package run_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
@@ -56,7 +57,59 @@ func TestReply_CompletedDMIsDue(t *testing.T) {
 	f.say(t, "halo")
 	r := f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
 	assert.Equal(t, run.ReplyDue, f.stored(r).ReplyState)
+	assert.Empty(t, f.stored(r).NoReplyReason)
 	assert.NotEmpty(t, f.last(t))
+}
+
+func withoutMessages(t *testing.T, raw []byte) []byte {
+	t.Helper()
+	lines := bytes.Split(bytes.TrimSpace(raw), []byte("\n"))
+	var term map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(lines[len(lines)-1], &term))
+	term["messagesAppended"] = json.RawMessage(`[]`)
+	last, err := json.Marshal(term)
+	require.NoError(t, err)
+	var out []byte
+	for _, l := range lines[:len(lines)-1] {
+		if !bytes.Contains(l, []byte(`"TEXT_MESSAGE_`)) {
+			out = append(append(out, l...), '\n')
+		}
+	}
+	return append(append(out, last...), '\n')
+}
+
+func TestReply_CompletedWithoutTextSaysWhy(t *testing.T) {
+	for _, kind := range []string{"dm", "group"} {
+		f := newSvc(t)
+		_, conn := f.channel(t, kind, true)
+		f.withTexts(conn)
+		f.say(t, "morning")
+		r := f.execute(t, fakes.RuntimeReply{Stream: withoutMessages(t, stream(t, "plain_reply"))})
+		require.Equal(t, run.StatusCompleted, r.Status, kind)
+		assert.Equal(t, run.ReplyNone, f.stored(r).ReplyState, kind)
+		assert.Equal(t, run.NoReplyNoText, f.stored(r).NoReplyReason, kind)
+		assert.Empty(t, f.assistantTexts(t), kind)
+	}
+}
+
+func TestReply_EmptySetReplySaysWhy(t *testing.T) {
+	f := newSvc(t)
+	_, conn := f.channel(t, "dm", true)
+	f.store.Texts = map[uuid.UUID]run.ReplyTexts{conn: {}}
+	f.post(t, voiceMsg("wamid-1"))
+	r := f.execute(t)
+	assert.Equal(t, run.ReplyNone, f.stored(r).ReplyState)
+	assert.Equal(t, run.NoReplySetReplyEmpty, f.stored(r).NoReplyReason)
+}
+
+func TestReply_FailedGroupHasNoReason(t *testing.T) {
+	f := newSvc(t)
+	_, conn := f.channel(t, "group", true)
+	f.withTexts(conn)
+	f.say(t, "halo")
+	r := f.execute(t, fakes.RuntimeReply{Stream: stream(t, "model_error")})
+	require.Equal(t, run.StatusFailed, r.Status)
+	assert.Empty(t, f.stored(r).NoReplyReason, "a failed run already says why through its error code")
 }
 
 func TestReply_APIThreadHasNoReplyState(t *testing.T) {

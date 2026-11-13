@@ -120,6 +120,15 @@ func TestThreadService_ReadsByPublicID(t *testing.T) {
 	}
 }
 
+func TestGetRun_SaysWhyNoReplyWasSent(t *testing.T) {
+	w := newCPWorld(t)
+	ctx := member(w.org)
+	w.running.NoReplyReason = run.NoReplyNoText
+	one, err := w.cp.GetRun(ctx, connect.NewRequest(&threadv1.GetRunRequest{RunId: w.running.PublicID}))
+	require.NoError(t, err)
+	assert.Equal(t, run.NoReplyNoText, one.Msg.GetRun().GetNoReplyReason())
+}
+
 func TestListThreads_NoPhoneInLabel(t *testing.T) {
 	w := newCPWorld(t)
 	ctx := member(w.org)

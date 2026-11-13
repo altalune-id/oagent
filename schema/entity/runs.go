@@ -42,6 +42,7 @@ type Runs struct {
 	KnowledgeRetrieveCalls    postgres.ColumnInteger
 	KnowledgeRetrieveMS       postgres.ColumnInteger
 	KnowledgePassages         postgres.ColumnInteger
+	NoReplyReason             postgres.ColumnString
 
 	AllColumns postgres.ColumnList
 }
@@ -88,12 +89,13 @@ func NewRuns(schema, tablePrefix string) *Runs {
 		knowledgeRetrieveCalls    = postgres.IntegerColumn("knowledge_retrieve_calls")
 		knowledgeRetrieveMS       = postgres.IntegerColumn("knowledge_retrieve_ms")
 		knowledgePassages         = postgres.IntegerColumn("knowledge_passages")
+		noReplyReason             = postgres.StringColumn("no_reply_reason")
 		all                       = postgres.ColumnList{
 			id, publicID, orgID, projectID, threadID, agentVersionID, status, idempotencyKey, attempt, inputTokens, outputTokens,
 			cacheReadTokens, cacheWriteTokens, usageEstimated, priceInputMicros, priceOutputMicros, priceCacheReadMicros,
 			priceCacheWriteMicros, costMicros, latencyMS, errorCode, startedAt, endedAt, createdAt, updatedAt, replyState,
 			replyPartsSent, replyAttempts, replyNextAt, isGroup, replyKind, embeddingTokens, embeddingPriceInputMicros,
-			knowledgeRetrieveCalls, knowledgeRetrieveMS, knowledgePassages,
+			knowledgeRetrieveCalls, knowledgeRetrieveMS, knowledgePassages, noReplyReason,
 		}
 	)
 	return &Runs{
@@ -134,6 +136,7 @@ func NewRuns(schema, tablePrefix string) *Runs {
 		KnowledgeRetrieveCalls:    knowledgeRetrieveCalls,
 		KnowledgeRetrieveMS:       knowledgeRetrieveMS,
 		KnowledgePassages:         knowledgePassages,
+		NoReplyReason:             noReplyReason,
 		AllColumns:                all,
 	}
 }

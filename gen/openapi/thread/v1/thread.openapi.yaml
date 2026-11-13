@@ -728,6 +728,10 @@ components:
           title: knowledge_passages
           format: int32
           description: knowledge_passages counts the passages the run's legs sent to the model.
+        noReplyReason:
+          type: string
+          title: no_reply_reason
+          description: 'no_reply_reason says why a completed or limit-reached channel run sent no reply: no_text or set_reply_empty; empty otherwise.'
       title: Run
       additionalProperties: false
       description: Run is one agent turn on a thread; cost_micros is unset when the run is unpriced, latency_ms and ended_at while it runs.

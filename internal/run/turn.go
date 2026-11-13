@@ -583,7 +583,42 @@ func (s *Service) finish(ctx context.Context, t *turn, term *runtime.Terminal) (
 		CacheReadTokens: term.Usage.CacheReadInputTokens, CacheWriteTokens: term.Usage.CacheWriteInputTokens,
 		Estimated: term.Usage.Estimated,
 	})
-	return s.settle(ctx, t, u, finalMessages(term.MessagesAppended, t.stored), snap)
+	r, err := s.settle(ctx, t, u, finalMessages(term.MessagesAppended, t.stored), snap)
+	if err == nil {
+		s.log.InfoContext(ctx, "run: turn finished", "run", t.run.PublicID, "status", term.Status, "stop_reason", term.StopReason,
+			"input_tokens", term.Usage.InputTokens, "output_tokens", term.Usage.OutputTokens, "parts", partKinds(term.MessagesAppended),
+			"no_reply_reason", t.run.NoReplyReason)
+	}
+	return r, err
+}
+
+func partKinds(appended []json.RawMessage) string {
+	kinds := make([]string, 0, len(appended))
+	for _, raw := range appended {
+		var am agUIMessage
+		if json.Unmarshal(raw, &am) != nil || am.Role == string(RoleUser) {
+			continue
+		}
+		kind := am.Role
+		if am.Role == string(RoleAssistant) {
+			var parts []string
+			if hasText(am.Content) {
+				parts = append(parts, "text")
+			}
+			if len(am.ToolCalls) > 0 {
+				parts = append(parts, "tool_calls")
+			}
+			if len(parts) == 0 {
+				parts = append(parts, "empty")
+			}
+			kind += ":" + strings.Join(parts, "+")
+		}
+		kinds = append(kinds, kind)
+	}
+	if len(kinds) == 0 {
+		return "none"
+	}
+	return strings.Join(kinds, ",")
 }
 
 // SECURITY: the approval is pinned to the hash of the very snapshot this settle saves, in the same unit of work.
