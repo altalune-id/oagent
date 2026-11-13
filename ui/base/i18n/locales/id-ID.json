@@ -303,6 +303,7 @@
   "field.description": "Deskripsi",
   "field.event_types": "Event",
   "field.scopes": "Izin",
+  "field.timeout_ms": "Batas waktu",
   "field.expires_at": "Tanggal kedaluwarsa",
   "field.hint": "Petunjuk kunci",
   "field.current_password": "Kata sandi saat ini",

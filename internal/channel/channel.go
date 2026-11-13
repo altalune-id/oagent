@@ -28,21 +28,9 @@ const (
 )
 
 const (
-	publicIDLen        = 21
-	maxBaseURL         = 2048
-	maxSetReply        = 1000
-	defaultQuietWindow = 3 * time.Second
-	defaultQuietMax    = 10 * time.Second
-	maxQuiet           = 10 * time.Second
-)
-
-// The set replies a connection starts with; an operator may change them.
-const (
-	DefaultReplyFailure         = "Sorry, something went wrong on my side. Please try again in a moment."
-	DefaultReplyVoice           = "Sorry, I can't listen to voice messages yet. Please type your message."
-	DefaultReplyPhotoUnreadable = "Sorry, I couldn't read that photo. Please send it again, or describe it in text."
-	DefaultApprovalPrompt       = "{preview}\n\nReply YES or NO"
-	DefaultApprovalExpired      = "This request expired. Please ask again."
+	publicIDLen = 21
+	maxBaseURL  = 2048
+	maxSetReply = 1000
 )
 
 var deviceIDPattern = regexp.MustCompile(`^dev_[A-Za-z0-9_-]{16}$`)
@@ -98,7 +86,7 @@ func New(orgID, projectID, agentID uuid.UUID, in Input, now time.Time, opts ...O
 	now = now.UTC()
 	c := &Connection{
 		ID: uuid.Must(uuid.NewV7()), PublicID: nanoid.MustNew(publicIDLen), OrgID: orgID, ProjectID: projectID, AgentID: agentID,
-		Provider: ProviderOpenWA, Status: StatusActive, QuietWindow: defaultQuietWindow, QuietMax: defaultQuietMax,
+		Provider: ProviderOpenWA, Status: StatusActive, QuietWindow: DefaultQuietWindow, QuietMax: DefaultQuietMax,
 		ReplyFailure: DefaultReplyFailure, ReplyVoice: DefaultReplyVoice, ReplyPhotoUnreadable: DefaultReplyPhotoUnreadable,
 		ApprovalPrompt: DefaultApprovalPrompt, ApprovalExpired: DefaultApprovalExpired,
 		CreatedAt: now, UpdatedAt: now,
@@ -164,9 +152,9 @@ func (c *Connection) validate(o options) error {
 		return &InvalidError{Field: "openwa_org"}
 	case c.OpenWAProject == "" || len(c.OpenWAProject) > 128:
 		return &InvalidError{Field: "openwa_project"}
-	case c.QuietWindow < 0 || c.QuietWindow > maxQuiet:
+	case c.QuietWindow < 0 || c.QuietWindow > MaxQuiet:
 		return &InvalidError{Field: "quiet_window_ms"}
-	case c.QuietMax < c.QuietWindow || c.QuietMax > maxQuiet:
+	case c.QuietMax < c.QuietWindow || c.QuietMax > MaxQuiet:
 		return &InvalidError{Field: "quiet_max_ms"}
 	case len([]rune(c.ReplyFailure)) > maxSetReply:
 		return &InvalidError{Field: "reply_failure"}

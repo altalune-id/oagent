@@ -29,9 +29,6 @@ const (
 
 	maxInstructions = 32000
 	maxModelLen     = 128
-	maxTemperature  = 2
-	maxSteps        = 100
-	maxCostCents    = 1000000
 	maxTools        = 64
 	maxGrants       = 16
 	maxGrantTools   = 128
@@ -69,7 +66,7 @@ type Agent struct {
 	UpdatedAt        time.Time
 }
 
-// Config is what an agent runs with; zero MaxSteps is the runtime default and zero MaxCostCents no limit.
+// Config is what an agent runs with; zero MaxSteps is the recommended value and zero MaxCostCents no limit.
 type Config struct {
 	Instructions string  `json:"instructions,omitempty"`
 	Model        string  `json:"model,omitempty"`
@@ -194,11 +191,11 @@ func (c Config) Validate() error {
 		return invalid("helper_model", apperror.FieldTooLong)
 	case !modelRe.MatchString(c.HelperModel):
 		return invalid("helper_model", apperror.FieldInvalidFormat)
-	case !(c.Temperature >= 0 && c.Temperature <= maxTemperature):
+	case !(c.Temperature >= 0 && c.Temperature <= MaxTemperature):
 		return invalid("temperature", apperror.FieldInvalid)
-	case c.MaxSteps < 0 || c.MaxSteps > maxSteps:
+	case c.MaxSteps < 0 || c.MaxSteps > MaxSteps:
 		return invalid("max_steps", apperror.FieldInvalid)
-	case c.MaxCostCents < 0 || c.MaxCostCents > maxCostCents:
+	case c.MaxCostCents < 0 || c.MaxCostCents > MaxCostCents:
 		return invalid("max_cost_cents", apperror.FieldInvalid)
 	case len(c.Tools) > maxTools:
 		return invalid("tools", apperror.FieldTooMany)
@@ -541,13 +538,14 @@ func agentToProto(a *Agent, orgPublicID, projectPublicID string) *agentv1.Agent 
 		PublishedVersion:   a.PublishedVersion,
 		DraftUpdatedAt:     timestampOrNil(a.DraftUpdatedAt),
 		UnpublishedChanges: a.Unpublished(),
+		EffectiveConfig:    effectiveToProto(a.Draft),
 	}
 }
 
 func versionToProto(v *Version, agentPublicID, createdBy string) *agentv1.AgentVersion {
 	return &agentv1.AgentVersion{
 		Id: v.PublicID, AgentId: agentPublicID, Version: v.Version, Config: configToProto(v.Config),
-		CreatedAt: timestamppb.New(v.CreatedAt), CreatedBy: createdBy,
+		CreatedAt: timestamppb.New(v.CreatedAt), CreatedBy: createdBy, EffectiveConfig: effectiveToProto(v.Config),
 	}
 }
 

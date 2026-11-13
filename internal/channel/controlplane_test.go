@@ -257,6 +257,7 @@ func TestGetChannelSettings(t *testing.T) {
 	assert.Equal(t, int32(20), m.GetMaxMessageAgeMinutes())
 	assert.Equal(t, channel.DefaultApprovalPrompt, m.GetApprovalPrompt())
 	assert.Equal(t, channel.DefaultApprovalExpired, m.GetApprovalExpired())
+	assert.Equal(t, int32(channel.MaxQuiet.Milliseconds()), m.GetMaxQuietMs(), "the console reads the cap instead of hard-coding it")
 }
 
 func TestUpdateConnection_ApprovalTexts(t *testing.T) {

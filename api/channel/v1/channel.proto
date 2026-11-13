@@ -249,4 +249,6 @@ message GetChannelSettingsResponse {
   int32 max_message_age_minutes = 7;
   string approval_prompt = 8;
   string approval_expired = 9;
+  // max_quiet_ms caps both quiet times.
+  int32 max_quiet_ms = 10;
 }

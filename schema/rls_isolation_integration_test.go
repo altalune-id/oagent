@@ -136,8 +136,10 @@ func rlsInserts() []rlsInsert {
 		}},
 		{"channel_connections", func(s string) string {
 			return `INSERT INTO ` + s + `.channel_connections (id, public_id, org_id, project_id, agent_id, provider, status, base_url, openwa_org, openwa_project, device_id,
-				signing_secret_primary_sealed, device_key_sealed, reply_failure, reply_voice, reply_photo_unreadable, approval_prompt, approval_expired, created_at, updated_at)
-				VALUES ($1, $2, $3, $4, $5, 'openwa', 'active', 'https://wa.example.com', 'acme', 'main', $6, '\x01', '\x02', 'f', 'v', 'p', 'ap', 'ae', $7, $7)`
+				signing_secret_primary_sealed, device_key_sealed, reply_failure, reply_voice, reply_photo_unreadable, approval_prompt, approval_expired,
+				quiet_window_ms, quiet_max_ms, created_at, updated_at)
+				VALUES ($1, $2, $3, $4, $5, 'openwa', 'active', 'https://wa.example.com', 'acme', 'main', $6, '\x01', '\x02', 'f', 'v', 'p', 'ap', 'ae',
+				` + quietDefaults + `, $7, $7)`
 		}, func(tn rlsTenant, _ string) []any {
 			return []any{tn.connection, "c" + id()[:12], tn.org, tn.project, tn.agent, "dev_" + id()[:8], now}
 		}},

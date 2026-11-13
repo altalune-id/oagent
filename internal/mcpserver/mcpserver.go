@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"altalune.id/oagent/apperror"
 	"altalune.id/oagent/nanoid"
 	"altalune.id/oagent/weburl"
 )
@@ -77,6 +78,10 @@ func New(orgID, projectID uuid.UUID, in Input, now time.Time, opts ...ValidateOp
 	if err != nil {
 		return nil, err
 	}
+	timeout, err := timeoutOf(in.TimeoutMS, RecommendedTimeoutMS)
+	if err != nil {
+		return nil, err
+	}
 	publicID, err := nanoid.New(21)
 	if err != nil {
 		return nil, err
@@ -91,7 +96,7 @@ func New(orgID, projectID uuid.UUID, in Input, now time.Time, opts ...ValidateOp
 		URL:        u,
 		AuthKind:   in.AuthKind,
 		AuthHeader: header,
-		TimeoutMS:  in.TimeoutMS,
+		TimeoutMS:  timeout,
 		Trusted:    in.Trusted,
 		CreatedAt:  now,
 		UpdatedAt:  now,
@@ -104,6 +109,10 @@ func (s *Server) Update(in Input, now time.Time, opts ...ValidateOption) (urlCha
 	if err != nil {
 		return false, err
 	}
+	timeout, err := timeoutOf(in.TimeoutMS, s.TimeoutMS)
+	if err != nil {
+		return false, err
+	}
 	urlChanged = u != s.URL
 	s.URL = u
 	s.AuthKind = in.AuthKind
@@ -111,10 +120,20 @@ func (s *Server) Update(in Input, now time.Time, opts ...ValidateOption) (urlCha
 	if in.AuthKind == AuthNone {
 		s.AuthSealed = nil
 	}
-	s.TimeoutMS = in.TimeoutMS
+	s.TimeoutMS = timeout
 	s.Trusted = in.Trusted
 	s.UpdatedAt = now.UTC()
 	return urlChanged, nil
+}
+
+func timeoutOf(ms, unset int32) (int32, error) {
+	switch {
+	case ms == 0:
+		return unset, nil
+	case ms < MinTimeoutMS || ms > MaxTimeoutMS:
+		return 0, apperror.Invalid("timeout_ms", apperror.FieldInvalid)
+	}
+	return ms, nil
 }
 
 func validate(in Input, o validateOpts) (u, header string, err error) {

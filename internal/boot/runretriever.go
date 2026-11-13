@@ -23,9 +23,5 @@ func (a runRetriever) Search(ctx context.Context, q run.KnowledgeQuery) ([]run.K
 
 // SECURITY: the budget is resolved here, from internal/knowledge, so a version with no tuning still gets the recommended cap.
 func runKnowledgeTuning(c agent.KnowledgeTuning) run.KnowledgeTuning {
-	tokens := int(c.MaxTokens)
-	if tokens == 0 {
-		tokens = knowledge.RecommendedMaxTokens
-	}
-	return run.KnowledgeTuning{K: int(c.TopK), MinScore: c.MinScore, MaxBytes: tokens * 4}
+	return run.KnowledgeTuning{K: int(c.TopK), MinScore: c.MinScore, MaxBytes: knowledge.MaxTokensOf(int(c.MaxTokens)) * 4}
 }

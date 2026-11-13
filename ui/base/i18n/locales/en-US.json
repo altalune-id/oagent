@@ -303,6 +303,7 @@
   "field.description": "Description",
   "field.event_types": "Events",
   "field.scopes": "Permissions",
+  "field.timeout_ms": "Timeout",
   "field.expires_at": "Expiry date",
   "field.hint": "Key hint",
   "field.current_password": "Current password",

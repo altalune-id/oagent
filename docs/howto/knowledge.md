@@ -62,7 +62,7 @@ Scanned PDFs have no text layer and fail with KNW005. A seed that redirects to a
 
 ## Retrieval tuning per agent
 
-Each agent version may tune its knowledge search (`AgentConfig.knowledge_tuning`). Changes publish like any other config change. A value left at 0 or unset follows the current recommended value at run time, so a new recommended value reaches live agents without a republish.
+Each agent version may tune its knowledge search (`AgentConfig.knowledge_tuning`). Changes publish like any other config change. A value left at 0 or unset follows the current recommended value at run time, so a new recommended value reaches live agents without a republish. `Agent.effective_config` and `AgentVersion.effective_config` show the resolved values; they follow the current constants and are never stored or frozen per version.
 
 | Setting             | Field        | Recommended | Range    |
 | ------------------- | ------------ | ----------- | -------- |

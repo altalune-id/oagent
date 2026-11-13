@@ -300,6 +300,7 @@ func (x *McpServerTool) GetInputSchema() *structpb.Struct {
 	return nil
 }
 
+// CreateMcpServerRequest adds an MCP server to a project; timeout_ms 0 stores the recommended timeout from ListMcpServers' defaults.
 type CreateMcpServerRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	OrgId     string                 `protobuf:"bytes,1,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
@@ -590,6 +591,7 @@ func (x *ListMcpServersRequest) GetProjectId() string {
 type ListMcpServersResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	McpServers    []*McpServer           `protobuf:"bytes,1,rep,name=mcp_servers,json=mcpServers,proto3" json:"mcp_servers,omitempty"`
+	Defaults      *McpServerDefaults     `protobuf:"bytes,2,opt,name=defaults,proto3" json:"defaults,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -631,7 +633,75 @@ func (x *ListMcpServersResponse) GetMcpServers() []*McpServer {
 	return nil
 }
 
-// UpdateMcpServerRequest replaces a server's editable fields; the name never changes, and leaving auth_value unset keeps the credential, which a url or auth_kind change refuses.
+func (x *ListMcpServersResponse) GetDefaults() *McpServerDefaults {
+	if x != nil {
+		return x.Defaults
+	}
+	return nil
+}
+
+// McpServerDefaults are the recommended call timeout and its range; a create with timeout_ms 0 stores the recommended value.
+type McpServerDefaults struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TimeoutMs     int32                  `protobuf:"varint,1,opt,name=timeout_ms,json=timeoutMs,proto3" json:"timeout_ms,omitempty"`
+	MinTimeoutMs  int32                  `protobuf:"varint,2,opt,name=min_timeout_ms,json=minTimeoutMs,proto3" json:"min_timeout_ms,omitempty"`
+	MaxTimeoutMs  int32                  `protobuf:"varint,3,opt,name=max_timeout_ms,json=maxTimeoutMs,proto3" json:"max_timeout_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *McpServerDefaults) Reset() {
+	*x = McpServerDefaults{}
+	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *McpServerDefaults) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*McpServerDefaults) ProtoMessage() {}
+
+func (x *McpServerDefaults) ProtoReflect() protoreflect.Message {
+	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use McpServerDefaults.ProtoReflect.Descriptor instead.
+func (*McpServerDefaults) Descriptor() ([]byte, []int) {
+	return file_mcpserver_v1_mcpserver_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *McpServerDefaults) GetTimeoutMs() int32 {
+	if x != nil {
+		return x.TimeoutMs
+	}
+	return 0
+}
+
+func (x *McpServerDefaults) GetMinTimeoutMs() int32 {
+	if x != nil {
+		return x.MinTimeoutMs
+	}
+	return 0
+}
+
+func (x *McpServerDefaults) GetMaxTimeoutMs() int32 {
+	if x != nil {
+		return x.MaxTimeoutMs
+	}
+	return 0
+}
+
+// UpdateMcpServerRequest replaces a server's editable fields; the name never changes, timeout_ms 0 keeps the stored timeout, and leaving auth_value unset keeps the credential, which a url or auth_kind change refuses.
 type UpdateMcpServerRequest struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -649,7 +719,7 @@ type UpdateMcpServerRequest struct {
 
 func (x *UpdateMcpServerRequest) Reset() {
 	*x = UpdateMcpServerRequest{}
-	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[8]
+	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -661,7 +731,7 @@ func (x *UpdateMcpServerRequest) String() string {
 func (*UpdateMcpServerRequest) ProtoMessage() {}
 
 func (x *UpdateMcpServerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[8]
+	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -674,7 +744,7 @@ func (x *UpdateMcpServerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMcpServerRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMcpServerRequest) Descriptor() ([]byte, []int) {
-	return file_mcpserver_v1_mcpserver_proto_rawDescGZIP(), []int{8}
+	return file_mcpserver_v1_mcpserver_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *UpdateMcpServerRequest) GetId() string {
@@ -735,7 +805,7 @@ type UpdateMcpServerResponse struct {
 
 func (x *UpdateMcpServerResponse) Reset() {
 	*x = UpdateMcpServerResponse{}
-	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[9]
+	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -747,7 +817,7 @@ func (x *UpdateMcpServerResponse) String() string {
 func (*UpdateMcpServerResponse) ProtoMessage() {}
 
 func (x *UpdateMcpServerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[9]
+	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -760,7 +830,7 @@ func (x *UpdateMcpServerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMcpServerResponse.ProtoReflect.Descriptor instead.
 func (*UpdateMcpServerResponse) Descriptor() ([]byte, []int) {
-	return file_mcpserver_v1_mcpserver_proto_rawDescGZIP(), []int{9}
+	return file_mcpserver_v1_mcpserver_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *UpdateMcpServerResponse) GetMcpServer() *McpServer {
@@ -779,7 +849,7 @@ type DeleteMcpServerRequest struct {
 
 func (x *DeleteMcpServerRequest) Reset() {
 	*x = DeleteMcpServerRequest{}
-	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[10]
+	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -791,7 +861,7 @@ func (x *DeleteMcpServerRequest) String() string {
 func (*DeleteMcpServerRequest) ProtoMessage() {}
 
 func (x *DeleteMcpServerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[10]
+	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -804,7 +874,7 @@ func (x *DeleteMcpServerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteMcpServerRequest.ProtoReflect.Descriptor instead.
 func (*DeleteMcpServerRequest) Descriptor() ([]byte, []int) {
-	return file_mcpserver_v1_mcpserver_proto_rawDescGZIP(), []int{10}
+	return file_mcpserver_v1_mcpserver_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *DeleteMcpServerRequest) GetId() string {
@@ -822,7 +892,7 @@ type DeleteMcpServerResponse struct {
 
 func (x *DeleteMcpServerResponse) Reset() {
 	*x = DeleteMcpServerResponse{}
-	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[11]
+	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -834,7 +904,7 @@ func (x *DeleteMcpServerResponse) String() string {
 func (*DeleteMcpServerResponse) ProtoMessage() {}
 
 func (x *DeleteMcpServerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[11]
+	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -847,7 +917,7 @@ func (x *DeleteMcpServerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteMcpServerResponse.ProtoReflect.Descriptor instead.
 func (*DeleteMcpServerResponse) Descriptor() ([]byte, []int) {
-	return file_mcpserver_v1_mcpserver_proto_rawDescGZIP(), []int{11}
+	return file_mcpserver_v1_mcpserver_proto_rawDescGZIP(), []int{12}
 }
 
 type ListMcpServerToolsRequest struct {
@@ -859,7 +929,7 @@ type ListMcpServerToolsRequest struct {
 
 func (x *ListMcpServerToolsRequest) Reset() {
 	*x = ListMcpServerToolsRequest{}
-	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[12]
+	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -871,7 +941,7 @@ func (x *ListMcpServerToolsRequest) String() string {
 func (*ListMcpServerToolsRequest) ProtoMessage() {}
 
 func (x *ListMcpServerToolsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[12]
+	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -884,7 +954,7 @@ func (x *ListMcpServerToolsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMcpServerToolsRequest.ProtoReflect.Descriptor instead.
 func (*ListMcpServerToolsRequest) Descriptor() ([]byte, []int) {
-	return file_mcpserver_v1_mcpserver_proto_rawDescGZIP(), []int{12}
+	return file_mcpserver_v1_mcpserver_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListMcpServerToolsRequest) GetId() string {
@@ -903,7 +973,7 @@ type ListMcpServerToolsResponse struct {
 
 func (x *ListMcpServerToolsResponse) Reset() {
 	*x = ListMcpServerToolsResponse{}
-	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[13]
+	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -915,7 +985,7 @@ func (x *ListMcpServerToolsResponse) String() string {
 func (*ListMcpServerToolsResponse) ProtoMessage() {}
 
 func (x *ListMcpServerToolsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[13]
+	mi := &file_mcpserver_v1_mcpserver_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -928,7 +998,7 @@ func (x *ListMcpServerToolsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMcpServerToolsResponse.ProtoReflect.Descriptor instead.
 func (*ListMcpServerToolsResponse) Descriptor() ([]byte, []int) {
-	return file_mcpserver_v1_mcpserver_proto_rawDescGZIP(), []int{13}
+	return file_mcpserver_v1_mcpserver_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListMcpServerToolsResponse) GetTools() []*McpServerTool {
@@ -968,7 +1038,7 @@ const file_mcpserver_v1_mcpserver_proto_rawDesc = "" +
 	"\tread_only\x18\x03 \x01(\bR\breadOnly\x12\x1c\n" +
 	"\tgrantable\x18\x04 \x01(\bR\tgrantable\x12)\n" +
 	"\x10require_approval\x18\x05 \x01(\bR\x0frequireApproval\x12:\n" +
-	"\finput_schema\x18\x06 \x01(\v2\x17.google.protobuf.StructR\vinputSchema\"\x81\x05\n" +
+	"\finput_schema\x18\x06 \x01(\v2\x17.google.protobuf.StructR\vinputSchema\"\xea\x05\n" +
 	"\x16CreateMcpServerRequest\x12#\n" +
 	"\x06org_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x05orgId\x12+\n" +
 	"\n" +
@@ -981,9 +1051,10 @@ const file_mcpserver_v1_mcpserver_proto_rawDesc = "" +
 	"\vauth_header\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\n" +
 	"authHeader\x12'\n" +
 	"\n" +
-	"auth_value\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\x80 R\tauthValue\x12+\n" +
+	"auth_value\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\x80 R\tauthValue\x12\x93\x01\n" +
 	"\n" +
-	"timeout_ms\x18\b \x01(\x05B\f\xbaH\t\x1a\a\x18\xa0\x9c\x01(\xe8\aR\ttimeoutMs\x12\x18\n" +
+	"timeout_ms\x18\b \x01(\x05Bt\xbaHq\xba\x01n\n" +
+	"\x1amcpserver.timeout_ms.range\x1aPthis == 0 || (this >= 1000 && this <= 20000) ? '' : 'must be 0 or 1000 to 20000'R\ttimeoutMs\x12\x18\n" +
 	"\atrusted\x18\t \x01(\bR\atrusted\"Q\n" +
 	"\x17CreateMcpServerResponse\x126\n" +
 	"\n" +
@@ -995,10 +1066,16 @@ const file_mcpserver_v1_mcpserver_proto_rawDesc = "" +
 	"mcp_server\x18\x01 \x01(\v2\x17.mcpserver.v1.McpServerR\tmcpServer\"D\n" +
 	"\x15ListMcpServersRequest\x12+\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\"R\n" +
+	"project_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\"\x8f\x01\n" +
 	"\x16ListMcpServersResponse\x128\n" +
 	"\vmcp_servers\x18\x01 \x03(\v2\x17.mcpserver.v1.McpServerR\n" +
-	"mcpServers\"\xaa\x04\n" +
+	"mcpServers\x12;\n" +
+	"\bdefaults\x18\x02 \x01(\v2\x1f.mcpserver.v1.McpServerDefaultsR\bdefaults\"~\n" +
+	"\x11McpServerDefaults\x12\x1d\n" +
+	"\n" +
+	"timeout_ms\x18\x01 \x01(\x05R\ttimeoutMs\x12$\n" +
+	"\x0emin_timeout_ms\x18\x02 \x01(\x05R\fminTimeoutMs\x12$\n" +
+	"\x0emax_timeout_ms\x18\x03 \x01(\x05R\fmaxTimeoutMs\"\x93\x05\n" +
 	"\x16UpdateMcpServerRequest\x12\x1c\n" +
 	"\x02id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\x02id\x12\xf5\x01\n" +
 	"\x03url\x18\x02 \x01(\tB\xe2\x01\xbaH\xde\x01\xba\x01a\n" +
@@ -1009,9 +1086,10 @@ const file_mcpserver_v1_mcpserver_proto_rawDesc = "" +
 	"authHeader\x12.\n" +
 	"\n" +
 	"auth_value\x18\x05 \x01(\tB\n" +
-	"\xbaH\ar\x05\x10\x01\x18\x80 H\x00R\tauthValue\x88\x01\x01\x12+\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x80 H\x00R\tauthValue\x88\x01\x01\x12\x93\x01\n" +
 	"\n" +
-	"timeout_ms\x18\x06 \x01(\x05B\f\xbaH\t\x1a\a\x18\xa0\x9c\x01(\xe8\aR\ttimeoutMs\x12\x18\n" +
+	"timeout_ms\x18\x06 \x01(\x05Bt\xbaHq\xba\x01n\n" +
+	"\x1amcpserver.timeout_ms.range\x1aPthis == 0 || (this >= 1000 && this <= 20000) ? '' : 'must be 0 or 1000 to 20000'R\ttimeoutMs\x12\x18\n" +
 	"\atrusted\x18\a \x01(\bR\atrustedB\r\n" +
 	"\v_auth_value\"Q\n" +
 	"\x17UpdateMcpServerResponse\x126\n" +
@@ -1056,7 +1134,7 @@ func file_mcpserver_v1_mcpserver_proto_rawDescGZIP() []byte {
 }
 
 var file_mcpserver_v1_mcpserver_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_mcpserver_v1_mcpserver_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_mcpserver_v1_mcpserver_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_mcpserver_v1_mcpserver_proto_goTypes = []any{
 	(McpServerAuthKind)(0),             // 0: mcpserver.v1.McpServerAuthKind
 	(*McpServer)(nil),                  // 1: mcpserver.v1.McpServer
@@ -1067,44 +1145,46 @@ var file_mcpserver_v1_mcpserver_proto_goTypes = []any{
 	(*GetMcpServerResponse)(nil),       // 6: mcpserver.v1.GetMcpServerResponse
 	(*ListMcpServersRequest)(nil),      // 7: mcpserver.v1.ListMcpServersRequest
 	(*ListMcpServersResponse)(nil),     // 8: mcpserver.v1.ListMcpServersResponse
-	(*UpdateMcpServerRequest)(nil),     // 9: mcpserver.v1.UpdateMcpServerRequest
-	(*UpdateMcpServerResponse)(nil),    // 10: mcpserver.v1.UpdateMcpServerResponse
-	(*DeleteMcpServerRequest)(nil),     // 11: mcpserver.v1.DeleteMcpServerRequest
-	(*DeleteMcpServerResponse)(nil),    // 12: mcpserver.v1.DeleteMcpServerResponse
-	(*ListMcpServerToolsRequest)(nil),  // 13: mcpserver.v1.ListMcpServerToolsRequest
-	(*ListMcpServerToolsResponse)(nil), // 14: mcpserver.v1.ListMcpServerToolsResponse
-	(*timestamppb.Timestamp)(nil),      // 15: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),            // 16: google.protobuf.Struct
+	(*McpServerDefaults)(nil),          // 9: mcpserver.v1.McpServerDefaults
+	(*UpdateMcpServerRequest)(nil),     // 10: mcpserver.v1.UpdateMcpServerRequest
+	(*UpdateMcpServerResponse)(nil),    // 11: mcpserver.v1.UpdateMcpServerResponse
+	(*DeleteMcpServerRequest)(nil),     // 12: mcpserver.v1.DeleteMcpServerRequest
+	(*DeleteMcpServerResponse)(nil),    // 13: mcpserver.v1.DeleteMcpServerResponse
+	(*ListMcpServerToolsRequest)(nil),  // 14: mcpserver.v1.ListMcpServerToolsRequest
+	(*ListMcpServerToolsResponse)(nil), // 15: mcpserver.v1.ListMcpServerToolsResponse
+	(*timestamppb.Timestamp)(nil),      // 16: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),            // 17: google.protobuf.Struct
 }
 var file_mcpserver_v1_mcpserver_proto_depIdxs = []int32{
 	0,  // 0: mcpserver.v1.McpServer.auth_kind:type_name -> mcpserver.v1.McpServerAuthKind
-	15, // 1: mcpserver.v1.McpServer.created_at:type_name -> google.protobuf.Timestamp
-	15, // 2: mcpserver.v1.McpServer.updated_at:type_name -> google.protobuf.Timestamp
-	16, // 3: mcpserver.v1.McpServerTool.input_schema:type_name -> google.protobuf.Struct
+	16, // 1: mcpserver.v1.McpServer.created_at:type_name -> google.protobuf.Timestamp
+	16, // 2: mcpserver.v1.McpServer.updated_at:type_name -> google.protobuf.Timestamp
+	17, // 3: mcpserver.v1.McpServerTool.input_schema:type_name -> google.protobuf.Struct
 	0,  // 4: mcpserver.v1.CreateMcpServerRequest.auth_kind:type_name -> mcpserver.v1.McpServerAuthKind
 	1,  // 5: mcpserver.v1.CreateMcpServerResponse.mcp_server:type_name -> mcpserver.v1.McpServer
 	1,  // 6: mcpserver.v1.GetMcpServerResponse.mcp_server:type_name -> mcpserver.v1.McpServer
 	1,  // 7: mcpserver.v1.ListMcpServersResponse.mcp_servers:type_name -> mcpserver.v1.McpServer
-	0,  // 8: mcpserver.v1.UpdateMcpServerRequest.auth_kind:type_name -> mcpserver.v1.McpServerAuthKind
-	1,  // 9: mcpserver.v1.UpdateMcpServerResponse.mcp_server:type_name -> mcpserver.v1.McpServer
-	2,  // 10: mcpserver.v1.ListMcpServerToolsResponse.tools:type_name -> mcpserver.v1.McpServerTool
-	3,  // 11: mcpserver.v1.McpServerService.CreateMcpServer:input_type -> mcpserver.v1.CreateMcpServerRequest
-	5,  // 12: mcpserver.v1.McpServerService.GetMcpServer:input_type -> mcpserver.v1.GetMcpServerRequest
-	7,  // 13: mcpserver.v1.McpServerService.ListMcpServers:input_type -> mcpserver.v1.ListMcpServersRequest
-	9,  // 14: mcpserver.v1.McpServerService.UpdateMcpServer:input_type -> mcpserver.v1.UpdateMcpServerRequest
-	11, // 15: mcpserver.v1.McpServerService.DeleteMcpServer:input_type -> mcpserver.v1.DeleteMcpServerRequest
-	13, // 16: mcpserver.v1.McpServerService.ListMcpServerTools:input_type -> mcpserver.v1.ListMcpServerToolsRequest
-	4,  // 17: mcpserver.v1.McpServerService.CreateMcpServer:output_type -> mcpserver.v1.CreateMcpServerResponse
-	6,  // 18: mcpserver.v1.McpServerService.GetMcpServer:output_type -> mcpserver.v1.GetMcpServerResponse
-	8,  // 19: mcpserver.v1.McpServerService.ListMcpServers:output_type -> mcpserver.v1.ListMcpServersResponse
-	10, // 20: mcpserver.v1.McpServerService.UpdateMcpServer:output_type -> mcpserver.v1.UpdateMcpServerResponse
-	12, // 21: mcpserver.v1.McpServerService.DeleteMcpServer:output_type -> mcpserver.v1.DeleteMcpServerResponse
-	14, // 22: mcpserver.v1.McpServerService.ListMcpServerTools:output_type -> mcpserver.v1.ListMcpServerToolsResponse
-	17, // [17:23] is the sub-list for method output_type
-	11, // [11:17] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	9,  // 8: mcpserver.v1.ListMcpServersResponse.defaults:type_name -> mcpserver.v1.McpServerDefaults
+	0,  // 9: mcpserver.v1.UpdateMcpServerRequest.auth_kind:type_name -> mcpserver.v1.McpServerAuthKind
+	1,  // 10: mcpserver.v1.UpdateMcpServerResponse.mcp_server:type_name -> mcpserver.v1.McpServer
+	2,  // 11: mcpserver.v1.ListMcpServerToolsResponse.tools:type_name -> mcpserver.v1.McpServerTool
+	3,  // 12: mcpserver.v1.McpServerService.CreateMcpServer:input_type -> mcpserver.v1.CreateMcpServerRequest
+	5,  // 13: mcpserver.v1.McpServerService.GetMcpServer:input_type -> mcpserver.v1.GetMcpServerRequest
+	7,  // 14: mcpserver.v1.McpServerService.ListMcpServers:input_type -> mcpserver.v1.ListMcpServersRequest
+	10, // 15: mcpserver.v1.McpServerService.UpdateMcpServer:input_type -> mcpserver.v1.UpdateMcpServerRequest
+	12, // 16: mcpserver.v1.McpServerService.DeleteMcpServer:input_type -> mcpserver.v1.DeleteMcpServerRequest
+	14, // 17: mcpserver.v1.McpServerService.ListMcpServerTools:input_type -> mcpserver.v1.ListMcpServerToolsRequest
+	4,  // 18: mcpserver.v1.McpServerService.CreateMcpServer:output_type -> mcpserver.v1.CreateMcpServerResponse
+	6,  // 19: mcpserver.v1.McpServerService.GetMcpServer:output_type -> mcpserver.v1.GetMcpServerResponse
+	8,  // 20: mcpserver.v1.McpServerService.ListMcpServers:output_type -> mcpserver.v1.ListMcpServersResponse
+	11, // 21: mcpserver.v1.McpServerService.UpdateMcpServer:output_type -> mcpserver.v1.UpdateMcpServerResponse
+	13, // 22: mcpserver.v1.McpServerService.DeleteMcpServer:output_type -> mcpserver.v1.DeleteMcpServerResponse
+	15, // 23: mcpserver.v1.McpServerService.ListMcpServerTools:output_type -> mcpserver.v1.ListMcpServerToolsResponse
+	18, // [18:24] is the sub-list for method output_type
+	12, // [12:18] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_mcpserver_v1_mcpserver_proto_init() }
@@ -1112,14 +1192,14 @@ func file_mcpserver_v1_mcpserver_proto_init() {
 	if File_mcpserver_v1_mcpserver_proto != nil {
 		return
 	}
-	file_mcpserver_v1_mcpserver_proto_msgTypes[8].OneofWrappers = []any{}
+	file_mcpserver_v1_mcpserver_proto_msgTypes[9].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mcpserver_v1_mcpserver_proto_rawDesc), len(file_mcpserver_v1_mcpserver_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   14,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

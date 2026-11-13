@@ -114,6 +114,24 @@ func TestMcpServerService_GetUpdateListDelete(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, list.Msg.GetMcpServers(), 1)
 	assert.Equal(t, f.orgPub, list.Msg.GetMcpServers()[0].GetOrgId())
+	d := list.Msg.GetDefaults()
+	assert.Equal(t, []int32{mcpserver.RecommendedTimeoutMS, mcpserver.MinTimeoutMS, mcpserver.MaxTimeoutMS},
+		[]int32{d.GetTimeoutMs(), d.GetMinTimeoutMs(), d.GetMaxTimeoutMs()}, "the console reads the timeout default from the server")
+
+	upd.TimeoutMs = 0
+	kept, err := f.client.UpdateMcpServer(ctx, connect.NewRequest(upd))
+	require.NoError(t, err)
+	assert.Equal(t, int32(9000), kept.Msg.GetMcpServer().GetTimeoutMs(), "0 on update keeps the stored timeout")
+
+	recommended, err := f.client.CreateMcpServer(ctx, connect.NewRequest(func() *mcpserverv1.CreateMcpServerRequest {
+		r := createReq(f.orgPub, f.projectPub)
+		r.Name, r.TimeoutMs = "recommended", 0
+		return r
+	}()))
+	require.NoError(t, err)
+	assert.Equal(t, int32(mcpserver.RecommendedTimeoutMS), recommended.Msg.GetMcpServer().GetTimeoutMs(), "0 on create stores the recommended timeout")
+	_, err = f.client.DeleteMcpServer(ctx, connect.NewRequest(&mcpserverv1.DeleteMcpServerRequest{Id: recommended.Msg.GetMcpServer().GetId()}))
+	require.NoError(t, err)
 
 	_, err = f.client.DeleteMcpServer(ctx, connect.NewRequest(&mcpserverv1.DeleteMcpServerRequest{Id: id}))
 	require.NoError(t, err)

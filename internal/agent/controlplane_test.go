@@ -108,6 +108,17 @@ func TestAgentService_GetAgent(t *testing.T) {
 	assert.Equal(t, a.PublicID, resp.Msg.GetAgent().GetId())
 	assert.Equal(t, orgPub, resp.Msg.GetAgent().GetOrgId())
 	assert.Equal(t, projectPub, resp.Msg.GetAgent().GetProjectId())
+	assertAgentDefaults(t, resp.Msg.GetDefaults())
+	assert.Equal(t, int32(agent.RecommendedMaxSteps), resp.Msg.GetAgent().GetEffectiveConfig().GetMaxSteps(), "an unset draft runs with the recommended steps")
+}
+
+func assertAgentDefaults(t *testing.T, d *agentv1.AgentDefaults) {
+	t.Helper()
+	require.NotNil(t, d, "the console reads the agent defaults from the server")
+	assert.Equal(t, int32(agent.RecommendedMaxSteps), d.GetMaxSteps())
+	assert.Equal(t, int32(agent.MaxSteps), d.GetMaxMaxSteps())
+	assert.InDelta(t, agent.MaxTemperature, d.GetMaxTemperature(), 1e-9)
+	assert.Equal(t, int32(agent.MaxCostCents), d.GetMaxCostCents())
 }
 
 func TestAgentService_GetAgent_UnknownID(t *testing.T) {
@@ -134,6 +145,7 @@ func TestAgentService_ListAgents(t *testing.T) {
 	resp, err := c.ListAgents(context.Background(), connect.NewRequest(&agentv1.ListAgentsRequest{ProjectId: projectPub}))
 	require.NoError(t, err)
 	require.Len(t, resp.Msg.GetAgents(), 2)
+	assertAgentDefaults(t, resp.Msg.GetDefaults())
 	assert.Equal(t, a1.PublicID, resp.Msg.GetAgents()[0].GetId())
 	assert.Equal(t, orgPub, resp.Msg.GetAgents()[0].GetOrgId())
 	assert.Equal(t, projectPub, resp.Msg.GetAgents()[0].GetProjectId())

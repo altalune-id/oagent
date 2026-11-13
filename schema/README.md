@@ -208,8 +208,8 @@ erDiagram
         bytea signing_secret_primary_sealed "null until the secret OpenWA mints is set"
         bytea signing_secret_secondary_sealed "the rotation slot"
         bytea device_key_sealed
-        int quiet_window_ms "0-10000, default 3000"
-        int quiet_max_ms "at least quiet_window_ms, at most 10000"
+        int quiet_window_ms "0-10000; no column default, Go writes channel.DefaultQuietWindow"
+        int quiet_max_ms "at least quiet_window_ms, at most 10000; no column default"
         text reply_failure
         text reply_voice
         text reply_photo_unreadable

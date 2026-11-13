@@ -194,9 +194,10 @@ func (s *ChannelService) GetChannelSettings(
 	return connect.NewResponse(&channelv1.GetChannelSettingsResponse{
 		DefaultOpenwaBaseUrl: s.opts.DefaultBaseURL,
 		ReplyFailure:         DefaultReplyFailure, ReplyVoice: DefaultReplyVoice, ReplyPhotoUnreadable: DefaultReplyPhotoUnreadable,
-		QuietWindowMs: ms(defaultQuietWindow), QuietMaxMs: ms(defaultQuietMax),
+		QuietWindowMs: ms(DefaultQuietWindow), QuietMaxMs: ms(DefaultQuietMax),
 		MaxMessageAgeMinutes: int32(min(s.opts.MaxMessageAge.Minutes(), math.MaxInt32)),
 		ApprovalPrompt:       DefaultApprovalPrompt, ApprovalExpired: DefaultApprovalExpired,
+		MaxQuietMs: ms(MaxQuiet),
 	}), nil
 }
 

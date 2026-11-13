@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -148,8 +149,8 @@ func TestStore_ChecksRefuseBadRows(t *testing.T) {
 		"header without a name":   {"c", "header", nil, []byte{1}, 5000, "mcp_servers_auth_header_shape"},
 		"bearer with a header":    {"d", "bearer", "X-Key", []byte{1}, 5000, "mcp_servers_auth_header_shape"},
 		"unknown auth kind":       {"e", "basic", nil, []byte{1}, 5000, "mcp_servers_auth_kind_check"},
-		"timeout 999":             {"f", "none", nil, nil, 999, "mcp_servers_timeout_range"},
-		"timeout 20001":           {"g", "none", nil, nil, 20001, "mcp_servers_timeout_range"},
+		"timeout below the range": {"f", "none", nil, nil, mcpserver.MinTimeoutMS - 1, "mcp_servers_timeout_range"},
+		"timeout above the range": {"g", "none", nil, nil, mcpserver.MaxTimeoutMS + 1, "mcp_servers_timeout_range"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := f.admin.ExecContext(t.Context(), `INSERT INTO `+f.schema+`.mcp_servers
@@ -162,6 +163,19 @@ func TestStore_ChecksRefuseBadRows(t *testing.T) {
 			require.NotNil(t, pgErr)
 			assert.Equal(t, row.constraint, pgErr.ConstraintName)
 		})
+	}
+}
+
+// SECURITY: the timeout CHECK takes exactly the domain range, so a row the domain accepts is never refused and the reverse.
+func TestStore_TimeoutCheckMatchesTheDomainRange(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	for i, ms := range []int{mcpserver.MinTimeoutMS, mcpserver.RecommendedTimeoutMS, mcpserver.MaxTimeoutMS} {
+		_, err := f.admin.ExecContext(t.Context(), `INSERT INTO `+f.schema+`.mcp_servers
+			(id, public_id, org_id, project_id, name, url, auth_kind, auth_header, auth_sealed, timeout_ms, trusted, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, 'https://e.com/mcp', 'none', NULL, NULL, $6, false, now(), now())`,
+			uuid.New(), uuid.NewString(), orgID, projectID, fmt.Sprintf("edge%d", i), ms)
+		assert.NoError(t, err, "%d", ms)
 	}
 }
 
