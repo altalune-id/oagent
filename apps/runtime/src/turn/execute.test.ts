@@ -52,6 +52,19 @@ describe('executeTurn', () => {
     expect(out.usage).toEqual({ inputTokens: 30, outputTokens: 2, cacheReadInputTokens: 0, cacheWriteInputTokens: 0, estimated: false });
   });
 
+  it('returns the reply when the sliding window trims a full snapshot at the end of the turn', async () => {
+    const messages = Array.from({ length: 40 }, (_, i) => new Message({ role: i % 2 === 0 ? 'user' : 'assistant', content: [new TextBlock(`m${i}`)] }));
+    const full = new Agent({ model: new ScriptedModel([]), messages, sandbox: false, printer: false }).takeSnapshot({ preset: 'session', appData });
+    const model = new ScriptedModel([{ text: ['Good morning!'], usage: { inputTokens: 3600, outputTokens: 5 } }]);
+    const out = await executeTurn(goldenRequest('plain_reply', (r) => {
+      r.snapshot = full as never;
+    }), never, { model, log: quiet, openMcp: fakeMcp([]) });
+    expect(out.status).toBe('completed');
+    expect(out.newMessages.map(m => m.role)).toEqual(['user', 'assistant']);
+    expect(out.newMessages[1]!.content).toEqual([new TextBlock('Good morning!')]);
+    expect((out.snapshot!.data.messages as unknown[]).length, 'the snapshot itself stays trimmed').toBeLessThanOrEqual(40);
+  });
+
   it('takes a session snapshot tagged with the thread, agent version and SDK version', async () => {
     const model = new ScriptedModel([{ text: ['Hello!'] }]);
     const out = await executeTurn(goldenRequest('plain_reply'), never, { model, log: quiet, openMcp: fakeMcp([]) });

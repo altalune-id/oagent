@@ -9,6 +9,7 @@ import {
   BeforeModelCallEvent,
   ExecuteToolStage,
   Message,
+  MessageAddedEvent,
   SlidingWindowConversationManager,
   TextBlock,
   ToolResultBlock,
@@ -142,7 +143,10 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
   }
   const knowledge = knowledgeBlock(request.knowledge ?? []);
   agent.systemPrompt = [request.agent.instructions, ...(knowledge === '' ? [] : [KNOWLEDGE_LINE]), ...mcp.promptLines].join('\n\n');
-  const start = agent.messages.length;
+  const added: Message[] = [];
+  agent.addHook(MessageAddedEvent, (event) => {
+    added.push(event.message);
+  });
 
   agent.addMiddleware(ExecuteToolStage.Wrap, async function* (ctx, next) {
     const result = stored.get(ctx.toolUse.toolUseId);
@@ -180,7 +184,7 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
     stopReason,
     snapshot: null,
     usage: meter.usage,
-    newMessages: agent.messages.slice(start).filter(m => !(budgetHit && isBudgetRefusal(m))),
+    newMessages: added.filter(m => !(budgetHit && isBudgetRefusal(m))),
     interrupts: [],
     notes: mcp.notes,
     ...extra,
@@ -208,7 +212,7 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
     const interrupts = (result.interrupts ?? []).map(i => ({ id: i.id, name: i.name, reason: (i.reason ?? null) as JSONValue }));
     const status = statusOf(result.stopReason, interrupts.length > 0, budgetHit);
     if (status === 'failed') {
-      return outcome(status, result.stopReason, { newMessages: agent.messages.slice(start).filter(m => m !== result.lastMessage), error: { code: 'model_error' } });
+      return outcome(status, result.stopReason, { newMessages: added.filter(m => m !== result.lastMessage), error: { code: 'model_error' } });
     }
     const snapshot = cleanSnapshot(agent.takeSnapshot({ preset: 'session', appData: { thread: request.ids.thread, agentVersion: request.ids.agentVersion, sdk: SDK_VERSION } }), budgetHit ? BUDGET_REFUSAL : undefined);
     const done = outcome(status, budgetHit ? 'budget' : result.stopReason, { snapshot, interrupts });
