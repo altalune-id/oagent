@@ -135,6 +135,7 @@ func newPlane(t *testing.T, maxConcurrent int, opts ...func(*dataplane.Deps)) *p
 		defer close(done)
 		_ = p.runner.Run(ctx)
 	}()
+	require.Eventually(t, p.runner.Running, 10*time.Second, time.Millisecond, "the runner starts")
 	t.Cleanup(func() {
 		cancel()
 		<-done
