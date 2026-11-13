@@ -443,6 +443,57 @@ describe('configure page', () => {
     expect(memory.findAllComponents(RouterLinkStub).map(l => l.props('to'))).toContain('/o/acme/projects/web/knowledge');
   });
 
+  it('tunes knowledge search with server presets and recommended values, unset by default', async () => {
+    setKnownKeys('configure.preset_precise', 'configure.preset_balanced', 'configure.preset_broad');
+    asSample({ ...sampleDraft, knowledgeSourceIds: ['Ks1Upl0adQ8sWx3YcLm7D'] });
+    const w = await mountPage(ConfigurePage);
+    const tuning = w.get('[data-tuning]');
+    const chips = tuning.findAll('input[type="radio"]');
+    expect(chips.map(c => [c.element.closest('label')!.textContent!.trim(), (c.element as HTMLInputElement).checked])).toEqual([
+      ['configure.preset_precise', false],
+      ['configure.preset_balanced', true],
+      ['configure.preset_broad', false],
+    ]);
+    expect(tuning.text()).toContain('configure.tuning_recommended|{"n":"6"}');
+    expect(tuning.text()).toContain('configure.tuning_recommended|{"n":"0.25"}');
+    expect(tuning.text()).toContain('configure.tuning_recommended|{"n":"3,000"}');
+    await chips[0]!.setValue(true);
+    expect(w.get('.mockup-code').text()).toContain('"knowledgeTuning":{"topK":3,"maxTokens":0,"minScore":0.35}');
+    const [topK] = tuning.findAll('input[type="number"]');
+    await topK!.setValue('7');
+    expect(tuning.text()).toContain('configure.preset_custom');
+    expect(chips.every(c => !(c.element as HTMLInputElement).checked)).toBe(true);
+    await topK!.setValue('11');
+    expect(tuning.text()).toContain('configure.tuning_range|{"min":1,"max":10}');
+    expect(w.get('.mockup-code').text(), 'an out-of-range value never reaches the draft').toContain('"topK":7');
+    await tuning.findAll('button').find(b => b.text() === 'configure.tuning_reset')!.trigger('click');
+    expect(w.get('.mockup-code').text()).toContain('"knowledgeTuning":{"topK":0,"maxTokens":0}');
+    expect((chips[1]!.element as HTMLInputElement).checked).toBe(true);
+    await w.findAll('button').find(b => b.text() === 'configure.view_changes')!.trigger('click');
+    expect([...document.querySelectorAll('dialog')].find(d => d.open)?.textContent ?? '').not.toContain('configure.change_knowledge_tuning');
+  });
+
+  it('sends a typed minimum relevance of 0, and keeps the saved tuning when the last source is unbound', async () => {
+    asSample({ ...sampleDraft, knowledgeSourceIds: ['Ks1Upl0adQ8sWx3YcLm7D'], knowledgeTuning: { topK: 3, maxTokens: 0 } });
+    const w = await mountPage(ConfigurePage);
+    const tuning = w.get('[data-tuning]');
+    await tuning.findAll('input[type="number"]')[1]!.setValue('0');
+    expect(w.get('.mockup-code').text()).toContain('"knowledgeTuning":{"topK":3,"maxTokens":0,"minScore":0}');
+    await w.get('#configure-memory li input[type="checkbox"]').setValue(false);
+    expect(w.get('.mockup-code').text()).toContain('"knowledgeSourceIds":[],"knowledgeTuning":{"topK":3,"maxTokens":0,"minScore":0}');
+    expect(tuning.text()).toContain('configure.tuning_needs_source');
+    expect(tuning.findAll('input').every(i => i.attributes('disabled') !== undefined)).toBe(true);
+  });
+
+  it('turns tuning off with a hint while no source is bound', async () => {
+    asSample();
+    const w = await mountPage(ConfigurePage);
+    const tuning = w.get('[data-tuning]');
+    expect(tuning.text()).toContain('configure.tuning_needs_source');
+    expect(tuning.findAll('input').every(i => i.attributes('disabled') !== undefined)).toBe(true);
+    expect(tuning.findAll('button').every(b => b.attributes('disabled') !== undefined)).toBe(true);
+  });
+
   it('says how many bound knowledge sources were deleted', async () => {
     asSample({ ...sampleDraft, knowledgeSourcesMissing: 2 });
     const w = await mountPage(ConfigurePage);

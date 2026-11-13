@@ -19,6 +19,12 @@ export interface AgentGrant {
   missing: boolean;
 }
 
+export interface KnowledgeTuning {
+  topK: number;
+  minScore?: number;
+  maxTokens: number;
+}
+
 export interface AgentConfig {
   instructions: string;
   providerId: string;
@@ -30,6 +36,7 @@ export interface AgentConfig {
   grants: AgentGrant[];
   knowledgeSourceIds: string[];
   knowledgeSourcesMissing: number;
+  knowledgeTuning: KnowledgeTuning;
   providerMissing: boolean;
   tools: AgentToolConfig[];
 }
@@ -63,6 +70,7 @@ interface WireConfig {
   mcpServers: { serverId: string, tools: WireTool[], missing: boolean }[];
   knowledgeSourceIds?: string[];
   knowledgeSourcesMissing?: number;
+  knowledgeTuning?: KnowledgeTuning;
   providerMissing: boolean;
   tools: WireTool[];
 }
@@ -80,7 +88,7 @@ interface WireAgent {
 }
 
 export function emptyConfig(): AgentConfig {
-  return { instructions: '', providerId: '', model: '', helperModel: '', temperature: 0, maxSteps: 0, maxCostCents: 0, grants: [], knowledgeSourceIds: [], knowledgeSourcesMissing: 0, providerMissing: false, tools: [] };
+  return { instructions: '', providerId: '', model: '', helperModel: '', temperature: 0, maxSteps: 0, maxCostCents: 0, grants: [], knowledgeSourceIds: [], knowledgeSourcesMissing: 0, knowledgeTuning: { topK: 0, maxTokens: 0 }, providerMissing: false, tools: [] };
 }
 
 export function fromWire(c?: WireConfig): AgentConfig {
@@ -99,6 +107,7 @@ export function fromWire(c?: WireConfig): AgentConfig {
     grants: c.mcpServers.map(g => ({ serverId: g.serverId, tools: g.tools.map(tool), missing: g.missing })),
     knowledgeSourceIds: [...(c.knowledgeSourceIds ?? [])],
     knowledgeSourcesMissing: c.knowledgeSourcesMissing ?? 0,
+    knowledgeTuning: tuningOf(c.knowledgeTuning),
     providerMissing: c.providerMissing,
     tools: c.tools.map(tool),
   };
@@ -116,7 +125,13 @@ export function toWire(c: AgentConfig) {
     maxCostCents: c.maxCostCents,
     mcpServers: c.grants.filter(g => !g.missing).map(g => ({ serverId: g.serverId, tools: g.tools.map(t => ({ name: t.name, requireApproval: t.requireApproval, freeWhen: t.requireApproval ? (t.freeWhen ?? []) : [] })) })),
     knowledgeSourceIds: [...c.knowledgeSourceIds],
+    knowledgeTuning: tuningOf(c.knowledgeTuning),
   };
+}
+
+// tuningOf copies a tuning, leaving an unset minimum relevance unset so the recommended value applies.
+function tuningOf(t?: KnowledgeTuning): KnowledgeTuning {
+  return { topK: t?.topK ?? 0, maxTokens: t?.maxTokens ?? 0, ...(t?.minScore === undefined ? {} : { minScore: t.minScore }) };
 }
 
 function grantedTools(c: AgentConfig, names: ChangeNames) {
@@ -175,6 +190,9 @@ export function changes(draft: AgentConfig, live: AgentConfig | undefined, money
   }
   if ([...draft.knowledgeSourceIds].sort().join() !== [...live.knowledgeSourceIds].sort().join()) {
     out.push({ key: 'configure.change_knowledge' });
+  }
+  if (JSON.stringify(tuningOf(draft.knowledgeTuning)) !== JSON.stringify(tuningOf(live.knowledgeTuning))) {
+    out.push({ key: 'configure.change_knowledge_tuning' });
   }
   return out;
 }

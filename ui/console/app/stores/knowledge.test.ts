@@ -56,6 +56,13 @@ describe('useKnowledgeStore: sources', () => {
     expect(store.sources[0]!.updatedAt).toEqual(new Date('2026-11-10T08:00:00Z'));
     expect(store.storageConfigured).toBe(true);
     expect([store.maxUploadBytes, store.allowedContentTypes, store.uploadAccept]).toEqual([10_485_760, allowedTypes, '.pdf,.docx,.md,.markdown,.txt']);
+    expect(store.retrievalDefaults).toEqual({
+      topK: 6,
+      minScore: 0.25,
+      maxTokens: 3000,
+      ranges: { topK: [1, 10], minScore: [0, 1], maxTokens: [500, 8000] },
+      presets: [{ name: 'precise', topK: 3, minScore: 0.35 }, { name: 'balanced', topK: 6, minScore: 0.25 }, { name: 'broad', topK: 8, minScore: 0.1 }],
+    });
     expect(store.enabledBackends).toEqual(['pgvector']);
     expect(store.on).toBe(true);
     expect(store.embedding).toEqual({ providerId: 'Pv6tQm2ZxR8wKp3VbNc4K', model: 'openai/text-embedding-3-small', dims: 1536, providerMissing: false });

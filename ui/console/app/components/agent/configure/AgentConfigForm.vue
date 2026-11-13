@@ -3,7 +3,7 @@ import type { AgentConfig } from './agentConfig';
 import type { ConfigureLinks } from './runtime';
 import type { FieldError as DraftFieldError } from './useAgentDraft';
 import type { AgentRuntimeConfig } from '~/stores/agentRuntime';
-import type { KnowledgeSource } from '~/stores/knowledge';
+import type { KnowledgeSource, RetrievalDefaults } from '~/stores/knowledge';
 import type { McpServer } from '~/stores/mcpServers';
 import type { ModelProvider, ProviderModel } from '~/stores/modelProviders';
 import AppButton from '#base/components/ui/AppButton.vue';
@@ -14,16 +14,18 @@ import { ModelProviderKind } from '#gen/modelprovider/v1/modelprovider_pb';
 import { sourceState } from '~/components/knowledge/knowledge';
 import { usdText } from '~/lib/money/usd';
 import { describedBy } from '~/lib/names/names';
+import KnowledgeTuningForm from './KnowledgeTuning.vue';
 import McpGrants from './McpGrants.vue';
 import { bindable, chosenModel, costCapError, helperCapError, parseDollars, parseDomains, readsPrivateData } from './runtime';
 
-const { providers, servers, sources, searchReady, embeddings, links, legacyModel = '', disabled = false, fieldError = null } = defineProps<{
+const { providers, servers, sources, searchReady, embeddings, links, retrieval = null, legacyModel = '', disabled = false, fieldError = null } = defineProps<{
   providers: ModelProvider[],
   servers: McpServer[],
   sources: KnowledgeSource[],
   searchReady: boolean,
   embeddings: boolean,
   links: ConfigureLinks,
+  retrieval?: RetrievalDefaults | null,
   legacyModel?: string,
   disabled?: boolean,
   fieldError?: DraftFieldError | null,
@@ -342,6 +344,10 @@ function toggleSource(id: string, on: boolean) {
                 <StatusLabel v-else :tone="sourceState(s).tone" :label="t(sourceState(s).key)" />
               </li>
             </ul>
+            <KnowledgeTuningForm
+              v-if="retrieval" :defaults="retrieval" :off="config.knowledgeSourceIds.length === 0"
+              :model-value="config.knowledgeTuning" @update:model-value="config = { ...config, knowledgeTuning: $event }"
+            />
           </fieldset>
         </Section>
 

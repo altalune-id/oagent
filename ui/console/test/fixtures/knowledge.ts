@@ -28,12 +28,14 @@ export function documentPBs() {
 
 export const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/markdown', 'text/plain'];
 
+export const retrievalDefaultsPB = { topK: 6, minScore: 0.25, maxTokens: 3000, minTopK: 1, maxTopK: 10, minMinScore: 0, maxMinScore: 1, minMaxTokens: 500, maxMaxTokens: 8000, presets: [{ name: 'precise', topK: 3, minScore: 0.35 }, { name: 'balanced', topK: 6, minScore: 0.25 }, { name: 'broad', topK: 8, minScore: 0.1 }] };
+
 export const embeddingPB = create(EmbeddingModelSchema, { providerId: 'Pv6tQm2ZxR8wKp3VbNc4K', model: 'openai/text-embedding-3-small', dims: 1536 });
 
 // fakeKnowledgeClient installs a KnowledgeService fake with the fixtures above.
 export function fakeKnowledgeClient(over: { storage?: boolean, backends?: KnowledgeBackend[], embedding?: boolean } = {}) {
   const client = {
-    listKnowledgeSources: vi.fn().mockResolvedValue({ sources: sourcePBs(), maxUploadBytes: 10_485_760n, allowedContentTypes: allowedTypes, storageConfigured: over.storage ?? true, enabledBackends: over.backends ?? [KnowledgeBackend.PGVECTOR], embeddingModel: over.embedding === false ? undefined : embeddingPB }),
+    listKnowledgeSources: vi.fn().mockResolvedValue({ sources: sourcePBs(), maxUploadBytes: 10_485_760n, allowedContentTypes: allowedTypes, retrievalDefaults: retrievalDefaultsPB, storageConfigured: over.storage ?? true, enabledBackends: over.backends ?? [KnowledgeBackend.PGVECTOR], embeddingModel: over.embedding === false ? undefined : embeddingPB }),
     getKnowledgeSource: vi.fn(async ({ id }: { id: string }) => ({ source: sourcePBs().find(s => s.id === id) })),
     createURLSource: vi.fn(async (req: { name: string, seedUrl: string }) => ({ source: create(KnowledgeSourceSchema, { ...req, id: 'Ks9NewUrlQ8sWx3YcLm7D', kind: KnowledgeSourceKind.URL, backend: KnowledgeBackend.PGVECTOR, status: KnowledgeSourceStatus.CRAWLING, updatedAt: updated }) })),
     createUploadSource: vi.fn(async (req: { name: string }) => ({ source: create(KnowledgeSourceSchema, { ...req, id: 'Ks8NewUplQ8sWx3YcLm7D', kind: KnowledgeSourceKind.UPLOAD, backend: KnowledgeBackend.PGVECTOR, status: KnowledgeSourceStatus.IDLE, updatedAt: updated }) })),

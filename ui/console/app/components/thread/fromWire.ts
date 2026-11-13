@@ -90,6 +90,7 @@ export function toRunSummary(r: RunPB, threadTitle: string): RunSummary {
     embeddingTokens: u ? Number(u.embeddingTokens) : 0,
     retrieveCalls: r.knowledgeRetrieveCalls,
     retrieveMs: Number(r.knowledgeRetrieveMs),
+    retrievePassages: r.knowledgePassages,
     costCents: r.costMicros === undefined ? 0 : Number(r.costMicros) / 10_000,
     unpriced: r.costMicros === undefined,
     estimated: !!u?.estimated,

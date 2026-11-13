@@ -1,6 +1,6 @@
 import type { UploadReject, UploadState, UploadTransport } from '#base/components/ui/upload';
 import type { ShownError } from '#base/lib/apperror/message';
-import type { EmbeddingModel as EmbeddingModelPB, KnowledgeDocument as KnowledgeDocumentPB, KnowledgeSource as KnowledgeSourcePB } from '#gen/knowledge/v1/knowledge_pb';
+import type { EmbeddingModel as EmbeddingModelPB, KnowledgeDocument as KnowledgeDocumentPB, KnowledgeSource as KnowledgeSourcePB, RetrievalDefaults as RetrievalDefaultsPB } from '#gen/knowledge/v1/knowledge_pb';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { UploadFailedError, xhrPut } from '#base/components/ui/upload';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
@@ -65,6 +65,20 @@ export interface KnowledgeHit {
   page: number;
   url: string;
   score: number;
+}
+
+export interface RetrievalPreset {
+  name: string;
+  topK: number;
+  minScore: number;
+}
+
+export interface RetrievalDefaults {
+  topK: number;
+  minScore: number;
+  maxTokens: number;
+  ranges: { topK: [number, number], minScore: [number, number], maxTokens: [number, number] };
+  presets: RetrievalPreset[];
 }
 
 export interface UploadEntry {
@@ -153,6 +167,18 @@ export function toDocument(d: KnowledgeDocumentPB): KnowledgeDocument {
   };
 }
 
+function toRetrievalDefaults(d?: RetrievalDefaultsPB): RetrievalDefaults | null {
+  return d
+    ? {
+        topK: d.topK,
+        minScore: d.minScore,
+        maxTokens: d.maxTokens,
+        ranges: { topK: [d.minTopK, d.maxTopK], minScore: [d.minMinScore, d.maxMinScore], maxTokens: [d.minMaxTokens, d.maxMaxTokens] },
+        presets: d.presets.map(p => ({ name: p.name, topK: p.topK, minScore: p.minScore })),
+      }
+    : null;
+}
+
 function toEmbedding(e?: EmbeddingModelPB): EmbeddingModel | null {
   return e ? { providerId: e.providerId, model: e.model, dims: e.dims, providerMissing: e.providerMissing } : null;
 }
@@ -173,6 +199,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
   const storageConfigured = ref(false);
   const maxUploadBytes = ref(0);
   const allowedContentTypes = ref<string[]>([]);
+  const retrievalDefaults = ref<RetrievalDefaults | null>(null);
   const uploadAccept = computed(() => acceptFor(allowedContentTypes.value));
   const enabledBackends = ref<BackendName[]>([]);
   const embedding = ref<EmbeddingModel | null>(null);
@@ -218,6 +245,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
       storageConfigured.value = res.storageConfigured;
       maxUploadBytes.value = Number(res.maxUploadBytes ?? 0n);
       allowedContentTypes.value = [...(res.allowedContentTypes ?? [])];
+      retrievalDefaults.value = toRetrievalDefaults(res.retrievalDefaults);
       enabledBackends.value = (res.enabledBackends ?? []).map(b => backends[b]).filter((b): b is BackendName => !!b);
       embedding.value = toEmbedding(res.embeddingModel);
       loadedFor = projectId;
@@ -383,6 +411,7 @@ export const useKnowledgeStore = defineStore('knowledge', () => {
     maxUploadBytes,
     allowedContentTypes,
     uploadAccept,
+    retrievalDefaults,
     enabledBackends,
     embedding,
     on,

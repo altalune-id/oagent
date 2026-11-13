@@ -43,8 +43,8 @@ describe('thread wire mapping', () => {
   it('keeps a run unpriced without cost micros, and its error code', () => {
     expect(toRunSummary(create(RunSchema, { id: 'r', status: RunStatus.FAILED, errorCode: 'RUN005' }), 'T')).toMatchObject({ status: 'failed', unpriced: true, estimated: false, tokens: 0, seconds: 0, costCents: 0, detail: { key: 'runstatus.detail_error', params: { code: 'RUN005' } }, startedAt: new Date(0) });
     expect(toRunSummary(create(RunSchema, { id: 'r', status: RunStatus.UNSPECIFIED }), 'T').status).toBe('running');
-    expect(toRunSummary(create(RunSchema, { id: 'r', usage: { inputTokens: 10n, embeddingTokens: 120n }, knowledgeRetrieveCalls: 2, knowledgeRetrieveMs: 340n }), 'T')).toMatchObject({ tokens: 10, embeddingTokens: 120, retrieveCalls: 2, retrieveMs: 340 });
-    expect(toRunSummary(create(RunSchema, { id: 'r' }), 'T')).toMatchObject({ embeddingTokens: 0, retrieveCalls: 0, retrieveMs: 0 });
+    expect(toRunSummary(create(RunSchema, { id: 'r', usage: { inputTokens: 10n, embeddingTokens: 120n }, knowledgeRetrieveCalls: 2, knowledgeRetrieveMs: 340n, knowledgePassages: 7 }), 'T')).toMatchObject({ tokens: 10, embeddingTokens: 120, retrieveCalls: 2, retrieveMs: 340, retrievePassages: 7 });
+    expect(toRunSummary(create(RunSchema, { id: 'r' }), 'T')).toMatchObject({ embeddingTokens: 0, retrieveCalls: 0, retrieveMs: 0, retrievePassages: 0 });
     expect([toRunSummary(create(RunSchema, { id: 'r', agentVersionKind: 'draft' }), 'T').draft, toRunSummary(create(RunSchema, { id: 'r', agentVersionKind: 'published' }), 'T').draft]).toEqual([true, false]);
   });
 

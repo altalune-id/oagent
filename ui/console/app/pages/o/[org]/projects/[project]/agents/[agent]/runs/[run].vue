@@ -99,6 +99,7 @@ useHead({ title: () => `${t('run.title', { id: runId.value })} · OAgent` });
           </dt>
           <dd class="font-medium tabular-nums">
             {{ t('run.knowledge_calls', { n: run.retrieveCalls, ms: count(run.retrieveMs ?? 0) }, run.retrieveCalls) }}
+            <span v-if="run.retrievePassages">{{ t('run.knowledge_passages', { n: count(run.retrievePassages) }, run.retrievePassages) }}</span>
           </dd>
         </div>
         <div class="flex items-baseline gap-1.5">

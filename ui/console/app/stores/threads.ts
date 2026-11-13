@@ -26,6 +26,7 @@ export interface RunSummary {
   embeddingTokens?: number;
   retrieveCalls?: number;
   retrieveMs?: number;
+  retrievePassages?: number;
   costCents: number;
   unpriced?: boolean;
   estimated?: boolean;
