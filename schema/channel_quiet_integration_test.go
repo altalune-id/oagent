@@ -24,15 +24,15 @@ const insertBareConnection = `INSERT INTO channel_connections (id, public_id, or
 	VALUES ($1, $2, $3, $4, $5, 'openwa', 'active', 'https://wa.example.com', 'acme', 'main', 'dev_1', '\x01', '\x02', 'f', 'v', 'p', 'ap', 'ae', now(), now())`
 
 // NOTE: production has data; dropping the defaults must keep every stored quiet time and leave Go as the only source.
-func TestMigration033_ChannelQuietDefaultsDropped(t *testing.T) {
+func TestMigration034_ChannelQuietDefaultsDropped(t *testing.T) {
 	db, schemaName := pgtest.Migrated(t)
 	cfg := migrator.Config{Schema: schemaName}
 	ctx := t.Context()
-	require.NoError(t, schema.MigrateDownTo(ctx, db, cfg, 32))
+	require.NoError(t, schema.MigrateDownTo(ctx, db, cfg, 33))
 	s := seedRunScope(t, db)
 	before := uuid.New()
 	_, err := db.ExecContext(ctx, insertBareConnection, before, "c"+before.String()[:12], s.orgA, s.prjA, s.agentA)
-	require.NoError(t, err, "a connection as 032 shaped it, quiet times from the column defaults")
+	require.NoError(t, err, "a connection as 033 shaped it, quiet times from the column defaults")
 
 	require.NoError(t, schema.MigrateUp(ctx, db, cfg))
 	var window, maxWait int
