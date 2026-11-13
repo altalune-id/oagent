@@ -13,6 +13,7 @@ import (
 const (
 	sqlstateUniqueViolation     = "23505"
 	sqlstateForeignKeyViolation = "23503"
+	sqlstateInsufficientPriv    = "42501"
 )
 
 // ErrTenantMismatch rejects joining a unit of work scoped to one org from a context scoped to another.
@@ -25,6 +26,19 @@ func IsNoRows(err error) bool {
 
 // IsUniqueViolation reports whether err's tree holds a unique violation.
 func IsUniqueViolation(err error) bool { return hasCode(err, sqlstateUniqueViolation) }
+
+// IsRowSecurityViolation reports an upsert refused on another org's row; trust it only after the store's same-org check.
+func IsRowSecurityViolation(err error) bool {
+	pgErr, ok := errors.AsType[*pgconn.PgError](err)
+	if !ok || pgErr.Code != sqlstateInsufficientPriv {
+		return false
+	}
+	// NOTE: the routine name is never translated; the English text is the fallback when a server sends no routine.
+	if pgErr.Routine != "" {
+		return pgErr.Routine == "ExecWithCheckOptions"
+	}
+	return strings.Contains(pgErr.Message, "row-level security policy (USING expression)")
+}
 
 // IsForeignKeyViolation reports whether err's tree holds a foreign-key violation.
 func IsForeignKeyViolation(err error) bool { return hasCode(err, sqlstateForeignKeyViolation) }

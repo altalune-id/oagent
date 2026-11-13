@@ -205,7 +205,7 @@ func TestStore_OtherTenantInvisible(t *testing.T) {
 
 	intruder := newProvider(t, orgB, projectB, "hijacked", time.Now())
 	intruder.ID = victim.ID
-	assert.Error(t, f.store.Save(in(orgB), intruder), "an upsert onto another org's row id is refused")
+	assert.True(t, modelprovider.IsNotFoundError(f.store.Save(in(orgB), intruder)), "an upsert onto another org's row id answers like an unknown one")
 
 	err = db.RunInTx(in(orgB), f.pool, func(ctx context.Context) error {
 		_, err := f.store.LockForUpdate(ctx, victim.ID)

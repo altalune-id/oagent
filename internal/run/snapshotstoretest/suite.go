@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"altalune.id/oagent/internal/kernel/tenant"
 	"altalune.id/oagent/internal/run"
 )
 
@@ -80,7 +81,9 @@ func Run(t *testing.T, newHarness func(t *testing.T) Harness) {
 		require.NoError(t, h.Store.Delete(other, snap.ThreadID))
 		forged := snap
 		forged.Blob = []byte("forged")
-		assert.Error(t, h.Store.Save(other, &forged), "another tenant cannot write it")
+		assert.True(t, run.IsThreadNotFoundError(h.Store.Save(other, &forged)), "another tenant cannot write it")
+		forged.OrgID = tenant.Peek(other).OrgID
+		assert.True(t, run.IsThreadNotFoundError(h.Store.Save(other, &forged)), "a row in the other tenant's name meets the conflict guard")
 		got, err = h.Store.Load(ctx, snap.ThreadID)
 		require.NoError(t, err)
 		require.NotNil(t, got, "nor delete it")

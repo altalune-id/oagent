@@ -273,8 +273,17 @@ func (s *postgresStore) SaveSettings(ctx context.Context, st *Settings) error {
 			t.Dims.SET(postgres.Int(int64(st.Dims))),
 			t.UpdatedAt.SET(postgres.TimestampzT(st.UpdatedAt.UTC())),
 		).WHERE(t.OrgID.EQ(postgres.UUID(st.OrgID))))
-	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { _, err := stmt.ExecContext(ctx, q); return err }); err != nil {
+	var res sql.Result
+	err := db.Write(ctx, s.pool, func(q qrm.DB) (err error) { res, err = stmt.ExecContext(ctx, q); return err })
+	if db.IsRowSecurityViolation(err) {
+		return &SourceNotFoundError{}
+	}
+	if err != nil {
 		return fmt.Errorf("knowledge.postgres: SaveSettings: %w", err)
+	}
+	// NOTE: zero rows means the org guard refused; Postgres 17.12 and later refuse with a row-security error before this.
+	if n, rowsErr := res.RowsAffected(); rowsErr == nil && n == 0 {
+		return &SourceNotFoundError{}
 	}
 	return nil
 }
