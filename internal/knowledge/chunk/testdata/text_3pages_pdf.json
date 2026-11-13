@@ -1,0 +1,20 @@
+[
+  {
+    "ordinal": 0,
+    "page": 1,
+    "text": "Page 1Refund policy. Refunds are paid within 7 days.",
+    "embed_text": "text_3pages.pdf\n\nPage 1Refund policy. Refunds are paid within 7 days."
+  },
+  {
+    "ordinal": 1,
+    "page": 2,
+    "text": "Page 2Shipping. Orders ship from Jakarta in 2 days.",
+    "embed_text": "text_3pages.pdf\n\nPage 2Shipping. Orders ship from Jakarta in 2 days."
+  },
+  {
+    "ordinal": 2,
+    "page": 3,
+    "text": "Page 3Contact. Write to the help desk for anything else.",
+    "embed_text": "text_3pages.pdf\n\nPage 3Contact. Write to the help desk for anything else."
+  }
+]

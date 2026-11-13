@@ -25,15 +25,19 @@ type GrantServer struct {
 type AgentGrants struct {
 	Providers map[uuid.UUID]GrantProvider
 	Servers   map[uuid.UUID]GrantServer
-	// Locked records each LockShared call's provider and server ids.
-	Locked [][]uuid.UUID
-	Err    error
+	// Sources maps a knowledge source to its project.
+	Sources map[uuid.UUID]uuid.UUID
+	// Locked records each LockShared call's provider and server ids; LockedSources each LockSourcesShared call's ids.
+	Locked        [][]uuid.UUID
+	LockedSources [][]uuid.UUID
+	Err           error
 }
 
 var (
 	_ agent.Providers  = (*AgentGrants)(nil)
 	_ agent.MCPServers = (*AgentGrants)(nil)
 	_ agent.Locker     = (*AgentGrants)(nil)
+	_ agent.Knowledge  = (*AgentGrants)(nil)
 )
 
 // Models implements agent.Providers.
@@ -79,5 +83,30 @@ func (f *AgentGrants) LockShared(ctx context.Context, providerIDs, serverIDs []u
 		}
 	}
 	f.Locked = append(f.Locked, append(append([]uuid.UUID{}, providerIDs...), serverIDs...))
+	return nil
+}
+
+// SourceExists implements agent.Knowledge.
+func (f *AgentGrants) SourceExists(_ context.Context, projectID, sourceID uuid.UUID) error {
+	if f.Err != nil {
+		return f.Err
+	}
+	if p, ok := f.Sources[sourceID]; !ok || p != projectID {
+		return &agent.InvalidGrantError{Reason: agent.GrantKnowledgeSource}
+	}
+	return nil
+}
+
+// LockSourcesShared implements agent.Knowledge; a gone source answers *agent.InvalidGrantError.
+func (f *AgentGrants) LockSourcesShared(ctx context.Context, ids []uuid.UUID) error {
+	if !InTx(ctx) {
+		return errors.New("fakes: a row lock needs a unit of work")
+	}
+	for _, id := range ids {
+		if _, ok := f.Sources[id]; !ok {
+			return &agent.InvalidGrantError{Reason: agent.GrantKnowledgeSource}
+		}
+	}
+	f.LockedSources = append(f.LockedSources, append([]uuid.UUID{}, ids...))
 	return nil
 }

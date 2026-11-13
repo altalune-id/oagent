@@ -1,0 +1,38 @@
+{
+  "contractVersion": 3,
+  "ids": {
+    "run": "Rn5Q8wYk2HhT3mVz7XcLp",
+    "thread": "t0193a2b4c5d67e8f9a0b1c2d3e4f5a6b",
+    "agent": "a0193a2b4c5d67e8f9a0b1c2d3e4f5a6c",
+    "agentVersion": 3,
+    "attempt": 1,
+    "project": "Pj4kW9sQ2mN7vB3xC8zLr"
+  },
+  "agent": {
+    "instructions": "You record expenses for the user. Be brief.",
+    "temperature": 0.2,
+    "maxSteps": 10,
+    "model": {
+      "baseUrl": "https://llm.example.com/v1",
+      "apiKey": "sk-test",
+      "modelId": "gpt-4o",
+      "maxTokens": 1024
+    }
+  },
+  "mcpServers": [],
+  "snapshot": null,
+  "history": [],
+  "input": {
+    "kind": "message",
+    "message": {
+      "id": "msg_user_1",
+      "role": "user",
+      "content": "Hello"
+    }
+  },
+  "storedResults": [],
+  "limits": {
+    "deadlineMs": 270000,
+    "budget": null
+  }
+}

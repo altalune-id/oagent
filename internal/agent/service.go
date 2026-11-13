@@ -28,6 +28,7 @@ type Service struct {
 	providers  Providers
 	servers    MCPServers
 	locker     Locker
+	knowledge  Knowledge
 }
 
 // NewService builds a Service over store; a save and its event run as one unit of work on uow.
@@ -56,6 +57,12 @@ func (s *Service) WithProviders(p Providers) *Service {
 // WithMCPServers checks a config's MCP server grants against m; without it every server is unknown.
 func (s *Service) WithMCPServers(m MCPServers) *Service {
 	s.servers = m
+	return s
+}
+
+// WithKnowledge checks and locks a config's knowledge sources with k; without it every source is unknown.
+func (s *Service) WithKnowledge(k Knowledge) *Service {
+	s.knowledge = k
 	return s
 }
 
@@ -259,12 +266,25 @@ func (s *Service) publishable(ctx context.Context, a *Agent) error {
 	if err := s.locker.LockShared(ctx, []uuid.UUID{a.Draft.ProviderID}, a.Draft.ServerIDs()); err != nil {
 		return err
 	}
+	if len(a.Draft.KnowledgeSourceIDs) > 0 && s.knowledge != nil {
+		if err := s.knowledge.LockSourcesShared(ctx, a.Draft.KnowledgeSourceIDs); err != nil {
+			return err
+		}
+	}
 	return s.checkReferences(ctx, a.ProjectID, a.Draft, true)
 }
 
 func (s *Service) checkReferences(ctx context.Context, projectID uuid.UUID, cfg Config, publishing bool) error {
 	if cfg.ProviderID != uuid.Nil {
 		if err := s.checkModels(ctx, projectID, cfg, publishing); err != nil {
+			return err
+		}
+	}
+	for _, id := range cfg.KnowledgeSourceIDs {
+		if s.knowledge == nil {
+			return &InvalidGrantError{Reason: GrantKnowledgeSource}
+		}
+		if err := s.knowledge.SourceExists(ctx, projectID, id); err != nil {
 			return err
 		}
 	}

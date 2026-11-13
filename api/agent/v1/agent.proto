@@ -136,7 +136,7 @@ message McpGrant {
   bool missing = 3;
 }
 
-// AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider's public id; provider_missing is output only.
+// AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider's public id; provider_missing is output only; knowledge_source_ids are the knowledge sources searched before each turn, leaving out a deleted one, and knowledge_sources_missing is output only: how many bound sources no longer exist. knowledge_tuning shapes that search; unset fields use the recommended values.
 message AgentConfig {
   string instructions = 1 [
     (buf.validate.field).cel = {id: "agent.instructions.max_len.32000", expression: "this.size() <= 32000 ? '' : 'must be at most 32000 characters'"}
@@ -171,6 +171,27 @@ message AgentConfig {
     (buf.validate.field).cel = {id: "agent.mcp_servers.unique", expression: "this.map(g, g.server_id).unique() ? '' : 'server ids must be unique'"}
   ];
   bool provider_missing = 10;
+  repeated string knowledge_source_ids = 11 [
+    (buf.validate.field).repeated.max_items = 16,
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items.string.(oagent.v1.public_id) = true
+  ];
+  int32 knowledge_sources_missing = 12;
+  KnowledgeTuning knowledge_tuning = 13;
+}
+
+// KnowledgeTuning shapes the knowledge search before each turn. top_k is the passages per answer and max_tokens the knowledge budget, 0 meaning the recommended value; min_score is the minimum relevance, unset meaning the recommended value (0 is a valid setting). ListKnowledgeSources returns the recommended values.
+message KnowledgeTuning {
+  int32 top_k = 1 [
+    (buf.validate.field).cel = {id: "agent.knowledge_tuning.top_k.range", expression: "this == 0 || (this >= 1 && this <= 10) ? '' : 'must be 0 or 1 to 10'"}
+  ];
+  optional double min_score = 2 [
+    (buf.validate.field).double.gte = 0,
+    (buf.validate.field).double.lte = 1
+  ];
+  int32 max_tokens = 3 [
+    (buf.validate.field).cel = {id: "agent.knowledge_tuning.max_tokens.range", expression: "this == 0 || (this >= 500 && this <= 8000) ? '' : 'must be 0 or 500 to 8000'"}
+  ];
 }
 
 // AgentVersion is an immutable published configuration; version is a display label, id the public id.

@@ -1,1 +1,4 @@
 internal/legal/content/*.md text eol=lf
+internal/knowledge/testdata/docs/*.pdf binary
+internal/knowledge/testdata/docs/*.docx binary
+internal/knowledge/testdata/docs/cp1252.txt -text

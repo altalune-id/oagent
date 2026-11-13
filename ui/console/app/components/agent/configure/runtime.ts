@@ -84,7 +84,7 @@ export function withoutGrant(config: AgentConfig, serverId: string): AgentConfig
 
 // readsPrivateData reports whether the agent can see private data, so web_fetch needs an allow-list; any granted MCP tool counts.
 export function readsPrivateData(config: AgentConfig, runtime: AgentRuntimeConfig): boolean {
-  return config.grants.length > 0 || runtime.memory || runtime.knowledgeIds.length > 0;
+  return config.grants.length > 0 || runtime.memory || config.knowledgeSourceIds.length > 0;
 }
 
 // parseDollars reads a typed dollar amount into cents: empty means no cap (0), and null means the text is not an amount.
@@ -101,9 +101,9 @@ export function parseDomains(text: string): string[] {
   return text.split('\n').map(d => d.trim().toLowerCase()).filter(Boolean);
 }
 
-// readySources keeps the knowledge sources an agent may use now.
-export function readySources(sources: KnowledgeSource[]): KnowledgeSource[] {
-  return sources.filter(s => s.status === 'ready');
+// bindable reports whether an agent can search a knowledge source: it has a ready document.
+export function bindable(source: KnowledgeSource): boolean {
+  return source.ready > 0;
 }
 
 // chosenModel returns the provider and the model and helper model the draft names, when they still exist.

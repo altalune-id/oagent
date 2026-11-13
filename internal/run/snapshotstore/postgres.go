@@ -3,6 +3,7 @@ package snapshotstore
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -86,8 +87,17 @@ func (s *Postgres) Save(ctx context.Context, snap *run.Snapshot) error {
 			t.Blob.SET(postgres.Bytea(snap.Blob)),
 			t.UpdatedAt.SET(postgres.TimestampzT(now)),
 		).WHERE(t.OrgID.EQ(postgres.UUID(tc.OrgID))))
-	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { _, err := stmt.ExecContext(ctx, q); return err }); err != nil {
+	var res sql.Result
+	err = db.Write(ctx, s.pool, func(q qrm.DB) (err error) { res, err = stmt.ExecContext(ctx, q); return err })
+	if db.IsRowSecurityViolation(err) {
+		return &run.ThreadNotFoundError{ID: snap.ThreadID.String()}
+	}
+	if err != nil {
 		return fmt.Errorf("snapshotstore.postgres: Save: %w", err)
+	}
+	// NOTE: zero rows means the org guard refused; Postgres 17.12 and later refuse with a row-security error before this.
+	if n, rowsErr := res.RowsAffected(); rowsErr == nil && n == 0 {
+		return &run.ThreadNotFoundError{ID: snap.ThreadID.String()}
 	}
 	snap.UpdatedAt = now
 	return nil

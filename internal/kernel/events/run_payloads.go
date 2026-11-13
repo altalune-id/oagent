@@ -6,6 +6,7 @@ type RunUsageV1 struct {
 	OutputTokens          int64 `json:"output_tokens"`
 	CacheReadInputTokens  int64 `json:"cache_read_input_tokens"`
 	CacheWriteInputTokens int64 `json:"cache_write_input_tokens"`
+	EmbeddingTokens       int64 `json:"embedding_tokens"`
 	Estimated             bool  `json:"estimated"`
 }
 

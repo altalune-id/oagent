@@ -88,14 +88,16 @@ BEGIN
 
     SELECT string_agg(format('%s(%s)', p.proname, o.rolname), ', ') INTO offenders
       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_roles o ON o.oid = p.proowner
-     WHERE n.nspname = schema_n AND o.rolname <> owner_r;
+     WHERE n.nspname = schema_n AND o.rolname <> owner_r
+       AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e');
     IF offenders IS NOT NULL THEN
       problems := problems || format('functions not owned by %s: %s', owner_r, offenders);
     END IF;
 
     SELECT string_agg(p.oid::regprocedure::text, ', ') INTO offenders
       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-     WHERE n.nspname = schema_n AND has_function_privilege('public', p.oid, 'EXECUTE');
+     WHERE n.nspname = schema_n AND has_function_privilege('public', p.oid, 'EXECUTE')
+       AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e');
     IF offenders IS NOT NULL THEN
       problems := problems || format('PUBLIC can execute: %s', offenders);
     END IF;

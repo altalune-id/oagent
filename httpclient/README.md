@@ -24,9 +24,10 @@ resp, err := c.Get(url)
 | `WithRetry(RetryPolicy{...})`         | retrying transport; `MaxAttempts < 2` disables it   |
 | `WithOtel(bool)`                      | otelhttp instrumentation (default on)               |
 | `WithoutProxy()`                      | ignore `HTTP(S)_PROXY`, for bodies carrying secrets |
+| `WithoutRedirects()`                  | return a 3xx as is; for requests carrying secrets   |
 
 ## Notes
 
 - Dials to private, loopback, link-local, multicast, CGNAT and reserved ranges are refused with `PrivateAddressError` unless `WithAllowPrivateHosts(true)` is set. A proxy disables the filter (it sees only the proxy address).
-- Retries replay only idempotent methods; POST/PATCH need `RetryNonIdempotent`. Waits honor `Retry-After` and stop when the context budget can't cover the backoff.
+- Retries replay only idempotent methods; POST/PATCH need `RetryNonIdempotent`. Waits honor `Retry-After` and stop when the context budget can't cover the backoff. `RetryableStatus` is the status rule (408, 429, 5xx except 501).
 - Errors: `IsPrivateAddressError`, `IsBodyTooLargeError`.

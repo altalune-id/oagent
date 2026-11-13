@@ -53,6 +53,9 @@ func (s *postgresStore) save(ctx context.Context, tx *sql.Tx, tc tenant.Context,
 			).WHERE(s.endpoints.OrgID.EQ(postgres.UUID(tc.OrgID))),
 		)
 	res, err := stmt.ExecContext(ctx, tx)
+	if db.IsRowSecurityViolation(err) {
+		return &NotFoundError{ID: e.ID.String()}
+	}
 	if err != nil {
 		return fmt.Errorf("webhook.postgres.Save: %w", err)
 	}

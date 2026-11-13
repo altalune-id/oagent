@@ -9,6 +9,7 @@ import { AuthService } from '#gen/auth/v1/auth_pb';
 import { ChannelService } from '#gen/channel/v1/channel_pb';
 import { EndUserService } from '#gen/enduser/v1/enduser_pb';
 import { InviteService } from '#gen/invite/v1/invite_pb';
+import { KnowledgeService } from '#gen/knowledge/v1/knowledge_pb';
 import { McpServerService } from '#gen/mcpserver/v1/mcpserver_pb';
 import { MemberService } from '#gen/member/v1/member_pb';
 import { ModelProviderService } from '#gen/modelprovider/v1/modelprovider_pb';
@@ -58,6 +59,7 @@ export default defineNuxtPlugin({
         webhookClient: createClient(WebhookService, transport),
         memberClient: createClient(MemberService, transport),
         inviteClient: createClient(InviteService, transport),
+        knowledgeClient: createClient(KnowledgeService, transport),
         authClient: createClient(AuthService, whoamiTransport),
       },
     };

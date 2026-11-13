@@ -1,0 +1,20 @@
+[
+  {
+    "ordinal": 0,
+    "heading_path": "Leave",
+    "text": "Annual leave is 12 days a year.",
+    "embed_text": "headings.docx — Leave\n\nAnnual leave is 12 days a year."
+  },
+  {
+    "ordinal": 1,
+    "heading_path": "Expenses",
+    "text": "Submit receipts within 30 days.",
+    "embed_text": "headings.docx — Expenses\n\nSubmit receipts within 30 days."
+  },
+  {
+    "ordinal": 2,
+    "heading_path": "Travel",
+    "text": "Book flights through the travel desk.",
+    "embed_text": "headings.docx — Travel\n\nBook flights through the travel desk."
+  }
+]

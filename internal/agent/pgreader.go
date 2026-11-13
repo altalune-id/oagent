@@ -145,6 +145,41 @@ func (s *postgresStore) MCPServerInUse(ctx context.Context, serverID uuid.UUID) 
 	return len(cfgs) > 0, err
 }
 
+// KnowledgeSourceInUse reports whether a latest published version in the org on ctx searches a knowledge source.
+func (s *postgresStore) KnowledgeSourceInUse(ctx context.Context, sourceID uuid.UUID) (bool, error) {
+	cfgs, err := s.latestConfigs(ctx, "KnowledgeSourceInUse", s.sourceUse, sourceID)
+	return len(cfgs) > 0, err
+}
+
+// KnowledgeUse names, per knowledge source of a project, the agents whose latest published version searches it.
+func (s *postgresStore) KnowledgeUse(ctx context.Context, projectID uuid.UUID) (map[uuid.UUID][]Named, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stmt := postgres.RawStatement(s.projectUse, postgres.RawArgs{"#org": tc.OrgID, "#project": projectID})
+	var rows []struct {
+		ID       uuid.UUID `alias:"agents.id"`
+		PublicID string    `alias:"agents.public_id"`
+		Name     string    `alias:"agents.name"`
+		Config   string    `alias:"agent_versions.config"`
+	}
+	if err := db.Read(ctx, s.pool, func(q qrm.DB) error { return stmt.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
+		return nil, fmt.Errorf("agent.postgres: KnowledgeUse: %w", err)
+	}
+	out := map[uuid.UUID][]Named{}
+	for _, r := range rows {
+		var c Config
+		if err := json.Unmarshal([]byte(r.Config), &c); err != nil {
+			return nil, fmt.Errorf("agent.postgres: KnowledgeUse: %w", err)
+		}
+		for _, id := range c.KnowledgeSourceIDs {
+			out[id] = append(out[id], Named{ID: r.ID, PublicID: r.PublicID, Name: r.Name})
+		}
+	}
+	return out, nil
+}
+
 func (s *postgresStore) latestConfigs(ctx context.Context, op, query string, id uuid.UUID) ([]Config, error) {
 	tc, err := tenant.From(ctx)
 	if err != nil {

@@ -164,11 +164,16 @@ func retryableResult(resp *http.Response, err error) bool {
 	if resp == nil {
 		return false
 	}
-	switch resp.StatusCode {
+	return RetryableStatus(resp.StatusCode)
+}
+
+// RetryableStatus reports whether the retrying transport retries a response with this status.
+func RetryableStatus(code int) bool {
+	switch code {
 	case http.StatusRequestTimeout, http.StatusTooManyRequests:
 		return true
 	}
-	return resp.StatusCode >= http.StatusInternalServerError && resp.StatusCode != http.StatusNotImplemented
+	return code >= http.StatusInternalServerError && code != http.StatusNotImplemented
 }
 
 func permanentTransportError(err error) bool {

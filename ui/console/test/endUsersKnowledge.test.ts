@@ -6,15 +6,12 @@ import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { fakeRuntimeClients } from '~~/test/fixtures/runtime';
-import { useToast } from '#base/components/ui/toast';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { EndUserSchema, EndUserThreadSchema, IdentityKind } from '#gen/enduser/v1/enduser_pb';
 import { mountPage } from '#test/mount-page';
 import { connectError, route, setClient, setKnownKeys, setRoute } from '#test/nuxt-globals';
 import EndUserPage from '~/pages/o/[org]/projects/[project]/end-users/[endUser].vue';
 import EndUsersPage from '~/pages/o/[org]/projects/[project]/end-users/index.vue';
-import KnowledgePage from '~/pages/o/[org]/projects/[project]/knowledge.vue';
-import { useKnowledgeStore } from '~/stores/knowledge';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 
@@ -27,12 +24,6 @@ function seed(path: string, params: Record<string, string> = {}, permissions = o
   useProjectsStore().items = [{ id: projectId, orgId, slug: 'rumah', name: 'Rumah Tangga' }];
   setRoute({ path: `/o/acme/projects/rumah${path}`, params: { org: 'acme', project: 'rumah', ...params } });
   setClient('$authClient', { whoami: vi.fn().mockResolvedValue(create(WhoamiResponseSchema, { name: 'Budi', permissions })) });
-}
-
-const openDialog = (w: { findAll: (s: string) => { element: Element }[] }) => w.findAll('dialog').find(d => (d.element as HTMLDialogElement).open)!;
-
-function page<T extends { findAll: (s: string) => { element: Element }[] }>(w: T) {
-  return w.findAll('button').filter(b => !b.element.closest('dialog')) as ReturnType<T['findAll']>;
 }
 
 beforeEach(() => {
@@ -138,89 +129,5 @@ describe('end user detail', () => {
     await flushPromises();
     expect(get).toHaveBeenCalledTimes(2);
     expect(w.find('[role="alert"]').exists()).toBe(false);
-  });
-});
-
-describe('knowledge sources', () => {
-  it('lists sources with status, crawl progress and failure reason', async () => {
-    seed('/knowledge');
-    const w = await mountPage(KnowledgePage);
-    const rows = w.findAll('tbody tr');
-    expect(rows).toHaveLength(3);
-    expect(rows[0]!.text()).toContain('knowledge.chunks|{"n":38}');
-    expect(rows[1]!.text()).toContain('knowledge.pages_progress|{"done":12,"total":40}');
-    expect(rows[2]!.text()).toContain('knowledge.failure_robots|{"path":"/kpr"}');
-    expect(rows[2]!.text()).toContain('knowledge.unused');
-  });
-
-  it('retries a failed source and deletes one after a confirm', async () => {
-    seed('/knowledge');
-    const w = await mountPage(KnowledgePage);
-    const menus = w.findAll('tbody tr').map(r => r.findAll('li button').map(b => b.text()));
-    expect(menus[0]).toEqual(['common.delete']);
-    expect(menus[2]).toEqual(['knowledge.retry', 'common.delete']);
-    await w.findAll('tbody tr')[2]!.findAll('li button')[0]!.trigger('click');
-    expect(useKnowledgeStore().items[2]).toMatchObject({ status: 'queued', failure: undefined, pagesTotal: 50 });
-    expect(useToast().toasts.at(-1)).toMatchObject({ text: 'knowledge.retried|{"name":"Syarat KPR"}' });
-    await w.findAll('tbody tr')[0]!.findAll('li button')[0]!.trigger('click');
-    const dialog = openDialog(w);
-    expect(dialog.element.textContent).toContain('knowledge.delete_body|{"name":"Panduan kategori yasaku"}');
-    await w.findAll('dialog button').find(b => b.element.closest('dialog') === dialog.element && b.text() === 'common.delete')!.trigger('click');
-    await flushPromises();
-    expect(useKnowledgeStore().items.map(s => s.name)).toEqual(['Promo bank', 'Syarat KPR']);
-  });
-
-  it('adds a website after checking the address and page limit', async () => {
-    seed('/knowledge');
-    const w = await mountPage(KnowledgePage);
-    await page(w).find(b => b.text() === 'knowledge.add')!.trigger('click');
-    const dialog = openDialog(w);
-    const inDialog = (s: string) => w.findAll(s).filter(x => x.element.closest('dialog') === dialog.element);
-    const add = inDialog('button').find(b => b.text() === 'knowledge.add')!;
-    const [url, pages] = inDialog('form input');
-    await pages!.setValue('0');
-    await add.trigger('click');
-    expect(dialog.element.textContent).toContain('knowledge.url_invalid');
-    expect(dialog.element.textContent).toContain('knowledge.max_pages_invalid|{"max":500}');
-    await url!.setValue('https://bank.example.id/promo/');
-    await pages!.setValue('40');
-    await inDialog('form')[0]!.trigger('submit');
-    await flushPromises();
-    expect(useKnowledgeStore().items[0]).toMatchObject({ name: 'bank.example.id/promo', status: 'queued', pagesTotal: 40 });
-    expect(useToast().toasts.at(-1)).toMatchObject({ kind: 'success', text: 'knowledge.added|{"name":"bank.example.id/promo"}' });
-    expect(w.findAll('tbody tr')).toHaveLength(4);
-  });
-
-  it('keeps document uploads off and closes on cancel', async () => {
-    seed('/knowledge');
-    const w = await mountPage(KnowledgePage);
-    await page(w).find(b => b.text() === 'knowledge.add')!.trigger('click');
-    const dialog = openDialog(w);
-    const inDialog = (s: string) => w.findAll(s).filter(x => x.element.closest('dialog') === dialog.element);
-    await inDialog('input[value="document"]')[0]!.setValue(true);
-    expect(dialog.element.textContent).toContain('knowledge.storage_off');
-    expect(inDialog('input[type="file"]')[0]!.attributes('disabled')).toBeDefined();
-    expect(inDialog('button').find(b => b.text() === 'knowledge.add')!.attributes('disabled')).toBeDefined();
-    await inDialog('button').find(b => b.text() === 'common.cancel')!.trigger('click');
-    expect(openDialog(w)).toBeUndefined();
-  });
-
-  it('needs an embedding model before adding, and shows an empty state', async () => {
-    seed('/knowledge');
-    const w = await mountPage(KnowledgePage);
-    useKnowledgeStore().embeddingReady = false;
-    useKnowledgeStore().items = [];
-    await flushPromises();
-    expect(w.text()).toContain('knowledge.needs_embedding');
-    expect(w.text()).toContain('knowledge.empty');
-    expect(page(w).find(b => b.text() === 'knowledge.add')!.attributes('disabled')).toBeDefined();
-  });
-
-  it('shows no add button to read-only members', async () => {
-    seed('/knowledge', {}, ['project:read']);
-    const w = await mountPage(KnowledgePage);
-    expect(page(w).some(b => b.text() === 'knowledge.add')).toBe(false);
-    expect(w.find('tbody li button').exists()).toBe(false);
-    expect(w.text()).not.toContain('knowledge.needs_embedding');
   });
 });

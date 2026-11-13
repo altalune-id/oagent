@@ -147,7 +147,7 @@ comment-list: ## list comment-discipline violations without failing
 test: ## run tests with the race detector
 	$(GO) test -race ./...
 
-INTEGRATION_TIMEOUT ?= 10m
+INTEGRATION_TIMEOUT ?= 20m
 
 .PHONY: test-integration
 test-integration: ## run integration tests (TEST_PG_DSN if set, else one Postgres container per package)
@@ -158,7 +158,7 @@ test-all: test test-integration ## unit + integration tests
 
 COVER_MIN ?= 85
 # generated code, templ views, test helpers, test-only packages and main wiring
-COVER_SKIP ?= /gen(/|$$)|/views$$|/testutil/|/sessiontest$$|/ratelimittest$$|/snapshotstoretest$$|/e2etest$$|/examples/|/cmd/oagent$$
+COVER_SKIP ?= /gen(/|$$)|/views$$|/testutil/|/sessiontest$$|/ratelimittest$$|/snapshotstoretest$$|/storagetest$$|/e2etest$$|/examples/|/cmd/oagent$$
 
 .PHONY: cover
 cover: ## unit + integration coverage; fails when a package is under COVER_MIN percent
@@ -167,7 +167,7 @@ cover: ## unit + integration coverage; fails when a package is under COVER_MIN p
 		| awk -v min=$(COVER_MIN) -v skip='$(COVER_SKIP)' ' \
 			$$1 == "FAIL" { bad = 1 } \
 			{ pkg = ""; pct = -1 } \
-			$$1 == "ok" { pkg = $$2; for (i = 1; i <= NF; i++) if ($$i == "coverage:") pct = $$(i + 1) + 0 } \
+			$$1 == "ok" && $$0 !~ /no statements/ { pkg = $$2; for (i = 1; i <= NF; i++) if ($$i == "coverage:") pct = $$(i + 1) + 0 } \
 			$$1 == "?" { pkg = $$2; pct = 0 } \
 			$$2 == "coverage:" { pkg = $$1; pct = $$3 + 0 } \
 			pkg != "" && pkg !~ skip && pct < min { printf "cover: %s is at %.1f%% (min %d%%)\n", pkg, pct, min > "/dev/stderr"; bad = 1 } \

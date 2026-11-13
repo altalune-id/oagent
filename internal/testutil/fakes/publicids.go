@@ -28,6 +28,7 @@ const (
 	kindResource = "resource"
 	kindProvider = "provider"
 	kindServer   = "mcpserver"
+	kindSource   = "knowledge_source"
 )
 
 // NewPublicIDs returns an empty lookup.
@@ -46,6 +47,34 @@ func (f *PublicIDs) User(id uuid.UUID) string { return f.add(kindUser, id, uuid.
 
 // Resource registers an agent or webhook endpoint of orgID and returns its public id.
 func (f *PublicIDs) Resource(id, orgID uuid.UUID) string { return f.add(kindResource, id, orgID) }
+
+// KnowledgeSource registers a knowledge source of projectID and returns its public id.
+func (f *PublicIDs) KnowledgeSource(id, projectID uuid.UUID) string {
+	return f.add(kindSource, id, projectID)
+}
+
+// KnowledgeSourceID implements agent.Refs; it answers the source's project.
+func (f *PublicIDs) KnowledgeSourceID(_ context.Context, publicID string) (id, projectID uuid.UUID, ok bool, err error) {
+	r, ok, err := f.find(kindSource, publicID)
+	return r.id, r.orgID, ok, err
+}
+
+// KnowledgeSourcePublicID implements agent.Refs; an unregistered source is not ok.
+func (f *PublicIDs) KnowledgeSourcePublicID(_ context.Context, id uuid.UUID) (publicID string, ok bool, err error) {
+	return f.optionalPublicID(kindSource, id)
+}
+
+// Forget drops id of every kind, as if its row were deleted.
+func (f *PublicIDs) Forget(id uuid.UUID) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for kind, pubs := range f.pubs {
+		if pub, ok := pubs[id]; ok {
+			delete(pubs, id)
+			delete(f.refs[kind], pub)
+		}
+	}
+}
 
 func (f *PublicIDs) add(kind string, id, orgID uuid.UUID) string {
 	f.mu.Lock()

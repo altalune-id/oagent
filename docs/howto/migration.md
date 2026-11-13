@@ -5,7 +5,13 @@ Use this when you add or change a table, column, constraint or index. Migrations
 ## Plan
 
 - [ ] **One migration per change**, at the next number. Never edit a migration that already shipped on `main`.
-- [ ] **Fresh DB.** Nothing runs oagent in production yet and the DB is reset when the schema breaks. Write the plain DDL: no backfill `UPDATE`, no `RAISE EXCEPTION` data guard, no SQL id generator. Add `NOT NULL` columns directly and say in the hand-over that the DB must be reset.
+- [ ] **Live DB.** oagent runs in production and its database is never reset. Every migration applies to a database that already has rows:
+  - add a `NOT NULL` column with a `DEFAULT`. Drop the default in a later release, and only once every insert in the new app writes the column, because the old app keeps inserting during a deploy. A counter column that inserts leave out keeps its `DEFAULT 0` for good;
+  - add or tighten a constraint only when existing rows already satisfy it;
+  - no `RAISE EXCEPTION` data guard, no SQL id generator;
+  - the old and the new app run against the new schema at the same time during a deploy, so the schema must suit both;
+  - a removal takes two releases: stop reading and writing the column, release, then drop it;
+  - a plain data move is one idempotent SQL `UPDATE` in the migration; a data change that needs code (re-encryption, splitting a value) is a Go upgrade step: write a design note first.
 - [ ] **Ids.** `id UUID PRIMARY KEY` and, for any row a surface shows, `public_id TEXT NOT NULL UNIQUE`. Both come from Go (the aggregate's constructor sets `uuid.New()` and a `nanoid.New(21)` public id), never a column default. See [public-ids.md](public-ids.md).
 - [ ] **Tenant columns.** A project-scoped row carries `org_id` and `project_id` and a composite FK `(org_id, project_id) → projects (org_id, id) ON DELETE CASCADE`, so its project always belongs to its org. An org-scoped row carries `org_id` with `ON DELETE CASCADE`.
 - [ ] **Tenant table.** A table with an `org_id` column (or `orgs` itself) is org-owned. In the same migration it gets `ENABLE` and `FORCE ROW LEVEL SECURITY` and one `FOR ALL` policy `<table>_tenant` whose `USING` and `WITH CHECK` read the scope through `{{.Schema}}.{{.TablePrefix}}current_org_id()`, never an inline `current_setting` (`TestMigrations_PoliciesUseTheGuardedScopeHelpers`). Only `orgs` and `memberships` have a `FOR SELECT` policy that also reads `current_user_id()`, with separate org-only write policies. The boot RLS guard refuses to start otherwise. A table without `org_id` (user-scoped or global) gets no RLS; list it as global in `schema/README.md`.
@@ -75,7 +81,7 @@ Use this when you add or change a table, column, constraint or index. Migrations
 
 - [ ] Next number, `VERSION` bumped, `Up` and `Down` both present and symmetric.
 - [ ] Every table, constraint and index name goes through `{{.Schema}}` / `{{.TablePrefix}}`.
-- [ ] No backfill, no data guard, no SQL-generated ids or timestamps.
+- [ ] Applies to a database with existing rows; no data guard, no SQL-generated ids or timestamps.
 - [ ] Project-scoped rows use the composite `(org_id, project_id)` FK; surfaced rows have `public_id`.
 - [ ] Raw tokens and secrets are never stored.
 - [ ] An org-owned table has `ENABLE` + `FORCE` + a `current_org_id()` policy in the same migration, and a row in `rlsInserts()`; a definer returns public columns only and is closed to PUBLIC.
@@ -87,7 +93,7 @@ Use this when you add or change a table, column, constraint or index. Migrations
 
 - [schema/migrations/016_password_resets.sql](../../schema/migrations/016_password_resets.sql): a plain new table with a partial index
 - [schema/migrations/013_invites.sql](../../schema/migrations/013_invites.sql): checks, a named constraint and a partial unique index
-- [schema/migrations/015_public_ids.sql](../../schema/migrations/015_public_ids.sql): adding `NOT NULL` columns with no backfill
+- [schema/migrations/028_approvals.sql](../../schema/migrations/028_approvals.sql): adding `NOT NULL` columns to a table with rows (a temporary `DEFAULT`, dropped in the same migration)
 - [schema/migrations/003_agents.sql](../../schema/migrations/003_agents.sql): an org-owned table with its policy; [schema/migrations/001_init.sql](../../schema/migrations/001_init.sql): the `current_*_id()` helpers; [schema/migrations/008_memberships.sql](../../schema/migrations/008_memberships.sql): split read and write policies
 - [schema/migrations/017_tenant_lookups.sql](../../schema/migrations/017_tenant_lookups.sql): the definer functions
 - [schema/rls_isolation_integration_test.go](../../schema/rls_isolation_integration_test.go), [schema/tenant_policy_guard_test.go](../../schema/tenant_policy_guard_test.go), [schema/lookups_integration_test.go](../../schema/lookups_integration_test.go)

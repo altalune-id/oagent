@@ -1,93 +1,98 @@
 <script setup lang="ts">
+import type { useSourceCreate } from './useSourceCreate';
+import type { KnowledgeSource } from '~/stores/knowledge';
 import AppButton from '#base/components/ui/AppButton.vue';
 import AppModal from '#base/components/ui/AppModal.vue';
+import ErrorText from '#base/components/ui/ErrorText.vue';
 import FieldError from '#base/components/ui/FieldError.vue';
+import { formatBytes } from '#base/lib/format/bytes';
 import { describedBy } from '~/lib/names/names';
-import { maxPagesLimit, maxPagesValid, websiteValid } from './knowledge';
+import { useKnowledgeStore } from '~/stores/knowledge';
 
-const { open } = defineProps<{ open: boolean }>();
-const emit = defineEmits<{ close: [], save: [url: string, maxPages: number] }>();
+const { form, storageConfigured } = defineProps<{ form: ReturnType<typeof useSourceCreate>, storageConfigured: boolean }>();
+const emit = defineEmits<{ created: [source: KnowledgeSource] }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const uid = useId();
-const kind = ref<'website' | 'document'>('website');
-const url = ref('');
-const maxPages = ref(50);
-const tried = ref(false);
+const store = useKnowledgeStore();
+const { open, kind, name, seedUrl, busy, error, errors } = form;
+const uploadOff = computed(() => kind.value === 'upload' && !storageConfigured);
 
-const errors = computed(() => ({
-  url: tried.value && !websiteValid(url.value) ? t('knowledge.url_invalid') : '',
-  maxPages: tried.value && !maxPagesValid(maxPages.value) ? t('knowledge.max_pages_invalid', { max: maxPagesLimit }) : '',
-}));
-
-watch(() => open, (now) => {
-  if (now) {
-    kind.value = 'website';
-    url.value = '';
-    maxPages.value = 50;
-    tried.value = false;
+async function save() {
+  const source = await form.submit();
+  if (source) {
+    emit('created', source);
   }
-});
-
-function save() {
-  tried.value = true;
-  if (errors.value.url || errors.value.maxPages) {
-    return;
-  }
-  emit('save', url.value.trim(), maxPages.value);
 }
 </script>
 
 <template>
-  <AppModal :open="open" :title="t('knowledge.add_title')" @close="emit('close')">
-    <div class="flex flex-col gap-4">
-      <div class="tabs tabs-box tabs-sm" role="radiogroup" :aria-label="t('knowledge.source_type')">
-        <label class="tab" :class="{ 'tab-active': kind === 'website' }">
-          <input v-model="kind" type="radio" :name="`${uid}-kind`" value="website">
-          {{ t('knowledge.kind_website') }}
+  <AppModal :open="open" :title="t('knowledge.add_title')" @close="form.hide()">
+    <form :id="`${uid}-form`" novalidate class="flex flex-col gap-4" @submit.prevent="save()">
+      <div class="tabs tabs-box tabs-sm w-full sm:w-fit" role="radiogroup" :aria-label="t('knowledge.source_type')">
+        <label class="tab flex-1 gap-1.5 sm:flex-none" :class="{ 'tab-active': kind === 'url' }">
+          <input v-model="kind" type="radio" :name="`${uid}-kind`" value="url">
+          <Icon name="lucide:globe" size="14" aria-hidden="true" />
+          {{ t('knowledge.kind_url') }}
         </label>
-        <label class="tab" :class="{ 'tab-active': kind === 'document' }">
-          <input v-model="kind" type="radio" :name="`${uid}-kind`" value="document">
-          {{ t('knowledge.kind_document') }}
+        <label class="tab flex-1 gap-1.5 sm:flex-none" :class="{ 'tab-active': kind === 'upload' }">
+          <input v-model="kind" type="radio" :name="`${uid}-kind`" value="upload">
+          <Icon name="lucide:file-up" size="14" aria-hidden="true" />
+          {{ t('knowledge.kind_upload') }}
         </label>
       </div>
 
-      <form v-if="kind === 'website'" novalidate class="flex flex-col gap-3" @submit.prevent="save()">
-        <label class="flex flex-col gap-1">
-          <span class="label text-ui font-semibold text-base-content">{{ t('knowledge.url') }}</span>
-          <input v-model="url" type="url" class="input input-sm w-full font-mono text-xs" :class="{ 'input-error': errors.url }" placeholder="https://bank.example.id/promo" :aria-invalid="!!errors.url" :aria-describedby="describedBy(`${uid}-url-hint`, !!errors.url && `${uid}-url-err`)">
-        </label>
-        <p :id="`${uid}-url-hint`" class="-mt-2 text-xs text-base-content/70">
-          {{ t('knowledge.url_hint') }}
+      <template v-if="kind === 'url'">
+        <div class="flex flex-col gap-1">
+          <label class="flex flex-col gap-1">
+            <span class="label text-ui font-semibold text-base-content">{{ t('knowledge.url') }}</span>
+            <input v-model="seedUrl" type="url" inputmode="url" class="input input-sm w-full font-mono text-xs" :class="{ 'input-error': errors.seed_url }" :placeholder="t('knowledge.url_placeholder')" :aria-invalid="!!errors.seed_url" :aria-describedby="describedBy(`${uid}-url-hint`, !!errors.seed_url && `${uid}-url-err`)">
+          </label>
+          <p :id="`${uid}-url-hint`" class="label whitespace-normal text-xs text-base-content/70">
+            {{ t('knowledge.url_hint') }}
+          </p>
+          <FieldError :id="`${uid}-url-err`" :message="errors.seed_url" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="flex flex-col gap-1">
+            <span class="label text-ui font-semibold text-base-content">{{ t('knowledge.name_optional') }}</span>
+            <input v-model="name" type="text" class="input input-sm w-full" :class="{ 'input-error': errors.name }" :aria-invalid="!!errors.name" :aria-describedby="describedBy(`${uid}-name-hint`, !!errors.name && `${uid}-name-err`)">
+          </label>
+          <p :id="`${uid}-name-hint`" class="label whitespace-normal text-xs text-base-content/70">
+            {{ t('knowledge.name_default') }}
+          </p>
+          <FieldError :id="`${uid}-name-err`" :message="errors.name" />
+        </div>
+        <p class="flex items-start gap-1.5 text-xs text-base-content/70">
+          <Icon name="lucide:info" size="14" class="mt-0.5 shrink-0" aria-hidden="true" />
+          {{ t('knowledge.crawl_limits') }}
         </p>
-        <FieldError :id="`${uid}-url-err`" :message="errors.url" />
-        <label class="flex flex-col gap-1">
-          <span class="label text-ui font-semibold text-base-content">{{ t('knowledge.max_pages') }}</span>
-          <input v-model.number="maxPages" type="number" min="1" :max="maxPagesLimit" class="input input-sm w-32 tabular-nums" :class="{ 'input-error': errors.maxPages }" :aria-invalid="!!errors.maxPages" :aria-describedby="describedBy(!!errors.maxPages && `${uid}-max-err`)">
-        </label>
-        <FieldError :id="`${uid}-max-err`" :message="errors.maxPages" />
-      </form>
+      </template>
 
-      <div v-else class="flex flex-col gap-2">
-        <label class="flex flex-col gap-1">
-          <span class="label text-ui font-semibold text-base-content">{{ t('knowledge.file') }}</span>
-          <input type="file" class="file-input file-input-sm w-full" accept=".pdf,.docx,.md,.txt" multiple disabled :aria-describedby="`${uid}-types ${uid}-storage`">
-        </label>
-        <p :id="`${uid}-types`" class="text-xs text-base-content/70">
-          {{ t('knowledge.file_types') }}
+      <template v-else>
+        <div class="flex flex-col gap-1">
+          <label class="flex flex-col gap-1">
+            <span class="label text-ui font-semibold text-base-content">{{ t('common.name') }}</span>
+            <input v-model="name" type="text" class="input input-sm w-full" :class="{ 'input-error': errors.name }" :placeholder="t('knowledge.name_placeholder')" :aria-invalid="!!errors.name" :aria-describedby="describedBy(!!errors.name && `${uid}-upload-name-err`)">
+          </label>
+          <FieldError :id="`${uid}-upload-name-err`" :message="errors.name" />
+        </div>
+        <p v-if="storageConfigured" class="text-xs text-base-content/70">
+          {{ t('knowledge.upload_next', { max: formatBytes(store.maxUploadBytes, locale) }) }}
         </p>
-        <p :id="`${uid}-storage`" role="note" class="flex items-center gap-1.5 text-ui">
-          <Icon name="lucide:hard-drive" size="16" class="shrink-0 text-warning" aria-hidden="true" />
+        <p v-else role="note" class="flex items-start gap-1.5 text-ui">
+          <Icon name="lucide:hard-drive" size="16" class="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
           {{ t('knowledge.storage_off') }}
         </p>
-      </div>
-    </div>
+      </template>
+      <ErrorText :error="error" />
+    </form>
 
     <template #footer>
-      <AppButton variant="plain" size="sm" @click="emit('close')">
+      <AppButton variant="plain" size="sm" :disabled="busy" @click="form.hide()">
         {{ t('common.cancel') }}
       </AppButton>
-      <AppButton size="sm" :disabled="kind === 'document'" @click="save()">
+      <AppButton type="submit" :form="`${uid}-form`" size="sm" :busy="busy" :disabled="uploadOff">
         {{ t('knowledge.add') }}
       </AppButton>
     </template>

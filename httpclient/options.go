@@ -16,6 +16,7 @@ type settings struct {
 	otel              bool
 	noTimeout         bool
 	noProxy           bool
+	noRedirects       bool
 	retry             RetryPolicy
 	idleConnTimeout   time.Duration
 }
@@ -28,6 +29,11 @@ func WithIdleConnTimeout(d time.Duration) Option {
 // WithoutProxy ignores HTTP_PROXY and HTTPS_PROXY. SECURITY: use it for clients whose request bodies carry secrets.
 func WithoutProxy() Option {
 	return func(s *settings) { s.noProxy = true }
+}
+
+// WithoutRedirects makes the client return a 3xx response as it is instead of following it.
+func WithoutRedirects() Option {
+	return func(s *settings) { s.noRedirects = true }
 }
 
 // WithAllowPrivateHosts turns the SSRF dial filter off for trusted, operator-configured URLs.

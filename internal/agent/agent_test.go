@@ -81,6 +81,24 @@ func validConfig() Config {
 	}
 }
 
+func TestConfig_KnowledgeSources(t *testing.T) {
+	src := uuid.New()
+	cfg := Config{KnowledgeSourceIDs: []uuid.UUID{src}}
+	assert.NoError(t, cfg.Validate())
+	assert.False(t, cfg.Equal(Config{}), "a bound source is a change")
+	assert.True(t, cfg.Equal(Config{KnowledgeSourceIDs: []uuid.UUID{src}}))
+
+	dup := Config{KnowledgeSourceIDs: []uuid.UUID{src, src}}
+	ae, _ := apperror.AsAppError(dup.Validate())
+	assert.Equal(t, apperror.CodeValidation, ae.Code())
+	many := Config{}
+	for range 17 {
+		many.KnowledgeSourceIDs = append(many.KnowledgeSourceIDs, uuid.New())
+	}
+	ae, _ = apperror.AsAppError(many.Validate())
+	assert.Equal(t, apperror.CodeValidation, ae.Code())
+}
+
 func TestConfig_Validate(t *testing.T) {
 	require.NoError(t, Config{}.Validate(), "the zero config is the runtime default")
 	require.NoError(t, validConfig().Validate())

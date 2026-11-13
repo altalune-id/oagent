@@ -150,7 +150,9 @@ type Model struct {
 	Id     string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Vision bool                   `protobuf:"varint,2,opt,name=vision,proto3" json:"vision,omitempty"`
 	// prices are micro-USD per 1M tokens.
-	Prices        *ModelPrices `protobuf:"bytes,3,opt,name=prices,proto3,oneof" json:"prices,omitempty"`
+	Prices *ModelPrices `protobuf:"bytes,3,opt,name=prices,proto3,oneof" json:"prices,omitempty"`
+	// embedding marks a model that turns text into vectors, for knowledge search.
+	Embedding     bool `protobuf:"varint,4,opt,name=embedding,proto3" json:"embedding,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -204,6 +206,13 @@ func (x *Model) GetPrices() *ModelPrices {
 		return x.Prices
 	}
 	return nil
+}
+
+func (x *Model) GetEmbedding() bool {
+	if x != nil {
+		return x.Embedding
+	}
+	return false
 }
 
 // ModelProvider is a model endpoint of a project; api_key_set says whether a key is stored, and the key is never returned.
@@ -855,12 +864,13 @@ const file_modelprovider_v1_modelprovider_proto_rawDesc = "" +
 	"\finput_micros\x18\x01 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\vinputMicros\x12,\n" +
 	"\routput_micros\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\foutputMicros\x123\n" +
 	"\x11cache_read_micros\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x0fcacheReadMicros\x125\n" +
-	"\x12cache_write_micros\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x10cacheWriteMicros\"\xf6\x01\n" +
+	"\x12cache_write_micros\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x10cacheWriteMicros\"\x94\x02\n" +
 	"\x05Model\x12\x8d\x01\n" +
 	"\x02id\x18\x01 \x01(\tB}\xbaHz\xba\x01]\n" +
 	"\x1fmodelprovider.model.max_len.128\x1a:this.size() <= 128 ? '' : 'must be at most 128 characters'\xc8\x01\x01r\x152\x13^[A-Za-z0-9._:/-]+$R\x02id\x12\x16\n" +
 	"\x06vision\x18\x02 \x01(\bR\x06vision\x12:\n" +
-	"\x06prices\x18\x03 \x01(\v2\x1d.modelprovider.v1.ModelPricesH\x00R\x06prices\x88\x01\x01B\t\n" +
+	"\x06prices\x18\x03 \x01(\v2\x1d.modelprovider.v1.ModelPricesH\x00R\x06prices\x88\x01\x01\x12\x1c\n" +
+	"\tembedding\x18\x04 \x01(\bR\tembeddingB\t\n" +
 	"\a_prices\"\x84\x03\n" +
 	"\rModelProvider\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +

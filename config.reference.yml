@@ -98,6 +98,13 @@ install:
   # [secret] env: OAGENT_INSTALL_TOKEN
   token: ""
 
+knowledge:
+  # env: OAGENT_KNOWLEDGE_ALLOW_PRIVATE_HOSTS
+  allowPrivateHosts: ""
+  pgvector:
+    # env: OAGENT_KNOWLEDGE_PGVECTOR_ENABLED
+    enabled: false
+
 mail:
   # env: OAGENT_MAIL_DRIVER
   driver: console
@@ -291,6 +298,24 @@ runtime:
   # env: OAGENT_RUNTIME_URL
   url: ""
 
+s3:
+  # [secret] env: OAGENT_S3_ACCESS_KEY_ID
+  accessKeyID: ""
+  # env: OAGENT_S3_BROWSER_ENDPOINT
+  browserEndpoint: ""
+  # env: OAGENT_S3_BUCKET
+  bucket: ""
+  # env: OAGENT_S3_ENDPOINT
+  endpoint: ""
+  # env: OAGENT_S3_REGION
+  region: ""
+  # [secret] env: OAGENT_S3_SECRET_ACCESS_KEY
+  secretAccessKey: ""
+  # env: OAGENT_S3_TIMEOUT
+  timeout: 10s
+  # env: OAGENT_S3_USE_PATH_STYLE
+  usePathStyle: true
+
 scheduler:
   # env: OAGENT_SCHEDULER_ENABLED
   enabled: true
@@ -304,6 +329,17 @@ secrets:
 snapshot:
   # env: OAGENT_SNAPSHOT_DRIVER
   driver: postgres
+
+storage:
+  # env: OAGENT_STORAGE_APP
+  app: oagent
+  # env: OAGENT_STORAGE_DRIVER
+  driver: ""
+  upload:
+    # env: OAGENT_STORAGE_UPLOAD_PENDING_TTL
+    pendingTTL: 1h
+    # env: OAGENT_STORAGE_UPLOAD_URL_TTL
+    urlTTL: 15m
 
 telemetry:
   metrics:

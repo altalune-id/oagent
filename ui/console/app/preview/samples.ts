@@ -1,7 +1,6 @@
 import type { AgentRuntimeConfig } from '~/stores/agentRuntime';
 import type { SampleAgent } from '~/stores/agents';
 import type { ApprovalRequest } from '~/stores/approvals';
-import type { KnowledgeSource } from '~/stores/knowledge';
 import type { RunSummary, ThreadDetail } from '~/stores/threads';
 import type { WebSearchSetting } from '~/stores/webSearch';
 
@@ -53,19 +52,10 @@ export function sampleAgentRuntime(): AgentRuntimeConfig {
     allowedDomains: ['bca.co.id'],
     webSearch: false,
     memory: true,
-    knowledgeIds: ['kns_4mPq8XzR2vLt6WnB'],
   };
 }
 
 export const sampleInstructions = 'Kamu asisten keuangan keluarga Budi dan Sari. Catat pengeluaran dan pemasukan di yasaku. Selalu tunjukkan ringkasan dulu (confirm=false), lalu simpan setelah disetujui. Jawab singkat dalam Bahasa Indonesia.';
-
-export function sampleKnowledgeSources(): KnowledgeSource[] {
-  return [
-    { id: 'kns_4mPq8XzR2vLt6WnB', name: 'Panduan kategori yasaku', kind: 'document', status: 'ready', chunks: 38, usedBy: ['Yasaku Keuangan'], updatedAt: daysAgo(6) },
-    { id: 'kns_7hTr3QwY9pKx2VcN', name: 'Promo bank', kind: 'website', url: 'https://bank.example.id/promo', status: 'crawling', chunks: 0, pagesDone: 12, pagesTotal: 40, usedBy: [], updatedAt: daysAgo(0.02) },
-    { id: 'kns_1bZx6NmK4sRv8LqD', name: 'Syarat KPR', kind: 'website', url: 'https://example.id/kpr', status: 'failed', chunks: 0, failure: { reason: 'robots', path: '/kpr' }, usedBy: [], updatedAt: daysAgo(2) },
-  ];
-}
 
 function run(id: string): RunSummary {
   return sampleRuns().find(r => r.id === id)!;

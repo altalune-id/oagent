@@ -14,7 +14,7 @@ const { form, readOnly = false } = defineProps<{ form: ReturnType<typeof useProv
 const { t } = useI18n();
 const id = useId();
 const ids = { kindHint: `${id}-kind-hint`, name: `${id}-name`, url: `${id}-url`, urlHint: `${id}-url-hint`, key: `${id}-key`, keyHint: `${id}-key-hint`, models: `${id}-models` };
-const { open, editing, name, kind, anthropic, urlV1, baseUrl, key, replacingKey, models, errors, modelErrors, formError, busy, urlChanged, keyShown, keyRequired } = form;
+const { open, editing, name, kind, anthropic, urlV1, baseUrl, key, replacingKey, models, errors, modelErrors, priceErrors, formError, busy, urlChanged, keyShown, keyRequired } = form;
 
 const openPrices = ref(new Set<number>());
 watch(open, (shown) => {
@@ -122,14 +122,14 @@ const facts = computed(() => editing.value
             <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
               <label class="flex min-w-0 flex-1 flex-col gap-1">
                 <span class="label text-xs text-base-content">{{ t('providers.model_id') }}</span>
-                <input v-model="m.id" type="text" class="input input-sm w-full font-mono text-xs" :class="{ 'input-error': modelErrors[m.key] }" :placeholder="placeholders.model" :aria-invalid="!!modelErrors[m.key]" :aria-describedby="describedBy(!!modelErrors[m.key] && `${ids.models}-${m.key}`)">
+                <input v-model="m.id" type="text" class="input input-sm w-full font-mono text-xs" :class="{ 'input-error': modelErrors[m.key] && !priceErrors.includes(m.key) }" :placeholder="placeholders.model" :aria-invalid="!!modelErrors[m.key] && !priceErrors.includes(m.key)" :aria-describedby="describedBy(!!modelErrors[m.key] && `${ids.models}-${m.key}`)">
               </label>
               <div class="flex flex-wrap items-end gap-2">
                 <label v-for="k in mainPriceKeys" :key="k" class="flex w-28 flex-col gap-1">
                   <span class="label text-xs text-base-content">{{ priceLabels[k] }}</span>
-                  <span class="input input-sm w-full tabular-nums">
+                  <span class="input input-sm w-full tabular-nums" :class="{ 'input-error': priceErrors.includes(m.key) }">
                     <span aria-hidden="true">$</span>
-                    <input v-model="m.prices[k]" type="text" inputmode="decimal" :aria-label="t('providers.price_for', { kind: priceLabels[k], model: m.id || '…' })" :aria-describedby="describedBy(!!modelErrors[m.key] && `${ids.models}-${m.key}`)">
+                    <input v-model="m.prices[k]" type="text" inputmode="decimal" :aria-invalid="priceErrors.includes(m.key)" :aria-label="t('providers.price_for', { kind: priceLabels[k], model: m.id || '…' })" :aria-describedby="describedBy(!!modelErrors[m.key] && `${ids.models}-${m.key}`)">
                   </span>
                 </label>
                 <AppButton variant="ghost" size="sm" square class="ms-auto sm:ms-0" :disabled="models.length === 1" :aria-label="t('providers.remove_model', { model: m.id || '…' })" :title="t('providers.remove_model', { model: m.id || '…' })" @click="form.removeModel(m.key)">
@@ -142,6 +142,15 @@ const facts = computed(() => editing.value
               <input v-model="m.vision" type="checkbox" class="checkbox checkbox-sm rounded-sm" :aria-label="t('providers.vision_for', { model: m.id || '…' })">
               {{ t('providers.vision') }}
             </label>
+            <div v-if="!anthropic" class="flex flex-col gap-1">
+              <label class="flex items-center gap-2 text-xs">
+                <input v-model="m.embedding" type="checkbox" class="checkbox checkbox-sm rounded-sm" :aria-label="t('providers.embedding_for', { model: m.id || '…' })" :aria-describedby="`${ids.models}-${m.key}-embedding`">
+                {{ t('providers.embedding') }}
+              </label>
+              <p :id="`${ids.models}-${m.key}-embedding`" class="ps-7 text-xs text-base-content/70">
+                {{ t('providers.embedding_hint') }}
+              </p>
+            </div>
             <details class="collapse collapse-arrow rounded-box bg-base-200" :open="openPrices.has(m.key) || undefined">
               <summary class="collapse-title min-h-0 py-2 text-xs font-medium">
                 {{ t('providers.more_prices') }}
@@ -149,9 +158,9 @@ const facts = computed(() => editing.value
               <div class="collapse-content flex flex-wrap gap-2">
                 <label v-for="k in morePriceKeys" :key="k" class="flex w-28 flex-col gap-1">
                   <span class="label text-xs text-base-content">{{ priceLabels[k] }}</span>
-                  <span class="input input-sm w-full tabular-nums">
+                  <span class="input input-sm w-full tabular-nums" :class="{ 'input-error': priceErrors.includes(m.key) }">
                     <span aria-hidden="true">$</span>
-                    <input v-model="m.prices[k]" type="text" inputmode="decimal" :aria-label="t('providers.price_for', { kind: priceLabels[k], model: m.id || '…' })" :aria-describedby="describedBy(!!modelErrors[m.key] && `${ids.models}-${m.key}`)">
+                    <input v-model="m.prices[k]" type="text" inputmode="decimal" :aria-invalid="priceErrors.includes(m.key)" :aria-label="t('providers.price_for', { kind: priceLabels[k], model: m.id || '…' })" :aria-describedby="describedBy(!!modelErrors[m.key] && `${ids.models}-${m.key}`)">
                   </span>
                 </label>
               </div>

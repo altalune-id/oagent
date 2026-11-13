@@ -16,6 +16,7 @@ import (
 	channelv1connect "altalune.id/oagent/gen/go/channel/v1/channelv1connect"
 	enduserv1connect "altalune.id/oagent/gen/go/enduser/v1/enduserv1connect"
 	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
+	"altalune.id/oagent/gen/go/knowledge/v1/knowledgev1connect"
 	mcpserverv1connect "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1connect"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
 	modelproviderv1connect "altalune.id/oagent/gen/go/modelprovider/v1/modelproviderv1connect"
@@ -30,6 +31,7 @@ import (
 	"altalune.id/oagent/internal/channel"
 	"altalune.id/oagent/internal/enduser"
 	"altalune.id/oagent/internal/kernel/authn"
+	"altalune.id/oagent/internal/knowledge"
 	"altalune.id/oagent/internal/mcpserver"
 	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/org"
@@ -59,6 +61,7 @@ type Services struct {
 	Webhooks       *webhook.Service
 	ModelProviders *modelprovider.Service
 	MCPServers     *mcpserver.Service
+	Knowledge      *knowledge.Service
 	Channels       *channel.Service
 	// ChannelOptions are the server settings the channel API reports.
 	ChannelOptions channel.ControlPlaneOptions
@@ -90,6 +93,7 @@ type Refs interface {
 	webhook.Refs
 	modelprovider.Refs
 	mcpserver.Refs
+	knowledge.Refs
 	channel.Refs
 	enduser.Refs
 	run.Refs
@@ -116,6 +120,7 @@ type Server struct {
 
 	ModelProviderSvc *modelprovider.ModelProviderService
 	MCPServerSvc     *mcpserver.McpServerService
+	KnowledgeSvc     *knowledge.KnowledgeService
 	ChannelSvc       *channel.ChannelService
 	EndUserSvc       *enduser.EndUserService
 	ApprovalSvc      *approval.ApprovalService
@@ -161,6 +166,9 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 	}
 	if svcs.MCPServers != nil {
 		s.MCPServerSvc = mcpserver.NewControlPlane(svcs.MCPServers, svcs.Refs)
+	}
+	if svcs.Knowledge != nil {
+		s.KnowledgeSvc = knowledge.NewControlPlane(svcs.Knowledge, svcs.Refs)
 	}
 	if svcs.Channels != nil {
 		s.ChannelSvc = channel.NewControlPlane(svcs.Channels, svcs.Refs, svcs.ChannelOptions)
@@ -210,6 +218,10 @@ func (s *Server) Handler(basePath string) http.Handler {
 	if s.MCPServerSvc != nil {
 		mcpPath, mcpHandler := mcpserverv1connect.NewMcpServerServiceHandler(s.MCPServerSvc, s.handlerOptions()...)
 		inner.Handle(mcpPath, mcpHandler)
+	}
+	if s.KnowledgeSvc != nil {
+		knowledgePath, knowledgeHandler := knowledgev1connect.NewKnowledgeServiceHandler(s.KnowledgeSvc, s.handlerOptions()...)
+		inner.Handle(knowledgePath, knowledgeHandler)
 	}
 	if s.ChannelSvc != nil {
 		channelPath, channelHandler := channelv1connect.NewChannelServiceHandler(s.ChannelSvc, s.handlerOptions()...)

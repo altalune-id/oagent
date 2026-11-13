@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
 import { create } from '@bufbuild/protobuf';
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
-import { flushPromises } from '@vue/test-utils';
+import { flushPromises, RouterLinkStub } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { fakeKnowledgeClient } from '~~/test/fixtures/knowledge';
 import { fakeRuntimeClients } from '~~/test/fixtures/runtime';
 import { useToast } from '#base/components/ui/toast';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
@@ -33,6 +34,7 @@ let runtimeClients: ReturnType<typeof fakeRuntimeClients>;
 beforeEach(() => {
   setActivePinia(createPinia());
   runtimeClients = fakeRuntimeClients();
+  fakeKnowledgeClient();
 });
 
 describe('agents page', () => {
@@ -292,7 +294,7 @@ describe('configure page', () => {
     const { useModelProvidersStore } = await import('~/stores/modelProviders');
     asSample({ ...sampleDraft, helperModel: 'free-helper' });
     const w = await mountPage(ConfigurePage, { attachTo: document.body });
-    useModelProvidersStore().items[0]!.models.push({ id: 'free-helper', vision: false });
+    useModelProvidersStore().items[0]!.models.push({ id: 'free-helper', vision: false, embedding: false });
     await flushPromises();
     const helper = w.get('#configure-model select[data-field="helper"]');
     expect(helper.attributes('aria-invalid')).toBe('true');
@@ -387,14 +389,18 @@ describe('configure page', () => {
     expect(web.text()).toContain('webtools.search_needs_provider');
     const memory = w.get('#configure-memory');
     const sources = memory.findAll('li input');
-    expect(sources.map(i => [i.element.checked, i.attributes('disabled') !== undefined])).toEqual([[true, false], [false, true], [false, true]]);
-    await sources[0]!.setValue(false);
+    expect(sources.map(i => [(i.element as HTMLInputElement).checked, i.attributes('disabled') !== undefined])).toEqual([[false, false], [false, true], [false, true]]);
+    expect(memory.text()).toContain('configure.knowledge_ready_docs|{"n":2}');
+    expect(memory.text()).toContain('knowledge.source_crawling');
+    await sources[0]!.setValue(true);
+    expect(w.get('.mockup-code').text()).toContain('"knowledgeSourceIds":["Ks1Upl0adQ8sWx3YcLm7D"]');
     const { useMcpServersStore } = await import('~/stores/mcpServers');
     useMcpServersStore().items = useMcpServersStore().items.filter(x => x.name !== 'yasaku');
     await flushPromises();
     expect(w.get('#configure-tools').text()).toContain('grants.server_gone|{"n":7}');
     await button(w, 'configure.view_changes').trigger('click');
     expect(openDialog().textContent).toContain('publish.blocker_server_missing');
+    expect(openDialog().textContent).toContain('configure.change_knowledge');
     await button(w, 'grants.remove_missing').trigger('click');
     expect(w.get('#configure-tools').text()).not.toContain('grants.server_gone');
     w.unmount();
@@ -410,6 +416,88 @@ describe('configure page', () => {
     await vi.advanceTimersByTimeAsync(1000);
     expect(client.updateAgentDraft.mock.calls[0]![0].config.mcpServers.map((g: { serverId: string }) => g.serverId)).toEqual([yasakuServer]);
     vi.useRealTimers();
+  });
+
+  it('lets a bound source that is no longer ready be unbound, and keeps it bound otherwise', async () => {
+    asSample({ ...sampleDraft, knowledgeSourceIds: ['Ks2Ur1CrawlTq9Lm4Xw8P'] });
+    const w = await mountPage(ConfigurePage);
+    const crawling = w.get('#configure-memory').findAll('li input')[1]!;
+    expect([(crawling.element as HTMLInputElement).checked, crawling.attributes('disabled')]).toEqual([true, undefined]);
+    await crawling.setValue(false);
+    expect(w.get('.mockup-code').text()).toContain('"knowledgeSourceIds":[]');
+    expect(crawling.attributes('disabled')).toBeDefined();
+    expect(w.get('#configure-memory').text()).not.toContain('configure.knowledge_missing');
+  });
+
+  it('offers no embedding-only model as the chat or helper model, and explains knowledge with a link', async () => {
+    asSample();
+    const { useModelProvidersStore } = await import('~/stores/modelProviders');
+    const w = await mountPage(ConfigurePage);
+    useModelProvidersStore().items[0]!.models.push({ id: 'text-embedding-3-small', vision: false, embedding: true });
+    await flushPromises();
+    for (const select of w.findAll('#configure-model select').slice(1)) {
+      expect(select.findAll('option').map(o => o.attributes('value'))).not.toContain('text-embedding-3-small');
+    }
+    const memory = w.get('#configure-memory');
+    expect(memory.text()).toContain('configure.knowledge_hint');
+    expect(memory.findAllComponents(RouterLinkStub).map(l => l.props('to'))).toContain('/o/acme/projects/web/knowledge');
+  });
+
+  it('tunes knowledge search with server presets and recommended values, unset by default', async () => {
+    setKnownKeys('configure.preset_precise', 'configure.preset_balanced', 'configure.preset_broad');
+    asSample({ ...sampleDraft, knowledgeSourceIds: ['Ks1Upl0adQ8sWx3YcLm7D'] });
+    const w = await mountPage(ConfigurePage);
+    const tuning = w.get('[data-tuning]');
+    const chips = tuning.findAll('input[type="radio"]');
+    expect(chips.map(c => [c.element.closest('label')!.textContent!.trim(), (c.element as HTMLInputElement).checked])).toEqual([
+      ['configure.preset_precise', false],
+      ['configure.preset_balanced', true],
+      ['configure.preset_broad', false],
+    ]);
+    expect(tuning.text()).toContain('configure.tuning_recommended|{"n":"6"}');
+    expect(tuning.text()).toContain('configure.tuning_recommended|{"n":"0.25"}');
+    expect(tuning.text()).toContain('configure.tuning_recommended|{"n":"3,000"}');
+    await chips[0]!.setValue(true);
+    expect(w.get('.mockup-code').text()).toContain('"knowledgeTuning":{"topK":3,"maxTokens":0,"minScore":0.35}');
+    const [topK] = tuning.findAll('input[type="number"]');
+    await topK!.setValue('7');
+    expect(tuning.text()).toContain('configure.preset_custom');
+    expect(chips.every(c => !(c.element as HTMLInputElement).checked)).toBe(true);
+    await topK!.setValue('11');
+    expect(tuning.text()).toContain('configure.tuning_range|{"min":1,"max":10}');
+    expect(w.get('.mockup-code').text(), 'an out-of-range value never reaches the draft').toContain('"topK":7');
+    await tuning.findAll('button').find(b => b.text() === 'configure.tuning_reset')!.trigger('click');
+    expect(w.get('.mockup-code').text()).toContain('"knowledgeTuning":{"topK":0,"maxTokens":0}');
+    expect((chips[1]!.element as HTMLInputElement).checked).toBe(true);
+    await w.findAll('button').find(b => b.text() === 'configure.view_changes')!.trigger('click');
+    expect([...document.querySelectorAll('dialog')].find(d => d.open)?.textContent ?? '').not.toContain('configure.change_knowledge_tuning');
+  });
+
+  it('sends a typed minimum relevance of 0, and keeps the saved tuning when the last source is unbound', async () => {
+    asSample({ ...sampleDraft, knowledgeSourceIds: ['Ks1Upl0adQ8sWx3YcLm7D'], knowledgeTuning: { topK: 3, maxTokens: 0 } });
+    const w = await mountPage(ConfigurePage);
+    const tuning = w.get('[data-tuning]');
+    await tuning.findAll('input[type="number"]')[1]!.setValue('0');
+    expect(w.get('.mockup-code').text()).toContain('"knowledgeTuning":{"topK":3,"maxTokens":0,"minScore":0}');
+    await w.get('#configure-memory li input[type="checkbox"]').setValue(false);
+    expect(w.get('.mockup-code').text()).toContain('"knowledgeSourceIds":[],"knowledgeTuning":{"topK":3,"maxTokens":0,"minScore":0}');
+    expect(tuning.text()).toContain('configure.tuning_needs_source');
+    expect(tuning.findAll('input').every(i => i.attributes('disabled') !== undefined)).toBe(true);
+  });
+
+  it('turns tuning off with a hint while no source is bound', async () => {
+    asSample();
+    const w = await mountPage(ConfigurePage);
+    const tuning = w.get('[data-tuning]');
+    expect(tuning.text()).toContain('configure.tuning_needs_source');
+    expect(tuning.findAll('input').every(i => i.attributes('disabled') !== undefined)).toBe(true);
+    expect(tuning.findAll('button').every(b => b.attributes('disabled') !== undefined)).toBe(true);
+  });
+
+  it('says how many bound knowledge sources were deleted', async () => {
+    asSample({ ...sampleDraft, knowledgeSourcesMissing: 2 });
+    const w = await mountPage(ConfigurePage);
+    expect(w.get('#configure-memory [role="note"]').text()).toBe('configure.knowledge_missing|{"n":2}');
   });
 
   it('keeps every server list closed on a phone', async () => {
@@ -442,7 +530,7 @@ describe('configure page', () => {
     expect(w.get('#configure-limits').text()).toContain('limits.unpriced');
     expect(w.get('.mockup-code').text()).toContain('"maxCostCents":50');
     const { useKnowledgeStore } = await import('~/stores/knowledge');
-    useKnowledgeStore().embeddingReady = false;
+    useKnowledgeStore().embedding = null;
     await flushPromises();
     expect(w.get('#configure-memory').text()).toContain('configure.knowledge_needs_embedding');
   });

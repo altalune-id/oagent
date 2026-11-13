@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { CONTRACT_VERSION, validateRequest } from './request.ts';
+import { CONTRACT_VERSION, MAX_PASSAGE_CHARS, MAX_PASSAGES, validateRequest } from './request.ts';
 
 const goldens = fileURLToPath(new URL('../../../../internal/kernel/runtime/testdata/turn/', import.meta.url));
 const requests = readdirSync(goldens).filter(f => f.endsWith('.request.json')).sort();
@@ -151,5 +151,21 @@ describe('validateRequest', () => {
 
   it('refuses a non-object body', () => {
     expect(validateRequest('hello')).toEqual({ ok: false, fields: [''] });
+  });
+
+  it('takes knowledge on v3 as an optional field of at most 10 strict passages', () => {
+    const p = { text: 'Refunds take 7 days.', title: 'Refund policy', heading: 'Timing', page: 2, url: 'https://help.example.com/r' };
+    const withKnowledge = (knowledge: unknown) => ({ ...golden('plain_reply.request.json'), knowledge });
+    expect(CONTRACT_VERSION).toBe(3);
+    expect(validateRequest(golden('plain_reply.request.json')).ok).toBe(true);
+    expect(validateRequest(withKnowledge([p])).ok).toBe(true);
+    expect(validateRequest(withKnowledge([])).ok).toBe(true);
+    expect(validateRequest(withKnowledge([{ text: 'x', title: 't' }])).ok).toBe(true);
+    expect(MAX_PASSAGES).toBe(10);
+    expect(validateRequest(withKnowledge(Array.from({ length: MAX_PASSAGES }).fill(p))).ok).toBe(true);
+    expect(validateRequest(withKnowledge(Array.from({ length: MAX_PASSAGES + 1 }).fill(p)))).toEqual({ ok: false, fields: ['knowledge'] });
+    expect(validateRequest(withKnowledge([{ ...p, score: 0.9 }]))).toEqual({ ok: false, fields: ['knowledge.0.score'] });
+    expect(validateRequest(withKnowledge([{ ...p, text: 'x'.repeat(MAX_PASSAGE_CHARS + 1) }]))).toEqual({ ok: false, fields: ['knowledge.0.text'] });
+    expect(validateRequest(withKnowledge([{ ...p, page: 0 }]))).toEqual({ ok: false, fields: ['knowledge.0.page'] });
   });
 });

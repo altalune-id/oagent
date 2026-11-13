@@ -480,6 +480,10 @@ components:
             - type: "null"
           title: prices
           description: prices are micro-USD per 1M tokens.
+        embedding:
+          type: boolean
+          title: embedding
+          description: embedding marks a model that turns text into vectors, for knowledge search.
       title: Model
       required:
         - id

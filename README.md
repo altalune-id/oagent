@@ -15,6 +15,7 @@ It already covers orgs, projects, members, API keys and webhooks. The agent runt
 - Node 24.15 or newer
 - pnpm 10 (`corepack enable` picks the version pinned in `package.json`)
 - Docker, for local dependencies and the integration tests
+- Postgres 17 or newer with pgvector 0.8 or newer, on every install; an admin creates the extension (`scripts/db/provision.sh` does)
 
 ## Set up the repo
 
@@ -39,6 +40,8 @@ It already covers orgs, projects, members, API keys and webhooks. The agent runt
    docker compose up -d
    ```
 
+   After upgrading, remove the local Postgres volume (the image and its data format changed) and re-run provision: `docker compose rm -sf postgres && docker volume rm oagent_postgres`, then `docker compose up -d` provisions the roles again on first start.
+
 4. Create your config. The example DSNs log in as the roles the compose Postgres creates on its first start (`oagent_service` for the app, `oagent_migrator` as `oagent_owner` for migrations); the app refuses to start as a superuser or the schema owner. Generate the two secrets with `openssl rand -hex 32`.
 
    ```sh
@@ -59,7 +62,7 @@ It already covers orgs, projects, members, API keys and webhooks. The agent runt
 ## Provision a production database
 
 `scripts/db/provision.sh` creates the database and three roles on any Postgres (self-hosted, RDS, Neon and others).
-It is safe to re-run, and a re-run sets the passwords you pass.
+It is safe to re-run, and a re-run sets the passwords you pass. It also creates the `vector` extension in `public`, which every install needs.
 
 | Role              | Purpose                                                                                       |
 | ----------------- | --------------------------------------------------------------------------------------------- |

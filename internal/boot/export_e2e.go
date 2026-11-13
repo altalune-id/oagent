@@ -3,6 +3,7 @@
 package boot
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
@@ -14,6 +15,8 @@ import (
 	"altalune.id/oagent/internal/kernel"
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/ratelimit"
+	"altalune.id/oagent/internal/kernel/storage"
+	"altalune.id/oagent/internal/knowledge"
 	"altalune.id/oagent/internal/mcpserver"
 	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/run"
@@ -46,6 +49,19 @@ func BuildLimiters(cfg config.Config, rdb redis.UniversalClient, log *slog.Logge
 func BuildRun(k kernel.Kernel, cfg config.Config, s *Services, limiter ratelimit.Limiter, log *slog.Logger) (RunParts, error) {
 	p, err := buildRun(k, cfg, s, limiter, log)
 	return RunParts{Store: p.store, Svc: p.svc, Runner: p.runner, Kicker: p.kicker, Ready: p.ready}, err
+}
+
+// KnowledgeParts is the knowledge graph BuildKnowledge wires.
+type KnowledgeParts struct {
+	Driver storage.Driver
+	Ingest *knowledge.IngestWorker
+	Crawl  *knowledge.CrawlWorker
+}
+
+// BuildKnowledge wraps buildKnowledge for the end-to-end tests.
+func BuildKnowledge(ctx context.Context, k *kernel.Kernel, cfg config.Config, s *Services, log *slog.Logger) (KnowledgeParts, error) {
+	p, err := buildKnowledge(ctx, k, cfg, s, log)
+	return KnowledgeParts{Driver: p.driver, Ingest: p.ingest, Crawl: p.crawl}, err
 }
 
 // BuildIngest wraps buildIngest for the end-to-end tests.

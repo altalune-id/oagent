@@ -374,8 +374,10 @@ type Usage struct {
 	CacheReadTokens  int64                  `protobuf:"varint,3,opt,name=cache_read_tokens,json=cacheReadTokens,proto3" json:"cache_read_tokens,omitempty"`
 	CacheWriteTokens int64                  `protobuf:"varint,4,opt,name=cache_write_tokens,json=cacheWriteTokens,proto3" json:"cache_write_tokens,omitempty"`
 	Estimated        bool                   `protobuf:"varint,5,opt,name=estimated,proto3" json:"estimated,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// embedding_tokens are the tokens the run's knowledge searches embedded.
+	EmbeddingTokens int64 `protobuf:"varint,6,opt,name=embedding_tokens,json=embeddingTokens,proto3" json:"embedding_tokens,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Usage) Reset() {
@@ -443,6 +445,13 @@ func (x *Usage) GetEstimated() bool {
 	return false
 }
 
+func (x *Usage) GetEmbeddingTokens() int64 {
+	if x != nil {
+		return x.EmbeddingTokens
+	}
+	return 0
+}
+
 // Run is one agent turn on a thread; cost_micros is unset when the run is unpriced, latency_ms and ended_at while it runs.
 type Run struct {
 	state        protoimpl.MessageState `protogen:"open.v1"`
@@ -460,8 +469,13 @@ type Run struct {
 	EndedAt   *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=ended_at,json=endedAt,proto3" json:"ended_at,omitempty"`
 	// agent_version_kind is published, or draft for a console Try it run on the unpublished draft (agent_version is then 0).
 	AgentVersionKind string `protobuf:"bytes,12,opt,name=agent_version_kind,json=agentVersionKind,proto3" json:"agent_version_kind,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// knowledge_retrieve_calls and knowledge_retrieve_ms add up the run's knowledge searches.
+	KnowledgeRetrieveCalls int32 `protobuf:"varint,13,opt,name=knowledge_retrieve_calls,json=knowledgeRetrieveCalls,proto3" json:"knowledge_retrieve_calls,omitempty"`
+	KnowledgeRetrieveMs    int64 `protobuf:"varint,14,opt,name=knowledge_retrieve_ms,json=knowledgeRetrieveMs,proto3" json:"knowledge_retrieve_ms,omitempty"`
+	// knowledge_passages counts the passages the run's legs sent to the model.
+	KnowledgePassages int32 `protobuf:"varint,15,opt,name=knowledge_passages,json=knowledgePassages,proto3" json:"knowledge_passages,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Run) Reset() {
@@ -576,6 +590,27 @@ func (x *Run) GetAgentVersionKind() string {
 		return x.AgentVersionKind
 	}
 	return ""
+}
+
+func (x *Run) GetKnowledgeRetrieveCalls() int32 {
+	if x != nil {
+		return x.KnowledgeRetrieveCalls
+	}
+	return 0
+}
+
+func (x *Run) GetKnowledgeRetrieveMs() int64 {
+	if x != nil {
+		return x.KnowledgeRetrieveMs
+	}
+	return 0
+}
+
+func (x *Run) GetKnowledgePassages() int32 {
+	if x != nil {
+		return x.KnowledgePassages
+	}
+	return 0
 }
 
 type ListThreadsRequest struct {
@@ -1250,13 +1285,14 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\x14speaker_display_name\x18\n" +
 	" \x01(\tR\x12speakerDisplayName\x12L\n" +
 	"\x15speaker_identity_kind\x18\v \x01(\x0e2\x18.enduser.v1.IdentityKindR\x13speakerIdentityKind\x122\n" +
-	"\x15speaker_identity_hint\x18\f \x01(\tR\x13speakerIdentityHint\"\xc7\x01\n" +
+	"\x15speaker_identity_hint\x18\f \x01(\tR\x13speakerIdentityHint\"\xf2\x01\n" +
 	"\x05Usage\x12!\n" +
 	"\finput_tokens\x18\x01 \x01(\x03R\vinputTokens\x12#\n" +
 	"\routput_tokens\x18\x02 \x01(\x03R\foutputTokens\x12*\n" +
 	"\x11cache_read_tokens\x18\x03 \x01(\x03R\x0fcacheReadTokens\x12,\n" +
 	"\x12cache_write_tokens\x18\x04 \x01(\x03R\x10cacheWriteTokens\x12\x1c\n" +
-	"\testimated\x18\x05 \x01(\bR\testimated\"\xef\x03\n" +
+	"\testimated\x18\x05 \x01(\bR\testimated\x12)\n" +
+	"\x10embedding_tokens\x18\x06 \x01(\x03R\x0fembeddingTokens\"\x8c\x05\n" +
 	"\x03Run\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12,\n" +
@@ -1274,7 +1310,10 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"started_at\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x125\n" +
 	"\bended_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\x12,\n" +
-	"\x12agent_version_kind\x18\f \x01(\tR\x10agentVersionKindB\x0e\n" +
+	"\x12agent_version_kind\x18\f \x01(\tR\x10agentVersionKind\x128\n" +
+	"\x18knowledge_retrieve_calls\x18\r \x01(\x05R\x16knowledgeRetrieveCalls\x122\n" +
+	"\x15knowledge_retrieve_ms\x18\x0e \x01(\x03R\x13knowledgeRetrieveMs\x12-\n" +
+	"\x12knowledge_passages\x18\x0f \x01(\x05R\x11knowledgePassagesB\x0e\n" +
 	"\f_cost_microsB\r\n" +
 	"\v_latency_ms\"\xec\x01\n" +
 	"\x12ListThreadsRequest\x12+\n" +

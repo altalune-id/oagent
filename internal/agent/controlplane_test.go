@@ -42,7 +42,7 @@ func grantsFor(a *agent.Agent, refs *fakes.PublicIDs, models ...string) (*fakes.
 
 func newGrantedClient(t *testing.T, store agent.Store, refs agent.Refs, g *fakes.AgentGrants) agentv1connect.AgentServiceClient {
 	t.Helper()
-	svc := agent.NewService(store, fakes.Transactor{}, nil).WithProviders(g).WithMCPServers(g).WithLocker(g)
+	svc := agent.NewService(store, fakes.Transactor{}, nil).WithProviders(g).WithMCPServers(g).WithLocker(g).WithKnowledge(g)
 	_, handler := agentv1connect.NewAgentServiceHandler(agent.NewControlPlane(svc, refs), connect.WithInterceptors(fakes.OperatorInterceptor()))
 	ts := httptest.NewServer(handler)
 	t.Cleanup(ts.Close)
@@ -267,4 +267,46 @@ func grantsWithServer(a *agent.Agent, refs *fakes.PublicIDs) (*fakes.AgentGrants
 	server := uuid.New()
 	g.Servers = map[uuid.UUID]fakes.GrantServer{server: {ProjectID: a.ProjectID, Name: "billing"}}
 	return g, refs.MCPServer(server, a.ProjectID)
+}
+
+func TestAgentService_KnowledgeSourcesUsePublicIDs(t *testing.T) {
+	refs := fakes.NewPublicIDs()
+	a, _, _ := registeredAgent(t, refs, "acme")
+	store := &fakes.AgentStore{Agent: a}
+	g, _ := grantsWithServer(a, refs)
+	providerPub := ""
+	for id := range g.Providers {
+		providerPub, _, _ = refs.ProviderPublicID(context.Background(), id)
+	}
+	own, gone, foreign := uuid.New(), uuid.New(), uuid.New()
+	g.Sources = map[uuid.UUID]uuid.UUID{own: a.ProjectID, gone: a.ProjectID, foreign: uuid.New()}
+	ownPub, gonePub, foreignPub := refs.KnowledgeSource(own, a.ProjectID), refs.KnowledgeSource(gone, a.ProjectID), refs.KnowledgeSource(foreign, uuid.New())
+	c := newGrantedClient(t, store, refs, g)
+	ctx := context.Background()
+	draft := func(ids ...string) error {
+		_, err := c.UpdateAgentDraft(ctx, connect.NewRequest(&agentv1.UpdateAgentDraftRequest{Id: a.PublicID, Config: &agentv1.AgentConfig{
+			ProviderId: providerPub, Model: "anthropic/claude-sonnet-5-5", KnowledgeSourceIds: ids,
+		}}))
+		return err
+	}
+
+	assert.ErrorContains(t, draft(foreignPub), "knowledge", "another project's source answers like an unknown one")
+	require.NoError(t, draft(ownPub, gonePub))
+	assert.Equal(t, []uuid.UUID{own, gone}, store.Saved.Draft.KnowledgeSourceIDs, "internal ids in the config")
+
+	refs.Forget(gone)
+	got, err := c.GetAgent(ctx, connect.NewRequest(&agentv1.GetAgentRequest{Id: a.PublicID}))
+	require.NoError(t, err)
+	assert.Equal(t, []string{ownPub}, got.Msg.GetAgent().GetDraft().GetKnowledgeSourceIds(), "public ids out; a deleted source is left out, so the next save drops it")
+	assert.Equal(t, int32(1), got.Msg.GetAgent().GetDraft().GetKnowledgeSourcesMissing(), "the deleted source is counted")
+
+	saved, err := c.UpdateAgentDraft(ctx, connect.NewRequest(&agentv1.UpdateAgentDraftRequest{Id: a.PublicID, Config: &agentv1.AgentConfig{
+		ProviderId: providerPub, Model: "anthropic/claude-sonnet-5-5", KnowledgeSourceIds: []string{ownPub}, KnowledgeSourcesMissing: 7,
+	}}))
+	require.NoError(t, err)
+	assert.Equal(t, []uuid.UUID{own}, store.Saved.Draft.KnowledgeSourceIDs, "saving the draft drops the stale id")
+	assert.Equal(t, int32(0), saved.Msg.GetAgent().GetDraft().GetKnowledgeSourcesMissing(), "a client-sent count is ignored")
+	got, err = c.GetAgent(ctx, connect.NewRequest(&agentv1.GetAgentRequest{Id: a.PublicID}))
+	require.NoError(t, err)
+	assert.Equal(t, int32(0), got.Msg.GetAgent().GetDraft().GetKnowledgeSourcesMissing())
 }

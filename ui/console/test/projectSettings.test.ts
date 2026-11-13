@@ -4,7 +4,7 @@ import { flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { fakeRuntimeClients } from '~~/test/fixtures/runtime';
+import { fakeRuntimeClients, providerPBs } from '~~/test/fixtures/runtime';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { ModelProviderKind, ModelProviderSchema } from '#gen/modelprovider/v1/modelprovider_pb';
 import { mountPage } from '#test/mount-page';
@@ -139,6 +139,65 @@ describe('model providers page', () => {
     expect(dialog.text()).toContain('providers.kind_anthropic');
     expect(dialog.text()).toContain('providers.kind_locked');
     expect(dialog.text()).toContain('providers.cache_write_hint');
+  });
+
+  it('marks a model for embeddings with a hint, and saves the flag; Anthropic models have no Embedding box', async () => {
+    seed();
+    clients.provider.updateModelProvider.mockImplementation(async (req: object) => ({ modelProvider: create(ModelProviderSchema, { ...providerPBs()[0]!, ...req }) }));
+    const w = await mountPage(ProvidersPage, { attachTo: document.body });
+    await button(w, 'OpenRouter').trigger('click');
+    const dialog = w.findAll('dialog').find(d => d.text().includes('providers.connection'))!;
+    const boxes = dialog.findAll('input[type="checkbox"]').filter(c => c.attributes('aria-label')?.startsWith('providers.embedding_for'));
+    expect(boxes.map(b => b.attributes('aria-label'))).toEqual(['providers.embedding_for|{"model":"openai/gpt-4.1-mini"}', 'providers.embedding_for|{"model":"google/gemini-2.5-flash"}']);
+    expect(dialog.text()).toContain('providers.embedding_hint');
+    await boxes[1]!.setValue(true);
+    await dialog.findAll('button').find(b => b.text() === 'providers.save')!.trigger('click');
+    await flushPromises();
+    const sent = clients.provider.updateModelProvider.mock.calls[0]![0] as { models: { id: string, embedding: boolean }[] };
+    expect(sent.models.map(m => [m.id, m.embedding])).toEqual([['openai/gpt-4.1-mini', false], ['google/gemini-2.5-flash', true]]);
+    w.unmount();
+    const again = await mountPage(ProvidersPage);
+    await button(again, 'Anthropic').trigger('click');
+    const anthropic = again.findAll('dialog').find(d => d.text().includes('providers.connection'))!;
+    expect(anthropic.findAll('input[type="checkbox"]').some(c => c.attributes('aria-label')?.startsWith('providers.embedding_for'))).toBe(false);
+  });
+
+  it('saves an embedding model with only an input price, and marks a bad price on the price fields, not the model id', async () => {
+    seed();
+    clients.provider.updateModelProvider.mockImplementation(async (req: object) => ({ modelProvider: create(ModelProviderSchema, { ...providerPBs()[0]!, ...req }) }));
+    const w = await mountPage(ProvidersPage, { attachTo: document.body });
+    await button(w, 'OpenRouter').trigger('click');
+    const dialog = w.findAll('dialog').find(d => d.text().includes('providers.connection'))!;
+    const row = dialog.findAll('ul > li')[1]!;
+    await row.get('input[aria-label^="providers.embedding_for"]').setValue(true);
+    await row.findAll('input[inputmode="decimal"]')[1]!.setValue('');
+    await row.findAll('input[inputmode="decimal"]')[0]!.setValue('abc');
+    await dialog.findAll('button').find(b => b.text() === 'providers.save')!.trigger('click');
+    await flushPromises();
+    expect(row.get('input[placeholder]').attributes('aria-invalid')).toBe('false');
+    expect(row.findAll('input[inputmode="decimal"]')[0]!.attributes('aria-invalid')).toBe('true');
+    expect(clients.provider.updateModelProvider).not.toHaveBeenCalled();
+    await row.findAll('input[inputmode="decimal"]')[0]!.setValue('0.02');
+    await dialog.findAll('button').find(b => b.text() === 'providers.save')!.trigger('click');
+    await flushPromises();
+    const sent = clients.provider.updateModelProvider.mock.calls[0]![0] as { models: { id: string, embedding: boolean, prices?: { outputMicros: bigint } }[] };
+    expect(sent.models[1]).toMatchObject({ embedding: true, prices: { inputMicros: 20_000n, outputMicros: 0n } });
+    w.unmount();
+  });
+
+  it('explains a delete refused because the project embeds with the provider', async () => {
+    seed();
+    setKnownKeys('apperror.PRV005_embedding_model');
+    clients.provider.deleteModelProvider.mockRejectedValueOnce(connectError('PRV005', { reason: 'embedding_model' }));
+    const w = await mountPage(ProvidersPage, { attachTo: document.body });
+    await w.findAll('tbody tr')[0]!.findAll('li button').find(b => b.text() === 'common.delete')!.trigger('click');
+    await flushPromises();
+    const dialog = w.findAll('dialog').find(d => d.text().includes('providers.delete_body'))!;
+    await dialog.findAll('button').find(b => b.text() === 'common.delete')!.trigger('click');
+    await flushPromises();
+    expect(dialog.text()).toContain('apperror.PRV005_embedding_model');
+    expect(dialog.text()).not.toContain('providers.in_use');
+    w.unmount();
   });
 });
 

@@ -27,6 +27,17 @@ type Reader interface {
 	ProviderUse(ctx context.Context, providerID uuid.UUID) (ProviderUsage, error)
 	// MCPServerInUse reports whether a latest published version in the org on ctx grants tools of a server.
 	MCPServerInUse(ctx context.Context, serverID uuid.UUID) (bool, error)
+	// KnowledgeSourceInUse reports whether a latest published version in the org on ctx searches a knowledge source.
+	KnowledgeSourceInUse(ctx context.Context, sourceID uuid.UUID) (bool, error)
+	// KnowledgeUse names, per knowledge source of a project, the agents whose latest published version searches it.
+	KnowledgeUse(ctx context.Context, projectID uuid.UUID) (map[uuid.UUID][]Named, error)
+}
+
+// Named is an agent's public id and name.
+type Named struct {
+	ID       uuid.UUID
+	PublicID string
+	Name     string
 }
 
 // ProviderUsage says whether a provider is used and, per model id used, whether a cost limit needs its price.

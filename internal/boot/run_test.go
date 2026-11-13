@@ -13,6 +13,7 @@ import (
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/kernel/runtime"
 	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/internal/knowledge"
 	"altalune.id/oagent/internal/mcpserver"
 	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/run"
@@ -37,6 +38,7 @@ func TestRunAgents_MapsThePinnedVersion(t *testing.T) {
 		ID: v.ID, AgentID: ag.ID, AgentPublicID: "agent-pub", Version: 4, Instructions: "be brief", Model: "gpt-4o",
 		Temperature: 0.3, MaxSteps: 7, MaxCostCents: 50, ProviderID: provider,
 		MCPServers: []run.MCPGrant{{ServerID: server, Tools: []run.ToolGrant{{Name: "a"}, {Name: "b", RequireApproval: true}}}},
+		Knowledge:  run.KnowledgeTuning{MaxBytes: knowledge.RecommendedMaxTokens * 4},
 	}, got)
 	latest, err := a.Latest(ctx, ag.ID)
 	require.NoError(t, err)

@@ -11,7 +11,7 @@ import LoadError from '#base/components/ui/LoadError.vue';
 import PageHeader from '#base/components/ui/PageHeader.vue';
 import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
-import { errorCode } from '#base/lib/apperror/message';
+import { errorCode, errorMeta } from '#base/lib/apperror/message';
 import ProjectReadOnlyNote from '~/components/project/ProjectReadOnlyNote.vue';
 import { useProject } from '~/components/project/useProject';
 import ProviderModal from '~/components/provider/ProviderModal.vue';
@@ -38,7 +38,7 @@ const columns = computed<Column[]>(() => [
 ]);
 
 const errorMessage = useErrorMessage();
-const deleting = confirmHandle<ModelProvider>(p => providers.remove(p.id), e => (errorCode(e) === 'PRV005' ? { message: t('providers.in_use') } : errorMessage(e, 'error.delete_provider')));
+const deleting = confirmHandle<ModelProvider>(p => providers.remove(p.id), e => (errorCode(e) === 'PRV005' && errorMeta(e).reason !== 'embedding_model' ? { message: t('providers.in_use') } : errorMessage(e, 'error.delete_provider')));
 
 function modelSummary(p: ModelProvider) {
   return p.models.slice(0, 2).map(m => m.id).join(', ');

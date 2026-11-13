@@ -13,8 +13,8 @@ const blank = { input: '', output: '', cacheRead: '', cacheWrite: '' };
 
 describe('provider helpers', () => {
   it('has a price only with prices', () => {
-    expect(hasPrice({ id: 'a', vision: false, prices: { inputMicros: 0n, outputMicros: 1n, cacheReadMicros: 0n, cacheWriteMicros: 0n } })).toBe(true);
-    expect(hasPrice({ id: 'a', vision: false })).toBe(false);
+    expect(hasPrice({ id: 'a', vision: false, embedding: false, prices: { inputMicros: 0n, outputMicros: 1n, cacheReadMicros: 0n, cacheWriteMicros: 0n } })).toBe(true);
+    expect(hasPrice({ id: 'a', vision: false, embedding: false })).toBe(false);
   });
 
   it('names each kind', () => {
@@ -24,14 +24,15 @@ describe('provider helpers', () => {
 
   it('opens More prices only for a row with a cache price', () => {
     const prices = { ...blank, input: '1', output: '2' };
-    expect(hasMorePrices({ key: 1, id: 'a', vision: false, prices })).toBe(false);
-    expect(hasMorePrices({ key: 1, id: 'a', vision: false, prices: { ...prices, cacheWrite: '0.5' } })).toBe(true);
+    expect(hasMorePrices({ key: 1, id: 'a', vision: false, embedding: false, prices })).toBe(false);
+    expect(hasMorePrices({ key: 1, id: 'a', vision: false, embedding: false, prices: { ...prices, cacheWrite: '0.5' } })).toBe(true);
   });
 
   it('reads USD per 1M tokens into micro-USD: all empty is unpriced, an empty cache price is zero', () => {
     expect(toPrices(blank)).toEqual({ kind: 'unpriced' });
     expect(toPrices({ ...blank, input: '0.4', output: '$1.6' })).toEqual({ kind: 'priced', prices: { inputMicros: 400_000n, outputMicros: 1_600_000n, cacheReadMicros: 0n, cacheWriteMicros: 0n } });
     expect(toPrices({ ...blank, input: '0.4' })).toEqual({ kind: 'invalid' });
+    expect(toPrices({ ...blank, input: '0.02' }, true)).toEqual({ kind: 'priced', prices: { inputMicros: 20_000n, outputMicros: 0n, cacheReadMicros: 0n, cacheWriteMicros: 0n } });
     expect(toPrices({ ...blank, input: '0.4', output: '1', cacheRead: '-1' })).toEqual({ kind: 'invalid' });
   });
 });

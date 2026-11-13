@@ -22,6 +22,8 @@ const (
 	ChannelRead    = "channel:read"
 	ChannelWrite   = "channel:write"
 	ApprovalDecide = "approval:decide"
+	KnowledgeRead  = "knowledge:read"
+	KnowledgeWrite = "knowledge:write"
 	MemberRead     = "member:read"
 	MemberWrite    = "member:write"
 	ApikeyRead     = "apikey:read"

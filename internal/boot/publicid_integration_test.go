@@ -63,6 +63,8 @@ func fillProbe(msg *dynamicpb.Message) {
 			msg.Set(fd, protoreflect.ValueOfEnum(fd.Enum().Values().Get(1).Number()))
 		case fd.Kind() == protoreflect.Int32Kind && fd.Name() == "timeout_ms":
 			msg.Set(fd, protoreflect.ValueOfInt32(5000))
+		case fd.Kind() == protoreflect.Int64Kind && fd.Name() == "size_bytes":
+			msg.Set(fd, protoreflect.ValueOfInt64(100))
 		case fd.IsList() && fd.Name() == "models":
 			list := msg.Mutable(fd).List()
 			model := list.NewElement()
@@ -77,6 +79,7 @@ var probeStrings = map[protoreflect.Name]string{
 	"api_key": "sk-probe", "openwa_org": "acme", "openwa_project": "main", "device_id": "dev_V1StGXR8Z5jdHi6B",
 	"signing_secret": "whsec_probe", "device_key": "owk_probe",
 	"email": "probe@example.com", "role": "member", "kind": "org",
+	"seed_url": "https://example.com/docs", "filename": "probe.pdf", "content_type": "application/pdf", "model": "m", "query": "probe",
 }
 
 func (f *apiFixture) callForResponse(

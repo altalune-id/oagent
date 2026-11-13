@@ -51,6 +51,7 @@ type Usage struct {
 	OutputTokens     int64
 	CacheReadTokens  int64
 	CacheWriteTokens int64
+	EmbeddingTokens  int64
 	Estimated        bool
 }
 
@@ -63,6 +64,11 @@ type Run struct {
 	Usage                                          Usage
 	// Prices is the price snapshot taken when the run started; nil means unpriced.
 	Prices *Prices
+	// KnowledgeRetrieveCalls and KnowledgeRetrieveMs add up the run's knowledge searches over its legs.
+	KnowledgeRetrieveCalls int32
+	KnowledgeRetrieveMs    int64
+	// KnowledgePassages sums the passages sent over the run's legs, a resume included; a leg that crashes before it settles adds none.
+	KnowledgePassages int32
 	// IdempotencyKey is the caller's key for the request that started the run; empty means none.
 	IdempotencyKey string
 	// ErrorCode is the apperror code of a failed run; empty otherwise.

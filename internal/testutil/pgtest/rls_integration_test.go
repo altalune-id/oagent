@@ -66,3 +66,11 @@ func TestMigratedRLS_SchemasStayApart(t *testing.T) {
 	assert.Equal(t, schemaB, pathB)
 	assert.Equal(t, schemaB, adminPath, "the admin handle seeds the same schema the service reads")
 }
+
+func TestMigratedRLS_TheOwnerFindsThePgvectorExtension(t *testing.T) {
+	_, admin, _ := pgtest.MigratedRLS(t)
+	var schema string
+	require.NoError(t, admin.QueryRowContext(t.Context(),
+		`SELECT n.nspname FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'vector'`).Scan(&schema))
+	assert.Equal(t, "public", schema, "a non-superuser owner can't create pgvector, so pgtest creates it first, as an operator does")
+}

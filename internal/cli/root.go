@@ -19,6 +19,7 @@ import (
 	authv1connect "altalune.id/oagent/gen/go/auth/v1/authv1connect"
 	channelv1connect "altalune.id/oagent/gen/go/channel/v1/channelv1connect"
 	invitev1connect "altalune.id/oagent/gen/go/invite/v1/invitev1connect"
+	"altalune.id/oagent/gen/go/knowledge/v1/knowledgev1connect"
 	memberv1connect "altalune.id/oagent/gen/go/member/v1/memberv1connect"
 	orgv1connect "altalune.id/oagent/gen/go/org/v1/orgv1connect"
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
@@ -30,6 +31,7 @@ import (
 	"altalune.id/oagent/internal/auth"
 	"altalune.id/oagent/internal/boot"
 	"altalune.id/oagent/internal/channel"
+	"altalune.id/oagent/internal/knowledge"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/invite"
 	"altalune.id/oagent/internal/org/member"
@@ -66,6 +68,8 @@ const clientAnnotation = "oagent/client"
 
 const operatorAnnotation = "oagent/operator"
 
+const skipConfigAnnotation = "skipConfig"
+
 type runtime struct {
 	cfg *config.Config
 	log *slog.Logger
@@ -97,6 +101,9 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 	root.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
 		switch cmd.Name() {
 		case "version", "completion", "help":
+			return nil
+		}
+		if cmd.Annotations[skipConfigAnnotation] == "true" {
 			return nil
 		}
 		if err := refuseRemoteFlags(cmd); err != nil {
@@ -162,6 +169,9 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 	approvalCmd := approval.NewCmd(approvalClientFn(bootClient))
 	markClientTree(approvalCmd)
 
+	knowledgeCmd := knowledge.NewCmd(knowledgeClientFn(bootClient))
+	markClientTree(knowledgeCmd)
+
 	authCmd := auth.NewCmd(sessionProfiles{}, authClientFn(bootClient), authSessionClientFn(bootClient))
 	markClientTree(authCmd)
 
@@ -179,7 +189,9 @@ func NewRootCmd(bootServer ServerBootFn, bootClient ClientBootFn) *cobra.Command
 		webhookCmd,
 		channelCmd,
 		approvalCmd,
+		knowledgeCmd,
 		newVersionCmd(),
+		newExtractCmd(),
 	)
 	return root
 }
@@ -279,6 +291,16 @@ func webhookClientFn(bootClient ClientBootFn) webhook.ClientFn {
 			return nil, err
 		}
 		return client.Webhooks, nil
+	}
+}
+
+func knowledgeClientFn(bootClient ClientBootFn) knowledge.ClientFn {
+	return func(cmd *cobra.Command) (knowledgev1connect.KnowledgeServiceClient, error) {
+		client, err := connectClient(cmd, bootClient)
+		if err != nil {
+			return nil, err
+		}
+		return client.Knowledge, nil
 	}
 }
 

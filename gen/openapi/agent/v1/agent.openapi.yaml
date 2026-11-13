@@ -390,9 +390,25 @@ components:
         providerMissing:
           type: boolean
           title: provider_missing
+        knowledgeSourceIds:
+          type: array
+          items:
+            type: string
+            description: |
+              oagent.public_id = true
+          title: knowledge_source_ids
+          maxItems: 16
+          uniqueItems: true
+        knowledgeSourcesMissing:
+          type: integer
+          title: knowledge_sources_missing
+          format: int32
+        knowledgeTuning:
+          title: knowledge_tuning
+          $ref: '#/components/schemas/agent.v1.KnowledgeTuning'
       title: AgentConfig
       additionalProperties: false
-      description: AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider's public id; provider_missing is output only.
+      description: 'AgentConfig is what an agent runs with; zero values mean the runtime default (max_steps) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider''s public id; provider_missing is output only; knowledge_source_ids are the knowledge sources searched before each turn, leaving out a deleted one, and knowledge_sources_missing is output only: how many bound sources no longer exist. knowledge_tuning shapes that search; unset fields use the recommended values.'
     agent.v1.AgentTool:
       type: object
       properties:
@@ -541,6 +557,32 @@ components:
           $ref: '#/components/schemas/agent.v1.Agent'
       title: GetAgentResponse
       additionalProperties: false
+    agent.v1.KnowledgeTuning:
+      type: object
+      properties:
+        topK:
+          type: integer
+          title: top_k
+          format: int32
+          description: |
+            agent.knowledge_tuning.top_k.range
+        minScore:
+          type:
+            - number
+            - "null"
+          title: min_score
+          maximum: 1
+          minimum: 0
+          format: double
+        maxTokens:
+          type: integer
+          title: max_tokens
+          format: int32
+          description: |
+            agent.knowledge_tuning.max_tokens.range
+      title: KnowledgeTuning
+      additionalProperties: false
+      description: KnowledgeTuning shapes the knowledge search before each turn. top_k is the passages per answer and max_tokens the knowledge budget, 0 meaning the recommended value; min_score is the minimum relevance, unset meaning the recommended value (0 is a valid setting). ListKnowledgeSources returns the recommended values.
     agent.v1.ListAgentVersionsRequest:
       type: object
       properties:

@@ -3,7 +3,8 @@
 #
 # Roles: <PREFIX>_owner (NOLOGIN BYPASSRLS, owns the schema, tables and definer functions), <PREFIX>_migrator
 # (LOGIN, runs migrations as the owner), <PREFIX>_service (LOGIN NOBYPASSRLS, reads and writes rows for the
-# running app, subject to row-level security). verify.template.sql checks the result and fails the run on drift.
+# running app, subject to row-level security). It also creates the vector extension (pgvector 0.8 or newer) in public,
+# which migration 31 needs. verify.template.sql checks the result and fails the run on drift.
 #
 # Env (asked for interactively when missing):
 #   ADMIN_URL         admin connection URL without /<db>, e.g. postgres://postgres:pw@localhost:5432?sslmode=disable

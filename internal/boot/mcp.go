@@ -17,6 +17,7 @@ import (
 	channelv1mcp "altalune.id/oagent/gen/go/channel/v1/channelv1mcp"
 	enduserv1mcp "altalune.id/oagent/gen/go/enduser/v1/enduserv1mcp"
 	invitev1mcp "altalune.id/oagent/gen/go/invite/v1/invitev1mcp"
+	"altalune.id/oagent/gen/go/knowledge/v1/knowledgev1mcp"
 	mcpserverv1mcp "altalune.id/oagent/gen/go/mcpserver/v1/mcpserverv1mcp"
 	memberv1mcp "altalune.id/oagent/gen/go/member/v1/memberv1mcp"
 	modelproviderv1mcp "altalune.id/oagent/gen/go/modelprovider/v1/modelproviderv1mcp"
@@ -30,6 +31,7 @@ import (
 	"altalune.id/oagent/internal/channel"
 	"altalune.id/oagent/internal/enduser"
 	"altalune.id/oagent/internal/kernel/tokens"
+	"altalune.id/oagent/internal/knowledge"
 	mcpinternal "altalune.id/oagent/internal/mcp"
 	mcpui "altalune.id/oagent/internal/mcp/ui"
 	"altalune.id/oagent/internal/mcpserver"
@@ -61,6 +63,7 @@ func buildMCPServer(cfg config.MCPConfig, svcs *Services, log *slog.Logger, allo
 	modelproviderv1mcp.RegisterModelProviderServiceTools(registry, modelprovider.NewControlPlane(svcs.ModelProviders, refs),
 		permission.For, validate)
 	mcpserverv1mcp.RegisterMcpServerServiceTools(registry, mcpserver.NewControlPlane(svcs.MCPServers, refs), permission.For, validate)
+	knowledgev1mcp.RegisterKnowledgeServiceTools(registry, knowledge.NewControlPlane(svcs.Knowledge, refs), permission.For, validate)
 	channels := channel.NewControlPlane(svcs.Channels, refs, svcs.ChannelOptions)
 	channelv1mcp.RegisterChannelServiceTools(registry, channels, permission.For, validate)
 	people := enduser.NewControlPlane(svcs.EndUsers, refs, endUserActivity{store: svcs.RunStore})

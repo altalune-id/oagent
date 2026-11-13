@@ -1,0 +1,16 @@
+[
+  {
+    "ordinal": 0,
+    "heading_path": "Opening hours",
+    "url": "https://example.com/page",
+    "text": "We open 08:00 to 22:00 every day.",
+    "embed_text": "page.html — Opening hours\n\nWe open 08:00 to 22:00 every day."
+  },
+  {
+    "ordinal": 1,
+    "heading_path": "Holidays",
+    "url": "https://example.com/page",
+    "text": "Closed on 1 January.",
+    "embed_text": "page.html — Holidays\n\nClosed on 1 January."
+  }
+]

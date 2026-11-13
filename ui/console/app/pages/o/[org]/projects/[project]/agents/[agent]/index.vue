@@ -194,8 +194,8 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
 
     <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(22rem,26rem)]">
       <AgentConfigForm
-        v-model="config" v-model:runtime="runtime" :providers="providers.items" :servers="servers.items" :sources="knowledge.items"
-        :search-ready="!!webSearch.setting.provider" :embeddings="knowledge.embeddingReady" :links="links" :legacy-model="legacy ? (draft.live.value?.model ?? '') : ''" :disabled="!canEdit || !loaded"
+        v-model="config" v-model:runtime="runtime" :providers="providers.items" :servers="servers.items" :sources="knowledge.sources"
+        :search-ready="!!webSearch.setting.provider" :embeddings="!!knowledge.embedding" :retrieval="knowledge.retrievalDefaults" :links="links" :legacy-model="legacy ? (draft.live.value?.model ?? '') : ''" :disabled="!canEdit || !loaded"
         :field-error="draft.fieldError.value"
       />
       <ConfigurePane :agent-id="agent.id" :config="config" />

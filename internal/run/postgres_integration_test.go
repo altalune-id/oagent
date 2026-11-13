@@ -1065,3 +1065,31 @@ func TestStore_HoldLeaseOnlyForTheHolder(t *testing.T) {
 	var lost *run.LeaseLostError
 	require.ErrorAs(t, f.store.HoldLease(in(s.org), "another-claim", thread), &lost)
 }
+
+func TestStore_KnowledgeUsageRoundTrips(t *testing.T) {
+	f := newPgFixture(t)
+	s := f.seed(t)
+	thread := f.thread(t, s)
+	ctx := in(s.org)
+	f.say(t, s, thread)
+	token := f.claimed(t, s, thread)
+	r := run.New(s.org, s.project, thread, s.version, time.Now())
+	r.Prices = &run.Prices{Input: new(int64(1_000_000)), Embedding: new(int64(20_000))}
+	_, err := f.store.StartRun(ctx, token, r)
+	require.NoError(t, err)
+
+	require.NoError(t, r.Move(run.StatusCompleted, time.Now()))
+	r.KnowledgeRetrieveCalls, r.KnowledgeRetrieveMs, r.KnowledgePassages = 2, 340, 7
+	require.NoError(t, f.store.Settle(ctx, token, r, run.Usage{InputTokens: 100, EmbeddingTokens: 1_000_000}, nil))
+
+	got, err := f.store.RunByID(ctx, r.ID)
+	require.NoError(t, err)
+	require.NotNil(t, got.Prices)
+	assert.Equal(t, int64(20_000), *got.Prices.Embedding, "the pinned embedding price is stored at run open")
+	assert.Equal(t, int64(1_000_000), got.Usage.EmbeddingTokens)
+	assert.Equal(t, int32(2), got.KnowledgeRetrieveCalls)
+	assert.Equal(t, int64(340), got.KnowledgeRetrieveMs)
+	assert.Equal(t, int32(7), got.KnowledgePassages)
+	assert.Equal(t, 1, f.count(t, `SELECT count(*) FROM `+f.schema+`.runs WHERE id = $1 AND cost_micros = 20100`, r.ID),
+		"the stored cost prices embedding tokens at the embedding price")
+}

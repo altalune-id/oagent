@@ -125,6 +125,21 @@ const (
 	CodeResumeIncomplete       Code = "APR004"
 	CodeEditedArgsRefused      Code = "APR005"
 	CodeApprovalAnsweredByApp  Code = "APR006"
+
+	CodeKnowledgeSourceNotFound        Code = "KNW001"
+	CodeKnowledgeSourceInvalid         Code = "KNW002"
+	CodeKnowledgeDocumentNotFound      Code = "KNW003"
+	CodeKnowledgeUploadRejected        Code = "KNW004"
+	CodeKnowledgeNoTextFound           Code = "KNW005"
+	CodeKnowledgeCouldNotReadFile      Code = "KNW006"
+	CodeKnowledgeEmbeddingModelInvalid Code = "KNW007"
+	CodeKnowledgeSourceInUse           Code = "KNW008"
+	CodeKnowledgeStorageNotConfigured  Code = "KNW009"
+	CodeKnowledgeLimitReached          Code = "KNW010"
+	CodeKnowledgeEmbeddingModelNotSet  Code = "KNW011"
+	CodeKnowledgeSourceAlreadyExists   Code = "KNW012"
+	CodeKnowledgeEmbeddingFailed       Code = "KNW013"
+	CodeKnowledgeCrawlFailed           Code = "KNW014"
 )
 
 var kinds = map[Code]Kind{
@@ -249,4 +264,19 @@ var kinds = map[Code]Kind{
 	CodeResumeIncomplete:       KindInvalid,
 	CodeEditedArgsRefused:      KindInvalid,
 	CodeApprovalAnsweredByApp:  KindFailedPrecondition,
+
+	CodeKnowledgeSourceNotFound:        KindNotFound,
+	CodeKnowledgeSourceInvalid:         KindInvalid,
+	CodeKnowledgeDocumentNotFound:      KindNotFound,
+	CodeKnowledgeUploadRejected:        KindInvalid,
+	CodeKnowledgeNoTextFound:           KindInvalid,
+	CodeKnowledgeCouldNotReadFile:      KindFailedPrecondition,
+	CodeKnowledgeEmbeddingModelInvalid: KindInvalid,
+	CodeKnowledgeSourceInUse:           KindFailedPrecondition,
+	CodeKnowledgeStorageNotConfigured:  KindFailedPrecondition,
+	CodeKnowledgeLimitReached:          KindResourceExhausted,
+	CodeKnowledgeEmbeddingModelNotSet:  KindFailedPrecondition,
+	CodeKnowledgeSourceAlreadyExists:   KindAlreadyExists,
+	CodeKnowledgeEmbeddingFailed:       KindFailedPrecondition,
+	CodeKnowledgeCrawlFailed:           KindFailedPrecondition,
 }

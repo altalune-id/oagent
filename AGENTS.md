@@ -55,7 +55,7 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
 
 **Data**
 
-- Migrations assume a fresh database: no backfills, guards or SQL id generators.
+- Migrations upgrade a live database that is never reset: each applies to existing rows, with no data guards or SQL id generators. See [migration](docs/howto/migration.md).
 - A migration that changes a table, column, constraint or index updates `schema/README.md` in the same commit.
 - A change to domains, surfaces, workers or boot order updates `internal/boot/README.md` in the same commit. It describes the current wiring only, with no history.
 

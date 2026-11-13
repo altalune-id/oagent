@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -42,6 +43,7 @@ import (
 	"altalune.id/oagent/internal/kernel/db"
 	"altalune.id/oagent/internal/kernel/session"
 	"altalune.id/oagent/internal/kernel/tenant"
+	"altalune.id/oagent/internal/knowledge"
 	"altalune.id/oagent/internal/org"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/internal/project"
@@ -84,6 +86,9 @@ func startAPIFixture(t *testing.T, idp *oidcrptest.IDP) *apiFixture {
 	svc, sqlDB, schemaName := pgtest.MigratedRLS(t)
 	cfg.Postgres.Schema = schemaName
 	svcs := buildServices(kernel.Kernel{Pool: svc, Reporter: apperror.NewReporter(nil, false)}, cfg)
+	_, err := buildKnowledge(t.Context(), &kernel.Kernel{Pool: svc, Reporter: apperror.NewReporter(nil, false)}, cfg, svcs, log)
+	require.NoError(t, err)
+	svcs.Knowledge.WithRetrievers(map[knowledge.Backend]knowledge.Retriever{knowledge.BackendPgvector: probeRetriever{}})
 	runs, err := buildRun(kernel.Kernel{Pool: svc, Reporter: apperror.NewReporter(nil, false)}, cfg, svcs, nil, log)
 	require.NoError(t, err)
 	svcs.RunStore, svcs.Runs = runs.store, runs.svc
@@ -507,4 +512,14 @@ func (l *safeLog) String() string {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	return l.b.String()
+}
+
+// NOTE: TestSearch answers from this fixed retriever, so its response is probed like any other read without an embedding model.
+type probeRetriever struct{}
+
+func (probeRetriever) Search(_ context.Context, q knowledge.Query) ([]knowledge.Hit, knowledge.Usage, error) {
+	if len(q.Sources) == 0 {
+		return nil, knowledge.Usage{}, errors.New("probe retriever: a search with no sources")
+	}
+	return []knowledge.Hit{{Text: "We refund within 30 days.", Title: "Refund policy", Score: 0.9}}, knowledge.Usage{RetrieveCalls: 1}, nil
 }

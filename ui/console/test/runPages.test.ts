@@ -147,6 +147,23 @@ describe('run viewer', () => {
     expect(w.text()).not.toContain('run.attempt');
   });
 
+  it('shows embedding tokens and knowledge searches next to the tokens, only when the run used them', async () => {
+    const c = threadClient();
+    c.getRun.mockResolvedValue({ run: create(RunSchema, { id: runId, threadId, status: RunStatus.COMPLETED, attempt: 1, agentVersion: 4, usage: { inputTokens: 812n, outputTokens: 64n, embeddingTokens: 12n }, knowledgeRetrieveCalls: 1, knowledgeRetrieveMs: 340n, knowledgePassages: 5, latencyMs: 2400n, startedAt: at(3), endedAt: at(4) }) });
+    const w = await mountPage(RunPage);
+    await flushPromises();
+    expect(w.findAll('header dl dt').map(d => d.text())).toEqual(['run.status', 'run.duration', 'run.tokens', 'run.embedding_tokens', 'run.knowledge_search', 'run.cost']);
+    expect(w.findAll('header dl dd').map(d => d.text())).toEqual(['runstatus.completed', '2.4s', '876', '12', 'run.knowledge_calls|{"n":1,"ms":"340"} run.knowledge_passages|{"n":"5"}', 'thread.unpriced']);
+  });
+
+  it('leaves the passage count off a knowledge search line when the run recorded none', async () => {
+    threadClient().getRun.mockResolvedValue({ run: create(RunSchema, { id: runId, threadId, status: RunStatus.COMPLETED, attempt: 1, agentVersion: 4, usage: {}, knowledgeRetrieveCalls: 1, knowledgeRetrieveMs: 340n, startedAt: at(3), endedAt: at(4) }) });
+    const w = await mountPage(RunPage);
+    await flushPromises();
+    expect(w.findAll('header dl dd').map(d => d.text())).toContain('run.knowledge_calls|{"n":1,"ms":"340"}');
+    expect(w.text()).not.toContain('run.knowledge_passages');
+  });
+
   it('says a run on the unpublished draft ran the draft, not version 0', async () => {
     threadClient({ getRun: vi.fn().mockResolvedValue({ run: create(RunSchema, { id: runId, threadId, status: RunStatus.COMPLETED, attempt: 1, agentVersion: 0, agentVersionKind: 'draft', usage: {}, startedAt: at(3) }) }) });
     const w = await mountPage(RunPage);

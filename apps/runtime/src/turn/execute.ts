@@ -18,6 +18,7 @@ import { inputParts, ModelProvider } from '../contract/index.ts';
 import { approvalSpecs, interventionsFor } from '../interventions/index.ts';
 import { openMcpServers } from '../mcp/index.ts';
 import { historyToMessages } from './history.ts';
+import { installKnowledge, KNOWLEDGE_LINE, knowledgeBlock } from './knowledge.ts';
 import { BUDGET_REFUSAL, LIMIT_REPLY, overBudget, stepLimit, UsageMeter } from './limits.ts';
 import { cleanSnapshot, SDK_VERSION } from './snapshot.ts';
 
@@ -139,7 +140,8 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
   if (request.snapshot !== null) {
     agent.loadSnapshot(request.snapshot as unknown as Snapshot);
   }
-  agent.systemPrompt = [request.agent.instructions, ...mcp.promptLines].join('\n\n');
+  const knowledge = knowledgeBlock(request.knowledge ?? []);
+  agent.systemPrompt = [request.agent.instructions, ...(knowledge === '' ? [] : [KNOWLEDGE_LINE]), ...mcp.promptLines].join('\n\n');
   const start = agent.messages.length;
 
   agent.addMiddleware(ExecuteToolStage.Wrap, async function* (ctx, next) {
@@ -150,6 +152,7 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
     }
     return yield* next(ctx);
   });
+  installKnowledge(agent, knowledge, chars => meter.addInput(chars));
   agent.addHook(BeforeModelCallEvent, (event) => {
     if (overBudget(meter.usage, request.limits.budget)) {
       budgetHit = true;

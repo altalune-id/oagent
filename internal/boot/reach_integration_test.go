@@ -75,7 +75,7 @@ type reachOrg struct {
 
 type reachIDs struct {
 	org, project, otherProject, agent, webhook, delivery, member, invite, keyHint, provider, server, thread, run, connection, endUser string
-	approval                                                                                                                          string
+	approval, source, document                                                                                                        string
 }
 
 func (ids reachIDs) serviceID(service protoreflect.FullName) string {
@@ -98,6 +98,8 @@ func (ids reachIDs) serviceID(service protoreflect.FullName) string {
 		return ids.endUser
 	case "approval.v1.ApprovalService":
 		return ids.approval
+	case "knowledge.v1.KnowledgeService":
+		return ids.source
 	}
 	return ""
 }
@@ -146,6 +148,14 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 		RaisedSnapshotHash: []byte{1},
 	})
 	require.NoError(t, err)
+	source, document := uuid.New(), uuid.New()
+	sourcePub, documentPub := nanoid.MustNew(21), nanoid.MustNew(21)
+	_, err = f.db.ExecContext(ctx, `INSERT INTO knowledge_sources (id, public_id, org_id, project_id, kind, backend, name, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, 'upload', 'pgvector', 'Docs', 'idle', now(), now())`, source, sourcePub, b.ID, prj.ID)
+	require.NoError(t, err)
+	_, err = f.db.ExecContext(ctx, `INSERT INTO knowledge_documents (id, public_id, org_id, project_id, source_id, title, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, 'Doc', 'pending', now(), now())`, document, documentPub, b.ID, prj.ID, source)
+	require.NoError(t, err)
 	var delivery, deliveryID string
 	require.NoError(t, f.db.QueryRowContext(ctx, `SELECT public_id, id::text FROM outbox_entries WHERE target = $1`, hook.ID.String()).
 		Scan(&delivery, &deliveryID))
@@ -160,6 +170,7 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 		org: b.PublicID, project: prj.PublicID, otherProject: other.PublicID, agent: ag.PublicID, webhook: hook.PublicID, delivery: delivery,
 		member: u.PublicID, invite: c.Invite.PublicID, keyHint: hintOf(key), provider: provider.PublicID, server: server.PublicID,
 		thread: th.PublicID, run: r.PublicID, connection: conn.PublicID, endUser: who.PublicID, approval: apr.PublicID,
+		source: sourcePub, document: documentPub,
 	}
 	var keyID string
 	require.NoError(t, f.db.QueryRowContext(ctx, `SELECT id::text FROM api_keys WHERE org_id = $1 AND secret_hint = $2`, b.ID, hintOf(key)).Scan(&keyID))
@@ -167,7 +178,7 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 		org: b.ID.String(), project: prj.ID.String(), otherProject: other.ID.String(), agent: ag.ID.String(), webhook: hook.ID.String(),
 		delivery: deliveryID, member: u.ID.String(), invite: c.Invite.ID.String(), keyHint: keyID,
 		provider: provider.ID.String(), server: server.ID.String(), thread: th.ID.String(), run: r.ID.String(), connection: conn.ID.String(), endUser: who.ID.String(),
-		approval: apr.ID.String(),
+		approval: apr.ID.String(), source: source.String(), document: document.String(),
 	}
 	return s
 }
@@ -212,7 +223,10 @@ func (ids reachIDs) request(t *testing.T, procedure string) (protoreflect.Method
 	tenantIDs := map[protoreflect.Name]string{
 		"org_id": ids.org, "project_id": ids.project, "user_id": ids.member, "invite_id": ids.invite,
 		"delivery_id": ids.delivery, "hint": ids.keyHint, "agent_id": ids.agent, "id": ids.serviceID(method.Parent().FullName()),
-		"thread_id": ids.thread, "run_id": ids.run,
+		"thread_id": ids.thread, "run_id": ids.run, "source_id": ids.source, "document_id": ids.document, "provider_id": ids.provider,
+	}
+	if strings.Contains(string(method.Name()), "Document") {
+		tenantIDs["id"] = ids.document
 	}
 	aimed := false
 	fields := method.Input().Fields()
@@ -371,9 +385,11 @@ func TestReach_UUIDsAndGarbageAreRefused(t *testing.T) {
 	f := newAPIFixture(t)
 	s := seedReach(t, f)
 	cookie, _, _ := f.personCookieIn(t, s.orgB, "b-owner@example.com", member.RoleOwner)
-	garbage := reachIDs{"nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope"}
+	garbage := reachIDs{"nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope",
+		"nope", "nope"}
 	const unknownID = "unknwnunknwnunknwnabc"
-	unknown := reachIDs{unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, "zzzz", unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID}
+	unknown := reachIDs{unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, "zzzz", unknownID, unknownID, unknownID,
+		unknownID, unknownID, unknownID, unknownID, unknownID, unknownID}
 	before := s.snapshot(t, f)
 	for name, tc := range map[string]struct {
 		ids  reachIDs

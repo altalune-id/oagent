@@ -71,23 +71,24 @@ The features, each picking its backend with a `driver` key:
 - `outbox`, `mailqueue`: durable delivery (webhooks, mail). They commit in the same transaction as the domain change, so they keep their Postgres store in-package and have no driver switch.
 - `queue` (`queue.driver: nats`): jobs and broadcasts, driver-agnostic; its NATS JetStream driver is `queue/nats`.
 - `ratelimit` (`rateLimit.driver: memory|redis`): GCRA limits, with `ratelimit/memory` and `ratelimit/redis` drivers and the shared contract in `ratelimit/ratelimittest`.
+- `storage` (`storage.driver: s3|memory`): signed direct uploads, their verification and the sweep of removed or abandoned files, with `storage/s3` and `storage/memory` drivers and the shared contract in `storage/storagetest`. The browser PUTs file bytes straight to the bucket; app HTTP never carries them. No driver turns uploads off.
 - `runtime` (`runtime.driver: http`): `Runtime.Turn` posts one turn and returns its event `Stream`. The turn contract and its goldens are in-package, and the HTTP driver is `runtime/http`.
 
 ## Connections
 
-The root packages `pg`, `nats` and `redis` each open, health-check and close one backend, then return the real client (`*sql.DB`, `*nats.Conn`, the go-redis client) without wrapping its API. Their config is a top-level key (`postgres.*`, `nats.*`, `redis.*`) mapped by boot into the package's own `Config`. Boot opens a connection only when a feature selects it (`PostgresFeatures`, `NATSFeatures`, `RedisFeatures`), hands it to the feature, and closes it on shutdown; `/readyz` reads each one's health monitor.
+The root packages `pg`, `nats`, `redis` and `s3` each open, health-check and close one backend, then return the real client (`*sql.DB`, `*nats.Conn`, the go-redis client) without wrapping its API. Their config is a top-level key (`postgres.*`, `nats.*`, `redis.*`) mapped by boot into the package's own `Config`. Boot opens a connection only when a feature selects it (`PostgresFeatures`, `NATSFeatures`, `RedisFeatures`), hands it to the feature, and closes it on shutdown; `/readyz` reads each one's health monitor.
 
-Only the connection, its drivers, boot and the test helpers import a backend library (depguard `pgx-boundary`, `nats-boundary`, `redis-boundary`). Domains never import `pg`, `nats` or `redis`.
+Only the connection, its drivers, boot and the test helpers import a backend library (depguard `pgx-boundary`, `nats-boundary`, `redis-boundary`). Domains never import `pg`, `nats`, `redis` or `s3`.
 
 ## Domains
 
-Each domain is a package under `internal/`: `org` (with `org/member` and `org/invite`), `project`, `agent`, `modelprovider`, `mcpserver`, `enduser`, `run`, `approval`, `apikey`, `webhook`, `user`, `auth`, `install`, `legal`, `health`. `enduser` holds the people agents talk to and their identities per project. `run` holds threads, messages, snapshots and runs: the ordered inbox, the thread lease, the turn runner and the run's usage and cost. `approval` holds a run's gated tool calls waiting on a person: one pending approval per thread, a single-use decision from WhatsApp, the console, MCP or the API, expiry by the `approval-expire` job, and each call's state so an approved call runs at most once. Each uses only the files it needs: `<domain>.go`, `errors.go`, `ports.go`, `store.go` + `pg*.go`, `service.go`, then one file per surface (`controlplane.go`, `cli.go`, `web.go`), with templ views in `<domain>/views`. See [module.md](../howto/module.md).
+Each domain is a package under `internal/`: `org` (with `org/member` and `org/invite`), `project`, `agent`, `modelprovider`, `mcpserver`, `knowledge` (sources, documents, ingest and search; its parts `extract`, `chunk`, `crawl`, `embed` and the `pgvector` store are sub-packages), `enduser`, `run`, `approval`, `apikey`, `webhook`, `user`, `auth`, `install`, `legal`, `health`. `enduser` holds the people agents talk to and their identities per project. `run` holds threads, messages, snapshots and runs: the ordered inbox, the thread lease, the turn runner and the run's usage and cost. `approval` holds a run's gated tool calls waiting on a person: one pending approval per thread, a single-use decision from WhatsApp, the console, MCP or the API, expiry by the `approval-expire` job, and each call's state so an approved call runs at most once. Each uses only the files it needs: `<domain>.go`, `errors.go`, `ports.go`, `store.go` + `pg*.go`, `service.go`, then one file per surface (`controlplane.go`, `cli.go`, `web.go`), with templ views in `<domain>/views`. See [module.md](../howto/module.md).
 
 Other internal packages: `permission` (the permission each RPC needs), `apiclient` (the CLI's Connect client), `prompt` (stdin prompts), `render` (CLI output), `mcp` (MCP auth and payloads).
 
 ## Root packages
 
-Packages at the repo root never import `internal/`: `apperror` (error codes, `codes.json`), `config`, the connections `pg`, `nats` and `redis`, `migrator`, `mailer` (+ console, smtp, resend), `worker`, `scheduler`, `httpclient`, `httpserver`, `mcp`, `password`, `sealer`, `nanoid`, `slug`, `weburl`, `canonjson` (canonical JSON, byte for byte the runtime's), `scope`, `reqid`, `telemetry`, `version`.
+Packages at the repo root never import `internal/`: `apperror` (error codes, `codes.json`), `config`, the connections `pg`, `nats`, `redis` and `s3`, `migrator`, `mailer` (+ console, smtp, resend), `worker`, `scheduler`, `httpclient`, `httpserver`, `mcp`, `password`, `sealer`, `nanoid`, `slug`, `weburl`, `canonjson` (canonical JSON, byte for byte the runtime's), `scope`, `reqid`, `telemetry`, `version`.
 
 ## UI builds
 

@@ -145,6 +145,11 @@ func (s *Service) checkModelsInUse(ctx context.Context, p *Provider) error {
 	if err != nil {
 		return err
 	}
+	if id := use.EmbeddingModel; id != "" {
+		if m, ok := p.Model(id); !ok || !m.Embedding || m.Prices == nil {
+			return &InUseError{Reason: InUseEmbeddingModel, Model: id}
+		}
+	}
 	for _, id := range slices.Sorted(maps.Keys(use.Models)) {
 		m, ok := p.Model(id)
 		if !ok {
@@ -167,6 +172,9 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 			use, err := s.usage.ProviderUse(ctx, id)
 			if err != nil {
 				return err
+			}
+			if use.EmbeddingModel != "" {
+				return &InUseError{Reason: InUseEmbeddingModel, Model: use.EmbeddingModel}
 			}
 			if use.InUse {
 				return &InUseError{Reason: InUseDelete}

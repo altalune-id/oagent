@@ -520,6 +520,39 @@ func TestUsage_MCPServerInUse(t *testing.T) {
 	}
 }
 
+func TestUsage_KnowledgeSources(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
+	provider, used, dropped, drafted := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+
+	a := newAgent(t, orgID, projectID, "uses")
+	require.NoError(t, f.store.Save(ctx, a))
+	f.publish(t, ctx, a, agent.Config{ProviderID: provider, Model: "m", KnowledgeSourceIDs: []uuid.UUID{used}})
+
+	b := newAgent(t, orgID, projectID, "dropped")
+	require.NoError(t, f.store.Save(ctx, b))
+	f.publish(t, ctx, b, agent.Config{ProviderID: provider, Model: "m", KnowledgeSourceIDs: []uuid.UUID{dropped, used}})
+	f.publish(t, ctx, b, agent.Config{ProviderID: provider, Model: "m", KnowledgeSourceIDs: []uuid.UUID{used}})
+
+	c := newAgent(t, orgID, projectID, "drafted")
+	require.NoError(t, f.store.Save(ctx, c))
+	require.NoError(t, c.SetDraft(agent.Config{ProviderID: provider, KnowledgeSourceIDs: []uuid.UUID{drafted}}, time.Now()))
+	require.NoError(t, f.store.SaveDraft(ctx, c))
+
+	for id, want := range map[uuid.UUID]bool{used: true, dropped: false, drafted: false, uuid.New(): false} {
+		got, err := f.store.KnowledgeSourceInUse(ctx, id)
+		require.NoError(t, err)
+		assert.Equal(t, want, got, id.String())
+	}
+	use, err := f.store.KnowledgeUse(ctx, projectID)
+	require.NoError(t, err)
+	want := []agent.Named{{ID: a.ID, PublicID: a.PublicID, Name: a.Name}, {ID: b.ID, PublicID: b.PublicID, Name: b.Name}}
+	assert.ElementsMatch(t, want, use[used])
+	assert.NotContains(t, use, dropped, "only latest published versions count")
+	assert.NotContains(t, use, drafted, "drafts never count")
+}
+
 func TestPostgres_VersionByIDIsTenantScoped(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)

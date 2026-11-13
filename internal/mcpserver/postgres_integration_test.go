@@ -202,7 +202,7 @@ func TestStore_OtherTenantInvisible(t *testing.T) {
 
 	intruder := newServer(t, orgB, projectB, "hijacked", mcpserver.AuthNone, time.Now())
 	intruder.ID = victim.ID
-	assert.Error(t, f.store.Save(in(orgB), intruder), "an upsert onto another org's row id is refused")
+	assert.True(t, mcpserver.IsNotFoundError(f.store.Save(in(orgB), intruder)), "an upsert onto another org's row id answers like an unknown one")
 
 	err = db.RunInTx(in(orgB), f.pool, func(ctx context.Context) error {
 		_, err := f.store.LockForUpdate(ctx, victim.ID)

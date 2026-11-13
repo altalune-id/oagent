@@ -5,14 +5,13 @@ export interface AgentRuntimeConfig {
   allowedDomains: string[];
   webSearch: boolean;
   memory: boolean;
-  knowledgeIds: string[];
 }
 
 export function emptyRuntime(): AgentRuntimeConfig {
-  return { webFetch: false, allowedDomains: [], webSearch: false, memory: false, knowledgeIds: [] };
+  return { webFetch: false, allowedDomains: [], webSearch: false, memory: false };
 }
 
-// TODO: replace with the web, memory and knowledge RPCs; until then this keeps each agent's draft of them.
+// TODO: replace with the web and memory RPCs; until then this keeps each agent's draft of them.
 export const useAgentRuntimeStore = defineStore('agentRuntime', () => {
   const drafts = ref<Record<string, AgentRuntimeConfig>>({});
   const sampled = ref<string[]>([]);

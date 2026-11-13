@@ -53,6 +53,11 @@ type Service struct {
 	media       Media
 	log         *slog.Logger
 	mismatches  metric.Int64Counter
+	bindings    KnowledgeBindings
+	retriever   KnowledgeRetriever
+	embedPrices EmbeddingPrices
+	retrieveErr metric.Int64Counter
+	retrieveMs  metric.Int64Histogram
 	turnTimeout time.Duration
 	maxAttempts int
 	// noRuntimeWarned holds the last no-runtime warning per thread, so a reconcile tick does not log it every time.
@@ -106,6 +111,19 @@ func (s *Service) WithMeter(m metric.Meter) *Service {
 	if err == nil {
 		s.mismatches = c
 	}
+	failed := metric.WithDescription("Knowledge searches that failed; the turn ran without knowledge.")
+	if c, err := m.Int64Counter("knowledge.retrieve_errors", failed); err == nil {
+		s.retrieveErr = c
+	}
+	if h, err := m.Int64Histogram("knowledge.retrieve_ms", metric.WithDescription("Milliseconds one knowledge search took.")); err == nil {
+		s.retrieveMs = h
+	}
+	return s
+}
+
+// WithKnowledge searches the sources an agent version is bound to before each turn and prices the query's embedding tokens.
+func (s *Service) WithKnowledge(b KnowledgeBindings, r KnowledgeRetriever, p EmbeddingPrices) *Service {
+	s.bindings, s.retriever, s.embedPrices = b, r, p
 	return s
 }
 
@@ -155,6 +173,8 @@ type turn struct {
 	rejectBySystem               bool
 	// outcome is the interrupt outcome an awaiting run's RUN_FINISHED carries to the client.
 	outcome json.RawMessage
+	// knowledge is this leg's retrieved passages. SECURITY: project content; sent to the runtime only, never stored or logged.
+	knowledge []runtime.Passage
 }
 
 func (t *turn) see(e runtime.Event) {
@@ -251,10 +271,12 @@ func (s *Service) execute(ctx context.Context, threadID uuid.UUID, token string,
 	if code != "" {
 		return s.fail(ctx, t, code)
 	}
+	s.retrieve(ctx, t)
 	req, history, err := s.request(ctx, t)
 	if err != nil {
 		return s.abandon(ctx, t, t.run.Usage, err)
 	}
+	t.run.KnowledgePassages += int32(len(req.Knowledge)) //nolint:gosec // G115: at most runtime.MaxPassages.
 	return s.stream(ctx, t, req, history)
 }
 
@@ -373,7 +395,7 @@ func (s *Service) open(ctx context.Context, th *Thread, token string, obs Observ
 	t.run.Group = th.Kind == threadKindGroup
 	if !t.version.Legacy {
 		if m, err := s.providers.ResolveModel(ctx, t.version.ProviderID, t.version.Model); err == nil {
-			t.model, t.run.Prices = m, m.Prices
+			t.model, t.run.Prices = m, s.pinPrices(ctx, t, m.Prices)
 		}
 	}
 	t.taken, err = s.store.StartRun(ctx, token, t.run)
@@ -655,7 +677,7 @@ func (s *Service) emit(ctx context.Context, t *turn, u Usage) error {
 		RunID: r.PublicID, ThreadID: t.thread.PublicID, AgentID: agentPub, Status: string(r.Status),
 		Usage: events.RunUsageV1{
 			InputTokens: u.InputTokens, OutputTokens: u.OutputTokens, CacheReadInputTokens: u.CacheReadTokens,
-			CacheWriteInputTokens: u.CacheWriteTokens, Estimated: u.Estimated,
+			CacheWriteInputTokens: u.CacheWriteTokens, EmbeddingTokens: u.EmbeddingTokens, Estimated: u.Estimated,
 		},
 	}
 	if micros, priced := Cost(u, r.Prices); priced {

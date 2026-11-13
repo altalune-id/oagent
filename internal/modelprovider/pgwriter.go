@@ -60,6 +60,9 @@ func (s *postgresStore) Save(ctx context.Context, p *Provider) error {
 		if db.IsUniqueViolation(err) {
 			return &AlreadyExistsError{Name: p.Name}
 		}
+		if db.IsRowSecurityViolation(err) {
+			return &NotFoundError{ID: p.ID.String()}
+		}
 		return fmt.Errorf("modelprovider.postgres: Save: %w", err)
 	}
 	// NOTE: zero rows means the conflict clause's org guard refused.

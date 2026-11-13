@@ -26,8 +26,10 @@ import (
 	"altalune.id/oagent/internal/kernel/outbox"
 	"altalune.id/oagent/internal/kernel/ratelimit"
 	"altalune.id/oagent/internal/kernel/session"
+	"altalune.id/oagent/internal/kernel/storage"
 	"altalune.id/oagent/internal/kernel/tokens"
 	"altalune.id/oagent/internal/kernel/usage"
+	"altalune.id/oagent/internal/knowledge"
 	"altalune.id/oagent/internal/legal"
 	"altalune.id/oagent/internal/mcpserver"
 	"altalune.id/oagent/internal/modelprovider"
@@ -63,6 +65,9 @@ type Services struct {
 	ModelProviders     *modelprovider.Service
 	ModelProviderStore modelprovider.Store
 	MCPServers         *mcpserver.Service
+	Knowledge          *knowledge.Service
+	KnowledgeRetriever knowledge.Retriever
+	Files              *storage.Service
 	MCPServerStore     mcpserver.Store
 	Channels           *channel.Service
 	ChannelStore       channel.Store

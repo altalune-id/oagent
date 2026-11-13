@@ -1,0 +1,164 @@
+{
+  "userAgent": "oagent",
+  "maxBytes": 512000,
+  "vectors": [
+    {
+      "name": "no group for oagent, star group applies",
+      "status": 200,
+      "robots": "User-agent: *\nDisallow: /tmp/\n",
+      "path": "/tmp/x",
+      "allowed": false
+    },
+    {
+      "name": "star group allows other paths",
+      "status": 200,
+      "robots": "User-agent: *\nDisallow: /tmp/\n",
+      "path": "/index.html",
+      "allowed": true
+    },
+    {
+      "name": "oagent group wins over star",
+      "status": 200,
+      "robots": "User-agent: *\nDisallow: /\n\nUser-agent: oagent\nAllow: /\n",
+      "path": "/page",
+      "allowed": true
+    },
+    {
+      "name": "user agent match is case-insensitive",
+      "status": 200,
+      "robots": "User-agent: OAgent\nDisallow: /a\n",
+      "path": "/a/b",
+      "allowed": false
+    },
+    {
+      "name": "groups for the same agent merge",
+      "status": 200,
+      "robots": "User-agent: oagent\nDisallow: /a\n\nUser-agent: oagent\nDisallow: /b\n",
+      "path": "/b/c",
+      "allowed": false
+    },
+    {
+      "name": "several user agents share one group",
+      "status": 200,
+      "robots": "User-agent: otherbot\nUser-agent: oagent\nDisallow: /shared\n",
+      "path": "/shared/x",
+      "allowed": false
+    },
+    {
+      "name": "longest match wins: allow",
+      "status": 200,
+      "robots": "User-agent: *\nDisallow: /private\nAllow: /private/public\n",
+      "path": "/private/public/doc",
+      "allowed": true
+    },
+    {
+      "name": "longest match wins: disallow",
+      "status": 200,
+      "robots": "User-agent: *\nDisallow: /private\nAllow: /private/public\n",
+      "path": "/private/secret",
+      "allowed": false
+    },
+    {
+      "name": "allow wins a tie",
+      "status": 200,
+      "robots": "User-agent: *\nDisallow: /page\nAllow: /page\n",
+      "path": "/page",
+      "allowed": true
+    },
+    {
+      "name": "empty disallow allows all",
+      "status": 200,
+      "robots": "User-agent: *\nDisallow:\n",
+      "path": "/anything",
+      "allowed": true
+    },
+    {
+      "name": "wildcard in a rule",
+      "status": 200,
+      "robots": "User-agent: *\nDisallow: /*.pdf\n",
+      "path": "/docs/report.pdf",
+      "allowed": false
+    },
+    {
+      "name": "end anchor",
+      "status": 200,
+      "robots": "User-agent: *\nDisallow: /*.php$\n",
+      "path": "/index.php?x=1",
+      "allowed": true
+    },
+    {
+      "name": "end anchor matches the exact end",
+      "status": 200,
+      "robots": "User-agent: *\nDisallow: /*.php$\n",
+      "path": "/index.php",
+      "allowed": false
+    },
+    {
+      "name": "query is part of the matched path",
+      "status": 200,
+      "robots": "User-agent: *\nDisallow: /search?q=\n",
+      "path": "/search?q=cats",
+      "allowed": false
+    },
+    {
+      "name": "comments and blank lines are ignored",
+      "status": 200,
+      "robots": "# hello\nUser-agent: * # all\n\nDisallow: /x # no\n",
+      "path": "/x",
+      "allowed": false
+    },
+    {
+      "name": "robots.txt itself is always allowed",
+      "status": 200,
+      "robots": "User-agent: *\nDisallow: /\n",
+      "path": "/robots.txt",
+      "allowed": true
+    },
+    {
+      "name": "no matching group allows",
+      "status": 200,
+      "robots": "User-agent: otherbot\nDisallow: /\n",
+      "path": "/a",
+      "allowed": true
+    },
+    {
+      "name": "a 4xx allows all",
+      "status": 404,
+      "path": "/a",
+      "allowed": true
+    },
+    {
+      "name": "a 5xx disallows all",
+      "status": 503,
+      "path": "/a",
+      "allowed": false
+    },
+    {
+      "name": "a 3xx the fetcher did not follow disallows all",
+      "robots": "User-agent: *\nDisallow:\n",
+      "status": 301,
+      "path": "/a",
+      "allowed": false
+    },
+    {
+      "name": "a timeout disallows all",
+      "error": "timeout",
+      "path": "/a",
+      "allowed": false
+    },
+    {
+      "name": "an unreachable host disallows all",
+      "error": "unreachable",
+      "path": "/a",
+      "allowed": false
+    },
+    {
+      "name": "content past 500 KiB is cut (a comment line of padComment bytes goes after the first line)",
+      "status": 200,
+      "robots": "User-agent: *\nDisallow: /late\n",
+      "path": "/late",
+      "allowed": true,
+      "padComment": 512000
+    }
+  ]
+}

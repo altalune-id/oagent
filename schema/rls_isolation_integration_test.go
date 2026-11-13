@@ -21,7 +21,7 @@ import (
 )
 
 type rlsTenant struct {
-	org, project, user, key, endpoint, agent, endUser, version, thread, run, connection uuid.UUID
+	org, project, user, key, endpoint, agent, endUser, version, thread, run, connection, provider, file, source, document uuid.UUID
 }
 
 type rlsFixture struct {
@@ -42,7 +42,8 @@ func newRLSFixture(t *testing.T) *rlsFixture {
 func (f *rlsFixture) seed(t *testing.T, tag string) rlsTenant {
 	t.Helper()
 	tn := rlsTenant{org: uuid.New(), project: uuid.New(), user: uuid.New(), key: uuid.New(), endpoint: uuid.New(), agent: uuid.New(), endUser: uuid.New(),
-		version: uuid.New(), thread: uuid.New(), run: uuid.New(), connection: uuid.New()}
+		version: uuid.New(), thread: uuid.New(), run: uuid.New(), connection: uuid.New(), provider: uuid.New(), file: uuid.New(), source: uuid.New(),
+		document: uuid.New()}
 	for _, ins := range rlsInserts() {
 		_, err := f.admin.ExecContext(t.Context(), ins.sql(f.schema), ins.args(tn, tag)...)
 		require.NoError(t, err, ins.table)
@@ -89,7 +90,34 @@ func rlsInserts() []rlsInsert {
 		{"model_providers", func(s string) string {
 			return `INSERT INTO ` + s + `.model_providers (id, public_id, org_id, project_id, name, kind, base_url, api_key_sealed, models, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, 'openai_compatible', 'https://e.com/v1', '\x01', '[]', $6, $6)`
 		}, func(tn rlsTenant, _ string) []any {
-			return []any{uuid.New(), "r" + id()[:12], tn.org, tn.project, "m" + id()[:12], now}
+			return []any{tn.provider, "r" + id()[:12], tn.org, tn.project, "m" + id()[:12], now}
+		}},
+		{"knowledge_settings", func(s string) string {
+			return `INSERT INTO ` + s + `.knowledge_settings (project_id, org_id, provider_id, model, dims, updated_at) VALUES ($1, $2, $3, 'e', 768, $4)`
+		}, func(tn rlsTenant, _ string) []any { return []any{tn.project, tn.org, tn.provider, now} }},
+		{"files", func(s string) string {
+			return `INSERT INTO ` + s + `.files (id, public_id, org_id, project_id, purpose, visibility, object_key, content_type, size_bytes, status, created_at, expires_at)
+				VALUES ($1, $2, $3, $4, 'knowledge', 'private', $5, 'application/pdf', 10, 'ready', $6, $6)`
+		}, func(tn rlsTenant, _ string) []any {
+			return []any{tn.file, "f" + id()[:12], tn.org, tn.project, "k/" + id(), now}
+		}},
+		{"knowledge_sources", func(s string) string {
+			return `INSERT INTO ` + s + `.knowledge_sources (id, public_id, org_id, project_id, kind, backend, name, status, created_at, updated_at)
+				VALUES ($1, $2, $3, $4, 'upload', 'pgvector', $2, 'idle', $5, $5)`
+		}, func(tn rlsTenant, _ string) []any {
+			return []any{tn.source, "s" + id()[:12], tn.org, tn.project, now}
+		}},
+		{"knowledge_documents", func(s string) string {
+			return `INSERT INTO ` + s + `.knowledge_documents (id, public_id, org_id, project_id, source_id, title, file_id, status, created_at, updated_at)
+				VALUES ($1, $2, $3, $4, $5, 'Doc', $6, 'ready', $7, $7)`
+		}, func(tn rlsTenant, _ string) []any {
+			return []any{tn.document, "d" + id()[:12], tn.org, tn.project, tn.source, tn.file, now}
+		}},
+		{"knowledge_chunks", func(s string) string {
+			return `INSERT INTO ` + s + `.knowledge_chunks (id, org_id, project_id, source_id, document_id, ordinal, text, embedding, dims, model_key, created_at)
+				VALUES ($1, $2, $3, $4, $5, 0, 't', array_fill(0.1::real, ARRAY[768])::public.vector, 768, 'm', $6)`
+		}, func(tn rlsTenant, _ string) []any {
+			return []any{uuid.New(), tn.org, tn.project, tn.source, tn.document, now}
 		}},
 		{"mcp_servers", func(s string) string {
 			return `INSERT INTO ` + s + `.mcp_servers (id, public_id, org_id, project_id, name, url, auth_kind, timeout_ms, trusted, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, 'https://e.com/mcp', 'none', 5000, false, $6, $6)`
@@ -271,7 +299,7 @@ func TestRLS_EveryOrgOwnedTableIsolatesTenants(t *testing.T) {
 			assert.Positive(t, before)
 		})
 	}
-	assert.Equal(t, 22, tables, "every org-owned table is covered")
+	assert.Equal(t, 27, tables, "every org-owned table is covered")
 }
 
 // SECURITY: a user-only scope reads its own memberships and orgs, but every write needs the org itself.

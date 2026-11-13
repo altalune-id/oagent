@@ -23,6 +23,10 @@ export interface RunSummary {
   startedAt: Date;
   seconds: number;
   tokens: number;
+  embeddingTokens?: number;
+  retrieveCalls?: number;
+  retrieveMs?: number;
+  retrievePassages?: number;
   costCents: number;
   unpriced?: boolean;
   estimated?: boolean;

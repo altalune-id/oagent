@@ -102,3 +102,17 @@ APR003 ApprovalAlreadyDecided
 APR004 ResumeIncomplete
 APR005 EditedArgsRefused
 APR006 ApprovalAnsweredByApp
+KNW001 KnowledgeSourceNotFound
+KNW002 KnowledgeSourceInvalid
+KNW003 KnowledgeDocumentNotFound
+KNW004 KnowledgeUploadRejected
+KNW005 KnowledgeNoTextFound
+KNW006 KnowledgeCouldNotReadFile
+KNW007 KnowledgeEmbeddingModelInvalid
+KNW008 KnowledgeSourceInUse
+KNW009 KnowledgeStorageNotConfigured
+KNW010 KnowledgeLimitReached
+KNW011 KnowledgeEmbeddingModelNotSet
+KNW012 KnowledgeSourceAlreadyExists
+KNW013 KnowledgeEmbeddingFailed
+KNW014 KnowledgeCrawlFailed
