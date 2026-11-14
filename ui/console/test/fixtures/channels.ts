@@ -9,7 +9,7 @@ import { connectError, setClient } from '#test/nuxt-globals';
 export const channelDefaults = {
   defaultOpenwaBaseUrl: 'https://openwa.altalune.id',
   replyFailure: 'Sorry, something went wrong on our side. Please try again in a moment.',
-  replyVoice: 'Voice notes are not supported yet. Please send your message as text.',
+  replyVoice: 'Sorry, I couldn\'t understand that voice message. Please type your message instead.',
   replyPhotoUnreadable: 'I could not read that photo. Please describe it in text instead.',
   approvalPrompt: 'Need your OK first:\n{preview}\nReply YES or NO.',
   approvalExpired: 'That request expired, so nothing was done.',

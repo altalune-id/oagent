@@ -237,15 +237,17 @@ func (x *AgentEffective) GetKnowledgeMaxTokens() int32 {
 	return 0
 }
 
-// AgentDefaults are the recommended agent config values and their ranges; the knowledge tuning defaults come from ListKnowledgeSources.
+// AgentDefaults are the recommended agent config values, their ranges and the voice note limits; the knowledge tuning defaults come from ListKnowledgeSources.
 type AgentDefaults struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	MaxSteps       int32                  `protobuf:"varint,1,opt,name=max_steps,json=maxSteps,proto3" json:"max_steps,omitempty"`
-	MaxMaxSteps    int32                  `protobuf:"varint,2,opt,name=max_max_steps,json=maxMaxSteps,proto3" json:"max_max_steps,omitempty"`
-	MaxTemperature float64                `protobuf:"fixed64,3,opt,name=max_temperature,json=maxTemperature,proto3" json:"max_temperature,omitempty"`
-	MaxCostCents   int32                  `protobuf:"varint,4,opt,name=max_cost_cents,json=maxCostCents,proto3" json:"max_cost_cents,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	MaxSteps            int32                  `protobuf:"varint,1,opt,name=max_steps,json=maxSteps,proto3" json:"max_steps,omitempty"`
+	MaxMaxSteps         int32                  `protobuf:"varint,2,opt,name=max_max_steps,json=maxMaxSteps,proto3" json:"max_max_steps,omitempty"`
+	MaxTemperature      float64                `protobuf:"fixed64,3,opt,name=max_temperature,json=maxTemperature,proto3" json:"max_temperature,omitempty"`
+	MaxCostCents        int32                  `protobuf:"varint,4,opt,name=max_cost_cents,json=maxCostCents,proto3" json:"max_cost_cents,omitempty"`
+	VoiceNoteMaxSeconds int32                  `protobuf:"varint,5,opt,name=voice_note_max_seconds,json=voiceNoteMaxSeconds,proto3" json:"voice_note_max_seconds,omitempty"`
+	VoiceNoteMaxBytes   int32                  `protobuf:"varint,6,opt,name=voice_note_max_bytes,json=voiceNoteMaxBytes,proto3" json:"voice_note_max_bytes,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AgentDefaults) Reset() {
@@ -302,6 +304,20 @@ func (x *AgentDefaults) GetMaxTemperature() float64 {
 func (x *AgentDefaults) GetMaxCostCents() int32 {
 	if x != nil {
 		return x.MaxCostCents
+	}
+	return 0
+}
+
+func (x *AgentDefaults) GetVoiceNoteMaxSeconds() int32 {
+	if x != nil {
+		return x.VoiceNoteMaxSeconds
+	}
+	return 0
+}
+
+func (x *AgentDefaults) GetVoiceNoteMaxBytes() int32 {
+	if x != nil {
+		return x.VoiceNoteMaxBytes
 	}
 	return 0
 }
@@ -1692,12 +1708,14 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\tmax_steps\x18\x01 \x01(\x05R\bmaxSteps\x12&\n" +
 	"\x0fknowledge_top_k\x18\x02 \x01(\x05R\rknowledgeTopK\x12.\n" +
 	"\x13knowledge_min_score\x18\x03 \x01(\x01R\x11knowledgeMinScore\x120\n" +
-	"\x14knowledge_max_tokens\x18\x04 \x01(\x05R\x12knowledgeMaxTokens\"\x9f\x01\n" +
+	"\x14knowledge_max_tokens\x18\x04 \x01(\x05R\x12knowledgeMaxTokens\"\x85\x02\n" +
 	"\rAgentDefaults\x12\x1b\n" +
 	"\tmax_steps\x18\x01 \x01(\x05R\bmaxSteps\x12\"\n" +
 	"\rmax_max_steps\x18\x02 \x01(\x05R\vmaxMaxSteps\x12'\n" +
 	"\x0fmax_temperature\x18\x03 \x01(\x01R\x0emaxTemperature\x12$\n" +
-	"\x0emax_cost_cents\x18\x04 \x01(\x05R\fmaxCostCents\"\xa9\x01\n" +
+	"\x0emax_cost_cents\x18\x04 \x01(\x05R\fmaxCostCents\x123\n" +
+	"\x16voice_note_max_seconds\x18\x05 \x01(\x05R\x13voiceNoteMaxSeconds\x12/\n" +
+	"\x14voice_note_max_bytes\x18\x06 \x01(\x05R\x11voiceNoteMaxBytes\"\xa9\x01\n" +
 	"\tAgentTool\x121\n" +
 	"\x04name\x18\x01 \x01(\tB\x1d\xbaH\x1ar\x182\x16^[a-zA-Z0-9_.-]{1,64}$R\x04name\x12)\n" +
 	"\x10require_approval\x18\x02 \x01(\bR\x0frequireApproval\x12>\n" +

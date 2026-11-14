@@ -9,7 +9,7 @@ import { createRequest, toModelProvider, updateRequest, useModelProvidersStore }
 
 const orgId = 'V3StGXR8Z5jdHj6BmyT2a';
 const projectId = 'x6MH9WPWjktMwCBKHy4pF';
-const prices = { inputMicros: 400_000n, outputMicros: 1_600_000n, cacheReadMicros: 100_000n, cacheWriteMicros: 0n };
+const prices = { inputMicros: 400_000n, outputMicros: 1_600_000n, cacheReadMicros: 100_000n, cacheWriteMicros: 0n, audioMinuteMicros: 0n };
 const providerPB = create(ModelProviderSchema, { id: 'UxVy4UK3vmrHzPZ273hCA', orgId, projectId, name: 'OpenRouter', kind: ModelProviderKind.OPENAI_COMPATIBLE, baseUrl: 'https://openrouter.ai/api/v1', apiKeySet: true, models: [{ id: 'openai/gpt-4.1-mini', vision: true, prices }, { id: 'llama', vision: false }, { id: 'text-embedding-3-small', vision: false, embedding: true, prices }] });
 const provider: ModelProvider = { id: 'UxVy4UK3vmrHzPZ273hCA', orgId, projectId, name: 'OpenRouter', kind: ModelProviderKind.OPENAI_COMPATIBLE, baseUrl: 'https://openrouter.ai/api/v1', keySet: true, models: [{ id: 'openai/gpt-4.1-mini', vision: true, embedding: false, prices }, { id: 'llama', vision: false, embedding: false, prices: undefined }, { id: 'text-embedding-3-small', vision: false, embedding: true, prices }] };
 const input: ProviderInput = { name: ' OpenRouter ', kind: ModelProviderKind.OPENAI_COMPATIBLE, baseUrl: ' https://openrouter.ai/api/v1 ', apiKey: '  sk-or-1  ', models: [{ id: ' openai/gpt-4.1-mini ', vision: true, embedding: false, prices }, { id: 'text-embedding-3-small', vision: false, embedding: true, prices }] };
@@ -44,6 +44,22 @@ describe('model provider mapping', () => {
     const sent = updateRequest(provider.id, { ...input, models: read.models });
     expect(sent.models[0]).toMatchObject({ id: 'whisper-1', transcription: true, prices: { audioMinuteMicros: 6_000n } });
     expect(createRequest(orgId, projectId, { ...input, models: read.models }).models[0]!.transcription).toBe(true);
+  });
+
+  it('keeps a free transcription model at a zero audio price, so a save sends it unchanged', () => {
+    const free = { inputMicros: 0n, outputMicros: 0n, cacheReadMicros: 0n, cacheWriteMicros: 0n, audioMinuteMicros: 0n };
+    const read = toModelProvider(create(ModelProviderSchema, { ...providerPB, models: [create(ModelSchema, { id: 'whisper-free', transcription: true, prices: free })] }));
+    expect(read.models[0]!.prices).toEqual(free);
+    expect(updateRequest(provider.id, { ...input, models: read.models }).models[0]!.prices).toMatchObject({ audioMinuteMicros: 0n });
+  });
+
+  it('never sends the transcription flag or a per-minute price for an Anthropic provider', () => {
+    const anthropic = { ...input, kind: ModelProviderKind.ANTHROPIC, models: [{ id: 'claude', vision: true, embedding: false, transcription: true, prices: { ...prices, audioMinuteMicros: 6_000n } }] };
+    const sent = createRequest(orgId, projectId, anthropic).models[0]!;
+    expect(sent.transcription).toBe(false);
+    expect(sent.prices?.audioMinuteMicros).toBe(0n);
+    expect(sent.prices?.inputMicros).toBe(400_000n);
+    expect(updateRequest(provider.id, anthropic).models[0]!.transcription).toBe(false);
   });
 
   it('never sends the embedding flag for an Anthropic provider, which has no embeddings API', () => {

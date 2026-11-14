@@ -20,6 +20,11 @@ export interface ProviderModel {
   prices?: ModelPrices;
 }
 
+// keyOf is the select value of a model on a provider.
+export function keyOf(c: { providerId: string, model: string }): string {
+  return `${c.providerId}|${c.model}`;
+}
+
 export interface ModelProvider {
   id: string;
   orgId: string;
@@ -58,14 +63,15 @@ export function toModelProvider(p: ModelProviderPB): ModelProvider {
         outputMicros: m.prices.outputMicros,
         cacheReadMicros: m.prices.cacheReadMicros,
         cacheWriteMicros: m.prices.cacheWriteMicros,
-        ...(m.prices.audioMinuteMicros ? { audioMinuteMicros: m.prices.audioMinuteMicros } : {}),
+        audioMinuteMicros: m.prices.audioMinuteMicros,
       },
     })),
   };
 }
 
 function wireModels(models: ProviderModel[], kind: ModelProviderKind) {
-  return models.map(m => ({ id: m.id.trim(), vision: m.vision, embedding: kind !== ModelProviderKind.ANTHROPIC && m.embedding, transcription: !!m.transcription, prices: m.prices && { ...m.prices } }));
+  const anthropic = kind === ModelProviderKind.ANTHROPIC;
+  return models.map(m => ({ id: m.id.trim(), vision: m.vision, embedding: !anthropic && m.embedding, transcription: !anthropic && !!m.transcription, prices: m.prices && { ...m.prices, ...(anthropic ? { audioMinuteMicros: 0n } : {}) } }));
 }
 
 // createRequest builds the create call for a provider; the key is trimmed.

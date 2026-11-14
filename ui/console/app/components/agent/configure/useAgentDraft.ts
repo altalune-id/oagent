@@ -50,7 +50,7 @@ export function useAgentDraft(agentId: string, names: ChangeNames) {
 
   function track(next: AgentState) {
     state.value = next;
-    agents.setPublishState(agentId, { publishedVersion: next.publishedVersion, unpublishedChanges: next.unpublishedChanges, providerId: next.draft.providerId, model: next.draft.model });
+    agents.setPublishState(agentId, { publishedVersion: next.publishedVersion, unpublishedChanges: next.unpublishedChanges, providerId: next.draft.providerId, model: next.draft.model, transcriptionModel: next.draft.transcriptionModel });
   }
 
   function apply(next: AgentState) {

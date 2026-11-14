@@ -376,6 +376,20 @@ describe('channels page', () => {
     none.w.unmount();
   });
 
+  it('says on the WhatsApp section whether voice notes are transcribed, naming the set reply when they are off', async () => {
+    const offPage = await page(vision);
+    expect(offPage.w.text()).toContain('openwa.voice_off|{"reply":"channels.reply_voice"}');
+    expect(offPage.w.text()).not.toContain('openwa.voice_on');
+    offPage.w.unmount();
+    setActivePinia(createPinia());
+    fakeRuntimeClients();
+    const onPage = await page({ ...yasaku, draft: { ...draftConfig, transcriptionModel: { providerId: 'Pv9pHs4YvT7kMq7WcXe2B', model: 'whisper-large-v3', providerMissing: false } } });
+    expect(onPage.w.text()).toContain('openwa.voice_on|{"model":"whisper-large-v3"}');
+    expect(onPage.w.text()).not.toContain('openwa.voice_after_publish');
+    expect(onPage.w.text()).not.toContain('openwa.voice_off');
+    onPage.w.unmount();
+  });
+
   it('makes no approval promise on this build, and says messages get no reply while unpublished', async () => {
     const { w } = await page({ ...vision, unpublishedChanges: true }, writer, [ofYasaku()]);
     expect(w.text()).not.toContain('channels.writes_note');
@@ -401,6 +415,42 @@ describe('channels page', () => {
     const none = await page(vision, writer, []);
     expect(none.w.text()).toContain(`${window.location.origin}/api/v1/agents/${yasaku.id}/runs`);
     none.w.unmount();
+  });
+
+  it('offers the new voice note reply when voice notes are on and the connection still has the old default, saving only that reply', async () => {
+    const old = 'Sorry, I can\'t listen to voice messages yet. Please type your message.';
+    const voiceOn = { ...yasaku, draft: { ...draftConfig, transcriptionModel: { providerId: 'Pv9pHs4YvT7kMq7WcXe2B', model: 'whisper-large-v3', providerMissing: false } } };
+    const { w, client } = await page(voiceOn, writer, [ofYasaku({ replyVoice: old, replyFailure: 'Maaf.' })]);
+    const section = w.findAll('section').find(s => s.get('h2').text() === 'channels.replies')!;
+    expect(section.get('[role="note"]').text()).toContain('channels.voice_reply_old|{"reply":"channels.reply_voice"}');
+    await section.findAll('textarea')[0]!.setValue('Unsaved edit');
+    await section.findAll('button').find(b => b.text() === 'channels.voice_reply_update')!.trigger('click');
+    await flushPromises();
+    expect(client.updateConnection).toHaveBeenLastCalledWith({ id: 'Ch8fK2pQ7mXr9Lt4WvN3c', replyVoice: channelDefaults.replyVoice });
+    expect(section.find('[role="note"]').exists()).toBe(false);
+    expect((section.findAll('textarea')[0]!.element as HTMLTextAreaElement).value).toBe('Unsaved edit');
+    expect(useToast().toasts.at(-1)?.text).toBe('channels.voice_reply_updated');
+    w.unmount();
+    setActivePinia(createPinia());
+    fakeRuntimeClients();
+    const off = await page(vision, writer, [ofYasaku({ replyVoice: old })]);
+    expect(off.w.text()).not.toContain('channels.voice_reply_old');
+    off.w.unmount();
+    setActivePinia(createPinia());
+    fakeRuntimeClients();
+    const reader = await page(voiceOn, ['agent:read', 'channel:read'], [ofYasaku({ replyVoice: old })]);
+    expect(reader.w.text()).toContain('channels.voice_reply_old');
+    expect(reader.w.findAll('button').some(b => b.text() === 'channels.voice_reply_update')).toBe(false);
+    reader.w.unmount();
+    setActivePinia(createPinia());
+    fakeRuntimeClients();
+    const draft = await page({ ...voiceOn, unpublishedChanges: true }, writer, [ofYasaku({ replyVoice: old })]);
+    expect(draft.w.text()).toContain('openwa.voice_after_publish');
+    const note = draft.w.findAll('p[role="note"]').find(p => p.text().includes('openwa.voice_after_publish'))!;
+    expect(note.element.textContent!.replace(/\s+/g, ' ').trim()).toBe('openwa.voice_on|{"model":"whisper-large-v3"} openwa.voice_after_publish configure.voice');
+    expect(note.element.textContent).toMatch(/openwa\.voice_after_publish\s+configure\.voice/);
+    expect(draft.w.text()).not.toContain('channels.voice_reply_old');
+    draft.w.unmount();
   });
 
   it('saves the set replies under one visible heading, refusing a blank one', async () => {

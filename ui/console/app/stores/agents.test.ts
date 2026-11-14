@@ -19,7 +19,7 @@ describe('useAgentsStore', () => {
     const agents = useAgentsStore();
     await agents.load('x6MH9WPWjktMwCBKHy4pF');
     expect(listAgents).toHaveBeenCalledWith({ projectId: 'x6MH9WPWjktMwCBKHy4pF' });
-    const none = { publishedVersion: undefined, unpublishedChanges: undefined, providerId: '', model: '', updatedAt: undefined };
+    const none = { publishedVersion: undefined, unpublishedChanges: undefined, providerId: '', model: '', transcriptionModel: { providerId: '', model: '', providerMissing: false }, updatedAt: undefined };
     expect(agents.items).toEqual([{ ...bot, ...none }, { ...other, ...none }]);
     expect(agents.forProject('x6MH9WPWjktMwCBKHy4pF').map(a => a.id)).toEqual([bot.id]);
   });
@@ -29,6 +29,13 @@ describe('useAgentsStore', () => {
     const agents = useAgentsStore();
     await agents.load('x6MH9WPWjktMwCBKHy4pF');
     expect(agents.items[0]).toMatchObject({ providerId: 'Pv6tQm2ZxR8wKp3VbNc4K', model: 'm1' });
+  });
+
+  it('keeps the draft\'s transcription model, so the WhatsApp page can say whether voice notes are on', async () => {
+    setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ ...bot, draft: { providerId: 'Pv6tQm2ZxR8wKp3VbNc4K', model: 'm1', transcriptionModel: { providerId: 'Pv2sTt7QxR4mLk8WnB3cZ', model: 'whisper-1', providerMissing: false } } }] }) });
+    const agents = useAgentsStore();
+    await agents.load('x6MH9WPWjktMwCBKHy4pF');
+    expect(agents.items[0]!.transcriptionModel).toEqual({ providerId: 'Pv2sTt7QxR4mLk8WnB3cZ', model: 'whisper-1', providerMissing: false });
   });
 
   it('keeps the published version, the draft flag and the newest of draft and update times', async () => {

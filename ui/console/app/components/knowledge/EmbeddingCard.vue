@@ -9,6 +9,7 @@ import FieldError from '#base/components/ui/FieldError.vue';
 import { useToast } from '#base/components/ui/toast';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { useKnowledgeStore } from '~/stores/knowledge';
+import { keyOf } from '~/stores/modelProviders';
 import { embeddingChoices, reembeds } from './knowledge';
 
 const { projectId, providers, canEdit, providersLink } = defineProps<{ projectId: string, providers: ModelProvider[], canEdit: boolean, providersLink: string }>();
@@ -27,7 +28,6 @@ const changeButton = ref<{ $el: HTMLElement }>();
 const modelSelect = ref<HTMLSelectElement>();
 
 const choices = computed(() => embeddingChoices(providers));
-const keyOf = (c: { providerId: string, model: string }) => `${c.providerId}|${c.model}`;
 const chosen = computed(() => choices.value.find(c => c.priced && keyOf(c) === picked.value));
 const unchanged = computed(() => !!store.embedding && !store.embedding.providerMissing && keyOf(store.embedding) === picked.value);
 const current = computed(() => store.embedding && { ...store.embedding, providerName: providers.find(p => p.id === store.embedding!.providerId)?.name ?? '—' });
