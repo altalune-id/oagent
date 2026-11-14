@@ -1,7 +1,9 @@
+import { create } from '@bufbuild/protobuf';
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
+import { AgentDefaultsSchema } from '#gen/agent/v1/agent_pb';
 import { connectError, deferred, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { useAgentsStore } from '~/stores/agents';
 import { changes, emptyConfig, fromWire, stateOf, toWire } from './agentConfig';
@@ -59,11 +61,14 @@ describe('agentConfig', () => {
     expect(toWire(on).transcriptionModel).toEqual(stt);
     expect(toWire(live)).not.toHaveProperty('transcriptionModel');
     expect(toWire({ ...on, transcriptionModel: { providerId: '', model: 'whisper-1', providerMissing: true } })).not.toHaveProperty('transcriptionModel');
-    expect(changes(on, live, usd, names)).toEqual([{ key: 'configure.change_transcription_on', params: { model: 'whisper-1' } }]);
-    expect(changes(live, on, usd, names)).toEqual([{ key: 'configure.change_transcription_off' }]);
+    const sttNames = { ...names, provider: (p: string) => ({ [provider]: 'OpenRouter', [stt.providerId]: 'STT' })[p] ?? '?' };
+    expect(changes(on, live, usd, sttNames)).toEqual([{ key: 'configure.change_transcription_on', params: { model: 'whisper-1 · STT' } }]);
+    expect(changes(live, on, usd, sttNames)).toEqual([{ key: 'configure.change_transcription_off' }]);
     const other = { ...on, transcriptionModel: { ...on.transcriptionModel, model: 'whisper-large-v3-turbo' } };
-    expect(changes(other, on, usd, names)).toEqual([{ key: 'configure.change_transcription_changed', params: { model: 'whisper-large-v3-turbo' } }]);
-    expect(changes(on, on, usd, names)).toEqual([]);
+    expect(changes(other, on, usd, sttNames)).toEqual([{ key: 'configure.change_transcription_changed', params: { from: 'whisper-1 · STT', to: 'whisper-large-v3-turbo · STT' } }]);
+    const moved = { ...on, transcriptionModel: { ...on.transcriptionModel, providerId: provider } };
+    expect(changes(moved, on, usd, sttNames)).toEqual([{ key: 'configure.change_transcription_changed', params: { from: 'whisper-1 · STT', to: 'whisper-1 · OpenRouter' } }]);
+    expect(changes(on, on, usd, sttNames)).toEqual([]);
   });
 
   it('sends no legacy tools, output-only flags or grants of a deleted server', () => {
@@ -173,6 +178,17 @@ describe('useAgentDraft', () => {
     expect(d.diff.value).toEqual([{ key: 'configure.change_instructions' }]);
     expect(client.updateAgentDraft).not.toHaveBeenCalled();
     expect(d.dirty.value).toBe(false);
+  });
+
+  it('reads the voice note limits from the agent defaults, leaving out an unset one', async () => {
+    client.getAgent!.mockResolvedValue({ agent: wireAgent(), defaults: create(AgentDefaultsSchema, { maxSteps: 20, voiceNoteMaxSeconds: 300, voiceNoteMaxBytes: 5242880 }) });
+    const d = useAgentDraft(id, names);
+    await d.load();
+    expect(d.limits.value).toMatchObject({ maxSteps: 20, voiceNoteMaxSeconds: 300, voiceNoteMaxBytes: 5242880 });
+    client.getAgent!.mockResolvedValue({ agent: wireAgent(), defaults: create(AgentDefaultsSchema, { maxSteps: 20 }) });
+    await d.load();
+    expect(d.limits.value.voiceNoteMaxSeconds).toBeUndefined();
+    expect(d.limits.value.voiceNoteMaxBytes).toBeUndefined();
   });
 
   it('treats an agent with no versions as a first publish', async () => {
@@ -448,8 +464,10 @@ describe('useAgentDraft', () => {
     d.config.value = { ...d.config.value, model: 'small-3' };
     await vi.advanceTimersByTimeAsync(autosaveDelayMs);
     expect(agents.items[0]).toMatchObject({ publishedVersion: 12, unpublishedChanges: true });
+    const stt = { providerId: 'Pv2sTt7QxR4mLk8WnB3cZ', model: 'whisper-1', providerMissing: false };
+    client.publishAgent!.mockResolvedValue({ agent: wireAgent({ ...draftWire, transcriptionModel: stt }, { publishedVersion: 13, unpublishedChanges: false }), version: { version: 13, config: draftWire }, created: true });
     await d.publish();
-    expect(agents.items[0]).toMatchObject({ publishedVersion: 13, unpublishedChanges: false });
+    expect(agents.items[0]).toMatchObject({ publishedVersion: 13, unpublishedChanges: false, transcriptionModel: stt });
   });
 
   it('copes with empty responses', async () => {

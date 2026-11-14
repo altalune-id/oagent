@@ -3,9 +3,20 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import en from '~~/i18n/locales/en-US.json';
 import id from '~~/i18n/locales/id-ID.json';
-import { maxReplyLength, replyErrors, seconds, timingErrors, toMs } from './replies';
+import { maxReplyLength, previousVoiceReply, replyErrors, seconds, staleVoiceReply, timingErrors, toMs } from './replies';
 import ReplyTextsEditor from './ReplyTextsEditor.vue';
 import { defaultReplies, replyLabels } from './stories';
+
+describe('the previous voice note reply', () => {
+  it('is stale only while voice notes are on and the stored text is the old default, ignoring outer spaces', () => {
+    expect(staleVoiceReply(previousVoiceReply, true)).toBe(true);
+    expect(staleVoiceReply(`  ${previousVoiceReply}\n`, true)).toBe(true);
+    expect(staleVoiceReply(previousVoiceReply, false)).toBe(false);
+    expect(staleVoiceReply('Kirim teks saja ya.', true)).toBe(false);
+    expect(staleVoiceReply('Kirim teks saja ya.', false)).toBe(false);
+    expect(staleVoiceReply(`${previousVoiceReply} Thanks!`, true)).toBe(false);
+  });
+});
 
 describe('set replies', () => {
   it('refuses a blank reply and shows timing in seconds', () => {

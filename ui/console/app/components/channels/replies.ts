@@ -10,6 +10,13 @@ export const replyKeys = ['failure', 'voice', 'photo', 'approvalPrompt', 'approv
 export const maxReplyLength = 1000;
 export type ReplyKey = typeof replyKeys[number];
 
+export const previousVoiceReply = 'Sorry, I can\'t listen to voice messages yet. Please type your message.';
+
+// staleVoiceReply reports whether a connection still sends the old voice note default, which is wrong once voice notes are on.
+export function staleVoiceReply(stored: string, voiceOn: boolean): boolean {
+  return voiceOn && stored.trim() === previousVoiceReply;
+}
+
 export interface ChannelTiming {
   quietMs: number;
   quietMaxMs: number;

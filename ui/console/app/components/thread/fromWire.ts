@@ -1,7 +1,7 @@
 import type { JsonObject, JsonValue } from '@bufbuild/protobuf';
 import type { ThreadMessage as MessagePB, Run as RunPB, Thread as ThreadPB } from '#gen/thread/v1/thread_pb';
 import type { PersonLabelParts } from '~/components/enduser/label';
-import type { RunStatus, RunSummary, SkipReason, ThreadDetail, ThreadKind, TranscriptItem } from '~/stores/threads';
+import type { RunStatus, RunSummary, SkipReason, ThreadDetail, ThreadKind, TranscriptItem, VoiceNote } from '~/stores/threads';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { IdentityKind } from '#gen/enduser/v1/enduser_pb';
 import { RunStatus as RunStatusPB } from '#gen/thread/v1/thread_pb';
@@ -105,6 +105,7 @@ export function toRunSummary(r: RunPB, threadTitle: string): RunSummary {
     tokens,
     embeddingTokens: u ? Number(u.embeddingTokens) : 0,
     helperTokens: u ? Number(u.helperInputTokens + u.helperOutputTokens + u.helperCacheReadTokens + u.helperCacheWriteTokens) : 0,
+    transcriptionSeconds: u ? Number(u.transcriptionSeconds) : 0,
     retrieveCalls: r.knowledgeRetrieveCalls,
     retrieveMs: Number(r.knowledgeRetrieveMs),
     retrievePassages: r.knowledgePassages,
@@ -126,32 +127,35 @@ function text(content: JsonValue | undefined): string {
 }
 
 const VOICE_NOTE = '[voice note]';
+const VOICE_STATUSES = new Set(['done', 'failed', 'skipped']);
 
-function heard(part: JsonObject): string {
-  const meta = part.metadata;
-  const tr = meta && typeof meta === 'object' && !Array.isArray(meta) ? meta.transcript : undefined;
-  if (!tr || typeof tr !== 'object' || Array.isArray(tr) || tr.status !== 'done' || typeof tr.text !== 'string' || !tr.text) {
-    return VOICE_NOTE;
-  }
-  return `${VOICE_NOTE} ${tr.text}`;
+function isObject(v: JsonValue | undefined): v is JsonObject {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
 }
 
-function userText(content: JsonValue | undefined): string {
+function voiceOf(part: JsonObject): VoiceNote {
+  const tr = isObject(part.metadata) ? part.metadata.transcript : undefined;
+  if (!isObject(tr) || typeof tr.status !== 'string' || !VOICE_STATUSES.has(tr.status)) {
+    return {};
+  }
+  return {
+    status: tr.status as VoiceNote['status'],
+    ...(tr.status === 'done' && typeof tr.text === 'string' && tr.text ? { text: tr.text } : {}),
+    ...(typeof tr.seconds === 'number' && Number.isFinite(tr.seconds) && tr.seconds >= 0 ? { seconds: tr.seconds } : {}),
+    ...(typeof tr.reason === 'string' ? { reason: tr.reason } : {}),
+  };
+}
+
+function userContent(body: JsonObject): { text: string, voice?: VoiceNote } {
+  const content = body.content;
+  if (typeof content === 'string' && (content === VOICE_NOTE || content.startsWith(`${VOICE_NOTE} `))) {
+    return { text: content.slice(VOICE_NOTE.length).trim(), voice: {} };
+  }
   if (!Array.isArray(content)) {
-    return text(content);
+    return { text: text(content) };
   }
-  const lines: string[] = [''];
-  for (const p of content) {
-    if (!p || typeof p !== 'object' || Array.isArray(p)) {
-      continue;
-    }
-    if (p.type === 'audio') {
-      lines.push(heard(p), '');
-    } else if (p.type === 'text') {
-      lines[lines.length - 1] += String(p.text ?? '');
-    }
-  }
-  return lines.filter(Boolean).join('\n');
+  const audio = content.find(p => isObject(p) && p.type === 'audio');
+  return { text: text(content), ...(isObject(audio) ? { voice: voiceOf(audio) } : {}) };
 }
 
 function args(raw: JsonValue | undefined): Record<string, unknown> {
@@ -193,7 +197,7 @@ export function toItems(messages: MessagePB[], runs: RunSummary[], t: Translate)
     const at = m.createdAt ? timestampDate(m.createdAt) : new Date(0);
     if (m.role === 'user') {
       const skipped = skipReason(m.skipReason);
-      out.push({ id: id++, kind: 'user', text: userText(body.content), speaker: wireLabel({ displayName: m.speakerDisplayName, identityKind: m.speakerIdentityKind, identityHint: m.speakerIdentityHint }, m.speakerLabel, t) || undefined, ...(skipped ? { skipped } : {}), at });
+      out.push({ id: id++, kind: 'user', ...userContent(body), speaker: wireLabel({ displayName: m.speakerDisplayName, identityKind: m.speakerIdentityKind, identityHint: m.speakerIdentityHint }, m.speakerLabel, t) || undefined, ...(skipped ? { skipped } : {}), at });
     } else if (m.role === 'assistant') {
       const said = text(body.content);
       if (said) {

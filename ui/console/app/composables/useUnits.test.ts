@@ -18,4 +18,9 @@ describe('useUnits', () => {
     expect([cost(0), costTitle(0)]).toEqual(['$0.00', undefined]);
     expect([cost(1.6), costTitle(1.6)]).toEqual(['$0.016', undefined]);
   });
+
+  it('formats a media length as minutes and zero-padded seconds', () => {
+    const { clock } = useUnits();
+    expect([clock(0), clock(14), clock(59), clock(60), clock(299), clock(300), clock(605)]).toEqual(['0:00', '0:14', '0:59', '1:00', '4:59', '5:00', '10:05']);
+  });
 });

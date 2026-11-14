@@ -18,6 +18,7 @@ import { describedBy } from '~/lib/names/names';
 import KnowledgeTuningForm from './KnowledgeTuning.vue';
 import McpGrants from './McpGrants.vue';
 import { bindable, chosenModel, costCapError, helperCapError, parseDollars, parseDomains, readsPrivateData } from './runtime';
+import { chatModelsOf, pickVoice, voiceHint, voiceOptions, voicePrice, voiceStale, voiceStaleLabel, voiceStaleOption, voiceValue } from './voiceNotes';
 
 const { providers, servers, sources, searchReady, embeddings, links, retrieval = null, limits = {}, legacyModel = '', disabled = false, fieldError = null, memoryStores = [] } = defineProps<{
   providers: ModelProvider[],
@@ -37,14 +38,15 @@ const { providers, servers, sources, searchReady, embeddings, links, retrieval =
 const config = defineModel<AgentConfig>({ required: true });
 const runtime = defineModel<AgentRuntimeConfig>('runtime', { required: true });
 const costInvalid = defineModel<boolean>('costInvalid', { default: false });
-const { t } = useI18n();
-const { money } = useUnits();
+const { t, locale } = useI18n();
+const { money, count } = useUnits();
 const uid = useId();
-const ids = { count: `${uid}-count`, temperature: `${uid}-temp`, helper: `${uid}-helper`, provider: `${uid}-provider`, model: `${uid}-model`, tools: `${uid}-tools`, domains: `${uid}-domains`, steps: `${uid}-steps`, cost: `${uid}-cost`, memory: `${uid}-memory` };
+const ids = { count: `${uid}-count`, temperature: `${uid}-temp`, helper: `${uid}-helper`, provider: `${uid}-provider`, model: `${uid}-model`, tools: `${uid}-tools`, domains: `${uid}-domains`, steps: `${uid}-steps`, cost: `${uid}-cost`, memory: `${uid}-memory`, voice: `${uid}-voice` };
 
 const sections = computed(() => [
   { id: 'configure-instructions', label: t('configure.instructions') },
   { id: 'configure-model', label: t('configure.model') },
+  { id: 'configure-voice', label: t('configure.voice') },
   { id: 'configure-tools', label: t('grants.title') },
   { id: 'configure-web', label: t('webtools.title') },
   { id: 'configure-memory', label: t('configure.memory_knowledge') },
@@ -54,11 +56,22 @@ const sections = computed(() => [
 const chosen = computed(() => chosenModel(config.value, providers));
 const temperatureOff = computed(() => chosen.value.provider?.kind === ModelProviderKind.ANTHROPIC);
 const temperatureText = computed(() => (temperatureOff.value ? t('configure.temperature_off') : config.value.temperature.toFixed(1)));
-const chatModels = computed(() => (chosen.value.provider?.models ?? []).filter(m => !m.embedding || m.id === config.value.model || m.id === config.value.helperModel));
+const chatModels = computed(() => chatModelsOf(chosen.value.provider?.models ?? [], config.value));
 const helperModels = computed(() => chatModels.value.filter(m => m.id !== config.value.model || m.id === config.value.helperModel));
 const allowListRequired = computed(() => readsPrivateData(config.value));
 const serverError = (...reasons: string[]) => (fieldError && reasons.includes(fieldError.reason) ? fieldError.message : '');
 const memoryError = computed(() => serverError('memory_store', 'memory_store_disabled'));
+const voiceChoices = computed(() => voiceOptions(providers));
+const voiceSet = computed(() => voiceValue(config.value.transcriptionModel));
+const voiceStaleState = computed(() => voiceStale(config.value.transcriptionModel, voiceChoices.value));
+const voicePriceLine = computed(() => voicePrice(voiceChoices.value.find(o => o.value === voiceSet.value)));
+const voiceStaleName = computed(() => voiceStaleLabel(config.value.transcriptionModel, providers));
+const voiceError = computed(() => serverError('transcription_model'));
+const replyLabel = computed(() => t('channels.reply_voice'));
+
+function setVoice(value: string) {
+  config.value = { ...config.value, transcriptionModel: pickVoice(value, voiceChoices.value, config.value.transcriptionModel) };
+}
 
 function modelLabel(m: ProviderModel) {
   const name = m.vision ? t('configure.model_vision', { model: m.id }) : m.id;
@@ -252,6 +265,49 @@ function toggleSource(id: string, on: boolean) {
                 {{ t(temperatureOff ? 'configure.temperature_unsupported' : 'configure.temperature_hint') }}
               </p>
             </div>
+          </div>
+        </Section>
+
+        <Section id="configure-voice" :title="t('configure.voice')" :description="t('configure.voice_description')" class="scroll-mt-14">
+          <div v-if="voiceStaleState" role="alert" class="alert alert-warning alert-soft text-base-content text-ui">
+            <Icon name="lucide:triangle-alert" size="16" class="shrink-0" aria-hidden="true" />
+            <span v-if="voiceStaleState === 'provider_missing'">{{ t('configure.voice_provider_missing', { model: config.transcriptionModel.model }) }}</span>
+            <span v-else>{{ t('configure.voice_model_removed', voiceStaleName) }}</span>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="flex max-w-sm flex-col gap-1">
+              <span class="label text-ui text-base-content">{{ t('configure.voice_model') }}</span>
+              <select
+                data-field="voice" class="select select-sm w-full text-ui" :class="{ 'select-error': voiceError }" :value="voiceSet" :disabled="disabled || (!voiceChoices.length && !voiceSet)"
+                :aria-invalid="!!voiceError" :aria-describedby="describedBy(`${ids.voice}-hint`, !!voiceError && `${ids.voice}-err`)"
+                @change="setVoice(($event.target as HTMLSelectElement).value)"
+              >
+                <option value="">
+                  {{ t('configure.voice_off') }}
+                </option>
+                <option v-if="voiceStaleState" :value="voiceSet">
+                  {{ voiceStaleOption(config.transcriptionModel, providers, t) }}
+                </option>
+                <option v-for="o in voiceChoices" :key="o.value" :value="o.value">
+                  {{ t('configure.voice_option', { model: o.model, provider: o.providerName }) }}
+                </option>
+              </select>
+            </label>
+            <p :id="`${ids.voice}-hint`" class="text-xs text-base-content/70">
+              <template v-if="!voiceChoices.length">
+                {{ t('configure.voice_no_models') }}
+              </template>
+              <template v-else-if="voicePriceLine">
+                {{ t(voicePriceLine.key, voicePriceLine.params ?? {}) }}
+              </template>
+              {{ t('configure.voice_hint', { ...voiceHint(limits, count, locale), reply: replyLabel }) }}
+              <NuxtLink :to="links.channels" class="link inline-flex min-h-6 items-center">
+                {{ t('configure.voice_reply_link', { reply: replyLabel }) }}
+              </NuxtLink>{{ ' ' }}<NuxtLink :to="links.providers" class="link inline-flex min-h-6 items-center">
+                {{ t('providers.title') }}
+              </NuxtLink>
+            </p>
+            <FieldError :id="`${ids.voice}-err`" :message="voiceError" />
           </div>
         </Section>
 
