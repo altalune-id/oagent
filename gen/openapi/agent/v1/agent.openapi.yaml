@@ -418,6 +418,9 @@ components:
         memoryStoreMissing:
           type: boolean
           title: memory_store_missing
+        transcriptionModel:
+          title: transcription_model
+          $ref: '#/components/schemas/agent.v1.TranscriptionModel'
       title: AgentConfig
       additionalProperties: false
       description: 'AgentConfig is what an agent runs with; zero values mean the recommended value (max_steps, from GetAgent''s defaults) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider''s public id; provider_missing is output only; knowledge_source_ids are the knowledge sources searched before each turn, leaving out a deleted one, and knowledge_sources_missing is output only: how many bound sources no longer exist. knowledge_tuning shapes that search; unset fields use the recommended values. memory_store_id is the public id of the memory store the agent remembers people in, empty for none; memory_store_missing is output only: the bound store no longer exists.'
@@ -751,6 +754,28 @@ components:
           description: created is false when the draft matched the latest version, which is returned instead.
       title: PublishAgentResponse
       additionalProperties: false
+    agent.v1.TranscriptionModel:
+      type: object
+      properties:
+        providerId:
+          type: string
+          title: provider_id
+          description: |
+            oagent.public_id = true
+        model:
+          type: string
+          title: model
+          pattern: ^[A-Za-z0-9._:/-]+$
+          description: |
+            agent.transcription_model.model.max_len.128
+        providerMissing:
+          type: boolean
+          title: provider_missing
+      title: TranscriptionModel
+      required:
+        - model
+      additionalProperties: false
+      description: TranscriptionModel turns the end user's voice notes into text with a speech-to-text model on any provider of the project; unset turns voice notes off, and provider_missing is set when the provider no longer resolves.
     agent.v1.UpdateAgentDraftRequest:
       type: object
       properties:

@@ -13,7 +13,7 @@ const blank = { input: '', output: '', cacheRead: '', cacheWrite: '' };
 
 describe('provider helpers', () => {
   it('has a price only with prices', () => {
-    expect(hasPrice({ id: 'a', vision: false, embedding: false, prices: { inputMicros: 0n, outputMicros: 1n, cacheReadMicros: 0n, cacheWriteMicros: 0n } })).toBe(true);
+    expect(hasPrice({ id: 'a', vision: false, embedding: false, transcription: false, prices: { inputMicros: 0n, outputMicros: 1n, cacheReadMicros: 0n, cacheWriteMicros: 0n } })).toBe(true);
     expect(hasPrice({ id: 'a', vision: false, embedding: false })).toBe(false);
   });
 
@@ -24,8 +24,8 @@ describe('provider helpers', () => {
 
   it('opens More prices only for a row with a cache price', () => {
     const prices = { ...blank, input: '1', output: '2' };
-    expect(hasMorePrices({ key: 1, id: 'a', vision: false, embedding: false, prices })).toBe(false);
-    expect(hasMorePrices({ key: 1, id: 'a', vision: false, embedding: false, prices: { ...prices, cacheWrite: '0.5' } })).toBe(true);
+    expect(hasMorePrices({ key: 1, id: 'a', vision: false, embedding: false, transcription: false, prices })).toBe(false);
+    expect(hasMorePrices({ key: 1, id: 'a', vision: false, embedding: false, transcription: false, prices: { ...prices, cacheWrite: '0.5' } })).toBe(true);
   });
 
   it('reads USD per 1M tokens into micro-USD: all empty is unpriced, an empty cache price is zero', () => {
@@ -87,6 +87,26 @@ describe('useProviderForm', () => {
     expect(form.kind.value).toBe(ModelProviderKind.ANTHROPIC);
     expect(await form.submit()).toBe(true);
     expect(clients.provider.updateModelProvider).toHaveBeenCalledWith(expect.objectContaining({ kind: ModelProviderKind.ANTHROPIC }));
+  });
+
+  it('sends a transcription model back with its flag and audio price untouched, and other rows as before', async () => {
+    const store = useModelProvidersStore();
+    const base = store.items[0]!;
+    const audio = { inputMicros: 0n, outputMicros: 0n, cacheReadMicros: 0n, cacheWriteMicros: 0n, audioMinuteMicros: 6_000n };
+    const withStt = { ...base, models: [...base.models, { id: 'whisper-1', vision: false, embedding: false, transcription: true, prices: audio }] };
+    clients.provider.updateModelProvider.mockResolvedValue({ modelProvider: providerPBs()[0] });
+    const form = useProviderForm(orgId, projectId);
+    form.show(withStt);
+    form.name.value = 'Renamed';
+    expect(await form.submit()).toBe(true);
+    const sent = clients.provider.updateModelProvider.mock.calls[0]![0].models;
+    expect(sent.at(-1)).toMatchObject({ id: 'whisper-1', transcription: true, prices: { audioMinuteMicros: 6_000n } });
+    const plain = useProviderForm(orgId, projectId);
+    plain.show(base);
+    plain.name.value = 'Renamed';
+    clients.provider.updateModelProvider.mockClear();
+    expect(await plain.submit()).toBe(true);
+    expect(sent.slice(0, -1)).toEqual(clients.provider.updateModelProvider.mock.calls[0]![0].models);
   });
 
   it('creates a provider with a trimmed key and priced models, then clears the key', async () => {

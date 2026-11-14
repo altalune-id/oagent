@@ -22,6 +22,7 @@ resp, err := c.Get(url)
 | `WithTimeout(d)` / `WithoutTimeout()` | whole-request bound (default 30s)                   |
 | `WithResponseBodyLimit(n)`            | cap response body bytes (0 = unlimited)             |
 | `WithRetry(RetryPolicy{...})`         | retrying transport; `MaxAttempts < 2` disables it   |
+| `WithResponseHeaderTimeout(d)`        | wait for response headers (default 10s)             |
 | `WithOtel(bool)`                      | otelhttp instrumentation (default on)               |
 | `WithoutProxy()`                      | ignore `HTTP(S)_PROXY`, for bodies carrying secrets |
 | `WithoutRedirects()`                  | return a 3xx as is; for requests carrying secrets   |

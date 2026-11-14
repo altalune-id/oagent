@@ -912,6 +912,13 @@ components:
           title: helper_cache_write_tokens
           format: int64
           description: helper_cache_write_tokens are the cache write tokens the agent's helper model used.
+        transcriptionSeconds:
+          type:
+            - integer
+            - string
+          title: transcription_seconds
+          format: int64
+          description: transcription_seconds are the billed audio seconds of the run's voice notes, each clip at least 1 second.
       title: Usage
       additionalProperties: false
       description: Usage is a run's token usage by class; estimated is true when the provider did not report it.

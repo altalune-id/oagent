@@ -534,3 +534,43 @@ func TestProvider_EmbeddingModelInUse(t *testing.T) {
 	assert.Equal(t, "embedding_model", reasonOf(t, err), "a project's embedding provider can't be deleted")
 	assert.Contains(t, f.store.Providers, p.ID)
 }
+
+func TestProvider_TranscriptionModelInUse(t *testing.T) {
+	sttInput := func() modelprovider.Input {
+		in := input()
+		in.Models = append(in.Models, modelprovider.Model{ID: "whisper-1", Transcription: true, Prices: &modelprovider.Prices{AudioMinuteMicros: 6_000}})
+		return in
+	}
+	for name, change := range map[string]func(in *modelprovider.Input){
+		"model removed": func(in *modelprovider.Input) { in.Models = in.Models[:2] },
+		"flag cleared":  func(in *modelprovider.Input) { in.Models[2].Transcription = false },
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t)
+			p, err := f.svc.Create(f.ctx, uuid.New(), sttInput(), apiKey)
+			require.NoError(t, err)
+			f.usage.Uses = map[uuid.UUID]modelprovider.ProviderUse{p.ID: {InUse: true, TranscriptionModels: []string{"whisper-1"}}}
+			in := sttInput()
+			change(&in)
+			_, err = f.svc.Update(f.ctx, p.ID, in, nil)
+			assert.Equal(t, apperror.CodeModelProviderInUse, codeOf(t, err))
+			assert.Equal(t, "transcription_model", reasonOf(t, err))
+		})
+	}
+
+	f := newFixture(t)
+	p, err := f.svc.Create(f.ctx, uuid.New(), sttInput(), apiKey)
+	require.NoError(t, err)
+	f.usage.Uses = map[uuid.UUID]modelprovider.ProviderUse{p.ID: {InUse: true, TranscriptionModels: []string{"whisper-1"}}}
+	in := sttInput()
+	in.Models = in.Models[1:]
+	_, err = f.svc.Update(f.ctx, p.ID, in, nil)
+	require.NoError(t, err, "dropping a model no agent uses is fine")
+	in.Models[1].Prices.AudioMinuteMicros = 9_000
+	_, err = f.svc.Update(f.ctx, p.ID, in, nil)
+	require.NoError(t, err, "repricing the transcription model is fine")
+
+	err = f.svc.Delete(f.ctx, p.ID)
+	assert.Equal(t, "delete", reasonOf(t, err), "a provider an agent transcribes with can't be deleted")
+	assert.Contains(t, f.store.Providers, p.ID)
+}

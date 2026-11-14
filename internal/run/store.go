@@ -2,6 +2,7 @@ package run
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -66,6 +67,8 @@ type Writer interface {
 	// ResumeApproval moves an awaiting run back to running under token's lease, with the same attempt; it returns the run's messages.
 	ResumeApproval(ctx context.Context, token string, r *Run) ([]Message, error)
 	PutCheckpoint(ctx context.Context, token string, runID uuid.UUID, toolCallID string, msgs []Message) error
+	// SetTakenMessageBody rewrites a message runID took and adds to its transcription seconds, under token's lease, in one transaction.
+	SetTakenMessageBody(ctx context.Context, token string, runID, messageID uuid.UUID, body json.RawMessage, seconds int64) error
 	Settle(ctx context.Context, token string, r *Run, u Usage, final []Message) error
 	RequestCancel(ctx context.Context, threadID, runID uuid.UUID) error
 	Reclaim(ctx context.Context, threadID uuid.UUID) (bool, error)

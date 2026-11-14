@@ -58,6 +58,8 @@ type Usage struct {
 	HelperOutputTokens     int64
 	HelperCacheReadTokens  int64
 	HelperCacheWriteTokens int64
+
+	TranscriptionSeconds int64
 }
 
 // Run is the aggregate root: one turn of an agent version on a thread.

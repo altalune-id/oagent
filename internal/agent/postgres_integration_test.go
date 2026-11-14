@@ -490,6 +490,40 @@ func TestUsage_ProviderUse(t *testing.T) {
 	assert.False(t, use.InUse, "another tenant sees no use")
 }
 
+func TestUsage_ProviderUseCountsTranscriptionOnItsOwnProvider(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
+	chat, stt := uuid.New(), uuid.New()
+
+	a := newAgent(t, orgID, projectID, "voice")
+	require.NoError(t, f.store.Save(ctx, a))
+	f.publish(t, ctx, a, agent.Config{ProviderID: chat, Model: "gpt-4o", MaxCostCents: 100,
+		TranscriptionModel: agent.TranscriptionModel{ProviderID: stt, Model: "whisper-1"}})
+
+	both := newAgent(t, orgID, projectID, "both")
+	require.NoError(t, f.store.Save(ctx, both))
+	f.publish(t, ctx, both, agent.Config{ProviderID: stt, Model: "llama",
+		TranscriptionModel: agent.TranscriptionModel{ProviderID: stt, Model: "whisper-1"}})
+
+	drafted := newAgent(t, orgID, projectID, "drafted")
+	require.NoError(t, f.store.Save(ctx, drafted))
+	require.NoError(t, drafted.SetDraft(agent.Config{ProviderID: chat, Model: "gpt-4o",
+		TranscriptionModel: agent.TranscriptionModel{ProviderID: stt, Model: "draft-only"}}, time.Now()))
+	require.NoError(t, f.store.SaveDraft(ctx, drafted))
+
+	use, err := f.store.ProviderUse(ctx, stt)
+	require.NoError(t, err)
+	assert.True(t, use.InUse)
+	assert.Equal(t, map[string]bool{"llama": false}, use.Models, "the chat model of another provider is not counted here")
+	assert.Equal(t, []string{"whisper-1"}, use.TranscriptionModels, "once per model; drafts never count")
+
+	use, err = f.store.ProviderUse(ctx, chat)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]bool{"gpt-4o": true}, use.Models)
+	assert.Empty(t, use.TranscriptionModels, "the transcription model of another provider is not counted here")
+}
+
 func TestUsage_MCPServerInUse(t *testing.T) {
 	f := newPgFixture(t)
 	orgID, projectID := f.seedScope(t)

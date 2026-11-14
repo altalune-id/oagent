@@ -84,6 +84,14 @@ type Config struct {
 	KnowledgeTuning KnowledgeTuning `json:"knowledge_tuning,omitzero"`
 	// MemoryStoreID is the memory store the agent recalls and records facts about each end user in; uuid.Nil is none.
 	MemoryStoreID uuid.UUID `json:"memory_store_id,omitzero"`
+	// TranscriptionModel turns the end user's voice notes into text; the zero value turns voice notes off.
+	TranscriptionModel TranscriptionModel `json:"transcription_model,omitzero"`
+}
+
+// TranscriptionModel names a speech-to-text model, on any provider of the project.
+type TranscriptionModel struct {
+	ProviderID uuid.UUID `json:"provider_id,omitzero"`
+	Model      string    `json:"model,omitempty"`
 }
 
 // KnowledgeTuning is an agent's retrieval tuning; a zero TopK or MaxTokens and a nil MinScore use the recommended values.
@@ -235,6 +243,12 @@ func (c Config) Validate() error {
 		return invalid("max_cost_cents", apperror.FieldInvalid)
 	case len(c.Tools) > maxTools:
 		return invalid("tools", apperror.FieldTooMany)
+	case (c.TranscriptionModel.ProviderID == uuid.Nil) != (c.TranscriptionModel.Model == ""):
+		return invalid("transcription_model", apperror.FieldInvalid)
+	case len(c.TranscriptionModel.Model) > maxModelLen:
+		return invalid("transcription_model.model", apperror.FieldTooLong)
+	case !modelRe.MatchString(c.TranscriptionModel.Model):
+		return invalid("transcription_model.model", apperror.FieldInvalidFormat)
 	}
 	if err := c.KnowledgeTuning.validate(invalid); err != nil {
 		return err
@@ -332,7 +346,7 @@ func (c Config) Equal(o Config) bool {
 		slices.EqualFunc(c.MCPServers, o.MCPServers, func(a, b MCPGrant) bool {
 			return a.ServerID == b.ServerID && slices.EqualFunc(a.Tools, b.Tools, Tool.Equal)
 		}) && slices.Equal(c.KnowledgeSourceIDs, o.KnowledgeSourceIDs) && c.KnowledgeTuning.equal(o.KnowledgeTuning) &&
-		c.MemoryStoreID == o.MemoryStoreID
+		c.MemoryStoreID == o.MemoryStoreID && c.TranscriptionModel == o.TranscriptionModel
 }
 
 // SetDraft replaces the draft with a valid cfg edited at now; the published version is unchanged.
@@ -594,6 +608,9 @@ func configToProto(c Config) *agentv1.AgentConfig {
 	for _, g := range c.MCPServers {
 		out.McpServers = append(out.McpServers, &agentv1.McpGrant{Tools: toolsToProto(g.Tools)})
 	}
+	if c.TranscriptionModel != (TranscriptionModel{}) {
+		out.TranscriptionModel = &agentv1.TranscriptionModel{Model: c.TranscriptionModel.Model}
+	}
 	return out
 }
 
@@ -641,6 +658,7 @@ func configFromProto(c *agentv1.AgentConfig) Config {
 	for _, g := range c.GetMcpServers() {
 		out.MCPServers = append(out.MCPServers, MCPGrant{Tools: toolsFromProto(g.GetTools())})
 	}
+	out.TranscriptionModel.Model = c.GetTranscriptionModel().GetModel()
 	return out
 }
 

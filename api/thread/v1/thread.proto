@@ -125,6 +125,8 @@ message Usage {
   int64 helper_cache_read_tokens = 9;
   // helper_cache_write_tokens are the cache write tokens the agent's helper model used.
   int64 helper_cache_write_tokens = 10;
+  // transcription_seconds are the billed audio seconds of the run's voice notes, each clip at least 1 second.
+  int64 transcription_seconds = 11;
 }
 
 // Run is one agent turn on a thread; cost_micros is unset when the run is unpriced, latency_ms and ended_at while it runs.

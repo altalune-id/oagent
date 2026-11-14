@@ -12,14 +12,3 @@ func IsMessageIDError(err error) bool {
 	_, ok := errors.AsType[*MessageIDError](err)
 	return ok
 }
-
-// MediaTypeError reports media that is not a JPEG, PNG or WebP image.
-type MediaTypeError struct{}
-
-func (e *MediaTypeError) Error() string { return "openwa: unsupported media type" }
-
-// IsMediaTypeError reports whether err's tree contains a *MediaTypeError.
-func IsMediaTypeError(err error) bool {
-	_, ok := errors.AsType[*MediaTypeError](err)
-	return ok
-}

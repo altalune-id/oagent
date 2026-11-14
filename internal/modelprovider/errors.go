@@ -73,6 +73,9 @@ const (
 	ModelsTooMany   ModelsReason = "too_many"
 	ModelsDuplicate ModelsReason = "duplicate"
 	ModelsPrice     ModelsReason = "price"
+
+	ModelsTranscriptionPrice    ModelsReason = "transcription_price"
+	ModelsTranscriptionConflict ModelsReason = "transcription_conflict"
 )
 
 func (r ModelsReason) text() string {
@@ -85,6 +88,10 @@ func (r ModelsReason) text() string {
 		return "must not list a model twice"
 	case ModelsPrice:
 		return "must not have a negative price"
+	case ModelsTranscriptionPrice:
+		return "must price every transcription model"
+	case ModelsTranscriptionConflict:
+		return "must not mark a transcription model as vision or embedding, and only an OpenAI-compatible provider serves one"
 	default:
 		return "are invalid"
 	}
@@ -118,6 +125,8 @@ const (
 	InUseModelRemoved   InUseReason = "model_removed"
 	InUsePriceRemoved   InUseReason = "price_removed"
 	InUseEmbeddingModel InUseReason = "embedding_model"
+
+	InUseTranscriptionModel InUseReason = "transcription_model"
 )
 
 func (r InUseReason) text() string {
@@ -130,6 +139,8 @@ func (r InUseReason) text() string {
 		return "cannot drop the price of a model a capped agent uses"
 	case InUseEmbeddingModel:
 		return "cannot drop the project's embedding model, its embedding flag or its price"
+	case InUseTranscriptionModel:
+		return "cannot drop a transcription model an agent uses, or its transcription flag"
 	default:
 		return "is in use"
 	}

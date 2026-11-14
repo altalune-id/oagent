@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"altalune.id/oagent/internal/kernel/events"
 	"altalune.id/oagent/internal/kernel/runtime"
 )
 
@@ -287,4 +288,54 @@ func TestRecord_RunsOnItsOwnContext(t *testing.T) {
 	cancel()
 	s.record(ctx, tr, &runtime.Terminal{Memory: &runtime.TerminalMemory{Facts: []string{"a"}}})
 	assert.Equal(t, []bool{false}, mem.done, "a turn whose context ended still records its settled facts")
+}
+
+func TestCost_TranscriptionPerAudioMinute(t *testing.T) {
+	for _, c := range []struct {
+		name    string
+		seconds int64
+		price   int64
+		want    int64
+	}{
+		{"one minute", 60, 6_000, 6_000},
+		{"one second rounds up", 1, 6_000, 100},
+		{"a fraction of a micro rounds up", 1, 1, 1},
+		{"free model", 300, 0, 0},
+		{"five minutes on Groq turbo", 300, 667, 3_335},
+		{"saturates", math.MaxInt64, math.MaxInt64, math.MaxInt64},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			micros, priced := Cost(Usage{TranscriptionSeconds: c.seconds}, &Prices{Transcription: price(c.price)})
+			require.True(t, priced)
+			assert.Equal(t, c.want, micros)
+		})
+	}
+	_, priced := Cost(Usage{InputTokens: 10, TranscriptionSeconds: 1}, &Prices{Input: price(1)})
+	assert.False(t, priced, "transcription seconds without a transcription price leave the run unpriced")
+	micros, priced := Cost(Usage{InputTokens: 1_000_000}, &Prices{Input: price(5)})
+	assert.True(t, priced, "no seconds need no transcription price")
+	assert.Equal(t, int64(5), micros)
+}
+
+func TestAdd_SumsTranscriptionSeconds(t *testing.T) {
+	assert.Equal(t, Usage{InputTokens: 3, TranscriptionSeconds: 7}, add(Usage{InputTokens: 1, TranscriptionSeconds: 3}, Usage{InputTokens: 2, TranscriptionSeconds: 4}))
+}
+
+type capturePublisher struct{ data []any }
+
+func (p *capturePublisher) Enqueue(_ context.Context, _ events.Type, data any) error {
+	p.data = append(p.data, data)
+	return nil
+}
+
+func TestEmit_CarriesTranscriptionSeconds(t *testing.T) {
+	pub := &capturePublisher{}
+	s := &Service{publisher: pub}
+	tr := &turn{run: &Run{Status: StatusCompleted, Prices: &Prices{Input: price(1_000_000), Transcription: price(6_000)}}, thread: &Thread{}}
+	require.NoError(t, s.emit(t.Context(), tr, Usage{InputTokens: 10, TranscriptionSeconds: 30}))
+	require.Len(t, pub.data, 1)
+	p := events.RunSettledV1(pub.data[0].(events.RunCompletedV1))
+	assert.Equal(t, int64(30), p.Usage.TranscriptionSeconds)
+	require.NotNil(t, p.CostMicros)
+	assert.Equal(t, int64(10+3_000), *p.CostMicros, "the event cost includes the transcription seconds")
 }

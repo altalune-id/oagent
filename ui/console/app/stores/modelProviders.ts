@@ -9,12 +9,14 @@ export interface ModelPrices {
   outputMicros: bigint;
   cacheReadMicros: bigint;
   cacheWriteMicros: bigint;
+  audioMinuteMicros?: bigint;
 }
 
 export interface ProviderModel {
   id: string;
   vision: boolean;
   embedding: boolean;
+  transcription?: boolean;
   prices?: ModelPrices;
 }
 
@@ -50,13 +52,20 @@ export function toModelProvider(p: ModelProviderPB): ModelProvider {
       id: m.id,
       vision: m.vision,
       embedding: m.embedding,
-      prices: m.prices && { inputMicros: m.prices.inputMicros, outputMicros: m.prices.outputMicros, cacheReadMicros: m.prices.cacheReadMicros, cacheWriteMicros: m.prices.cacheWriteMicros },
+      ...(m.transcription ? { transcription: true } : {}),
+      prices: m.prices && {
+        inputMicros: m.prices.inputMicros,
+        outputMicros: m.prices.outputMicros,
+        cacheReadMicros: m.prices.cacheReadMicros,
+        cacheWriteMicros: m.prices.cacheWriteMicros,
+        ...(m.prices.audioMinuteMicros ? { audioMinuteMicros: m.prices.audioMinuteMicros } : {}),
+      },
     })),
   };
 }
 
 function wireModels(models: ProviderModel[], kind: ModelProviderKind) {
-  return models.map(m => ({ id: m.id.trim(), vision: m.vision, embedding: kind !== ModelProviderKind.ANTHROPIC && m.embedding, prices: m.prices && { ...m.prices } }));
+  return models.map(m => ({ id: m.id.trim(), vision: m.vision, embedding: kind !== ModelProviderKind.ANTHROPIC && m.embedding, transcription: !!m.transcription, prices: m.prices && { ...m.prices } }));
 }
 
 // createRequest builds the create call for a provider; the key is trimmed.

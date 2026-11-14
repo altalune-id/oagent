@@ -6,7 +6,7 @@ const KnowledgeBackendPgvector = "pgvector"
 // KnowledgeConfig turns on the knowledge backends sources may use; none on means knowledge is off.
 type KnowledgeConfig struct {
 	Pgvector KnowledgePgvectorConfig `yaml:"pgvector" mapstructure:"pgvector"`
-	// AllowPrivateHosts lets a production deploy reach an embeddings server on a private network; single-tenant installs only.
+	// AllowPrivateHosts lets production reach an embeddings or transcription server on a private network; single-tenant installs only.
 	AllowPrivateHosts bool `yaml:"allowPrivateHosts" mapstructure:"allowPrivateHosts"`
 }
 

@@ -458,3 +458,74 @@ func TestService_AMemoryStoreRefusesAnUnapprovedTool(t *testing.T) {
 	_, _, _, err := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
 	assert.Equal(t, "yasaku__send", refusedTool(t, err), "remembered facts are untrusted input")
 }
+
+func (f *grantsFixture) sttProvider(t *testing.T, projectID uuid.UUID, models ...agent.ModelRef) uuid.UUID {
+	t.Helper()
+	id := uuid.New()
+	f.grants.Providers[id] = fakes.GrantProvider{ProjectID: projectID, Models: models}
+	return id
+}
+
+func TestService_TranscriptionModelOnAnotherProvider(t *testing.T) {
+	f := newGrantsFixture(t)
+	stt := f.sttProvider(t, f.agent.ProjectID, agent.ModelRef{ID: "whisper-1", Priced: true, Transcription: true})
+	c := f.config()
+	c.TranscriptionModel = agent.TranscriptionModel{ProviderID: stt, Model: "whisper-1"}
+	a, err := f.svc.UpdateDraft(context.Background(), f.agent.ID, c)
+	require.NoError(t, err)
+	assert.Equal(t, c.TranscriptionModel, a.Draft.TranscriptionModel)
+
+	_, v, _, err := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	require.NoError(t, err)
+	assert.Equal(t, c.TranscriptionModel, v.Config.TranscriptionModel)
+	assert.Contains(t, f.grants.Locked, []uuid.UUID{stt}, "publish share-locks the transcription provider too")
+}
+
+func TestService_TranscriptionModelOnTheChatProvider(t *testing.T) {
+	f := newGrantsFixture(t)
+	p := f.grants.Providers[f.provider]
+	p.Models = append(p.Models, agent.ModelRef{ID: "whisper-1", Priced: true, Transcription: true})
+	f.grants.Providers[f.provider] = p
+	c := f.config()
+	c.TranscriptionModel = agent.TranscriptionModel{ProviderID: f.provider, Model: "whisper-1"}
+	_, err := f.svc.UpdateDraft(context.Background(), f.agent.ID, c)
+	require.NoError(t, err)
+}
+
+func TestService_DraftRefusesABadTranscriptionModel(t *testing.T) {
+	for name, edit := range map[string]func(f *grantsFixture, c *agent.Config){
+		"unknown provider": func(_ *grantsFixture, c *agent.Config) { c.TranscriptionModel.ProviderID = uuid.New() },
+		"another project's provider": func(f *grantsFixture, c *agent.Config) {
+			c.TranscriptionModel.ProviderID = f.sttProvider(t, uuid.New(), agent.ModelRef{ID: "whisper-1", Priced: true, Transcription: true})
+		},
+		"model not listed": func(_ *grantsFixture, c *agent.Config) { c.TranscriptionModel.Model = "whisper-9" },
+		"model not flagged": func(_ *grantsFixture, c *agent.Config) {
+			c.TranscriptionModel.Model = "gpt-4o-audio"
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newGrantsFixture(t)
+			stt := f.sttProvider(t, f.agent.ProjectID,
+				agent.ModelRef{ID: "whisper-1", Priced: true, Transcription: true}, agent.ModelRef{ID: "gpt-4o-audio", Priced: true})
+			c := f.config()
+			c.TranscriptionModel = agent.TranscriptionModel{ProviderID: stt, Model: "whisper-1"}
+			edit(f, &c)
+			_, err := f.svc.UpdateDraft(context.Background(), f.agent.ID, c)
+			assert.Equal(t, "transcription_model", grantReason(t, err))
+			assert.Nil(t, f.store.Saved, "nothing saved")
+		})
+	}
+}
+
+func TestService_PublishRefusesADeletedTranscriptionProvider(t *testing.T) {
+	f := newGrantsFixture(t)
+	stt := f.sttProvider(t, f.agent.ProjectID, agent.ModelRef{ID: "whisper-1", Priced: true, Transcription: true})
+	c := f.config()
+	c.TranscriptionModel = agent.TranscriptionModel{ProviderID: stt, Model: "whisper-1"}
+	_, err := f.svc.UpdateDraft(context.Background(), f.agent.ID, c)
+	require.NoError(t, err)
+	delete(f.grants.Providers, stt)
+	_, _, _, err = f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	assert.Equal(t, "transcription_model", grantReason(t, err))
+	assert.Empty(t, f.store.Published)
+}

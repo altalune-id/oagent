@@ -3,6 +3,7 @@ package run
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"time"
@@ -662,6 +663,7 @@ func (s *postgresStore) insertRun(ctx context.Context, tx *sql.Tx, r *Run) error
 		t.ID, t.PublicID, t.OrgID, t.ProjectID, t.ThreadID, t.AgentVersionID, t.Status, t.IdempotencyKey, t.Attempt, t.IsGroup,
 		t.PriceInputMicros, t.PriceOutputMicros, t.PriceCacheReadMicros, t.PriceCacheWriteMicros, t.EmbeddingPriceInputMicros,
 		t.HelperPriceInputMicros, t.HelperPriceOutputMicros, t.HelperPriceCacheReadMicros, t.HelperPriceCacheWriteMicros,
+		t.TranscriptionPriceMicros,
 		t.StartedAt, t.CreatedAt, t.UpdatedAt,
 	).VALUES(
 		r.ID, r.PublicID, r.OrgID, r.ProjectID, r.ThreadID, r.AgentVersionID, string(r.Status), textOrNull(r.IdempotencyKey), r.Attempt, r.Group,
@@ -670,6 +672,7 @@ func (s *postgresStore) insertRun(ctx context.Context, tx *sql.Tx, r *Run) error
 		price(func(p *Prices) *int64 { return p.Embedding }),
 		price(func(p *Prices) *int64 { return p.HelperInput }), price(func(p *Prices) *int64 { return p.HelperOutput }),
 		price(func(p *Prices) *int64 { return p.HelperCacheRead }), price(func(p *Prices) *int64 { return p.HelperCacheWrite }),
+		price(func(p *Prices) *int64 { return p.Transcription }),
 		r.StartedAt.UTC(), r.StartedAt.UTC(), r.UpdatedAt.UTC(),
 	)
 	if _, err := stmt.ExecContext(ctx, tx); err != nil {
@@ -767,6 +770,51 @@ func (s *postgresStore) PutCheckpoint(ctx context.Context, token string, runID u
 	})
 }
 
+// SetTakenMessageBody rewrites a message runID took and adds to its transcription seconds, under token's lease, in one transaction.
+func (s *postgresStore) SetTakenMessageBody(
+	ctx context.Context, token string, runID, messageID uuid.UUID, body json.RawMessage, seconds int64,
+) error {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return err
+	}
+	return db.InTx(ctx, s.pool, func(tx *sql.Tx) error {
+		threadID, err := s.threadOf(ctx, tx, tc.OrgID, runID)
+		if err != nil {
+			return err
+		}
+		if _, err := s.lock(ctx, tx, tc.OrgID, threadID, &token); err != nil {
+			return err
+		}
+		m := s.messages
+		res, err := m.UPDATE(m.Body).SET(jsonb(body)).
+			WHERE(m.ID.EQ(postgres.UUID(messageID)).AND(m.RunID.EQ(postgres.UUID(runID))).
+				AND(m.ThreadID.EQ(postgres.UUID(threadID))).AND(m.OrgID.EQ(postgres.UUID(tc.OrgID)))).
+			ExecContext(ctx, tx)
+		if err != nil {
+			return fmt.Errorf("run.postgres: SetTakenMessageBody: message: %w", err)
+		}
+		if n, err := res.RowsAffected(); err != nil {
+			return fmt.Errorf("run.postgres: SetTakenMessageBody: message rows: %w", err)
+		} else if n != 1 {
+			return fmt.Errorf("run.postgres: SetTakenMessageBody: message %s is not taken by run %s", messageID, runID)
+		}
+		r := s.runs
+		res, err = r.UPDATE(r.TranscriptionSeconds).SET(r.TranscriptionSeconds.ADD(postgres.Int(seconds))).
+			WHERE(r.ID.EQ(postgres.UUID(runID)).AND(r.OrgID.EQ(postgres.UUID(tc.OrgID)))).
+			ExecContext(ctx, tx)
+		if err != nil {
+			return fmt.Errorf("run.postgres: SetTakenMessageBody: run: %w", err)
+		}
+		if n, err := res.RowsAffected(); err != nil {
+			return fmt.Errorf("run.postgres: SetTakenMessageBody: run rows: %w", err)
+		} else if n != 1 {
+			return fmt.Errorf("run.postgres: SetTakenMessageBody: run %s not found", runID)
+		}
+		return nil
+	})
+}
+
 func consumedBy(runID uuid.UUID, msgs []Message) []Message {
 	out := slices.Clone(msgs)
 	for i := range out {
@@ -834,7 +882,7 @@ func (s *postgresStore) settleRun(ctx context.Context, tx *sql.Tx, orgID uuid.UU
 	stmt := t.UPDATE(
 		t.Status, t.Attempt, t.InputTokens, t.OutputTokens, t.CacheReadTokens, t.CacheWriteTokens, t.UsageEstimated,
 		t.EmbeddingTokens, t.KnowledgeRetrieveCalls, t.KnowledgeRetrieveMS, t.KnowledgePassages,
-		t.HelperInputTokens, t.HelperOutputTokens, t.HelperCacheReadTokens, t.HelperCacheWriteTokens,
+		t.HelperInputTokens, t.HelperOutputTokens, t.HelperCacheReadTokens, t.HelperCacheWriteTokens, t.TranscriptionSeconds,
 		t.CostMicros, t.LatencyMS, t.ErrorCode, t.EndedAt, t.UpdatedAt, t.ReplyState, t.ReplyNextAt, t.ReplyKind,
 		t.ReplyPartsSent, t.ReplyAttempts, t.NoReplyReason,
 	).SET(
@@ -843,7 +891,8 @@ func (s *postgresStore) settleRun(ctx context.Context, tx *sql.Tx, orgID uuid.UU
 		postgres.Int(u.EmbeddingTokens), postgres.Int32(r.KnowledgeRetrieveCalls), postgres.Int(r.KnowledgeRetrieveMs),
 		postgres.Int32(r.KnowledgePassages),
 		postgres.Int(u.HelperInputTokens), postgres.Int(u.HelperOutputTokens), postgres.Int(u.HelperCacheReadTokens),
-		postgres.Int(u.HelperCacheWriteTokens), cost, latency, textOrNull(r.ErrorCode), ended, postgres.TimestampzT(r.UpdatedAt.UTC()),
+		postgres.Int(u.HelperCacheWriteTokens), postgres.Int(u.TranscriptionSeconds),
+		cost, latency, textOrNull(r.ErrorCode), ended, postgres.TimestampzT(r.UpdatedAt.UTC()),
 		textOrNull(r.ReplyState), next, textOrNull(r.ReplyKind), parts, attempts, textOrNull(r.NoReplyReason),
 	).WHERE(t.ID.EQ(postgres.UUID(r.ID)).AND(t.OrgID.EQ(postgres.UUID(orgID))))
 	res, err := stmt.ExecContext(ctx, tx)

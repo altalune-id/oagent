@@ -30,20 +30,22 @@ const (
 // Kinds returns every provider kind.
 func Kinds() []Kind { return []Kind{KindOpenAICompatible, KindAnthropic} }
 
-// Prices are micro-USD per 1M tokens, per token class.
+// Prices are micro-USD per 1M tokens per token class, and per audio minute for a transcription model.
 type Prices struct {
-	InputMicros      int64 `json:"input_micros"`
-	OutputMicros     int64 `json:"output_micros"`
-	CacheReadMicros  int64 `json:"cache_read_micros"`
-	CacheWriteMicros int64 `json:"cache_write_micros"`
+	InputMicros       int64 `json:"input_micros"`
+	OutputMicros      int64 `json:"output_micros"`
+	CacheReadMicros   int64 `json:"cache_read_micros"`
+	CacheWriteMicros  int64 `json:"cache_write_micros"`
+	AudioMinuteMicros int64 `json:"audio_minute_micros,omitempty"`
 }
 
-// Model is one model a provider serves; nil Prices means unpriced, and Embedding marks a model that turns text into vectors.
+// Model is one model a provider serves; nil Prices means unpriced, Embedding turns text into vectors, Transcription speech into text.
 type Model struct {
-	ID        string  `json:"id"`
-	Vision    bool    `json:"vision,omitempty"`
-	Embedding bool    `json:"embedding,omitempty"`
-	Prices    *Prices `json:"prices,omitempty"`
+	ID            string  `json:"id"`
+	Vision        bool    `json:"vision,omitempty"`
+	Embedding     bool    `json:"embedding,omitempty"`
+	Transcription bool    `json:"transcription,omitempty"`
+	Prices        *Prices `json:"prices,omitempty"`
 }
 
 // Input is the editable part of a provider.
@@ -144,7 +146,7 @@ func validate(in Input, o validateOpts) (string, []Model, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	models, err := validateModels(in.Models)
+	models, err := validateModels(in.Kind, in.Models)
 	if err != nil {
 		return "", nil, err
 	}
@@ -159,7 +161,7 @@ func validateBaseURL(rawURL string, allowInsecureURL bool) (string, error) {
 	return u, nil
 }
 
-func validateModels(models []Model) ([]Model, error) {
+func validateModels(kind Kind, models []Model) ([]Model, error) {
 	if len(models) == 0 {
 		return nil, &InvalidModelsError{Reason: ModelsRequired}
 	}
@@ -171,8 +173,17 @@ func validateModels(models []Model) ([]Model, error) {
 			return nil, &InvalidModelsError{Reason: ModelsDuplicate, Model: m.ID}
 		}
 		if m.Prices != nil && (m.Prices.InputMicros < 0 || m.Prices.OutputMicros < 0 ||
-			m.Prices.CacheReadMicros < 0 || m.Prices.CacheWriteMicros < 0) {
+			m.Prices.CacheReadMicros < 0 || m.Prices.CacheWriteMicros < 0 || m.Prices.AudioMinuteMicros < 0) {
 			return nil, &InvalidModelsError{Reason: ModelsPrice, Model: m.ID}
+		}
+		if !m.Transcription {
+			continue
+		}
+		if m.Vision || m.Embedding || kind != KindOpenAICompatible {
+			return nil, &InvalidModelsError{Reason: ModelsTranscriptionConflict, Model: m.ID}
+		}
+		if m.Prices == nil {
+			return nil, &InvalidModelsError{Reason: ModelsTranscriptionPrice, Model: m.ID}
 		}
 	}
 	return cloneModels(models), nil

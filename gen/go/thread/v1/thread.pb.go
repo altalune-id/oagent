@@ -384,8 +384,10 @@ type Usage struct {
 	HelperCacheReadTokens int64 `protobuf:"varint,9,opt,name=helper_cache_read_tokens,json=helperCacheReadTokens,proto3" json:"helper_cache_read_tokens,omitempty"`
 	// helper_cache_write_tokens are the cache write tokens the agent's helper model used.
 	HelperCacheWriteTokens int64 `protobuf:"varint,10,opt,name=helper_cache_write_tokens,json=helperCacheWriteTokens,proto3" json:"helper_cache_write_tokens,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// transcription_seconds are the billed audio seconds of the run's voice notes, each clip at least 1 second.
+	TranscriptionSeconds int64 `protobuf:"varint,11,opt,name=transcription_seconds,json=transcriptionSeconds,proto3" json:"transcription_seconds,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Usage) Reset() {
@@ -484,6 +486,13 @@ func (x *Usage) GetHelperCacheReadTokens() int64 {
 func (x *Usage) GetHelperCacheWriteTokens() int64 {
 	if x != nil {
 		return x.HelperCacheWriteTokens
+	}
+	return 0
+}
+
+func (x *Usage) GetTranscriptionSeconds() int64 {
+	if x != nil {
+		return x.TranscriptionSeconds
 	}
 	return 0
 }
@@ -1330,7 +1339,7 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\x14speaker_display_name\x18\n" +
 	" \x01(\tR\x12speakerDisplayName\x12L\n" +
 	"\x15speaker_identity_kind\x18\v \x01(\x0e2\x18.enduser.v1.IdentityKindR\x13speakerIdentityKind\x122\n" +
-	"\x15speaker_identity_hint\x18\f \x01(\tR\x13speakerIdentityHint\"\xc8\x03\n" +
+	"\x15speaker_identity_hint\x18\f \x01(\tR\x13speakerIdentityHint\"\xfd\x03\n" +
 	"\x05Usage\x12!\n" +
 	"\finput_tokens\x18\x01 \x01(\x03R\vinputTokens\x12#\n" +
 	"\routput_tokens\x18\x02 \x01(\x03R\foutputTokens\x12*\n" +
@@ -1342,7 +1351,8 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\x14helper_output_tokens\x18\b \x01(\x03R\x12helperOutputTokens\x127\n" +
 	"\x18helper_cache_read_tokens\x18\t \x01(\x03R\x15helperCacheReadTokens\x129\n" +
 	"\x19helper_cache_write_tokens\x18\n" +
-	" \x01(\x03R\x16helperCacheWriteTokens\"\xb4\x05\n" +
+	" \x01(\x03R\x16helperCacheWriteTokens\x123\n" +
+	"\x15transcription_seconds\x18\v \x01(\x03R\x14transcriptionSeconds\"\xb4\x05\n" +
 	"\x03Run\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12,\n" +

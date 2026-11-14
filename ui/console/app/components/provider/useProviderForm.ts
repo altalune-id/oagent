@@ -19,7 +19,7 @@ export function kindKey(kind: ModelProviderKind): string {
   return kind === ModelProviderKind.ANTHROPIC ? 'providers.kind_anthropic' : 'providers.kind_openai_compatible';
 }
 
-const microsKeys: Record<PriceKey, keyof ModelPrices> = { input: 'inputMicros', output: 'outputMicros', cacheRead: 'cacheReadMicros', cacheWrite: 'cacheWriteMicros' };
+const microsKeys: Record<PriceKey, Exclude<keyof ModelPrices, 'audioMinuteMicros'>> = { input: 'inputMicros', output: 'outputMicros', cacheRead: 'cacheReadMicros', cacheWrite: 'cacheWriteMicros' };
 
 export interface ModelRow {
   key: number;
@@ -27,6 +27,8 @@ export interface ModelRow {
   vision: boolean;
   embedding: boolean;
   prices: Record<PriceKey, string>;
+  transcription: boolean;
+  storedPrices?: ModelPrices;
 }
 
 export interface ProviderErrors {
@@ -67,6 +69,9 @@ export function toPrices(prices: Record<PriceKey, string>, embedding = false): P
 }
 
 function rowModel(row: ModelRow): ProviderModel {
+  if (row.transcription) {
+    return { id: row.id, vision: row.vision, embedding: row.embedding, transcription: true, prices: row.storedPrices };
+  }
   const parsed = toPrices(row.prices, row.embedding);
   return { id: row.id, vision: row.vision, embedding: row.embedding, prices: parsed.kind === 'priced' ? parsed.prices : undefined };
 }
@@ -121,7 +126,7 @@ export function useProviderForm(orgId: string, projectId: string) {
   function row(model?: ProviderModel): ModelRow {
     const p = model?.prices;
     const text = (k: PriceKey) => (p ? usdText(p[microsKeys[k]]) : '');
-    return { key: nextKey++, id: model?.id ?? '', vision: model?.vision ?? false, embedding: model?.embedding ?? false, prices: { input: text('input'), output: text('output'), cacheRead: text('cacheRead'), cacheWrite: text('cacheWrite') } };
+    return { key: nextKey++, id: model?.id ?? '', vision: model?.vision ?? false, embedding: model?.embedding ?? false, prices: { input: text('input'), output: text('output'), cacheRead: text('cacheRead'), cacheWrite: text('cacheWrite') }, transcription: !!model?.transcription, storedPrices: model?.prices };
   }
 
   function show(provider?: ModelProvider) {

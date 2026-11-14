@@ -57,6 +57,8 @@ type Service struct {
 	retriever   KnowledgeRetriever
 	embedPrices EmbeddingPrices
 	retrieveErr metric.Int64Counter
+	transcriber Transcriber
+	transcribed metric.Int64Counter
 	retrieveMs  metric.Int64Histogram
 	memory      Memory
 	rememberers Rememberers
@@ -103,6 +105,9 @@ func (s *Service) WithNames(n Names) *Service { s.names = n; return s }
 // WithMedia fills channel photos and sends read receipts through m.
 func (s *Service) WithMedia(m Media) *Service { s.media = m; return s }
 
+// WithTranscriber turns voice notes into text at run start with tr, for agent versions with a transcription model.
+func (s *Service) WithTranscriber(tr Transcriber) *Service { s.transcriber = tr; return s }
+
 // WithLogger logs turn outcomes to l.
 func (s *Service) WithLogger(l *slog.Logger) *Service { s.log = l; return s }
 
@@ -124,6 +129,10 @@ func (s *Service) WithMeter(m metric.Meter) *Service {
 	}
 	if h, err := m.Int64Histogram("knowledge.retrieve_ms", metric.WithDescription("Milliseconds one knowledge search took.")); err == nil {
 		s.retrieveMs = h
+	}
+	voice := metric.WithDescription("Voice notes a run tried to transcribe, by status and reason.")
+	if c, err := m.Int64Counter("voice.transcriptions", voice); err == nil {
+		s.transcribed = c
 	}
 	return s
 }
@@ -269,6 +278,9 @@ func (s *Service) execute(ctx context.Context, threadID uuid.UUID, token string,
 		}
 	}
 	s.markRead(ctx, t)
+	if err := s.transcribe(ctx, t); err != nil {
+		return s.abandon(ctx, t, t.run.Usage, err)
+	}
 	if voiceOnly(t.taken) {
 		if err := t.run.Move(StatusCompleted, time.Now()); err != nil {
 			return nil, s.errOrReport(ctx, "run: voice only", err)
@@ -407,7 +419,7 @@ func (s *Service) open(ctx context.Context, th *Thread, token string, obs Observ
 	t.run.Group = th.Kind == threadKindGroup
 	if !t.version.Legacy {
 		if m, err := s.providers.ResolveModel(ctx, t.version.ProviderID, t.version.Model); err == nil {
-			t.model, t.run.Prices = m, s.pinPrices(ctx, t, s.pinHelper(ctx, t, m.Prices))
+			t.model, t.run.Prices = m, s.pinTranscription(ctx, t, s.pinPrices(ctx, t, s.pinHelper(ctx, t, m.Prices)))
 			s.resolveHelper(ctx, t)
 		}
 	}
@@ -693,6 +705,7 @@ func (s *Service) emit(ctx context.Context, t *turn, u Usage) error {
 			CacheWriteInputTokens: u.CacheWriteTokens, EmbeddingTokens: u.EmbeddingTokens, Estimated: u.Estimated,
 			HelperInputTokens: u.HelperInputTokens, HelperOutputTokens: u.HelperOutputTokens,
 			HelperCacheReadInputTokens: u.HelperCacheReadTokens, HelperCacheWriteInputTokens: u.HelperCacheWriteTokens,
+			TranscriptionSeconds: u.TranscriptionSeconds,
 		},
 	}
 	if micros, priced := Cost(u, r.Prices); priced {

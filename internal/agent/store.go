@@ -46,10 +46,11 @@ type Named struct {
 	Name     string
 }
 
-// ProviderUsage says whether a provider is used and, per model id used, whether a cost limit needs its price.
+// ProviderUsage says whether a provider is used, per chat model whether a cost limit needs its price, and its transcription models.
 type ProviderUsage struct {
-	InUse  bool
-	Models map[string]bool
+	InUse               bool
+	Models              map[string]bool
+	TranscriptionModels []string
 }
 
 // Writer writes Agent aggregates.

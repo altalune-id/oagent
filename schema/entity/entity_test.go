@@ -108,6 +108,7 @@ func TestBindings(t *testing.T) {
 				"embedding_tokens", "embedding_price_input_micros", "knowledge_retrieve_calls", "knowledge_retrieve_ms", "knowledge_passages", "no_reply_reason",
 				"helper_input_tokens", "helper_output_tokens", "helper_cache_read_tokens", "helper_cache_write_tokens",
 				"helper_price_input_micros", "helper_price_output_micros", "helper_price_cache_read_micros", "helper_price_cache_write_micros",
+				"transcription_seconds", "transcription_price_micros",
 			},
 		},
 		{

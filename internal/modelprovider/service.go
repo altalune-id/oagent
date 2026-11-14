@@ -150,6 +150,11 @@ func (s *Service) checkModelsInUse(ctx context.Context, p *Provider) error {
 			return &InUseError{Reason: InUseEmbeddingModel, Model: id}
 		}
 	}
+	for _, id := range use.TranscriptionModels {
+		if m, ok := p.Model(id); !ok || !m.Transcription || m.Prices == nil {
+			return &InUseError{Reason: InUseTranscriptionModel, Model: id}
+		}
+	}
 	for _, id := range slices.Sorted(maps.Keys(use.Models)) {
 		m, ok := p.Model(id)
 		if !ok {

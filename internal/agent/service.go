@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -277,6 +278,11 @@ func (s *Service) publishable(ctx context.Context, a *Agent, latest *Version) er
 	if err := s.locker.LockShared(ctx, []uuid.UUID{a.Draft.ProviderID}, a.Draft.ServerIDs()); err != nil {
 		return err
 	}
+	if tm := a.Draft.TranscriptionModel; tm.ProviderID != uuid.Nil {
+		if err := s.locker.LockShared(ctx, []uuid.UUID{tm.ProviderID}, nil); err != nil {
+			return asTranscriptionGrant(err, tm.Model)
+		}
+	}
 	if len(a.Draft.KnowledgeSourceIDs) > 0 && s.knowledge != nil {
 		if err := s.knowledge.LockSourcesShared(ctx, a.Draft.KnowledgeSourceIDs); err != nil {
 			return err
@@ -315,6 +321,9 @@ func (s *Service) checkReferences(ctx context.Context, projectID uuid.UUID, cfg 
 			return nil, err
 		}
 	}
+	if err := s.checkTranscriptionModel(ctx, projectID, cfg.TranscriptionModel); err != nil {
+		return nil, err
+	}
 	for _, id := range cfg.KnowledgeSourceIDs {
 		if s.knowledge == nil {
 			return nil, &InvalidGrantError{Reason: GrantKnowledgeSource}
@@ -340,6 +349,30 @@ func (s *Service) checkReferences(ctx context.Context, projectID uuid.UUID, cfg 
 		names[g.ServerID] = name
 	}
 	return names, nil
+}
+
+func (s *Service) checkTranscriptionModel(ctx context.Context, projectID uuid.UUID, tm TranscriptionModel) error {
+	if tm.ProviderID == uuid.Nil {
+		return nil
+	}
+	if s.providers == nil {
+		return &InvalidGrantError{Reason: GrantTranscriptionModel, Name: tm.Model}
+	}
+	models, err := s.providers.Models(ctx, projectID, tm.ProviderID)
+	if err != nil {
+		return asTranscriptionGrant(err, tm.Model)
+	}
+	if !slices.ContainsFunc(models, func(m ModelRef) bool { return m.ID == tm.Model && m.Transcription }) {
+		return &InvalidGrantError{Reason: GrantTranscriptionModel, Name: tm.Model}
+	}
+	return nil
+}
+
+func asTranscriptionGrant(err error, model string) error {
+	if e, ok := errors.AsType[*InvalidGrantError](err); ok && e.Reason == GrantProvider {
+		return &InvalidGrantError{Reason: GrantTranscriptionModel, Name: model}
+	}
+	return err
 }
 
 func (s *Service) checkModels(ctx context.Context, projectID uuid.UUID, cfg Config, publishing bool) error {

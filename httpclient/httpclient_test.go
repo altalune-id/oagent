@@ -282,3 +282,12 @@ func TestWithIdleConnTimeout(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, 4*time.Second, tr.IdleConnTimeout)
 }
+
+func TestWithResponseHeaderTimeout(t *testing.T) {
+	tr, ok := New(WithOtel(false)).Transport.(*http.Transport)
+	require.True(t, ok)
+	assert.Equal(t, 10*time.Second, tr.ResponseHeaderTimeout, "the default stays")
+	tr, ok = New(WithOtel(false), WithResponseHeaderTimeout(20*time.Second)).Transport.(*http.Transport)
+	require.True(t, ok)
+	assert.Equal(t, 20*time.Second, tr.ResponseHeaderTimeout)
+}

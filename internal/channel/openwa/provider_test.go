@@ -293,13 +293,17 @@ func TestFetchMedia_CapAndType(t *testing.T) {
 	_, _, err = p.FetchMedia(t.Context(), conn(f.srv.URL), secrets(), ref, 50)
 	assert.True(t, channel.IsTooLargeError(err), "the bytes read are capped whatever the payload declared: %v", err)
 
-	for _, m := range []string{"image/gif", "image/svg+xml", "text/html", "application/octet-stream"} {
+	for _, m := range []string{"image/gif", "image/svg+xml", "text/html", "application/octet-stream", "audio/mpeg", "audio/mp4"} {
 		f.mediaMime = m
 		_, _, err = p.FetchMedia(t.Context(), conn(f.srv.URL), secrets(), ref, 1<<20)
-		assert.Error(t, err, m)
+		assert.True(t, channel.IsMediaTypeError(err), "%s: %v", m, err)
 	}
+	f.mediaMime = "audio/ogg; codecs=opus"
+	_, mime, err := p.FetchMedia(t.Context(), conn(f.srv.URL), secrets(), channel.MediaRef{MessageID: imageID, Mime: "audio/ogg; codecs=opus"}, 1<<20)
+	require.NoError(t, err)
+	assert.Equal(t, "audio/ogg", mime, "a voice note comes back as its base type")
 	f.mediaMime = "image/webp; charset=binary"
-	_, mime, err := p.FetchMedia(t.Context(), conn(f.srv.URL), secrets(), ref, 1<<20)
+	_, mime, err = p.FetchMedia(t.Context(), conn(f.srv.URL), secrets(), ref, 1<<20)
 	require.NoError(t, err)
 	assert.Equal(t, "image/webp", mime)
 

@@ -20,6 +20,7 @@ import (
 	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/run"
 	"altalune.id/oagent/internal/run/snapshotstore"
+	"altalune.id/oagent/internal/run/transcribe"
 )
 
 type runParts struct {
@@ -45,6 +46,7 @@ func buildRun(k kernel.Kernel, cfg config.Config, s *Services, limiter ratelimit
 		WithMaxAttempts(cfg.Run.MaxAttempts).
 		WithApprovals(runApprovals{svcs: s}).
 		WithMeter(k.Meter).
+		WithTranscriber(runTranscriber{allowPrivateHosts: knowledgePrivateHosts(cfg)}).
 		WithLogger(orDiscard(log))
 	if s.EndUsers != nil {
 		svc.WithNames(endUserNames{users: s.EndUsers})
@@ -145,6 +147,7 @@ func (a runAgents) pinned(ctx context.Context, v *agent.Version) (*run.AgentVers
 		Instructions: c.Instructions, Model: c.Model, Temperature: c.Temperature, MaxSteps: c.EffectiveMaxSteps(),
 		MaxCostCents: c.MaxCostCents, ProviderID: c.ProviderID, Knowledge: runKnowledgeTuning(c.KnowledgeTuning),
 		HelperModel: c.HelperModel, MemoryStoreID: c.MemoryStoreID,
+		TranscriptionModel: run.TranscriptionModel{ProviderID: c.TranscriptionModel.ProviderID, Model: c.TranscriptionModel.Model},
 	}
 	for _, g := range c.MCPServers {
 		grant := run.MCPGrant{ServerID: g.ServerID}
@@ -177,8 +180,30 @@ func (p runProviders) ResolveModel(ctx context.Context, providerID uuid.UUID, mo
 			Input: new(pr.InputMicros), Output: new(pr.OutputMicros),
 			CacheRead: new(pr.CacheReadMicros), CacheWrite: new(pr.CacheWriteMicros),
 		}
+		if r.Model.Transcription {
+			out.Prices.Transcription = new(pr.AudioMinuteMicros)
+		}
 	}
 	return out, nil
+}
+
+type runTranscriber struct{ allowPrivateHosts bool }
+
+// Transcribe implements run.Transcriber over an OpenAI-compatible speech-to-text endpoint, one guarded client per call.
+func (r runTranscriber) Transcribe(ctx context.Context, m run.ResolvedModel, model string, audio []byte, mime string) (string, error) {
+	if m.Provider != "" {
+		return "", fmt.Errorf("boot: transcription needs an OpenAI-compatible provider, not %q", m.Provider)
+	}
+	c, err := transcribe.New(transcribe.Config{BaseURL: m.BaseURL, APIKey: m.APIKey, Model: model, AllowPrivateHosts: r.allowPrivateHosts})
+	if err != nil {
+		return "", err
+	}
+	defer c.Close()
+	text, err := c.Transcribe(ctx, audio, mime)
+	if e, ok := transcribe.AsError(err); ok && e.Reason == transcribe.RateLimited {
+		return "", fmt.Errorf("%w: %w", run.ErrTranscribeRateLimited, err)
+	}
+	return text, err
 }
 
 func wireProvider(k modelprovider.Kind) (string, error) {

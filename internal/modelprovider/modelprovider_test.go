@@ -73,6 +73,18 @@ func TestNew_Invalid(t *testing.T) {
 		{name: "negative output price", edit: func(in *Input) { in.Models[0].Prices.OutputMicros = -1 }, models: ModelsPrice},
 		{name: "negative cache read price", edit: func(in *Input) { in.Models[0].Prices.CacheReadMicros = -1 }, models: ModelsPrice},
 		{name: "negative cache write price", edit: func(in *Input) { in.Models[0].Prices.CacheWriteMicros = -1 }, models: ModelsPrice},
+		{name: "negative audio minute price", edit: func(in *Input) { in.Models[0].Prices.AudioMinuteMicros = -1 }, models: ModelsPrice},
+		{name: "transcription without prices", edit: func(in *Input) { in.Models = []Model{{ID: "whisper-1", Transcription: true}} }, models: ModelsTranscriptionPrice},
+		{name: "transcription and embedding", edit: func(in *Input) {
+			in.Models = []Model{{ID: "whisper-1", Transcription: true, Embedding: true, Prices: &Prices{}}}
+		}, models: ModelsTranscriptionConflict},
+		{name: "transcription and vision", edit: func(in *Input) {
+			in.Models = []Model{{ID: "whisper-1", Transcription: true, Vision: true, Prices: &Prices{}}}
+		}, models: ModelsTranscriptionConflict},
+		{name: "transcription on anthropic", edit: func(in *Input) {
+			in.Kind = KindAnthropic
+			in.Models = []Model{{ID: "whisper-1", Transcription: true, Prices: &Prices{}}}
+		}, models: ModelsTranscriptionConflict},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -209,6 +221,30 @@ func TestModel_JSONShape(t *testing.T) {
 		{"id": "priced", "vision": true, "prices": {"input_micros": 1, "output_micros": 2, "cache_read_micros": 3, "cache_write_micros": 4}},
 		{"id": "unpriced"}
 	]`, string(got))
+}
+
+func TestNew_TranscriptionModel(t *testing.T) {
+	in := validInput()
+	in.Models = append(in.Models,
+		Model{ID: "whisper-1", Transcription: true, Prices: &Prices{AudioMinuteMicros: 6_000}},
+		Model{ID: "whisper-free", Transcription: true, Prices: &Prices{}},
+	)
+	p, err := New(uuid.New(), uuid.New(), in, time.Now())
+	require.NoError(t, err)
+	m, ok := p.Model("whisper-1")
+	require.True(t, ok)
+	assert.True(t, m.Transcription)
+	assert.Equal(t, int64(6_000), m.Prices.AudioMinuteMicros)
+	m, ok = p.Model("whisper-free")
+	require.True(t, ok)
+	assert.True(t, m.Transcription, "a zero price is a price")
+}
+
+func TestModel_TranscriptionJSONShape(t *testing.T) {
+	got, err := json.Marshal(Model{ID: "whisper-1", Transcription: true, Prices: &Prices{AudioMinuteMicros: 6_000}})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"id": "whisper-1", "transcription": true,
+		"prices": {"input_micros": 0, "output_micros": 0, "cache_read_micros": 0, "cache_write_micros": 0, "audio_minute_micros": 6000}}`, string(got))
 }
 
 func TestNew_TrimsName(t *testing.T) {

@@ -209,25 +209,12 @@ func (s *Service) speaker(ctx context.Context, t *turn) func(*uuid.UUID) string 
 	}
 }
 
-type imageSource struct {
-	Type     string `json:"type"`
-	Value    string `json:"value"`
-	MimeType string `json:"mimeType"`
-}
-
-type contentPart struct {
-	Type   string       `json:"type"`
-	Text   string       `json:"text,omitempty"`
-	Source *imageSource `json:"source,omitempty"`
-	ID     string       `json:"id,omitempty"`
-}
-
-func userParts(content json.RawMessage) ([]contentPart, error) {
+func userParts(content json.RawMessage) ([]ContentPart, error) {
 	var text string
 	if json.Unmarshal(content, &text) == nil {
-		return []contentPart{{Type: "text", Text: text}}, nil
+		return []ContentPart{{Type: "text", Text: text}}, nil
 	}
-	var parts []contentPart
+	var parts []ContentPart
 	err := json.Unmarshal(content, &parts)
 	return parts, err
 }
@@ -248,12 +235,17 @@ func voiceOnly(taken []Message) bool {
 			continue
 		}
 		var u userMeta
-		if json.Unmarshal(m.Body, &u) != nil || !u.Channel.Voice {
+		if json.Unmarshal(m.Body, &u) != nil || !u.Channel.Voice || hasTranscript(u.Content) {
 			return false
 		}
 		n++
 	}
 	return n > 0
+}
+
+func hasTranscript(content json.RawMessage) bool {
+	parts, err := userParts(content)
+	return err == nil && slices.ContainsFunc(parts, func(p ContentPart) bool { return p.heard() != "" })
 }
 
 func setReplies(taken []Message, kind string, vision bool) setReply {
@@ -267,7 +259,7 @@ func setReplies(taken []Message, kind string, vision bool) setReply {
 			continue
 		}
 		parts, err := userParts(u.Content)
-		if err == nil && slices.ContainsFunc(parts, func(p contentPart) bool { return p.Type == "image" }) {
+		if err == nil && slices.ContainsFunc(parts, func(p ContentPart) bool { return p.Type == "image" }) {
 			out.photoUnreadable = true
 			return out
 		}
@@ -275,32 +267,35 @@ func setReplies(taken []Message, kind string, vision bool) setReply {
 	return out
 }
 
-func (s *Service) photo(ctx context.Context, t *turn) func(contentPart) (contentPart, bool) {
+func (s *Service) photo(ctx context.Context, t *turn) func(ContentPart) (ContentPart, bool) {
 	conn := t.thread.ConnectionID
 	if s.media == nil || conn == uuid.Nil || !t.model.Vision {
 		return nil
 	}
-	return func(p contentPart) (contentPart, bool) {
+	return func(p ContentPart) (ContentPart, bool) {
 		if p.Source == nil {
-			return contentPart{}, false
+			return ContentPart{}, false
 		}
 		data, mime, err := s.media.Fetch(ctx, conn, p.ID, p.Source.MimeType, maxImageBytes)
 		if err == nil && len(data) > maxImageBytes {
 			err = errors.New("over the size cap")
 		}
+		if err == nil && !strings.HasPrefix(mime, "image/") {
+			err = ErrMediaType
+		}
 		if err != nil {
 			s.log.WarnContext(ctx, "run: photo not read", "run", t.run.PublicID, "err", err.Error())
-			return contentPart{}, false
+			return ContentPart{}, false
 		}
-		src := &imageSource{Type: "data", Value: base64.StdEncoding.EncodeToString(data), MimeType: mime}
-		return contentPart{Type: "image", Source: src}, true
+		src := &MediaSource{Type: "data", Value: base64.StdEncoding.EncodeToString(data), MimeType: mime}
+		return ContentPart{Type: "image", Source: src}, true
 	}
 }
 
 func input(
-	taken []Message, speaker func(*uuid.UUID) string, photo func(contentPart) (contentPart, bool),
+	taken []Message, speaker func(*uuid.UUID) string, photo func(ContentPart) (ContentPart, bool),
 ) (runtime.TurnInput, error) {
-	var out []contentPart
+	var out []ContentPart
 	var lastID string
 	read, sent := 0, false
 	for _, m := range taken {
@@ -317,7 +312,7 @@ func input(
 		}
 		lastID = u.ID
 		var texts []string
-		var images []contentPart
+		var images []ContentPart
 		for _, p := range parts {
 			switch {
 			case p.Type == "text":
@@ -331,6 +326,8 @@ func input(
 				texts = append(texts, notePhotoUnread)
 			case p.Type == "image":
 				texts = append(texts, notePhotoUnread)
+			case p.Type == "audio":
+				texts = append(texts, partText(p))
 			}
 		}
 		line := cutLong(strings.Join(texts, "\n"))
@@ -338,7 +335,7 @@ func input(
 			line = strings.TrimSpace("[" + speaker(m.SpeakerID) + "] " + line)
 		}
 		if line != "" {
-			out = append(out, contentPart{Type: "text", Text: line})
+			out = append(out, ContentPart{Type: "text", Text: line})
 		}
 		out = append(out, images...)
 		sent = sent || len(images) > 0
@@ -391,7 +388,7 @@ func rebuild(msgs []Message) []json.RawMessage {
 			asked = append(asked, c.ID)
 		}
 		if m.Role == RoleUser {
-			if text, ok := photoNotes(am.Content); ok {
+			if text, ok := partNotes(am.Content); ok {
 				body, _ := json.Marshal(map[string]string{"id": am.ID, "role": "user", "content": text})
 				out = append(out, body)
 				continue
@@ -409,17 +406,14 @@ func rebuild(msgs []Message) []json.RawMessage {
 	return out
 }
 
-func photoNotes(content json.RawMessage) (string, bool) {
-	var parts []contentPart
+func partNotes(content json.RawMessage) (string, bool) {
+	var parts []ContentPart
 	if json.Unmarshal(content, &parts) != nil {
 		return "", false
 	}
 	texts := make([]string, len(parts))
 	for i, p := range parts {
-		texts[i] = p.Text
-		if p.Type == "image" {
-			texts[i] = notePhoto
-		}
+		texts[i] = partText(p)
 	}
 	return strings.Join(texts, "\n"), true
 }
@@ -586,6 +580,7 @@ func add(a, b Usage) Usage {
 		HelperInputTokens: a.HelperInputTokens + b.HelperInputTokens, HelperOutputTokens: a.HelperOutputTokens + b.HelperOutputTokens,
 		HelperCacheReadTokens:  a.HelperCacheReadTokens + b.HelperCacheReadTokens,
 		HelperCacheWriteTokens: a.HelperCacheWriteTokens + b.HelperCacheWriteTokens,
+		TranscriptionSeconds:   a.TranscriptionSeconds + b.TranscriptionSeconds,
 	}
 }
 

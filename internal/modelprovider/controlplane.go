@@ -183,11 +183,12 @@ func (s *ModelProviderService) toProto(ctx context.Context, p *Provider) (*model
 func inputFromProto(name string, kind modelproviderv1.ModelProviderKind, baseURL string, models []*modelproviderv1.Model) Input {
 	out := Input{Name: name, Kind: kindFromProto(kind), BaseURL: baseURL, Models: make([]Model, 0, len(models))}
 	for _, m := range models {
-		model := Model{ID: m.GetId(), Vision: m.GetVision(), Embedding: m.GetEmbedding()}
+		model := Model{ID: m.GetId(), Vision: m.GetVision(), Embedding: m.GetEmbedding(), Transcription: m.GetTranscription()}
 		if pr := m.GetPrices(); pr != nil {
 			model.Prices = &Prices{
 				InputMicros: pr.GetInputMicros(), OutputMicros: pr.GetOutputMicros(),
 				CacheReadMicros: pr.GetCacheReadMicros(), CacheWriteMicros: pr.GetCacheWriteMicros(),
+				AudioMinuteMicros: pr.GetAudioMinuteMicros(),
 			}
 		}
 		out.Models = append(out.Models, model)
@@ -221,11 +222,12 @@ func kindToProto(k Kind) modelproviderv1.ModelProviderKind {
 func providerToProto(p *Provider, orgPublicID, projectPublicID string) *modelproviderv1.ModelProvider {
 	models := make([]*modelproviderv1.Model, 0, len(p.Models))
 	for _, m := range p.Models {
-		out := &modelproviderv1.Model{Id: m.ID, Vision: m.Vision, Embedding: m.Embedding}
+		out := &modelproviderv1.Model{Id: m.ID, Vision: m.Vision, Embedding: m.Embedding, Transcription: m.Transcription}
 		if m.Prices != nil {
 			out.Prices = &modelproviderv1.ModelPrices{
 				InputMicros: m.Prices.InputMicros, OutputMicros: m.Prices.OutputMicros,
 				CacheReadMicros: m.Prices.CacheReadMicros, CacheWriteMicros: m.Prices.CacheWriteMicros,
+				AudioMinuteMicros: m.Prices.AudioMinuteMicros,
 			}
 		}
 		models = append(models, out)

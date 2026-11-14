@@ -484,6 +484,10 @@ components:
           type: boolean
           title: embedding
           description: embedding marks a model that turns text into vectors, for knowledge search.
+        transcription:
+          type: boolean
+          title: transcription
+          description: transcription marks a model that turns speech into text, for voice notes; it needs prices, excludes vision and embedding, and only an OpenAI-compatible provider serves one.
       title: Model
       required:
         - id
@@ -520,9 +524,17 @@ components:
           title: cache_write_micros
           minimum: 0
           format: int64
+        audioMinuteMicros:
+          type:
+            - integer
+            - string
+          title: audio_minute_micros
+          minimum: 0
+          format: int64
+          description: audio_minute_micros prices a transcription model per audio minute; 0 means free, so set it for any billed provider.
       title: ModelPrices
       additionalProperties: false
-      description: ModelPrices are integer micro-USD per 1M tokens, per token class, in the platform currency USD. Cost micros are ceil(tokens x price / 1 000 000) per class, summed; cents are ceil(micros / 10 000).
+      description: 'ModelPrices are integer micro-USD per 1M tokens, per token class, in the platform currency USD. Cost micros are ceil(tokens x price / 1 000 000) per class, summed; cents are ceil(micros / 10 000). A transcription model is priced per audio minute instead: ceil(seconds x audio_minute_micros / 60).'
     modelprovider.v1.ModelProvider:
       type: object
       properties:
