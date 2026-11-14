@@ -53,6 +53,7 @@ export interface ConnectionPatch {
   quietMs?: number;
   quietMaxMs?: number;
   replies?: ReplyTexts;
+  voiceReply?: string;
   enabled?: boolean;
 }
 
@@ -101,6 +102,7 @@ export function patchRequest(id: string, patch: ConnectionPatch) {
     ...(patch.quietMs !== undefined ? { quietWindowMs: patch.quietMs } : {}),
     ...(patch.quietMaxMs !== undefined ? { quietMaxMs: patch.quietMaxMs } : {}),
     ...(patch.replies ? { replyFailure: patch.replies.failure.trim(), replyVoice: patch.replies.voice.trim(), replyPhotoUnreadable: patch.replies.photo.trim(), approvalPrompt: patch.replies.approvalPrompt.trim(), approvalExpired: patch.replies.approvalExpired.trim() } : {}),
+    ...(patch.voiceReply !== undefined ? { replyVoice: patch.voiceReply.trim() } : {}),
     ...(patch.enabled !== undefined ? { enabled: patch.enabled } : {}),
   };
 }

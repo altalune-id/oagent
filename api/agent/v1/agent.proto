@@ -115,12 +115,14 @@ message AgentEffective {
   int32 knowledge_max_tokens = 4;
 }
 
-// AgentDefaults are the recommended agent config values and their ranges; the knowledge tuning defaults come from ListKnowledgeSources.
+// AgentDefaults are the recommended agent config values, their ranges and the voice note limits; the knowledge tuning defaults come from ListKnowledgeSources.
 message AgentDefaults {
   int32 max_steps = 1;
   int32 max_max_steps = 2;
   double max_temperature = 3;
   int32 max_cost_cents = 4;
+  int32 voice_note_max_seconds = 5;
+  int32 voice_note_max_bytes = 6;
 }
 
 // AgentTool is a tool the agent may call; require_approval makes a person approve each call, and free_when lets a call run without asking when every condition holds.

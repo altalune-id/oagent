@@ -5,7 +5,7 @@ import { useToast } from '#base/components/ui/toast';
 import { ModelProviderKind } from '#gen/modelprovider/v1/modelprovider_pb';
 import { connectError, setKnownKeys } from '#test/nuxt-globals';
 import { useModelProvidersStore } from '~/stores/modelProviders';
-import { ANTHROPIC_URL, hasMorePrices, hasPrice, kindKey, toPrices, useProviderForm } from './useProviderForm';
+import { ANTHROPIC_URL, flagLocks, hasMorePrices, hasPrice, hasTranscriptionRow, isTranscriptionRow, kindKey, toPrices, useProviderForm } from './useProviderForm';
 
 const orgId = 'V3StGXR8Z5jdHj6BmyT2a';
 const projectId = 'x6MH9WPWjktMwCBKHy4pF';
@@ -24,8 +24,8 @@ describe('provider helpers', () => {
 
   it('opens More prices only for a row with a cache price', () => {
     const prices = { ...blank, input: '1', output: '2' };
-    expect(hasMorePrices({ key: 1, id: 'a', vision: false, embedding: false, transcription: false, prices })).toBe(false);
-    expect(hasMorePrices({ key: 1, id: 'a', vision: false, embedding: false, transcription: false, prices: { ...prices, cacheWrite: '0.5' } })).toBe(true);
+    expect(hasMorePrices({ key: 1, id: 'a', vision: false, embedding: false, transcription: false, audioPrice: '', prices })).toBe(false);
+    expect(hasMorePrices({ key: 1, id: 'a', vision: false, embedding: false, transcription: false, audioPrice: '', prices: { ...prices, cacheWrite: '0.5' } })).toBe(true);
   });
 
   it('reads USD per 1M tokens into micro-USD: all empty is unpriced, an empty cache price is zero', () => {
@@ -107,6 +107,111 @@ describe('useProviderForm', () => {
     clients.provider.updateModelProvider.mockClear();
     expect(await plain.submit()).toBe(true);
     expect(sent.slice(0, -1)).toEqual(clients.provider.updateModelProvider.mock.calls[0]![0].models);
+  });
+
+  it('makes Transcription exclusive with Vision and Embedding, clearing them when it is turned on', () => {
+    const form = useProviderForm(orgId, projectId);
+    form.show();
+    const row = form.models.value[0]!;
+    expect(flagLocks(row, false)).toEqual({ vision: false, embedding: false, transcription: false });
+    row.vision = true;
+    expect(flagLocks(row, false)).toEqual({ vision: false, embedding: false, transcription: true });
+    row.vision = false;
+    row.embedding = true;
+    expect(flagLocks(row, false).transcription).toBe(true);
+    row.vision = true;
+    form.setTranscription(row, true);
+    expect([row.transcription, row.vision, row.embedding]).toEqual([true, false, false]);
+    expect(flagLocks(row, false)).toEqual({ vision: true, embedding: true, transcription: false });
+    expect(hasTranscriptionRow(form.models.value, false)).toBe(true);
+    expect(hasTranscriptionRow(form.models.value, true)).toBe(false);
+    form.setTranscription(row, false);
+    expect(flagLocks(row, false)).toEqual({ vision: false, embedding: false, transcription: false });
+    expect(hasTranscriptionRow(form.models.value, false)).toBe(false);
+  });
+
+  it('unlocks Vision once a ticked Transcription is hidden by switching to Anthropic, and saves Vision as ticked', async () => {
+    clients.provider.createModelProvider.mockResolvedValue({ modelProvider: providerPBs()[2] });
+    const form = useProviderForm(orgId, projectId);
+    form.show();
+    const row = form.models.value[0]!;
+    form.setTranscription(row, true);
+    form.setKind(ModelProviderKind.ANTHROPIC);
+    expect(flagLocks(row, form.anthropic.value).vision).toBe(false);
+    row.vision = true;
+    row.id = 'claude';
+    row.prices.input = '3';
+    row.prices.output = '15';
+    form.name.value = 'Claude';
+    form.key.value = 'k';
+    expect(await form.submit()).toBe(true);
+    expect(clients.provider.createModelProvider.mock.calls[0]![0].models[0]).toMatchObject({ id: 'claude', vision: true, transcription: false });
+  });
+
+  it('prices a transcription model per minute only: required, zero or more, at most six decimals, sent with zero token prices', async () => {
+    clients.provider.createModelProvider.mockResolvedValue({ modelProvider: providerPBs()[0] });
+    const form = useProviderForm(orgId, projectId);
+    form.show();
+    form.name.value = 'STT';
+    form.baseUrl.value = 'https://api.openai.com/v1';
+    form.key.value = 'k';
+    const row = form.models.value[0]!;
+    row.id = 'whisper-1';
+    row.prices.input = '9';
+    row.prices.output = 'junk';
+    form.setTranscription(row, true);
+    expect(isTranscriptionRow(row, form.anthropic.value)).toBe(true);
+    for (const bad of ['', '-1', '0.0000001', 'abc']) {
+      row.audioPrice = bad;
+      expect(await form.submit()).toBe(false);
+      expect(form.modelErrors.value).toEqual({ [row.key]: 'providers.price_audio_minute_invalid' });
+      expect(form.priceErrors.value).toEqual([row.key]);
+    }
+    form.setTranscription(row, false);
+    expect(form.priceErrors.value).toEqual([]);
+    expect(form.modelErrors.value).toEqual({});
+    form.setTranscription(row, true);
+    row.audioPrice = '0';
+    expect(await form.submit()).toBe(true);
+    expect(clients.provider.createModelProvider.mock.calls[0]![0].models[0]).toMatchObject({ id: 'whisper-1', vision: false, embedding: false, transcription: true, prices: { inputMicros: 0n, outputMicros: 0n, cacheReadMicros: 0n, cacheWriteMicros: 0n, audioMinuteMicros: 0n } });
+    form.show();
+    form.name.value = 'STT';
+    form.baseUrl.value = 'https://api.openai.com/v1';
+    form.key.value = 'k';
+    form.models.value[0]!.id = 'whisper-1';
+    form.setTranscription(form.models.value[0]!, true);
+    form.models.value[0]!.audioPrice = '0.006';
+    expect(await form.submit()).toBe(true);
+    expect(clients.provider.createModelProvider.mock.calls[1]![0].models[0].prices).toMatchObject({ audioMinuteMicros: 6_000n });
+  });
+
+  it('shows a stored per-minute price on edit and sends it back with the flag', () => {
+    const base = useModelProvidersStore().items[0]!;
+    const form = useProviderForm(orgId, projectId);
+    form.show({ ...base, models: [{ id: 'whisper-1', vision: false, embedding: false, transcription: true, prices: { inputMicros: 0n, outputMicros: 0n, cacheReadMicros: 0n, cacheWriteMicros: 0n, audioMinuteMicros: 6_000n } }, base.models[0]!] });
+    expect(form.models.value[0]!.audioPrice).toBe('0.006');
+    expect(form.models.value[1]!.audioPrice).toBe('');
+  });
+
+  it('treats a hidden Transcription flag on an Anthropic provider as a chat model, with token prices', async () => {
+    const store = useModelProvidersStore();
+    const anthropic = store.items.find(p => p.kind === ModelProviderKind.ANTHROPIC)!;
+    clients.provider.updateModelProvider.mockResolvedValue({ modelProvider: providerPBs()[2] });
+    const form = useProviderForm(orgId, projectId);
+    form.show(anthropic);
+    const row = form.models.value[0]!;
+    row.transcription = true;
+    row.audioPrice = '';
+    row.prices.input = '3';
+    row.prices.output = '15';
+    expect(isTranscriptionRow(row, form.anthropic.value)).toBe(false);
+    expect(await form.submit()).toBe(true);
+    const sent = clients.provider.updateModelProvider.mock.calls[0]![0].models[0];
+    expect(sent.transcription).toBe(false);
+    expect(sent.prices).toMatchObject({ inputMicros: 3_000_000n, outputMicros: 15_000_000n, audioMinuteMicros: 0n });
+    row.prices.output = 'bad';
+    expect(await form.submit()).toBe(false);
+    expect(form.modelErrors.value).toEqual({ [row.key]: 'providers.price_invalid' });
   });
 
   it('creates a provider with a trimmed key and priced models, then clears the key', async () => {

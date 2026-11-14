@@ -6,9 +6,10 @@ import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { fakeKnowledgeClient } from '~~/test/fixtures/knowledge';
-import { fakeRuntimeClients } from '~~/test/fixtures/runtime';
+import { fakeRuntimeClients, providerPBs } from '~~/test/fixtures/runtime';
 import { useToast } from '#base/components/ui/toast';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
+import { ModelProviderKind, ModelProviderSchema } from '#gen/modelprovider/v1/modelprovider_pb';
 import { mountPage } from '#test/mount-page';
 import { connectError, setClient, setKnownKeys, setRoute } from '#test/nuxt-globals';
 import ConfigurePage from '~/pages/o/[org]/projects/[project]/agents/[agent]/index.vue';
@@ -153,7 +154,7 @@ const sampleGrants = ['record_expense', 'record_income', 'record_transfer', 'del
 const sampleDraft = wireConfig({ instructions: 'Catat pengeluaran.', providerId: openrouter, model: 'openai/gpt-4.1-mini', maxCostCents: 10, mcpServers: [{ serverId: yasakuServer, tools: sampleGrants, missing: false }] });
 
 // agentDefaults differ from the shipped ones, so a hard-coded number fails a test.
-const agentDefaults = { maxSteps: 25, maxMaxSteps: 60, maxTemperature: 1.5, maxCostCents: 50_000 };
+const agentDefaults = { maxSteps: 25, maxMaxSteps: 60, maxTemperature: 1.5, maxCostCents: 50_000, voiceNoteMaxSeconds: 240, voiceNoteMaxBytes: 3 * 1024 * 1024 };
 
 function withDraft(publishedVersion = 12, extra: Record<string, unknown> = {}, liveConfig = live) {
   const agent = { ...support, draft: { ...live, instructions: 'Help more.' }, publishedVersion, unpublishedChanges: true, ...extra };
@@ -226,7 +227,7 @@ describe('configure page', () => {
     await flushPromises();
     expect(document.activeElement).toBe(w.get('#configure-model select[data-field="model"]').element);
     const nav = w.get('nav[aria-label="configure.sections"]');
-    expect(nav.findAll('a').map(a => a.attributes('href'))).toEqual(['#configure-instructions', '#configure-model', '#configure-tools', '#configure-web', '#configure-memory', '#configure-limits']);
+    expect(nav.findAll('a').map(a => a.attributes('href'))).toEqual(['#configure-instructions', '#configure-model', '#configure-voice', '#configure-tools', '#configure-web', '#configure-memory', '#configure-limits']);
     await nav.get('select').setValue('configure-limits');
     expect(document.activeElement).toBe(w.get('#configure-limits input').element);
     expect(w.get('#configure-web').text()).toContain('configure.preview_section');
@@ -493,6 +494,114 @@ describe('configure page', () => {
     expect(err).toBeDefined();
     expect(w.text().match(/apperror\.AGT007_memory_store_disabled/g)).toHaveLength(1);
     vi.useRealTimers();
+  });
+
+  describe('voice notes', () => {
+    const sttId = 'Pv2sTt7QxR4mLk8WnB3cZ';
+    const zero = { inputMicros: 0n, outputMicros: 0n, cacheReadMicros: 0n, cacheWriteMicros: 0n };
+    function withStt() {
+      runtimeClients.provider.listModelProviders.mockResolvedValue({ modelProviders: [...providerPBs(), create(ModelProviderSchema, { id: sttId, orgId, projectId, name: 'Speech', kind: ModelProviderKind.OPENAI_COMPATIBLE, baseUrl: 'https://api.openai.com/v1', apiKeySet: true, models: [{ id: 'whisper-1', transcription: true, prices: { ...zero, audioMinuteMicros: 6_000n } }, { id: 'free-stt', transcription: true, prices: zero }] })] });
+    }
+    const voiceSelect = (w: Awaited<ReturnType<typeof mountPage>>) => w.get('#configure-voice select[data-field="voice"]');
+
+    it('lists Voice notes right after Model in the section nav', async () => {
+      asSample();
+      const w = await mountPage(ConfigurePage);
+      const labels = w.findAll('nav li a').map(a => a.text());
+      expect(labels.indexOf('configure.voice')).toBe(labels.indexOf('configure.model') + 1);
+      w.unmount();
+    });
+
+    it('keeps only Off, disabled, with a providers link when no model is marked Transcription', async () => {
+      asSample();
+      const w = await mountPage(ConfigurePage);
+      const select = voiceSelect(w);
+      expect(select.findAll('option').map(o => o.text())).toEqual(['configure.voice_off']);
+      expect(select.attributes('disabled')).toBeDefined();
+      const voice = w.get('#configure-voice');
+      expect(voice.text()).toContain('configure.voice_no_models');
+      expect(voice.findAllComponents(RouterLinkStub).some(l => l.props('to') === '/o/acme/projects/web/settings/model-providers')).toBe(true);
+      const hint = select.attributes('aria-describedby')!.split(' ')[0]!;
+      expect(w.get(`#${hint}`).element.textContent!.trim().split(/\s+(?=configure\.|providers\.)/)).toEqual(['configure.voice_no_models', 'configure.voice_hint|{"max_minutes":"4","max_size":"3 MiB","reply":"channels.reply_voice"}', 'configure.voice_reply_link|{"reply":"channels.reply_voice"}', 'providers.title']);
+      w.unmount();
+    });
+
+    it('offers each transcription model by provider, saves the pick with its price, limits and links, and lists it at Publish', async () => {
+      vi.useFakeTimers();
+      withStt();
+      const client = asSample();
+      const w = await mountPage(ConfigurePage, { attachTo: document.body });
+      const select = voiceSelect(w);
+      expect(select.findAll('option').map(o => o.text())).toEqual(['configure.voice_off', 'configure.voice_option|{"model":"free-stt","provider":"Speech"}', 'configure.voice_option|{"model":"whisper-1","provider":"Speech"}']);
+      const voice = w.get('#configure-voice');
+      expect(voice.text()).toContain('configure.voice_hint|{"max_minutes":"4","max_size":"3 MiB","reply":"channels.reply_voice"}');
+      const hrefs = voice.findAllComponents(RouterLinkStub).map(l => l.props('to'));
+      expect(hrefs).toEqual(expect.arrayContaining(['/o/acme/projects/web/agents/yasaku-keuangan/channels', '/o/acme/projects/web/settings/model-providers']));
+      await select.setValue(`${sttId}|whisper-1`);
+      expect(voice.text()).toContain('configure.voice_price|{"price":"0.006"}');
+      const hint = w.get(`#${select.attributes('aria-describedby')!.split(' ')[0]}`).element.textContent!.trim();
+      expect(hint.split(/\s+(?=configure\.|providers\.)/).map(s => s.split('|')[0])).toEqual(['configure.voice_price', 'configure.voice_hint', 'configure.voice_reply_link', 'providers.title']);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(client.updateAgentDraft).toHaveBeenLastCalledWith(expect.objectContaining({ config: expect.objectContaining({ transcriptionModel: { providerId: sttId, model: 'whisper-1' } }) }));
+      await select.setValue(`${sttId}|free-stt`);
+      expect(voice.text()).toContain('configure.voice_free');
+      await button(w, 'configure.publish').trigger('click');
+      expect(openDialog().textContent).toContain('configure.change_transcription_on|{"model":"free-stt · Speech"}');
+      vi.useRealTimers();
+      w.unmount();
+    });
+
+    it('turns voice notes off by picking Off', async () => {
+      vi.useFakeTimers();
+      withStt();
+      const client = asSample({ ...sampleDraft, transcriptionModel: { providerId: sttId, model: 'whisper-1', providerMissing: false } });
+      const w = await mountPage(ConfigurePage);
+      expect((voiceSelect(w).element as HTMLSelectElement).value).toBe(`${sttId}|whisper-1`);
+      await voiceSelect(w).setValue('');
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(client.updateAgentDraft.mock.calls.at(-1)![0].config).not.toHaveProperty('transcriptionModel');
+      vi.useRealTimers();
+      w.unmount();
+    });
+
+    it('keeps a model whose provider was deleted as a stale option and says it turns off at the next save', async () => {
+      withStt();
+      asSample({ ...sampleDraft, transcriptionModel: { providerId: '', model: 'whisper-1', providerMissing: true } });
+      const w = await mountPage(ConfigurePage);
+      const select = voiceSelect(w);
+      expect(select.findAll('option').map(o => o.text())).toContain('whisper-1');
+      expect((select.element as HTMLSelectElement).selectedOptions[0]!.text).toBe('whisper-1');
+      expect(w.get('#configure-voice').text()).toContain('configure.voice_provider_missing|{"model":"whisper-1"}');
+      w.unmount();
+    });
+
+    it('warns when the set model is no longer marked Transcription, keeping it as a stale option', async () => {
+      withStt();
+      asSample({ ...sampleDraft, transcriptionModel: { providerId: openrouter, model: 'openai/gpt-4.1-mini', providerMissing: false } });
+      const w = await mountPage(ConfigurePage);
+      expect((voiceSelect(w).element as HTMLSelectElement).selectedOptions[0]!.text).toBe('configure.voice_option|{"model":"openai/gpt-4.1-mini","provider":"OpenRouter"}');
+      expect(w.get('#configure-voice').text()).toContain('configure.voice_model_removed|{"model":"openai/gpt-4.1-mini","provider":"OpenRouter"}');
+      w.unmount();
+    });
+
+    it('places an AGT007 transcription_model refusal under the voice notes select', async () => {
+      vi.useFakeTimers();
+      withStt();
+      setKnownKeys('apperror.AGT007_transcription_model');
+      const client = asSample();
+      client.updateAgentDraft.mockRejectedValue(connectError('AGT007', { reason: 'transcription_model' }));
+      const w = await mountPage(ConfigurePage);
+      await voiceSelect(w).setValue(`${sttId}|whisper-1`);
+      await vi.advanceTimersByTimeAsync(1000);
+      await flushPromises();
+      const select = voiceSelect(w);
+      expect(select.attributes('aria-invalid')).toBe('true');
+      expect(select.classes()).toContain('select-error');
+      const err = select.attributes('aria-describedby')!.split(' ').map(id => w.find(`#${id}`)).find(e => e.exists() && e.text() === 'apperror.AGT007_transcription_model');
+      expect(err).toBeDefined();
+      expect(w.text().match(/apperror\.AGT007_transcription_model/g)).toHaveLength(1);
+      vi.useRealTimers();
+    });
   });
 
   it('places an AGT007 refusal under the field it names', async () => {

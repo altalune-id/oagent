@@ -7,7 +7,7 @@ import FieldError from '#base/components/ui/FieldError.vue';
 import KeyValue from '#base/components/ui/KeyValue.vue';
 import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { describedBy } from '~/lib/names/names';
-import { hasMorePrices, kindKey, mainPriceKeys, morePriceKeys, providerKinds } from './useProviderForm';
+import { flagLocks, hasMorePrices, hasTranscriptionRow, isTranscriptionRow, kindKey, mainPriceKeys, morePriceKeys, providerKinds } from './useProviderForm';
 
 const { form, readOnly = false } = defineProps<{ form: ReturnType<typeof useProviderForm>, readOnly?: boolean }>();
 
@@ -125,33 +125,56 @@ const facts = computed(() => editing.value
                 <input v-model="m.id" type="text" class="input input-sm w-full font-mono text-xs" :class="{ 'input-error': modelErrors[m.key] && !priceErrors.includes(m.key) }" :placeholder="placeholders.model" :aria-invalid="!!modelErrors[m.key] && !priceErrors.includes(m.key)" :aria-describedby="describedBy(!!modelErrors[m.key] && `${ids.models}-${m.key}`)">
               </label>
               <div class="flex flex-wrap items-end gap-2">
-                <label v-for="k in mainPriceKeys" :key="k" class="flex w-28 flex-col gap-1">
-                  <span class="label text-xs text-base-content">{{ priceLabels[k] }}</span>
+                <label v-if="isTranscriptionRow(m, anthropic)" class="flex w-36 flex-col gap-1">
+                  <span class="label text-xs text-base-content">{{ t('providers.price_audio_minute') }}</span>
                   <span class="input input-sm w-full tabular-nums" :class="{ 'input-error': priceErrors.includes(m.key) }">
                     <span aria-hidden="true">$</span>
-                    <input v-model="m.prices[k]" type="text" inputmode="decimal" :aria-invalid="priceErrors.includes(m.key)" :aria-label="t('providers.price_for', { kind: priceLabels[k], model: m.id || '…' })" :aria-describedby="describedBy(!!modelErrors[m.key] && `${ids.models}-${m.key}`)">
+                    <input v-model="m.audioPrice" type="text" inputmode="decimal" :aria-invalid="priceErrors.includes(m.key)" :aria-label="t('providers.price_for', { kind: t('providers.price_audio_minute'), model: m.id || '…' })" :aria-describedby="describedBy(!!modelErrors[m.key] && `${ids.models}-${m.key}`)">
                   </span>
                 </label>
+                <template v-else>
+                  <label v-for="k in mainPriceKeys" :key="k" class="flex w-28 flex-col gap-1">
+                    <span class="label text-xs text-base-content">{{ priceLabels[k] }}</span>
+                    <span class="input input-sm w-full tabular-nums" :class="{ 'input-error': priceErrors.includes(m.key) }">
+                      <span aria-hidden="true">$</span>
+                      <input v-model="m.prices[k]" type="text" inputmode="decimal" :aria-invalid="priceErrors.includes(m.key)" :aria-label="t('providers.price_for', { kind: priceLabels[k], model: m.id || '…' })" :aria-describedby="describedBy(!!modelErrors[m.key] && `${ids.models}-${m.key}`)">
+                    </span>
+                  </label>
+                </template>
                 <AppButton variant="ghost" size="sm" square class="ms-auto sm:ms-0" :disabled="models.length === 1" :aria-label="t('providers.remove_model', { model: m.id || '…' })" :title="t('providers.remove_model', { model: m.id || '…' })" @click="form.removeModel(m.key)">
                   <Icon name="lucide:x" size="14" aria-hidden="true" />
                 </AppButton>
               </div>
             </div>
             <FieldError :id="`${ids.models}-${m.key}`" :message="modelErrors[m.key]" />
-            <label class="flex items-center gap-2 text-xs">
-              <input v-model="m.vision" type="checkbox" class="checkbox checkbox-sm rounded-sm" :aria-label="t('providers.vision_for', { model: m.id || '…' })">
-              {{ t('providers.vision') }}
-            </label>
+            <div class="flex flex-col gap-1">
+              <label class="flex items-center gap-2 text-xs">
+                <input v-model="m.vision" type="checkbox" class="checkbox checkbox-sm rounded-sm" :disabled="flagLocks(m, anthropic).vision" :aria-label="t('providers.vision_for', { model: m.id || '…' })" :aria-describedby="describedBy(flagLocks(m, anthropic).vision && `${ids.models}-${m.key}-vision`)">
+                {{ t('providers.vision') }}
+              </label>
+              <p v-if="flagLocks(m, anthropic).vision" :id="`${ids.models}-${m.key}-vision`" class="ps-7 text-xs text-base-content/70">
+                {{ t('providers.flag_off_transcription') }}
+              </p>
+            </div>
             <div v-if="!anthropic" class="flex flex-col gap-1">
               <label class="flex items-center gap-2 text-xs">
-                <input v-model="m.embedding" type="checkbox" class="checkbox checkbox-sm rounded-sm" :aria-label="t('providers.embedding_for', { model: m.id || '…' })" :aria-describedby="`${ids.models}-${m.key}-embedding`">
+                <input v-model="m.embedding" type="checkbox" class="checkbox checkbox-sm rounded-sm" :disabled="flagLocks(m, anthropic).embedding" :aria-label="t('providers.embedding_for', { model: m.id || '…' })" :aria-describedby="`${ids.models}-${m.key}-embedding`">
                 {{ t('providers.embedding') }}
               </label>
               <p :id="`${ids.models}-${m.key}-embedding`" class="ps-7 text-xs text-base-content/70">
-                {{ t('providers.embedding_hint') }}
+                {{ t(flagLocks(m, anthropic).embedding ? 'providers.flag_off_transcription' : 'providers.embedding_hint') }}
               </p>
             </div>
-            <details class="collapse collapse-arrow rounded-box bg-base-200" :open="openPrices.has(m.key) || undefined">
+            <div v-if="!anthropic" class="flex flex-col gap-1">
+              <label class="flex items-center gap-2 text-xs">
+                <input :checked="m.transcription" type="checkbox" class="checkbox checkbox-sm rounded-sm" :disabled="flagLocks(m, anthropic).transcription" :aria-label="t('providers.transcription_for', { model: m.id || '…' })" :aria-describedby="`${ids.models}-${m.key}-transcription`" @change="form.setTranscription(m, ($event.target as HTMLInputElement).checked)">
+                {{ t('providers.transcription') }}
+              </label>
+              <p :id="`${ids.models}-${m.key}-transcription`" class="ps-7 text-xs text-base-content/70">
+                {{ t('providers.transcription_hint') }}
+              </p>
+            </div>
+            <details v-if="!isTranscriptionRow(m, anthropic)" class="collapse collapse-arrow rounded-box bg-base-200" :open="openPrices.has(m.key) || undefined">
               <summary class="collapse-title min-h-0 py-2 text-xs font-medium">
                 {{ t('providers.more_prices') }}
               </summary>
@@ -169,6 +192,9 @@ const facts = computed(() => editing.value
         </ul>
         <p class="text-xs text-base-content/70">
           {{ t('providers.price_unit') }}
+        </p>
+        <p v-if="hasTranscriptionRow(models, anthropic)" class="text-xs text-base-content/70">
+          {{ t('providers.price_unit_audio') }}
         </p>
         <p v-if="anthropic" class="text-xs text-base-content/70">
           {{ t('providers.cache_write_hint') }}

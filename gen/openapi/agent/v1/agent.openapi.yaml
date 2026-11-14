@@ -443,9 +443,17 @@ components:
           type: integer
           title: max_cost_cents
           format: int32
+        voiceNoteMaxSeconds:
+          type: integer
+          title: voice_note_max_seconds
+          format: int32
+        voiceNoteMaxBytes:
+          type: integer
+          title: voice_note_max_bytes
+          format: int32
       title: AgentDefaults
       additionalProperties: false
-      description: AgentDefaults are the recommended agent config values and their ranges; the knowledge tuning defaults come from ListKnowledgeSources.
+      description: AgentDefaults are the recommended agent config values, their ranges and the voice note limits; the knowledge tuning defaults come from ListKnowledgeSources.
     agent.v1.AgentEffective:
       type: object
       properties:

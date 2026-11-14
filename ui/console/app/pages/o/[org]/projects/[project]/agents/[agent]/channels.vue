@@ -17,6 +17,7 @@ import { useConfirm } from '#base/composables/useConfirm';
 import { useDates } from '#base/composables/useDates';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { chosenModel } from '~/components/agent/configure/runtime';
+import { voiceChannelNotes } from '~/components/agent/configure/voiceNotes';
 import { useAgentPage } from '~/components/agent/useAgentPage';
 import OpenwaConnectModal from '~/components/channels/OpenwaConnectModal.vue';
 import { replyErrors, replyKeys, seconds, timingErrors, toMs } from '~/components/channels/replies';
@@ -45,6 +46,8 @@ const connection = computed(() => channels.connection(agent.value.id));
 const replace = useReplaceSecret(() => connection.value?.id);
 const published = computed(() => (agent.value.publishedVersion ?? 0) > 0);
 const unpublished = computed(() => !published.value || !!agent.value.unpublishedChanges);
+const voiceNotes = computed(() => voiceChannelNotes(agent.value.transcriptionModel, unpublished.value, channels.replies(agent.value.id).voice, t('channels.reply_voice')));
+const voiceLine = computed(() => [t(voiceNotes.value.hint.key, voiceNotes.value.hint.params), ...(voiceNotes.value.afterPublish ? [t('openwa.voice_after_publish')] : [])].join(' '));
 const vision = computed(() => !!chosenModel({ providerId: agent.value.providerId ?? '', model: agent.value.model ?? '' }, providers.items).model?.vision);
 const { apiUrl } = useRuntimeConfig().public;
 const endpoint = computed(() => new URL(`${(apiUrl || '/api').replace(/\/$/, '')}/v1/agents/${agent.value.id}/runs`, window.location.origin).href);
@@ -114,6 +117,22 @@ async function saveReplies() {
     await channels.update(connection.value.id, { replies: replies.value });
     replies.value = { ...channels.replies(agent.value.id) };
     toast.push('success', t('channels.replies_saved'));
+  } catch (e) {
+    toast.push('error', errorMessage(e, 'error.save_channel').message);
+  } finally {
+    savingReplies.value = false;
+  }
+}
+
+async function applyNewVoiceReply() {
+  if (!connection.value || savingReplies.value) {
+    return;
+  }
+  savingReplies.value = true;
+  try {
+    await channels.update(connection.value.id, { voiceReply: channels.settings.defaultReplies.voice });
+    replies.value = { ...replies.value, voice: channels.replies(agent.value.id).voice };
+    toast.push('success', t('channels.voice_reply_updated'));
   } catch (e) {
     toast.push('error', errorMessage(e, 'error.save_channel').message);
   } finally {
@@ -288,6 +307,12 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · 
             {{ t('try.pick_vision') }}
           </NuxtLink>
         </p>
+        <p role="note" class="text-xs text-base-content/70">
+          {{ voiceLine }}
+          <NuxtLink :to="`${base}#configure-voice`" class="link">
+            {{ t('configure.voice') }}
+          </NuxtLink>
+        </p>
         <p class="text-xs text-base-content/70">
           {{ t('openwa.who_may_talk') }}
         </p>
@@ -295,6 +320,13 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · 
 
       <template v-if="connection">
         <Section :title="t('channels.replies')">
+          <div v-if="voiceNotes.staleReply" role="note" class="alert alert-warning alert-soft alert-vertical text-base-content text-ui sm:alert-horizontal">
+            <Icon name="lucide:triangle-alert" size="16" class="shrink-0" aria-hidden="true" />
+            <span>{{ t('channels.voice_reply_old', { reply: t('channels.reply_voice') }) }}</span>
+            <AppButton v-if="canEdit" variant="plain" size="xs" :busy="savingReplies" @click="applyNewVoiceReply()">
+              {{ t('channels.voice_reply_update') }}
+            </AppButton>
+          </div>
           <ReplyTextsEditor v-model="replies" :defaults="channels.settings.defaultReplies" :labels="replyLabels" :errors="replyErrs" :read-only="!canEdit || savingReplies" @save="saveReplies()" />
         </Section>
 

@@ -1,8 +1,11 @@
 package agent
 
 import (
+	"time"
+
 	agentv1 "altalune.id/oagent/gen/go/agent/v1"
 	"altalune.id/oagent/internal/knowledge"
+	"altalune.id/oagent/internal/run"
 )
 
 // The agent config ranges and recommended values; a zero MaxSteps runs with RecommendedMaxSteps.
@@ -24,6 +27,7 @@ func (c Config) EffectiveMaxSteps() int32 {
 func defaultsToProto() *agentv1.AgentDefaults {
 	return &agentv1.AgentDefaults{
 		MaxSteps: RecommendedMaxSteps, MaxMaxSteps: MaxSteps, MaxTemperature: MaxTemperature, MaxCostCents: MaxCostCents,
+		VoiceNoteMaxSeconds: int32(run.MaxVoiceLength / time.Second), VoiceNoteMaxBytes: run.MaxVoiceBytes,
 	}
 }
 

@@ -20,7 +20,7 @@
   "apperror.AGT007_provider": "Choose a model provider from this project",
   "apperror.AGT007_server": "Choose an MCP server from this project",
   "apperror.AGT007_tool_name": "A tool name is too long or uses characters a tool name cannot have",
-  "apperror.AGT007_transcription_model": "Choose a transcription model from this project's providers",
+  "apperror.AGT007_transcription_model": "Choose another voice notes model: the one set is gone, isn't marked Transcription, or its provider was deleted",
   "apperror.AGT007_unapproved_tool": "{name} runs without approval while this agent reads documents or memory; require approval, optionally with conditions",
   "apperror.AUT001": "Invalid email or password",
   "apperror.AUT002": "Password must be {min} to {max} characters",

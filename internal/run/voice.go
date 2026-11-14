@@ -100,7 +100,7 @@ func (s *Service) hear(ctx context.Context, t *turn, m ResolvedModel, model stri
 	switch {
 	case err != nil:
 		return skipped("unreadable")
-	case length > maxVoiceLength:
+	case length > MaxVoiceLength:
 		return skipped("too_long")
 	}
 	billed := max(int64((length+time.Second-1)/time.Second), 1)
@@ -129,7 +129,7 @@ func (s *Service) audioBytes(ctx context.Context, t *turn, p ContentPart) (data 
 	if p.Source != nil {
 		stored = p.Source.MimeType
 	}
-	return s.media.Fetch(ctx, t.thread.ConnectionID, p.ID, stored, maxVoiceBytes)
+	return s.media.Fetch(ctx, t.thread.ConnectionID, p.ID, stored, MaxVoiceBytes)
 }
 
 func (s *Service) storeTranscript(ctx context.Context, t *turn, v pendingVoice, tr transcript) error {

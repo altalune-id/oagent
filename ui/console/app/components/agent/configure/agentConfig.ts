@@ -73,12 +73,14 @@ export interface AgentLimits {
   maxMaxSteps?: number;
   maxTemperature?: number;
   maxCostCents?: number;
+  voiceNoteMaxSeconds?: number;
+  voiceNoteMaxBytes?: number;
 }
 
 // limitsOf reads the server's agent defaults, leaving out a missing or 0 field so no bound or hint is shown for it.
 export function limitsOf(d?: Required<AgentLimits>): AgentLimits {
   const set = (n?: number) => (n && n > 0 ? n : undefined);
-  return { maxSteps: set(d?.maxSteps), maxMaxSteps: set(d?.maxMaxSteps), maxTemperature: set(d?.maxTemperature), maxCostCents: set(d?.maxCostCents) };
+  return { maxSteps: set(d?.maxSteps), maxMaxSteps: set(d?.maxMaxSteps), maxTemperature: set(d?.maxTemperature), maxCostCents: set(d?.maxCostCents), voiceNoteMaxSeconds: set(d?.voiceNoteMaxSeconds), voiceNoteMaxBytes: set(d?.voiceNoteMaxBytes) };
 }
 
 interface WireConfig {
@@ -239,10 +241,13 @@ export function changes(draft: AgentConfig, live: AgentConfig | undefined, money
   const sttFrom = live.transcriptionModel;
   const sttTo = draft.transcriptionModel;
   if (sttTo.providerId !== sttFrom.providerId || sttTo.model !== sttFrom.model) {
+    const named = (tm: TranscriptionModel) => `${tm.model} · ${names.provider(tm.providerId)}`;
     if (!sttTo.providerId) {
       out.push({ key: 'configure.change_transcription_off' });
+    } else if (!sttFrom.providerId) {
+      out.push({ key: 'configure.change_transcription_on', params: { model: named(sttTo) } });
     } else {
-      out.push({ key: sttFrom.providerId ? 'configure.change_transcription_changed' : 'configure.change_transcription_on', params: { model: sttTo.model } });
+      out.push({ key: 'configure.change_transcription_changed', params: { from: named(sttFrom), to: named(sttTo) } });
     }
   }
   return out;

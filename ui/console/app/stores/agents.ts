@@ -1,4 +1,5 @@
 import type { ShownError } from '#base/lib/apperror/message';
+import type { TranscriptionModel } from '~/components/agent/configure/agentConfig';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { sampleAgents } from '~/preview/samples';
@@ -26,6 +27,7 @@ export interface Agent {
   unpublishedChanges?: boolean;
   providerId?: string;
   model?: string;
+  transcriptionModel?: TranscriptionModel;
   updatedAt?: Date;
 }
 
@@ -56,7 +58,7 @@ export const useAgentsStore = defineStore('agents', () => {
     items.value = items.value.filter(a => a.id !== id);
   }
 
-  function setPublishState(id: string, state: Pick<Agent, 'publishedVersion' | 'unpublishedChanges' | 'providerId' | 'model'>) {
+  function setPublishState(id: string, state: Pick<Agent, 'publishedVersion' | 'unpublishedChanges' | 'providerId' | 'model' | 'transcriptionModel'>) {
     items.value = items.value.map(a => (a.id === id ? { ...a, ...state } : a));
   }
 
@@ -83,6 +85,7 @@ export const useAgentsStore = defineStore('agents', () => {
         unpublishedChanges: a.unpublishedChanges,
         providerId: a.draft?.providerId ?? '',
         model: a.draft?.model ?? '',
+        transcriptionModel: { providerId: a.draft?.transcriptionModel?.providerId ?? '', model: a.draft?.transcriptionModel?.model ?? '', providerMissing: a.draft?.transcriptionModel?.providerMissing ?? false },
         updatedAt: a.draftUpdatedAt ? timestampDate(a.draftUpdatedAt) : a.updatedAt ? timestampDate(a.updatedAt) : undefined,
       }));
       loadedFor = projectId;

@@ -68,3 +68,49 @@ describe('chat transcript sides', () => {
     expect(rows.map(r => r.find('.badge').exists() && r.get('.badge').text())).toEqual(['run.draft', false]);
   });
 });
+
+describe('chat transcript voice notes', () => {
+  const user = (voice: object | undefined, extra: object = {}) => ({ id: 1, kind: 'user' as const, text: '', speaker: 'Budi', at, ...(voice ? { voice } : {}), ...extra });
+  const mountOne = (item: ReturnType<typeof user>) => mount(ChatTranscript, { props: { items: [item], agentName: 'Yasaku', youName: 'You', viewer: 'agent' as const } });
+
+  it('shows a transcribed note as its length and its words, with no badge', () => {
+    const w = mountOne(user({ status: 'done', text: 'catat kopi dua puluh ribu', seconds: 14 }, { text: 'struk' }));
+    const strip = w.get('[data-voice-strip]');
+    expect(strip.text()).toBe('thread.voice_label|{"duration":"0:14"}');
+    expect(strip.get('[aria-hidden="true"]').exists()).toBe(true);
+    const transcript = w.get('[data-voice-transcript]');
+    expect(transcript.text()).toBe('thread.voice_transcriptcatat kopi dua puluh ribu');
+    expect(transcript.element.textContent).toBe('thread.voice_transcriptcatat kopi dua puluh ribu');
+    expect(transcript.get('.sr-only').text()).toBe('thread.voice_transcript');
+    expect(w.get('.chat-bubble').text()).toContain('struk');
+    expect(w.find('.chat-header .badge').exists()).toBe(false);
+  });
+
+  it('shows why a note was not transcribed as a header badge, tinted only when an owner can fix it', () => {
+    const tooLong = mountOne(user({ status: 'skipped', reason: 'too_long' }));
+    expect(tooLong.get('[data-voice-strip]').text()).toBe('thread.voice_placeholder');
+    expect(tooLong.find('[data-voice-transcript]').exists()).toBe(false);
+    expect(tooLong.get('.chat-header .badge').text()).toBe('thread.voice_too_long');
+    expect(tooLong.get('.chat-header .badge').classes()).toContain('badge-ghost');
+    expect(tooLong.get('.chat-header').classes()).toEqual(expect.arrayContaining(['flex-wrap', 'gap-y-1']));
+    const budget = mountOne(user({ status: 'skipped', reason: 'over_budget' })).get('.chat-header .badge');
+    expect(budget.text()).toBe('thread.voice_over_budget');
+    expect(budget.classes()).toEqual(expect.arrayContaining(['badge-soft', 'badge-warning']));
+    expect(budget.classes()).not.toContain('badge-ghost');
+    expect(mountOne(user({ status: 'failed', reason: 'something_new' })).get('.chat-header .badge').text()).toBe('thread.voice_unknown');
+  });
+
+  it('shows a note with no transcript state as the plain strip, with no badge', () => {
+    const w = mountOne(user({}));
+    expect(w.get('[data-voice-strip]').text()).toBe('thread.voice_placeholder');
+    expect(w.find('.chat-header .badge').exists()).toBe(false);
+    expect(mountOne(user(undefined, { text: 'halo' })).find('[data-voice-strip]').exists()).toBe(false);
+  });
+
+  it('hides the strip and the transcript of a deleted message', () => {
+    const w = mountOne(user({ status: 'done', text: 'rahasia', seconds: 3 }, { deleted: true }));
+    expect(w.find('[data-voice-strip]').exists()).toBe(false);
+    expect(w.text()).not.toContain('rahasia');
+    expect(w.text()).toContain('chat.message_deleted');
+  });
+});

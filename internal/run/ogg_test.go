@@ -117,7 +117,7 @@ func TestOggDuration(t *testing.T) {
 func TestOggDuration_TooLongByPayload(t *testing.T) {
 	got, err := oggDuration(longPayload(t, 301))
 	require.NoError(t, err)
-	assert.Greater(t, got, maxVoiceLength, "301 one-second packets under a one-second granule still read as over 5 min")
+	assert.Greater(t, got, MaxVoiceLength, "301 one-second packets under a one-second granule still read as over 5 min")
 }
 
 func TestOggDuration_RealFile(t *testing.T) {

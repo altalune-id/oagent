@@ -25,6 +25,7 @@ export interface RunSummary {
   tokens: number;
   embeddingTokens?: number;
   helperTokens?: number;
+  transcriptionSeconds?: number;
   retrieveCalls?: number;
   retrieveMs?: number;
   retrievePassages?: number;
@@ -52,8 +53,15 @@ export interface Photo {
 
 export type SkipReason = 'stale' | 'sender_rate' | 'other';
 
+export interface VoiceNote {
+  status?: 'done' | 'failed' | 'skipped';
+  text?: string;
+  seconds?: number;
+  reason?: string;
+}
+
 export type TranscriptItem
-  = | { id: number, kind: 'user', text: string, speaker?: string, speakerId?: string, photo?: Photo, photoPlaceholder?: boolean, deleted?: boolean, skipped?: SkipReason, at?: Date }
+  = | { id: number, kind: 'user', text: string, speaker?: string, speakerId?: string, photo?: Photo, photoPlaceholder?: boolean, voice?: VoiceNote, deleted?: boolean, skipped?: SkipReason, at?: Date }
     | { id: number, kind: 'agent', text: string, streaming: boolean, failed?: boolean, at?: Date }
     | { id: number, kind: 'tool', name: string, args: Record<string, unknown>, result?: unknown, state: ToolState }
     | { id: number, kind: 'approval', approval: ApprovalRequest }

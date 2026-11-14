@@ -25,6 +25,7 @@ describe('channel wire mapping', () => {
   it('sends only what changed in an update, trimmed, and a device key only when one was typed', () => {
     expect(patchRequest('C1', { quietMs: 2_500 })).toEqual({ id: 'C1', quietWindowMs: 2_500 });
     expect(patchRequest('C1', { deviceKey: '  ' })).toEqual({ id: 'C1' });
+    expect(patchRequest('C1', { voiceReply: ' Ketik saja. ' })).toEqual({ id: 'C1', replyVoice: 'Ketik saja.' });
     expect(patchRequest('C1', { baseUrl: ' https://x.id ', deviceKey: ' k ', replies: { failure: ' a ', voice: 'b', photo: 'c', approvalPrompt: ' Setuju?\n{preview} ', approvalExpired: ' Kedaluwarsa. ' }, enabled: false }))
       .toEqual({ id: 'C1', baseUrl: 'https://x.id', deviceKey: 'k', replyFailure: 'a', replyVoice: 'b', replyPhotoUnreadable: 'c', approvalPrompt: 'Setuju?\n{preview}', approvalExpired: 'Kedaluwarsa.', enabled: false });
   });

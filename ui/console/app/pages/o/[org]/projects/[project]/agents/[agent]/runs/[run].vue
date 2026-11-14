@@ -101,6 +101,14 @@ useHead({ title: () => `${t('run.title', { id: runId.value })} · OAgent` });
             {{ count(run.embeddingTokens) }}
           </dd>
         </div>
+        <div v-if="run.transcriptionSeconds" class="flex items-baseline gap-1.5">
+          <dt class="text-base-content/70">
+            {{ t('run.transcription') }}
+          </dt>
+          <dd class="font-medium tabular-nums">
+            {{ seconds(run.transcriptionSeconds) }}
+          </dd>
+        </div>
         <div v-if="run.retrieveCalls" class="flex items-baseline gap-1.5">
           <dt class="text-base-content/70">
             {{ t('run.knowledge_search') }}

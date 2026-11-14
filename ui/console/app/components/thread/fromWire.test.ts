@@ -50,7 +50,8 @@ describe('thread wire mapping', () => {
     expect(toRunSummary(create(RunSchema, { id: 'r', status: RunStatus.FAILED, errorCode: 'RUN005' }), 'T')).toMatchObject({ status: 'failed', unpriced: true, estimated: false, tokens: 0, seconds: 0, costCents: 0, detail: { key: 'runstatus.detail_error', params: { code: 'RUN005' } }, startedAt: new Date(0) });
     expect(toRunSummary(create(RunSchema, { id: 'r', status: RunStatus.UNSPECIFIED }), 'T').status).toBe('running');
     expect(toRunSummary(create(RunSchema, { id: 'r', usage: { inputTokens: 10n, embeddingTokens: 120n }, knowledgeRetrieveCalls: 2, knowledgeRetrieveMs: 340n, knowledgePassages: 7 }), 'T')).toMatchObject({ tokens: 10, embeddingTokens: 120, retrieveCalls: 2, retrieveMs: 340, retrievePassages: 7 });
-    expect(toRunSummary(create(RunSchema, { id: 'r' }), 'T')).toMatchObject({ embeddingTokens: 0, retrieveCalls: 0, retrieveMs: 0, retrievePassages: 0 });
+    expect(toRunSummary(create(RunSchema, { id: 'r' }), 'T')).toMatchObject({ embeddingTokens: 0, retrieveCalls: 0, retrieveMs: 0, retrievePassages: 0, transcriptionSeconds: 0 });
+    expect(toRunSummary(create(RunSchema, { id: 'r', usage: { inputTokens: 10n, transcriptionSeconds: 42n } }), 'T')).toMatchObject({ tokens: 10, transcriptionSeconds: 42 });
     expect([toRunSummary(create(RunSchema, { id: 'r', agentVersionKind: 'draft' }), 'T').draft, toRunSummary(create(RunSchema, { id: 'r', agentVersionKind: 'published' }), 'T').draft]).toEqual([true, false]);
   });
 
@@ -86,14 +87,40 @@ describe('thread wire mapping', () => {
     ]);
   });
 
-  it('reads a voice note as the agent does: its transcript when done, else the plain note, the caption on its own line', () => {
+  it('reads a voice note as its own item: the transcript state apart from the caption, never the agent\'s note text', () => {
     const audio = (transcript?: JsonObject): JsonObject => ({ type: 'audio', id: 'wamid-1', source: { type: 'data', value: '', mimeType: 'audio/ogg' }, ...(transcript ? { metadata: { transcript } } : {}) });
+    const said = (content: JsonValue, extra: JsonObject = {}) => toItems([create(ThreadMessageSchema, { seq: 1n, role: 'user', message: { content, ...extra } })], [])[0];
+    expect(said([audio({ status: 'done', text: 'catat kopi', seconds: 3 })])).toMatchObject({ kind: 'user', text: '', voice: { status: 'done', text: 'catat kopi', seconds: 3 } });
+    expect(said([audio({ status: 'done', text: 'catat kopi', seconds: 3 }), { type: 'text', text: 'dengar' }])).toMatchObject({ text: 'dengar', voice: { status: 'done', text: 'catat kopi', seconds: 3 } });
+    expect(said([audio({ status: 'failed', reason: 'failed' })])).toMatchObject({ text: '', voice: { status: 'failed', reason: 'failed' } });
+    for (const reason of ['too_long', 'too_large', 'unsupported', 'unreadable', 'over_budget', 'unpriced', 'rate_limited']) {
+      expect(said([audio({ status: 'skipped', reason })])).toMatchObject({ text: '', voice: { status: 'skipped', reason } });
+    }
+    expect(said([audio({ status: 'skipped', text: 'stray', reason: 'too_long' })])).toMatchObject({ voice: { status: 'skipped', reason: 'too_long' } });
+    expect(said([audio({ status: 'skipped', text: 'stray', reason: 'too_long' })])).not.toHaveProperty('voice.text');
+    expect(said([audio({ status: 'done', seconds: 'x', text: 7, reason: 9 })])).toMatchObject({ voice: { status: 'done' } });
+    expect(said([audio({ status: 'done', seconds: 'x', text: 7, reason: 9 })])).not.toHaveProperty('voice.text');
+    expect(said([audio({ status: 'odd' })])).toMatchObject({ voice: {} });
+    expect(said([audio({ status: 'done', text: 'x', seconds: -1 })])).not.toHaveProperty('voice.seconds');
+    expect(said([audio({ status: 'done', text: 'x', seconds: Number.NaN })])).not.toHaveProperty('voice.seconds');
+    expect(said([audio({ status: 'done', text: 'x', seconds: 0 })])).toMatchObject({ voice: { seconds: 0 } });
+    expect(said([audio()])).toMatchObject({ text: '', voice: {} });
+    expect(said([audio({ status: 'done', text: 'first' }), audio({ status: 'done', text: 'second' })])).toMatchObject({ voice: { text: 'first' } });
+    expect(said([{ type: 'text', text: 'halo' }])).not.toHaveProperty('voice');
+  });
+
+  it('reads a voice note stored as text before transcription existed, keeping only its caption', () => {
     const said = (content: JsonValue) => toItems([create(ThreadMessageSchema, { seq: 1n, role: 'user', message: { content } })], [])[0];
-    expect(said('[voice note]')).toMatchObject({ kind: 'user', text: '[voice note]' });
-    expect(said([audio()])).toMatchObject({ text: '[voice note]' });
-    expect(said([audio({ status: 'failed', reason: 'too_long' })])).toMatchObject({ text: '[voice note]' });
-    expect(said([audio({ status: 'skipped', text: 'stray', reason: 'too_long' })])).toMatchObject({ text: '[voice note]' });
-    expect(said([audio({ status: 'done', text: 'catat kopi', seconds: 3 })])).toMatchObject({ text: '[voice note] catat kopi' });
-    expect(said([audio({ status: 'done', text: 'catat kopi', seconds: 3 }), { type: 'text', text: 'dengar' }])).toMatchObject({ text: '[voice note] catat kopi\ndengar' });
+    expect(said('[voice note]')).toMatchObject({ text: '', voice: {} });
+    expect(said('[voice note] tolong cek ')).toMatchObject({ text: 'tolong cek', voice: {} });
+    expect(said('halo')).toMatchObject({ text: 'halo' });
+    expect(said('halo')).not.toHaveProperty('voice');
+    expect(said('[voice note]s')).not.toHaveProperty('voice');
+    expect(said('[audio]')).toMatchObject({ text: '[audio]' });
+  });
+
+  it('keeps the group speaker on a voice note', () => {
+    const items = toItems([create(ThreadMessageSchema, { seq: 1n, role: 'user', speakerLabel: 'Budi', message: { content: [{ type: 'audio', id: 'w', metadata: { transcript: { status: 'done', text: 'oke', seconds: 2 } } }] } })], []);
+    expect(items[0]).toMatchObject({ speaker: 'Budi', voice: { status: 'done', text: 'oke', seconds: 2 } });
   });
 });

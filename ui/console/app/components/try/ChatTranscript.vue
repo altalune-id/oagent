@@ -5,6 +5,7 @@ import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import ApprovalCard from '~/components/approval/ApprovalCard.vue';
 import { shownName } from '~/components/enduser/forget';
 import { runDetailText, runFix, runStatusTone } from '~/components/thread/conversation';
+import { voiceBadge, voiceStrip } from '~/components/thread/voiceNote';
 import { useUnits } from '~/composables/useUnits';
 import { chatTime, dayBreaks } from './chatTime';
 
@@ -23,7 +24,8 @@ const { t, te, locale } = useI18n();
 const agentBase = computed(() => runBase.replace(/\/runs$/, ''));
 const time = (d: Date) => chatTime(d, locale.value);
 const days = computed(() => dayBreaks(items.map(i => ({ id: i.id, at: 'at' in i ? i.at : undefined })), locale.value, t('chat.today')));
-const { cost, costTitle, seconds, count } = useUnits();
+const { cost, costTitle, seconds, count, clock } = useUnits();
+const voiceBadges = computed(() => new Map(items.map(i => [i.id, i.kind === 'user' ? voiceBadge(i.voice) : undefined])));
 const own = 'bg-base-300';
 const other = 'border border-base-300 bg-base-100';
 const side = computed(() => (viewer === 'person'
@@ -43,10 +45,11 @@ function pretty(value: unknown) {
         {{ days.get(item.id) }}
       </p>
       <div v-if="item.kind === 'user'" class="chat" :class="side.user">
-        <div class="chat-header text-xs">
+        <div class="chat-header flex-wrap gap-y-1 text-xs">
           {{ item.deleted ? shownName('', true, t) : item.speaker ?? youName }}
           <time v-if="item.at" :datetime="item.at.toISOString()" class="text-base-content/70">{{ time(item.at) }}</time>
           <span v-if="item.skipped" class="badge badge-ghost badge-sm text-base-content">{{ t(`thread.skipped_${item.skipped}`) }}</span>
+          <span v-if="voiceBadges.get(item.id)" class="badge badge-sm" :class="voiceBadges.get(item.id)?.warn ? 'badge-soft badge-warning text-base-content' : 'badge-ghost text-base-content'">{{ t(voiceBadges.get(item.id)?.key ?? '') }}</span>
         </div>
         <div class="chat-bubble text-base-content text-ui" :class="side.userBubble">
           <img v-if="item.photo" :src="item.photo.url" :alt="t('try.photo_alt')" class="mb-2 size-32 rounded-box object-cover">
@@ -59,6 +62,13 @@ function pretty(value: unknown) {
             {{ t('chat.message_deleted') }}
           </span>
           <template v-else>
+            <span v-if="item.voice" data-voice-strip class="mb-2 flex w-fit max-w-full items-center gap-1.5 rounded-box border border-base-300 bg-base-100 px-2 py-1 text-xs text-base-content/70">
+              <Icon name="lucide:mic" size="14" aria-hidden="true" />
+              {{ t(voiceStrip(item.voice, clock).key, voiceStrip(item.voice, clock).params ?? {}) }}
+            </span>
+            <p v-if="item.voice?.text" data-voice-transcript class="whitespace-pre-wrap wrap-anywhere">
+              <span class="sr-only">{{ t('thread.voice_transcript') }}</span>{{ item.voice.text }}
+            </p>
             {{ item.text }}
           </template>
         </div>

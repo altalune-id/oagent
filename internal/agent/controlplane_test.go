@@ -119,6 +119,8 @@ func assertAgentDefaults(t *testing.T, d *agentv1.AgentDefaults) {
 	assert.Equal(t, int32(agent.MaxSteps), d.GetMaxMaxSteps())
 	assert.InDelta(t, agent.MaxTemperature, d.GetMaxTemperature(), 1e-9)
 	assert.Equal(t, int32(agent.MaxCostCents), d.GetMaxCostCents())
+	assert.Equal(t, int32(300), d.GetVoiceNoteMaxSeconds(), "the console shows the voice note length cap")
+	assert.Equal(t, int32(5<<20), d.GetVoiceNoteMaxBytes(), "the console shows the voice note size cap")
 }
 
 func TestAgentService_GetAgent_UnknownID(t *testing.T) {

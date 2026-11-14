@@ -28,7 +28,7 @@ export interface ModelRow {
   embedding: boolean;
   prices: Record<PriceKey, string>;
   transcription: boolean;
-  storedPrices?: ModelPrices;
+  audioPrice: string;
 }
 
 export interface ProviderErrors {
@@ -46,6 +46,22 @@ export function hasPrice(model: ProviderModel): boolean {
 // hasMorePrices reports whether a model row has a cache price, so its More prices start open.
 export function hasMorePrices(row: ModelRow): boolean {
   return morePriceKeys.some(k => row.prices[k].trim() !== '');
+}
+
+// isTranscriptionRow reports whether a row takes the per-minute price; Anthropic has no transcription models, so a stray flag there keeps token prices.
+export function isTranscriptionRow(row: ModelRow, anthropic: boolean): boolean {
+  return !anthropic && row.transcription;
+}
+
+// hasTranscriptionRow reports whether any row takes the per-minute price.
+export function hasTranscriptionRow(rows: ModelRow[], anthropic: boolean): boolean {
+  return rows.some(r => isTranscriptionRow(r, anthropic));
+}
+
+// flagLocks says which model flags a row disables: Transcription excludes Vision and Embedding, both ways, and a hidden Transcription locks nothing.
+export function flagLocks(row: ModelRow, anthropic: boolean): { vision: boolean, embedding: boolean, transcription: boolean } {
+  const transcribes = isTranscriptionRow(row, anthropic);
+  return { vision: transcribes, embedding: transcribes, transcription: row.vision || row.embedding };
 }
 
 export type ParsedPrices = { kind: 'unpriced' } | { kind: 'priced', prices: ModelPrices } | { kind: 'invalid' };
@@ -68,21 +84,24 @@ export function toPrices(prices: Record<PriceKey, string>, embedding = false): P
   return { kind: 'priced', prices: out };
 }
 
-function rowModel(row: ModelRow): ProviderModel {
-  if (row.transcription) {
-    return { id: row.id, vision: row.vision, embedding: row.embedding, transcription: true, prices: row.storedPrices };
+function rowModel(row: ModelRow, anthropic: boolean): ProviderModel {
+  if (isTranscriptionRow(row, anthropic)) {
+    return { id: row.id, vision: false, embedding: false, transcription: true, prices: { inputMicros: 0n, outputMicros: 0n, cacheReadMicros: 0n, cacheWriteMicros: 0n, audioMinuteMicros: parseUsd(row.audioPrice) ?? 0n } };
   }
   const parsed = toPrices(row.prices, row.embedding);
   return { id: row.id, vision: row.vision, embedding: row.embedding, prices: parsed.kind === 'priced' ? parsed.prices : undefined };
 }
 
-function rowError(row: ModelRow, ids: string[]): string {
+function rowError(row: ModelRow, ids: string[], anthropic: boolean): string {
   const id = row.id.trim();
   if (!id) {
     return 'providers.model_id_required';
   }
   if (ids.filter(other => other === id).length > 1) {
     return 'providers.model_id_taken';
+  }
+  if (isTranscriptionRow(row, anthropic)) {
+    return parseUsd(row.audioPrice) === null ? 'providers.price_audio_minute_invalid' : '';
   }
   return toPrices(row.prices, row.embedding).kind === 'invalid' ? 'providers.price_invalid' : '';
 }
@@ -126,7 +145,7 @@ export function useProviderForm(orgId: string, projectId: string) {
   function row(model?: ProviderModel): ModelRow {
     const p = model?.prices;
     const text = (k: PriceKey) => (p ? usdText(p[microsKeys[k]]) : '');
-    return { key: nextKey++, id: model?.id ?? '', vision: model?.vision ?? false, embedding: model?.embedding ?? false, prices: { input: text('input'), output: text('output'), cacheRead: text('cacheRead'), cacheWrite: text('cacheWrite') }, transcription: !!model?.transcription, storedPrices: model?.prices };
+    return { key: nextKey++, id: model?.id ?? '', vision: model?.vision ?? false, embedding: model?.embedding ?? false, prices: { input: text('input'), output: text('output'), cacheRead: text('cacheRead'), cacheWrite: text('cacheWrite') }, transcription: !!model?.transcription, audioPrice: model?.transcription && p?.audioMinuteMicros !== undefined ? usdText(p.audioMinuteMicros) : '' };
   }
 
   function show(provider?: ModelProvider) {
@@ -170,6 +189,18 @@ export function useProviderForm(orgId: string, projectId: string) {
     models.value.push(row());
   }
 
+  function setTranscription(m: ModelRow, on: boolean) {
+    m.transcription = on;
+    if (priceErrors.value.includes(m.key)) {
+      priceErrors.value = priceErrors.value.filter(k => k !== m.key);
+      modelErrors.value = Object.fromEntries(Object.entries(modelErrors.value).filter(([k]) => Number(k) !== m.key));
+    }
+    if (on) {
+      m.vision = false;
+      m.embedding = false;
+    }
+  }
+
   function removeModel(k: number) {
     models.value = models.value.filter(m => m.key !== k);
   }
@@ -179,18 +210,18 @@ export function useProviderForm(orgId: string, projectId: string) {
     const rows: Record<number, string> = {};
     const prices: number[] = [];
     for (const m of models.value) {
-      const err = rowError(m, ids);
+      const err = rowError(m, ids, anthropic.value);
       if (err) {
         rows[m.key] = t(err);
       }
-      if (err === 'providers.price_invalid') {
+      if (err === 'providers.price_invalid' || err === 'providers.price_audio_minute_invalid') {
         prices.push(m.key);
       }
     }
     modelErrors.value = rows;
     priceErrors.value = prices;
     keyMissing.value = keyRequired.value && !key.value.trim();
-    const out = { name: name.value, kind: kind.value, baseUrl: baseUrl.value, apiKey: key.value, models: models.value.map(rowModel) };
+    const out = { name: name.value, kind: kind.value, baseUrl: baseUrl.value, apiKey: key.value, models: models.value.map(m => rowModel(m, anthropic.value)) };
     const storedKey = 'kept';
     const shaped = validation.check(createRequest(orgId, projectId, { ...out, apiKey: out.apiKey.trim() || storedKey }));
     formError.value = Object.keys(rows).length ? null : validation.formError.value;
@@ -221,5 +252,5 @@ export function useProviderForm(orgId: string, projectId: string) {
     }
   }
 
-  return { open, editing, name, kind, anthropic, urlV1, setKind, baseUrl, key, replacingKey, models, errors, modelErrors, priceErrors, formError, busy, urlChanged, keyRequired, keyShown, show, hide, addModel, removeModel, submit };
+  return { open, editing, name, kind, anthropic, urlV1, setKind, baseUrl, key, replacingKey, models, errors, modelErrors, priceErrors, formError, busy, urlChanged, keyRequired, keyShown, show, hide, addModel, removeModel, setTranscription, submit };
 }

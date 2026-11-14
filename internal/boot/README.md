@@ -194,6 +194,7 @@ flowchart TD
     keyAuthn --> member
     member -. effects .-> sessions & apikey & user & org & mailqueue
     run --> agent & modelprovider & mcpserver & enduser & webhook & knowledge
+    agent -. voice note caps .-> run
     channel --> webhook & project & agent
     approval --> webhook & enduser & user & apikey
     approval -. kick .-> run

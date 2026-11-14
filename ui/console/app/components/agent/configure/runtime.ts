@@ -23,6 +23,7 @@ export interface ConfigureLinks {
   knowledge: string;
   endUsers: string;
   memoryStores: string;
+  channels: string;
 }
 
 export interface RuntimeContext {

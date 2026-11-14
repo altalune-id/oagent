@@ -90,7 +90,7 @@ const runtime = computed({
   },
 });
 const base = computed(() => `/o/${route.params.org}/projects/${route.params.project}`);
-const links = computed(() => ({ providers: `${base.value}/settings/model-providers`, servers: `${base.value}/settings/mcp-servers`, webSearch: `${base.value}/settings/web-search`, knowledge: `${base.value}/knowledge`, endUsers: `${base.value}/end-users`, memoryStores: `${base.value}/memory-stores` }));
+const links = computed(() => ({ providers: `${base.value}/settings/model-providers`, servers: `${base.value}/settings/mcp-servers`, webSearch: `${base.value}/settings/web-search`, knowledge: `${base.value}/knowledge`, endUsers: `${base.value}/end-users`, memoryStores: `${base.value}/memory-stores`, channels: `${base.value}/agents/${route.params.agent}/channels` }));
 const legacy = computed(() => current.value > 0 && !!draft.live.value && !draft.live.value.providerId);
 const costInvalid = ref(false);
 const costBlocker: Blocker = { key: 'publish.blocker_cost', target: 'limits' };

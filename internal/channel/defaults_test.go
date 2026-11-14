@@ -20,6 +20,7 @@ func TestDefaults_Published(t *testing.T) {
 	assert.Equal(t, 10*time.Second, channel.MaxQuiet)
 	assert.LessOrEqual(t, channel.DefaultQuietWindow, channel.DefaultQuietMax)
 	assert.LessOrEqual(t, channel.DefaultQuietMax, channel.MaxQuiet)
+	assert.Equal(t, "Sorry, I couldn't understand that voice message. Please type your message instead.", channel.DefaultReplyVoice)
 }
 
 // SECURITY: the proto rules repeat the quiet cap; they must equal channel.MaxQuiet on create and on update.
