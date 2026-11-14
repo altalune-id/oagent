@@ -2,6 +2,7 @@ package channel_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -38,4 +39,6 @@ func TestErrors_MapToTheirCodesAndKeepCausesServerSide(t *testing.T) {
 	assert.Contains(t, (&channel.IgnoredError{Reason: "reaction"}).Error(), "reaction")
 	assert.True(t, channel.IsTooLargeError(&channel.TooLargeError{Limit: 5}))
 	assert.NotEmpty(t, (&channel.TooLargeError{}).Error())
+	assert.True(t, channel.IsMediaTypeError(fmt.Errorf("wrapped: %w", &channel.MediaTypeError{})))
+	assert.NotEmpty(t, (&channel.MediaTypeError{}).Error())
 }

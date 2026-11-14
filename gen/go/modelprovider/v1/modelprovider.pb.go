@@ -75,15 +75,17 @@ func (ModelProviderKind) EnumDescriptor() ([]byte, []int) {
 	return file_modelprovider_v1_modelprovider_proto_rawDescGZIP(), []int{0}
 }
 
-// ModelPrices are integer micro-USD per 1M tokens, per token class, in the platform currency USD. Cost micros are ceil(tokens x price / 1 000 000) per class, summed; cents are ceil(micros / 10 000).
+// ModelPrices are integer micro-USD per 1M tokens, per token class, in the platform currency USD. Cost micros are ceil(tokens x price / 1 000 000) per class, summed; cents are ceil(micros / 10 000). A transcription model is priced per audio minute instead: ceil(seconds x audio_minute_micros / 60).
 type ModelPrices struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	InputMicros      int64                  `protobuf:"varint,1,opt,name=input_micros,json=inputMicros,proto3" json:"input_micros,omitempty"`
 	OutputMicros     int64                  `protobuf:"varint,2,opt,name=output_micros,json=outputMicros,proto3" json:"output_micros,omitempty"`
 	CacheReadMicros  int64                  `protobuf:"varint,3,opt,name=cache_read_micros,json=cacheReadMicros,proto3" json:"cache_read_micros,omitempty"`
 	CacheWriteMicros int64                  `protobuf:"varint,4,opt,name=cache_write_micros,json=cacheWriteMicros,proto3" json:"cache_write_micros,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// audio_minute_micros prices a transcription model per audio minute; 0 means free, so set it for any billed provider.
+	AudioMinuteMicros int64 `protobuf:"varint,5,opt,name=audio_minute_micros,json=audioMinuteMicros,proto3" json:"audio_minute_micros,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ModelPrices) Reset() {
@@ -144,6 +146,13 @@ func (x *ModelPrices) GetCacheWriteMicros() int64 {
 	return 0
 }
 
+func (x *ModelPrices) GetAudioMinuteMicros() int64 {
+	if x != nil {
+		return x.AudioMinuteMicros
+	}
+	return 0
+}
+
 // Model is one model a provider serves; without prices it is unpriced, and an agent with a cost limit cannot use it.
 type Model struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
@@ -152,7 +161,9 @@ type Model struct {
 	// prices are micro-USD per 1M tokens.
 	Prices *ModelPrices `protobuf:"bytes,3,opt,name=prices,proto3,oneof" json:"prices,omitempty"`
 	// embedding marks a model that turns text into vectors, for knowledge search.
-	Embedding     bool `protobuf:"varint,4,opt,name=embedding,proto3" json:"embedding,omitempty"`
+	Embedding bool `protobuf:"varint,4,opt,name=embedding,proto3" json:"embedding,omitempty"`
+	// transcription marks a model that turns speech into text, for voice notes; it needs prices, excludes vision and embedding, and only an OpenAI-compatible provider serves one.
+	Transcription bool `protobuf:"varint,5,opt,name=transcription,proto3" json:"transcription,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -211,6 +222,13 @@ func (x *Model) GetPrices() *ModelPrices {
 func (x *Model) GetEmbedding() bool {
 	if x != nil {
 		return x.Embedding
+	}
+	return false
+}
+
+func (x *Model) GetTranscription() bool {
+	if x != nil {
+		return x.Transcription
 	}
 	return false
 }
@@ -859,18 +877,20 @@ var File_modelprovider_v1_modelprovider_proto protoreflect.FileDescriptor
 
 const file_modelprovider_v1_modelprovider_proto_rawDesc = "" +
 	"\n" +
-	"$modelprovider/v1/modelprovider.proto\x12\x10modelprovider.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\x1a\x15oagent/v1/rules.proto\"\xd3\x01\n" +
+	"$modelprovider/v1/modelprovider.proto\x12\x10modelprovider.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18mcp/v1/annotations.proto\x1a\x15oagent/v1/rules.proto\"\x8c\x02\n" +
 	"\vModelPrices\x12*\n" +
 	"\finput_micros\x18\x01 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\vinputMicros\x12,\n" +
 	"\routput_micros\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\foutputMicros\x123\n" +
 	"\x11cache_read_micros\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x0fcacheReadMicros\x125\n" +
-	"\x12cache_write_micros\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x10cacheWriteMicros\"\x94\x02\n" +
+	"\x12cache_write_micros\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x10cacheWriteMicros\x127\n" +
+	"\x13audio_minute_micros\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\x11audioMinuteMicros\"\xba\x02\n" +
 	"\x05Model\x12\x8d\x01\n" +
 	"\x02id\x18\x01 \x01(\tB}\xbaHz\xba\x01]\n" +
 	"\x1fmodelprovider.model.max_len.128\x1a:this.size() <= 128 ? '' : 'must be at most 128 characters'\xc8\x01\x01r\x152\x13^[A-Za-z0-9._:/-]+$R\x02id\x12\x16\n" +
 	"\x06vision\x18\x02 \x01(\bR\x06vision\x12:\n" +
 	"\x06prices\x18\x03 \x01(\v2\x1d.modelprovider.v1.ModelPricesH\x00R\x06prices\x88\x01\x01\x12\x1c\n" +
-	"\tembedding\x18\x04 \x01(\bR\tembeddingB\t\n" +
+	"\tembedding\x18\x04 \x01(\bR\tembedding\x12$\n" +
+	"\rtranscription\x18\x05 \x01(\bR\rtranscriptionB\t\n" +
 	"\a_prices\"\x84\x03\n" +
 	"\rModelProvider\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +

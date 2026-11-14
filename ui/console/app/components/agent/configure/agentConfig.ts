@@ -25,6 +25,12 @@ export interface KnowledgeTuning {
   maxTokens: number;
 }
 
+export interface TranscriptionModel {
+  providerId: string;
+  model: string;
+  providerMissing: boolean;
+}
+
 export interface AgentConfig {
   instructions: string;
   providerId: string;
@@ -41,6 +47,7 @@ export interface AgentConfig {
   memoryStoreMissing: boolean;
   providerMissing: boolean;
   tools: AgentToolConfig[];
+  transcriptionModel: TranscriptionModel;
 }
 
 export interface AgentState {
@@ -90,6 +97,7 @@ interface WireConfig {
   memoryStoreMissing?: boolean;
   providerMissing: boolean;
   tools: WireTool[];
+  transcriptionModel?: { providerId: string, model: string, providerMissing?: boolean };
 }
 
 export interface ChangeNames {
@@ -106,7 +114,7 @@ interface WireAgent {
 }
 
 export function emptyConfig(): AgentConfig {
-  return { instructions: '', providerId: '', model: '', helperModel: '', temperature: 0, maxSteps: 0, maxCostCents: 0, grants: [], knowledgeSourceIds: [], knowledgeSourcesMissing: 0, knowledgeTuning: { topK: 0, maxTokens: 0 }, memoryStoreId: '', memoryStoreMissing: false, providerMissing: false, tools: [] };
+  return { instructions: '', providerId: '', model: '', helperModel: '', temperature: 0, maxSteps: 0, maxCostCents: 0, grants: [], knowledgeSourceIds: [], knowledgeSourcesMissing: 0, knowledgeTuning: { topK: 0, maxTokens: 0 }, memoryStoreId: '', memoryStoreMissing: false, providerMissing: false, tools: [], transcriptionModel: { providerId: '', model: '', providerMissing: false } };
 }
 
 export function fromWire(c?: WireConfig): AgentConfig {
@@ -130,6 +138,7 @@ export function fromWire(c?: WireConfig): AgentConfig {
     memoryStoreMissing: c.memoryStoreMissing ?? false,
     providerMissing: c.providerMissing,
     tools: c.tools.map(tool),
+    transcriptionModel: { providerId: c.transcriptionModel?.providerId ?? '', model: c.transcriptionModel?.model ?? '', providerMissing: c.transcriptionModel?.providerMissing ?? false },
   };
 }
 
@@ -147,6 +156,7 @@ export function toWire(c: AgentConfig) {
     knowledgeSourceIds: [...c.knowledgeSourceIds],
     knowledgeTuning: tuningOf(c.knowledgeTuning),
     memoryStoreId: c.memoryStoreId,
+    ...(c.transcriptionModel.providerId && !c.transcriptionModel.providerMissing ? { transcriptionModel: { providerId: c.transcriptionModel.providerId, model: c.transcriptionModel.model } } : {}),
   };
 }
 
@@ -224,6 +234,15 @@ export function changes(draft: AgentConfig, live: AgentConfig | undefined, money
       out.push({ key: 'configure.change_memory_off' });
     } else {
       out.push(from && to ? { key: 'configure.change_memory_store_named', params: { from, to } } : { key: 'configure.change_memory_store' });
+    }
+  }
+  const sttFrom = live.transcriptionModel;
+  const sttTo = draft.transcriptionModel;
+  if (sttTo.providerId !== sttFrom.providerId || sttTo.model !== sttFrom.model) {
+    if (!sttTo.providerId) {
+      out.push({ key: 'configure.change_transcription_off' });
+    } else {
+      out.push({ key: sttFrom.providerId ? 'configure.change_transcription_changed' : 'configure.change_transcription_on', params: { model: sttTo.model } });
     }
   }
   return out;

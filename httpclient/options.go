@@ -19,11 +19,17 @@ type settings struct {
 	noRedirects       bool
 	retry             RetryPolicy
 	idleConnTimeout   time.Duration
+	headerTimeout     time.Duration
 }
 
 // WithIdleConnTimeout closes a pooled connection after d idle; keep it below the server's keep-alive timeout.
 func WithIdleConnTimeout(d time.Duration) Option {
 	return func(s *settings) { s.idleConnTimeout = d }
+}
+
+// WithResponseHeaderTimeout bounds the wait for response headers after the request is sent; zero keeps the 10 s default.
+func WithResponseHeaderTimeout(d time.Duration) Option {
+	return func(s *settings) { s.headerTimeout = d }
 }
 
 // WithoutProxy ignores HTTP_PROXY and HTTPS_PROXY. SECURITY: use it for clients whose request bodies carry secrets.

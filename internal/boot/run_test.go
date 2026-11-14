@@ -3,6 +3,8 @@ package boot
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/google/uuid"
@@ -24,10 +26,10 @@ import (
 
 func TestRunAgents_MapsThePinnedVersion(t *testing.T) {
 	ag := &agent.Agent{ID: uuid.New(), PublicID: "agent-pub"}
-	provider, server, memStore := uuid.New(), uuid.New(), uuid.New()
+	provider, server, memStore, stt := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	v := &agent.Version{ID: uuid.New(), AgentID: ag.ID, Version: 4, Config: agent.Config{
 		Instructions: "be brief", Model: "gpt-4o", Temperature: 0.3, MaxSteps: 7, MaxCostCents: 50, ProviderID: provider,
-		HelperModel: "mini", MemoryStoreID: memStore,
+		HelperModel: "mini", MemoryStoreID: memStore, TranscriptionModel: agent.TranscriptionModel{ProviderID: stt, Model: "whisper-1"},
 		MCPServers: []agent.MCPGrant{{ServerID: server, Tools: []agent.Tool{{Name: "a"}, {Name: "b", RequireApproval: true}}}},
 	}}
 	store := &fakes.AgentStore{Agent: ag, Published: []*agent.Version{v}}
@@ -39,8 +41,9 @@ func TestRunAgents_MapsThePinnedVersion(t *testing.T) {
 	assert.Equal(t, &run.AgentVersion{
 		ID: v.ID, AgentID: ag.ID, AgentPublicID: "agent-pub", Version: 4, Instructions: "be brief", Model: "gpt-4o",
 		Temperature: 0.3, MaxSteps: 7, MaxCostCents: 50, ProviderID: provider, HelperModel: "mini", MemoryStoreID: memStore,
-		MCPServers: []run.MCPGrant{{ServerID: server, Tools: []run.ToolGrant{{Name: "a"}, {Name: "b", RequireApproval: true}}}},
-		Knowledge:  run.KnowledgeTuning{MaxBytes: knowledge.RecommendedMaxTokens * 4},
+		TranscriptionModel: run.TranscriptionModel{ProviderID: stt, Model: "whisper-1"},
+		MCPServers:         []run.MCPGrant{{ServerID: server, Tools: []run.ToolGrant{{Name: "a"}, {Name: "b", RequireApproval: true}}}},
+		Knowledge:          run.KnowledgeTuning{MaxBytes: knowledge.RecommendedMaxTokens * 4},
 	}, got)
 	latest, err := a.Latest(ctx, ag.ID)
 	require.NoError(t, err)
@@ -100,10 +103,16 @@ func TestRunProviders_ResolveWithPrices(t *testing.T) {
 		Models: []modelprovider.Model{
 			{ID: "priced", Prices: &modelprovider.Prices{InputMicros: 1, OutputMicros: 2, CacheReadMicros: 3, CacheWriteMicros: 4}},
 			{ID: "free"},
+			{ID: "whisper-1", Transcription: true, Prices: &modelprovider.Prices{AudioMinuteMicros: 6_000}},
 		},
 	}, "sk-live")
 	require.NoError(t, err)
 	r := runProviders{providers: svc}
+
+	stt, err := r.ResolveModel(ctx, p.ID, "whisper-1")
+	require.NoError(t, err)
+	require.NotNil(t, stt.Prices)
+	assert.Equal(t, new(int64(6_000)), stt.Prices.Transcription, "a transcription model carries its price per audio minute")
 
 	m, err := r.ResolveModel(ctx, p.ID, "priced")
 	require.NoError(t, err)
@@ -111,7 +120,8 @@ func TestRunProviders_ResolveWithPrices(t *testing.T) {
 	assert.Equal(t, "sk-live", m.APIKey)
 	assert.Empty(t, m.Provider, "an OpenAI-compatible provider sends no provider")
 	require.NotNil(t, m.Prices)
-	assert.Equal(t, run.Prices{Input: new(int64(1)), Output: new(int64(2)), CacheRead: new(int64(3)), CacheWrite: new(int64(4))}, *m.Prices)
+	assert.Equal(t, run.Prices{Input: new(int64(1)), Output: new(int64(2)), CacheRead: new(int64(3)), CacheWrite: new(int64(4))}, *m.Prices,
+		"a chat model leaves the transcription price unset")
 
 	m, err = r.ResolveModel(ctx, p.ID, "free")
 	require.NoError(t, err)
@@ -179,4 +189,34 @@ func TestBuildRuntime(t *testing.T) {
 	assert.Error(t, err)
 	_, err = buildRuntime(config.RuntimeConfig{Driver: config.RuntimeDriverHTTP, URL: "::bad"})
 	assert.Error(t, err)
+}
+
+func TestRunTranscriber_CallsTheProvider(t *testing.T) {
+	var auth, model string
+	status := http.StatusOK
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth, model = r.Header.Get("Authorization"), r.FormValue("model")
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(`{"text":"halo"}`))
+	}))
+	t.Cleanup(srv.Close)
+	m := run.ResolvedModel{BaseURL: srv.URL + "/v1", APIKey: "sk-stt"}
+
+	text, err := runTranscriber{allowPrivateHosts: true}.Transcribe(t.Context(), m, "whisper-1", []byte("OggS"), "audio/ogg")
+	require.NoError(t, err)
+	assert.Equal(t, "halo", text)
+	assert.Equal(t, "Bearer sk-stt", auth)
+	assert.Equal(t, "whisper-1", model)
+
+	status = http.StatusTooManyRequests
+	_, err = runTranscriber{allowPrivateHosts: true}.Transcribe(t.Context(), m, "whisper-1", []byte("OggS"), "audio/ogg")
+	assert.ErrorIs(t, err, run.ErrTranscribeRateLimited)
+
+	_, err = runTranscriber{}.Transcribe(t.Context(), m, "whisper-1", []byte("OggS"), "audio/ogg")
+	require.Error(t, err, "a private host needs the opt-in")
+	assert.NotErrorIs(t, err, run.ErrTranscribeRateLimited)
+
+	m.Provider = runtime.ProviderAnthropic
+	_, err = runTranscriber{allowPrivateHosts: true}.Transcribe(t.Context(), m, "whisper-1", []byte("OggS"), "audio/ogg")
+	assert.Error(t, err, "only an OpenAI-compatible provider transcribes")
 }

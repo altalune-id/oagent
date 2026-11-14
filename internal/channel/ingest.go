@@ -316,19 +316,6 @@ func CleanDisplayName(raw string) string {
 	return cleaned
 }
 
-type imageSource struct {
-	Type     string `json:"type"`
-	Value    string `json:"value"`
-	MimeType string `json:"mimeType"`
-}
-
-type contentPart struct {
-	Type   string       `json:"type"`
-	Text   string       `json:"text,omitempty"`
-	Source *imageSource `json:"source,omitempty"`
-	ID     string       `json:"id,omitempty"`
-}
-
 // ChannelMeta is the storage-only note on a channel message: its provider type, whether it was a voice note, and the message it quoted.
 type ChannelMeta struct {
 	Type   string `json:"type"`
@@ -341,12 +328,19 @@ func inboxMessage(in Inbound, text string, speaker uuid.UUID) (run.Message, erro
 		return run.Message{}, errNoChannelTime
 	}
 	var content any = noted(in, text)
-	if in.Type == "image" && in.Media != nil {
-		parts := []contentPart{}
+	switch {
+	case in.Type == "image" && in.Media != nil:
+		parts := []run.ContentPart{}
 		if text != "" {
-			parts = append(parts, contentPart{Type: "text", Text: text})
+			parts = append(parts, run.ContentPart{Type: "text", Text: text})
 		}
-		parts = append(parts, contentPart{Type: "image", Source: &imageSource{Type: "data", MimeType: in.Media.Mime}, ID: in.ExternalID})
+		parts = append(parts, run.ImagePart(in.ExternalID, in.Media.Mime))
+		content = parts
+	case in.Type == "audio" && in.Media != nil && in.Media.Voice:
+		parts := []run.ContentPart{run.VoiceNotePart(in.ExternalID, in.Media.Mime)}
+		if text != "" {
+			parts = append(parts, run.ContentPart{Type: "text", Text: text})
+		}
 		content = parts
 	}
 	meta := ChannelMeta{Type: in.Type, Voice: in.Media != nil && in.Media.Voice, Quoted: in.QuotedID}
@@ -361,8 +355,6 @@ func inboxMessage(in Inbound, text string, speaker uuid.UUID) (run.Message, erro
 func noted(in Inbound, text string) string {
 	note := ""
 	switch {
-	case in.Type == "audio" && in.Media != nil && in.Media.Voice:
-		note = "[voice note]"
 	case in.Type == "audio", in.Type == "video", in.Type == "document":
 		note = "[" + in.Type + "]"
 	case (in.Type == "location" || in.Type == "contact") && text != "":

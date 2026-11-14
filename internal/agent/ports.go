@@ -32,8 +32,9 @@ type Refs interface {
 
 // ModelRef is one model a provider lists; Priced is true when it has prices.
 type ModelRef struct {
-	ID     string
-	Priced bool
+	ID            string
+	Priced        bool
+	Transcription bool
 }
 
 // Providers lists a project's provider models; an unknown or foreign provider answers *InvalidGrantError (provider).

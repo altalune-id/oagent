@@ -5,35 +5,42 @@ import (
 	"math/bits"
 )
 
-// Prices are the price snapshot of a run in micro-USD per 1M tokens; a nil class is unpriced.
+// Prices are the price snapshot of a run in micro-USD per 1M tokens, Transcription per audio minute; a nil class is unpriced.
 type Prices struct {
 	Input, Output, CacheRead, CacheWrite, Embedding              *int64
 	HelperInput, HelperOutput, HelperCacheRead, HelperCacheWrite *int64
+	Transcription                                                *int64
 }
 
-const tokensPerPrice = 1_000_000
+const (
+	tokensPerPrice  = 1_000_000
+	secondsPerPrice = 60
+)
 
-// Cost is the run's cost in micro-USD: ceil(tokens x price / 1 000 000) per class, summed; unpriced tokens make priced false.
+// Cost is the run's cost in micro-USD: ceil(units x price / per) per class, summed; unpriced units make priced false.
 func Cost(u Usage, p *Prices) (micros int64, priced bool) {
 	if p == nil {
 		return 0, false
 	}
 	for _, c := range []struct {
-		tokens int64
-		price  *int64
+		units int64
+		price *int64
+		per   uint64
 	}{
-		{u.InputTokens, p.Input}, {u.OutputTokens, p.Output}, {u.CacheReadTokens, p.CacheRead}, {u.CacheWriteTokens, p.CacheWrite},
-		{u.EmbeddingTokens, p.Embedding},
-		{u.HelperInputTokens, p.HelperInput}, {u.HelperOutputTokens, p.HelperOutput},
-		{u.HelperCacheReadTokens, p.HelperCacheRead}, {u.HelperCacheWriteTokens, p.HelperCacheWrite},
+		{u.InputTokens, p.Input, tokensPerPrice}, {u.OutputTokens, p.Output, tokensPerPrice},
+		{u.CacheReadTokens, p.CacheRead, tokensPerPrice}, {u.CacheWriteTokens, p.CacheWrite, tokensPerPrice},
+		{u.EmbeddingTokens, p.Embedding, tokensPerPrice},
+		{u.HelperInputTokens, p.HelperInput, tokensPerPrice}, {u.HelperOutputTokens, p.HelperOutput, tokensPerPrice},
+		{u.HelperCacheReadTokens, p.HelperCacheRead, tokensPerPrice}, {u.HelperCacheWriteTokens, p.HelperCacheWrite, tokensPerPrice},
+		{u.TranscriptionSeconds, p.Transcription, secondsPerPrice},
 	} {
-		if c.tokens == 0 {
+		if c.units == 0 {
 			continue
 		}
 		if c.price == nil {
 			return 0, false
 		}
-		micros = addSat(micros, classCost(c.tokens, *c.price))
+		micros = addSat(micros, classCost(c.units, *c.price, c.per))
 	}
 	return micros, true
 }
@@ -41,12 +48,12 @@ func Cost(u Usage, p *Prices) (micros int64, priced bool) {
 // Cents is micros rounded up to whole US cents.
 func Cents(micros int64) int64 { return ceilDiv(micros, 10_000) }
 
-func classCost(tokens, price int64) int64 {
-	hi, lo := bits.Mul64(uint64(max(tokens, 0)), uint64(max(price, 0)))
-	if hi >= tokensPerPrice {
+func classCost(units, price int64, per uint64) int64 {
+	hi, lo := bits.Mul64(uint64(max(units, 0)), uint64(max(price, 0)))
+	if hi >= per {
 		return math.MaxInt64
 	}
-	q, r := bits.Div64(hi, lo, tokensPerPrice)
+	q, r := bits.Div64(hi, lo, per)
 	if q >= math.MaxInt64 {
 		return math.MaxInt64
 	}

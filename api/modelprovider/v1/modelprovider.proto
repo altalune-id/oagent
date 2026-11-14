@@ -48,12 +48,14 @@ enum ModelProviderKind {
   MODEL_PROVIDER_KIND_ANTHROPIC = 2;
 }
 
-// ModelPrices are integer micro-USD per 1M tokens, per token class, in the platform currency USD. Cost micros are ceil(tokens x price / 1 000 000) per class, summed; cents are ceil(micros / 10 000).
+// ModelPrices are integer micro-USD per 1M tokens, per token class, in the platform currency USD. Cost micros are ceil(tokens x price / 1 000 000) per class, summed; cents are ceil(micros / 10 000). A transcription model is priced per audio minute instead: ceil(seconds x audio_minute_micros / 60).
 message ModelPrices {
   int64 input_micros = 1 [(buf.validate.field).int64.gte = 0];
   int64 output_micros = 2 [(buf.validate.field).int64.gte = 0];
   int64 cache_read_micros = 3 [(buf.validate.field).int64.gte = 0];
   int64 cache_write_micros = 4 [(buf.validate.field).int64.gte = 0];
+  // audio_minute_micros prices a transcription model per audio minute; 0 means free, so set it for any billed provider.
+  int64 audio_minute_micros = 5 [(buf.validate.field).int64.gte = 0];
 }
 
 // Model is one model a provider serves; without prices it is unpriced, and an agent with a cost limit cannot use it.
@@ -68,6 +70,8 @@ message Model {
   optional ModelPrices prices = 3;
   // embedding marks a model that turns text into vectors, for knowledge search.
   bool embedding = 4;
+  // transcription marks a model that turns speech into text, for voice notes; it needs prices, excludes vision and embedding, and only an OpenAI-compatible provider serves one.
+  bool transcription = 5;
 }
 
 // ModelProvider is a model endpoint of a project; api_key_set says whether a key is stored, and the key is never returned.

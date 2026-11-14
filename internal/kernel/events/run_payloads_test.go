@@ -37,7 +37,7 @@ func TestRunPayload_NoTextNoPhone(t *testing.T) {
 		"agent_id", "cost_micros", "run_id", "status", "thread_id", "usage",
 		"usage.cache_read_input_tokens", "usage.cache_write_input_tokens", "usage.embedding_tokens", "usage.estimated",
 		"usage.helper_cache_read_input_tokens", "usage.helper_cache_write_input_tokens", "usage.helper_input_tokens", "usage.helper_output_tokens",
-		"usage.input_tokens", "usage.output_tokens",
+		"usage.input_tokens", "usage.output_tokens", "usage.transcription_seconds",
 	}
 	for _, payload := range []any{events.RunCompletedV1{}, events.RunFailedV1{}} {
 		keys := jsonKeys(t, payload)

@@ -335,3 +335,99 @@ func TestDeleteProviderHoldingTheEmbeddingModel(t *testing.T) {
 	_, err = g.providers.Update(g.ctx, p.ID, in, nil)
 	assert.Equal(t, apperror.CodeModelProviderInUse, codeOfErr(err), "the project's embedding model stays an embedding model: %v", err)
 }
+
+func TestTranscriptionModelOnAnotherProviderIsInUse(t *testing.T) {
+	f := newAPIFixture(t)
+	g := newGrantScope(t, f)
+	chat := g.provider(t, "chat")
+	sttIn := modelprovider.Input{
+		Name: "stt", Kind: modelprovider.KindOpenAICompatible, BaseURL: "https://example.com/v1",
+		Models: []modelprovider.Model{
+			{ID: "whisper-1", Transcription: true, Prices: &modelprovider.Prices{AudioMinuteMicros: 6_000}},
+			{ID: "unrelated"},
+		},
+	}
+	stt, err := g.providers.Create(g.ctx, g.projectID, sttIn, "sk-test")
+	require.NoError(t, err)
+	a := g.agentUsing(t, "voice", agent.Config{ProviderID: chat.ID, Model: "m",
+		TranscriptionModel: agent.TranscriptionModel{ProviderID: stt.ID, Model: "whisper-1"}})
+	_, _, _, err = g.agents.Publish(g.ctx, a.ID, uuid.Nil)
+	require.NoError(t, err)
+	g.agentUsing(t, "drafted", agent.Config{ProviderID: chat.ID, Model: "m",
+		TranscriptionModel: agent.TranscriptionModel{ProviderID: stt.ID, Model: "whisper-1"}})
+
+	reason := func(err error) modelprovider.InUseReason {
+		t.Helper()
+		var inUse *modelprovider.InUseError
+		require.ErrorAs(t, err, &inUse, "got %v", err)
+		return inUse.Reason
+	}
+
+	edit := sttIn
+	edit.Models = []modelprovider.Model{sttIn.Models[0]}
+	_, err = g.providers.Update(g.ctx, stt.ID, edit, nil)
+	require.NoError(t, err, "dropping an unrelated model on the transcription provider passes")
+
+	edit.Models = []modelprovider.Model{{ID: "whisper-1", Prices: &modelprovider.Prices{AudioMinuteMicros: 6_000}}}
+	_, err = g.providers.Update(g.ctx, stt.ID, edit, nil)
+	assert.Equal(t, modelprovider.InUseTranscriptionModel, reason(err), "dropping the flag is refused")
+
+	edit.Models = []modelprovider.Model{{ID: "other", Transcription: true, Prices: &modelprovider.Prices{}}}
+	_, err = g.providers.Update(g.ctx, stt.ID, edit, nil)
+	assert.Equal(t, modelprovider.InUseTranscriptionModel, reason(err), "removing the model is refused")
+
+	assert.Equal(t, modelprovider.InUseDelete, reason(g.providers.Delete(g.ctx, stt.ID)), "deleting the transcription provider is refused")
+
+	chatIn := modelprovider.Input{
+		Name: "chat", Kind: modelprovider.KindOpenAICompatible, BaseURL: "https://example.com/v1",
+		Models: []modelprovider.Model{{ID: "m", Prices: &modelprovider.Prices{InputMicros: 2, OutputMicros: 2}}},
+	}
+	_, err = g.providers.Update(g.ctx, chat.ID, chatIn, nil)
+	require.NoError(t, err, "editing the chat provider does not count the transcription provider's model")
+}
+
+func TestPublishVsDeleteTranscriptionProvider_Race(t *testing.T) {
+	f := newAPIFixture(t)
+	g := newGrantScope(t, f)
+	chat := g.provider(t, "chat")
+	publishes, deletes := 0, 0
+	for round := range 20 {
+		stt, err := g.providers.Create(g.ctx, g.projectID, modelprovider.Input{
+			Name: "stt-" + uuid.NewString()[:8], Kind: modelprovider.KindOpenAICompatible, BaseURL: "https://example.com/v1",
+			Models: []modelprovider.Model{{ID: "whisper-1", Transcription: true, Prices: &modelprovider.Prices{}}},
+		}, "sk-test")
+		require.NoError(t, err)
+		a := g.agentUsing(t, "racer-"+uuid.NewString()[:8], agent.Config{ProviderID: chat.ID, Model: "m",
+			TranscriptionModel: agent.TranscriptionModel{ProviderID: stt.ID, Model: "whisper-1"}})
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		var pubErr, delErr error
+		wg.Go(func() {
+			<-start
+			_, _, _, pubErr = g.agents.Publish(g.ctx, a.ID, uuid.Nil)
+		})
+		wg.Go(func() {
+			<-start
+			delErr = g.providers.Delete(g.ctx, stt.ID)
+		})
+		close(start)
+		wg.Wait()
+
+		require.True(t, (pubErr == nil) != (delErr == nil), "round %d: exactly one wins: publish %v, delete %v", round, pubErr, delErr)
+		if pubErr == nil {
+			publishes++
+			assert.Equal(t, apperror.CodeModelProviderInUse, codeOfErr(delErr), "round %d: %v", round, delErr)
+			_, err := g.providers.Get(g.ctx, stt.ID)
+			require.NoError(t, err, "round %d: a published version's transcription provider still exists", round)
+			continue
+		}
+		deletes++
+		e, ok := errors.AsType[*agent.InvalidGrantError](pubErr)
+		require.True(t, ok, "round %d: a publish that lost answers AGT007, got %v", round, pubErr)
+		assert.Equal(t, "transcription_model", e.ToAppError().Meta()["reason"])
+		v, err := f.svcs.AgentStore.LatestVersion(g.ctx, a.ID)
+		require.NoError(t, err)
+		assert.Nil(t, v, "round %d: no version after a lost publish", round)
+	}
+	t.Logf("publish won %d rounds, delete won %d", publishes, deletes)
+}

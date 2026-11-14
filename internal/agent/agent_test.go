@@ -255,6 +255,7 @@ func TestConfig_EqualNewFields(t *testing.T) {
 		"grant tool":     func(c *Config) { c.MCPServers[0].Tools[0].Name = "z" },
 		"grant approval": func(c *Config) { c.MCPServers[0].Tools[1].RequireApproval = false },
 		"memory store":   func(c *Config) { c.MemoryStoreID = uuid.New() },
+		"transcription":  func(c *Config) { c.TranscriptionModel = TranscriptionModel{ProviderID: uuid.New(), Model: "whisper-1"} },
 		"one grant more": func(c *Config) { c.MCPServers = append(c.MCPServers, MCPGrant{ServerID: uuid.New()}) },
 	} {
 		c := clone()
@@ -293,8 +294,10 @@ func TestConfig_ValidateGrants(t *testing.T) {
 		tooMany.MCPServers = append(tooMany.MCPServers, grant(tools...))
 	}
 	for field, c := range map[string]Config{
-		"config.helper_model": {HelperModel: "has space"},
-		"config.mcp_servers":  tooMany,
+		"config.helper_model":              {HelperModel: "has space"},
+		"config.transcription_model":       {TranscriptionModel: TranscriptionModel{ProviderID: uuid.New()}},
+		"config.transcription_model.model": {TranscriptionModel: TranscriptionModel{ProviderID: uuid.New(), Model: "has space"}},
+		"config.mcp_servers":               tooMany,
 	} {
 		ae, isApp := apperror.AsAppError(c.Validate())
 		require.True(t, isApp, field)
@@ -352,4 +355,27 @@ func TestConfig_MemoryStoreStoresItsID(t *testing.T) {
 	raw, err = json.Marshal(Config{Model: "m", MemoryStoreID: id})
 	require.NoError(t, err)
 	assert.Contains(t, string(raw), `"memory_store_id":"`+id.String()+`"`)
+}
+
+func TestConfig_TranscriptionModelBothOrNeither(t *testing.T) {
+	require.NoError(t, Config{}.Validate())
+	require.NoError(t, Config{TranscriptionModel: TranscriptionModel{ProviderID: uuid.New(), Model: "whisper-1"}}.Validate())
+	for name, tm := range map[string]TranscriptionModel{
+		"provider only": {ProviderID: uuid.New()},
+		"model only":    {Model: "whisper-1"},
+	} {
+		ae, isApp := apperror.AsAppError(Config{TranscriptionModel: tm}.Validate())
+		require.True(t, isApp, name)
+		assert.Equal(t, "config.transcription_model", ae.Violations()[0].Field, name)
+	}
+}
+
+func TestConfig_TranscriptionModelJSON(t *testing.T) {
+	raw, err := json.Marshal(Config{Model: "m"})
+	require.NoError(t, err)
+	assert.NotContains(t, string(raw), "transcription_model", "zero means off and is left out")
+	id := uuid.New()
+	raw, err = json.Marshal(Config{TranscriptionModel: TranscriptionModel{ProviderID: id, Model: "whisper-1"}})
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), `"transcription_model":{"provider_id":"`+id.String()+`","model":"whisper-1"}`)
 }

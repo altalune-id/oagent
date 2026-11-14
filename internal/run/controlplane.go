@@ -359,6 +359,7 @@ func (s *ThreadService) runProto(ctx context.Context, r *Run, threadPub string) 
 			EmbeddingTokens:   r.Usage.EmbeddingTokens,
 			HelperInputTokens: r.Usage.HelperInputTokens, HelperOutputTokens: r.Usage.HelperOutputTokens,
 			HelperCacheReadTokens: r.Usage.HelperCacheReadTokens, HelperCacheWriteTokens: r.Usage.HelperCacheWriteTokens,
+			TranscriptionSeconds: r.Usage.TranscriptionSeconds,
 		},
 		ErrorCode: r.ErrorCode, NoReplyReason: r.NoReplyReason, StartedAt: timestamppb.New(r.StartedAt),
 		KnowledgeRetrieveCalls: r.KnowledgeRetrieveCalls, KnowledgeRetrieveMs: r.KnowledgeRetrieveMs,

@@ -55,6 +55,11 @@ const (
 	maxImageBytes   = 5 << 20
 	notePhotoUnread = "[photo not read]"
 	notePhoto       = "[photo]"
+	maxVoiceBytes   = 5 << 20
+	maxVoiceLength  = 5 * time.Minute
+	voiceStepTime   = 30 * time.Second
+	voiceMime       = "audio/ogg"
+	noteVoice       = "[voice note]"
 )
 
 // DefaultMaxMessageAge is how old a channel message may be when its turn takes it before it is skipped as stale.

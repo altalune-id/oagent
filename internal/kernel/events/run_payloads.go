@@ -12,6 +12,7 @@ type RunUsageV1 struct {
 	HelperOutputTokens          int64 `json:"helper_output_tokens"`
 	HelperCacheReadInputTokens  int64 `json:"helper_cache_read_input_tokens"`
 	HelperCacheWriteInputTokens int64 `json:"helper_cache_write_input_tokens"`
+	TranscriptionSeconds        int64 `json:"transcription_seconds"`
 }
 
 // RunSettledV1 is the shared run event shape; ids are public ids, cost is null when unpriced. SECURITY: no text or phone.

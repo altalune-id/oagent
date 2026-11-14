@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"buf.build/go/protovalidate"
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -289,4 +290,107 @@ func TestAgentService_DraftNarrowingABoundServerIsFree(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func (f *cpGrants) withSTT(t *testing.T) (uuid.UUID, string) {
+	t.Helper()
+	stt := f.sttProvider(t, f.agent.ProjectID, agent.ModelRef{ID: "whisper-1", Priced: true, Transcription: true})
+	return stt, f.refs.Provider(stt, f.agent.ProjectID)
+}
+
+func TestAgentService_TranscriptionModelMapsPublicIDs(t *testing.T) {
+	f := newCPGrants(t)
+	stt, sttPub := f.withSTT(t)
+	c := f.wire()
+	c.TranscriptionModel = &agentv1.TranscriptionModel{ProviderId: sttPub, Model: "whisper-1"}
+	out, err := f.draft(c)
+	require.NoError(t, err)
+	assert.Equal(t, agent.TranscriptionModel{ProviderID: stt, Model: "whisper-1"}, f.store.Saved.Draft.TranscriptionModel)
+	tm := out.GetDraft().GetTranscriptionModel()
+	assert.Equal(t, sttPub, tm.GetProviderId())
+	assert.Equal(t, "whisper-1", tm.GetModel())
+	assert.False(t, tm.GetProviderMissing())
+	raw, err := protojson.Marshal(out)
+	require.NoError(t, err)
+	assert.NotContains(t, string(raw), stt.String(), "no UUID on the wire")
+
+	out, err = f.draft(f.wire())
+	require.NoError(t, err)
+	assert.Nil(t, out.GetDraft().GetTranscriptionModel(), "off renders as no transcription model")
+	assert.Zero(t, f.store.Saved.Draft.TranscriptionModel)
+}
+
+func TestAgentService_DraftRefusesAForeignTranscriptionProvider(t *testing.T) {
+	f := newCPGrants(t)
+	foreign := f.refs.Provider(uuid.New(), uuid.New())
+	for _, pub := range []string{foreign, "unknownunknownunknown", f.provider.String()} {
+		c := f.wire()
+		c.TranscriptionModel = &agentv1.TranscriptionModel{ProviderId: pub, Model: "whisper-1"}
+		_, err := f.draft(c)
+		assert.Equal(t, "transcription_model", grantReason(t, err), pub)
+	}
+	assert.Nil(t, f.store.Saved)
+}
+
+func TestAgentService_TranscriptionProviderNeedsReachAndScope(t *testing.T) {
+	for name, c := range map[string]struct {
+		resources func(f *cpGrants, stt uuid.UUID) []uuid.UUID
+		scopes    []string
+	}{
+		"without provider:read": {
+			resources: func(f *cpGrants, stt uuid.UUID) []uuid.UUID {
+				return []uuid.UUID{f.agent.ID, f.provider, f.server, stt}
+			},
+			scopes: []string{scope.McpserverRead},
+		},
+		"outside the key's resources": {
+			resources: func(f *cpGrants, _ uuid.UUID) []uuid.UUID { return []uuid.UUID{f.agent.ID, f.provider, f.server} },
+			scopes:    []string{scope.ProviderRead, scope.McpserverRead},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newCPGrants(t)
+			stt, sttPub := f.withSTT(t)
+			_, err := f.draft(f.wire())
+			require.NoError(t, err)
+			f.agent.Draft = f.store.Saved.Draft
+			f.asKey(c.resources(f, stt), c.scopes...)
+			w := f.wire()
+			w.TranscriptionModel = &agentv1.TranscriptionModel{ProviderId: sttPub, Model: "whisper-1"}
+			_, err = f.draft(w)
+			assert.Equal(t, "transcription_model", grantReason(t, err))
+		})
+	}
+}
+
+func TestAgentService_DanglingTranscriptionProviderRendersMissing(t *testing.T) {
+	f := newCPGrants(t)
+	gone := uuid.New()
+	f.agent.Draft = agent.Config{ProviderID: f.provider, Model: "gpt-4o", TranscriptionModel: agent.TranscriptionModel{ProviderID: gone, Model: "whisper-1"}}
+	resp, err := f.cp.GetAgent(f.ctx, connect.NewRequest(&agentv1.GetAgentRequest{Id: f.agent.PublicID}))
+	require.NoError(t, err)
+	tm := resp.Msg.GetAgent().GetDraft().GetTranscriptionModel()
+	assert.Empty(t, tm.GetProviderId())
+	assert.True(t, tm.GetProviderMissing())
+	assert.Equal(t, "whisper-1", tm.GetModel())
+	raw, err := protojson.Marshal(resp.Msg)
+	require.NoError(t, err)
+	assert.NotContains(t, string(raw), gone.String())
+}
+
+func TestAgentService_DanglingTranscriptionProviderRoundTripsToAFieldError(t *testing.T) {
+	f := newCPGrants(t)
+	gone := uuid.New()
+	f.agent.Draft = agent.Config{ProviderID: f.provider, Model: "gpt-4o", TranscriptionModel: agent.TranscriptionModel{ProviderID: gone, Model: "whisper-1"}}
+	got, err := f.cp.GetAgent(f.ctx, connect.NewRequest(&agentv1.GetAgentRequest{Id: f.agent.PublicID}))
+	require.NoError(t, err)
+	cfg := got.Msg.GetAgent().GetDraft()
+	cfg.ProviderId = f.providerPub
+	req := &agentv1.UpdateAgentDraftRequest{Id: f.agent.PublicID, Config: cfg}
+
+	v, err := protovalidate.New()
+	require.NoError(t, err)
+	require.NoError(t, v.Validate(req), "the console sends back what it was given; the proto must not refuse it as GEN004")
+	_, err = f.cp.UpdateAgentDraft(f.ctx, connect.NewRequest(req))
+	assert.Equal(t, "transcription_model", grantReason(t, err), "a model with no provider points the console at the field")
 }

@@ -50,6 +50,22 @@ describe('agentConfig', () => {
     expect(changes({ ...live, memoryStoreId: 'Ms2bVn7QxK4pRt9KwZc3H' }, on, usd, stores)).toEqual([{ key: 'configure.change_memory_store' }]);
   });
 
+  it('carries the transcription model through a save, drops a dead one, and lists a voice-note change', () => {
+    const stt = { providerId: 'Pv9kR3wQ7xLm2NbVc5HtZ', model: 'whisper-1' };
+    const on = fromWire({ ...liveWire, transcriptionModel: { ...stt, providerMissing: false } });
+    expect(on.transcriptionModel).toEqual({ ...stt, providerMissing: false });
+    expect(emptyConfig().transcriptionModel).toEqual({ providerId: '', model: '', providerMissing: false });
+    expect(fromWire(liveWire).transcriptionModel).toEqual(emptyConfig().transcriptionModel);
+    expect(toWire(on).transcriptionModel).toEqual(stt);
+    expect(toWire(live)).not.toHaveProperty('transcriptionModel');
+    expect(toWire({ ...on, transcriptionModel: { providerId: '', model: 'whisper-1', providerMissing: true } })).not.toHaveProperty('transcriptionModel');
+    expect(changes(on, live, usd, names)).toEqual([{ key: 'configure.change_transcription_on', params: { model: 'whisper-1' } }]);
+    expect(changes(live, on, usd, names)).toEqual([{ key: 'configure.change_transcription_off' }]);
+    const other = { ...on, transcriptionModel: { ...on.transcriptionModel, model: 'whisper-large-v3-turbo' } };
+    expect(changes(other, on, usd, names)).toEqual([{ key: 'configure.change_transcription_changed', params: { model: 'whisper-large-v3-turbo' } }]);
+    expect(changes(on, on, usd, names)).toEqual([]);
+  });
+
   it('sends no legacy tools, output-only flags or grants of a deleted server', () => {
     const withLegacy = fromWire({ ...draftWire, providerMissing: true, tools: [{ name: 'old', requireApproval: true }], mcpServers: [...draftWire.mcpServers, { serverId: 'GneZ23456789abcdefghj', tools: [{ name: 'x', requireApproval: true }], missing: true }] });
     expect(withLegacy.tools).toEqual([{ name: 'old', requireApproval: true, freeWhen: [] }]);

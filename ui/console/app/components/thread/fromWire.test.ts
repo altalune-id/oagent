@@ -1,3 +1,4 @@
+import type { JsonObject, JsonValue } from '@bufbuild/protobuf';
 import { create } from '@bufbuild/protobuf';
 import { describe, expect, it } from 'vitest';
 import { IdentityKind } from '#gen/enduser/v1/enduser_pb';
@@ -83,5 +84,16 @@ describe('thread wire mapping', () => {
       { id: 2, kind: 'tool', name: 'b', args: {}, result: undefined, state: 'running' },
       { id: 3, kind: 'tool', name: 'gone', args: {}, result: 'late', state: 'done' },
     ]);
+  });
+
+  it('reads a voice note as the agent does: its transcript when done, else the plain note, the caption on its own line', () => {
+    const audio = (transcript?: JsonObject): JsonObject => ({ type: 'audio', id: 'wamid-1', source: { type: 'data', value: '', mimeType: 'audio/ogg' }, ...(transcript ? { metadata: { transcript } } : {}) });
+    const said = (content: JsonValue) => toItems([create(ThreadMessageSchema, { seq: 1n, role: 'user', message: { content } })], [])[0];
+    expect(said('[voice note]')).toMatchObject({ kind: 'user', text: '[voice note]' });
+    expect(said([audio()])).toMatchObject({ text: '[voice note]' });
+    expect(said([audio({ status: 'failed', reason: 'too_long' })])).toMatchObject({ text: '[voice note]' });
+    expect(said([audio({ status: 'skipped', text: 'stray', reason: 'too_long' })])).toMatchObject({ text: '[voice note]' });
+    expect(said([audio({ status: 'done', text: 'catat kopi', seconds: 3 })])).toMatchObject({ text: '[voice note] catat kopi' });
+    expect(said([audio({ status: 'done', text: 'catat kopi', seconds: 3 }), { type: 'text', text: 'dengar' }])).toMatchObject({ text: '[voice note] catat kopi\ndengar' });
   });
 });

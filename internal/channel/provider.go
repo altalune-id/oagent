@@ -81,3 +81,14 @@ func IsTooLargeError(err error) bool {
 	_, ok := errors.AsType[*TooLargeError](err)
 	return ok
 }
+
+// MediaTypeError reports media the provider does not hand over.
+type MediaTypeError struct{}
+
+func (e *MediaTypeError) Error() string { return "channel: unsupported media type" }
+
+// IsMediaTypeError reports whether err's tree contains a *MediaTypeError.
+func IsMediaTypeError(err error) bool {
+	_, ok := errors.AsType[*MediaTypeError](err)
+	return ok
+}

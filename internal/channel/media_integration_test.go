@@ -55,6 +55,31 @@ func TestMedia_OverTheCapRefused(t *testing.T) {
 	p := uncapped{Fake: fake, body: bytes.Repeat([]byte{1}, 11)}
 	_, _, err := channel.Media{Service: w.svc, Provider: p}.Fetch(in(s), conn.ID, "msg_2", "image/jpeg", 10)
 	assert.True(t, channel.IsTooLargeError(err), "%v", err)
+	assert.ErrorIs(t, err, run.ErrMediaTooLarge, "run sees the cap without importing channel")
+}
+
+type typed struct {
+	*channeltest.Fake
+	err error
+}
+
+func (p typed) FetchMedia(context.Context, channel.Connection, channel.Secrets, channel.MediaRef, int64) (io.ReadCloser, string, error) {
+	return nil, "", p.err
+}
+
+func TestMedia_ProviderErrorsReachRunAsSentinels(t *testing.T) {
+	w, s, conn, fake := newMediaWorld(t)
+	for want, perr := range map[error]error{
+		run.ErrMediaType:     &channel.MediaTypeError{},
+		run.ErrMediaTooLarge: &channel.TooLargeError{Limit: 10},
+	} {
+		_, _, err := channel.Media{Service: w.svc, Provider: typed{Fake: fake, err: perr}}.Fetch(in(s), conn.ID, "msg_3", "audio/ogg", 10)
+		assert.ErrorIs(t, err, want)
+		assert.ErrorIs(t, err, perr, "the cause is kept")
+	}
+	_, _, err := channel.Media{Service: w.svc, Provider: typed{Fake: fake, err: &channel.ProviderUnavailableError{}}}.Fetch(in(s), conn.ID, "msg_3", "audio/ogg", 10)
+	assert.NotErrorIs(t, err, run.ErrMediaType)
+	assert.NotErrorIs(t, err, run.ErrMediaTooLarge)
 }
 
 func TestMedia_DisabledOrUnknownConnectionReadsNothing(t *testing.T) {

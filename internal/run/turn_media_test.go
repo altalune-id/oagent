@@ -31,6 +31,7 @@ type media struct {
 	fetched []fetchCall
 	read    []string
 	data    []byte
+	mime    string
 	err     error
 	readErr error
 }
@@ -41,6 +42,9 @@ func (m *media) Fetch(_ context.Context, conn uuid.UUID, id, mime string, maxByt
 	m.fetched = append(m.fetched, fetchCall{conn: conn, id: id, mime: mime, maxBytes: maxBytes})
 	if m.err != nil {
 		return nil, "", m.err
+	}
+	if m.mime != "" {
+		return m.data, m.mime, nil
 	}
 	return m.data, mime, nil
 }
@@ -204,6 +208,29 @@ func TestTurn_FetchFailureNotedTurnContinues(t *testing.T) {
 	assert.Equal(t, "struk\n[photo not read]", inputContent(t, f.rt.LastRequest()), "with no photo left the input is text")
 }
 
+func TestTurn_NonImageBytesForAPhotoNoted(t *testing.T) {
+	f := newSvc(t)
+	md, _ := f.channel(t, "dm", true)
+	md.data, md.mime = []byte("OggS"), "audio/ogg"
+	f.post(t, photoMsg("struk", "wamid-1", nil))
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	assert.Equal(t, "struk\n[photo not read]", inputContent(t, f.rt.LastRequest()), "audio bytes never go to the model as an image")
+}
+
+func TestTurn_PhotoWithoutAStoredTypeStillReads(t *testing.T) {
+	f := newSvc(t)
+	md, _ := f.channel(t, "dm", true)
+	md.mime = "image/png"
+	m := photoMsg("struk", "wamid-1", nil)
+	m.Body = []byte(strings.Replace(string(m.Body), `"mimeType":"image/jpeg"`, `"mimeType":""`, 1))
+	f.post(t, m)
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	require.Equal(t, "", md.fetched[0].mime, "the stored part had no type")
+	imgs := images(inputParts(t, f.rt.LastRequest()))
+	require.Len(t, imgs, 1)
+	assert.Equal(t, "image/png", imgs[0].Source.MimeType)
+}
+
 func TestTurn_OversizeImageNoted(t *testing.T) {
 	f := newSvc(t)
 	md, _ := f.channel(t, "dm", true)
@@ -294,4 +321,78 @@ func TestTurn_VoiceOnlyTurnSkipsTheModel(t *testing.T) {
 	f.say(t, "catat kopi")
 	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
 	assert.Equal(t, "[voice note]\n\ncatat kopi", inputContent(t, f.rt.LastRequest()), "a mixed turn runs the model")
+}
+
+func voicePartMsg(ext string, transcript map[string]any, caption string, speaker *uuid.UUID) run.Message {
+	audio := map[string]any{"type": "audio", "source": map[string]string{"type": "data", "value": "", "mimeType": "audio/ogg"}, "id": ext}
+	if transcript != nil {
+		audio["metadata"] = map[string]any{"transcript": transcript}
+	}
+	parts := []map[string]any{audio}
+	if caption != "" {
+		parts = append(parts, map[string]any{"type": "text", "text": caption})
+	}
+	body, _ := json.Marshal(map[string]any{"id": uuid.NewString(), "role": "user", "content": parts, "channel": map[string]any{"type": "audio", "voice": true}})
+	return run.Message{Role: run.RoleUser, Body: body, ExternalMessageID: ext, SpeakerID: speaker}
+}
+
+var heard = map[string]any{"status": "done", "text": "catat kopi dua gelas", "seconds": 3}
+
+func TestTurn_TranscribedVoiceNoteReadsAsText(t *testing.T) {
+	f := newSvc(t)
+	f.channel(t, "dm", true)
+	f.post(t, voicePartMsg("wamid-1", heard, "", nil))
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	require.Len(t, f.rt.Requests, 1, "a transcribed voice-only turn runs the model")
+	assert.Equal(t, "[voice note] catat kopi dua gelas", inputContent(t, f.rt.LastRequest()))
+	assert.NotContains(t, string(f.rt.LastRequest().Input.Message), "wamid-1")
+}
+
+func TestTurn_VoiceNoteKeepsItsCaption(t *testing.T) {
+	f := newSvc(t)
+	f.channel(t, "dm", true)
+	f.post(t, voicePartMsg("wamid-1", heard, "dengar", nil))
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	assert.Equal(t, "[voice note] catat kopi dua gelas\ndengar", inputContent(t, f.rt.LastRequest()))
+}
+
+func TestTurn_GroupVoiceNoteKeepsTheSpeaker(t *testing.T) {
+	f := newSvc(t)
+	f.channel(t, "group", true)
+	speaker := uuid.New()
+	f.post(t, voicePartMsg("wamid-1", heard, "", &speaker))
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	require.Len(t, f.rt.Requests, 1, "a group voice note with a transcript runs the model")
+	assert.Equal(t, "[member] [voice note] catat kopi dua gelas", inputContent(t, f.rt.LastRequest()))
+}
+
+func TestTurn_UntranscribedVoicePartReadsAsToday(t *testing.T) {
+	f := newSvc(t)
+	f.channel(t, "dm", true)
+	f.post(t, voicePartMsg("wamid-1", nil, "", nil))
+	f.say(t, "catat kopi")
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	assert.Equal(t, "[voice note]\n\ncatat kopi", inputContent(t, f.rt.LastRequest()), "the same text as an old string voice note")
+
+	g := newSvc(t)
+	g.channel(t, "dm", true)
+	g.post(t, voicePartMsg("wamid-1", map[string]any{"status": "failed", "reason": "failed"}, "", nil))
+	r := g.execute(t)
+	assert.Equal(t, run.StatusCompleted, r.Status)
+	assert.Empty(t, g.rt.Requests, "a failed voice-only turn still gets the set reply, not the model")
+}
+
+func TestTurn_HistoryNeverSendsAnAudioPart(t *testing.T) {
+	f := newSvc(t)
+	f.channel(t, "dm", true)
+	f.post(t, voicePartMsg("wamid-old", heard, "", nil))
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	require.NoError(t, f.snaps.Delete(f.ctx, f.thread))
+
+	f.say(t, "berapa totalnya?")
+	f.execute(t, fakes.RuntimeReply{Stream: stream(t, "plain_reply")})
+	history := string(mustMarshal(t, f.rt.LastRequest().History))
+	assert.NotContains(t, history, `"audio"`, "no audio part in rebuilt history")
+	assert.NotContains(t, history, "wamid-old")
+	assert.Contains(t, history, "[voice note] catat kopi dua gelas")
 }

@@ -3,6 +3,7 @@ package run
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +17,12 @@ type SnapshotStore interface {
 	Load(ctx context.Context, threadID uuid.UUID) (*Snapshot, error)
 	Save(ctx context.Context, snap *Snapshot) error
 	Delete(ctx context.Context, threadID uuid.UUID) error
+}
+
+// TranscriptionModel names the speech-to-text model of an agent version.
+type TranscriptionModel struct {
+	ProviderID uuid.UUID
+	Model      string
 }
 
 // AgentVersion is the agent config a run is pinned to: a published version, or a draft for a Try it run.
@@ -35,8 +42,10 @@ type AgentVersion struct {
 	HelperModel  string
 	// MemoryStoreID is the memory store the agent remembers people in; uuid.Nil is none.
 	MemoryStoreID uuid.UUID
-	MCPServers    []MCPGrant
-	Knowledge     KnowledgeTuning
+	// TranscriptionModel turns voice notes into text; the zero value is off.
+	TranscriptionModel TranscriptionModel
+	MCPServers         []MCPGrant
+	Knowledge          KnowledgeTuning
 }
 
 // KnowledgeTuning is how a version searches: K and MinScore go to the retriever (0 or nil: its default); MaxBytes is the budget.
@@ -154,7 +163,21 @@ type Refs interface {
 	ResourcePublicID(ctx context.Context, orgID, id uuid.UUID) (publicID string, ok bool, err error)
 }
 
-// Media reads an inbound photo of a channel message and marks a message read, through the thread's connection.
+// Errors a Media answers for a refused size or type, wrapping the channel's cause.
+var (
+	ErrMediaTooLarge = errors.New("run: media over the size limit")
+	ErrMediaType     = errors.New("run: unsupported media type")
+)
+
+// ErrTranscribeRateLimited is what a Transcriber wraps when the provider still refuses for rate after its retry.
+var ErrTranscribeRateLimited = errors.New("run: transcription rate limited")
+
+// Transcriber turns one voice clip into text with a speech-to-text model; an empty text is not an error.
+type Transcriber interface {
+	Transcribe(ctx context.Context, m ResolvedModel, model string, audio []byte, mime string) (string, error)
+}
+
+// Media reads inbound media and marks messages read via the thread's connection; Fetch refuses over maxBytes with ErrMediaTooLarge.
 type Media interface {
 	Fetch(ctx context.Context, connectionID uuid.UUID, messageID, mime string, maxBytes int64) (data []byte, mimeType string, err error)
 	MarkRead(ctx context.Context, connectionID uuid.UUID, messageID string) error

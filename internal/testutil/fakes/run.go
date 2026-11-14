@@ -3,7 +3,9 @@ package fakes
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"sync"
@@ -542,6 +544,36 @@ func (f *RunStore) PutCheckpoint(ctx context.Context, token string, runID uuid.U
 		return nil
 	}
 	f.append(r.ThreadID, th, consumed(runID, msgs))
+	return nil
+}
+
+// SetTakenMessageBody implements run.Store.
+func (f *RunStore) SetTakenMessageBody(
+	ctx context.Context, token string, runID, messageID uuid.UUID, body json.RawMessage, seconds int64,
+) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Err != nil {
+		return f.Err
+	}
+	r, ok := f.Runs[runID]
+	if !ok {
+		return &run.NotFoundError{ID: runID.String()}
+	}
+	if _, err := f.fenced(ctx, r.ThreadID, token); err != nil {
+		return err
+	}
+	i := slices.IndexFunc(f.Messages, func(m run.Message) bool {
+		return m.ID == messageID && m.RunID != nil && *m.RunID == runID && m.ThreadID == r.ThreadID
+	})
+	if i < 0 {
+		return fmt.Errorf("fakes: run %s took no message %s", runID, messageID)
+	}
+	f.Messages[i].Body = slices.Clone(body)
+	r.Usage.TranscriptionSeconds += seconds
 	return nil
 }
 

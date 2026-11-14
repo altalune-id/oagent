@@ -2,6 +2,7 @@
 package httpclient
 
 import (
+	"cmp"
 	"io"
 	"net"
 	"net/http"
@@ -57,7 +58,7 @@ func newTransport(s settings) http.RoundTripper {
 		// NOTE: a custom DialContext disables HTTP/2 unless this is set.
 		ForceAttemptHTTP2:     true,
 		TLSHandshakeTimeout:   10 * time.Second,
-		ResponseHeaderTimeout: 10 * time.Second,
+		ResponseHeaderTimeout: cmp.Or(s.headerTimeout, 10*time.Second),
 		ExpectContinueTimeout: 1 * time.Second,
 		MaxIdleConns:          32,
 		// NOTE: the stdlib default of 2 starves concurrent calls to a single upstream.

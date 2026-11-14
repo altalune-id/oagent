@@ -279,6 +279,8 @@ erDiagram
         bigint helper_price_output_micros
         bigint helper_price_cache_read_micros
         bigint helper_price_cache_write_micros
+        bigint transcription_seconds "billed voice note audio seconds, each clip at least 1"
+        bigint transcription_price_micros "per audio minute; NULL = unpriced"
     }
     files {
         uuid id PK

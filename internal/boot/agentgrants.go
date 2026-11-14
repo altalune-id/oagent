@@ -50,7 +50,7 @@ func (g grantProviders) Models(ctx context.Context, projectID, providerID uuid.U
 	}
 	out := make([]agent.ModelRef, 0, len(p.Models))
 	for _, m := range p.Models {
-		out = append(out, agent.ModelRef{ID: m.ID, Priced: m.Prices != nil})
+		out = append(out, agent.ModelRef{ID: m.ID, Priced: m.Prices != nil, Transcription: m.Transcription})
 	}
 	return out, nil
 }
@@ -102,7 +102,7 @@ func (u providerUsage) ProviderUse(ctx context.Context, providerID uuid.UUID) (m
 	if err != nil {
 		return modelprovider.ProviderUse{}, err
 	}
-	out := modelprovider.ProviderUse{InUse: use.InUse, Models: use.Models}
+	out := modelprovider.ProviderUse{InUse: use.InUse, Models: use.Models, TranscriptionModels: use.TranscriptionModels}
 	if u.knowledge != nil {
 		if out.EmbeddingModel, err = u.knowledge.EmbeddingModelOf(ctx, providerID); err != nil {
 			return modelprovider.ProviderUse{}, err

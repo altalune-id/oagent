@@ -125,6 +125,35 @@ function text(content: JsonValue | undefined): string {
   return '';
 }
 
+const VOICE_NOTE = '[voice note]';
+
+function heard(part: JsonObject): string {
+  const meta = part.metadata;
+  const tr = meta && typeof meta === 'object' && !Array.isArray(meta) ? meta.transcript : undefined;
+  if (!tr || typeof tr !== 'object' || Array.isArray(tr) || tr.status !== 'done' || typeof tr.text !== 'string' || !tr.text) {
+    return VOICE_NOTE;
+  }
+  return `${VOICE_NOTE} ${tr.text}`;
+}
+
+function userText(content: JsonValue | undefined): string {
+  if (!Array.isArray(content)) {
+    return text(content);
+  }
+  const lines: string[] = [''];
+  for (const p of content) {
+    if (!p || typeof p !== 'object' || Array.isArray(p)) {
+      continue;
+    }
+    if (p.type === 'audio') {
+      lines.push(heard(p), '');
+    } else if (p.type === 'text') {
+      lines[lines.length - 1] += String(p.text ?? '');
+    }
+  }
+  return lines.filter(Boolean).join('\n');
+}
+
 function args(raw: JsonValue | undefined): Record<string, unknown> {
   try {
     const parsed: unknown = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -164,7 +193,7 @@ export function toItems(messages: MessagePB[], runs: RunSummary[], t: Translate)
     const at = m.createdAt ? timestampDate(m.createdAt) : new Date(0);
     if (m.role === 'user') {
       const skipped = skipReason(m.skipReason);
-      out.push({ id: id++, kind: 'user', text: text(body.content), speaker: wireLabel({ displayName: m.speakerDisplayName, identityKind: m.speakerIdentityKind, identityHint: m.speakerIdentityHint }, m.speakerLabel, t) || undefined, ...(skipped ? { skipped } : {}), at });
+      out.push({ id: id++, kind: 'user', text: userText(body.content), speaker: wireLabel({ displayName: m.speakerDisplayName, identityKind: m.speakerIdentityKind, identityHint: m.speakerIdentityHint }, m.speakerLabel, t) || undefined, ...(skipped ? { skipped } : {}), at });
     } else if (m.role === 'assistant') {
       const said = text(body.content);
       if (said) {

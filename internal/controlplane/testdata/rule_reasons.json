@@ -19,6 +19,7 @@
   {"rule": "agent.instructions.max_len.32000", "reason": "too_long", "param": "32000"},
   {"rule": "agent.model.max_len.128", "reason": "too_long", "param": "128"},
   {"rule": "agent.helper_model.max_len.128", "reason": "too_long", "param": "128"},
+  {"rule": "agent.transcription_model.model.max_len.128", "reason": "too_long", "param": "128"},
   {"rule": "agent.tools.unique", "reason": "invalid"},
   {"rule": "agent.grant_tools.unique", "reason": "invalid"},
   {"rule": "agent.mcp_servers.unique", "reason": "invalid"},

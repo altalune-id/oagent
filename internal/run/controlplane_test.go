@@ -380,6 +380,16 @@ func TestThreadService_RunShowsHelperUsage(t *testing.T) {
 	assert.Equal(t, int64(100+100_000+1_000), one.Msg.GetRun().GetCostMicros(), "the run cost includes the helper classes")
 }
 
+func TestThreadService_RunShowsTranscriptionUsage(t *testing.T) {
+	w := newCPWorld(t)
+	w.running.Usage = run.Usage{InputTokens: 100, TranscriptionSeconds: 90}
+	w.running.Prices = &run.Prices{Input: new(int64(1_000_000)), Transcription: new(int64(6_000))}
+	one, err := w.cp.GetRun(member(w.org), connect.NewRequest(&threadv1.GetRunRequest{RunId: w.running.PublicID}))
+	require.NoError(t, err)
+	assert.Equal(t, int64(90), one.Msg.GetRun().GetUsage().GetTranscriptionSeconds())
+	assert.Equal(t, int64(100+9_000), one.Msg.GetRun().GetCostMicros(), "the run cost includes the transcription seconds")
+}
+
 func TestThreadService_RunShowsKnowledgeUsage(t *testing.T) {
 	w := newCPWorld(t)
 	w.running.Usage = run.Usage{InputTokens: 100, EmbeddingTokens: 1_000_000}

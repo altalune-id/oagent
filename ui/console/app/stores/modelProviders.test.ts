@@ -3,7 +3,7 @@ import { create } from '@bufbuild/protobuf';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorCode } from '#base/lib/apperror/message';
-import { ModelProviderKind, ModelProviderSchema } from '#gen/modelprovider/v1/modelprovider_pb';
+import { ModelProviderKind, ModelProviderSchema, ModelSchema } from '#gen/modelprovider/v1/modelprovider_pb';
 import { connectError, deferred, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { createRequest, toModelProvider, updateRequest, useModelProvidersStore } from './modelProviders';
 
@@ -35,6 +35,15 @@ describe('model provider mapping', () => {
     expect(createRequest(orgId, projectId, anthropic).kind).toBe(ModelProviderKind.ANTHROPIC);
     expect(updateRequest(provider.id, anthropic).kind).toBe(ModelProviderKind.ANTHROPIC);
     expect(updateRequest(provider.id, input).kind).toBe(ModelProviderKind.OPENAI_COMPATIBLE);
+  });
+
+  it('keeps a transcription model and its audio price through a read and a save', () => {
+    const audio = { inputMicros: 0n, outputMicros: 0n, cacheReadMicros: 0n, cacheWriteMicros: 0n, audioMinuteMicros: 6_000n };
+    const read = toModelProvider(create(ModelProviderSchema, { ...providerPB, models: [create(ModelSchema, { id: 'whisper-1', transcription: true, prices: audio })] }));
+    expect(read.models[0]).toEqual({ id: 'whisper-1', vision: false, embedding: false, transcription: true, prices: audio });
+    const sent = updateRequest(provider.id, { ...input, models: read.models });
+    expect(sent.models[0]).toMatchObject({ id: 'whisper-1', transcription: true, prices: { audioMinuteMicros: 6_000n } });
+    expect(createRequest(orgId, projectId, { ...input, models: read.models }).models[0]!.transcription).toBe(true);
   });
 
   it('never sends the embedding flag for an Anthropic provider, which has no embeddings API', () => {

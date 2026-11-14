@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/go-jet/jet/v2/qrm"
@@ -126,14 +127,26 @@ func (s *postgresStore) Resolve(ctx context.Context, publicID string) (Ref, erro
 
 // ProviderUse reports how the latest published versions in the org on ctx use a model provider; drafts never count.
 func (s *postgresStore) ProviderUse(ctx context.Context, providerID uuid.UUID) (ProviderUsage, error) {
-	cfgs, err := s.latestConfigs(ctx, "ProviderUse", s.providerUse, providerID)
+	chat, err := s.latestConfigs(ctx, "ProviderUse", s.providerUse, providerID)
 	if err != nil {
 		return ProviderUsage{}, err
 	}
-	out := ProviderUsage{InUse: len(cfgs) > 0, Models: map[string]bool{}}
-	for _, c := range cfgs {
+	stt, err := s.latestConfigs(ctx, "ProviderUse", s.sttUse, providerID)
+	if err != nil {
+		return ProviderUsage{}, err
+	}
+	out := ProviderUsage{InUse: len(chat) > 0 || len(stt) > 0, Models: map[string]bool{}}
+	for _, c := range chat {
+		if c.ProviderID != providerID {
+			continue
+		}
 		for _, m := range c.Models() {
 			out.Models[m] = out.Models[m] || c.MaxCostCents > 0
+		}
+	}
+	for _, c := range stt {
+		if m := c.TranscriptionModel.Model; !slices.Contains(out.TranscriptionModels, m) {
+			out.TranscriptionModels = append(out.TranscriptionModels, m)
 		}
 	}
 	return out, nil

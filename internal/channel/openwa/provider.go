@@ -131,7 +131,7 @@ func (p *Provider) Send(ctx context.Context, conn channel.Connection, secrets ch
 	return out.ID, nil
 }
 
-// FetchMedia reads an inbound JPEG, PNG or WebP image of at most maxBytes, from a URL built from the connection and message id only.
+// FetchMedia reads an inbound JPEG, PNG, WebP or Ogg file of at most maxBytes, from a URL built from the connection and message id only.
 func (p *Provider) FetchMedia(
 	ctx context.Context, conn channel.Connection, secrets channel.Secrets, ref channel.MediaRef, maxBytes int64,
 ) (io.ReadCloser, string, error) {
@@ -152,9 +152,9 @@ func (p *Provider) FetchMedia(
 	defer func() { _ = resp.Body.Close() }()
 	mimeType := baseMime(resp.Header.Get("Content-Type"))
 	switch mimeType {
-	case "image/jpeg", "image/png", "image/webp":
+	case "image/jpeg", "image/png", "image/webp", "audio/ogg":
 	default:
-		return nil, "", &MediaTypeError{}
+		return nil, "", &channel.MediaTypeError{}
 	}
 	if resp.ContentLength > maxBytes {
 		return nil, "", &channel.TooLargeError{Limit: maxBytes}

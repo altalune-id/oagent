@@ -160,8 +160,8 @@ func userText(m Message) string {
 	}
 	var texts []string
 	for _, p := range parts {
-		if p.Type == "text" && strings.TrimSpace(p.Text) != "" {
-			texts = append(texts, strings.TrimSpace(p.Text))
+		if text := strings.TrimSpace(partText(p)); p.Type != "image" && text != "" {
+			texts = append(texts, text)
 		}
 	}
 	return strings.Join(texts, "\n")

@@ -93,6 +93,8 @@ type runRow struct {
 	HelperPriceOutputMicros     *int64     `alias:"runs.helper_price_output_micros"`
 	HelperPriceCacheReadMicros  *int64     `alias:"runs.helper_price_cache_read_micros"`
 	HelperPriceCacheWriteMicros *int64     `alias:"runs.helper_price_cache_write_micros"`
+	TranscriptionSeconds        int64      `alias:"runs.transcription_seconds"`
+	TranscriptionPriceMicros    *int64     `alias:"runs.transcription_price_micros"`
 	RetrieveCalls               int32      `alias:"runs.knowledge_retrieve_calls"`
 	RetrieveMs                  int64      `alias:"runs.knowledge_retrieve_ms"`
 	Passages                    int32      `alias:"runs.knowledge_passages"`
@@ -112,6 +114,7 @@ func (r *runRow) toRun() *Run {
 			CacheWriteTokens: r.CacheWriteTokens, EmbeddingTokens: r.EmbeddingTokens, Estimated: r.UsageEstimated,
 			HelperInputTokens: r.HelperInputTokens, HelperOutputTokens: r.HelperOutputTokens,
 			HelperCacheReadTokens: r.HelperCacheReadTokens, HelperCacheWriteTokens: r.HelperCacheWriteTokens,
+			TranscriptionSeconds: r.TranscriptionSeconds,
 		},
 		KnowledgeRetrieveCalls: r.RetrieveCalls, KnowledgeRetrieveMs: r.RetrieveMs, KnowledgePassages: r.Passages,
 		StartedAt: r.StartedAt.UTC(), UpdatedAt: r.UpdatedAt.UTC(),
@@ -130,12 +133,13 @@ func (r *runRow) toRun() *Run {
 	}
 	if r.PriceInputMicros != nil || r.PriceOutputMicros != nil || r.PriceCacheReadMicros != nil || r.PriceCacheWriteMicros != nil ||
 		r.PriceEmbeddingMicros != nil || r.HelperPriceInputMicros != nil || r.HelperPriceOutputMicros != nil ||
-		r.HelperPriceCacheReadMicros != nil || r.HelperPriceCacheWriteMicros != nil {
+		r.HelperPriceCacheReadMicros != nil || r.HelperPriceCacheWriteMicros != nil || r.TranscriptionPriceMicros != nil {
 		out.Prices = &Prices{
 			Input: r.PriceInputMicros, Output: r.PriceOutputMicros,
 			CacheRead: r.PriceCacheReadMicros, CacheWrite: r.PriceCacheWriteMicros, Embedding: r.PriceEmbeddingMicros,
 			HelperInput: r.HelperPriceInputMicros, HelperOutput: r.HelperPriceOutputMicros,
 			HelperCacheRead: r.HelperPriceCacheReadMicros, HelperCacheWrite: r.HelperPriceCacheWriteMicros,
+			Transcription: r.TranscriptionPriceMicros,
 		}
 	}
 	return out

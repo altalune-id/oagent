@@ -326,6 +326,13 @@ func (s *AgentService) fillRefs(ctx context.Context, c Config, out *agentv1.Agen
 		}
 		out.MemoryStoreId, out.MemoryStoreMissing = pub, !ok
 	}
+	if id := c.TranscriptionModel.ProviderID; id != uuid.Nil {
+		pub, ok, err := s.refs.ProviderPublicID(ctx, id)
+		if err != nil {
+			return err
+		}
+		out.TranscriptionModel.ProviderId, out.TranscriptionModel.ProviderMissing = pub, !ok
+	}
 	return nil
 }
 
@@ -373,6 +380,20 @@ func (s *AgentService) configFrom(ctx context.Context, a *Agent, in *agentv1.Age
 			return Config{}, &InvalidGrantError{Reason: GrantMemoryStore}
 		}
 		cfg.MemoryStoreID = id
+	}
+	tm := in.GetTranscriptionModel()
+	if tm != nil && tm.GetProviderId() == "" {
+		return Config{}, &InvalidGrantError{Reason: GrantTranscriptionModel, Name: tm.GetModel()}
+	}
+	if pub := tm.GetProviderId(); pub != "" {
+		id, owner, ok, err := s.refs.ProviderID(ctx, pub)
+		if err != nil {
+			return Config{}, err
+		}
+		if !ok || owner != a.ProjectID || !mayBind(ctx, a, id, a.Draft.TranscriptionModel.ProviderID == id, scope.ProviderRead) {
+			return Config{}, &InvalidGrantError{Reason: GrantTranscriptionModel}
+		}
+		cfg.TranscriptionModel.ProviderID = id
 	}
 	return cfg, nil
 }
