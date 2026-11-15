@@ -14,6 +14,7 @@ export type Step = {
 export type Call = {
   messages: Message[],
   systemPrompt: unknown,
+  toolSpecs?: unknown[],
 };
 
 function abortError(): Error {
@@ -41,7 +42,7 @@ export class ScriptedModel extends Model<BaseModelConfig> {
   }
 
   async* stream(messages: Message[], options?: StreamOptions): AsyncIterable<ModelStreamEvent> {
-    this.calls.push({ messages: [...messages], systemPrompt: options?.systemPrompt });
+    this.calls.push({ messages: [...messages], systemPrompt: options?.systemPrompt, toolSpecs: options?.toolSpecs });
     const step = this.steps.shift();
     if (!step) {
       throw new Error('scripted model: no step left');

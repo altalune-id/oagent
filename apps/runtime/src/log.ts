@@ -25,6 +25,9 @@ const ALLOWED = new Set([
   'server',
   'port',
   'error',
+  'tool',
+  'class',
+  'bytes',
 ]);
 const MAX_STRING = 200;
 

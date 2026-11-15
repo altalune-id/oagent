@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { guardedFetch, redact } from './fetch.ts';
+import { guardedFetch, readCapped, redact } from './fetch.ts';
 
 type Call = { url: string, headers: Headers };
 
@@ -40,6 +40,11 @@ describe('guardedFetch', () => {
     expect([...text]).toHaveLength(512);
   });
 
+  it('never returns a secret that straddles the 4 KiB error read', async () => {
+    const f = fake(() => new Response(`${'x'.repeat(4090)}tok-test`, { status: 500 }));
+    expect(await (await guardedFetch('https://a.example.com/', cred, f.fetch)('https://a.example.com/')).text()).toBe('x'.repeat(512));
+  });
+
   it('reads at most 4 KiB of an error body, however long the server streams', async () => {
     let pulled = 0;
     const endless = new ReadableStream<Uint8Array>({
@@ -65,6 +70,91 @@ describe('guardedFetch', () => {
     const res = await guardedFetch('https://a.example.com/', undefined, f.fetch)('https://a.example.com/', { headers: { authorization: 'Bearer caller' } });
     expect(f.calls[0]!.headers.get('authorization')).toBeNull();
     expect(await res.text()).toBe('nope');
+  });
+});
+
+describe('guardedFetch options', () => {
+  const refuse = (url: URL) => {
+    if (url.hostname !== 'a.example.com') {
+      throw new Error(`refused ${url.hostname}`);
+    }
+  };
+  const hostCredentials = new Map([['a.example.com', [{ header: 'x-key', value: 'key-a' }]]]);
+
+  it('checks the first URL before any request', async () => {
+    const f = fake(() => new Response('ok'));
+    await expect(guardedFetch('https://b.example.com/', undefined, f.fetch, { checkHop: refuse })('https://b.example.com/')).rejects.toThrow('refused b.example.com');
+    expect(f.calls).toHaveLength(0);
+  });
+
+  it('checks every redirect hop and stops at the refused one', async () => {
+    const f = fake(() => new Response(null, { status: 302, headers: { location: 'https://b.example.com/next' } }));
+    await expect(guardedFetch('https://a.example.com/', undefined, f.fetch, { checkHop: refuse })('https://a.example.com/')).rejects.toThrow('refused b.example.com');
+    expect(f.calls).toHaveLength(1);
+  });
+
+  it('returns the redirect itself when following is off', async () => {
+    const f = fake(() => new Response(null, { status: 302, headers: { location: 'https://a.example.com/next' } }));
+    const res = await guardedFetch('https://a.example.com/', undefined, f.fetch, { followRedirects: false })('https://a.example.com/', { method: 'POST', body: '{}' });
+    expect(res.status).toBe(302);
+    expect(f.calls).toHaveLength(1);
+  });
+
+  it('sends a host secret only to its host, never across a redirect or to another first host', async () => {
+    const f = fake(url => (url === 'https://a.example.com/' ? new Response(null, { status: 307, headers: { location: 'https://b.example.com/' } }) : new Response('ok')));
+    const send = guardedFetch('https://a.example.com/', undefined, f.fetch, { hostCredentials });
+    await send('https://a.example.com/', { headers: { 'x-key': 'model-value' } });
+    await send('https://c.example.com/', { headers: { 'x-key': 'model-value' } });
+    expect(f.calls.map(c => [new URL(c.url).hostname, c.headers.get('x-key')])).toEqual([
+      ['a.example.com', 'key-a'],
+      ['b.example.com', 'model-value'],
+      ['c.example.com', 'model-value'],
+    ]);
+  });
+
+  it('redacts a host secret from an error body', async () => {
+    const f = fake(() => new Response('bad key-a', { status: 403 }));
+    const res = await guardedFetch('https://a.example.com/', undefined, f.fetch, { hostCredentials })('https://a.example.com/');
+    expect(await res.text()).toBe('bad [redacted]');
+  });
+});
+
+describe('readCapped', () => {
+  const chunks = (n: number, size: number) => new Response(new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (let i = 0; i < n; i++) {
+        controller.enqueue(new Uint8Array(size).fill(97));
+      }
+      controller.close();
+    },
+  }));
+
+  it('reports no truncation for a body of exactly maxBytes', async () => {
+    const out = await readCapped(chunks(4, 256), 1024);
+    expect([out.bytes.length, out.truncated]).toEqual([1024, false]);
+  });
+
+  it('cuts at maxBytes and reports truncation one byte past it', async () => {
+    const out = await readCapped(new Response('a'.repeat(1025)), 1024);
+    expect([out.bytes.length, out.truncated]).toEqual([1024, true]);
+  });
+
+  it('cancels the stream once the cap is passed', async () => {
+    let cancelled = 0;
+    const endless = new Response(new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(new Uint8Array(512));
+      },
+      cancel() {
+        cancelled++;
+      },
+    }));
+    expect((await readCapped(endless, 1024)).truncated).toBe(true);
+    expect(cancelled).toBe(1);
+  });
+
+  it('reads an empty body', async () => {
+    expect(await readCapped(new Response(null), 10)).toEqual({ bytes: new Uint8Array(0), truncated: false });
   });
 });
 

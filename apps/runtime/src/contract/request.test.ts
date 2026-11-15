@@ -232,6 +232,76 @@ describe('validateRequest', () => {
     }
   });
 
+  describe('web', () => {
+    const full = () => ({
+      timeoutMs: 15000,
+      maxCallsPerTurn: 10,
+      search: { kind: 'brave', apiKey: 'brave-key' },
+      fetch: { allowDomains: ['docs.example.com'] },
+      http: { hosts: ['api.example.com'], requestHeaders: ['Accept', 'X-Trace'], secrets: [{ host: 'api.example.com', header: 'Authorization', value: 'Bearer abc123' }] },
+    });
+    const withWeb = (web: unknown, name = 'plain_reply.request.json') => validateRequest({ ...golden(name), web });
+
+    it('accepts the full block and keeps it', () => {
+      const result = withWeb(full());
+      expect(result.ok ? result.request.web : result.fields).toEqual(full());
+    });
+
+    it('accepts each tool alone and an empty allow-list', () => {
+      const { search, fetch, http, ...limits } = full();
+      expect(withWeb({ ...limits, search }).ok).toBe(true);
+      expect(withWeb({ ...limits, fetch: { allowDomains: [] } }).ok).toBe(true);
+      expect(withWeb({ ...limits, http: { ...http, secrets: [] } }).ok).toBe(true);
+      expect(fetch.allowDomains).toHaveLength(1);
+    });
+
+    it('refuses a block with no tool', () => {
+      expect(withWeb({ timeoutMs: 15000, maxCallsPerTurn: 10 })).toEqual({ ok: false, fields: ['web'] });
+    });
+
+    it('refuses a secret whose host is not an http host', () => {
+      const web = full();
+      web.http.secrets.push({ host: 'other.example.com', header: 'X-Key', value: 'v' });
+      expect(withWeb(web)).toEqual({ ok: false, fields: ['web.http.secrets.1.host'] });
+    });
+
+    it('refuses an unknown or unavailable search kind, unknown keys and out-of-range limits', () => {
+      expect(withWeb({ ...full(), search: { kind: 'tavily', apiKey: 'k' } })).toEqual({ ok: false, fields: ['web.search.kind'] });
+      expect(withWeb({ ...full(), extra: 1 })).toEqual({ ok: false, fields: ['web.extra'] });
+      expect(withWeb({ ...full(), timeoutMs: 999 })).toEqual({ ok: false, fields: ['web.timeoutMs'] });
+      expect(withWeb({ ...full(), timeoutMs: 30001 })).toEqual({ ok: false, fields: ['web.timeoutMs'] });
+      expect(withWeb({ ...full(), maxCallsPerTurn: 0 })).toEqual({ ok: false, fields: ['web.maxCallsPerTurn'] });
+      expect(withWeb({ ...full(), maxCallsPerTurn: 51 })).toEqual({ ok: false, fields: ['web.maxCallsPerTurn'] });
+    });
+
+    it('refuses an invalid host, a reserved secret header and an empty http host list', () => {
+      expect(withWeb({ ...full(), fetch: { allowDomains: ['localhost'] } })).toEqual({ ok: false, fields: ['web.fetch.allowDomains.0'] });
+      const web = full();
+      web.http.hosts = [];
+      web.http.secrets = [];
+      expect(withWeb(web)).toEqual({ ok: false, fields: ['web.http.hosts'] });
+      const reserved = full();
+      reserved.http.secrets[0]!.header = 'Cookie';
+      expect(withWeb(reserved)).toEqual({ ok: false, fields: ['web.http.secrets.0.header'] });
+    });
+
+    it('needs webSearchPrice with web.search under a budget', () => {
+      const budgeted: Record<string, unknown> = { ...golden('limit_reached.request.json'), web: full() };
+      expect(validateRequest(budgeted)).toEqual({ ok: false, fields: ['limits.budget.webSearchPrice'] });
+      (budgeted.limits as { budget: Record<string, unknown> }).budget.webSearchPrice = 5000;
+      expect(validateRequest(budgeted).ok).toBe(true);
+      (budgeted.limits as { budget: Record<string, unknown> }).budget.webSearchPrice = -1;
+      expect(validateRequest(budgeted)).toEqual({ ok: false, fields: ['limits.budget.webSearchPrice'] });
+      const { search: _search, ...noSearch } = full();
+      expect(validateRequest({ ...golden('limit_reached.request.json'), web: noSearch }).ok).toBe(true);
+    });
+
+    it.each(requests)('leaves web out of the golden %s', (name) => {
+      const result = validateRequest(golden(name));
+      expect(result.ok && ('web' in result.request || 'webSearchPrice' in (result.request.limits.budget ?? {}))).toBe(false);
+    });
+  });
+
   describe('memory', () => {
     const fact = { text: 'Prefers WhatsApp after 6pm.', createdAt: '2026-11-01T09:30:00.123456789Z' };
     const withMemory = (memory: unknown, name = 'plain_reply.request.json') => validateRequest({ ...golden(name), memory });

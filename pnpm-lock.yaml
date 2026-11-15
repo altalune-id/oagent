@@ -39,6 +39,9 @@ catalogs:
     '@types/node':
       specifier: ^26.6.5
       version: 26.6.5
+    '@types/turndown':
+      specifier: 5.0.6
+      version: 5.0.6
     '@vitejs/plugin-vue':
       specifier: ^6.0.10
       version: 6.0.10
@@ -69,6 +72,9 @@ catalogs:
     tailwindcss:
       specifier: ^4.3.3
       version: 4.3.3
+    turndown:
+      specifier: 7.2.4
+      version: 7.2.4
     typescript:
       specifier: 6.0.3
       version: 6.0.3
@@ -127,7 +133,7 @@ importers:
         version: 2.4.0
       '@strands-agents/sdk':
         specifier: 'catalog:'
-        version: 1.23.0(@anthropic-ai/sdk@0.109.1(zod@4.6.7))(@modelcontextprotocol/client@2.4.0)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(openai@6.49.0(@aws-sdk/credential-provider-node@3.972.92)(@smithy/signature-v4@5.7.5)(ws@8.22.0)(zod@4.6.7))(zod@4.6.7)
+        version: 1.23.0(@anthropic-ai/sdk@0.109.1(zod@4.6.7))(@modelcontextprotocol/client@2.4.0)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(openai@6.49.0(@aws-sdk/credential-provider-node@3.972.92)(@smithy/signature-v4@5.7.5)(ws@8.22.0)(zod@4.6.7))(turndown@7.2.4)(zod@4.6.7)
       openai:
         specifier: 'catalog:'
         version: 6.49.0(@aws-sdk/credential-provider-node@3.972.92)(@smithy/signature-v4@5.7.5)(ws@8.22.0)(zod@4.6.7)
@@ -137,6 +143,9 @@ importers:
       pino-pretty:
         specifier: 'catalog:'
         version: 13.1.3
+      turndown:
+        specifier: 'catalog:'
+        version: 7.2.4
       undici:
         specifier: 'catalog:'
         version: 7.30.1
@@ -153,6 +162,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.5
+      '@types/turndown':
+        specifier: 'catalog:'
+        version: 5.0.6
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.5(vitest@5.0.5)
@@ -225,7 +237,7 @@ importers:
         version: 11.4.16
       '@nuxt/eslint':
         specifier: ^1.17.0
-        version: 1.17.0(@nuxt/schema@4.6.2)(@typescript-eslint/utils@8.71.1(eslint@10.13.0(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.44)(confbox@0.3.1)(crossws@0.4.12(srvx@1.0.7))(dotenv@17.4.2)(esbuild@0.28.2)(eslint-plugin-format@2.0.1(eslint@10.13.0(jiti@2.7.0)))(eslint@10.13.0(jiti@2.7.0))(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(magicast@0.5.5)(oxc-parser@0.141.0)(rolldown@1.2.15)(rollup@4.65.0)(srvx@1.0.7)(typescript@6.0.3)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.15)(rollup@4.65.0)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
+        version: 1.17.0(@nuxt/schema@4.6.2)(@typescript-eslint/utils@8.71.1(eslint@10.13.0(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.44)(confbox@0.3.1)(crossws@0.4.16(srvx@1.0.7))(dotenv@17.4.2)(esbuild@0.28.2)(eslint-plugin-format@2.0.1(eslint@10.13.0(jiti@2.7.0)))(eslint@10.13.0(jiti@2.7.0))(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(magicast@0.5.5)(oxc-parser@0.141.0)(rolldown@1.2.15)(rollup@4.65.0)(srvx@1.0.7)(typescript@6.0.3)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.15)(rollup@4.65.0)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
       '@oagent/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
@@ -313,7 +325,7 @@ importers:
         version: 11.4.16
       '@nuxt/eslint':
         specifier: ^1.17.0
-        version: 1.17.0(@nuxt/schema@4.6.2)(@typescript-eslint/utils@8.71.1(eslint@10.13.0(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.44)(confbox@0.3.1)(crossws@0.4.16(srvx@1.0.7))(dotenv@17.4.2)(esbuild@0.28.2)(eslint-plugin-format@2.0.1(eslint@10.13.0(jiti@2.7.0)))(eslint@10.13.0(jiti@2.7.0))(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(magicast@0.5.5)(oxc-parser@0.141.0)(rolldown@1.2.15)(rollup@4.65.0)(srvx@1.0.7)(typescript@6.0.3)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.15)(rollup@4.65.0)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
+        version: 1.17.0(@nuxt/schema@4.6.2)(@typescript-eslint/utils@8.71.1(eslint@10.13.0(jiti@2.7.0))(typescript@6.0.3))(@vue/compiler-sfc@3.5.44)(confbox@0.3.1)(crossws@0.4.12(srvx@1.0.7))(dotenv@17.4.2)(esbuild@0.28.2)(eslint-plugin-format@2.0.1(eslint@10.13.0(jiti@2.7.0)))(eslint@10.13.0(jiti@2.7.0))(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(magicast@0.5.5)(oxc-parser@0.141.0)(rolldown@1.2.15)(rollup@4.65.0)(srvx@1.0.7)(typescript@6.0.3)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.15)(rollup@4.65.0)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
       '@oagent/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
@@ -1582,6 +1594,9 @@ packages:
     peerDependencies:
       '@types/react': '>=16'
       react: '>=16'
+
+  '@mixmark-io/domino@2.2.0':
+    resolution: {integrity: sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw==}
 
   '@miyaneee/rollup-plugin-json5@1.2.0':
     resolution: {integrity: sha512-JjTIaXZp9WzhUHpElrqPnl1AzBi/rvRs065F71+aTmlqvTMVkdbjZ8vfFl4nRlgJy+TPBw69ZK4pwFdmOAt4aA==}
@@ -3265,6 +3280,9 @@ packages:
 
   '@types/resolve@1.20.2':
     resolution: {integrity: sha512-60BCwRFOZCQhDncwQdxxeOEEkbc5dIMccYLwbxsS4TUNeVECQ/pBJ0j09mrHOl/JJvpRPGwO9SvE4nR2Nb/a4Q==}
+
+  '@types/turndown@5.0.6':
+    resolution: {integrity: sha512-ru00MoyeeouE5BX4gRL+6m/BsDfbRayOskWqUvh7CLGW+UXxHQItqALa38kKnOiZPqJrtzJUgAC2+F0rL1S4Pg==}
 
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
@@ -6813,6 +6831,10 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
+  turndown@7.2.4:
+    resolution: {integrity: sha512-I8yFsfRzmzK0WV1pNNOA4A7y4RDfFxPRxb3t+e3ui14qSGOxGtiSP6GjeX+Y6CHb7HYaFj7ECUD7VE5kQMZWGQ==}
+    engines: {node: '>=18', npm: '>=9'}
+
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
     engines: {node: '>= 0.8.0'}
@@ -8728,6 +8750,8 @@ snapshots:
       '@types/react': 19.3.0
       react: 19.3.1
 
+  '@mixmark-io/domino@2.2.0': {}
+
   '@miyaneee/rollup-plugin-json5@1.2.0(rollup@4.65.0)':
     dependencies:
       '@rollup/pluginutils': 5.4.0(rollup@4.65.0)
@@ -10237,7 +10261,7 @@ snapshots:
     optionalDependencies:
       typescript: 6.0.3
 
-  '@strands-agents/sdk@1.23.0(@anthropic-ai/sdk@0.109.1(zod@4.6.7))(@modelcontextprotocol/client@2.4.0)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(openai@6.49.0(@aws-sdk/credential-provider-node@3.972.92)(@smithy/signature-v4@5.7.5)(ws@8.22.0)(zod@4.6.7))(zod@4.6.7)':
+  '@strands-agents/sdk@1.23.0(@anthropic-ai/sdk@0.109.1(zod@4.6.7))(@modelcontextprotocol/client@2.4.0)(@opentelemetry/api@1.10.0)(@smithy/types@4.19.0)(openai@6.49.0(@aws-sdk/credential-provider-node@3.972.92)(@smithy/signature-v4@5.7.5)(ws@8.22.0)(zod@4.6.7))(turndown@7.2.4)(zod@4.6.7)':
     dependencies:
       '@aws-sdk/client-bedrock-runtime': 3.1161.0
       '@modelcontextprotocol/client': 2.4.0
@@ -10252,6 +10276,7 @@ snapshots:
       '@anthropic-ai/sdk': 0.109.1(zod@4.6.7)
       '@smithy/types': 4.19.0
       openai: 6.49.0(@aws-sdk/credential-provider-node@3.972.92)(@smithy/signature-v4@5.7.5)(ws@8.22.0)(zod@4.6.7)
+      turndown: 7.2.4
 
   '@stylistic/eslint-plugin@5.10.0(eslint@10.13.0(jiti@2.7.0))':
     dependencies:
@@ -10412,6 +10437,8 @@ snapshots:
       csstype: 3.2.3
 
   '@types/resolve@1.20.2': {}
+
+  '@types/turndown@5.0.6': {}
 
   '@types/unist@3.0.3': {}
 
@@ -14519,6 +14546,10 @@ snapshots:
   ts-map@1.0.3: {}
 
   tslib@2.8.1: {}
+
+  turndown@7.2.4:
+    dependencies:
+      '@mixmark-io/domino': 2.2.0
 
   type-check@0.4.0:
     dependencies:

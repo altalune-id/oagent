@@ -9,6 +9,7 @@ export type Budget = {
   remainingMicros: number,
   prices: Prices,
   helperPrices?: Prices,
+  webSearchPrice?: number,
 };
 
 export type TokenUsage = {
@@ -21,6 +22,7 @@ export type TokenUsage = {
 export type TurnUsage = TokenUsage & {
   estimated: boolean,
   helper?: TokenUsage,
+  webSearchCalls?: number,
 };
 
 export const LIMIT_REPLY = 'This agent reached its spending limit for this conversation.';
@@ -51,18 +53,26 @@ export const EXTRACT_OUTPUT_TOKENS = 1500;
 
 function spentMicros(usage: TurnUsage, budget: Budget): number {
   const helper = usage.helper ? costMicros(usage.helper, budget.helperPrices ?? budget.prices) : 0;
-  return costMicros(usage, budget.prices) + helper;
+  return costMicros(usage, budget.prices) + helper + (usage.webSearchCalls ?? 0) * (budget.webSearchPrice ?? 0);
 }
 
 export function overBudget(usage: TurnUsage, budget: Budget | null): boolean {
   return budget !== null && spentMicros(usage, budget) >= budget.remainingMicros;
 }
 
-export function extractionFits(usage: TurnUsage, budget: Budget | null, inputChars: number): boolean {
+export function searchFits(usage: TurnUsage, budget: Budget | null, inFlight: number): boolean {
+  return budget === null || spentMicros(usage, budget) + (inFlight + 1) * (budget.webSearchPrice ?? 0) < budget.remainingMicros;
+}
+
+export function addSearchCall(usage: TurnUsage): void {
+  usage.webSearchCalls = (usage.webSearchCalls ?? 0) + 1;
+}
+
+export function extractionFits(usage: TurnUsage, budget: Budget | null, inputChars: number, outputTokens = EXTRACT_OUTPUT_TOKENS): boolean {
   if (budget === null) {
     return true;
   }
-  const estimate = { inputTokens: Math.ceil(inputChars / CHARS_PER_TOKEN), outputTokens: EXTRACT_OUTPUT_TOKENS, cacheReadInputTokens: 0, cacheWriteInputTokens: 0 };
+  const estimate = { inputTokens: Math.ceil(inputChars / CHARS_PER_TOKEN), outputTokens, cacheReadInputTokens: 0, cacheWriteInputTokens: 0 };
   return spentMicros(usage, budget) + costMicros(estimate, budget.helperPrices ?? budget.prices) < budget.remainingMicros;
 }
 
