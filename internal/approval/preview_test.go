@@ -95,3 +95,22 @@ func TestPreview_HiddenCutValueCountsOnce(t *testing.T) {
 	lines := strings.Split(approval.Preview(calls), "\n")
 	assert.Equal(t, "+4 more not shown", lines[len(lines)-1], "three hidden lines of the first call and the hidden note, each once")
 }
+
+func TestPreview_HTTPRequest(t *testing.T) {
+	got := approval.Preview([]approval.Call{{
+		Server: "web_tools", Tool: "http_request",
+		Args: json.RawMessage(`{"method":"POST","url":"https://api.example.com/v1/orders?id=7","headers":{"X-Api-Version":"2"},"body":"` +
+			strings.Repeat("b", 250) + `","timeout_ms":5000}`),
+		Keys: []string{"method", "url", "headers", "body", "timeout_ms"},
+	}})
+	lines := strings.Split(got, "\n")
+	require.GreaterOrEqual(t, len(lines), 5)
+	assert.Equal(t, "web_tools · http_request", lines[0])
+	assert.Equal(t, "method: POST", lines[1])
+	assert.Equal(t, "url: https://api.example.com/v1/orders?id=7", lines[2], "the host and path show on one line")
+	assert.Contains(t, lines[3], "headers: ")
+	assert.Contains(t, lines[3], "X-Api-Version")
+	assert.True(t, strings.HasPrefix(lines[4], "body: "))
+	assert.True(t, strings.HasSuffix(lines[4], "…"), "a long body is cut and says so")
+	assert.NotContains(t, got, "Authorization", "secrets are attached by the runtime per hop and are never call args")
+}

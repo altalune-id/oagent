@@ -72,10 +72,25 @@ func IsSecretLimitError(err error) bool {
 	return ok
 }
 
+// SearchKeyUnsealableError reports a stored search key that will not open, such as one sealed under another encryption key.
+type SearchKeyUnsealableError struct{ Cause error }
+
+func (e *SearchKeyUnsealableError) Error() string {
+	return "webtool: search key will not open: " + e.Cause.Error()
+}
+
+func (e *SearchKeyUnsealableError) Unwrap() error { return e.Cause }
+
+// IsSearchKeyUnsealableError reports whether err's tree contains a *SearchKeyUnsealableError.
+func IsSearchKeyUnsealableError(err error) bool {
+	_, ok := errors.AsType[*SearchKeyUnsealableError](err)
+	return ok
+}
+
 // IsExpectedError reports whether err is a typed domain error a service returns as-is.
 func IsExpectedError(err error) bool {
 	return IsProviderUnavailableError(err) || IsSecretRequiredError(err) || IsSecretsUnavailableError(err) ||
-		IsNotFoundError(err) || IsSecretLimitError(err)
+		IsNotFoundError(err) || IsSecretLimitError(err) || IsSearchKeyUnsealableError(err)
 }
 
 // ToAppError maps ProviderUnavailableError to its own code with the kind.

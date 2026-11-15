@@ -81,6 +81,7 @@ const cases: Record<string, Case> = {
   },
   memory_recall_only: { steps: [{ text: ['WhatsApp after 6pm works best for you.'], usage: { inputTokens: 220, outputTokens: 9 } }] },
   memory_user_texts: { steps: [{ text: ['Got it, after 6.'], usage: { inputTokens: 90, outputTokens: 5 } }] },
+  web_tools: { steps: [{ text: ['Hi, ', 'how can I help?'], usage: { inputTokens: 120, outputTokens: 9 } }] },
 };
 
 type Event = Record<string, unknown>;

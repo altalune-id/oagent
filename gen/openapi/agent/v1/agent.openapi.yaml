@@ -431,6 +431,9 @@ components:
           title: persona
           description: |
             agent.persona.max_len.4000
+        web:
+          title: web
+          $ref: '#/components/schemas/agent.v1.WebTools'
       title: AgentConfig
       additionalProperties: false
       description: 'AgentConfig is what an agent runs with; identity is who the agent is, persona its persona and style, and instructions the rules, combined server-side into one system prompt under headings; zero values mean the recommended value (max_steps, from GetAgent''s defaults) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider''s public id; provider_missing is output only; knowledge_source_ids are the knowledge sources searched before each turn, leaving out a deleted one, and knowledge_sources_missing is output only: how many bound sources no longer exist. knowledge_tuning shapes that search; unset fields use the recommended values. memory_store_id is the public id of the memory store the agent remembers people in, empty for none; memory_store_missing is output only: the bound store no longer exists.'
@@ -460,6 +463,22 @@ components:
         voiceNoteMaxBytes:
           type: integer
           title: voice_note_max_bytes
+          format: int32
+        webTimeoutMs:
+          type: integer
+          title: web_timeout_ms
+          format: int32
+        maxWebTimeoutMs:
+          type: integer
+          title: max_web_timeout_ms
+          format: int32
+        webMaxCallsPerTurn:
+          type: integer
+          title: web_max_calls_per_turn
+          format: int32
+        maxWebMaxCallsPerTurn:
+          type: integer
+          title: max_web_max_calls_per_turn
           format: int32
       title: AgentDefaults
       additionalProperties: false
@@ -850,6 +869,60 @@ components:
           $ref: '#/components/schemas/agent.v1.Agent'
       title: UpdateAgentResponse
       additionalProperties: false
+    agent.v1.WebTools:
+      type: object
+      properties:
+        search:
+          type: boolean
+          title: search
+        fetch:
+          type: boolean
+          title: fetch
+        http:
+          type: boolean
+          title: http
+        fetchAllowDomains:
+          type: array
+          items:
+            type: string
+            maxLength: 253
+            minLength: 1
+          title: fetch_allow_domains
+          maxItems: 50
+          uniqueItems: true
+        httpHosts:
+          type: array
+          items:
+            type: string
+            maxLength: 253
+            minLength: 1
+          title: http_hosts
+          maxItems: 50
+          uniqueItems: true
+        requestHeaders:
+          type: array
+          items:
+            type: string
+            maxLength: 64
+            minLength: 1
+          title: request_headers
+          maxItems: 20
+          uniqueItems: true
+        timeoutMs:
+          type: integer
+          title: timeout_ms
+          format: int32
+          description: |
+            agent.web.timeout_ms.range
+        maxCallsPerTurn:
+          type: integer
+          title: max_calls_per_turn
+          maximum: 50
+          minimum: 0
+          format: int32
+      title: WebTools
+      additionalProperties: false
+      description: 'WebTools turns on the built-in web tools: web_search uses the project''s search provider; web_fetch reads pages of fetch_allow_domains, which publish requires when web_fetch is on; http_request calls http_hosts, sending only request_headers from the model and the project''s HTTP secrets for the host. Hosts are lowercase; timeout_ms and max_calls_per_turn of 0 use the recommended values from GetAgent''s defaults.'
     connect-protocol-version:
       type: number
       title: Connect-Protocol-Version

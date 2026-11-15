@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file webtool/v1/webtool.proto.
  */
 export const file_webtool_v1_webtool: GenFile = /*@__PURE__*/
-  fileDesc("Chh3ZWJ0b29sL3YxL3dlYnRvb2wucHJvdG8SCndlYnRvb2wudjEipAEKEVdlYlNlYXJjaFByb3ZpZGVyEi8KBGtpbmQYASABKA4yIS53ZWJ0b29sLnYxLldlYlNlYXJjaFByb3ZpZGVyS2luZBIPCgdrZXlfc2V0GAIgASgIEh0KFXByaWNlX3Blcl9jYWxsX21pY3JvcxgDIAEoAxIuCgp1cGRhdGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCI/ChtHZXRXZWJTZWFyY2hQcm92aWRlclJlcXVlc3QSIAoKcHJvamVjdF9pZBgBIAEoCUIMukgJyAEBcgSI5DIBIp0BChxHZXRXZWJTZWFyY2hQcm92aWRlclJlc3BvbnNlEjQKCHByb3ZpZGVyGAEgASgLMh0ud2VidG9vbC52MS5XZWJTZWFyY2hQcm92aWRlckgAiAEBEjoKD2F2YWlsYWJsZV9raW5kcxgCIAMoDjIhLndlYnRvb2wudjEuV2ViU2VhcmNoUHJvdmlkZXJLaW5kQgsKCV9wcm92aWRlciL1AQobU2V0V2ViU2VhcmNoUHJvdmlkZXJSZXF1ZXN0EiAKCnByb2plY3RfaWQYASABKAlCDLpICcgBAXIEiOQyARI8CgRraW5kGAIgASgOMiEud2VidG9vbC52MS5XZWJTZWFyY2hQcm92aWRlcktpbmRCC7pICMgBAYIBAhABEiAKB2FwaV9rZXkYAyABKAlCCrpIB3IFEAEYgARIAIgBARIuChVwcmljZV9wZXJfY2FsbF9taWNyb3MYBCABKANCCrpIB8gBASICKABIAYgBAUIKCghfYXBpX2tleUIYChZfcHJpY2VfcGVyX2NhbGxfbWljcm9zIk8KHFNldFdlYlNlYXJjaFByb3ZpZGVyUmVzcG9uc2USLwoIcHJvdmlkZXIYASABKAsyHS53ZWJ0b29sLnYxLldlYlNlYXJjaFByb3ZpZGVyIkIKHkRlbGV0ZVdlYlNlYXJjaFByb3ZpZGVyUmVxdWVzdBIgCgpwcm9qZWN0X2lkGAEgASgJQgy6SAnIAQFyBIjkMgEiIQofRGVsZXRlV2ViU2VhcmNoUHJvdmlkZXJSZXNwb25zZSJmCgpIVFRQU2VjcmV0EgoKAmlkGAEgASgJEgwKBGhvc3QYAiABKAkSDgoGaGVhZGVyGAMgASgJEi4KCnVwZGF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIjoKFkxpc3RIVFRQU2VjcmV0c1JlcXVlc3QSIAoKcHJvamVjdF9pZBgBIAEoCUIMukgJyAEBcgSI5DIBIkIKF0xpc3RIVFRQU2VjcmV0c1Jlc3BvbnNlEicKB3NlY3JldHMYASADKAsyFi53ZWJ0b29sLnYxLkhUVFBTZWNyZXQivAEKFFNldEhUVFBTZWNyZXRSZXF1ZXN0EiAKCnByb2plY3RfaWQYASABKAlCDLpICcgBAXIEiOQyARIoCgRob3N0GAIgASgJQhq6SBfIAQFyEhj9ATINXlthLXowLTkuLV0rJBI8CgZoZWFkZXIYAyABKAlCLLpIKcgBAXIkMiJeWyEjJCUmJyorLl5fYHx+MC05QS1aYS16LV17MSw2NH0kEhoKBXZhbHVlGAQgASgJQgu6SAjIAQFyAxiAICI/ChVTZXRIVFRQU2VjcmV0UmVzcG9uc2USJgoGc2VjcmV0GAEgASgLMhYud2VidG9vbC52MS5IVFRQU2VjcmV0IjMKF0RlbGV0ZUhUVFBTZWNyZXRSZXF1ZXN0EhgKAmlkGAEgASgJQgy6SAnIAQFyBIjkMgEiGgoYRGVsZXRlSFRUUFNlY3JldFJlc3BvbnNlKqwBChVXZWJTZWFyY2hQcm92aWRlcktpbmQSKAokV0VCX1NFQVJDSF9QUk9WSURFUl9LSU5EX1VOU1BFQ0lGSUVEEAASIgoeV0VCX1NFQVJDSF9QUk9WSURFUl9LSU5EX0JSQVZFEAESIAocV0VCX1NFQVJDSF9QUk9WSURFUl9LSU5EX0VYQRACEiMKH1dFQl9TRUFSQ0hfUFJPVklERVJfS0lORF9UQVZJTFkQAzLrBAoOV2ViVG9vbFNlcnZpY2USaQoUR2V0V2ViU2VhcmNoUHJvdmlkZXISJy53ZWJ0b29sLnYxLkdldFdlYlNlYXJjaFByb3ZpZGVyUmVxdWVzdBooLndlYnRvb2wudjEuR2V0V2ViU2VhcmNoUHJvdmlkZXJSZXNwb25zZRJpChRTZXRXZWJTZWFyY2hQcm92aWRlchInLndlYnRvb2wudjEuU2V0V2ViU2VhcmNoUHJvdmlkZXJSZXF1ZXN0Gigud2VidG9vbC52MS5TZXRXZWJTZWFyY2hQcm92aWRlclJlc3BvbnNlEnIKF0RlbGV0ZVdlYlNlYXJjaFByb3ZpZGVyEioud2VidG9vbC52MS5EZWxldGVXZWJTZWFyY2hQcm92aWRlclJlcXVlc3QaKy53ZWJ0b29sLnYxLkRlbGV0ZVdlYlNlYXJjaFByb3ZpZGVyUmVzcG9uc2USWgoPTGlzdEhUVFBTZWNyZXRzEiIud2VidG9vbC52MS5MaXN0SFRUUFNlY3JldHNSZXF1ZXN0GiMud2VidG9vbC52MS5MaXN0SFRUUFNlY3JldHNSZXNwb25zZRJUCg1TZXRIVFRQU2VjcmV0EiAud2VidG9vbC52MS5TZXRIVFRQU2VjcmV0UmVxdWVzdBohLndlYnRvb2wudjEuU2V0SFRUUFNlY3JldFJlc3BvbnNlEl0KEERlbGV0ZUhUVFBTZWNyZXQSIy53ZWJ0b29sLnYxLkRlbGV0ZUhUVFBTZWNyZXRSZXF1ZXN0GiQud2VidG9vbC52MS5EZWxldGVIVFRQU2VjcmV0UmVzcG9uc2VClwEKDmNvbS53ZWJ0b29sLnYxQgxXZWJ0b29sUHJvdG9QAVouYWx0YWx1bmUuaWQvb2FnZW50L2dlbi9nby93ZWJ0b29sL3YxO3dlYnRvb2x2MaICA1dYWKoCCldlYnRvb2wuVjHKAgpXZWJ0b29sXFYx4gIWV2VidG9vbFxWMVxHUEJNZXRhZGF0YeoCC1dlYnRvb2w6OlYxYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_timestamp, file_oagent_v1_rules]);
+  fileDesc("Chh3ZWJ0b29sL3YxL3dlYnRvb2wucHJvdG8SCndlYnRvb2wudjEipAEKEVdlYlNlYXJjaFByb3ZpZGVyEi8KBGtpbmQYASABKA4yIS53ZWJ0b29sLnYxLldlYlNlYXJjaFByb3ZpZGVyS2luZBIPCgdrZXlfc2V0GAIgASgIEh0KFXByaWNlX3Blcl9jYWxsX21pY3JvcxgDIAEoAxIuCgp1cGRhdGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCI/ChtHZXRXZWJTZWFyY2hQcm92aWRlclJlcXVlc3QSIAoKcHJvamVjdF9pZBgBIAEoCUIMukgJyAEBcgSI5DIBIsIBChxHZXRXZWJTZWFyY2hQcm92aWRlclJlc3BvbnNlEjQKCHByb3ZpZGVyGAEgASgLMh0ud2VidG9vbC52MS5XZWJTZWFyY2hQcm92aWRlckgAiAEBEjoKD2F2YWlsYWJsZV9raW5kcxgCIAMoDjIhLndlYnRvb2wudjEuV2ViU2VhcmNoUHJvdmlkZXJLaW5kEiMKB3VzZWRfYnkYAyADKAsyEi53ZWJ0b29sLnYxLlVzZWRCeUILCglfcHJvdmlkZXIiIgoGVXNlZEJ5EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAki9QEKG1NldFdlYlNlYXJjaFByb3ZpZGVyUmVxdWVzdBIgCgpwcm9qZWN0X2lkGAEgASgJQgy6SAnIAQFyBIjkMgESPAoEa2luZBgCIAEoDjIhLndlYnRvb2wudjEuV2ViU2VhcmNoUHJvdmlkZXJLaW5kQgu6SAjIAQGCAQIQARIgCgdhcGlfa2V5GAMgASgJQgq6SAdyBRABGIAESACIAQESLgoVcHJpY2VfcGVyX2NhbGxfbWljcm9zGAQgASgDQgq6SAfIAQEiAigASAGIAQFCCgoIX2FwaV9rZXlCGAoWX3ByaWNlX3Blcl9jYWxsX21pY3JvcyJPChxTZXRXZWJTZWFyY2hQcm92aWRlclJlc3BvbnNlEi8KCHByb3ZpZGVyGAEgASgLMh0ud2VidG9vbC52MS5XZWJTZWFyY2hQcm92aWRlciJCCh5EZWxldGVXZWJTZWFyY2hQcm92aWRlclJlcXVlc3QSIAoKcHJvamVjdF9pZBgBIAEoCUIMukgJyAEBcgSI5DIBIiEKH0RlbGV0ZVdlYlNlYXJjaFByb3ZpZGVyUmVzcG9uc2UiZgoKSFRUUFNlY3JldBIKCgJpZBgBIAEoCRIMCgRob3N0GAIgASgJEg4KBmhlYWRlchgDIAEoCRIuCgp1cGRhdGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCI6ChZMaXN0SFRUUFNlY3JldHNSZXF1ZXN0EiAKCnByb2plY3RfaWQYASABKAlCDLpICcgBAXIEiOQyASJCChdMaXN0SFRUUFNlY3JldHNSZXNwb25zZRInCgdzZWNyZXRzGAEgAygLMhYud2VidG9vbC52MS5IVFRQU2VjcmV0IrwBChRTZXRIVFRQU2VjcmV0UmVxdWVzdBIgCgpwcm9qZWN0X2lkGAEgASgJQgy6SAnIAQFyBIjkMgESKAoEaG9zdBgCIAEoCUIaukgXyAEBchIY/QEyDV5bYS16MC05Li1dKyQSPAoGaGVhZGVyGAMgASgJQiy6SCnIAQFyJDIiXlshIyQlJicqKy5eX2B8fjAtOUEtWmEtei1dezEsNjR9JBIaCgV2YWx1ZRgEIAEoCUILukgIyAEBcgMYgCAiPwoVU2V0SFRUUFNlY3JldFJlc3BvbnNlEiYKBnNlY3JldBgBIAEoCzIWLndlYnRvb2wudjEuSFRUUFNlY3JldCIzChdEZWxldGVIVFRQU2VjcmV0UmVxdWVzdBIYCgJpZBgBIAEoCUIMukgJyAEBcgSI5DIBIhoKGERlbGV0ZUhUVFBTZWNyZXRSZXNwb25zZSqsAQoVV2ViU2VhcmNoUHJvdmlkZXJLaW5kEigKJFdFQl9TRUFSQ0hfUFJPVklERVJfS0lORF9VTlNQRUNJRklFRBAAEiIKHldFQl9TRUFSQ0hfUFJPVklERVJfS0lORF9CUkFWRRABEiAKHFdFQl9TRUFSQ0hfUFJPVklERVJfS0lORF9FWEEQAhIjCh9XRUJfU0VBUkNIX1BST1ZJREVSX0tJTkRfVEFWSUxZEAMy6wQKDldlYlRvb2xTZXJ2aWNlEmkKFEdldFdlYlNlYXJjaFByb3ZpZGVyEicud2VidG9vbC52MS5HZXRXZWJTZWFyY2hQcm92aWRlclJlcXVlc3QaKC53ZWJ0b29sLnYxLkdldFdlYlNlYXJjaFByb3ZpZGVyUmVzcG9uc2USaQoUU2V0V2ViU2VhcmNoUHJvdmlkZXISJy53ZWJ0b29sLnYxLlNldFdlYlNlYXJjaFByb3ZpZGVyUmVxdWVzdBooLndlYnRvb2wudjEuU2V0V2ViU2VhcmNoUHJvdmlkZXJSZXNwb25zZRJyChdEZWxldGVXZWJTZWFyY2hQcm92aWRlchIqLndlYnRvb2wudjEuRGVsZXRlV2ViU2VhcmNoUHJvdmlkZXJSZXF1ZXN0Gisud2VidG9vbC52MS5EZWxldGVXZWJTZWFyY2hQcm92aWRlclJlc3BvbnNlEloKD0xpc3RIVFRQU2VjcmV0cxIiLndlYnRvb2wudjEuTGlzdEhUVFBTZWNyZXRzUmVxdWVzdBojLndlYnRvb2wudjEuTGlzdEhUVFBTZWNyZXRzUmVzcG9uc2USVAoNU2V0SFRUUFNlY3JldBIgLndlYnRvb2wudjEuU2V0SFRUUFNlY3JldFJlcXVlc3QaIS53ZWJ0b29sLnYxLlNldEhUVFBTZWNyZXRSZXNwb25zZRJdChBEZWxldGVIVFRQU2VjcmV0EiMud2VidG9vbC52MS5EZWxldGVIVFRQU2VjcmV0UmVxdWVzdBokLndlYnRvb2wudjEuRGVsZXRlSFRUUFNlY3JldFJlc3BvbnNlQpcBCg5jb20ud2VidG9vbC52MUIMV2VidG9vbFByb3RvUAFaLmFsdGFsdW5lLmlkL29hZ2VudC9nZW4vZ28vd2VidG9vbC92MTt3ZWJ0b29sdjGiAgNXWFiqAgpXZWJ0b29sLlYxygIKV2VidG9vbFxWMeICFldlYnRvb2xcVjFcR1BCTWV0YWRhdGHqAgtXZWJ0b29sOjpWMWIGcHJvdG8z", [file_buf_validate_validate, file_google_protobuf_timestamp, file_oagent_v1_rules]);
 
 /**
  * WebSearchProvider is a project's search provider; key_set says whether a key is stored, and the key is never returned. price_per_call_micros is micro-USD per search call.
@@ -68,7 +68,7 @@ export const GetWebSearchProviderRequestSchema: GenMessage<GetWebSearchProviderR
   messageDesc(file_webtool_v1_webtool, 1);
 
 /**
- * GetWebSearchProviderResponse holds the project's provider, unset when none, and the kinds this deployment offers; a stored kind missing from available_kinds no longer searches.
+ * GetWebSearchProviderResponse holds the project's provider, unset when none, the kinds this deployment offers (a stored kind missing from them no longer searches) and the agents whose latest published version has web search on.
  *
  * @generated from message webtool.v1.GetWebSearchProviderResponse
  */
@@ -82,6 +82,11 @@ export type GetWebSearchProviderResponse = Message<"webtool.v1.GetWebSearchProvi
    * @generated from field: repeated webtool.v1.WebSearchProviderKind available_kinds = 2;
    */
   availableKinds: WebSearchProviderKind[];
+
+  /**
+   * @generated from field: repeated webtool.v1.UsedBy used_by = 3;
+   */
+  usedBy: UsedBy[];
 };
 
 /**
@@ -90,6 +95,30 @@ export type GetWebSearchProviderResponse = Message<"webtool.v1.GetWebSearchProvi
  */
 export const GetWebSearchProviderResponseSchema: GenMessage<GetWebSearchProviderResponse> = /*@__PURE__*/
   messageDesc(file_webtool_v1_webtool, 2);
+
+/**
+ * UsedBy names an agent by its public id and name.
+ *
+ * @generated from message webtool.v1.UsedBy
+ */
+export type UsedBy = Message<"webtool.v1.UsedBy"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message webtool.v1.UsedBy.
+ * Use `create(UsedBySchema)` to create a new message.
+ */
+export const UsedBySchema: GenMessage<UsedBy> = /*@__PURE__*/
+  messageDesc(file_webtool_v1_webtool, 3);
 
 /**
  * SetWebSearchProviderRequest sets the project's provider; api_key is required when the project has none or the kind changes, and leaving it unset keeps the stored key.
@@ -127,7 +156,7 @@ export type SetWebSearchProviderRequest = Message<"webtool.v1.SetWebSearchProvid
  * Use `create(SetWebSearchProviderRequestSchema)` to create a new message.
  */
 export const SetWebSearchProviderRequestSchema: GenMessage<SetWebSearchProviderRequest> = /*@__PURE__*/
-  messageDesc(file_webtool_v1_webtool, 3);
+  messageDesc(file_webtool_v1_webtool, 4);
 
 /**
  * @generated from message webtool.v1.SetWebSearchProviderResponse
@@ -144,7 +173,7 @@ export type SetWebSearchProviderResponse = Message<"webtool.v1.SetWebSearchProvi
  * Use `create(SetWebSearchProviderResponseSchema)` to create a new message.
  */
 export const SetWebSearchProviderResponseSchema: GenMessage<SetWebSearchProviderResponse> = /*@__PURE__*/
-  messageDesc(file_webtool_v1_webtool, 4);
+  messageDesc(file_webtool_v1_webtool, 5);
 
 /**
  * @generated from message webtool.v1.DeleteWebSearchProviderRequest
@@ -161,7 +190,7 @@ export type DeleteWebSearchProviderRequest = Message<"webtool.v1.DeleteWebSearch
  * Use `create(DeleteWebSearchProviderRequestSchema)` to create a new message.
  */
 export const DeleteWebSearchProviderRequestSchema: GenMessage<DeleteWebSearchProviderRequest> = /*@__PURE__*/
-  messageDesc(file_webtool_v1_webtool, 5);
+  messageDesc(file_webtool_v1_webtool, 6);
 
 /**
  * @generated from message webtool.v1.DeleteWebSearchProviderResponse
@@ -174,7 +203,7 @@ export type DeleteWebSearchProviderResponse = Message<"webtool.v1.DeleteWebSearc
  * Use `create(DeleteWebSearchProviderResponseSchema)` to create a new message.
  */
 export const DeleteWebSearchProviderResponseSchema: GenMessage<DeleteWebSearchProviderResponse> = /*@__PURE__*/
-  messageDesc(file_webtool_v1_webtool, 6);
+  messageDesc(file_webtool_v1_webtool, 7);
 
 /**
  * HTTPSecret is a header value http_request attaches on calls to host; the value is never returned.
@@ -208,7 +237,7 @@ export type HTTPSecret = Message<"webtool.v1.HTTPSecret"> & {
  * Use `create(HTTPSecretSchema)` to create a new message.
  */
 export const HTTPSecretSchema: GenMessage<HTTPSecret> = /*@__PURE__*/
-  messageDesc(file_webtool_v1_webtool, 7);
+  messageDesc(file_webtool_v1_webtool, 8);
 
 /**
  * @generated from message webtool.v1.ListHTTPSecretsRequest
@@ -225,7 +254,7 @@ export type ListHTTPSecretsRequest = Message<"webtool.v1.ListHTTPSecretsRequest"
  * Use `create(ListHTTPSecretsRequestSchema)` to create a new message.
  */
 export const ListHTTPSecretsRequestSchema: GenMessage<ListHTTPSecretsRequest> = /*@__PURE__*/
-  messageDesc(file_webtool_v1_webtool, 8);
+  messageDesc(file_webtool_v1_webtool, 9);
 
 /**
  * @generated from message webtool.v1.ListHTTPSecretsResponse
@@ -242,7 +271,7 @@ export type ListHTTPSecretsResponse = Message<"webtool.v1.ListHTTPSecretsRespons
  * Use `create(ListHTTPSecretsResponseSchema)` to create a new message.
  */
 export const ListHTTPSecretsResponseSchema: GenMessage<ListHTTPSecretsResponse> = /*@__PURE__*/
-  messageDesc(file_webtool_v1_webtool, 9);
+  messageDesc(file_webtool_v1_webtool, 10);
 
 /**
  * SetHTTPSecretRequest stores the value for a host and header of the project, replacing any stored one; the header name is stored lowercase.
@@ -278,7 +307,7 @@ export type SetHTTPSecretRequest = Message<"webtool.v1.SetHTTPSecretRequest"> & 
  * Use `create(SetHTTPSecretRequestSchema)` to create a new message.
  */
 export const SetHTTPSecretRequestSchema: GenMessage<SetHTTPSecretRequest> = /*@__PURE__*/
-  messageDesc(file_webtool_v1_webtool, 10);
+  messageDesc(file_webtool_v1_webtool, 11);
 
 /**
  * @generated from message webtool.v1.SetHTTPSecretResponse
@@ -295,7 +324,7 @@ export type SetHTTPSecretResponse = Message<"webtool.v1.SetHTTPSecretResponse"> 
  * Use `create(SetHTTPSecretResponseSchema)` to create a new message.
  */
 export const SetHTTPSecretResponseSchema: GenMessage<SetHTTPSecretResponse> = /*@__PURE__*/
-  messageDesc(file_webtool_v1_webtool, 11);
+  messageDesc(file_webtool_v1_webtool, 12);
 
 /**
  * @generated from message webtool.v1.DeleteHTTPSecretRequest
@@ -312,7 +341,7 @@ export type DeleteHTTPSecretRequest = Message<"webtool.v1.DeleteHTTPSecretReques
  * Use `create(DeleteHTTPSecretRequestSchema)` to create a new message.
  */
 export const DeleteHTTPSecretRequestSchema: GenMessage<DeleteHTTPSecretRequest> = /*@__PURE__*/
-  messageDesc(file_webtool_v1_webtool, 12);
+  messageDesc(file_webtool_v1_webtool, 13);
 
 /**
  * @generated from message webtool.v1.DeleteHTTPSecretResponse
@@ -325,7 +354,7 @@ export type DeleteHTTPSecretResponse = Message<"webtool.v1.DeleteHTTPSecretRespo
  * Use `create(DeleteHTTPSecretResponseSchema)` to create a new message.
  */
 export const DeleteHTTPSecretResponseSchema: GenMessage<DeleteHTTPSecretResponse> = /*@__PURE__*/
-  messageDesc(file_webtool_v1_webtool, 13);
+  messageDesc(file_webtool_v1_webtool, 14);
 
 /**
  * WebSearchProviderKind is the search API a project's web_search calls.

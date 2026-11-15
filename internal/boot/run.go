@@ -21,6 +21,7 @@ import (
 	"altalune.id/oagent/internal/run"
 	"altalune.id/oagent/internal/run/snapshotstore"
 	"altalune.id/oagent/internal/run/transcribe"
+	"altalune.id/oagent/internal/webtool"
 )
 
 type runParts struct {
@@ -47,6 +48,7 @@ func buildRun(k kernel.Kernel, cfg config.Config, s *Services, limiter ratelimit
 		WithApprovals(runApprovals{svcs: s}).
 		WithMeter(k.Meter).
 		WithTranscriber(runTranscriber{allowPrivateHosts: knowledgePrivateHosts(cfg)}).
+		WithWebTools(runWebKeys{web: s.WebTools}).
 		WithLogger(orDiscard(log))
 	if s.EndUsers != nil {
 		svc.WithNames(endUserNames{users: s.EndUsers})
@@ -148,6 +150,11 @@ func (a runAgents) pinned(ctx context.Context, v *agent.Version) (*run.AgentVers
 		MaxCostCents: c.MaxCostCents, ProviderID: c.ProviderID, Knowledge: runKnowledgeTuning(c.KnowledgeTuning),
 		HelperModel: c.HelperModel, MemoryStoreID: c.MemoryStoreID,
 		TranscriptionModel: run.TranscriptionModel{ProviderID: c.TranscriptionModel.ProviderID, Model: c.TranscriptionModel.Model},
+		Web: run.WebTools{
+			Search: c.Web.Search, Fetch: c.Web.Fetch, HTTP: c.Web.HTTP,
+			FetchAllowDomains: c.Web.FetchAllowDomains, HTTPHosts: c.Web.HTTPHosts, RequestHeaders: c.Web.RequestHeaders,
+			TimeoutMs: c.Web.EffectiveTimeoutMs(), MaxCalls: c.Web.EffectiveMaxCallsPerTurn(),
+		},
 	}
 	for _, g := range c.MCPServers {
 		grant := run.MCPGrant{ServerID: g.ServerID}
@@ -231,4 +238,28 @@ func (s runServers) Open(ctx context.Context, id uuid.UUID) (run.OpenedServer, e
 		Name: srv.Name, URL: srv.URL, AuthKind: string(srv.AuthKind), AuthHeader: srv.AuthHeader, AuthValue: value,
 		TimeoutMS: srv.TimeoutMS,
 	}, nil
+}
+
+type runWebKeys struct{ web *webtool.Service }
+
+func (k runWebKeys) SearchProvider(ctx context.Context, projectID uuid.UUID) (run.WebSearchProvider, error) {
+	p, err := k.web.OpenSearchKey(ctx, projectID)
+	switch {
+	case webtool.IsNotFoundError(err):
+		return run.WebSearchProvider{}, run.ErrNoSearchProvider
+	case webtool.IsSecretsUnavailableError(err), webtool.IsSearchKeyUnsealableError(err):
+		return run.WebSearchProvider{}, fmt.Errorf("%w: %w", run.ErrSearchKeyUnsealable, err)
+	case err != nil:
+		return run.WebSearchProvider{}, err
+	}
+	return run.WebSearchProvider{Kind: string(p.Kind), APIKey: p.APIKey, PricePerCallMicros: p.PricePerCallMicros}, nil
+}
+
+func (k runWebKeys) Secrets(ctx context.Context, projectID uuid.UUID, hosts []string) ([]run.WebSecret, int, error) {
+	opened, unsealable, err := k.web.OpenSecrets(ctx, projectID, hosts)
+	out := make([]run.WebSecret, 0, len(opened))
+	for _, o := range opened {
+		out = append(out, run.WebSecret{Host: o.Host, Header: o.Header, Value: o.Value})
+	}
+	return out, unsealable, err
 }

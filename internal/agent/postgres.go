@@ -18,6 +18,7 @@ type postgresStore struct {
 	projectUse  string
 	storeUse    string
 	memoryUse   string
+	webUse      string
 }
 
 // NewStore builds the Postgres store over pool.
@@ -37,6 +38,7 @@ func NewStore(pool db.Pool, schema, tablePrefix string) *postgresStore {
 		projectUse: projectVersions(schema, tablePrefix, "knowledge_source_ids"),
 		storeUse:   latestVersions(schema, tablePrefix, "jsonb_build_object('memory_store_id', #id::text)"),
 		memoryUse:  projectVersions(schema, tablePrefix, "memory_store_id"),
+		webUse:     projectVersions(schema, tablePrefix, "web"),
 		serverUse: latestVersions(schema, tablePrefix,
 			"jsonb_build_object('mcp_servers', jsonb_build_array(jsonb_build_object('server_id', #id::text)))"),
 	}

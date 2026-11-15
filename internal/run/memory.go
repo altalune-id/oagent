@@ -104,14 +104,22 @@ func (s *Service) storeMode(ctx context.Context, t *turn) (StoreMode, bool) {
 	return t.memStore.StoreMode, t.memStore.ok
 }
 
+func (s *Service) needsHelper(ctx context.Context, t *turn) bool {
+	if t.version.Web.Fetch {
+		return true
+	}
+	if !s.mayRemember(t) {
+		return false
+	}
+	m, ok := s.storeMode(ctx, t)
+	return ok && !m.Extracts
+}
+
 func separateHelper(v *AgentVersion) bool { return v.HelperModel != "" && v.HelperModel != v.Model }
 
 // NOTE: a leg that may extract has helper prices pinned with the run; a priced run never takes on helper tokens it cannot price.
 func (s *Service) pinHelper(ctx context.Context, t *turn, p *Prices) *Prices {
-	if p == nil || !s.mayRemember(t) {
-		return p
-	}
-	if m, ok := s.storeMode(ctx, t); !ok || m.Extracts {
+	if p == nil || !s.needsHelper(ctx, t) {
 		return p
 	}
 	pinned := *p
@@ -130,10 +138,7 @@ func (s *Service) pinHelper(ctx context.Context, t *turn, p *Prices) *Prices {
 }
 
 func (s *Service) resolveHelper(ctx context.Context, t *turn) {
-	if t.helper != nil || !s.mayRemember(t) || !separateHelper(t.version) {
-		return
-	}
-	if m, ok := s.storeMode(ctx, t); !ok || m.Extracts {
+	if t.helper != nil || !separateHelper(t.version) || !s.needsHelper(ctx, t) {
 		return
 	}
 	if m, err := s.providers.ResolveModel(ctx, t.version.ProviderID, t.version.HelperModel); err == nil {
@@ -229,18 +234,25 @@ func (s *Service) remember(ctx context.Context, t *turn, req *runtime.TurnReques
 	}
 	req.Memory = runtime.NewMemoryRequest(sent, leg.mode)
 	req.Guardrails = &runtime.Guardrails{KeyPrefix: s.keyPrefix}
-	if leg.mode == runtime.ExtractFacts && t.helper != nil {
-		h := t.helper
-		req.Agent.HelperModel = &runtime.ModelSpec{Provider: h.Provider, BaseURL: h.BaseURL, APIKey: h.APIKey, ModelID: t.version.HelperModel}
-		if b := req.Limits.Budget; b != nil {
-			p := t.run.Prices
-			b.HelperPrices = &runtime.Prices{
-				Input: orZero(p.HelperInput), Output: orZero(p.HelperOutput),
-				CacheRead: orZero(p.HelperCacheRead), CacheWrite: orZero(p.HelperCacheWrite),
-			}
-		}
+	if leg.mode == runtime.ExtractFacts {
+		setHelper(req, t)
 	}
 	t.memory = leg
+}
+
+func setHelper(req *runtime.TurnRequest, t *turn) {
+	h := t.helper
+	if h == nil {
+		return
+	}
+	req.Agent.HelperModel = &runtime.ModelSpec{Provider: h.Provider, BaseURL: h.BaseURL, APIKey: h.APIKey, ModelID: t.version.HelperModel}
+	if b := req.Limits.Budget; b != nil {
+		p := t.run.Prices
+		b.HelperPrices = &runtime.Prices{
+			Input: orZero(p.HelperInput), Output: orZero(p.HelperOutput),
+			CacheRead: orZero(p.HelperCacheRead), CacheWrite: orZero(p.HelperCacheWrite),
+		}
+	}
 }
 
 func orZero(v *int64) int64 {

@@ -190,11 +190,12 @@ func (x *GetWebSearchProviderRequest) GetProjectId() string {
 	return ""
 }
 
-// GetWebSearchProviderResponse holds the project's provider, unset when none, and the kinds this deployment offers; a stored kind missing from available_kinds no longer searches.
+// GetWebSearchProviderResponse holds the project's provider, unset when none, the kinds this deployment offers (a stored kind missing from them no longer searches) and the agents whose latest published version has web search on.
 type GetWebSearchProviderResponse struct {
 	state          protoimpl.MessageState  `protogen:"open.v1"`
 	Provider       *WebSearchProvider      `protobuf:"bytes,1,opt,name=provider,proto3,oneof" json:"provider,omitempty"`
 	AvailableKinds []WebSearchProviderKind `protobuf:"varint,2,rep,packed,name=available_kinds,json=availableKinds,proto3,enum=webtool.v1.WebSearchProviderKind" json:"available_kinds,omitempty"`
+	UsedBy         []*UsedBy               `protobuf:"bytes,3,rep,name=used_by,json=usedBy,proto3" json:"used_by,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -243,6 +244,66 @@ func (x *GetWebSearchProviderResponse) GetAvailableKinds() []WebSearchProviderKi
 	return nil
 }
 
+func (x *GetWebSearchProviderResponse) GetUsedBy() []*UsedBy {
+	if x != nil {
+		return x.UsedBy
+	}
+	return nil
+}
+
+// UsedBy names an agent by its public id and name.
+type UsedBy struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UsedBy) Reset() {
+	*x = UsedBy{}
+	mi := &file_webtool_v1_webtool_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsedBy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsedBy) ProtoMessage() {}
+
+func (x *UsedBy) ProtoReflect() protoreflect.Message {
+	mi := &file_webtool_v1_webtool_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsedBy.ProtoReflect.Descriptor instead.
+func (*UsedBy) Descriptor() ([]byte, []int) {
+	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *UsedBy) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UsedBy) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
 // SetWebSearchProviderRequest sets the project's provider; api_key is required when the project has none or the kind changes, and leaving it unset keeps the stored key.
 type SetWebSearchProviderRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
@@ -258,7 +319,7 @@ type SetWebSearchProviderRequest struct {
 
 func (x *SetWebSearchProviderRequest) Reset() {
 	*x = SetWebSearchProviderRequest{}
-	mi := &file_webtool_v1_webtool_proto_msgTypes[3]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -270,7 +331,7 @@ func (x *SetWebSearchProviderRequest) String() string {
 func (*SetWebSearchProviderRequest) ProtoMessage() {}
 
 func (x *SetWebSearchProviderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_webtool_v1_webtool_proto_msgTypes[3]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -283,7 +344,7 @@ func (x *SetWebSearchProviderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetWebSearchProviderRequest.ProtoReflect.Descriptor instead.
 func (*SetWebSearchProviderRequest) Descriptor() ([]byte, []int) {
-	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{3}
+	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SetWebSearchProviderRequest) GetProjectId() string {
@@ -323,7 +384,7 @@ type SetWebSearchProviderResponse struct {
 
 func (x *SetWebSearchProviderResponse) Reset() {
 	*x = SetWebSearchProviderResponse{}
-	mi := &file_webtool_v1_webtool_proto_msgTypes[4]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -335,7 +396,7 @@ func (x *SetWebSearchProviderResponse) String() string {
 func (*SetWebSearchProviderResponse) ProtoMessage() {}
 
 func (x *SetWebSearchProviderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_webtool_v1_webtool_proto_msgTypes[4]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -348,7 +409,7 @@ func (x *SetWebSearchProviderResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetWebSearchProviderResponse.ProtoReflect.Descriptor instead.
 func (*SetWebSearchProviderResponse) Descriptor() ([]byte, []int) {
-	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{4}
+	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SetWebSearchProviderResponse) GetProvider() *WebSearchProvider {
@@ -367,7 +428,7 @@ type DeleteWebSearchProviderRequest struct {
 
 func (x *DeleteWebSearchProviderRequest) Reset() {
 	*x = DeleteWebSearchProviderRequest{}
-	mi := &file_webtool_v1_webtool_proto_msgTypes[5]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -379,7 +440,7 @@ func (x *DeleteWebSearchProviderRequest) String() string {
 func (*DeleteWebSearchProviderRequest) ProtoMessage() {}
 
 func (x *DeleteWebSearchProviderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_webtool_v1_webtool_proto_msgTypes[5]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -392,7 +453,7 @@ func (x *DeleteWebSearchProviderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteWebSearchProviderRequest.ProtoReflect.Descriptor instead.
 func (*DeleteWebSearchProviderRequest) Descriptor() ([]byte, []int) {
-	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{5}
+	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *DeleteWebSearchProviderRequest) GetProjectId() string {
@@ -410,7 +471,7 @@ type DeleteWebSearchProviderResponse struct {
 
 func (x *DeleteWebSearchProviderResponse) Reset() {
 	*x = DeleteWebSearchProviderResponse{}
-	mi := &file_webtool_v1_webtool_proto_msgTypes[6]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -422,7 +483,7 @@ func (x *DeleteWebSearchProviderResponse) String() string {
 func (*DeleteWebSearchProviderResponse) ProtoMessage() {}
 
 func (x *DeleteWebSearchProviderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_webtool_v1_webtool_proto_msgTypes[6]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -435,7 +496,7 @@ func (x *DeleteWebSearchProviderResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteWebSearchProviderResponse.ProtoReflect.Descriptor instead.
 func (*DeleteWebSearchProviderResponse) Descriptor() ([]byte, []int) {
-	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{6}
+	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{7}
 }
 
 // HTTPSecret is a header value http_request attaches on calls to host; the value is never returned.
@@ -451,7 +512,7 @@ type HTTPSecret struct {
 
 func (x *HTTPSecret) Reset() {
 	*x = HTTPSecret{}
-	mi := &file_webtool_v1_webtool_proto_msgTypes[7]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -463,7 +524,7 @@ func (x *HTTPSecret) String() string {
 func (*HTTPSecret) ProtoMessage() {}
 
 func (x *HTTPSecret) ProtoReflect() protoreflect.Message {
-	mi := &file_webtool_v1_webtool_proto_msgTypes[7]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -476,7 +537,7 @@ func (x *HTTPSecret) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HTTPSecret.ProtoReflect.Descriptor instead.
 func (*HTTPSecret) Descriptor() ([]byte, []int) {
-	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{7}
+	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *HTTPSecret) GetId() string {
@@ -516,7 +577,7 @@ type ListHTTPSecretsRequest struct {
 
 func (x *ListHTTPSecretsRequest) Reset() {
 	*x = ListHTTPSecretsRequest{}
-	mi := &file_webtool_v1_webtool_proto_msgTypes[8]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -528,7 +589,7 @@ func (x *ListHTTPSecretsRequest) String() string {
 func (*ListHTTPSecretsRequest) ProtoMessage() {}
 
 func (x *ListHTTPSecretsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_webtool_v1_webtool_proto_msgTypes[8]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -541,7 +602,7 @@ func (x *ListHTTPSecretsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListHTTPSecretsRequest.ProtoReflect.Descriptor instead.
 func (*ListHTTPSecretsRequest) Descriptor() ([]byte, []int) {
-	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{8}
+	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListHTTPSecretsRequest) GetProjectId() string {
@@ -560,7 +621,7 @@ type ListHTTPSecretsResponse struct {
 
 func (x *ListHTTPSecretsResponse) Reset() {
 	*x = ListHTTPSecretsResponse{}
-	mi := &file_webtool_v1_webtool_proto_msgTypes[9]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -572,7 +633,7 @@ func (x *ListHTTPSecretsResponse) String() string {
 func (*ListHTTPSecretsResponse) ProtoMessage() {}
 
 func (x *ListHTTPSecretsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_webtool_v1_webtool_proto_msgTypes[9]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -585,7 +646,7 @@ func (x *ListHTTPSecretsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListHTTPSecretsResponse.ProtoReflect.Descriptor instead.
 func (*ListHTTPSecretsResponse) Descriptor() ([]byte, []int) {
-	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{9}
+	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ListHTTPSecretsResponse) GetSecrets() []*HTTPSecret {
@@ -609,7 +670,7 @@ type SetHTTPSecretRequest struct {
 
 func (x *SetHTTPSecretRequest) Reset() {
 	*x = SetHTTPSecretRequest{}
-	mi := &file_webtool_v1_webtool_proto_msgTypes[10]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -621,7 +682,7 @@ func (x *SetHTTPSecretRequest) String() string {
 func (*SetHTTPSecretRequest) ProtoMessage() {}
 
 func (x *SetHTTPSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_webtool_v1_webtool_proto_msgTypes[10]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -634,7 +695,7 @@ func (x *SetHTTPSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetHTTPSecretRequest.ProtoReflect.Descriptor instead.
 func (*SetHTTPSecretRequest) Descriptor() ([]byte, []int) {
-	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{10}
+	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SetHTTPSecretRequest) GetProjectId() string {
@@ -674,7 +735,7 @@ type SetHTTPSecretResponse struct {
 
 func (x *SetHTTPSecretResponse) Reset() {
 	*x = SetHTTPSecretResponse{}
-	mi := &file_webtool_v1_webtool_proto_msgTypes[11]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -686,7 +747,7 @@ func (x *SetHTTPSecretResponse) String() string {
 func (*SetHTTPSecretResponse) ProtoMessage() {}
 
 func (x *SetHTTPSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_webtool_v1_webtool_proto_msgTypes[11]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -699,7 +760,7 @@ func (x *SetHTTPSecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetHTTPSecretResponse.ProtoReflect.Descriptor instead.
 func (*SetHTTPSecretResponse) Descriptor() ([]byte, []int) {
-	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{11}
+	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SetHTTPSecretResponse) GetSecret() *HTTPSecret {
@@ -718,7 +779,7 @@ type DeleteHTTPSecretRequest struct {
 
 func (x *DeleteHTTPSecretRequest) Reset() {
 	*x = DeleteHTTPSecretRequest{}
-	mi := &file_webtool_v1_webtool_proto_msgTypes[12]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -730,7 +791,7 @@ func (x *DeleteHTTPSecretRequest) String() string {
 func (*DeleteHTTPSecretRequest) ProtoMessage() {}
 
 func (x *DeleteHTTPSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_webtool_v1_webtool_proto_msgTypes[12]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -743,7 +804,7 @@ func (x *DeleteHTTPSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteHTTPSecretRequest.ProtoReflect.Descriptor instead.
 func (*DeleteHTTPSecretRequest) Descriptor() ([]byte, []int) {
-	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{12}
+	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *DeleteHTTPSecretRequest) GetId() string {
@@ -761,7 +822,7 @@ type DeleteHTTPSecretResponse struct {
 
 func (x *DeleteHTTPSecretResponse) Reset() {
 	*x = DeleteHTTPSecretResponse{}
-	mi := &file_webtool_v1_webtool_proto_msgTypes[13]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -773,7 +834,7 @@ func (x *DeleteHTTPSecretResponse) String() string {
 func (*DeleteHTTPSecretResponse) ProtoMessage() {}
 
 func (x *DeleteHTTPSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_webtool_v1_webtool_proto_msgTypes[13]
+	mi := &file_webtool_v1_webtool_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -786,7 +847,7 @@ func (x *DeleteHTTPSecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteHTTPSecretResponse.ProtoReflect.Descriptor instead.
 func (*DeleteHTTPSecretResponse) Descriptor() ([]byte, []int) {
-	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{13}
+	return file_webtool_v1_webtool_proto_rawDescGZIP(), []int{14}
 }
 
 var File_webtool_v1_webtool_proto protoreflect.FileDescriptor
@@ -803,11 +864,15 @@ const file_webtool_v1_webtool_proto_rawDesc = "" +
 	"updated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"J\n" +
 	"\x1bGetWebSearchProviderRequest\x12+\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\"\xb7\x01\n" +
+	"project_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\"\xe4\x01\n" +
 	"\x1cGetWebSearchProviderResponse\x12>\n" +
 	"\bprovider\x18\x01 \x01(\v2\x1d.webtool.v1.WebSearchProviderH\x00R\bprovider\x88\x01\x01\x12J\n" +
-	"\x0favailable_kinds\x18\x02 \x03(\x0e2!.webtool.v1.WebSearchProviderKindR\x0eavailableKindsB\v\n" +
-	"\t_provider\"\xa2\x02\n" +
+	"\x0favailable_kinds\x18\x02 \x03(\x0e2!.webtool.v1.WebSearchProviderKindR\x0eavailableKinds\x12+\n" +
+	"\aused_by\x18\x03 \x03(\v2\x12.webtool.v1.UsedByR\x06usedByB\v\n" +
+	"\t_provider\",\n" +
+	"\x06UsedBy\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\xa2\x02\n" +
 	"\x1bSetWebSearchProviderRequest\x12+\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\tprojectId\x12B\n" +
@@ -877,52 +942,54 @@ func file_webtool_v1_webtool_proto_rawDescGZIP() []byte {
 }
 
 var file_webtool_v1_webtool_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_webtool_v1_webtool_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_webtool_v1_webtool_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_webtool_v1_webtool_proto_goTypes = []any{
 	(WebSearchProviderKind)(0),              // 0: webtool.v1.WebSearchProviderKind
 	(*WebSearchProvider)(nil),               // 1: webtool.v1.WebSearchProvider
 	(*GetWebSearchProviderRequest)(nil),     // 2: webtool.v1.GetWebSearchProviderRequest
 	(*GetWebSearchProviderResponse)(nil),    // 3: webtool.v1.GetWebSearchProviderResponse
-	(*SetWebSearchProviderRequest)(nil),     // 4: webtool.v1.SetWebSearchProviderRequest
-	(*SetWebSearchProviderResponse)(nil),    // 5: webtool.v1.SetWebSearchProviderResponse
-	(*DeleteWebSearchProviderRequest)(nil),  // 6: webtool.v1.DeleteWebSearchProviderRequest
-	(*DeleteWebSearchProviderResponse)(nil), // 7: webtool.v1.DeleteWebSearchProviderResponse
-	(*HTTPSecret)(nil),                      // 8: webtool.v1.HTTPSecret
-	(*ListHTTPSecretsRequest)(nil),          // 9: webtool.v1.ListHTTPSecretsRequest
-	(*ListHTTPSecretsResponse)(nil),         // 10: webtool.v1.ListHTTPSecretsResponse
-	(*SetHTTPSecretRequest)(nil),            // 11: webtool.v1.SetHTTPSecretRequest
-	(*SetHTTPSecretResponse)(nil),           // 12: webtool.v1.SetHTTPSecretResponse
-	(*DeleteHTTPSecretRequest)(nil),         // 13: webtool.v1.DeleteHTTPSecretRequest
-	(*DeleteHTTPSecretResponse)(nil),        // 14: webtool.v1.DeleteHTTPSecretResponse
-	(*timestamppb.Timestamp)(nil),           // 15: google.protobuf.Timestamp
+	(*UsedBy)(nil),                          // 4: webtool.v1.UsedBy
+	(*SetWebSearchProviderRequest)(nil),     // 5: webtool.v1.SetWebSearchProviderRequest
+	(*SetWebSearchProviderResponse)(nil),    // 6: webtool.v1.SetWebSearchProviderResponse
+	(*DeleteWebSearchProviderRequest)(nil),  // 7: webtool.v1.DeleteWebSearchProviderRequest
+	(*DeleteWebSearchProviderResponse)(nil), // 8: webtool.v1.DeleteWebSearchProviderResponse
+	(*HTTPSecret)(nil),                      // 9: webtool.v1.HTTPSecret
+	(*ListHTTPSecretsRequest)(nil),          // 10: webtool.v1.ListHTTPSecretsRequest
+	(*ListHTTPSecretsResponse)(nil),         // 11: webtool.v1.ListHTTPSecretsResponse
+	(*SetHTTPSecretRequest)(nil),            // 12: webtool.v1.SetHTTPSecretRequest
+	(*SetHTTPSecretResponse)(nil),           // 13: webtool.v1.SetHTTPSecretResponse
+	(*DeleteHTTPSecretRequest)(nil),         // 14: webtool.v1.DeleteHTTPSecretRequest
+	(*DeleteHTTPSecretResponse)(nil),        // 15: webtool.v1.DeleteHTTPSecretResponse
+	(*timestamppb.Timestamp)(nil),           // 16: google.protobuf.Timestamp
 }
 var file_webtool_v1_webtool_proto_depIdxs = []int32{
 	0,  // 0: webtool.v1.WebSearchProvider.kind:type_name -> webtool.v1.WebSearchProviderKind
-	15, // 1: webtool.v1.WebSearchProvider.updated_at:type_name -> google.protobuf.Timestamp
+	16, // 1: webtool.v1.WebSearchProvider.updated_at:type_name -> google.protobuf.Timestamp
 	1,  // 2: webtool.v1.GetWebSearchProviderResponse.provider:type_name -> webtool.v1.WebSearchProvider
 	0,  // 3: webtool.v1.GetWebSearchProviderResponse.available_kinds:type_name -> webtool.v1.WebSearchProviderKind
-	0,  // 4: webtool.v1.SetWebSearchProviderRequest.kind:type_name -> webtool.v1.WebSearchProviderKind
-	1,  // 5: webtool.v1.SetWebSearchProviderResponse.provider:type_name -> webtool.v1.WebSearchProvider
-	15, // 6: webtool.v1.HTTPSecret.updated_at:type_name -> google.protobuf.Timestamp
-	8,  // 7: webtool.v1.ListHTTPSecretsResponse.secrets:type_name -> webtool.v1.HTTPSecret
-	8,  // 8: webtool.v1.SetHTTPSecretResponse.secret:type_name -> webtool.v1.HTTPSecret
-	2,  // 9: webtool.v1.WebToolService.GetWebSearchProvider:input_type -> webtool.v1.GetWebSearchProviderRequest
-	4,  // 10: webtool.v1.WebToolService.SetWebSearchProvider:input_type -> webtool.v1.SetWebSearchProviderRequest
-	6,  // 11: webtool.v1.WebToolService.DeleteWebSearchProvider:input_type -> webtool.v1.DeleteWebSearchProviderRequest
-	9,  // 12: webtool.v1.WebToolService.ListHTTPSecrets:input_type -> webtool.v1.ListHTTPSecretsRequest
-	11, // 13: webtool.v1.WebToolService.SetHTTPSecret:input_type -> webtool.v1.SetHTTPSecretRequest
-	13, // 14: webtool.v1.WebToolService.DeleteHTTPSecret:input_type -> webtool.v1.DeleteHTTPSecretRequest
-	3,  // 15: webtool.v1.WebToolService.GetWebSearchProvider:output_type -> webtool.v1.GetWebSearchProviderResponse
-	5,  // 16: webtool.v1.WebToolService.SetWebSearchProvider:output_type -> webtool.v1.SetWebSearchProviderResponse
-	7,  // 17: webtool.v1.WebToolService.DeleteWebSearchProvider:output_type -> webtool.v1.DeleteWebSearchProviderResponse
-	10, // 18: webtool.v1.WebToolService.ListHTTPSecrets:output_type -> webtool.v1.ListHTTPSecretsResponse
-	12, // 19: webtool.v1.WebToolService.SetHTTPSecret:output_type -> webtool.v1.SetHTTPSecretResponse
-	14, // 20: webtool.v1.WebToolService.DeleteHTTPSecret:output_type -> webtool.v1.DeleteHTTPSecretResponse
-	15, // [15:21] is the sub-list for method output_type
-	9,  // [9:15] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	4,  // 4: webtool.v1.GetWebSearchProviderResponse.used_by:type_name -> webtool.v1.UsedBy
+	0,  // 5: webtool.v1.SetWebSearchProviderRequest.kind:type_name -> webtool.v1.WebSearchProviderKind
+	1,  // 6: webtool.v1.SetWebSearchProviderResponse.provider:type_name -> webtool.v1.WebSearchProvider
+	16, // 7: webtool.v1.HTTPSecret.updated_at:type_name -> google.protobuf.Timestamp
+	9,  // 8: webtool.v1.ListHTTPSecretsResponse.secrets:type_name -> webtool.v1.HTTPSecret
+	9,  // 9: webtool.v1.SetHTTPSecretResponse.secret:type_name -> webtool.v1.HTTPSecret
+	2,  // 10: webtool.v1.WebToolService.GetWebSearchProvider:input_type -> webtool.v1.GetWebSearchProviderRequest
+	5,  // 11: webtool.v1.WebToolService.SetWebSearchProvider:input_type -> webtool.v1.SetWebSearchProviderRequest
+	7,  // 12: webtool.v1.WebToolService.DeleteWebSearchProvider:input_type -> webtool.v1.DeleteWebSearchProviderRequest
+	10, // 13: webtool.v1.WebToolService.ListHTTPSecrets:input_type -> webtool.v1.ListHTTPSecretsRequest
+	12, // 14: webtool.v1.WebToolService.SetHTTPSecret:input_type -> webtool.v1.SetHTTPSecretRequest
+	14, // 15: webtool.v1.WebToolService.DeleteHTTPSecret:input_type -> webtool.v1.DeleteHTTPSecretRequest
+	3,  // 16: webtool.v1.WebToolService.GetWebSearchProvider:output_type -> webtool.v1.GetWebSearchProviderResponse
+	6,  // 17: webtool.v1.WebToolService.SetWebSearchProvider:output_type -> webtool.v1.SetWebSearchProviderResponse
+	8,  // 18: webtool.v1.WebToolService.DeleteWebSearchProvider:output_type -> webtool.v1.DeleteWebSearchProviderResponse
+	11, // 19: webtool.v1.WebToolService.ListHTTPSecrets:output_type -> webtool.v1.ListHTTPSecretsResponse
+	13, // 20: webtool.v1.WebToolService.SetHTTPSecret:output_type -> webtool.v1.SetHTTPSecretResponse
+	15, // 21: webtool.v1.WebToolService.DeleteHTTPSecret:output_type -> webtool.v1.DeleteHTTPSecretResponse
+	16, // [16:22] is the sub-list for method output_type
+	10, // [10:16] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_webtool_v1_webtool_proto_init() }
@@ -931,14 +998,14 @@ func file_webtool_v1_webtool_proto_init() {
 		return
 	}
 	file_webtool_v1_webtool_proto_msgTypes[2].OneofWrappers = []any{}
-	file_webtool_v1_webtool_proto_msgTypes[3].OneofWrappers = []any{}
+	file_webtool_v1_webtool_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_webtool_v1_webtool_proto_rawDesc), len(file_webtool_v1_webtool_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   14,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

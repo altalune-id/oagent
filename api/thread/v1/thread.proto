@@ -127,6 +127,8 @@ message Usage {
   int64 helper_cache_write_tokens = 10;
   // transcription_seconds are the billed audio seconds of the run's voice notes, each clip at least 1 second.
   int64 transcription_seconds = 11;
+  // web_search_calls are the run's web searches the search provider answered, each billed at the pinned price per call.
+  int64 web_search_calls = 12;
 }
 
 // Run is one agent turn on a thread; cost_micros is unset when the run is unpriced, latency_ms and ended_at while it runs.

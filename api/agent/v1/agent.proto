@@ -123,6 +123,10 @@ message AgentDefaults {
   int32 max_cost_cents = 4;
   int32 voice_note_max_seconds = 5;
   int32 voice_note_max_bytes = 6;
+  int32 web_timeout_ms = 7;
+  int32 max_web_timeout_ms = 8;
+  int32 web_max_calls_per_turn = 9;
+  int32 max_web_max_calls_per_turn = 10;
 }
 
 // AgentTool is a tool the agent may call; require_approval makes a person approve each call, and free_when lets a call run without asking when every condition holds.
@@ -206,6 +210,39 @@ message AgentConfig {
   ];
   string persona = 18 [
     (buf.validate.field).cel = {id: "agent.persona.max_len.4000", expression: "this.size() <= 4000 ? '' : 'must be at most 4000 characters'"}
+  ];
+  WebTools web = 19;
+}
+
+// WebTools turns on the built-in web tools: web_search uses the project's search provider; web_fetch reads pages of fetch_allow_domains, which publish requires when web_fetch is on; http_request calls http_hosts, sending only request_headers from the model and the project's HTTP secrets for the host. Hosts are lowercase; timeout_ms and max_calls_per_turn of 0 use the recommended values from GetAgent's defaults.
+message WebTools {
+  bool search = 1;
+  bool fetch = 2;
+  bool http = 3;
+  repeated string fetch_allow_domains = 4 [
+    (buf.validate.field).repeated.max_items = 50,
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.max_len = 253
+  ];
+  repeated string http_hosts = 5 [
+    (buf.validate.field).repeated.max_items = 50,
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.max_len = 253
+  ];
+  repeated string request_headers = 6 [
+    (buf.validate.field).repeated.max_items = 20,
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.max_len = 64
+  ];
+  int32 timeout_ms = 7 [
+    (buf.validate.field).cel = {id: "agent.web.timeout_ms.range", expression: "this == 0 || (this >= 1000 && this <= 30000) ? '' : 'must be 0 or between 1000 and 30000'"}
+  ];
+  int32 max_calls_per_turn = 8 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 50
   ];
 }
 

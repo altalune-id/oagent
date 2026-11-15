@@ -436,9 +436,14 @@ components:
           items:
             $ref: '#/components/schemas/webtool.v1.WebSearchProviderKind'
           title: available_kinds
+        usedBy:
+          type: array
+          items:
+            $ref: '#/components/schemas/webtool.v1.UsedBy'
+          title: used_by
       title: GetWebSearchProviderResponse
       additionalProperties: false
-      description: GetWebSearchProviderResponse holds the project's provider, unset when none, and the kinds this deployment offers; a stored kind missing from available_kinds no longer searches.
+      description: GetWebSearchProviderResponse holds the project's provider, unset when none, the kinds this deployment offers (a stored kind missing from them no longer searches) and the agents whose latest published version has web search on.
     webtool.v1.HTTPSecret:
       type: object
       properties:
@@ -560,6 +565,18 @@ components:
           $ref: '#/components/schemas/webtool.v1.WebSearchProvider'
       title: SetWebSearchProviderResponse
       additionalProperties: false
+    webtool.v1.UsedBy:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+      title: UsedBy
+      additionalProperties: false
+      description: UsedBy names an agent by its public id and name.
     webtool.v1.WebSearchProvider:
       type: object
       properties:

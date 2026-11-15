@@ -42,6 +42,9 @@ func (s *Service) request(ctx context.Context, t *turn) (runtime.TurnRequest, []
 		return req, nil, err
 	}
 	req.MCPServers = servers
+	if err := s.web(ctx, t, &req); err != nil {
+		return req, nil, err
+	}
 	if req.Input, err = input(t.taken, s.speaker(ctx, t), s.photo(ctx, t)); err != nil {
 		return req, nil, err
 	}
@@ -560,7 +563,7 @@ func terminalUsage(u runtime.Usage) Usage {
 		InputTokens:     netInput(u.InputTokens, u.CacheReadInputTokens, u.CacheWriteInputTokens),
 		OutputTokens:    u.OutputTokens,
 		CacheReadTokens: u.CacheReadInputTokens, CacheWriteTokens: u.CacheWriteInputTokens,
-		Estimated: u.Estimated,
+		Estimated: u.Estimated, WebSearchCalls: u.WebSearchCalls,
 	}
 	if h := u.Helper; h != nil {
 		out.HelperInputTokens = netInput(h.InputTokens, h.CacheReadInputTokens, h.CacheWriteInputTokens)
@@ -581,6 +584,7 @@ func add(a, b Usage) Usage {
 		HelperCacheReadTokens:  a.HelperCacheReadTokens + b.HelperCacheReadTokens,
 		HelperCacheWriteTokens: a.HelperCacheWriteTokens + b.HelperCacheWriteTokens,
 		TranscriptionSeconds:   a.TranscriptionSeconds + b.TranscriptionSeconds,
+		WebSearchCalls:         a.WebSearchCalls + b.WebSearchCalls,
 	}
 }
 

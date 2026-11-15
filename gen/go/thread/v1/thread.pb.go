@@ -386,8 +386,10 @@ type Usage struct {
 	HelperCacheWriteTokens int64 `protobuf:"varint,10,opt,name=helper_cache_write_tokens,json=helperCacheWriteTokens,proto3" json:"helper_cache_write_tokens,omitempty"`
 	// transcription_seconds are the billed audio seconds of the run's voice notes, each clip at least 1 second.
 	TranscriptionSeconds int64 `protobuf:"varint,11,opt,name=transcription_seconds,json=transcriptionSeconds,proto3" json:"transcription_seconds,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// web_search_calls are the run's web searches the search provider answered, each billed at the pinned price per call.
+	WebSearchCalls int64 `protobuf:"varint,12,opt,name=web_search_calls,json=webSearchCalls,proto3" json:"web_search_calls,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Usage) Reset() {
@@ -493,6 +495,13 @@ func (x *Usage) GetHelperCacheWriteTokens() int64 {
 func (x *Usage) GetTranscriptionSeconds() int64 {
 	if x != nil {
 		return x.TranscriptionSeconds
+	}
+	return 0
+}
+
+func (x *Usage) GetWebSearchCalls() int64 {
+	if x != nil {
+		return x.WebSearchCalls
 	}
 	return 0
 }
@@ -1339,7 +1348,7 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\x14speaker_display_name\x18\n" +
 	" \x01(\tR\x12speakerDisplayName\x12L\n" +
 	"\x15speaker_identity_kind\x18\v \x01(\x0e2\x18.enduser.v1.IdentityKindR\x13speakerIdentityKind\x122\n" +
-	"\x15speaker_identity_hint\x18\f \x01(\tR\x13speakerIdentityHint\"\xfd\x03\n" +
+	"\x15speaker_identity_hint\x18\f \x01(\tR\x13speakerIdentityHint\"\xa7\x04\n" +
 	"\x05Usage\x12!\n" +
 	"\finput_tokens\x18\x01 \x01(\x03R\vinputTokens\x12#\n" +
 	"\routput_tokens\x18\x02 \x01(\x03R\foutputTokens\x12*\n" +
@@ -1352,7 +1361,8 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\x18helper_cache_read_tokens\x18\t \x01(\x03R\x15helperCacheReadTokens\x129\n" +
 	"\x19helper_cache_write_tokens\x18\n" +
 	" \x01(\x03R\x16helperCacheWriteTokens\x123\n" +
-	"\x15transcription_seconds\x18\v \x01(\x03R\x14transcriptionSeconds\"\xb4\x05\n" +
+	"\x15transcription_seconds\x18\v \x01(\x03R\x14transcriptionSeconds\x12(\n" +
+	"\x10web_search_calls\x18\f \x01(\x03R\x0ewebSearchCalls\"\xb4\x05\n" +
 	"\x03Run\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tthread_id\x18\x02 \x01(\tR\bthreadId\x12,\n" +

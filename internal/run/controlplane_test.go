@@ -404,3 +404,13 @@ func TestThreadService_RunShowsKnowledgeUsage(t *testing.T) {
 	assert.Equal(t, int32(7), r.GetKnowledgePassages())
 	assert.Equal(t, int64(100+20_000), r.GetCostMicros(), "embedding tokens priced at the embedding price")
 }
+
+func TestThreadService_RunShowsWebSearchCalls(t *testing.T) {
+	w := newCPWorld(t)
+	w.running.Usage = run.Usage{InputTokens: 100, WebSearchCalls: 4}
+	w.running.Prices = &run.Prices{Input: new(int64(1_000_000)), WebSearch: new(int64(5_000))}
+	one, err := w.cp.GetRun(member(w.org), connect.NewRequest(&threadv1.GetRunRequest{RunId: w.running.PublicID}))
+	require.NoError(t, err)
+	assert.Equal(t, int64(4), one.Msg.GetRun().GetUsage().GetWebSearchCalls())
+	assert.Equal(t, int64(100+20_000), one.Msg.GetRun().GetCostMicros(), "the run cost includes the search calls")
+}

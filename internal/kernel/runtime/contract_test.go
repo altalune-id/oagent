@@ -23,6 +23,7 @@ var goldenCases = []string{
 	"approval_absent_only",
 	"knowledge_injected", "knowledge_absent", "knowledge_empty", "knowledge_hostile",
 	"memory_extract", "memory_extract_failed", "memory_user_texts", "memory_recall_only",
+	"web_tools",
 }
 
 func readGolden(t *testing.T, name string) []byte {
@@ -429,4 +430,34 @@ func TestGoldens_MemoryRecallOnlyHasNoTerminalMemory(t *testing.T) {
 	term := ev.(*Terminal)
 	assert.Nil(t, term.Memory, "recall only returns no memory")
 	assert.Nil(t, term.Usage.Helper, "and calls no helper")
+}
+
+func TestDecode_TerminalWebSearchCalls(t *testing.T) {
+	ev, err := DecodeEvent(fmt.Appendf(nil, helperTerminal, `,"webSearchCalls":3`))
+	require.NoError(t, err)
+	assert.Equal(t, int64(3), ev.(*Terminal).Usage.WebSearchCalls)
+	ev, err = DecodeEvent(fmt.Appendf(nil, helperTerminal, ""))
+	require.NoError(t, err)
+	assert.Zero(t, ev.(*Terminal).Usage.WebSearchCalls)
+}
+
+func TestTurnRequest_WebJSON(t *testing.T) {
+	price := int64(5000)
+	req := TurnRequest{
+		Limits: Limits{Budget: &Budget{WebSearchPrice: &price}},
+		Web: &WebSpec{TimeoutMs: 15000, MaxCallsPerTurn: 10, Search: &WebSearchSpec{Kind: "brave", APIKey: "k"},
+			Fetch: &WebFetchSpec{AllowDomains: []string{}},
+			HTTP:  &WebHTTPSpec{Hosts: []string{"a.example.com"}, RequestHeaders: []string{}, Secrets: []WebSecret{{Host: "a.example.com", Header: "x", Value: "v"}}}},
+	}
+	raw, err := json.Marshal(req)
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), `"web":{"timeoutMs":15000,"maxCallsPerTurn":10,"search":{"kind":"brave","apiKey":"k"},"fetch":{"allowDomains":[]},"http":{"hosts":["a.example.com"],"requestHeaders":[],"secrets":[{"host":"a.example.com","header":"x","value":"v"}]}}`)
+	assert.Contains(t, string(raw), `"webSearchPrice":5000`)
+	back, err := DecodeRequest(raw)
+	require.NoError(t, err)
+	assert.Equal(t, req.Web, back.Web)
+
+	raw, err = json.Marshal(TurnRequest{Limits: Limits{Budget: &Budget{}}})
+	require.NoError(t, err)
+	assert.NotContains(t, string(raw), "web")
 }

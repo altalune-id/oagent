@@ -58,6 +58,7 @@ type Service struct {
 	embedPrices EmbeddingPrices
 	retrieveErr metric.Int64Counter
 	transcriber Transcriber
+	webTools    WebKeys
 	transcribed metric.Int64Counter
 	retrieveMs  metric.Int64Histogram
 	memory      Memory
@@ -107,6 +108,9 @@ func (s *Service) WithMedia(m Media) *Service { s.media = m; return s }
 
 // WithTranscriber turns voice notes into text at run start with tr, for agent versions with a transcription model.
 func (s *Service) WithTranscriber(tr Transcriber) *Service { s.transcriber = tr; return s }
+
+// WithWebTools opens the search provider and HTTP secrets the web tools use through w; without it no web tool is sent.
+func (s *Service) WithWebTools(w WebKeys) *Service { s.webTools = w; return s }
 
 // WithLogger logs turn outcomes to l.
 func (s *Service) WithLogger(l *slog.Logger) *Service { s.log = l; return s }
@@ -164,6 +168,7 @@ func (s *Service) WithMaxAttempts(n int) *Service {
 
 type turn struct {
 	memStore *storeMode
+	search   *openedSearch
 	hist     *legHistory
 	run      *Run
 	thread   *Thread
@@ -419,7 +424,7 @@ func (s *Service) open(ctx context.Context, th *Thread, token string, obs Observ
 	t.run.Group = th.Kind == threadKindGroup
 	if !t.version.Legacy {
 		if m, err := s.providers.ResolveModel(ctx, t.version.ProviderID, t.version.Model); err == nil {
-			t.model, t.run.Prices = m, s.pinTranscription(ctx, t, s.pinPrices(ctx, t, s.pinHelper(ctx, t, m.Prices)))
+			t.model, t.run.Prices = m, s.pinWebSearch(ctx, t, s.pinTranscription(ctx, t, s.pinPrices(ctx, t, s.pinHelper(ctx, t, m.Prices))))
 			s.resolveHelper(ctx, t)
 		}
 	}
@@ -705,7 +710,7 @@ func (s *Service) emit(ctx context.Context, t *turn, u Usage) error {
 			CacheWriteInputTokens: u.CacheWriteTokens, EmbeddingTokens: u.EmbeddingTokens, Estimated: u.Estimated,
 			HelperInputTokens: u.HelperInputTokens, HelperOutputTokens: u.HelperOutputTokens,
 			HelperCacheReadInputTokens: u.HelperCacheReadTokens, HelperCacheWriteInputTokens: u.HelperCacheWriteTokens,
-			TranscriptionSeconds: u.TranscriptionSeconds,
+			TranscriptionSeconds: u.TranscriptionSeconds, WebSearchCalls: u.WebSearchCalls,
 		},
 	}
 	if micros, priced := Cost(u, r.Prices); priced {

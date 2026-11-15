@@ -919,6 +919,13 @@ components:
           title: transcription_seconds
           format: int64
           description: transcription_seconds are the billed audio seconds of the run's voice notes, each clip at least 1 second.
+        webSearchCalls:
+          type:
+            - integer
+            - string
+          title: web_search_calls
+          format: int64
+          description: web_search_calls are the run's web searches the search provider answered, each billed at the pinned price per call.
       title: Usage
       additionalProperties: false
       description: Usage is a run's token usage by class; estimated is true when the provider did not report it.

@@ -41,10 +41,17 @@ message GetWebSearchProviderRequest {
   ];
 }
 
-// GetWebSearchProviderResponse holds the project's provider, unset when none, and the kinds this deployment offers; a stored kind missing from available_kinds no longer searches.
+// GetWebSearchProviderResponse holds the project's provider, unset when none, the kinds this deployment offers (a stored kind missing from them no longer searches) and the agents whose latest published version has web search on.
 message GetWebSearchProviderResponse {
   optional WebSearchProvider provider = 1;
   repeated WebSearchProviderKind available_kinds = 2;
+  repeated UsedBy used_by = 3;
+}
+
+// UsedBy names an agent by its public id and name.
+message UsedBy {
+  string id = 1;
+  string name = 2;
 }
 
 // SetWebSearchProviderRequest sets the project's provider; api_key is required when the project has none or the kind changes, and leaving it unset keeps the stored key.

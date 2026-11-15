@@ -46,7 +46,19 @@ type AgentVersion struct {
 	TranscriptionModel TranscriptionModel
 	MCPServers         []MCPGrant
 	Knowledge          KnowledgeTuning
+	// Web is the version's built-in web tools; the zero value is all off.
+	Web WebTools
 }
+
+// WebTools is a version's web tools with effective limits: hosts lowercase, TimeoutMs and MaxCalls never zero when a tool is on.
+type WebTools struct {
+	Search, Fetch, HTTP                          bool
+	FetchAllowDomains, HTTPHosts, RequestHeaders []string
+	TimeoutMs, MaxCalls                          int32
+}
+
+// On reports whether any web tool is on.
+func (w WebTools) On() bool { return w.Search || w.Fetch || w.HTTP }
 
 // KnowledgeTuning is how a version searches: K and MinScore go to the retriever (0 or nil: its default); MaxBytes is the budget.
 type KnowledgeTuning struct {
@@ -171,6 +183,30 @@ var (
 
 // ErrTranscribeRateLimited is what a Transcriber wraps when the provider still refuses for rate after its retry.
 var ErrTranscribeRateLimited = errors.New("run: transcription rate limited")
+
+// Errors a WebKeys answers when a project's search provider is missing or its key will not open.
+var (
+	ErrNoSearchProvider    = errors.New("run: no usable web search provider")
+	ErrSearchKeyUnsealable = errors.New("run: web search key will not open")
+)
+
+// WebSearchProvider is a project's opened search provider. SECURITY: APIKey is a secret; never log it.
+type WebSearchProvider struct {
+	Kind               string
+	APIKey             string
+	PricePerCallMicros int64
+}
+
+// WebSecret is one opened HTTP secret. SECURITY: Value is a secret; never log it.
+type WebSecret struct {
+	Host, Header, Value string
+}
+
+// WebKeys opens a project's search provider and its HTTP secrets for the given hosts; unsealable counts secrets that would not open.
+type WebKeys interface {
+	SearchProvider(ctx context.Context, projectID uuid.UUID) (WebSearchProvider, error)
+	Secrets(ctx context.Context, projectID uuid.UUID, hosts []string) (secrets []WebSecret, unsealable int, err error)
+}
 
 // Transcriber turns one voice clip into text with a speech-to-text model; an empty text is not an error.
 type Transcriber interface {

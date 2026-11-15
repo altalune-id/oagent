@@ -5,11 +5,12 @@ import (
 	"math/bits"
 )
 
-// Prices are the price snapshot of a run in micro-USD per 1M tokens, Transcription per audio minute; a nil class is unpriced.
+// Prices are a run's price snapshot in micro-USD: per 1M tokens, Transcription per audio minute, WebSearch per call; nil is unpriced.
 type Prices struct {
 	Input, Output, CacheRead, CacheWrite, Embedding              *int64
 	HelperInput, HelperOutput, HelperCacheRead, HelperCacheWrite *int64
 	Transcription                                                *int64
+	WebSearch                                                    *int64
 }
 
 const (
@@ -33,6 +34,7 @@ func Cost(u Usage, p *Prices) (micros int64, priced bool) {
 		{u.HelperInputTokens, p.HelperInput, tokensPerPrice}, {u.HelperOutputTokens, p.HelperOutput, tokensPerPrice},
 		{u.HelperCacheReadTokens, p.HelperCacheRead, tokensPerPrice}, {u.HelperCacheWriteTokens, p.HelperCacheWrite, tokensPerPrice},
 		{u.TranscriptionSeconds, p.Transcription, secondsPerPrice},
+		{u.WebSearchCalls, p.WebSearch, 1},
 	} {
 		if c.units == 0 {
 			continue

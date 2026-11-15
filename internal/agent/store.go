@@ -37,6 +37,8 @@ type Reader interface {
 	AgentPublicIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error)
 	// MemoryUse names, per memory store of a project, the agents whose latest published version remembers people in it.
 	MemoryUse(ctx context.Context, projectID uuid.UUID) (map[uuid.UUID][]Named, error)
+	// WebSearchUse names the agents of a project whose latest published version has web search on, by name.
+	WebSearchUse(ctx context.Context, projectID uuid.UUID) ([]Named, error)
 }
 
 // Named is an agent's public id and name.

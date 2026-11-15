@@ -28,6 +28,8 @@ func defaultsToProto() *agentv1.AgentDefaults {
 	return &agentv1.AgentDefaults{
 		MaxSteps: RecommendedMaxSteps, MaxMaxSteps: MaxSteps, MaxTemperature: MaxTemperature, MaxCostCents: MaxCostCents,
 		VoiceNoteMaxSeconds: int32(run.MaxVoiceLength / time.Second), VoiceNoteMaxBytes: run.MaxVoiceBytes,
+		WebTimeoutMs: RecommendedWebTimeoutMs, MaxWebTimeoutMs: MaxWebTimeoutMs,
+		WebMaxCallsPerTurn: RecommendedWebMaxCallsPerTurn, MaxWebMaxCallsPerTurn: MaxWebMaxCallsPerTurn,
 	}
 }
 

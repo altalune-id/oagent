@@ -27,6 +27,7 @@
   {"rule": "agent.mcp_servers.unique", "reason": "invalid"},
   {"rule": "agent.knowledge_tuning.top_k.range", "reason": "invalid"},
   {"rule": "agent.knowledge_tuning.max_tokens.range", "reason": "invalid"},
+  {"rule": "agent.web.timeout_ms.range", "reason": "invalid"},
   {"rule": "knowledge.filename.blank", "reason": "required"},
   {"rule": "knowledge.filename.control", "reason": "invalid"},
   {"rule": "mcpserver.timeout_ms.range", "reason": "invalid"},

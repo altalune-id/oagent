@@ -152,14 +152,14 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	providers := configureModelProviders(modelprovider.NewService(providerStore, uow, k.Reporter.Unexpected).
 		WithSealer(sl).WithUsage(providerUsage{agents: agentStore}).WithProjects(projectOwners), cfg)
 	webToolStore := webtool.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)
-	webTools := webtool.NewService(webToolStore, k.Reporter.Unexpected).WithSealer(sl)
+	webTools := webtool.NewService(webToolStore, k.Reporter.Unexpected).WithSealer(sl).WithUsers(webSearchUsers{agents: agentStore})
 	serverStore := mcpserver.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)
 	servers := configureMCPServers(mcpserver.NewService(serverStore, uow, k.Reporter.Unexpected).
 		WithSealer(sl).WithUsage(serverUsage{agents: agentStore}).WithProjects(projectOwners), cfg, k.Log)
 
 	agents := agent.NewService(agentStore, uow, k.Reporter.Unexpected).WithPublisher(webhooks).WithProjects(projectOwners).
 		WithProviders(grantProviders{providers: providers}).WithMCPServers(grantServers{servers: servers}).
-		WithLocker(grantLocker{providers: providerStore, servers: serverStore})
+		WithLocker(grantLocker{providers: providerStore, servers: serverStore}).WithWebSearch(grantWebSearch{web: webTools})
 
 	keyScheme := apikey.NewScheme("")
 	owners := ownerRoles{members: members}

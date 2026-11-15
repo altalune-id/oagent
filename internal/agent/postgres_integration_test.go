@@ -751,3 +751,33 @@ func TestPostgres_AgentPublicIDsInOneRead(t *testing.T) {
 	_, err = f.store.AgentPublicIDs(context.Background(), []uuid.UUID{a.ID})
 	require.Error(t, err)
 }
+
+func TestPostgres_WebSearchUseReadsLatestPublished(t *testing.T) {
+	f := newPgFixture(t)
+	orgID, projectID := f.seedScope(t)
+	ctx := in(orgID)
+	on := agent.Config{ProviderID: uuid.New(), Model: "m", Web: agent.Web{Search: true}}
+	off := agent.Config{ProviderID: uuid.New(), Model: "m", Web: agent.Web{Fetch: true, FetchAllowDomains: []string{"a.example.com"}}}
+
+	searcher := newAgent(t, orgID, projectID, "searcher")
+	require.NoError(t, f.store.Save(ctx, searcher))
+	f.publish(t, ctx, searcher, on)
+
+	turnedOff := newAgent(t, orgID, projectID, "turned-off")
+	require.NoError(t, f.store.Save(ctx, turnedOff))
+	f.publish(t, ctx, turnedOff, on)
+	f.publish(t, ctx, turnedOff, off)
+
+	draftOnly := newAgent(t, orgID, projectID, "draft-only")
+	draftOnly.Draft = on
+	require.NoError(t, f.store.Save(ctx, draftOnly))
+
+	otherProject := f.seedProject(t, orgID)
+	elsewhere := newAgent(t, orgID, otherProject, "elsewhere")
+	require.NoError(t, f.store.Save(ctx, elsewhere))
+	f.publish(t, ctx, elsewhere, on)
+
+	got, err := f.store.WebSearchUse(ctx, projectID)
+	require.NoError(t, err)
+	assert.Equal(t, []agent.Named{{ID: searcher.ID, PublicID: searcher.PublicID, Name: searcher.Name}}, got)
+}
