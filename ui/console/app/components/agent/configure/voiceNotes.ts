@@ -86,12 +86,8 @@ export function voiceOn(tm?: TranscriptionModel): tm is TranscriptionModel {
   return !!tm?.model && !tm.providerMissing;
 }
 
-// voiceConnectionHint says whether the agent transcribes voice notes, naming the set reply when off; a model whose provider was deleted counts as off.
-export function voiceConnectionHint(tm: TranscriptionModel | undefined, reply: string): { key: string, params: Record<string, string> } {
-  return voiceOn(tm) ? { key: 'openwa.voice_on', params: { model: tm.model } } : { key: 'openwa.voice_off', params: { reply } };
-}
-
-// voiceChannelNotes decides the WhatsApp page's voice notes: the hint, whether it waits for a publish, and whether to offer the new set reply; an unpublished draft never prompts the reply switch.
-export function voiceChannelNotes(tm: TranscriptionModel | undefined, unpublished: boolean, storedReply: string, reply: string): { hint: { key: string, params: Record<string, string> }, afterPublish: boolean, staleReply: boolean } {
-  return { hint: voiceConnectionHint(tm, reply), afterPublish: unpublished, staleReply: !unpublished && staleVoiceReply(storedReply, voiceOn(tm)) };
+// voiceChannelNotes decides a channel page's voice notes: whether they are on and with which model, whether that waits for a publish, and whether to offer the new set reply; an unpublished draft never prompts the reply switch.
+export function voiceChannelNotes(tm: TranscriptionModel | undefined, unpublished: boolean, storedReply: string): { on: boolean, model: string, afterPublish: boolean, staleReply: boolean } {
+  const on = voiceOn(tm);
+  return { on, model: on ? tm.model : '', afterPublish: unpublished, staleReply: !unpublished && staleVoiceReply(storedReply, on) };
 }

@@ -31,7 +31,7 @@ export function setupSteps(input: SetupInput): SetupStep[] {
     ['agent', agent, configured],
     ['try', input.agentSlug ? `${agent}/try` : agent, configured && input.tried],
     ['publish', agent, configured && input.published],
-    ['channel', input.agentSlug ? `${agent}/channels` : agent, configured && input.whatsappConnected],
+    ['channel', input.agentSlug ? `${agent}/channels/whatsapp` : agent, configured && input.whatsappConnected],
   ];
   const next = steps.findIndex(([, , done]) => !done);
   return steps.map(([key, to, done], i) => ({ key, labelKey: `setup.step_${key}`, to, state: done ? 'done' : i === next ? 'next' : 'todo' }));

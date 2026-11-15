@@ -60,6 +60,16 @@ describe('nav crumbs', () => {
     expect(crumbsAt(`${p}/agents/refund-triage`, agent).palette.value.map(i => `${i.group} / ${i.label}`)).toContain('Refund Triage / agent.runs');
   });
 
+  it('trails a channel page through Channels, and lists each channel by name in the palette', () => {
+    const agent = { ...params, agent: 'refund-triage' };
+    const head = [{ label: 'Acme', to: '/o/acme' }, { label: 'Support Copilot', to: p }, { label: 'nav.agents', to: `${p}/agents` }, { label: 'Refund Triage', to: `${p}/agents/refund-triage` }];
+    const { crumbs, palette } = crumbsAt(`${p}/agents/refund-triage/channels/api`, agent);
+    expect(crumbs.value).toEqual([...head, { label: 'channels.title', to: `${p}/agents/refund-triage/channels/whatsapp` }, { label: 'channels.api' }]);
+    const entries = palette.value.filter(i => i.group === 'Refund Triage').map(i => `${i.label} ${i.to}`);
+    expect(entries).toEqual(expect.arrayContaining([`channels.title · channels.whatsapp ${p}/agents/refund-triage/channels/whatsapp`, `channels.title · channels.api ${p}/agents/refund-triage/channels/api`]));
+    expect(entries).not.toContain(`channels.title ${p}/agents/refund-triage/channels/whatsapp`);
+  });
+
   it('names the place on phones: the agent or project with its environment badge, else the org', () => {
     useProjectsStore().items = [{ id: 'x6MH9WPWjktMwCBKHy4pF', orgId: 'B6rTn1YkM8wQz3XpL5vGd', slug: 'support', name: 'Support Copilot', environment: ProjectEnvironment.PRODUCTION }] as never;
     expect(crumbsAt(`${p}/agents/refund-triage`, { ...params, agent: 'refund-triage' }).place.value).toEqual({ label: 'Refund Triage', badge: 'environment.production' });

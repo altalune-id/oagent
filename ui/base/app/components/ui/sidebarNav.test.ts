@@ -76,6 +76,31 @@ describe('sidebarNav', () => {
     expect(w.findAll('ul').map(u => u.classes())).toEqual([['menu', 'menu-sm', 'w-full', 'text-ui'], ['menu', 'menu-sm', 'w-full', 'text-ui']]);
   });
 
+  it('nests sub-items under their parent and marks only the current sub-item', () => {
+    const nested = [{ items: [{ key: 'channels', label: 'Channels', to: '/a/channels/whatsapp', icon: 'lucide:radio-tower', active: true, children: [
+      { key: 'whatsapp', label: 'WhatsApp', to: '/a/channels/whatsapp', active: true },
+      { key: 'api', label: 'API', to: '/a/channels/api', badge: 2 },
+    ] }] }];
+    const w = mount(SidebarNav, { props: { groups: nested } });
+    const sub = w.get('nav li > ul');
+    expect(sub.findAll('a').map(a => a.text())).toEqual(['WhatsApp', 'API2']);
+    const links = w.findAll('nav a');
+    expect(links.map(a => a.attributes('aria-current'))).toEqual([undefined, 'page', undefined]);
+    expect(links.map(a => a.classes().includes('menu-active'))).toEqual([false, true, false]);
+    expect(links[0]!.classes()).not.toContain('lg:menu-active');
+    expect(sub.classes()).not.toContain('lg:hidden');
+  });
+
+  it('hides sub-items in the rail and marks their parent there instead', () => {
+    const nested = [{ items: [{ key: 'channels', label: 'Channels', to: '/a/channels/whatsapp', active: true, children: [{ key: 'whatsapp', label: 'WhatsApp', to: '/a/channels/whatsapp', active: true }] }] }];
+    const w = mount(SidebarNav, { props: { groups: nested, rail: true } });
+    expect(w.get('nav li > ul').classes()).toContain('lg:hidden');
+    const parent = w.get('nav a');
+    expect(parent.classes()).toContain('lg:menu-active');
+    expect(parent.classes()).not.toContain('menu-active');
+    expect(parent.attributes('aria-current')).toBeUndefined();
+  });
+
   it('renders the top, back and footer slots only when given', () => {
     expect(mount(SidebarNav, { props: { groups } }).find('[data-sidebar-footer]').exists()).toBe(false);
     const w = mount(SidebarNav, { props: { groups }, slots: { top: 'Switcher', back: 'Back', footer: 'OAgent v1.2.3' } });

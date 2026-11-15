@@ -8,6 +8,7 @@ export interface NavItem {
   icon?: string;
   active?: boolean;
   badge?: string | number;
+  children?: NavItem[];
 }
 
 export interface Crumb {

@@ -8,7 +8,7 @@ import { fakeChannelClient } from '~~/test/fixtures/channels';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { mountPage } from '#test/mount-page';
 import { setClient, setRoute } from '#test/nuxt-globals';
-import ChannelsPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/channels.vue';
+import ChannelsPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/channels/whatsapp.vue';
 import RunsPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/runs/index.vue';
 import ThreadPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/threads/[thread].vue';
 import ThreadsPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/threads/index.vue';
@@ -82,7 +82,7 @@ describe('load errors', () => {
   });
 
   it('shows a retryable error when channels fail to load', async () => {
-    seed('/agents/yasaku-keuangan/channels', agent);
+    seed('/agents/yasaku-keuangan/channels/whatsapp', agent);
     const { client } = fakeChannelClient();
     client.listConnections.mockRejectedValueOnce(new Error('boom'));
     const w = await mountPage(ChannelsPage);

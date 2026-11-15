@@ -2,10 +2,10 @@
 import type { ReplyKey, ReplyTexts } from '~/components/channels/replies';
 import type { ReplyEditorLabels } from '~/components/channels/ReplyTextsEditor.vue';
 import type { WhatsAppStatus } from '~/stores/channels';
+import AppBadge from '#base/components/ui/AppBadge.vue';
 import AppButton from '#base/components/ui/AppButton.vue';
 import AppModal from '#base/components/ui/AppModal.vue';
 import ConfirmModal from '#base/components/ui/ConfirmModal.vue';
-import CopyButton from '#base/components/ui/CopyButton.vue';
 import FieldError from '#base/components/ui/FieldError.vue';
 import KeyValue from '#base/components/ui/KeyValue.vue';
 import LoadError from '#base/components/ui/LoadError.vue';
@@ -19,6 +19,7 @@ import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { chosenModel } from '~/components/agent/configure/runtime';
 import { voiceChannelNotes } from '~/components/agent/configure/voiceNotes';
 import { useAgentPage } from '~/components/agent/useAgentPage';
+import MediaStatus from '~/components/channels/MediaStatus.vue';
 import OpenwaConnectModal from '~/components/channels/OpenwaConnectModal.vue';
 import { replyErrors, replyKeys, seconds, timingErrors, toMs } from '~/components/channels/replies';
 import ReplyTextsEditor from '~/components/channels/ReplyTextsEditor.vue';
@@ -28,11 +29,10 @@ import CodeText from '~/components/layout/CodeText.vue';
 import ProjectReadOnlyNote from '~/components/project/ProjectReadOnlyNote.vue';
 import { useCan } from '~/composables/useCan';
 import { describedBy } from '~/lib/names/names';
-import { useChannelsStore } from '~/stores/channels';
+import { providerNames, useChannelsStore } from '~/stores/channels';
 
 const { t } = useI18n();
 const uid = useId();
-const route = useRoute();
 const { when } = useDates();
 const toast = useToast();
 const errorMessage = useErrorMessage();
@@ -46,18 +46,8 @@ const connection = computed(() => channels.connection(agent.value.id));
 const replace = useReplaceSecret(() => connection.value?.id);
 const published = computed(() => (agent.value.publishedVersion ?? 0) > 0);
 const unpublished = computed(() => !published.value || !!agent.value.unpublishedChanges);
-const voiceNotes = computed(() => voiceChannelNotes(agent.value.transcriptionModel, unpublished.value, channels.replies(agent.value.id).voice, t('channels.reply_voice')));
-const voiceLine = computed(() => [t(voiceNotes.value.hint.key, voiceNotes.value.hint.params), ...(voiceNotes.value.afterPublish ? [t('openwa.voice_after_publish')] : [])].join(' '));
+const voiceNotes = computed(() => voiceChannelNotes(agent.value.transcriptionModel, unpublished.value, channels.replies(agent.value.id).voice));
 const vision = computed(() => !!chosenModel({ providerId: agent.value.providerId ?? '', model: agent.value.model ?? '' }, providers.items).model?.vision);
-const { apiUrl } = useRuntimeConfig().public;
-const endpoint = computed(() => new URL(`${(apiUrl || '/api').replace(/\/$/, '')}/v1/agents/${agent.value.id}/runs`, window.location.origin).href);
-const curl = computed(() => [
-  `curl -N ${endpoint.value} \\`,
-  '  -H "Authorization: Bearer $OAGENT_KEY" \\',
-  '  -H "Content-Type: application/json" \\',
-  '  -d \'{"threadId":"rumah-001","user":"cust_0001","messages":[{"role":"user","content":"beli kopi 40rb pakai cash"}]}\'',
-]);
-
 const statusInfo: Record<WhatsAppStatus, { tone: 'success' | 'warning' | 'error', key: string }> = {
   connected: { tone: 'success', key: 'openwa.status_connected' },
   waiting: { tone: 'warning', key: 'openwa.status_waiting' },
@@ -198,17 +188,22 @@ function onSwitch(e: Event) {
   turningOff.ask(c.id);
 }
 
-useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · OAgent` });
+useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.whatsapp')} · OAgent` });
 </script>
 
 <template>
   <div class="flex max-w-3xl flex-col gap-4">
-    <PageHeader :title="t('channels.title')" :description="t('channels.subtitle')" />
+    <PageHeader :title="t('channels.whatsapp')" :description="t('channels.whatsapp_subtitle')" />
     <ProjectReadOnlyNote v-if="!canEdit" :text="t('channels.read_only')" />
 
     <LoadError v-if="channels.error" :error="channels.error" :busy="channels.loading" :retry-label="t('common.retry')" @retry="channels.load(project!.id, agent.id)" />
     <template v-else>
-      <Section :title="t('openwa.title')" :description="t('openwa.subtitle')">
+      <MediaStatus :voice="voiceNotes" :vision="vision" :model="agent.model ?? ''" :configure-to="base" />
+
+      <Section :title="t('channels.connection')" :description="t('openwa.subtitle')">
+        <template #actions>
+          <AppBadge :label="providerNames.openwa" outline />
+        </template>
         <div v-if="connection && unpublished" role="alert" class="alert alert-warning alert-soft text-base-content text-ui">
           <Icon name="lucide:triangle-alert" size="16" class="shrink-0" aria-hidden="true" />
           <span>{{ t('openwa.publish_warning') }}</span>
@@ -301,18 +296,6 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · 
           </AppButton>
         </div>
 
-        <p v-if="agent.model && !vision" role="note" class="text-xs text-base-content/70">
-          {{ t('openwa.no_vision', { model: agent.model || '—' }) }}
-          <NuxtLink :to="`${base}#configure-model`" class="link">
-            {{ t('try.pick_vision') }}
-          </NuxtLink>
-        </p>
-        <p role="note" class="text-xs text-base-content/70">
-          {{ voiceLine }}
-          <NuxtLink :to="`${base}#configure-voice`" class="link">
-            {{ t('configure.voice') }}
-          </NuxtLink>
-        </p>
         <p class="text-xs text-base-content/70">
           {{ t('openwa.who_may_talk') }}
         </p>
@@ -374,50 +357,10 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('channels.title')} · 
 
       <Section :title="t('channels.provider_whatsapp_business')" :description="t('channels.business_subtitle')">
         <template #actions>
-          <span class="badge badge-sm badge-outline">{{ t('widget.coming_later') }}</span>
+          <span class="badge badge-sm badge-outline">{{ t('channels.coming_later') }}</span>
         </template>
         <p class="text-ui text-base-content/70">
           {{ t('channels.business_body') }}
-        </p>
-      </Section>
-
-      <Section :title="t('apiaccess.title')" :description="t('apiaccess.subtitle')">
-        <div class="-mx-4 border-y border-base-300">
-          <KeyValue :items="[{ label: t('apiaccess.endpoint'), value: `POST ${endpoint}`, mono: true }, { label: t('apiaccess.agent_id'), value: agent.id, mono: true, copy: true }]" :copy-label="t('common.copy_label', { label: '{label}' })">
-            <template #value-0>
-              <span class="flex min-w-0 flex-col">
-                <span class="flex items-center gap-2"><span class="font-mono text-xs break-all">POST {{ endpoint }}</span><CopyButton :value="endpoint" :label="t('common.copy_label', { label: t('apiaccess.endpoint') })" /></span>
-              </span>
-            </template>
-          </KeyValue>
-        </div>
-        <p class="text-ui">
-          <CodeText :text="t('apiaccess.keys')" /> <NuxtLink :to="`/o/${route.params.org}/settings/api-keys`" class="link">
-            {{ t('apiaccess.create_key') }}
-          </NuxtLink>
-        </p>
-        <div class="flex flex-col gap-1">
-          <div class="flex items-center justify-between">
-            <p class="text-xs text-base-content/70">
-              {{ t('apiaccess.example') }}
-            </p>
-            <CopyButton :value="curl.join('\n')" :label="t('common.copy')" />
-          </div>
-          <div class="mockup-code w-full text-xs" tabindex="0" role="region" :aria-label="t('apiaccess.example')">
-            <pre v-for="(line, i) in curl" :key="i" :data-prefix="i === 0 ? '$' : ' '"><code>{{ line }}</code></pre>
-          </div>
-        </div>
-        <p class="text-xs text-base-content/70">
-          {{ t('apiaccess.stream_note') }}
-        </p>
-      </Section>
-
-      <Section :title="t('widget.title')">
-        <template #actions>
-          <span class="badge badge-sm badge-outline">{{ t('widget.coming_later') }}</span>
-        </template>
-        <p class="text-ui text-base-content/70">
-          {{ t('widget.body') }}
         </p>
       </Section>
 

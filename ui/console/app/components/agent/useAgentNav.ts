@@ -10,7 +10,10 @@ export function useAgentNav() {
     items: [
       { key: 'configure', label: t('agent.configure'), to: base.value, icon: 'lucide:sliders-horizontal', active: route.path === base.value },
       { key: 'try', label: t('try.title'), to: `${base.value}/try`, icon: 'lucide:message-square-text', active: route.path.startsWith(`${base.value}/try`) },
-      { key: 'channels', label: t('channels.title'), to: `${base.value}/channels`, icon: 'lucide:radio-tower', active: route.path.startsWith(`${base.value}/channels`) },
+      { key: 'channels', label: t('channels.title'), to: `${base.value}/channels/whatsapp`, icon: 'lucide:radio-tower', active: route.path.startsWith(`${base.value}/channels`), children: [
+        { key: 'channels-whatsapp', label: t('channels.whatsapp'), to: `${base.value}/channels/whatsapp`, active: route.path.startsWith(`${base.value}/channels/whatsapp`) },
+        { key: 'channels-api', label: t('channels.api'), to: `${base.value}/channels/api`, active: route.path.startsWith(`${base.value}/channels/api`) },
+      ] },
       { key: 'threads', label: t('threads.title'), to: `${base.value}/threads`, icon: 'lucide:messages-square', active: route.path.startsWith(`${base.value}/threads`) },
       { key: 'runs', label: t('agent.runs'), to: `${base.value}/runs`, icon: 'lucide:list-tree', active: route.path.startsWith(`${base.value}/runs`) },
     ],
