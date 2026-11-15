@@ -12,7 +12,6 @@ import { publishBlockers, publishWarnings } from '~/components/agent/configure/r
 import { useAgentDraft } from '~/components/agent/configure/useAgentDraft';
 import { useCan } from '~/composables/useCan';
 import { focusWhenShown } from '~/lib/focus/focus';
-import { useAgentRuntimeStore } from '~/stores/agentRuntime';
 import { useAgentsStore } from '~/stores/agents';
 import { useAuthStore } from '~/stores/auth';
 import { useKnowledgeStore } from '~/stores/knowledge';
@@ -21,7 +20,7 @@ import { useMemoryStoresStore } from '~/stores/memoryStores';
 import { useModelProvidersStore } from '~/stores/modelProviders';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
-import { useWebSearchStore } from '~/stores/webSearch';
+import { useWebToolsStore } from '~/stores/webTools';
 
 definePageMeta({ bleed: true });
 
@@ -34,8 +33,7 @@ const providers = useModelProvidersStore();
 const servers = useMcpServersStore();
 const knowledge = useKnowledgeStore();
 const memoryStores = useMemoryStoresStore();
-const webSearch = useWebSearchStore();
-const runtimes = useAgentRuntimeStore();
+const webTools = useWebToolsStore();
 const canEdit = useCan('agent:write');
 const toast = useToast();
 const { when } = useDates();
@@ -55,7 +53,7 @@ await Promise.all([
   providers.ensureLoaded(project.value.id),
   servers.ensureLoaded(project.value.id),
   knowledge.ensureLoaded(project.value.id),
-  webSearch.ensureLoaded(project.value.id),
+  webTools.ensureLoaded(project.value.id),
   memoryStores.ensureLoaded(project.value.id),
 ]);
 
@@ -81,21 +79,19 @@ const { config, state, diff } = draft;
 const reasonId = useId();
 const publishOpen = ref(false);
 const current = computed(() => state.value?.publishedVersion ?? 0);
-const agentId = agent.value.id;
-runtimes.draftFor(agentId, agent.value.slug);
-const runtime = computed({
-  get: () => runtimes.drafts[agentId]!,
-  set: (next) => {
-    runtimes.drafts[agentId] = next;
-  },
-});
 const base = computed(() => `/o/${route.params.org}/projects/${route.params.project}`);
-const links = computed(() => ({ providers: `${base.value}/settings/model-providers`, servers: `${base.value}/settings/mcp-servers`, webSearch: `${base.value}/settings/web-search`, knowledge: `${base.value}/knowledge`, endUsers: `${base.value}/end-users`, memoryStores: `${base.value}/memory-stores`, channels: `${base.value}/agents/${route.params.agent}/channels/whatsapp` }));
+const links = computed(() => ({ providers: `${base.value}/settings/model-providers`, servers: `${base.value}/settings/mcp-servers`, webTools: `${base.value}/settings/web-tools`, knowledge: `${base.value}/knowledge`, endUsers: `${base.value}/end-users`, memoryStores: `${base.value}/memory-stores`, channels: `${base.value}/agents/${route.params.agent}/channels/whatsapp` }));
 const legacy = computed(() => current.value > 0 && !!draft.live.value && !draft.live.value.providerId);
 const costInvalid = ref(false);
+const webInvalid = ref('');
 const costBlocker: Blocker = { key: 'publish.blocker_cost', target: 'limits' };
-const blockers = computed(() => [...publishBlockers(config.value, { providers: providers.items, servers: servers.items, memoryStores: memoryStores.items }), ...(costInvalid.value ? [costBlocker] : [])]);
-const warnings = computed(() => publishWarnings(config.value, { providers: providers.items, servers: servers.items, memoryStores: memoryStores.items }));
+const runtimeContext = computed(() => ({ providers: providers.items, servers: servers.items, memoryStores: memoryStores.items, searchReady: webTools.searchReady }));
+const blockers = computed(() => [
+  ...publishBlockers(config.value, runtimeContext.value),
+  ...(costInvalid.value ? [costBlocker] : []),
+  ...(webInvalid.value ? [{ key: 'publish.blocker_web_limits', target: 'web' as const, field: webInvalid.value }] : []),
+]);
+const warnings = computed(() => publishWarnings(config.value, runtimeContext.value));
 const loaded = computed(() => !!state.value && !draft.loadError.value);
 const canPublish = computed(() => loaded.value && blockers.value.length === 0);
 const blockersId = useId();
@@ -207,8 +203,8 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
 
     <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(22rem,26rem)]">
       <AgentConfigForm
-        v-model="config" v-model:runtime="runtime" v-model:cost-invalid="costInvalid" :providers="providers.items" :servers="servers.items" :sources="knowledge.sources"
-        :search-ready="!!webSearch.setting.provider" :embeddings="!!knowledge.embedding" :retrieval="knowledge.retrievalDefaults" :limits="draft.limits.value" :links="links" :legacy-model="legacy ? (draft.live.value?.model ?? '') : ''" :disabled="!canEdit || !loaded"
+        v-model="config" v-model:cost-invalid="costInvalid" v-model:web-invalid="webInvalid" :providers="providers.items" :servers="servers.items" :sources="knowledge.sources"
+        :search-ready="webTools.searchReady" :secrets="webTools.secrets" :embeddings="!!knowledge.embedding" :retrieval="knowledge.retrievalDefaults" :limits="draft.limits.value" :links="links" :legacy-model="legacy ? (draft.live.value?.model ?? '') : ''" :disabled="!canEdit || !loaded"
         :field-error="draft.fieldError.value" :memory-stores="memoryStores.items"
       />
       <ConfigurePane :agent-id="agent.id" :config="config" />
@@ -251,10 +247,6 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('agent.configure')} ·
       </ul>
       <p v-else class="py-3 text-ui text-base-content/70">
         {{ t('configure.no_changes') }}
-      </p>
-      <p class="flex items-center gap-1.5 text-xs text-base-content/70">
-        <Icon name="lucide:flask-conical" size="14" class="shrink-0" aria-hidden="true" />
-        {{ t('configure.preview_not_published') }}
       </p>
       <ErrorText class="mt-2" :error="draft.publishError.value" />
       <template #footer>

@@ -4,7 +4,7 @@ import AppButton from '#base/components/ui/AppButton.vue';
 import { shownName } from '~/components/enduser/forget';
 import { chatTime } from '~/components/try/chatTime';
 import { useNow } from '~/composables/useNow';
-import { decisionLabel, expiresIn, statusAt } from './decision';
+import { decisionLabel, expiresIn, statusAt, toolHeading } from './decision';
 
 const { approval, readOnly = false, busy = false, answeredByApp = false, note = '' } = defineProps<{ approval: ApprovalRequest, readOnly?: boolean, busy?: boolean, answeredByApp?: boolean, note?: string }>();
 const emit = defineEmits<{ approve: [], reject: [reason: string] }>();
@@ -65,14 +65,14 @@ function reject() {
     <div class="flex flex-wrap items-start justify-between gap-2">
       <h3 :id="`${uid}-title`" class="flex items-center gap-1.5 font-semibold">
         <Icon name="lucide:hand" size="16" class="shrink-0" aria-hidden="true" />
-        {{ approval.title }}
+        {{ toolHeading(approval.title, t('approvalcard.web_tools')) }}
       </h3>
       <span class="badge badge-sm badge-ghost font-mono">{{ approval.tool }}</span>
     </div>
     <div :id="`${uid}-args`" class="flex flex-col gap-2">
       <div v-for="(call, ci) in calls" :key="ci" class="flex flex-col gap-1">
         <h4 v-if="call.title" class="font-mono text-xs font-medium">
-          {{ call.title }}
+          {{ toolHeading(call.title, t('approvalcard.web_tools')) }}
         </h4>
         <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1">
           <template v-for="arg in call.args" :key="arg.label">

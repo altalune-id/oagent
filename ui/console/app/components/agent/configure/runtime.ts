@@ -9,7 +9,10 @@ import { toolName } from '~/components/mcpserver/tools';
 import { hasPrice } from '~/components/provider/useProviderForm';
 import { promptTooLong } from './agentConfig';
 
-export type BlockerTarget = 'instructions' | 'model' | 'tools' | 'limits';
+export type BlockerTarget = 'instructions' | 'model' | 'tools' | 'web' | 'limits';
+
+export const webListMax = 50;
+export const webHeaderMax = 20;
 
 export interface Blocker {
   key: string;
@@ -21,7 +24,7 @@ export interface Blocker {
 export interface ConfigureLinks {
   providers: string;
   servers: string;
-  webSearch: string;
+  webTools: string;
   knowledge: string;
   endUsers: string;
   memoryStores: string;
@@ -34,6 +37,7 @@ export interface RuntimeContext {
   providers: ModelProvider[];
   servers: McpServer[];
   memoryStores: MemoryTrust[];
+  searchReady?: boolean;
 }
 
 export interface MissingServer {
@@ -90,14 +94,15 @@ export function withoutGrant(config: AgentConfig, serverId: string): AgentConfig
   return { ...config, grants: config.grants.filter(g => g.serverId !== serverId) };
 }
 
-// readsPrivateData reports whether the agent can see private data, so web_fetch needs an allow-list; any granted MCP tool counts.
-export function readsPrivateData(config: AgentConfig): boolean {
-  return config.grants.length > 0 || !!config.memoryStoreId || config.knowledgeSourceIds.length > 0;
+// readsUntrusted reports whether the agent reads documents, memory that API keys can write, or the web, so its tools need a person's approval.
+export function readsUntrusted(config: AgentConfig, memoryStores: MemoryTrust[]): boolean {
+  return config.knowledgeSourceIds.length > 0 || memoryStores.some(s => s.id === config.memoryStoreId && s.rememberApiUsers)
+    || webOn(config);
 }
 
-// readsUntrusted reports whether the agent reads documents or memory that API keys can write, so its tools need a person's approval.
-export function readsUntrusted(config: AgentConfig, memoryStores: MemoryTrust[]): boolean {
-  return config.knowledgeSourceIds.length > 0 || memoryStores.some(s => s.id === config.memoryStoreId && s.rememberApiUsers);
+// webOn reports whether any built-in web tool is on.
+export function webOn(config: AgentConfig): boolean {
+  return config.web.search || config.web.fetch || config.web.http;
 }
 
 // unattendedTools lists the granted tools that run without approval, as the model names them.
@@ -117,9 +122,36 @@ export function parseDollars(text: string): number | null {
   return /^\d+(?:\.\d{0,2})?$/.test(clean) ? Math.round(Number(clean) * 100) : null;
 }
 
-// parseDomains turns the allow-list textarea into host names, one per line.
-export function parseDomains(text: string): string[] {
-  return text.split('\n').map(d => d.trim().toLowerCase()).filter(Boolean);
+// hostOf keeps only the lowercase host name of a typed host or pasted URL: no scheme, user, port, path, query or fragment.
+export function hostOf(text: string): string {
+  return text.trim().replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/^[^/?#]*@/, '').replace(/[/?#].*$/, '').replace(/:\d*$/, '').toLowerCase();
+}
+
+// parseLines turns a textarea into trimmed, deduped entries, one per line, as host names when host is set; over says the list is longer than max.
+export function parseLines(text: string, opts: { host: boolean, max: number }): { lines: string[], over: boolean } {
+  const lines = [...new Set(text.split('\n').map(l => (opts.host ? hostOf(l) : l.trim())).filter(Boolean))];
+  return { lines, over: lines.length > opts.max };
+}
+
+// parseSeconds reads whole seconds into milliseconds: empty means the default (0), and null means not a whole number from 1 up to maxMs.
+export function parseSeconds(text: string, maxMs?: number): number | null {
+  const n = parseCount(text, maxMs === undefined ? undefined : Math.floor(maxMs / 1000));
+  return n === null ? null : n * 1000;
+}
+
+// parseCount reads a whole number: empty means the default (0), and null means not a whole number from 1 up to max.
+export function parseCount(text: string, max?: number): number | null {
+  const clean = text.trim();
+  if (!clean) {
+    return 0;
+  }
+  const n = /^\d+$/.test(clean) ? Number(clean) : 0;
+  return n >= 1 && (max === undefined || n <= max) ? n : null;
+}
+
+// secretsFor counts the project HTTP secrets whose host the agent may call.
+export function secretsFor(hosts: string[], secrets: { host: string }[]): number {
+  return secrets.filter(s => hosts.includes(s.host)).length;
 }
 
 // bindable reports whether an agent can search a knowledge source: it has a ready document.
@@ -168,6 +200,29 @@ export function publishBlockers(config: AgentConfig, ctx: RuntimeContext): Block
   }
   if (config.tools.length > 0) {
     out.push({ key: 'publish.blocker_legacy_tools', target: 'tools' });
+  }
+  return [...out, ...webBlockers(config, ctx.searchReady)];
+}
+
+function webBlockers(config: AgentConfig, searchReady?: boolean): Blocker[] {
+  const { web } = config;
+  const out: Blocker[] = [];
+  const tooMany = (field: string, max: number): Blocker => ({ key: 'publish.blocker_web_too_many', target: 'web', field, params: { max: String(max) } });
+  if (web.search && searchReady === false) {
+    out.push({ key: 'publish.blocker_web_search_provider', target: 'web', field: 'web-search' });
+  }
+  if (web.fetch && web.fetchAllowDomains.length > webListMax) {
+    out.push(tooMany('web-domains', webListMax));
+  } else if (web.fetch && web.fetchAllowDomains.length === 0) {
+    out.push({ key: 'publish.blocker_web_fetch_domains', target: 'web', field: 'web-domains' });
+  }
+  if (web.http && web.httpHosts.length > webListMax) {
+    out.push(tooMany('web-hosts', webListMax));
+  } else if (web.http && web.httpHosts.length === 0) {
+    out.push({ key: 'publish.blocker_web_http_hosts', target: 'web', field: 'web-hosts' });
+  }
+  if (web.http && web.requestHeaders.length > webHeaderMax) {
+    out.push(tooMany('web-headers', webHeaderMax));
   }
   return out;
 }

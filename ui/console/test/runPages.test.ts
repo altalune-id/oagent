@@ -175,6 +175,14 @@ describe('run viewer', () => {
     expect(w.findAll('header dl dd')[4]!.text()).toBe('42s');
   });
 
+  it('shows the web searches after the transcription, only when the run searched', async () => {
+    threadClient().getRun.mockResolvedValue({ run: create(RunSchema, { id: runId, threadId, status: RunStatus.COMPLETED, attempt: 1, agentVersion: 4, usage: { inputTokens: 812n, outputTokens: 64n, transcriptionSeconds: 42n, webSearchCalls: 1234n }, latencyMs: 2400n, startedAt: at(3), endedAt: at(4) }) });
+    const w = await mountPage(RunPage);
+    await flushPromises();
+    expect(w.findAll('header dl dt').map(d => d.text())).toEqual(['run.status', 'run.duration', 'run.tokens', 'run.transcription', 'run.web_searches', 'run.cost']);
+    expect(w.findAll('header dl dd')[4]!.text()).toBe('1,234');
+  });
+
   it('leaves the passage count off a knowledge search line when the run recorded none', async () => {
     threadClient().getRun.mockResolvedValue({ run: create(RunSchema, { id: runId, threadId, status: RunStatus.COMPLETED, attempt: 1, agentVersion: 4, usage: {}, knowledgeRetrieveCalls: 1, knowledgeRetrieveMs: 340n, startedAt: at(3), endedAt: at(4) }) });
     const w = await mountPage(RunPage);

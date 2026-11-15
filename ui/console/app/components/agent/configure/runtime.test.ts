@@ -12,13 +12,16 @@ import {
   grantFor,
   grantState,
   helperCapError,
+  hostOf,
   missingServers,
+  parseCount,
   parseDollars,
-  parseDomains,
+  parseLines,
+  parseSeconds,
   publishBlockers,
   publishWarnings,
-  readsPrivateData,
   readsUntrusted,
+  secretsFor,
   unattendedTools,
   withAllGrants,
   withApproval,
@@ -108,13 +111,6 @@ describe('grants', () => {
     expect(missingServers(config, [])).toHaveLength(2);
     expect(withoutGrant(config, 'GneZ23456789abcdefghj').grants.map(g => g.serverId)).toEqual([yasaku.id]);
   });
-
-  it('counts any granted tool, memory or knowledge as private data', () => {
-    expect(readsPrivateData(emptyConfig())).toBe(false);
-    expect(readsPrivateData(withGrant(emptyConfig(), yasaku, tool('list_wallets'), true))).toBe(true);
-    expect(readsPrivateData({ ...emptyConfig(), memoryStoreId: 'Ms4tR7wQ2xKp9VbNc3HzL' })).toBe(true);
-    expect(readsPrivateData({ ...emptyConfig(), knowledgeSourceIds: ['k'] })).toBe(true);
-  });
 });
 
 describe('inputs', () => {
@@ -126,8 +122,48 @@ describe('inputs', () => {
     expect(parseDollars('1.234')).toBeNull();
   });
 
-  it('parses one domain per line', () => {
-    expect(parseDomains(' BCA.co.id\n\nmandiri.co.id \n')).toEqual(['bca.co.id', 'mandiri.co.id']);
+  it('parses one entry per line, dedupes, and flags a list over its cap', () => {
+    expect(parseLines(' BCA.co.id\n\nmandiri.co.id \nbca.co.id', { host: true, max: 50 })).toEqual({ lines: ['bca.co.id', 'mandiri.co.id'], over: false });
+    expect(parseLines('X-Trace\nx-trace\nX-Trace', { host: false, max: 20 })).toEqual({ lines: ['X-Trace', 'x-trace'], over: false });
+    expect(parseLines('a\nb\nc', { host: true, max: 2 })).toEqual({ lines: ['a', 'b', 'c'], over: true });
+    expect(parseLines('a\nb', { host: true, max: 2 }).over).toBe(false);
+  });
+
+  it('keeps only the host name of a pasted URL', () => {
+    expect(hostOf(' https://User:pw@Docs.Example.com:8443/path?q=1#top ')).toBe('docs.example.com');
+    expect(hostOf('docs.example.com/guide')).toBe('docs.example.com');
+    expect(hostOf('http://example.com')).toBe('example.com');
+    expect(hostOf('example.com:443')).toBe('example.com');
+    expect(hostOf('example.com?x=1')).toBe('example.com');
+    expect(hostOf('example.com#a')).toBe('example.com');
+    expect(hostOf('10.0.0.1')).toBe('10.0.0.1');
+    expect(parseLines('https://docs.example.com/a\ndocs.example.com/b', { host: true, max: 50 }).lines).toEqual(['docs.example.com']);
+  });
+
+  it('reads whole seconds into milliseconds, empty as the default', () => {
+    expect(parseSeconds('', 30000)).toBe(0);
+    expect(parseSeconds(' 20 ', 30000)).toBe(20000);
+    expect(parseSeconds('30', 30000)).toBe(30000);
+    expect(parseSeconds('31', 30000)).toBeNull();
+    expect(parseSeconds('1.5', 30000)).toBeNull();
+    expect(parseSeconds('0', 30000)).toBeNull();
+    expect(parseSeconds('9', undefined)).toBe(9000);
+  });
+
+  it('reads a whole count, empty as the default', () => {
+    expect(parseCount('', 50)).toBe(0);
+    expect(parseCount('12', 50)).toBe(12);
+    expect(parseCount('50', 50)).toBe(50);
+    expect(parseCount('51', 50)).toBeNull();
+    expect(parseCount('2.5', 50)).toBeNull();
+    expect(parseCount('0', 50)).toBeNull();
+    expect(parseCount('99', undefined)).toBe(99);
+  });
+
+  it('counts the project secrets for the listed hosts', () => {
+    const secrets = [{ id: 'a', host: 'api.example.com', header: 'x-api-key' }, { id: 'b', host: 'api.example.com', header: 'authorization' }, { id: 'c', host: 'other.example.com', header: 'x' }];
+    expect(secretsFor(['api.example.com'], secrets)).toBe(2);
+    expect(secretsFor([], secrets)).toBe(0);
   });
 
   it('lets an agent bind a source once it has a ready document', () => {
@@ -177,6 +213,38 @@ describe('publishBlockers', () => {
     const config = ready({ grants: [{ serverId: 'GneZ23456789abcdefghj', missing: true, tools: [] }], tools: [{ name: 'old', requireApproval: false }] });
     expect(publishBlockers(config, ctx).map(b => b.key)).toEqual(['publish.blocker_server_missing', 'publish.blocker_legacy_tools']);
     expect(publishBlockers(ready(), { providers: [], servers: [], memoryStores: [] })[0]?.key).toBe('publish.blocker_model');
+  });
+});
+
+describe('web publish blockers', () => {
+  const web = (over: Partial<AgentConfig['web']>) => ready({ web: { ...emptyConfig().web, ...over } });
+  const keys = (config: AgentConfig, searchReady?: boolean) => publishBlockers(config, { ...ctx, searchReady });
+
+  it('blocks web search without a usable provider, never when readiness is unknown', () => {
+    expect(keys(web({ search: true }), false)).toEqual([{ key: 'publish.blocker_web_search_provider', target: 'web', field: 'web-search' }]);
+    expect(keys(web({ search: true }), true)).toEqual([]);
+    expect(keys(web({ search: true }))).toEqual([]);
+    expect(keys(web({ search: false }), false)).toEqual([]);
+  });
+
+  it('blocks HTTP requests without hosts', () => {
+    expect(keys(web({ http: true }))).toEqual([{ key: 'publish.blocker_web_http_hosts', target: 'web', field: 'web-hosts' }]);
+    expect(keys(web({ http: true, httpHosts: ['api.example.com'] }))).toEqual([]);
+  });
+
+  it('blocks web fetch without a domain list, whatever the agent reads', () => {
+    expect(keys(web({ fetch: true }))).toEqual([{ key: 'publish.blocker_web_fetch_domains', target: 'web', field: 'web-domains' }]);
+    expect(keys(web({ fetch: true, fetchAllowDomains: ['bca.co.id'] }))).toEqual([]);
+  });
+
+  it('blocks a list over its cap', () => {
+    const many = Array.from({ length: 51 }, (_, i) => `h${i}.example.com`);
+    const headers = Array.from({ length: 21 }, (_, i) => `X-H${i}`);
+    expect(keys(web({ fetch: true, fetchAllowDomains: many })).map(b => b.field)).toEqual(['web-domains']);
+    expect(keys(web({ http: true, httpHosts: many })).map(b => b.field)).toEqual(['web-hosts']);
+    expect(keys(web({ http: true, httpHosts: ['a.example.com'], requestHeaders: headers })).map(b => b.field)).toEqual(['web-headers']);
+    expect(keys(web({ http: true, httpHosts: many.slice(0, 50), requestHeaders: headers.slice(0, 20) }))).toEqual([]);
+    expect(keys(web({ fetchAllowDomains: many, httpHosts: many, requestHeaders: headers })), 'lists of a tool that is off never block').toEqual([]);
   });
 });
 
@@ -230,6 +298,14 @@ describe('publishWarnings', () => {
     expect(publishWarnings(bound({ grants }), ctx)).toEqual([{ key: 'publish.warning_unapproved_tool', target: 'tools', field: 'tagihan__invoice_send', params: { tool: 'tagihan__invoice_send', n: '2' } }]);
     expect(unattendedTools(bound({ grants: [grant('Ms0unknown000000000000', free('x'))] }), ctx.servers)).toEqual([]);
     expect(unattendedTools(bound({ grants: [{ ...grant(tagihan.id, free('invoice_send')), missing: true }] }), ctx.servers)).toEqual([]);
+  });
+
+  it('counts any web tool as reading third-party text', () => {
+    const web = emptyConfig().web;
+    expect(readsUntrusted(ready({ web: { ...web, search: true } }), [])).toBe(true);
+    expect(readsUntrusted(ready({ web: { ...web, fetch: true } }), [])).toBe(true);
+    expect(readsUntrusted(ready({ web: { ...web, http: true } }), [])).toBe(true);
+    expect(readsUntrusted(ready(), [])).toBe(false);
   });
 
   it('never blocks: the same draft has no publish blocker for it', () => {

@@ -3,7 +3,7 @@ import type { ModelPrices, ModelProvider, ProviderInput, ProviderModel } from '~
 import { useToast } from '#base/components/ui/toast';
 import { useValidation } from '#base/composables/useValidation';
 import { CreateModelProviderRequestSchema, ModelProviderKind } from '#gen/modelprovider/v1/modelprovider_pb';
-import { parseUsd, usdText } from '~/lib/money/usd';
+import { decimalSeparator, parseUsd, usdText } from '~/lib/money/usd';
 import { createRequest, useModelProvidersStore } from '~/stores/modelProviders';
 
 export const priceKeys = ['input', 'output', 'cacheRead', 'cacheWrite'] as const;
@@ -67,7 +67,7 @@ export function flagLocks(row: ModelRow, anthropic: boolean): { vision: boolean,
 export type ParsedPrices = { kind: 'unpriced' } | { kind: 'priced', prices: ModelPrices } | { kind: 'invalid' };
 
 // toPrices reads a row's dollar prices into micro-USD: all empty is unpriced, a blank cache price is zero, and so is a blank output price on an embedding model.
-export function toPrices(prices: Record<PriceKey, string>, embedding = false): ParsedPrices {
+export function toPrices(prices: Record<PriceKey, string>, embedding = false, decimal = '.'): ParsedPrices {
   if (priceKeys.every(k => prices[k].trim() === '')) {
     return { kind: 'unpriced' };
   }
@@ -75,7 +75,7 @@ export function toPrices(prices: Record<PriceKey, string>, embedding = false): P
   for (const k of priceKeys) {
     const text = prices[k].trim();
     const optional = morePriceKeys.includes(k as typeof morePriceKeys[number]) || (embedding && k === 'output');
-    const micros = text === '' && optional ? 0n : parseUsd(text);
+    const micros = text === '' && optional ? 0n : parseUsd(text, decimal);
     if (micros === null) {
       return { kind: 'invalid' };
     }
@@ -84,15 +84,15 @@ export function toPrices(prices: Record<PriceKey, string>, embedding = false): P
   return { kind: 'priced', prices: out };
 }
 
-function rowModel(row: ModelRow, anthropic: boolean): ProviderModel {
+function rowModel(row: ModelRow, anthropic: boolean, decimal: string): ProviderModel {
   if (isTranscriptionRow(row, anthropic)) {
-    return { id: row.id, vision: false, embedding: false, transcription: true, prices: { inputMicros: 0n, outputMicros: 0n, cacheReadMicros: 0n, cacheWriteMicros: 0n, audioMinuteMicros: parseUsd(row.audioPrice) ?? 0n } };
+    return { id: row.id, vision: false, embedding: false, transcription: true, prices: { inputMicros: 0n, outputMicros: 0n, cacheReadMicros: 0n, cacheWriteMicros: 0n, audioMinuteMicros: parseUsd(row.audioPrice, decimal) ?? 0n } };
   }
-  const parsed = toPrices(row.prices, row.embedding);
+  const parsed = toPrices(row.prices, row.embedding, decimal);
   return { id: row.id, vision: row.vision, embedding: row.embedding, prices: parsed.kind === 'priced' ? parsed.prices : undefined };
 }
 
-function rowError(row: ModelRow, ids: string[], anthropic: boolean): string {
+function rowError(row: ModelRow, ids: string[], anthropic: boolean, decimal: string): string {
   const id = row.id.trim();
   if (!id) {
     return 'providers.model_id_required';
@@ -101,14 +101,14 @@ function rowError(row: ModelRow, ids: string[], anthropic: boolean): string {
     return 'providers.model_id_taken';
   }
   if (isTranscriptionRow(row, anthropic)) {
-    return parseUsd(row.audioPrice) === null ? 'providers.price_audio_minute_invalid' : '';
+    return parseUsd(row.audioPrice, decimal) === null ? 'providers.price_audio_minute_invalid' : '';
   }
-  return toPrices(row.prices, row.embedding).kind === 'invalid' ? 'providers.price_invalid' : '';
+  return toPrices(row.prices, row.embedding, decimal).kind === 'invalid' ? 'providers.price_invalid' : '';
 }
 
 // useProviderForm holds the add and edit form of a model provider; the key is write-only, never kept after a save, and a new URL needs it again.
 export function useProviderForm(orgId: string, projectId: string) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const providers = useModelProvidersStore();
   const toast = useToast();
   const validation = useValidation(CreateModelProviderRequestSchema, {
@@ -210,7 +210,7 @@ export function useProviderForm(orgId: string, projectId: string) {
     const rows: Record<number, string> = {};
     const prices: number[] = [];
     for (const m of models.value) {
-      const err = rowError(m, ids, anthropic.value);
+      const err = rowError(m, ids, anthropic.value, decimalSeparator(locale.value));
       if (err) {
         rows[m.key] = t(err);
       }
@@ -221,7 +221,7 @@ export function useProviderForm(orgId: string, projectId: string) {
     modelErrors.value = rows;
     priceErrors.value = prices;
     keyMissing.value = keyRequired.value && !key.value.trim();
-    const out = { name: name.value, kind: kind.value, baseUrl: baseUrl.value, apiKey: key.value, models: models.value.map(m => rowModel(m, anthropic.value)) };
+    const out = { name: name.value, kind: kind.value, baseUrl: baseUrl.value, apiKey: key.value, models: models.value.map(m => rowModel(m, anthropic.value, decimalSeparator(locale.value))) };
     const storedKey = 'kept';
     const shaped = validation.check(createRequest(orgId, projectId, { ...out, apiKey: out.apiKey.trim() || storedKey }));
     formError.value = Object.keys(rows).length ? null : validation.formError.value;

@@ -8,6 +8,7 @@ import StatusLabel from '#base/components/ui/StatusLabel.vue';
 import { useConfirm } from '#base/composables/useConfirm';
 import { useDates } from '#base/composables/useDates';
 import { useAgentPage } from '~/components/agent/useAgentPage';
+import { toolHeading } from '~/components/approval/decision';
 import { shownName } from '~/components/enduser/forget';
 import { runStatusTone } from '~/components/thread/conversation';
 import ChatTranscript from '~/components/try/ChatTranscript.vue';
@@ -67,7 +68,7 @@ const facts = computed(() => !thread.value
       { label: t('thread.people'), value: '' },
       { label: t('thread.created'), value: moment(thread.value!.createdAt) },
       { label: t('thread.usage'), value: t('thread.usage_value', { tokens: count(thread.value!.tokens), cost: costText.value }) },
-      { label: t('thread.open_approval'), value: openApproval.value?.kind === 'approval' ? openApproval.value.approval.title : t('thread.none') },
+      { label: t('thread.open_approval'), value: openApproval.value?.kind === 'approval' ? toolHeading(openApproval.value.approval.title, t('approvalcard.web_tools')) : t('thread.none') },
     ]);
 
 const cancelling = useConfirm<string>(runId => store.cancelRun(thread.value!.id, runId, auth.me?.name ?? ''), 'error.cancel_run');

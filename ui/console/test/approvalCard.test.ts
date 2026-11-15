@@ -8,6 +8,21 @@ const approval = kopiApproval();
 const button = (w: ReturnType<typeof mount>, text: string) => w.findAll('button').find(b => b.text().includes(text))!;
 
 describe('approval card', () => {
+  it('labels a built-in web tool call heading and never relabels an argument line', () => {
+    const http = { ...approval, tool: 'http_request', title: 'web_tools · http_request', args: [{ label: 'method', value: 'POST' }, { label: 'url', value: 'https://api.example.com/v1/orders' }, { label: 'web_tools · x', value: 'web_tools · y' }], raw: { method: 'POST', url: 'https://api.example.com/v1/orders' } };
+    const w = mount(ApprovalCard, { props: { approval: http } });
+    expect(w.get('h3').text()).toContain('approvalcard.web_tools · http_request');
+    expect(w.findAll('dt').map(d => d.text())).toEqual(['method', 'url', 'web_tools · x']);
+    expect(w.findAll('dd').map(d => d.text())).toContain('web_tools · y');
+    expect(w.text()).not.toMatch(/secret|value_sealed/i);
+  });
+
+  it('labels each call heading of a batched request', () => {
+    const batch = { ...approval, calls: [{ title: 'web_tools · http_request', args: [] }, { title: 'yasaku · record_expense', args: [] }] };
+    const w = mount(ApprovalCard, { props: { approval: batch } });
+    expect(w.findAll('h4').map(h => h.text())).toEqual(['approvalcard.web_tools · http_request', 'yasaku · record_expense']);
+  });
+
   it('hides the gating argument from the details but keeps it in the raw arguments', () => {
     const w = mount(ApprovalCard, { props: { approval } });
     expect(w.findAll('dt').map(d => d.text())).toEqual(['Jumlah', 'Kategori', 'Dompet', 'Tanggal']);

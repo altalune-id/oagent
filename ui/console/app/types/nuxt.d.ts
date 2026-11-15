@@ -15,6 +15,7 @@ import type { OrgService } from '#gen/org/v1/org_pb';
 import type { ProjectService } from '#gen/project/v1/project_pb';
 import type { ThreadService } from '#gen/thread/v1/thread_pb';
 import type { WebhookService } from '#gen/webhook/v1/webhook_pb';
+import type { WebToolService } from '#gen/webtool/v1/webtool_pb';
 
 declare module '#app' {
   interface NuxtApp {
@@ -33,6 +34,7 @@ declare module '#app' {
     $inviteClient: Client<typeof InviteService>;
     $knowledgeClient: Client<typeof KnowledgeService>;
     $memoryClient: Client<typeof MemoryService>;
+    $webToolClient: Client<typeof WebToolService>;
     $authClient: Client<typeof AuthService>;
   }
 }

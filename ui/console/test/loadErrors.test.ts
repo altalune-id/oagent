@@ -13,7 +13,7 @@ import RunsPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/runs/ind
 import ThreadPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/threads/[thread].vue';
 import ThreadsPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/threads/index.vue';
 import ApprovalsPage from '~/pages/o/[org]/projects/[project]/approvals.vue';
-import WebSearchPage from '~/pages/o/[org]/projects/[project]/settings/web-search.vue';
+import WebToolsPage from '~/pages/o/[org]/projects/[project]/settings/web-tools.vue';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
 
@@ -27,7 +27,7 @@ vi.mock('~/preview/samples', async (original) => {
     }
     return (real[name] as (...a: unknown[]) => unknown)(...args);
   };
-  return { ...real, ...Object.fromEntries(['sampleThreads', 'sampleWebSearch'].map(n => [n, wrap(n)])) };
+  return { ...real, ...Object.fromEntries(['sampleThreads'].map(n => [n, wrap(n)])) };
 });
 
 const orgId = 'B6rTn1YkM8wQz3XpL5vGd';
@@ -47,7 +47,6 @@ const cases = [
   ['conversations', 'sampleThreads', '/agents/yasaku-keuangan/threads', agent, ThreadsPage, 'error.load_threads'],
   ['one conversation', 'sampleThreads', '/agents/yasaku-keuangan/threads/thr_grp3Kd9Q', { ...agent, thread: 'thr_grp3Kd9Q' }, ThreadPage, 'error.load_threads'],
   ['runs', 'sampleThreads', '/agents/yasaku-keuangan/runs', agent, RunsPage, 'error.load_threads'],
-  ['web search', 'sampleWebSearch', '/settings/web-search', {}, WebSearchPage, 'error.load_web_search'],
 ] as const;
 
 beforeEach(() => {
@@ -76,6 +75,18 @@ describe('load errors', () => {
     const w = await mountPage(ApprovalsPage);
     await flushPromises();
     expect(w.get('[role="alert"]').text()).toContain('error.load_approvals');
+    await w.findAll('button').find(b => b.text() === 'common.retry')!.trigger('click');
+    await flushPromises();
+    expect(w.find('[role="alert"]').exists()).toBe(false);
+  });
+
+  it('shows a retryable error when web tools fail to load', async () => {
+    seed('/settings/web-tools');
+    const getWebSearchProvider = vi.fn().mockRejectedValueOnce(new Error('boom')).mockResolvedValue({ availableKinds: [], usedBy: [] });
+    setClient('$webToolClient', { getWebSearchProvider, listHTTPSecrets: vi.fn().mockResolvedValue({ secrets: [] }) });
+    const w = await mountPage(WebToolsPage);
+    await flushPromises();
+    expect(w.get('[role="alert"]').text()).toContain('error.load_web_tools');
     await w.findAll('button').find(b => b.text() === 'common.retry')!.trigger('click');
     await flushPromises();
     expect(w.find('[role="alert"]').exists()).toBe(false);

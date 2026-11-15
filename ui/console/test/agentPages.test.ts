@@ -154,7 +154,7 @@ const sampleGrants = ['record_expense', 'record_income', 'record_transfer', 'del
 const sampleDraft = wireConfig({ instructions: 'Catat pengeluaran.', providerId: openrouter, model: 'openai/gpt-4.1-mini', maxCostCents: 10, mcpServers: [{ serverId: yasakuServer, tools: sampleGrants, missing: false }] });
 
 // agentDefaults differ from the shipped ones, so a hard-coded number fails a test.
-const agentDefaults = { maxSteps: 25, maxMaxSteps: 60, maxTemperature: 1.5, maxCostCents: 50_000, voiceNoteMaxSeconds: 240, voiceNoteMaxBytes: 3 * 1024 * 1024 };
+const agentDefaults = { maxSteps: 25, maxMaxSteps: 60, maxTemperature: 1.5, maxCostCents: 50_000, voiceNoteMaxSeconds: 240, voiceNoteMaxBytes: 3 * 1024 * 1024, webTimeoutMs: 12_000, maxWebTimeoutMs: 24_000, webMaxCallsPerTurn: 7, maxWebMaxCallsPerTurn: 40 };
 
 function withDraft(publishedVersion = 12, extra: Record<string, unknown> = {}, liveConfig = live) {
   const agent = { ...support, draft: { ...live, instructions: 'Help more.' }, publishedVersion, unpublishedChanges: true, ...extra };
@@ -240,7 +240,6 @@ describe('configure page', () => {
     expect(nav.findAll('a').map(a => a.attributes('href'))).toEqual(['#configure-instructions', '#configure-model', '#configure-voice', '#configure-tools', '#configure-web', '#configure-memory', '#configure-limits']);
     await nav.get('select').setValue('configure-limits');
     expect(document.activeElement).toBe(w.get('#configure-limits input').element);
-    expect(w.get('#configure-web').text()).toContain('configure.preview_section');
     for (const control of w.findAll<HTMLInputElement>('#configure-instructions textarea, #configure-model select, #configure-model input, #configure-limits input')) {
       expect([...control.element.labels ?? []].map(l => l.textContent).join('').trim(), control.html()).toBeTruthy();
     }
@@ -261,7 +260,7 @@ describe('configure page', () => {
     expect(publishN.getAttribute('aria-describedby')).toBe(dialog.querySelector('[role="alert"]')!.id);
     expect(dialog.textContent).toContain('configure.change_instructions');
     expect(dialog.textContent).toContain('configure.publish_body|{"n":13,"current":12}');
-    expect(dialog.textContent).toContain('configure.preview_not_published');
+    expect(dialog.textContent).not.toContain('configure.preview_not_published');
     (dialog.querySelectorAll('[role="alert"] li button')[1] as HTMLButtonElement).click();
     await flushPromises();
     expect(openDialog()).toBeUndefined();
@@ -654,11 +653,12 @@ describe('configure page', () => {
     await untrusted.get('li input[aria-label="approvalrule.never"]').setValue(true);
     expect(untrusted.get('[role="alert"]').text()).toBe('grants.untrusted_no_ask');
     const web = w.get('#configure-web');
+    await web.findAll('input.toggle')[1]!.setValue(true);
     await web.get('textarea').setValue('');
     expect(web.text()).toContain('webtools.allowlist_required');
     await web.get('textarea').setValue('bca.co.id\nmandiri.co.id');
     expect(web.text()).not.toContain('webtools.allowlist_required');
-    expect(web.findAll('input.toggle')[1]!.attributes('disabled')).toBeDefined();
+    expect(web.findAll('input.toggle')[0]!.attributes('disabled')).toBeDefined();
     expect(web.text()).toContain('webtools.search_needs_provider');
     const memory = w.get('#configure-memory');
     const sources = memory.findAll('li input');
@@ -914,7 +914,203 @@ describe('configure page', () => {
     expect((provider!.element as HTMLSelectElement).value).toBe('');
     expect(model!.attributes('disabled')).toBeDefined();
     expect(w.findAll('#configure-tools li input[type="checkbox"]:not(.toggle)').every(i => !(i.element as HTMLInputElement).checked)).toBe(true);
-    expect(w.findAll('#configure-web input.toggle').map(i => (i.element as HTMLInputElement).checked)).toEqual([false, false]);
+    expect(w.findAll('#configure-web input.toggle').map(i => (i.element as HTMLInputElement).checked)).toEqual([false, false, false]);
+  });
+
+  describe('web tools', () => {
+    const webOff = { search: false, fetch: false, http: false, fetchAllowDomains: [] as string[], httpHosts: [] as string[], requestHeaders: [] as string[], timeoutMs: 0, maxCallsPerTurn: 0 };
+    const withWeb = (web: Partial<typeof webOff>) => asSample({ ...sampleDraft, web: { ...webOff, ...web } });
+    const toggles = (w: Awaited<ReturnType<typeof mountPage>>) => w.findAll('#configure-web input.toggle');
+    const control = (w: Awaited<ReturnType<typeof mountPage>>, field: string) => w.get(`#configure-web [data-field="${field}"]`);
+    const describedText = (w: Awaited<ReturnType<typeof mountPage>>, field: string) => control(w, field).attributes('aria-describedby')!.split(' ').map(id => w.find(`#${id}`)).filter(e => e.exists()).map(e => e.text()).join(' | ');
+    const fixes = () => [...openDialog().querySelectorAll('[role="alert"] li button')].map(b => b.textContent!.trim());
+
+    it('saves toggles and lists, flags an over-long list or a bad limit, and shows the limits only while a tool is on', async () => {
+      vi.useFakeTimers();
+      runtimeClients.web.listHTTPSecrets.mockResolvedValue({ secrets: [{ id: 'UxVy4UK3vmrHzPZ273hCA', host: 'api.example.com', header: 'x-api-key' }] });
+      const client = withWeb({});
+      const w = await mountPage(ConfigurePage, { attachTo: document.body });
+      expect(w.get('#configure-web').text()).not.toContain('configure.preview_section');
+      expect(w.find('#configure-web [data-field="web-timeout"]').exists()).toBe(false);
+      await toggles(w)[2]!.setValue(true);
+      expect(w.get('#configure-web').text()).toContain('webtools.http_get_note');
+      expect(control(w, 'web-timeout').attributes('placeholder')).toBe('12');
+      expect(control(w, 'web-calls').attributes('placeholder')).toBe('7');
+      await control(w, 'web-hosts').setValue(' API.example.com\napi.example.com\n');
+      await control(w, 'web-headers').setValue('X-Trace');
+      await control(w, 'web-timeout').setValue('20');
+      await control(w, 'web-calls').setValue('5');
+      await vi.advanceTimersByTimeAsync(1000);
+      await flushPromises();
+      expect(client.updateAgentDraft.mock.calls.at(-1)![0].config.web).toEqual({ ...webOff, http: true, httpHosts: ['api.example.com'], requestHeaders: ['X-Trace'], timeoutMs: 20_000, maxCallsPerTurn: 5 });
+      expect(w.get('#configure-web').text()).toContain('webtools.secrets_count|{"n":1}');
+      await control(w, 'web-hosts').setValue(Array.from({ length: 51 }, (_, i) => `h${i}.example.com`).join('\n'));
+      expect(describedText(w, 'web-hosts')).toContain('webtools.too_many|{"max":50}');
+      await control(w, 'web-timeout').setValue('25');
+      expect(control(w, 'web-timeout').attributes('aria-invalid')).toBe('true');
+      expect(describedText(w, 'web-timeout')).toContain('webtools.timeout_invalid|{"max":24}');
+      await vi.advanceTimersByTimeAsync(1000);
+      await flushPromises();
+      expect(client.updateAgentDraft.mock.calls.at(-1)![0].config.web.timeoutMs, 'a bad value keeps the last good one').toBe(20_000);
+      await button(w, 'configure.view_changes').trigger('click');
+      expect(fixes()).toEqual(['publish.blocker_web_too_many|{"max":"50"}', 'publish.blocker_web_limits']);
+      await control(w, 'web-timeout').setValue('');
+      await control(w, 'web-calls').setValue('1.5');
+      expect(describedText(w, 'web-calls')).toContain('webtools.calls_invalid|{"max":40}');
+      expect(fixes()).toEqual(['publish.blocker_web_too_many|{"max":"50"}', 'publish.blocker_web_limits']);
+      vi.useRealTimers();
+      w.unmount();
+    });
+
+    it('requires a domain list for web fetch even when the agent reads no private data', async () => {
+      inProject('/agents/support', [support], 'agent:read', 'agent:write');
+      withDraft(0, { draft: wireConfig({ providerId: openrouter, model: 'openai/gpt-4.1-mini', web: { ...webOff, fetch: true } }), unpublishedChanges: false });
+      const w = await mountPage(ConfigurePage, { attachTo: document.body });
+      expect(describedText(w, 'web-domains')).toContain('webtools.allowlist_required');
+      expect(w.get('#configure-web').text()).toContain('validation.required');
+      await button(w, 'configure.view_changes').trigger('click');
+      expect(fixes()).toEqual(['publish.blocker_web_fetch_domains']);
+      w.unmount();
+    });
+
+    it('shows the saved timeout and max calls after a failed draft load is retried', async () => {
+      const client = withWeb({ http: true, httpHosts: ['api.example.com'], timeoutMs: 20_000, maxCallsPerTurn: 5 });
+      client.listAgentVersions.mockRejectedValueOnce(new Error('offline'));
+      const w = await mountPage(ConfigurePage);
+      await button(w, 'common.retry').trigger('click');
+      await flushPromises();
+      expect((control(w, 'web-timeout').element as HTMLInputElement).value).toBe('20');
+      expect((control(w, 'web-calls').element as HTMLInputElement).value).toBe('5');
+      expect((control(w, 'web-hosts').element as HTMLTextAreaElement).value).toBe('api.example.com');
+      w.unmount();
+    });
+
+    it('saves a pasted URL as its host name, so the draft never sticks on a server refusal', async () => {
+      vi.useFakeTimers();
+      setKnownKeys('apperror.GEN004');
+      const client = withWeb({ fetch: true, http: true, httpHosts: ['api.example.com'] });
+      const saveDraft = client.updateAgentDraft.getMockImplementation()!;
+      client.updateAgentDraft.mockImplementation(async (req: { config: { web: { fetchAllowDomains: string[], httpHosts: string[] } } }) => {
+        const bad = [...req.config.web.fetchAllowDomains, ...req.config.web.httpHosts].some(h => /[/:@?#A-Z]/.test(h));
+        return bad ? Promise.reject(connectError('GEN004', { field: 'config.web.fetch_allow_domains', reason: 'invalid' })) : saveDraft(req);
+      });
+      const w = await mountPage(ConfigurePage);
+      await control(w, 'web-domains').setValue('https://Docs.Example.com/guide/start');
+      await control(w, 'web-hosts').setValue('https://user@API.example.com:8443/v1');
+      await vi.advanceTimersByTimeAsync(1000);
+      await flushPromises();
+      expect(client.updateAgentDraft.mock.calls.at(-1)![0].config.web).toMatchObject({ fetchAllowDomains: ['docs.example.com'], httpHosts: ['api.example.com'] });
+      expect(control(w, 'web-domains').attributes('aria-invalid')).toBe('false');
+      expect(w.text()).not.toContain('apperror.GEN004');
+      expect(w.text()).not.toContain('configure.unsaved');
+      expect(describedText(w, 'web-domains')).toContain('webtools.allowlist_hint');
+      vi.useRealTimers();
+      w.unmount();
+    });
+
+    it('disables turning web search on without a provider and links to the settings page', async () => {
+      withWeb({});
+      const w = await mountPage(ConfigurePage);
+      expect(toggles(w)[0]!.attributes('disabled')).toBeDefined();
+      expect(w.get('#configure-web').text()).toContain('webtools.search_needs_provider');
+      expect(w.get('#configure-web').findAllComponents(RouterLinkStub).map(l => l.props('to'))).toContain('/o/acme/projects/web/settings/web-tools');
+    });
+
+    it('lets search be turned off after the provider is gone, and saves it', async () => {
+      vi.useFakeTimers();
+      const client = withWeb({ search: true });
+      const w = await mountPage(ConfigurePage, { attachTo: document.body });
+      await button(w, 'configure.view_changes').trigger('click');
+      expect(fixes()).toContain('publish.blocker_web_search_provider');
+      (openDialog().querySelector('[role="alert"] li button') as HTMLButtonElement).click();
+      await flushPromises();
+      expect(document.activeElement).toBe(control(w, 'web-search').element);
+      expect(toggles(w)[0]!.attributes('disabled')).toBeUndefined();
+      expect(w.get(`#${control(w, 'web-search').attributes('aria-describedby')!.split(' ')[0]}`).find('[data-icon="lucide:triangle-alert"]').exists(), 'search on without a provider warns').toBe(true);
+      const link = w.get('#configure-web').findAllComponents(RouterLinkStub).find(l => l.props('to') === '/o/acme/projects/web/settings/web-tools')!.element as HTMLElement;
+      const focusLink = vi.spyOn(link, 'focus');
+      (toggles(w)[0]!.element as HTMLInputElement).focus();
+      await toggles(w)[0]!.setValue(false);
+      (toggles(w)[0]!.element as HTMLInputElement).blur();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(focusLink, 'focus moves to the settings link when the toggle disables itself').toHaveBeenCalled();
+      expect(w.get('#configure-web').find('[data-icon="lucide:triangle-alert"]').exists(), 'search off: the hint is not a warning').toBe(false);
+      await vi.advanceTimersByTimeAsync(1000);
+      await flushPromises();
+      expect(client.updateAgentDraft.mock.calls.at(-1)![0].config.web.search).toBe(false);
+      vi.useRealTimers();
+      w.unmount();
+    });
+
+    it('treats a failed provider load as unknown: no search blocker and the toggle stays enabled', async () => {
+      runtimeClients.web.getWebSearchProvider.mockRejectedValue(new Error('offline'));
+      withWeb({});
+      const off = await mountPage(ConfigurePage);
+      expect(toggles(off)[0]!.attributes('disabled'), 'unknown readiness never disables turning search on').toBeUndefined();
+      off.unmount();
+      setActivePinia(createPinia());
+      runtimeClients = fakeRuntimeClients();
+      runtimeClients.web.getWebSearchProvider.mockRejectedValue(new Error('offline'));
+      withWeb({ search: true });
+      const w = await mountPage(ConfigurePage, { attachTo: document.body });
+      expect(toggles(w)[0]!.attributes('disabled')).toBeUndefined();
+      await button(w, 'configure.view_changes').trigger('click');
+      expect(fixes()).not.toContain('publish.blocker_web_search_provider');
+      w.unmount();
+    });
+
+    it('jumps from a hosts blocker to the hosts box', async () => {
+      withWeb({ http: true });
+      const w = await mountPage(ConfigurePage, { attachTo: document.body });
+      expect(describedText(w, 'web-hosts')).toContain('webtools.hosts_required');
+      await button(w, 'configure.view_changes').trigger('click');
+      expect(fixes()).toEqual(['publish.blocker_web_http_hosts']);
+      (openDialog().querySelector('[role="alert"] li button') as HTMLButtonElement).click();
+      await flushPromises();
+      expect(document.activeElement).toBe(control(w, 'web-hosts').element);
+      w.unmount();
+    });
+
+    it.each([
+      ['web_search_provider', 'web-search', { search: true }],
+      ['http_hosts', 'web-hosts', { http: true, httpHosts: ['api.example.com'] }],
+      ['fetch_allow_domains', 'web-domains', { fetch: true }],
+    ])('places the AGT007 %s refusal under its control', async (reason, field, web) => {
+      vi.useFakeTimers();
+      setKnownKeys(`apperror.AGT007_${reason}`);
+      const client = withWeb(web);
+      client.updateAgentDraft.mockRejectedValue(connectError('AGT007', { reason }));
+      const w = await mountPage(ConfigurePage);
+      await w.get('#configure-instructions textarea').setValue('Catat semua.');
+      await vi.advanceTimersByTimeAsync(1000);
+      await flushPromises();
+      expect(control(w, field).attributes('aria-invalid')).toBe('true');
+      expect(describedText(w, field)).toContain(`apperror.AGT007_${reason}`);
+      expect(w.text().match(new RegExp(`apperror\\.AGT007_${reason}`, 'g'))).toHaveLength(1);
+      vi.useRealTimers();
+      w.unmount();
+    });
+
+    it.each([
+      ['config.web.request_headers', 'web-headers'],
+      ['config.web.timeout_ms', 'web-timeout'],
+      ['config.web.max_calls_per_turn', 'web-calls'],
+      ['config.web.http_hosts', 'web-hosts'],
+      ['config.web.fetch_allow_domains', 'web-domains'],
+    ])('places a GEN004 refusal of %s under its control', async (fieldName, field) => {
+      vi.useFakeTimers();
+      setKnownKeys('apperror.GEN004');
+      const client = withWeb({ fetch: true, fetchAllowDomains: ['bca.co.id'], http: true, httpHosts: ['api.example.com'] });
+      client.updateAgentDraft.mockRejectedValue(connectError('GEN004', { field: fieldName, reason: 'invalid' }));
+      const w = await mountPage(ConfigurePage);
+      await w.get('#configure-instructions textarea').setValue('Catat semua.');
+      await vi.advanceTimersByTimeAsync(1000);
+      await flushPromises();
+      expect(control(w, field).attributes('aria-invalid')).toBe('true');
+      expect(describedText(w, field)).toContain(`apperror.GEN004|{"field":"${fieldName}"}`);
+      vi.useRealTimers();
+      w.unmount();
+    });
   });
 
   it('is a 404 for an unknown agent', async () => {

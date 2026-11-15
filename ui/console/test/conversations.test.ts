@@ -205,6 +205,12 @@ describe('thread view', () => {
     const w = await mountPage(ThreadPage);
     expect(w.get('[role="log"]').text()).toContain('approvalcard.waiting_for|{"name":"Budi"}');
     expect(w.get('aside').text()).toContain('Simpan Rp40.000 dari Cash?');
+    const open = useThreadsStore().byId('thr_dm8Kq2Wx')!.items.find(i => i.kind === 'approval' && i.approval.status === 'pending')!;
+    if (open.kind === 'approval') {
+      open.approval.title = 'web_tools · http_request';
+    }
+    await flushPromises();
+    expect(w.get('aside').text(), 'the built-in web tools heading is labeled like the approval card').toContain('approvalcard.web_tools · http_request');
     route.params = { ...route.params, thread: 'gone' };
     await flushPromises();
     expect(w.text()).toContain('error.thread_not_found');

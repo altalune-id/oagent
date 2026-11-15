@@ -16,7 +16,7 @@ const provider = 'Pv6tQm2ZxR8wKp3VbNc4K';
 const server = 'Ms2bVn7QxK4pRt9KwZc3H';
 const names = { provider: (p: string) => (p === provider ? 'OpenRouter' : '?'), server: (x: string) => (x === server ? 'yasaku' : x) };
 type Wire = ReturnType<typeof toWire> & { providerMissing: boolean, tools: { name: string, requireApproval: boolean }[], mcpServers: { serverId: string, tools: { name: string, requireApproval: boolean }[], missing: boolean }[] };
-const liveWire: Wire = { identity: '', persona: '', instructions: 'Help.', providerId: provider, model: 'large-2', helperModel: '', temperature: 0.2, maxSteps: 12, maxCostCents: 10, mcpServers: [{ serverId: server, tools: [{ name: 'orders_lookup', requireApproval: false, freeWhen: [] }, { name: 'refunds_create', requireApproval: false, freeWhen: [] }], missing: false }], knowledgeSourceIds: [], knowledgeTuning: { topK: 0, maxTokens: 0 }, memoryStoreId: '', providerMissing: false, tools: [] };
+const liveWire: Wire = { identity: '', persona: '', instructions: 'Help.', providerId: provider, model: 'large-2', helperModel: '', temperature: 0.2, maxSteps: 12, maxCostCents: 10, mcpServers: [{ serverId: server, tools: [{ name: 'orders_lookup', requireApproval: false, freeWhen: [] }, { name: 'refunds_create', requireApproval: false, freeWhen: [] }], missing: false }], knowledgeSourceIds: [], knowledgeTuning: { topK: 0, maxTokens: 0 }, memoryStoreId: '', web: emptyConfig().web, providerMissing: false, tools: [] };
 const draftWire: Wire = { ...liveWire, instructions: 'Help. Never promise a date.' };
 const live = fromWire(liveWire);
 const draft = fromWire(draftWire);
@@ -359,6 +359,21 @@ describe('useAgentDraft', () => {
     client.publishAgent!.mockRejectedValueOnce(connectError('AGT007', { reason: 'budget_unpriced' }));
     await d.publish();
     expect(d.fieldError.value?.reason).toBe('budget_unpriced');
+  });
+
+  it('places a GEN004 refusal of a web field like AGT007, and leaves any other GEN004 on the form', async () => {
+    setKnownKeys('apperror.GEN004');
+    const d = useAgentDraft(id, names);
+    await d.load();
+    client.updateAgentDraft!.mockRejectedValueOnce(connectError('GEN004', { field: 'config.web.request_headers', reason: 'invalid' }));
+    d.config.value = { ...d.config.value, web: { ...d.config.value.web, http: true, requestHeaders: ['Cookie'] } };
+    await vi.advanceTimersByTimeAsync(autosaveDelayMs);
+    expect(d.fieldError.value).toEqual({ reason: 'config.web.request_headers', message: 'apperror.GEN004|{"field":"config.web.request_headers"}' });
+    client.updateAgentDraft!.mockRejectedValueOnce(connectError('GEN004', { field: 'config.instructions', reason: 'too_long' }));
+    d.config.value = { ...d.config.value, instructions: 'x' };
+    await vi.advanceTimersByTimeAsync(autosaveDelayMs);
+    expect(d.fieldError.value).toBeNull();
+    expect(d.saveError.value?.message).toBe('apperror.GEN004|{"field":"config.instructions"}');
   });
 
   it('keeps the refused tool name with an AGT007 publish refusal', async () => {
