@@ -43,6 +43,7 @@ import (
 	"altalune.id/oagent/internal/project"
 	"altalune.id/oagent/internal/run"
 	"altalune.id/oagent/internal/user"
+	"altalune.id/oagent/internal/webtool"
 	"altalune.id/oagent/nanoid"
 	"altalune.id/oagent/scope"
 )
@@ -76,7 +77,7 @@ type reachOrg struct {
 
 type reachIDs struct {
 	org, project, otherProject, agent, webhook, delivery, member, invite, keyHint, provider, server, thread, run, connection, endUser string
-	approval, source, document, memory, memoryStore                                                                                   string
+	approval, source, document, memory, memoryStore, secret                                                                           string
 }
 
 func (ids reachIDs) serviceID(service protoreflect.FullName) string {
@@ -103,6 +104,8 @@ func (ids reachIDs) serviceID(service protoreflect.FullName) string {
 		return ids.source
 	case "memory.v1.MemoryService":
 		return ids.memory
+	case "webtool.v1.WebToolService":
+		return ids.secret
 	}
 	return ""
 }
@@ -160,6 +163,10 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 		RaisedSnapshotHash: []byte{1},
 	})
 	require.NoError(t, err)
+	_, err = f.svcs.WebTools.SetProvider(inB, prj.ID, webtool.KindBrave, new("sk-search-probe"), 0)
+	require.NoError(t, err)
+	secret, err := f.svcs.WebTools.SetSecret(inB, prj.ID, "api.example.com", "x-api-key", "probe-secret")
+	require.NoError(t, err)
 	source, document := uuid.New(), uuid.New()
 	sourcePub, documentPub := nanoid.MustNew(21), nanoid.MustNew(21)
 	_, err = f.db.ExecContext(ctx, `INSERT INTO knowledge_sources (id, public_id, org_id, project_id, kind, backend, name, status, created_at, updated_at)
@@ -182,7 +189,7 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 		org: b.PublicID, project: prj.PublicID, otherProject: other.PublicID, agent: ag.PublicID, webhook: hook.PublicID, delivery: delivery,
 		member: u.PublicID, invite: c.Invite.PublicID, keyHint: hintOf(key), provider: provider.PublicID, server: server.PublicID,
 		thread: th.PublicID, run: r.PublicID, connection: conn.PublicID, endUser: who.PublicID, approval: apr.PublicID,
-		source: sourcePub, document: documentPub, memory: facts[0].ID, memoryStore: store.PublicID,
+		source: sourcePub, document: documentPub, memory: facts[0].ID, memoryStore: store.PublicID, secret: secret.PublicID,
 	}
 	var keyID string
 	require.NoError(t, f.db.QueryRowContext(ctx, `SELECT id::text FROM api_keys WHERE org_id = $1 AND secret_hint = $2`, b.ID, hintOf(key)).Scan(&keyID))
@@ -191,6 +198,7 @@ func seedReach(t *testing.T, f *apiFixture) reachOrg {
 		delivery: deliveryID, member: u.ID.String(), invite: c.Invite.ID.String(), keyHint: keyID,
 		provider: provider.ID.String(), server: server.ID.String(), thread: th.ID.String(), run: r.ID.String(), connection: conn.ID.String(), endUser: who.ID.String(),
 		approval: apr.ID.String(), source: source.String(), document: document.String(), memory: uuid.NewString(), memoryStore: store.ID.String(),
+		secret: secret.ID.String(),
 	}
 	return s
 }
@@ -215,7 +223,9 @@ func (s reachOrg) snapshot(t *testing.T, f *apiFixture) string {
 		(SELECT count(*) || md5(string_agg(cancel_requested || coalesce(lease_owner, '') || next_seq, ',' ORDER BY id)) FROM threads WHERE org_id = $1),
 		(SELECT count(*) || md5(string_agg(status || attempt || coalesce(ended_at::text, ''), ',' ORDER BY id)) FROM runs WHERE org_id = $1),
 		(SELECT count(*) || md5(string_agg(name || backend || updated_at, ',' ORDER BY id)) FROM memory_stores WHERE org_id = $1),
-		(SELECT count(*) FROM memory_facts WHERE org_id = $1))`, s.orgB).Scan(&got))
+		(SELECT count(*) FROM memory_facts WHERE org_id = $1),
+		(SELECT count(*) || md5(string_agg(kind || api_key_sealed::text || price_per_call_micros || updated_at, ',' ORDER BY project_id)) FROM web_search_providers WHERE org_id = $1),
+		(SELECT count(*) || md5(string_agg(host || header || value_sealed::text || updated_at, ',' ORDER BY id)) FROM http_secrets WHERE org_id = $1))`, s.orgB).Scan(&got))
 	return got
 }
 
@@ -404,10 +414,10 @@ func TestReach_UUIDsAndGarbageAreRefused(t *testing.T) {
 	s := seedReach(t, f)
 	cookie, _, _ := f.personCookieIn(t, s.orgB, "b-owner@example.com", member.RoleOwner)
 	garbage := reachIDs{"nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope", "nope",
-		"nope", "nope", "nope", "nope"}
+		"nope", "nope", "nope", "nope", "nope"}
 	const unknownID = "unknwnunknwnunknwnabc"
 	unknown := reachIDs{unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, "zzzz", unknownID, unknownID, unknownID,
-		unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID}
+		unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID, unknownID}
 	before := s.snapshot(t, f)
 	for name, tc := range map[string]struct {
 		ids  reachIDs

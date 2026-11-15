@@ -24,6 +24,7 @@ import (
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
 	threadv1connect "altalune.id/oagent/gen/go/thread/v1/threadv1connect"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
+	webtoolv1connect "altalune.id/oagent/gen/go/webtool/v1/webtoolv1connect"
 	"altalune.id/oagent/httpclient"
 	"altalune.id/oagent/internal/kernel/session"
 )
@@ -49,6 +50,7 @@ type Client struct {
 	Invites  invitev1connect.InviteServiceClient
 
 	ModelProviders modelproviderv1connect.ModelProviderServiceClient
+	WebTools       webtoolv1connect.WebToolServiceClient
 	MCPServers     mcpserverv1connect.McpServerServiceClient
 	Channels       channelv1connect.ChannelServiceClient
 	EndUsers       enduserv1connect.EndUserServiceClient
@@ -77,6 +79,7 @@ func New(baseURL string, cred Credential) *Client {
 		Invites:  invitev1connect.NewInviteServiceClient(httpClient, base, opts...),
 
 		ModelProviders: modelproviderv1connect.NewModelProviderServiceClient(httpClient, base, opts...),
+		WebTools:       webtoolv1connect.NewWebToolServiceClient(httpClient, base, opts...),
 		MCPServers:     mcpserverv1connect.NewMcpServerServiceClient(httpClient, base, opts...),
 		Channels:       channelv1connect.NewChannelServiceClient(httpClient, base, opts...),
 		EndUsers:       enduserv1connect.NewEndUserServiceClient(httpClient, base, opts...),

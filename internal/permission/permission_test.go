@@ -25,6 +25,7 @@ import (
 	projectv1 "altalune.id/oagent/gen/go/project/v1"
 	threadv1 "altalune.id/oagent/gen/go/thread/v1"
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
+	webtoolv1 "altalune.id/oagent/gen/go/webtool/v1"
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/internal/org/member"
 	"altalune.id/oagent/scope"
@@ -49,6 +50,7 @@ func allProcedures() []string {
 		projectv1.File_project_v1_project_proto,
 		threadv1.File_thread_v1_thread_proto,
 		webhookv1.File_webhook_v1_webhook_proto,
+		webtoolv1.File_webtool_v1_webtool_proto,
 	} {
 		svcs := f.Services()
 		for i := range svcs.Len() {
@@ -63,7 +65,7 @@ func allProcedures() []string {
 
 func TestEveryRPCHasAPermission(t *testing.T) {
 	procs := allProcedures()
-	require.Len(t, procs, 97, "Org 4, Project 5, Agent 8, APIKey 3, Webhook 11, Auth 6, Member 4, Invite 7, ModelProvider 5, McpServer 6, Thread 6, Channel 7, EndUser 2, Approval 3, Knowledge 13, Memory 7")
+	require.Len(t, procs, 103, "Org 4, Project 5, Agent 8, APIKey 3, Webhook 11, Auth 6, Member 4, Invite 7, ModelProvider 5, McpServer 6, Thread 6, Channel 7, EndUser 2, Approval 3, Knowledge 13, Memory 7, WebTool 6")
 	table := Table()
 	for _, proc := range procs {
 		perms := table[proc]
@@ -98,6 +100,12 @@ func TestPermissionTable_Spec15(t *testing.T) {
 		"/modelprovider.v1.ModelProviderService/DeleteModelProvider": "provider:write",
 		"/modelprovider.v1.ModelProviderService/GetModelProvider":    "provider:read",
 		"/modelprovider.v1.ModelProviderService/ListModelProviders":  "provider:read",
+		"/webtool.v1.WebToolService/GetWebSearchProvider":            "provider:read",
+		"/webtool.v1.WebToolService/SetWebSearchProvider":            "provider:write",
+		"/webtool.v1.WebToolService/DeleteWebSearchProvider":         "provider:write",
+		"/webtool.v1.WebToolService/ListHTTPSecrets":                 "provider:read",
+		"/webtool.v1.WebToolService/SetHTTPSecret":                   "provider:write",
+		"/webtool.v1.WebToolService/DeleteHTTPSecret":                "provider:write",
 		"/mcpserver.v1.McpServerService/CreateMcpServer":             "mcpserver:write",
 		"/mcpserver.v1.McpServerService/UpdateMcpServer":             "mcpserver:write",
 		"/mcpserver.v1.McpServerService/DeleteMcpServer":             "mcpserver:write",

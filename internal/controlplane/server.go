@@ -25,6 +25,7 @@ import (
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
 	threadv1connect "altalune.id/oagent/gen/go/thread/v1/threadv1connect"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
+	"altalune.id/oagent/gen/go/webtool/v1/webtoolv1connect"
 	"altalune.id/oagent/internal/agent"
 	"altalune.id/oagent/internal/apikey"
 	"altalune.id/oagent/internal/approval"
@@ -43,6 +44,7 @@ import (
 	"altalune.id/oagent/internal/run"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/webhook"
+	"altalune.id/oagent/internal/webtool"
 )
 
 // Options configures the optional parts of the controlplane surface.
@@ -62,6 +64,7 @@ type Services struct {
 	APIKeys        *apikey.Service
 	Webhooks       *webhook.Service
 	ModelProviders *modelprovider.Service
+	WebTools       *webtool.Service
 	MCPServers     *mcpserver.Service
 	Knowledge      *knowledge.Service
 	Channels       *channel.Service
@@ -123,6 +126,7 @@ type Server struct {
 	InviteSvc  *invite.InviteService
 
 	ModelProviderSvc *modelprovider.ModelProviderService
+	WebToolSvc       *webtool.WebToolService
 	MCPServerSvc     *mcpserver.McpServerService
 	KnowledgeSvc     *knowledge.KnowledgeService
 	ChannelSvc       *channel.ChannelService
@@ -168,6 +172,9 @@ func New(svcs Services, unexpected apperror.UnexpectedFunc, opts Options) *Serve
 	}
 	if svcs.ModelProviders != nil {
 		s.ModelProviderSvc = modelprovider.NewControlPlane(svcs.ModelProviders, svcs.Refs)
+	}
+	if svcs.WebTools != nil {
+		s.WebToolSvc = webtool.NewControlPlane(svcs.WebTools, svcs.Refs)
 	}
 	if svcs.MCPServers != nil {
 		s.MCPServerSvc = mcpserver.NewControlPlane(svcs.MCPServers, svcs.Refs)
@@ -222,6 +229,10 @@ func (s *Server) Handler(basePath string) http.Handler {
 	if s.ModelProviderSvc != nil {
 		providerPath, providerHandler := modelproviderv1connect.NewModelProviderServiceHandler(s.ModelProviderSvc, s.handlerOptions()...)
 		inner.Handle(providerPath, providerHandler)
+	}
+	if s.WebToolSvc != nil {
+		webToolPath, webToolHandler := webtoolv1connect.NewWebToolServiceHandler(s.WebToolSvc, s.handlerOptions()...)
+		inner.Handle(webToolPath, webToolHandler)
 	}
 	if s.MCPServerSvc != nil {
 		mcpPath, mcpHandler := mcpserverv1connect.NewMcpServerServiceHandler(s.MCPServerSvc, s.handlerOptions()...)

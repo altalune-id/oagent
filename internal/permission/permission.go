@@ -18,6 +18,7 @@ import (
 	projectv1connect "altalune.id/oagent/gen/go/project/v1/projectv1connect"
 	threadv1connect "altalune.id/oagent/gen/go/thread/v1/threadv1connect"
 	webhookv1connect "altalune.id/oagent/gen/go/webhook/v1/webhookv1connect"
+	"altalune.id/oagent/gen/go/webtool/v1/webtoolv1connect"
 	"altalune.id/oagent/internal/kernel/authz"
 	"altalune.id/oagent/scope"
 )
@@ -50,6 +51,12 @@ func Table() map[string][]string {
 		modelproviderv1connect.ModelProviderServiceListModelProvidersProcedure:  {scope.ProviderRead},
 		modelproviderv1connect.ModelProviderServiceUpdateModelProviderProcedure: {scope.ProviderWrite},
 		modelproviderv1connect.ModelProviderServiceDeleteModelProviderProcedure: {scope.ProviderWrite},
+		webtoolv1connect.WebToolServiceGetWebSearchProviderProcedure:            {scope.ProviderRead},
+		webtoolv1connect.WebToolServiceSetWebSearchProviderProcedure:            {scope.ProviderWrite},
+		webtoolv1connect.WebToolServiceDeleteWebSearchProviderProcedure:         {scope.ProviderWrite},
+		webtoolv1connect.WebToolServiceListHTTPSecretsProcedure:                 {scope.ProviderRead},
+		webtoolv1connect.WebToolServiceSetHTTPSecretProcedure:                   {scope.ProviderWrite},
+		webtoolv1connect.WebToolServiceDeleteHTTPSecretProcedure:                {scope.ProviderWrite},
 
 		knowledgev1connect.KnowledgeServiceCreateURLSourceProcedure:         {scope.KnowledgeWrite},
 		knowledgev1connect.KnowledgeServiceCreateUploadSourceProcedure:      {scope.KnowledgeWrite},

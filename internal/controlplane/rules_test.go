@@ -29,6 +29,7 @@ import (
 	projectv1 "altalune.id/oagent/gen/go/project/v1"
 	threadv1 "altalune.id/oagent/gen/go/thread/v1"
 	webhookv1 "altalune.id/oagent/gen/go/webhook/v1"
+	webtoolv1 "altalune.id/oagent/gen/go/webtool/v1"
 	"altalune.id/oagent/internal/permission"
 	"altalune.id/oagent/nanoid"
 )
@@ -229,6 +230,9 @@ func TestRequestRules_Accept(t *testing.T) {
 		{"shortest slug", &projectv1.CreateProjectRequest{OrgId: goodID, Name: "Web", Slug: "a-1"}},
 		{"longest slug", &agentv1.CreateAgentRequest{OrgId: goodID, ProjectId: goodID, Name: "Bot", Slug: strings.Repeat("a", 64)}},
 		{"reserved slug is the domain's", &orgv1.UpdateOrgRequest{Id: goodID, Name: "Acme", Slug: "new"}},
+		{"a free search provider", &webtoolv1.SetWebSearchProviderRequest{ProjectId: goodID, Kind: webtoolv1.WebSearchProviderKind_WEB_SEARCH_PROVIDER_KIND_BRAVE, PricePerCallMicros: proto.Int64(0)}},
+		{"tavily is the domain's", &webtoolv1.SetWebSearchProviderRequest{ProjectId: goodID, Kind: webtoolv1.WebSearchProviderKind_WEB_SEARCH_PROVIDER_KIND_TAVILY, ApiKey: new("k"), PricePerCallMicros: proto.Int64(5000)}},
+		{"a secret for an authorization header", &webtoolv1.SetHTTPSecretRequest{ProjectId: goodID, Host: "api.example.com", Header: "Authorization", Value: strings.Repeat("v", 4096)}},
 	}
 	for _, tt := range accepted {
 		t.Run(tt.name, func(t *testing.T) {
@@ -374,6 +378,14 @@ func TestRequestRules_Refuse(t *testing.T) {
 		{"4097-character auth value", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.AuthValue = strings.Repeat("v", 4097) }), "auth_value", apperror.FieldTooLong},
 		{"empty auth value on update", &mcpserverv1.UpdateMcpServerRequest{Id: goodID, Url: "https://e.com", AuthKind: mcpserverv1.McpServerAuthKind_MCP_SERVER_AUTH_KIND_BEARER, AuthValue: new(string), TimeoutMs: 5000}, "auth_value", apperror.FieldTooShort},
 		{"delivery id", &webhookv1.RetryWebhookDeliveryRequest{OrgId: goodID, ProjectId: goodID, Id: goodID, DeliveryId: "x"}, "delivery_id", apperror.FieldInvalidFormat},
+		{"search provider without a price", &webtoolv1.SetWebSearchProviderRequest{ProjectId: goodID, Kind: webtoolv1.WebSearchProviderKind_WEB_SEARCH_PROVIDER_KIND_BRAVE}, "price_per_call_micros", apperror.FieldRequired},
+		{"negative search price", &webtoolv1.SetWebSearchProviderRequest{ProjectId: goodID, Kind: webtoolv1.WebSearchProviderKind_WEB_SEARCH_PROVIDER_KIND_BRAVE, PricePerCallMicros: proto.Int64(-1)}, "price_per_call_micros", apperror.FieldInvalid},
+		{"unspecified search kind", &webtoolv1.SetWebSearchProviderRequest{ProjectId: goodID, PricePerCallMicros: proto.Int64(0)}, "kind", apperror.FieldRequired},
+		{"empty search key", &webtoolv1.SetWebSearchProviderRequest{ProjectId: goodID, Kind: webtoolv1.WebSearchProviderKind_WEB_SEARCH_PROVIDER_KIND_EXA, ApiKey: new(""), PricePerCallMicros: proto.Int64(0)}, "api_key", apperror.FieldTooShort},
+		{"uppercase secret host", &webtoolv1.SetHTTPSecretRequest{ProjectId: goodID, Host: "API.example.com", Header: "x-api-key", Value: "v"}, "host", apperror.FieldInvalidFormat},
+		{"secret header with a space", &webtoolv1.SetHTTPSecretRequest{ProjectId: goodID, Host: "api.example.com", Header: "x api", Value: "v"}, "header", apperror.FieldInvalidFormat},
+		{"4097-character secret value", &webtoolv1.SetHTTPSecretRequest{ProjectId: goodID, Host: "api.example.com", Header: "x-api-key", Value: strings.Repeat("v", 4097)}, "value", apperror.FieldTooLong},
+		{"secret without a value", &webtoolv1.SetHTTPSecretRequest{ProjectId: goodID, Host: "api.example.com", Header: "x-api-key"}, "value", apperror.FieldRequired},
 	}
 	for _, tt := range refused {
 		t.Run(tt.name, func(t *testing.T) {
