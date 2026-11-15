@@ -3,12 +3,13 @@ import type { AgentConfig } from '~/components/agent/configure/agentConfig';
 import type { McpServer } from '~/stores/mcpServers';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { fakeRuntimeClients, servers as fixtureServers } from '~~/test/fixtures/runtime';
 import { emptyConfig } from '~/components/agent/configure/agentConfig';
 import McpGrants from '~/components/agent/configure/McpGrants.vue';
 import { grantFor, withGrant } from '~/components/agent/configure/runtime';
+import { useMcpServersStore } from '~/stores/mcpServers';
 
 const [yasaku, tagihan] = fixtureServers() as [McpServer, McpServer];
 const grantable = yasaku.tools.filter(t => t.grantable).map(t => t.name).sort();
@@ -76,10 +77,40 @@ describe('mcp grants: a shorter list', () => {
   const filter = (w: ReturnType<typeof picker>['w']) => w.findAll('details')[0]!.get('input[type="search"]');
   const rows = (w: ReturnType<typeof picker>['w']) => w.findAll('details')[0]!.findAll('li').length;
 
-  it('starts every server closed, even one with tools on, but opens a lone server', () => {
+  it('starts every server folded, even one with tools on or a lone server', () => {
     const first = yasaku.tools.find(t => t.grantable)!;
     expect(details(picker(withGrant(emptyConfig(), yasaku, first, true)).w)).toEqual([false, false]);
-    expect(details(picker(emptyConfig(), [tagihan]).w)).toEqual([true]);
+    expect(details(picker(emptyConfig(), [tagihan]).w)).toEqual([false]);
+  });
+
+  it('loads tools on mount only for servers with tools on, and loads a folded server when it is opened', async () => {
+    const load = vi.spyOn(useMcpServersStore(), 'ensureTools');
+    const { w } = picker(withGrant(emptyConfig(), yasaku, yasaku.tools.find(t => t.grantable)!, true));
+    expect(load.mock.calls.map(c => c[0])).toEqual([yasaku.id]);
+    const row = w.findAll('details')[1]!;
+    (row.element as HTMLDetailsElement).open = true;
+    await row.trigger('toggle');
+    expect(new Set(load.mock.calls.map(c => c[0]))).toEqual(new Set([yasaku.id, tagihan.id]));
+  });
+
+  it('opens the server that holds a refused tool, on mount and when the refusal arrives later', async () => {
+    const refusal = { reason: 'unapproved_tool', name: `tagihan__${tagihan.tools[0]!.name}`, message: 'refused' };
+    const opened = mount(McpGrants, { props: { servers: [yasaku, tagihan], serversLink: '/servers', modelValue: emptyConfig(), fieldError: refusal } });
+    expect(details(opened)).toEqual([false, true]);
+    const { w } = picker(emptyConfig());
+    await w.setProps({ fieldError: refusal });
+    expect(details(w)).toEqual([false, true]);
+  });
+
+  it('opens the server again on a new refusal after the user folded it', async () => {
+    const refusal = { reason: 'unapproved_tool', name: `tagihan__${tagihan.tools[0]!.name}`, message: 'refused' };
+    const { w } = picker(emptyConfig());
+    await w.setProps({ fieldError: refusal });
+    const row = w.findAll('details')[1]!;
+    (row.element as HTMLDetailsElement).open = false;
+    await row.trigger('toggle');
+    await w.setProps({ fieldError: { ...refusal } });
+    expect(details(w)).toEqual([false, true]);
   });
 
   it('shows only how many are on until a server\'s tools have loaded, never 0 of 0', () => {
