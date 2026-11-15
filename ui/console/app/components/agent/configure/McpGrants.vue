@@ -18,7 +18,7 @@ const config = defineModel<AgentConfig>({ required: true });
 const { t } = useI18n();
 
 const missing = computed(() => missingServers(config.value, servers));
-const open = Object.fromEntries(servers.map(s => [s.id, servers.length === 1]));
+const open = ref<Record<string, boolean>>({});
 const query = ref<Record<string, string>>({});
 const filterFrom = 9;
 const store = useMcpServersStore();
@@ -42,6 +42,14 @@ function descId(server: McpServer, tool: McpTool) {
 const refused = computed(() => (fieldError?.reason === 'unapproved_tool' ? fieldError : null));
 const refusedShown = computed(() => !!refused.value && servers.some(s => s.tools.some(tool => toolName(s.name, tool.name) === refused.value!.name)));
 const untrusted = computed(() => readsUntrusted(config.value));
+
+function holdsRefusal(server: McpServer) {
+  return !!refused.value?.name?.startsWith(toolName(server.name, ''));
+}
+
+watch(refused, () => servers.filter(holdsRefusal).forEach((s) => {
+  open.value[s.id] = true;
+}), { immediate: true });
 
 function isRefused(server: McpServer, tool: McpTool) {
   return refused.value?.name === toolName(server.name, tool.name);
@@ -80,13 +88,14 @@ function clearFilter(server: McpServer, event: Event) {
 }
 
 function onToggle(server: McpServer, event: Event) {
-  if ((event.target as HTMLDetailsElement).open) {
+  open.value[server.id] = (event.target as HTMLDetailsElement).open;
+  if (open.value[server.id]) {
     void store.ensureTools(server.id);
   }
 }
 
 onMounted(() => {
-  servers.filter(s => open[s.id] || onCount(s) > 0).forEach(s => void store.ensureTools(s.id));
+  servers.filter(s => onCount(s) > 0).forEach(s => void store.ensureTools(s.id));
 });
 
 function setOn(server: McpServer, tool: McpTool, on: boolean) {
