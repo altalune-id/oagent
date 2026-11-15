@@ -1,0 +1,5 @@
+{
+  "web_search": { "mode": "never" },
+  "web_fetch": { "mode": "never" },
+  "http_request": { "mode": "conditional", "freeWhen": [{ "arg": "method", "values": ["GET"] }] }
+}

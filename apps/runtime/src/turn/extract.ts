@@ -86,7 +86,7 @@ async function extractFacts(text: string, helper: Model, signal: AbortSignal, op
   return clean(ExtractedFacts.parse(result.structuredOutput).facts, options, MAX_FACT_RUNES, MAX_NEW_FACTS);
 }
 
-function budgetRefused(error: unknown): boolean {
+export function budgetRefused(error: unknown): boolean {
   for (let e: unknown = error, depth = 0; e instanceof Error && depth < 5; e = e.cause, depth++) {
     if (e instanceof HelperBudgetError) {
       return true;

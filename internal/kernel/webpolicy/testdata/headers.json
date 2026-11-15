@@ -1,0 +1,4 @@
+{
+  "reserved": ["Host", "Content-Length", "Transfer-Encoding", "Connection", "Keep-Alive", "TE", "Trailer", "Upgrade", "Expect", "Proxy-Authorization", "Proxy-Connection", "Cookie", "Forwarded", "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Real-IP", "X-HTTP-Method-Override", "X-HTTP-Method", "X-Method-Override"],
+  "modelRefused": ["Authorization"]
+}

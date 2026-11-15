@@ -6,6 +6,8 @@ export { checkImages, inputParts } from './images.ts';
 export type { ImageMime, InputImage, InputPart } from './images.ts';
 export { APPROVAL_CONTRACT_VERSION, ApprovalSpecSchema, CONTRACT_VERSION, IMAGE_CONTRACT_VERSION, MAX_FACT_RUNES, MAX_MEMORY_FACTS, MAX_PASSAGE_CHARS, MAX_PASSAGES, MCPAuthKind, MemoryExtract, ModelProvider, ToolResultStatus, TurnRequestSchema, validateRequest } from './request.ts';
 export type { ApprovalSpec, KnowledgePassage, MemoryFact, TurnRequest, Validation } from './request.ts';
+export { MODEL_REFUSED_HEADERS, RESERVED_HEADERS, SEARCH_KINDS, validHost } from './web.ts';
+export type { SearchKind } from './web.ts';
 
 export type Emit = (event: Record<string, unknown>) => Promise<void>;
 

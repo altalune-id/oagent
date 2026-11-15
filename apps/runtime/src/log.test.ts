@@ -22,6 +22,12 @@ describe('createLogger', () => {
     expect(parsed(lines)).toEqual([{ level: 'info', msg: 'turn started', run: 'r1', ms: 5 }]);
   });
 
+  it('keeps the web call fields and drops a url or key', () => {
+    const lines: string[] = [];
+    captureLogger(lines).warn({ run: 'r1', tool: 'web_fetch', class: 'blocked_host', host: 'evil.example', status: 403, bytes: 10, ms: 4, url: 'https://evil.example/?token=t', apiKey: 'k' }, 'web call');
+    expect(parsed(lines)).toEqual([{ level: 'warn', msg: 'web call', run: 'r1', tool: 'web_fetch', class: 'blocked_host', host: 'evil.example', status: 403, bytes: 10, ms: 4 }]);
+  });
+
   it('writes an error as its name only, and caps long strings', () => {
     const lines: string[] = [];
     captureLogger(lines).error({ error: new TypeError('key sk-test'), code: 'x'.repeat(300) }, 'turn failed');
