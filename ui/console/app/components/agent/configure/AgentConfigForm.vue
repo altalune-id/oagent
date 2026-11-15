@@ -2,10 +2,10 @@
 import type { AgentConfig, AgentLimits, PromptField } from './agentConfig';
 import type { ConfigureLinks } from './runtime';
 import type { FieldError as DraftFieldError } from './useAgentDraft';
-import type { AgentRuntimeConfig } from '~/stores/agentRuntime';
 import type { KnowledgeSource, RetrievalDefaults } from '~/stores/knowledge';
 import type { McpServer } from '~/stores/mcpServers';
 import type { ModelProvider, ProviderModel } from '~/stores/modelProviders';
+import type { HttpSecret } from '~/stores/webTools';
 import AppButton from '#base/components/ui/AppButton.vue';
 import FieldError from '#base/components/ui/FieldError.vue';
 import MarkdownEditor from '#base/components/ui/MarkdownEditor.vue';
@@ -18,16 +18,18 @@ import { useUnits } from '~/composables/useUnits';
 import { usdText } from '~/lib/money/usd';
 import { describedBy } from '~/lib/names/names';
 import { legacyPrompt, promptLimits } from './agentConfig';
+import AgentWebTools from './AgentWebTools.vue';
 import KnowledgeTuningForm from './KnowledgeTuning.vue';
 import McpGrants from './McpGrants.vue';
-import { bindable, chosenModel, costCapError, helperCapError, parseDollars, parseDomains, readsPrivateData } from './runtime';
+import { bindable, chosenModel, costCapError, helperCapError, parseDollars } from './runtime';
 import { chatModelsOf, pickVoice, voiceHint, voiceOptions, voicePrice, voiceStale, voiceStaleLabel, voiceStaleOption, voiceValue } from './voiceNotes';
 
-const { providers, servers, sources, searchReady, embeddings, links, retrieval = null, limits = {}, legacyModel = '', disabled = false, fieldError = null, memoryStores = [] } = defineProps<{
+const { providers, servers, sources, searchReady, secrets = [], embeddings, links, retrieval = null, limits = {}, legacyModel = '', disabled = false, fieldError = null, memoryStores = [] } = defineProps<{
   providers: ModelProvider[],
   servers: McpServer[],
   sources: KnowledgeSource[],
-  searchReady: boolean,
+  searchReady?: boolean,
+  secrets?: HttpSecret[],
   embeddings: boolean,
   links: ConfigureLinks,
   retrieval?: RetrievalDefaults | null,
@@ -39,12 +41,12 @@ const { providers, servers, sources, searchReady, embeddings, links, retrieval =
 }>();
 
 const config = defineModel<AgentConfig>({ required: true });
-const runtime = defineModel<AgentRuntimeConfig>('runtime', { required: true });
+const webInvalid = defineModel<string>('webInvalid', { default: '' });
 const costInvalid = defineModel<boolean>('costInvalid', { default: false });
 const { t, locale } = useI18n();
 const { money, count } = useUnits();
 const uid = useId();
-const ids = { temperature: `${uid}-temp`, helper: `${uid}-helper`, provider: `${uid}-provider`, model: `${uid}-model`, tools: `${uid}-tools`, domains: `${uid}-domains`, steps: `${uid}-steps`, cost: `${uid}-cost`, memory: `${uid}-memory`, voice: `${uid}-voice` };
+const ids = { temperature: `${uid}-temp`, helper: `${uid}-helper`, provider: `${uid}-provider`, model: `${uid}-model`, tools: `${uid}-tools`, steps: `${uid}-steps`, cost: `${uid}-cost`, memory: `${uid}-memory`, voice: `${uid}-voice` };
 
 const sections = computed(() => [
   { id: 'configure-instructions', label: t('configure.prompt') },
@@ -82,7 +84,6 @@ const temperatureOff = computed(() => chosen.value.provider?.kind === ModelProvi
 const temperatureText = computed(() => (temperatureOff.value ? t('configure.temperature_off') : config.value.temperature.toFixed(1)));
 const chatModels = computed(() => chatModelsOf(chosen.value.provider?.models ?? [], config.value));
 const helperModels = computed(() => chatModels.value.filter(m => m.id !== config.value.model || m.id === config.value.helperModel));
-const allowListRequired = computed(() => readsPrivateData(config.value));
 const serverError = (...reasons: string[]) => (fieldError && reasons.includes(fieldError.reason) ? fieldError.message : '');
 const memoryError = computed(() => serverError('memory_store', 'memory_store_disabled'));
 const voiceChoices = computed(() => voiceOptions(providers));
@@ -109,7 +110,6 @@ const priceLine = computed(() => {
   }
   return p ? t('configure.model_price', { input: usdText(p.inputMicros), output: usdText(p.outputMicros) }) : t('configure.model_unpriced');
 });
-const allowListError = computed(() => runtime.value.webFetch && allowListRequired.value && runtime.value.allowedDomains.length === 0 ? t('webtools.allowlist_required') : '');
 const costText = ref(config.value.maxCostCents > 0 ? (config.value.maxCostCents / 100).toFixed(2) : '');
 const costTyped = computed(() => parseDollars(costText.value));
 const costOver = computed(() => limits.maxCostCents !== undefined && costTyped.value !== null && costTyped.value > limits.maxCostCents);
@@ -134,16 +134,6 @@ const costError = computed(() => {
 watch(costTyped, (cents) => {
   if (cents !== null && !costOver.value && cents !== config.value.maxCostCents) {
     config.value = { ...config.value, maxCostCents: cents };
-  }
-});
-
-const domainsText = ref(runtime.value.allowedDomains.join('\n'));
-watch(domainsText, (text) => {
-  runtime.value = { ...runtime.value, allowedDomains: parseDomains(text) };
-});
-watch(() => runtime.value.allowedDomains, (domains) => {
-  if (parseDomains(domainsText.value).join() !== domains.join()) {
-    domainsText.value = domains.join('\n');
   }
 });
 
@@ -361,39 +351,10 @@ function toggleSource(id: string, on: boolean) {
           </div>
         </Section>
 
-        <Section id="configure-web" :title="t('webtools.title')" :description="t('configure.preview_section')" class="scroll-mt-14">
-          <div class="flex flex-col gap-2">
-            <label class="label cursor-pointer gap-2 text-ui text-base-content">
-              <input v-model="runtime.webFetch" type="checkbox" class="toggle toggle-sm">
-              <span><span class="font-mono text-xs">web_fetch</span> · {{ t('webtools.fetch') }}</span>
-            </label>
-            <div v-if="runtime.webFetch" class="flex flex-col gap-1 ps-12">
-              <label class="flex flex-col gap-1">
-                <span class="label text-ui text-base-content">{{ t('webtools.allowed_domains') }}<span v-if="allowListRequired" class="text-base-content/70"> ({{ t('validation.required') }})</span></span>
-                <textarea
-                  v-model="domainsText" data-field="web" rows="3" class="textarea textarea-sm w-full font-mono text-ui" :class="{ 'textarea-error': allowListError }" placeholder="bca.co.id"
-                  :aria-invalid="!!allowListError" :aria-describedby="describedBy(`${ids.domains}-hint`, !!allowListError && `${ids.domains}-err`)"
-                />
-              </label>
-              <p :id="`${ids.domains}-hint`" class="text-xs text-base-content/70">
-                {{ allowListRequired ? t('webtools.allowlist_why') : t('webtools.allowlist_hint') }}
-              </p>
-              <FieldError :id="`${ids.domains}-err`" :message="allowListError" />
-            </div>
-          </div>
-          <div class="flex flex-col gap-1">
-            <label class="label cursor-pointer gap-2 text-ui text-base-content">
-              <input v-model="runtime.webSearch" type="checkbox" class="toggle toggle-sm" :disabled="!searchReady">
-              <span><span class="font-mono text-xs">web_search</span> · {{ t('webtools.search') }}</span>
-            </label>
-            <p v-if="!searchReady" class="ps-12 text-xs text-base-content/70">
-              {{ t('webtools.search_needs_provider') }}
-              <NuxtLink :to="links.webSearch" class="link">
-                {{ t('webtools.search_link') }}
-              </NuxtLink>
-            </p>
-          </div>
-        </Section>
+        <AgentWebTools
+          v-model="config.web" v-model:invalid-field="webInvalid" :search-ready="searchReady" :secrets="secrets"
+          :links="links" :field-error="fieldError" :limits="limits" :disabled="disabled"
+        />
 
         <Section id="configure-memory" :title="t('configure.memory_knowledge')" class="scroll-mt-14">
           <div class="flex flex-col gap-1">

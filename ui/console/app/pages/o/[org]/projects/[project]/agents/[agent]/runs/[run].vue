@@ -109,6 +109,14 @@ useHead({ title: () => `${t('run.title', { id: runId.value })} · OAgent` });
             {{ seconds(run.transcriptionSeconds) }}
           </dd>
         </div>
+        <div v-if="run.webSearchCalls" class="flex items-baseline gap-1.5">
+          <dt class="text-base-content/70">
+            {{ t('run.web_searches') }}
+          </dt>
+          <dd class="font-medium tabular-nums">
+            {{ count(run.webSearchCalls) }}
+          </dd>
+        </div>
         <div v-if="run.retrieveCalls" class="flex items-baseline gap-1.5">
           <dt class="text-base-content/70">
             {{ t('run.knowledge_search') }}

@@ -9,7 +9,7 @@ import PageHeader from '#base/components/ui/PageHeader.vue';
 import { useToast } from '#base/components/ui/toast';
 import { useDates } from '#base/composables/useDates';
 import ApprovalCard from '~/components/approval/ApprovalCard.vue';
-import { decisionLabel, expiresIn } from '~/components/approval/decision';
+import { decisionLabel, expiresIn, toolHeading } from '~/components/approval/decision';
 import { shownName } from '~/components/enduser/forget';
 import ProjectReadOnlyNote from '~/components/project/ProjectReadOnlyNote.vue';
 import { useProject } from '~/components/project/useProject';
@@ -70,7 +70,7 @@ function countdown(i: ApprovalItem) {
 
 async function decide(i: ApprovalItem, approve: boolean, reason = '') {
   const id = i.approval.id;
-  const title = i.approval.title;
+  const title = toolHeading(i.approval.title, t('approvalcard.web_tools'));
   const at = byTab.value.pending.indexOf(i);
   deciding.value = id;
   const res = await store.decide(id, approve, reason);
@@ -154,7 +154,7 @@ await auth.load();
             <li v-for="i in byTab.pending" :key="i.approval.id" :data-approval="i.approval.id" @focusin="focused = i.approval.id" @focusout="focused = null">
               <details class="group collapse-arrow collapse rounded-box border border-base-300 bg-base-100" :open="byTab.pending.length === 1 || store.noted.has(i.approval.id)">
                 <summary :id="`${listId}-${i.approval.id}`" class="collapse-title flex flex-wrap items-center gap-x-4 gap-y-1 py-3 text-ui">
-                  <span class="font-medium group-open:hidden">{{ i.approval.title }}</span>
+                  <span class="font-medium group-open:hidden">{{ toolHeading(i.approval.title, t('approvalcard.web_tools')) }}</span>
                   <span class="text-base-content/70">{{ [i.agentName, shownName(i.approval.requestedBy, i.approval.requesterDeleted, t), t(`approvals.channel_${i.channel}`)].filter(Boolean).join(' · ') }}</span>
                   <span class="text-xs text-base-content/70">
                     {{ t('approvals.asked', { when: when(i.askedAt) }) }}<template v-if="countdown(i)"> · {{ countdown(i) }}</template>
@@ -191,9 +191,9 @@ await auth.load();
         </template>
         <template #cell-request="{ row }">
           <NuxtLink v-if="row.agentSlug" :to="threadLink(row as ApprovalItem)" class="link link-hover font-medium">
-            {{ row.approval.title }}
+            {{ toolHeading(row.approval.title, t('approvalcard.web_tools')) }}
           </NuxtLink>
-          <span v-else class="font-medium">{{ row.approval.title }}</span>
+          <span v-else class="font-medium">{{ toolHeading(row.approval.title, t('approvalcard.web_tools')) }}</span>
         </template>
         <template #cell-tool="{ row }">
           {{ row.approval.tool }}

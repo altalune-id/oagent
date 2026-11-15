@@ -18,6 +18,7 @@ import { OrgService } from '#gen/org/v1/org_pb';
 import { ProjectService } from '#gen/project/v1/project_pb';
 import { ThreadService } from '#gen/thread/v1/thread_pb';
 import { WebhookService } from '#gen/webhook/v1/webhook_pb';
+import { WebToolService } from '#gen/webtool/v1/webtool_pb';
 import { loginURL } from '~/lib/auth/urls';
 
 // One Connect transport for every client: same origin as the app and cookie-bearing. A 401 sends the
@@ -62,6 +63,7 @@ export default defineNuxtPlugin({
         inviteClient: createClient(InviteService, transport),
         knowledgeClient: createClient(KnowledgeService, transport),
         memoryClient: createClient(MemoryService, transport),
+        webToolClient: createClient(WebToolService, transport),
         authClient: createClient(AuthService, whoamiTransport),
       },
     };

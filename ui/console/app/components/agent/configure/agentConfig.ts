@@ -32,6 +32,17 @@ export interface TranscriptionModel {
   providerMissing: boolean;
 }
 
+export interface WebToolsConfig {
+  search: boolean;
+  fetch: boolean;
+  http: boolean;
+  fetchAllowDomains: string[];
+  httpHosts: string[];
+  requestHeaders: string[];
+  timeoutMs: number;
+  maxCallsPerTurn: number;
+}
+
 export interface AgentConfig {
   identity: string;
   persona: string;
@@ -51,6 +62,7 @@ export interface AgentConfig {
   providerMissing: boolean;
   tools: AgentToolConfig[];
   transcriptionModel: TranscriptionModel;
+  web: WebToolsConfig;
 }
 
 export interface AgentState {
@@ -78,12 +90,16 @@ export interface AgentLimits {
   maxCostCents?: number;
   voiceNoteMaxSeconds?: number;
   voiceNoteMaxBytes?: number;
+  webTimeoutMs?: number;
+  maxWebTimeoutMs?: number;
+  webMaxCallsPerTurn?: number;
+  maxWebMaxCallsPerTurn?: number;
 }
 
 // limitsOf reads the server's agent defaults, leaving out a missing or 0 field so no bound or hint is shown for it.
 export function limitsOf(d?: Required<AgentLimits>): AgentLimits {
   const set = (n?: number) => (n && n > 0 ? n : undefined);
-  return { maxSteps: set(d?.maxSteps), maxMaxSteps: set(d?.maxMaxSteps), maxTemperature: set(d?.maxTemperature), maxCostCents: set(d?.maxCostCents), voiceNoteMaxSeconds: set(d?.voiceNoteMaxSeconds), voiceNoteMaxBytes: set(d?.voiceNoteMaxBytes) };
+  return { maxSteps: set(d?.maxSteps), maxMaxSteps: set(d?.maxMaxSteps), maxTemperature: set(d?.maxTemperature), maxCostCents: set(d?.maxCostCents), voiceNoteMaxSeconds: set(d?.voiceNoteMaxSeconds), voiceNoteMaxBytes: set(d?.voiceNoteMaxBytes), webTimeoutMs: set(d?.webTimeoutMs), maxWebTimeoutMs: set(d?.maxWebTimeoutMs), webMaxCallsPerTurn: set(d?.webMaxCallsPerTurn), maxWebMaxCallsPerTurn: set(d?.maxWebMaxCallsPerTurn) };
 }
 
 interface WireConfig {
@@ -105,6 +121,7 @@ interface WireConfig {
   providerMissing: boolean;
   tools: WireTool[];
   transcriptionModel?: { providerId: string, model: string, providerMissing?: boolean };
+  web?: WebToolsConfig;
 }
 
 export interface ChangeNames {
@@ -136,7 +153,21 @@ export function legacyPrompt(c: AgentConfig): boolean {
 }
 
 export function emptyConfig(): AgentConfig {
-  return { identity: '', persona: '', instructions: '', providerId: '', model: '', helperModel: '', temperature: 0, maxSteps: 0, maxCostCents: 0, grants: [], knowledgeSourceIds: [], knowledgeSourcesMissing: 0, knowledgeTuning: { topK: 0, maxTokens: 0 }, memoryStoreId: '', memoryStoreMissing: false, providerMissing: false, tools: [], transcriptionModel: { providerId: '', model: '', providerMissing: false } };
+  return { identity: '', persona: '', instructions: '', providerId: '', model: '', helperModel: '', temperature: 0, maxSteps: 0, maxCostCents: 0, grants: [], knowledgeSourceIds: [], knowledgeSourcesMissing: 0, knowledgeTuning: { topK: 0, maxTokens: 0 }, memoryStoreId: '', memoryStoreMissing: false, providerMissing: false, tools: [], transcriptionModel: { providerId: '', model: '', providerMissing: false }, web: webOf() };
+}
+
+// webOf copies the web tools, reading a config saved before they existed as all off.
+function webOf(w?: WebToolsConfig): WebToolsConfig {
+  return {
+    search: w?.search ?? false,
+    fetch: w?.fetch ?? false,
+    http: w?.http ?? false,
+    fetchAllowDomains: [...(w?.fetchAllowDomains ?? [])],
+    httpHosts: [...(w?.httpHosts ?? [])],
+    requestHeaders: [...(w?.requestHeaders ?? [])],
+    timeoutMs: w?.timeoutMs ?? 0,
+    maxCallsPerTurn: w?.maxCallsPerTurn ?? 0,
+  };
 }
 
 export function fromWire(c?: WireConfig): AgentConfig {
@@ -163,6 +194,7 @@ export function fromWire(c?: WireConfig): AgentConfig {
     providerMissing: c.providerMissing,
     tools: c.tools.map(tool),
     transcriptionModel: { providerId: c.transcriptionModel?.providerId ?? '', model: c.transcriptionModel?.model ?? '', providerMissing: c.transcriptionModel?.providerMissing ?? false },
+    web: webOf(c.web),
   };
 }
 
@@ -182,6 +214,7 @@ export function toWire(c: AgentConfig) {
     knowledgeSourceIds: [...c.knowledgeSourceIds],
     knowledgeTuning: tuningOf(c.knowledgeTuning),
     memoryStoreId: c.memoryStoreId,
+    web: webOf(c.web),
     ...(c.transcriptionModel.providerId && !c.transcriptionModel.providerMissing ? { transcriptionModel: { providerId: c.transcriptionModel.providerId, model: c.transcriptionModel.model } } : {}),
   };
 }
@@ -279,6 +312,19 @@ export function changes(draft: AgentConfig, live: AgentConfig | undefined, money
     } else {
       out.push({ key: 'configure.change_transcription_changed', params: { from: named(sttFrom), to: named(sttTo) } });
     }
+  }
+  const webTools = [['search', 'web_search'], ['fetch', 'web_fetch'], ['http', 'http_request']] as const;
+  for (const [field, tool] of webTools) {
+    if (draft.web[field] !== live.web[field]) {
+      out.push({ key: draft.web[field] ? 'configure.change_web_on' : 'configure.change_web_off', params: { tool } });
+    }
+  }
+  const lists = (w: WebToolsConfig) => JSON.stringify([w.fetchAllowDomains, w.httpHosts, w.requestHeaders]);
+  if (lists(draft.web) !== lists(live.web)) {
+    out.push({ key: 'configure.change_web_lists' });
+  }
+  if (draft.web.timeoutMs !== live.web.timeoutMs || draft.web.maxCallsPerTurn !== live.web.maxCallsPerTurn) {
+    out.push({ key: 'configure.change_web_limits' });
   }
   return out;
 }

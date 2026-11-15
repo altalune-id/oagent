@@ -99,6 +99,29 @@ describe('approvals page', () => {
     expect(w.findAllComponents(RouterLinkStub).map(l => String(l.props('to'))).filter(to => to.includes('/agents/'))).toEqual([]);
   });
 
+  it('labels a built-in web tool heading in the pending summary, the decided list and the toast', async () => {
+    const web = (id: string, over: MessageInitShape<typeof ApprovalSchema> = {}) => pb(id, { tools: ['http_request'], preview: 'web_tools · http_request\nmethod: POST\nurl: https://api.example.com/v1/orders', ...over });
+    seed(undefined, {}, { listApprovals: vi.fn().mockResolvedValue({ approvals: [web('Ap1'), web('Ap2')], nextPageToken: '', pendingCount: 2n }) });
+    const w = await mountPage(ApprovalsPage);
+    await flushPromises();
+    expect(w.findAll('summary span.font-medium').map(s => s.text())).toEqual(['approvalcard.web_tools · http_request', 'approvalcard.web_tools · http_request']);
+    await button(w, 'approvalcard.approve_run')!.trigger('click');
+    await flushPromises();
+    expect(useToast().toasts.at(-1)?.text).toBe('approvals.approved_toast|{"title":"approvalcard.web_tools · http_request"}');
+    setActivePinia(createPinia());
+    seed(['agent:read', 'approval:decide'], { tab: 'decided' }, { listApprovals: vi.fn().mockResolvedValue({ approvals: [web('Ok1', { status: 'approved', decidedByLabel: 'Sari', decidedVia: 'console' })], nextPageToken: '', pendingCount: 0n }) });
+    const decided = await mountPage(ApprovalsPage);
+    await flushPromises();
+    expect(decided.find('tbody').text()).toContain('approvalcard.web_tools · http_request');
+    decided.unmount();
+    setActivePinia(createPinia());
+    seed(['agent:read', 'approval:decide'], { tab: 'decided' }, { listApprovals: vi.fn().mockResolvedValue({ approvals: [web('Ok1', { status: 'approved', decidedByLabel: 'Sari', decidedVia: 'console' })], nextPageToken: '', pendingCount: 0n }) });
+    setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [] }) });
+    const unlinked = await mountPage(ApprovalsPage);
+    await flushPromises();
+    expect(unlinked.find('tbody').text(), 'an unknown agent shows the heading without a link').toContain('approvalcard.web_tools · http_request');
+  });
+
   it('leaves out a missing requester instead of an empty slot', async () => {
     seed(undefined, {}, { listApprovals: vi.fn().mockResolvedValue({ approvals: [pb('Ap1', { requesterLabel: '' })], nextPageToken: '', pendingCount: 1n }) });
     const w = await mountPage(ApprovalsPage);

@@ -1,8 +1,6 @@
-import type { AgentRuntimeConfig } from '~/stores/agentRuntime';
 import type { SampleAgent } from '~/stores/agents';
 import type { ApprovalRequest } from '~/stores/approvals';
 import type { RunSummary, ThreadDetail } from '~/stores/threads';
-import type { WebSearchSetting } from '~/stores/webSearch';
 
 // NOTE: the only home of sample data; replace each export with the runtime and tool registry RPCs as they land.
 
@@ -40,19 +38,7 @@ export function sampleRuns(): RunSummary[] {
   ];
 }
 
-export function sampleWebSearch(): WebSearchSetting {
-  return { provider: '', usedBy: ['Tagihan v2'] };
-}
-
 export const sampleAgentSlug = 'yasaku-keuangan';
-
-export function sampleAgentRuntime(): AgentRuntimeConfig {
-  return {
-    webFetch: true,
-    allowedDomains: ['bca.co.id'],
-    webSearch: false,
-  };
-}
 
 export const sampleInstructions = 'Kamu asisten keuangan keluarga Budi dan Sari. Catat pengeluaran dan pemasukan di yasaku. Selalu tunjukkan ringkasan dulu (confirm=false), lalu simpan setelah disetujui. Jawab singkat dalam Bahasa Indonesia.';
 
