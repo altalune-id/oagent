@@ -94,8 +94,8 @@ const links = computed(() => ({ providers: `${base.value}/settings/model-provide
 const legacy = computed(() => current.value > 0 && !!draft.live.value && !draft.live.value.providerId);
 const costInvalid = ref(false);
 const costBlocker: Blocker = { key: 'publish.blocker_cost', target: 'limits' };
-const blockers = computed(() => [...publishBlockers(config.value, { providers: providers.items, servers: servers.items }), ...(costInvalid.value ? [costBlocker] : [])]);
-const warnings = computed(() => publishWarnings(config.value, { providers: providers.items, servers: servers.items }));
+const blockers = computed(() => [...publishBlockers(config.value, { providers: providers.items, servers: servers.items, memoryStores: memoryStores.items }), ...(costInvalid.value ? [costBlocker] : [])]);
+const warnings = computed(() => publishWarnings(config.value, { providers: providers.items, servers: servers.items, memoryStores: memoryStores.items }));
 const loaded = computed(() => !!state.value && !draft.loadError.value);
 const canPublish = computed(() => loaded.value && blockers.value.length === 0);
 const blockersId = useId();

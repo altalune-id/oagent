@@ -2,12 +2,14 @@ import type { SelectAllState } from '#base/components/ui/selectAll';
 import type { AgentConfig, AgentToolConfig } from './agentConfig';
 import type { KnowledgeSource } from '~/stores/knowledge';
 import type { McpServer, McpTool } from '~/stores/mcpServers';
+import type { MemoryStore } from '~/stores/memoryStores';
 import type { ModelProvider, ProviderModel } from '~/stores/modelProviders';
 import { selectAllState } from '#base/components/ui/selectAll';
 import { toolName } from '~/components/mcpserver/tools';
 import { hasPrice } from '~/components/provider/useProviderForm';
+import { promptTooLong } from './agentConfig';
 
-export type BlockerTarget = 'model' | 'tools' | 'limits';
+export type BlockerTarget = 'instructions' | 'model' | 'tools' | 'limits';
 
 export interface Blocker {
   key: string;
@@ -26,9 +28,12 @@ export interface ConfigureLinks {
   channels: string;
 }
 
+export type MemoryTrust = Pick<MemoryStore, 'id' | 'rememberApiUsers'>;
+
 export interface RuntimeContext {
   providers: ModelProvider[];
   servers: McpServer[];
+  memoryStores: MemoryTrust[];
 }
 
 export interface MissingServer {
@@ -90,9 +95,9 @@ export function readsPrivateData(config: AgentConfig): boolean {
   return config.grants.length > 0 || !!config.memoryStoreId || config.knowledgeSourceIds.length > 0;
 }
 
-// readsUntrusted reports whether the agent reads text a third party wrote, so its tools need a person's approval.
-export function readsUntrusted(config: AgentConfig): boolean {
-  return config.knowledgeSourceIds.length > 0 || !!config.memoryStoreId;
+// readsUntrusted reports whether the agent reads documents or memory that API keys can write, so its tools need a person's approval.
+export function readsUntrusted(config: AgentConfig, memoryStores: MemoryTrust[]): boolean {
+  return config.knowledgeSourceIds.length > 0 || memoryStores.some(s => s.id === config.memoryStoreId && s.rememberApiUsers);
 }
 
 // unattendedTools lists the granted tools that run without approval, as the model names them.
@@ -143,6 +148,9 @@ export function helperCapError(config: AgentConfig, providers: ModelProvider[]):
 // publishBlockers lists what must be fixed before this draft may go live, each pointing at its section.
 export function publishBlockers(config: AgentConfig, ctx: RuntimeContext): Blocker[] {
   const out: Blocker[] = [];
+  if (promptTooLong(config)) {
+    out.push({ key: 'publish.blocker_prompt_long', target: 'instructions' });
+  }
   const { provider, model } = chosenModel(config, ctx.providers);
   if (!provider || !config.model) {
     out.push({ key: config.providerMissing ? 'publish.blocker_provider_missing' : 'publish.blocker_model', target: 'model' });
@@ -166,6 +174,6 @@ export function publishBlockers(config: AgentConfig, ctx: RuntimeContext): Block
 
 // publishWarnings lists what the server may refuse while the draft can still save, each pointing at its section.
 export function publishWarnings(config: AgentConfig, ctx: RuntimeContext): Blocker[] {
-  const tools = readsUntrusted(config) ? unattendedTools(config, ctx.servers) : [];
+  const tools = readsUntrusted(config, ctx.memoryStores) ? unattendedTools(config, ctx.servers) : [];
   return tools.length ? [{ key: 'publish.warning_unapproved_tool', target: 'tools', field: tools[0], params: { tool: tools[0]!, n: String(tools.length - 1) } }] : [];
 }

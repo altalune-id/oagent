@@ -219,7 +219,17 @@ describe('configure page', () => {
     const w = await mountPage(ConfigurePage, { attachTo: document.body });
     expect(w.get('h1').text()).toBe('Support');
     expect(w.get('h1').element.parentElement!.textContent).not.toContain('preview.badge');
-    expect(w.get('textarea').element.value).toBe('Help more.');
+    const prompt = w.get('#configure-instructions');
+    expect(prompt.get('h2').text()).toBe('configure.prompt');
+    expect(prompt.findAll('textarea').map(a => [a.element.labels?.[0]?.textContent?.trim(), a.element.value])).toEqual([['configure.identity', ''], ['configure.persona', ''], ['configure.instructions', 'Help more.']]);
+    expect(prompt.text()).toContain('configure.prompt_legacy');
+    await prompt.findAll('textarea')[0]!.setValue('You help Acme.');
+    expect(prompt.text()).not.toContain('configure.prompt_legacy');
+    await prompt.findAll('textarea')[1]!.setValue('😀'.repeat(4001));
+    expect(prompt.findAll('textarea')[1]!.attributes('aria-invalid')).toBe('true');
+    expect(prompt.text()).toContain('validation.too_long|{"max":4000}');
+    expect(prompt.text()).toContain('4001 / 4000');
+    await prompt.findAll('textarea')[1]!.setValue('Brief.');
     expect(w.get('[role="alert"]').text()).toContain('legacy.banner|{"n":12}');
     expect(w.text()).toContain('legacy.was_model|{"model":"acme-pro"}');
     expect(w.text()).toContain('acme.orders.read');
@@ -231,8 +241,8 @@ describe('configure page', () => {
     await nav.get('select').setValue('configure-limits');
     expect(document.activeElement).toBe(w.get('#configure-limits input').element);
     expect(w.get('#configure-web').text()).toContain('configure.preview_section');
-    for (const control of w.findAll('#configure-instructions textarea, #configure-model select, #configure-model input, #configure-limits input')) {
-      expect(control.element.closest('label')?.textContent?.trim(), control.html()).toBeTruthy();
+    for (const control of w.findAll<HTMLInputElement>('#configure-instructions textarea, #configure-model select, #configure-model input, #configure-limits input')) {
+      expect([...control.element.labels ?? []].map(l => l.textContent).join('').trim(), control.html()).toBeTruthy();
     }
     w.unmount();
   });
@@ -485,7 +495,7 @@ describe('configure page', () => {
     const w = await mountPage(ConfigurePage);
     const memory = w.get('#configure-memory');
     expect(memory.text()).toContain('configure.memory_store_missing');
-    await w.get('#configure-instructions textarea').setValue('Catat semua.');
+    await w.findAll('#configure-instructions textarea')[2]!.setValue('Catat semua.');
     await vi.advanceTimersByTimeAsync(1000);
     await flushPromises();
     const select = memory.get('select[data-field="memory"]');

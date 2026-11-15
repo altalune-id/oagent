@@ -127,6 +127,18 @@ func (s *Service) driverFor(store *MemoryStore) (Facts, error) {
 	return nil, &StoreBackendOffError{Backend: store.Backend}
 }
 
+// RemembersAPIUsers reports whether a store remembers named API users; a gone store answers false.
+func (s *Service) RemembersAPIUsers(ctx context.Context, id uuid.UUID) (bool, error) {
+	store, err := s.stores.StoreByID(ctx, id)
+	if IsStoreNotFoundError(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, s.errOrReport(ctx, "memory: remembers api users", err)
+	}
+	return store.RememberAPIUsers, nil
+}
+
 // LockStoreShared share-locks a store while an agent version that remembers people in it is published.
 func (s *Service) LockStoreShared(ctx context.Context, id uuid.UUID) error {
 	return s.errOrReport(ctx, "memory: lock store", s.stores.LockStoreShared(ctx, id))

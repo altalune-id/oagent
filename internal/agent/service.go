@@ -297,14 +297,29 @@ func (s *Service) publishable(ctx context.Context, a *Agent, latest *Version) er
 	if err != nil {
 		return err
 	}
+	draftAPI, err := s.remembersAPIUsers(ctx, a.Draft)
+	if err != nil {
+		return err
+	}
 	var published *Config
+	var latestAPI bool
 	if latest != nil {
 		published = &latest.Config
+		if latestAPI, err = s.remembersAPIUsers(ctx, latest.Config); err != nil {
+			return err
+		}
 	}
-	if k, ok := newUnattendedTool(a.Draft, published); ok {
+	if k, ok := newUnattendedTool(a.Draft, draftAPI, published, latestAPI); ok {
 		return &InvalidGrantError{Reason: GrantUnapprovedTool, Name: names[k.server] + "__" + k.name}
 	}
 	return nil
+}
+
+func (s *Service) remembersAPIUsers(ctx context.Context, c Config) (bool, error) {
+	if c.MemoryStoreID == uuid.Nil || s.memory == nil {
+		return false, nil
+	}
+	return s.memory.RemembersAPIUsers(ctx, c.MemoryStoreID)
 }
 
 func (s *Service) checkReferences(ctx context.Context, projectID uuid.UUID, cfg Config, publishing bool) (map[uuid.UUID]string, error) {

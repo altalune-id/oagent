@@ -142,6 +142,11 @@ func (g grantMemory) LockStoreShared(ctx context.Context, id uuid.UUID) error {
 	return memoryGrantErr(g.memory.LockStoreShared(ctx, id))
 }
 
+// RemembersAPIUsers implements agent.Memory.
+func (g grantMemory) RemembersAPIUsers(ctx context.Context, id uuid.UUID) (bool, error) {
+	return g.memory.RemembersAPIUsers(ctx, id)
+}
+
 func memoryGrantErr(err error) error {
 	switch {
 	case memory.IsStoreNotFoundError(err):

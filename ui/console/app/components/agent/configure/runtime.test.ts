@@ -29,7 +29,7 @@ import {
 const providers = fixtureProviders();
 const [yasaku, tagihan] = fixtureServers() as [McpServer, McpServer];
 const tool = (name: string) => yasaku.tools.find(t => t.name === name)!;
-const ctx = { providers, servers: [yasaku, tagihan] };
+const ctx = { providers, servers: [yasaku, tagihan], memoryStores: [] };
 const ready = (over: Partial<AgentConfig> = {}): AgentConfig => ({ ...emptyConfig(), providerId: 'Pv6tQm2ZxR8wKp3VbNc4K', model: 'openai/gpt-4.1-mini', ...over });
 
 describe('select all tools of a server', () => {
@@ -152,6 +152,10 @@ describe('publishBlockers', () => {
     expect(publishBlockers(ready({ model: 'gone' }), ctx)).toEqual([{ key: 'publish.blocker_model_removed', target: 'model', params: { model: 'gone', provider: 'OpenRouter' } }]);
   });
 
+  it('blocks a prompt over its limit, pointing at the prompt section', () => {
+    expect(publishBlockers(ready({ identity: 'x'.repeat(4001) }), ctx)).toEqual([{ key: 'publish.blocker_prompt_long', target: 'instructions' }]);
+  });
+
   it('refuses a cost cap on an unpriced model or helper model', () => {
     const groq = ready({ providerId: 'Pv9pHs4YvT7kMq7WcXe2B', model: 'llama-3.3-70b-versatile', maxCostCents: 20 });
     expect(costCapError(groq, providers)).toBe('limits.unpriced');
@@ -166,13 +170,13 @@ describe('publishBlockers', () => {
     expect(costCapError(config, [groqHelper])).toBe('');
     expect(helperCapError(config, [groqHelper])).toBe('limits.helper_unpriced');
     expect(helperCapError({ ...config, maxCostCents: 0 }, [groqHelper])).toBe('');
-    expect(publishBlockers(config, { providers: [groqHelper], servers: [] })).toEqual([{ key: 'publish.blocker_helper_unpriced', target: 'model', field: 'helper', params: { model: 'free-helper', provider: 'OpenRouter' } }]);
+    expect(publishBlockers(config, { providers: [groqHelper], servers: [], memoryStores: [] })).toEqual([{ key: 'publish.blocker_helper_unpriced', target: 'model', field: 'helper', params: { model: 'free-helper', provider: 'OpenRouter' } }]);
   });
 
   it('needs the granted servers to exist and no old tools', () => {
     const config = ready({ grants: [{ serverId: 'GneZ23456789abcdefghj', missing: true, tools: [] }], tools: [{ name: 'old', requireApproval: false }] });
     expect(publishBlockers(config, ctx).map(b => b.key)).toEqual(['publish.blocker_server_missing', 'publish.blocker_legacy_tools']);
-    expect(publishBlockers(ready(), { providers: [], servers: [] })[0]?.key).toBe('publish.blocker_model');
+    expect(publishBlockers(ready(), { providers: [], servers: [], memoryStores: [] })[0]?.key).toBe('publish.blocker_model');
   });
 });
 
@@ -184,16 +188,25 @@ describe('publishWarnings', () => {
 
   it('warns about a tool without approval only while the agent reads documents', () => {
     const grants = [grant(yasaku.id, free('list_wallets'))];
-    expect(readsUntrusted(ready({ grants }))).toBe(false);
+    expect(readsUntrusted(ready({ grants }), [])).toBe(false);
     expect(publishWarnings(ready({ grants }), ctx)).toEqual([]);
-    expect(readsUntrusted(bound({ grants }))).toBe(true);
+    expect(readsUntrusted(bound({ grants }), [])).toBe(true);
     expect(publishWarnings(bound({ grants }), ctx)).toEqual([{ key: 'publish.warning_unapproved_tool', target: 'tools', field: 'yasaku__list_wallets', params: { tool: 'yasaku__list_wallets', n: '0' } }]);
   });
 
-  it('warns about a tool without approval when the agent remembers people', () => {
+  it('does not warn about a tool without approval when the agent only remembers people', () => {
     const grants = [grant(yasaku.id, free('list_wallets'))];
-    expect(readsUntrusted(ready({ memoryStoreId: 'Ms4tR7wQ2xKp9VbNc3HzL' }))).toBe(true);
-    expect(publishWarnings(ready({ grants, memoryStoreId: 'Ms4tR7wQ2xKp9VbNc3HzL' }), ctx)[0]?.field).toBe('yasaku__list_wallets');
+    const stores = [{ id: 'Ms4tR7wQ2xKp9VbNc3HzL', rememberApiUsers: false }];
+    expect(readsUntrusted(ready({ memoryStoreId: 'Ms4tR7wQ2xKp9VbNc3HzL' }), stores)).toBe(false);
+    expect(publishWarnings(ready({ grants, memoryStoreId: 'Ms4tR7wQ2xKp9VbNc3HzL' }), { ...ctx, memoryStores: stores })).toEqual([]);
+  });
+
+  it('warns about a tool without approval when the store remembers API users, whom any key can name', () => {
+    const grants = [grant(yasaku.id, free('list_wallets'))];
+    const stores = [{ id: 'Ms4tR7wQ2xKp9VbNc3HzL', rememberApiUsers: true }];
+    expect(readsUntrusted(ready({ memoryStoreId: 'Ms4tR7wQ2xKp9VbNc3HzL' }), stores)).toBe(true);
+    expect(publishWarnings(ready({ grants, memoryStoreId: 'Ms4tR7wQ2xKp9VbNc3HzL' }), { ...ctx, memoryStores: stores })[0]?.field).toBe('yasaku__list_wallets');
+    expect(readsUntrusted(ready({ memoryStoreId: 'Ks3dFg7HjK2mNp5QrT8vW' }), stores)).toBe(false);
   });
 
   it('counts an approved or conditional tool as attended', () => {

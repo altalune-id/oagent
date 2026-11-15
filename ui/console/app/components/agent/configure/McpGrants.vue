@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { AgentConfig, AgentToolConfig } from './agentConfig';
+import type { MemoryTrust } from './runtime';
 import type { FieldError as DraftFieldError } from './useAgentDraft';
 import type { McpServer, McpTool } from '~/stores/mcpServers';
 import AppButton from '#base/components/ui/AppButton.vue';
@@ -12,7 +13,7 @@ import { useMcpServersStore } from '~/stores/mcpServers';
 import ApprovalRule from './ApprovalRule.vue';
 import { grantFor, grantState, missingServers, readsUntrusted, withAllGrants, withGrant, withoutGrant, withToolConfig } from './runtime';
 
-const { servers, disabled = false, serversLink, fieldError = null } = defineProps<{ servers: McpServer[], disabled?: boolean, serversLink: string, fieldError?: DraftFieldError | null }>();
+const { servers, disabled = false, serversLink, fieldError = null, memoryStores = [] } = defineProps<{ servers: McpServer[], disabled?: boolean, serversLink: string, fieldError?: DraftFieldError | null, memoryStores?: MemoryTrust[] }>();
 
 const config = defineModel<AgentConfig>({ required: true });
 const { t } = useI18n();
@@ -41,7 +42,7 @@ function descId(server: McpServer, tool: McpTool) {
 
 const refused = computed(() => (fieldError?.reason === 'unapproved_tool' ? fieldError : null));
 const refusedShown = computed(() => !!refused.value && servers.some(s => s.tools.some(tool => toolName(s.name, tool.name) === refused.value!.name)));
-const untrusted = computed(() => readsUntrusted(config.value));
+const untrusted = computed(() => readsUntrusted(config.value, memoryStores));
 
 function holdsRefusal(server: McpServer) {
   return !!refused.value?.name?.startsWith(toolName(server.name, ''));

@@ -12,21 +12,23 @@ import { phaseLabel } from '~/components/try/phase';
 import TryRunPane from '~/components/try/TryRunPane.vue';
 import { tryApi, useTryChat } from '~/components/try/useTryChat';
 import { useUnits } from '~/composables/useUnits';
+import { useMemoryStoresStore } from '~/stores/memoryStores';
 
 definePageMeta({ bleed: true });
 
 const { t } = useI18n();
 const { count, cost } = useUnits();
-const { agent, providers, servers, base } = await useAgentPage();
+const { project, agent, providers, servers, base } = await useAgentPage();
+const memoryStores = useMemoryStoresStore();
 const draft = useAgentDraft(agent.value.id, { provider: id => providers.items.find(p => p.id === id)?.name ?? '—', server: id => servers.items.find(s => s.id === id)?.name ?? id });
-await draft.load();
+await Promise.all([draft.load(), memoryStores.ensureLoaded(project.value!.id)]);
 
 const uid = useId();
 const tab = ref<'draft' | 'live'>('draft');
 const text = ref('');
 const current = computed(() => draft.state.value?.publishedVersion ?? 0);
-const blockers = computed(() => publishBlockers(draft.config.value, { providers: providers.items, servers: servers.items }));
-const warnings = computed(() => publishWarnings(draft.config.value, { providers: providers.items, servers: servers.items }));
+const blockers = computed(() => publishBlockers(draft.config.value, { providers: providers.items, servers: servers.items, memoryStores: memoryStores.items }));
+const warnings = computed(() => publishWarnings(draft.config.value, { providers: providers.items, servers: servers.items, memoryStores: memoryStores.items }));
 
 const { $threadClient } = useNuxtApp();
 const errorMessage = useErrorMessage();

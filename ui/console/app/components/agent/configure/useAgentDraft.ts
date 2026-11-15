@@ -5,7 +5,7 @@ import { useErrorMessage } from '#base/composables/useErrorMessage';
 import { errorCode, errorMeta } from '#base/lib/apperror/message';
 import { useUnits } from '~/composables/useUnits';
 import { useAgentsStore } from '~/stores/agents';
-import { changes, fromWire, limitsOf, stateOf, toWire } from './agentConfig';
+import { changes, fromWire, limitsOf, promptTooLong, stateOf, toWire } from './agentConfig';
 
 export const autosaveDelayMs = 1000;
 
@@ -118,6 +118,9 @@ export function useAgentDraft(agentId: string, names: ChangeNames) {
     }
     clearTimeout(timer);
     timer = undefined;
+    if (promptTooLong(config.value)) {
+      return false;
+    }
     let busy = inflight;
     while (busy) {
       await busy;

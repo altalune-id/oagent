@@ -1,5 +1,6 @@
 import type { Timestamp } from '@bufbuild/protobuf/wkt';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
+import { codePoints } from '#base/lib/format/text';
 
 export interface FreeCondition {
   arg: string;
@@ -32,6 +33,8 @@ export interface TranscriptionModel {
 }
 
 export interface AgentConfig {
+  identity: string;
+  persona: string;
   instructions: string;
   providerId: string;
   model: string;
@@ -84,6 +87,8 @@ export function limitsOf(d?: Required<AgentLimits>): AgentLimits {
 }
 
 interface WireConfig {
+  identity?: string;
+  persona?: string;
   instructions: string;
   providerId: string;
   model: string;
@@ -115,8 +120,23 @@ interface WireAgent {
   unpublishedChanges: boolean;
 }
 
+export type PromptField = 'identity' | 'persona' | 'instructions';
+
+// promptLimits are the server's code point limits for each prompt field, in form order.
+export const promptLimits: Record<PromptField, number> = { identity: 4000, persona: 4000, instructions: 32000 };
+
+// promptTooLong returns the first prompt field over its limit, which the server would refuse.
+export function promptTooLong(c: AgentConfig): PromptField | undefined {
+  return (Object.keys(promptLimits) as PromptField[]).find(key => codePoints(c[key]) > promptLimits[key]);
+}
+
+// legacyPrompt is true when the whole prompt still sits in instructions, as in agents made before the split.
+export function legacyPrompt(c: AgentConfig): boolean {
+  return !!c.instructions.trim() && !c.identity.trim() && !c.persona.trim();
+}
+
 export function emptyConfig(): AgentConfig {
-  return { instructions: '', providerId: '', model: '', helperModel: '', temperature: 0, maxSteps: 0, maxCostCents: 0, grants: [], knowledgeSourceIds: [], knowledgeSourcesMissing: 0, knowledgeTuning: { topK: 0, maxTokens: 0 }, memoryStoreId: '', memoryStoreMissing: false, providerMissing: false, tools: [], transcriptionModel: { providerId: '', model: '', providerMissing: false } };
+  return { identity: '', persona: '', instructions: '', providerId: '', model: '', helperModel: '', temperature: 0, maxSteps: 0, maxCostCents: 0, grants: [], knowledgeSourceIds: [], knowledgeSourcesMissing: 0, knowledgeTuning: { topK: 0, maxTokens: 0 }, memoryStoreId: '', memoryStoreMissing: false, providerMissing: false, tools: [], transcriptionModel: { providerId: '', model: '', providerMissing: false } };
 }
 
 export function fromWire(c?: WireConfig): AgentConfig {
@@ -125,6 +145,8 @@ export function fromWire(c?: WireConfig): AgentConfig {
   }
   const tool = (t: WireTool): AgentToolConfig => ({ name: t.name, requireApproval: t.requireApproval, freeWhen: t.freeWhen?.map(f => ({ arg: f.arg, values: [...f.values], absent: f.absent })) ?? [] });
   return {
+    identity: c.identity ?? '',
+    persona: c.persona ?? '',
     instructions: c.instructions,
     providerId: c.providerId,
     model: c.model,
@@ -147,6 +169,8 @@ export function fromWire(c?: WireConfig): AgentConfig {
 // toWire is the draft as UpdateAgentDraft takes it: never the legacy tools, the output-only flags or a grant whose server is gone.
 export function toWire(c: AgentConfig) {
   return {
+    identity: c.identity,
+    persona: c.persona,
     instructions: c.instructions,
     providerId: c.providerId,
     model: c.model,
@@ -186,6 +210,12 @@ export function changes(draft: AgentConfig, live: AgentConfig | undefined, money
     return [{ key: 'configure.change_first' }];
   }
   const out: Change[] = [];
+  if (draft.identity !== live.identity) {
+    out.push({ key: 'configure.change_identity' });
+  }
+  if (draft.persona !== live.persona) {
+    out.push({ key: 'configure.change_persona' });
+  }
   if (draft.instructions !== live.instructions) {
     out.push({ key: 'configure.change_instructions' });
   }
