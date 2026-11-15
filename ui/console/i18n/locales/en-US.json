@@ -524,7 +524,7 @@
   "configure.memory_hint": "After a direct conversation, notes facts the person shares and uses them in this agent's later conversations with that person. Not used in group chats, Try it or anonymous web widget visitors. Turning it off keeps stored facts; delete them on the person's page. Tell people in your privacy notice that this agent remembers what they share.",
   "configure.memory_off": "Off",
   "configure.voice": "Voice notes",
-  "configure.voice_description": "WhatsApp voice notes are turned into text before the agent replies.",
+  "configure.voice_description": "Voice notes are turned into text before the agent replies.",
   "configure.voice_model": "Transcription model",
   "configure.voice_off": "Off",
   "configure.voice_option": "{model} · {provider}",

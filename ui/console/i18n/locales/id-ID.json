@@ -524,7 +524,7 @@
   "configure.memory_hint": "Setelah percakapan langsung, mencatat fakta yang dibagikan orang itu dan memakainya di percakapan agen ini berikutnya dengan orang tersebut. Tidak dipakai di grup, Coba, atau pengunjung widget web anonim. Mematikannya tetap menyimpan fakta; hapus di halaman orang itu. Sebutkan di pemberitahuan privasi bahwa agen ini mengingat yang mereka bagikan.",
   "configure.memory_off": "Mati",
   "configure.voice": "Pesan suara",
-  "configure.voice_description": "Pesan suara WhatsApp diubah menjadi teks sebelum agen membalas.",
+  "configure.voice_description": "Pesan suara diubah menjadi teks sebelum agen membalas.",
   "configure.voice_model": "Model transkripsi",
   "configure.voice_off": "Mati",
   "configure.voice_option": "{model} · {provider}",
