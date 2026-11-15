@@ -21,6 +21,7 @@
     "openai": "catalog:",
     "pino": "catalog:",
     "pino-pretty": "catalog:",
+    "turndown": "catalog:",
     "undici": "catalog:",
     "zod": "catalog:"
   },
@@ -28,6 +29,7 @@
     "@ag-ui/client": "catalog:",
     "@oagent/vitest-config": "workspace:*",
     "@types/node": "catalog:",
+    "@types/turndown": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

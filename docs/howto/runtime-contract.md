@@ -15,11 +15,14 @@ Use this when Go and the runtime must agree on a new field or shape in `POST /tu
 Version 3 also takes these optional fields. Go sends each optional field only when needed, and the runtime learns it first. A turn without them is unchanged:
 
 - `knowledge`: passages retrieved for the turn, at most 10.
-- `agent.helperModel`: the helper model, same shape as `agent.model`. Sent only on a memory leg that extracts facts and whose agent has a helper model; without it the helper is the main model.
+- `agent.helperModel`: the helper model, same shape as `agent.model`. Sent only when the agent has a helper model and the turn needs one: a memory leg that extracts facts, or a turn that sends `web.fetch`. Without it the helper is the main model.
 - `limits.budget.helperPrices`: the helper's prices, same shape as `prices`. Sent with `agent.helperModel` under a budget, and required then.
+- `limits.budget.webSearchPrice`: micro-USD per web search call. Required with `web.search` under a budget.
+- `web`: the web tools, sent only when at least one is on and resolved. `timeoutMs` (1000-30000) and `maxCallsPerTurn` (1-50), plus at least one of `search` (`kind`, `apiKey`), `fetch` (`allowDomains`, up to 50 hosts; `[]` means any public https host) and `http` (`hosts` 1-50, `requestHeaders` up to 20, `secrets` up to 50 as `host`, `header`, `value`, each host in `hosts`). A present sub-object turns its tool on. `apiKey` and every secret `value` are secrets.
 - `guardrails.keyPrefix`: the deployment's API key prefix, masked as a secret. Sent on every memory leg; without it the runtime uses `oagent_`.
 - `memory`: up to 5 recalled facts (each up to 500 characters, with its date) and `extract`: `facts`, `userTexts` or `none`. Sent only on an eligible message leg; the runtime refuses it on a resume or continue leg.
 - Terminal `usage.helper`: the helper's tokens, same classes as `usage`. Sent only when they are above zero.
+- Terminal `usage.webSearchCalls`: billed web search calls. Sent only when above zero, so only for a request that carried `web.search`.
 - Terminal `memory`: `facts` in `facts` mode or `userTexts` in `userTexts` mode, or `{}` when that mode was skipped. Absent in `none` mode; sent only when the request carried `memory`.
 
 Go decodes the terminal strictly, so a Go release must learn a terminal field before any runtime emits it. The runtime emits a new terminal field only for a request that carried a field only a newer Go sends.

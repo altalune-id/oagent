@@ -4,6 +4,10 @@ import type { ToolGate } from './approval.ts';
 
 import { TurnRefusedError } from '../contract/index.ts';
 import { APPROVAL_HANDLER, ApprovalCheck } from './approval.ts';
+import { webApprovalSpecs } from './web.ts';
+
+export { WEB_APPROVAL, WEB_SERVER } from './web.ts';
+export type { WebToolName } from './web.ts';
 
 export function approvalSpecs(request: TurnRequest): Map<string, ToolGate> {
   const specs = new Map<string, ToolGate>();
@@ -14,6 +18,9 @@ export function approvalSpecs(request: TurnRequest): Map<string, ToolGate> {
     for (const name of server.allowedTools ?? []) {
       specs.set(`${server.name}__${name}`, { server: server.name, tool: name, approval: { mode: 'never' } });
     }
+  }
+  for (const [name, gate] of webApprovalSpecs(request)) {
+    specs.set(name, gate);
   }
   return specs;
 }

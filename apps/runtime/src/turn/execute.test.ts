@@ -9,9 +9,11 @@ import { createModels } from '../models/index.ts';
 import { apiError, fakeAnthropic } from '../test/anthropic-api.ts';
 import { ScriptedModel } from '../test/scripted-model.ts';
 import { AskFirst, fakeMcp, goldenRequest, quiet, recordTool } from '../test/turn-fixtures.ts';
+import { json, stubFetch } from '../test/web.ts';
 import { executeTurn } from './execute.ts';
 import { historyToMessages } from './history.ts';
 import { checkSnapshot, SDK_VERSION } from './snapshot.ts';
+import { WEB_LINE } from './web/index.ts';
 
 const THREAD = 't0193a2b4c5d67e8f9a0b1c2d3e4f5a6b';
 const appData = { thread: THREAD, agentVersion: 3, sdk: SDK_VERSION };
@@ -402,5 +404,71 @@ describe('optional helper and guardrail fields', () => {
     expect('helper' in withFields.out.usage).toBe(false);
     expect(withFields.messages).toBe(without.messages);
     expect(withFields.calls).toBe(without.calls);
+  });
+});
+
+describe('executeTurn with web tools', () => {
+  const web = (over: Record<string, unknown> = {}) => ({ timeoutMs: 15_000, maxCallsPerTurn: 10, http: { hosts: ['api.example.com'], requestHeaders: [], secrets: [{ host: 'api.example.com', header: 'Authorization', value: 'Bearer s3cr3t-token' }] }, ...over });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('runs a GET http_request with no approval and returns the wrapped result to the model', async () => {
+    const sent = stubFetch(() => json({ ok: 's3cr3t-token' }));
+    const model = new ScriptedModel([
+      { toolUse: { name: 'http_request', id: 'h1', input: { method: 'GET', url: 'https://api.example.com/v1' } }, usage: { inputTokens: 10, outputTokens: 5 } },
+      { text: ['Done.'], usage: { inputTokens: 20, outputTokens: 2 } },
+    ]);
+    const reports: ToolResultReport[] = [];
+    const out = await executeTurn(goldenRequest('plain_reply', (r) => {
+      r.web = web() as never;
+    }), never, { model, log: quiet, openMcp: fakeMcp([]), onToolResult: (r) => {
+      reports.push(r);
+    } });
+    expect(out.status).toBe('completed');
+    expect(sent[0]!.headers.get('authorization')).toBe('Bearer s3cr3t-token');
+    expect(String(model.calls[0]!.systemPrompt)).toContain(WEB_LINE);
+    const result = JSON.stringify(reports[0]!.result);
+    expect(result).toContain('tool_output tool=\\"http_request\\"');
+    expect(result).not.toContain('s3cr3t');
+  });
+
+  it('pauses a POST http_request for approval under web_tools, with no secret in the stream', async () => {
+    const sent = stubFetch(() => json({}));
+    const model = new ScriptedModel([{ toolUse: { name: 'http_request', id: 'h1', input: { method: 'POST', url: 'https://api.example.com/v1', body: '{}' } } }]);
+    const out = await executeTurn(goldenRequest('plain_reply', (r) => {
+      r.web = web() as never;
+    }), never, { model, log: quiet, openMcp: fakeMcp([]) });
+    expect(out.status).toBe('awaiting_approval');
+    const reason = out.interrupts[0]!.reason as { server: string, tool: string, keys: string[] };
+    expect([reason.server, reason.tool, reason.keys]).toEqual(['web_tools', 'http_request', ['method', 'url', 'body']]);
+    expect(sent).toHaveLength(0);
+    expect(JSON.stringify(out)).not.toContain('s3cr3t');
+  });
+
+  it('reports webSearchCalls after a search, and no web tool or line without web', async () => {
+    stubFetch(() => json({ web: { results: [] } }));
+    const model = new ScriptedModel([
+      { toolUse: { name: 'web_search', id: 's1', input: { query: 'q' } } },
+      { text: ['None.'] },
+    ]);
+    const out = await executeTurn(goldenRequest('plain_reply', (r) => {
+      r.web = web({ http: undefined, search: { kind: 'brave', apiKey: 'k' } }) as never;
+    }), never, { model, log: quiet, openMcp: fakeMcp([]) });
+    expect(out.usage.webSearchCalls).toBe(1);
+    const plain = new ScriptedModel([{ text: ['Hi.'] }]);
+    const none = await executeTurn(goldenRequest('plain_reply'), never, { model: plain, log: quiet, openMcp: fakeMcp([]) });
+    expect('webSearchCalls' in none.usage).toBe(false);
+    expect(String(plain.calls[0]!.systemPrompt)).not.toContain(WEB_LINE);
+    expect(plain.calls[0]!.toolSpecs ?? []).toEqual([]);
+  });
+
+  it('fails the turn before opening MCP when web_fetch has no model factory', async () => {
+    const openMcp = vi.fn(fakeMcp([]));
+    await expect(executeTurn(goldenRequest('plain_reply', (r) => {
+      r.web = web({ http: undefined, fetch: { allowDomains: [] } }) as never;
+    }), never, { model: new ScriptedModel([]), log: quiet, openMcp })).rejects.toThrow('web_fetch needs the model factory');
+    expect(openMcp).not.toHaveBeenCalled();
   });
 });

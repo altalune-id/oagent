@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 import { TurnRefusedError } from '../contract/index.ts';
 import { goldenRequest, oldGoRequest } from '../test/turn-fixtures.ts';
+import { webTurn } from '../test/web.ts';
+import { httpTool } from '../turn/web/http.ts';
 import { approvalSpecs, checkApprovalReady, interventionsFor } from './index.ts';
+import { evaluate } from './rule.ts';
 
 function v3(mode: 'never' | 'always'): TurnRequest {
   return goldenRequest('tool_call', (r) => {
@@ -29,5 +32,21 @@ describe('intervention order', () => {
     expect(() => checkApprovalReady(v3('always'), [])).toThrow('approval_unavailable');
     expect(() => checkApprovalReady(v3('never'), [])).not.toThrow();
     expect(() => checkApprovalReady(v3('always'), interventionsFor(approvalSpecs(v3('always'))))).not.toThrow();
+  });
+
+  it('adds no web spec to a request without web', () => {
+    expect([...approvalSpecs(v3('always')).keys()]).toEqual(['yasaku__record_expense']);
+  });
+
+  it('merges the web specs; http_request is free on GET only', () => {
+    const request = v3('never');
+    request.web = { timeoutMs: 15_000, maxCallsPerTurn: 10, http: { hosts: ['api.example.com'], requestHeaders: [], secrets: [] } };
+    const gate = approvalSpecs(request).get('http_request')!;
+    const schema = httpTool(webTurn(), request.web.http!).toolSpec.inputSchema;
+    expect(evaluate(gate.approval, schema, { method: 'GET', url: 'https://api.example.com/' })).toBe('free');
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE', 'get']) {
+      expect(evaluate(gate.approval, schema, { method, url: 'https://api.example.com/' }), method).toBe('ask');
+    }
+    expect(() => checkApprovalReady(request, [])).toThrow('approval_unavailable');
   });
 });

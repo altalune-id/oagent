@@ -52,10 +52,10 @@ The platform's stop timeout must be longer than the grace period.
 | `src/shutdown.ts`    | signals, ordered close, force exit                                                          |
 | `src/contract/`      | the turn request schema shared with Go, canonical JSON and argsHash, image checks, refusals |
 | `src/http/`          | routes, bearer check, body cap, NDJSON stream, drain                                        |
-| `src/turn/`          | one agent turn: execution, AG-UI events, history, snapshot, limits                          |
+| `src/turn/`          | one agent turn: execution, AG-UI events, history, snapshot, limits, web tools (`turn/web/`) |
 | `src/models/`        | model factory, OpenAI-compatible and Anthropic clients, client caches                       |
 | `src/mcp/`           | per-turn MCP clients, auth headers, description and schema sanitizing                       |
-| `src/interventions/` | the approval rule and `oagent:approval`, and the order every intervention runs in           |
+| `src/interventions/` | the approval rule and `oagent:approval`, the web tools' specs, the intervention order       |
 | `src/egress/`        | SSRF guard and guarded fetch                                                                |
 
 Each folder's `index.ts` is its entry point; other folders import only that file.

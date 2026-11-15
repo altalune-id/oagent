@@ -1,6 +1,8 @@
 import { MessageSchema, UserMessageSchema } from '@ag-ui/core/schemas';
 import { z } from 'zod';
 
+import { RESERVED_HEADERS, SEARCH_KINDS, validHost } from './web.ts';
+
 export const CONTRACT_VERSION = 3;
 export const IMAGE_CONTRACT_VERSION = 2;
 export const APPROVAL_CONTRACT_VERSION = 3;
@@ -92,6 +94,26 @@ const Budget = z.strictObject({
   remainingMicros: z.number().int(),
   prices: Prices,
   helperPrices: Prices.optional(),
+  webSearchPrice: micros.optional(),
+});
+
+const host = z.string().refine(validHost);
+const headerName = z.string().regex(/^[\w!#$%&'*+.^`|~-]{1,64}$/);
+
+const WebSpec = z.strictObject({
+  timeoutMs: z.number().int().min(1000).max(30_000),
+  maxCallsPerTurn: z.number().int().min(1).max(50),
+  search: z.strictObject({ kind: z.enum(SEARCH_KINDS), apiKey: z.string().min(1) }).optional(),
+  fetch: z.strictObject({ allowDomains: z.array(host).max(50) }).optional(),
+  http: z.strictObject({
+    hosts: z.array(host).min(1).max(50),
+    requestHeaders: z.array(headerName).max(20),
+    secrets: z.array(z.strictObject({
+      host,
+      header: headerName.refine(h => !RESERVED_HEADERS.has(h.toLowerCase())),
+      value: z.string().min(1),
+    })).max(50),
+  }).optional(),
 });
 
 const KnowledgePassageSchema = z.strictObject({
@@ -137,6 +159,7 @@ const TurnRequestShape = z.strictObject({
   knowledge: z.array(KnowledgePassageSchema).max(MAX_PASSAGES).optional(),
   memory: z.strictObject({ facts: z.array(MemoryFactSchema).max(MAX_MEMORY_FACTS), extract: z.enum(MemoryExtract) }).optional(),
   guardrails: z.strictObject({ keyPrefix: z.string().regex(/^[\w-]{1,32}$/).optional() }).optional(),
+  web: WebSpec.optional(),
 });
 
 function isJsonObjectText(text: string): boolean {
@@ -160,6 +183,17 @@ export const TurnRequestSchema = TurnRequestShape.superRefine((req, ctx) => {
   });
   if (req.agent.helperModel && req.limits.budget && !req.limits.budget.helperPrices) {
     ctx.addIssue({ code: 'custom', path: ['limits', 'budget', 'helperPrices'], message: 'a helper model under a budget needs its prices' });
+  }
+  if (req.web && !req.web.search && !req.web.fetch && !req.web.http) {
+    ctx.addIssue({ code: 'custom', path: ['web'], message: 'web needs at least one tool' });
+  }
+  req.web?.http?.secrets.forEach((secret, i) => {
+    if (!req.web!.http!.hosts.includes(secret.host)) {
+      ctx.addIssue({ code: 'custom', path: ['web', 'http', 'secrets', i, 'host'], message: 'a secret host must be an http host' });
+    }
+  });
+  if (req.web?.search && req.limits.budget && req.limits.budget.webSearchPrice === undefined) {
+    ctx.addIssue({ code: 'custom', path: ['limits', 'budget', 'webSearchPrice'], message: 'web search under a budget needs its price' });
   }
   if (req.memory && req.input.kind !== 'message') {
     ctx.addIssue({ code: 'custom', path: ['memory'], message: 'memory only on a message leg' });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { addHelperUsage, costMicros, DEFAULT_MAX_STEPS, emptyUsage, EXTRACT_OUTPUT_TOKENS, extractionFits, overBudget, stepLimit, UsageMeter } from './limits.ts';
+import { addHelperUsage, addSearchCall, costMicros, DEFAULT_MAX_STEPS, emptyUsage, EXTRACT_OUTPUT_TOKENS, extractionFits, overBudget, searchFits, stepLimit, UsageMeter } from './limits.ts';
 
 const prices = { input: 2_500_000, output: 10_000_000, cacheRead: 1_250_000, cacheWrite: 0 };
 
@@ -64,6 +64,42 @@ describe('extractionFits', () => {
   it('counts helper usage already spent', () => {
     const usage = { ...emptyUsage(), helper: { inputTokens: 0, outputTokens: 100, cacheReadInputTokens: 0, cacheWriteInputTokens: 0 } };
     expect(extractionFits(usage, { remainingMicros: 1_000 + estimate, prices }, 1600)).toBe(false);
+  });
+});
+
+describe('web search cost', () => {
+  const budget = (remainingMicros: number) => ({ remainingMicros, prices, webSearchPrice: 5000 });
+
+  it('starts with no webSearchCalls key and adds one per call', () => {
+    const usage = emptyUsage();
+    expect('webSearchCalls' in usage).toBe(false);
+    addSearchCall(usage);
+    addSearchCall(usage);
+    expect(usage.webSearchCalls).toBe(2);
+  });
+
+  it('counts search calls at their price in overBudget', () => {
+    const usage = emptyUsage();
+    addSearchCall(usage);
+    expect(overBudget(usage, budget(5001))).toBe(false);
+    expect(overBudget(usage, budget(5000))).toBe(true);
+    expect(overBudget(usage, { remainingMicros: 1, prices })).toBe(false);
+  });
+
+  it('fits one more search only below the remaining budget, counting searches in flight', () => {
+    const usage = emptyUsage();
+    addSearchCall(usage);
+    expect(searchFits(usage, budget(10_001), 0)).toBe(true);
+    expect(searchFits(usage, budget(10_000), 0)).toBe(false);
+    expect(searchFits(usage, budget(15_001), 1)).toBe(true);
+    expect(searchFits(usage, budget(15_000), 1)).toBe(false);
+    expect(searchFits(usage, null, 50)).toBe(true);
+  });
+
+  it('takes the output estimate as a parameter in extractionFits', () => {
+    const b = { remainingMicros: costMicros({ ...emptyUsage(), outputTokens: 1200 }, prices) + 1, prices };
+    expect(extractionFits(emptyUsage(), b, 0, 1200)).toBe(true);
+    expect(extractionFits(emptyUsage(), b, 0, 1201)).toBe(false);
   });
 });
 

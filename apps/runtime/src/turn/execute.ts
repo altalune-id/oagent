@@ -27,6 +27,7 @@ import { KNOWLEDGE_LINE, knowledgeBlock } from './knowledge.ts';
 import { BUDGET_REFUSAL, LIMIT_REPLY, overBudget, stepLimit, UsageMeter } from './limits.ts';
 import { MEMORY_LINE, memoryBlock } from './memory.ts';
 import { cleanSnapshot, SDK_VERSION } from './snapshot.ts';
+import { webTools } from './web/index.ts';
 
 export type TurnStatus = 'completed' | 'awaiting_approval' | 'limit_reached' | 'cancelled' | 'failed';
 
@@ -129,8 +130,9 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
   const openMcp = deps.openMcp ?? openMcpServers;
   const startedAt = Date.now();
   const deadline = AbortSignal.timeout(request.limits.deadlineMs);
-  const mcp = await openMcp(request.mcpServers, deps.log);
   const meter = new UsageMeter();
+  const web = webTools(request, { usage: meter.usage, models: deps.models, log: deps.log });
+  const mcp = await openMcp(request.mcpServers, deps.log);
   const cancelSignal = AbortSignal.any([signal, deadline]);
   let budgetHit = false;
   const stored = new Map(request.storedResults.map(s => [s.toolUseId, s.result]));
@@ -138,7 +140,7 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
 
   const agent = new Agent({
     model: deps.model,
-    tools: mcp.tools,
+    tools: [...mcp.tools, ...web.tools],
     interventions: interventionsFor(approvalSpecs(request)),
     conversationManager: new SlidingWindowConversationManager({ proactiveCompression: true }),
     retryStrategy: null,
@@ -156,6 +158,7 @@ export async function executeTurn(request: TurnRequest, signal: AbortSignal, dep
     ...(memory === '' ? [] : [MEMORY_LINE]),
     ...(knowledge === '' ? [] : [KNOWLEDGE_LINE]),
     ...mcp.promptLines,
+    ...(web.promptLine === undefined ? [] : [web.promptLine]),
   ].join('\n\n');
   // NOTE: assumes no continuations; _appendContinuationMessages would report a merged message a second time.
   const added: Message[] = [];

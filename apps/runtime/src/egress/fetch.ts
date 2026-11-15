@@ -14,6 +14,22 @@ export type Credential = {
   secrets: string[],
 };
 
+export type HostCredential = {
+  header: string,
+  value: string,
+};
+
+export type EgressOptions = {
+  checkHop?: (url: URL) => void,
+  followRedirects?: boolean,
+  hostCredentials?: ReadonlyMap<string, readonly HostCredential[]>,
+};
+
+export type CappedBody = {
+  bytes: Uint8Array,
+  truncated: boolean,
+};
+
 export function origin(u: URL): string {
   const port = u.port || (u.protocol === 'https:' ? '443' : '80');
   return `${u.protocol}//${u.hostname.toLowerCase()}:${port}`;
@@ -29,14 +45,21 @@ export function redact(text: string, secrets: string[]): string {
   return out;
 }
 
-async function readCapped(res: Response): Promise<string> {
+export function secretForms(values: readonly string[]): string[] {
+  return values.flatMap((v) => {
+    const token = /^\S+\s+(\S.*)$/.exec(v)?.[1];
+    return token === undefined ? [v] : [v, token];
+  });
+}
+
+export async function readCapped(res: Response, maxBytes: number): Promise<CappedBody> {
   const reader = res.body?.getReader();
   if (!reader) {
-    return '';
+    return { bytes: new Uint8Array(0), truncated: false };
   }
   const chunks: Uint8Array[] = [];
   let total = 0;
-  while (total < MAX_ERROR_READ) {
+  while (total <= maxBytes) {
     const { done, value } = await reader.read();
     if (done) {
       break;
@@ -51,27 +74,32 @@ async function readCapped(res: Response): Promise<string> {
     bytes.set(c, at);
     at += c.length;
   }
-  return new TextDecoder().decode(bytes.subarray(0, MAX_ERROR_READ));
+  return { bytes: bytes.subarray(0, maxBytes), truncated: total > maxBytes };
 }
 
 async function safeErrorBody(res: Response, secrets: string[]): Promise<Response> {
-  const text = redact(await readCapped(res), secrets);
+  const text = redact(new TextDecoder().decode((await readCapped(res, MAX_ERROR_READ)).bytes), secrets);
   const headers = new Headers(res.headers);
   headers.delete('content-length');
   headers.delete('content-encoding');
   return new Response([...text].slice(0, MAX_ERROR_BODY).join(''), { status: res.status, statusText: res.statusText, headers });
 }
 
-export function guardedFetch(homeUrl: string, cred: Credential | undefined, fetchImpl: typeof fetch = globalThis.fetch): typeof fetch {
+export function guardedFetch(homeUrl: string, cred: Credential | undefined, fetchImpl: typeof fetch = globalThis.fetch, options: EgressOptions = {}): typeof fetch {
   const home = origin(new URL(homeUrl));
-  const secrets = cred?.secrets ?? [];
+  const hostCredentials = options.hostCredentials ?? new Map<string, readonly HostCredential[]>();
+  const secrets = [...(cred?.secrets ?? []), ...secretForms([...hostCredentials.values()].flat().map(c => c.value))];
   return (async (input: string | URL | Request, init: RequestInit = {}) => {
     let url = new URL(input instanceof Request ? input.url : String(input));
     let method = init.method ?? 'GET';
     let body = init.body;
     for (let hop = 0; ; hop++) {
+      options.checkHop?.(url);
       const headers = new Headers(init.headers);
       headers.delete('authorization');
+      for (const c of hostCredentials.get(url.hostname) ?? []) {
+        headers.set(c.header, c.value);
+      }
       if (cred) {
         headers.delete(cred.header);
       }
@@ -84,7 +112,7 @@ export function guardedFetch(homeUrl: string, cred: Credential | undefined, fetc
       }
       const res = await fetchImpl(url, { ...init, method, body, headers, redirect: 'manual' });
       const location = res.headers.get('location');
-      if (!REDIRECT_STATUS.has(res.status) || location === null) {
+      if (!REDIRECT_STATUS.has(res.status) || location === null || options.followRedirects === false) {
         return res.ok ? res : safeErrorBody(res, secrets);
       }
       if (hop >= MAX_REDIRECTS) {
