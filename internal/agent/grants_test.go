@@ -431,6 +431,25 @@ func TestService_MemoryStoreOnADisabledBackendIsRefused(t *testing.T) {
 	assert.Equal(t, "memory_store_disabled", grantReason(t, err))
 }
 
+func TestService_MemoryStoreThatRemembersAPIUsersRefusesAnUnapprovedTool(t *testing.T) {
+	f, store := newMemoryFixture(t)
+	plain := f.withTools(f.config(), agent.Tool{Name: "send"})
+	plain.MemoryStoreID = store
+	f.agent.Draft = plain
+	_, _, _, err := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	require.NoError(t, err, "a store that remembers only people the server can tell apart is not untrusted input")
+
+	f.store.Published = nil
+	f.grants.APIUserStores = map[uuid.UUID]bool{store: true}
+	_, _, _, err = f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	assert.Equal(t, "yasaku__send", refusedTool(t, err), "any project key can plant facts for any named API user")
+
+	f.published(t, plain)
+	f.agent.Draft.Instructions = "Be briefer."
+	_, _, _, err = f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
+	require.NoError(t, err, "a tool the latest version already ran unattended on the same store is grandfathered")
+}
+
 func TestService_MemoryStoreWithoutAMemoryPortIsRefused(t *testing.T) {
 	f := newGrantsFixture(t)
 	c := f.config()
@@ -450,13 +469,13 @@ func TestService_AStoreGoneBeforePublishIsRefused(t *testing.T) {
 	assert.Empty(t, f.grants.LockedStores)
 }
 
-func TestService_AMemoryStoreRefusesAnUnapprovedTool(t *testing.T) {
+func TestService_AMemoryStoreWithAnUnapprovedToolPublishes(t *testing.T) {
 	f, store := newMemoryFixture(t)
 	c := f.withTools(f.config(), agent.Tool{Name: "send"})
 	c.MemoryStoreID = store
 	f.agent.Draft = c
 	_, _, _, err := f.svc.Publish(context.Background(), f.agent.ID, uuid.Nil)
-	assert.Equal(t, "yasaku__send", refusedTool(t, err), "remembered facts are untrusted input")
+	require.NoError(t, err, "remembered facts come from the end user's own messages")
 }
 
 func (f *grantsFixture) sttProvider(t *testing.T, projectID uuid.UUID, models ...agent.ModelRef) uuid.UUID {

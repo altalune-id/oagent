@@ -108,6 +108,8 @@ func TestConfig_Validate(t *testing.T) {
 		manyTools[i] = Tool{Name: "t" + strings.Repeat("x", i%10) + string(rune('a'+i%26))}
 	}
 	for field, mutate := range map[string]func(*Config){
+		"config.identity":        func(c *Config) { c.Identity = strings.Repeat("a", maxIdentity+1) },
+		"config.persona":         func(c *Config) { c.Persona = strings.Repeat("a", maxPersona+1) },
 		"config.instructions":    func(c *Config) { c.Instructions = strings.Repeat("a", maxInstructions+1) },
 		"config.model":           func(c *Config) { c.Model = "has space" },
 		"config.temperature":     func(c *Config) { c.Temperature = 2.1 },
@@ -131,6 +133,50 @@ func TestConfig_Validate(t *testing.T) {
 	ae, ok := apperror.AsAppError(dup.Validate())
 	require.True(t, ok)
 	assert.Equal(t, "config.tools", ae.Violations()[0].Field, "tool names are unique")
+}
+
+func TestConfig_PromptLimitsCountRunes(t *testing.T) {
+	c := Config{Identity: strings.Repeat("é", maxIdentity), Persona: strings.Repeat("é", maxPersona)}
+	require.NoError(t, c.Validate(), "the limits count characters, not bytes")
+}
+
+func TestConfig_SystemPrompt(t *testing.T) {
+	for name, tc := range map[string]struct {
+		c    Config
+		want string
+	}{
+		"all empty":                  {Config{}, ""},
+		"instructions only verbatim": {Config{Instructions: "  Be brief.\n\n"}, "  Be brief.\n\n"},
+		"blank sections are legacy":  {Config{Identity: " \n", Persona: "\t", Instructions: " Be brief. "}, " Be brief. "},
+		"identity only":              {Config{Identity: " A clerk. "}, "## Who you are\n\nA clerk."},
+		"persona only":               {Config{Persona: "Warm."}, "## Persona and style\n\nWarm."},
+		"identity and instructions":  {Config{Identity: "A clerk.", Instructions: "\nBe brief.\n"}, "## Who you are\n\nA clerk.\n\n## Instructions\n\nBe brief."},
+		"persona and instructions":   {Config{Persona: "Warm.", Instructions: "Be brief."}, "## Persona and style\n\nWarm.\n\n## Instructions\n\nBe brief."},
+		"identity and persona":       {Config{Identity: "A clerk.", Persona: "Warm.", Instructions: "  "}, "## Who you are\n\nA clerk.\n\n## Persona and style\n\nWarm."},
+		"all three": {
+			Config{Identity: "A clerk.", Persona: "Warm.", Instructions: "Be brief."},
+			"## Who you are\n\nA clerk.\n\n## Persona and style\n\nWarm.\n\n## Instructions\n\nBe brief.",
+		},
+	} {
+		assert.Equal(t, tc.want, tc.c.SystemPrompt(), name)
+	}
+}
+
+func TestConfig_PromptFieldsRoundTrip(t *testing.T) {
+	cfg := Config{Identity: "A clerk.", Persona: "Warm.", Instructions: "Be brief."}
+	pb := configToProto(cfg)
+	assert.Equal(t, "A clerk.", pb.GetIdentity())
+	assert.Equal(t, "Warm.", pb.GetPersona())
+	assert.Equal(t, cfg, configFromProto(pb))
+
+	raw, err := json.Marshal(cfg)
+	require.NoError(t, err)
+	var back Config
+	require.NoError(t, json.Unmarshal(raw, &back))
+	assert.Equal(t, cfg, back)
+	raw, err = json.Marshal(Config{Instructions: "x"})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"instructions":"x"}`, string(raw), "empty prompt fields stay out of stored rows")
 }
 
 func TestConfig_Equal(t *testing.T) {
@@ -255,6 +301,8 @@ func TestConfig_EqualNewFields(t *testing.T) {
 		"grant tool":     func(c *Config) { c.MCPServers[0].Tools[0].Name = "z" },
 		"grant approval": func(c *Config) { c.MCPServers[0].Tools[1].RequireApproval = false },
 		"memory store":   func(c *Config) { c.MemoryStoreID = uuid.New() },
+		"identity":       func(c *Config) { c.Identity = "A clerk." },
+		"persona":        func(c *Config) { c.Persona = "Warm." },
 		"transcription":  func(c *Config) { c.TranscriptionModel = TranscriptionModel{ProviderID: uuid.New(), Model: "whisper-1"} },
 		"one grant more": func(c *Config) { c.MCPServers = append(c.MCPServers, MCPGrant{ServerID: uuid.New()}) },
 	} {
@@ -318,26 +366,31 @@ func TestNewUnattendedTool(t *testing.T) {
 	grant := func(server uuid.UUID, tools ...Tool) MCPGrant { return MCPGrant{ServerID: server, Tools: tools} }
 	open := func(name string) Tool { return Tool{Name: name} }
 	for _, c := range []struct {
-		name   string
-		draft  *Config
-		latest *Config
-		want   toolKey
-		found  bool
+		name      string
+		draft     *Config
+		latest    *Config
+		want      toolKey
+		found     bool
+		draftAPI  bool
+		latestAPI bool
 	}{
-		{"knowledge and an unapproved tool", cfg(true, grant(s1, open("send"))), nil, toolKey{s1, "send"}, true},
-		{"knowledge and an approved tool", cfg(true, grant(s1, Tool{Name: "send", RequireApproval: true})), nil, toolKey{}, false},
-		{"knowledge and a conditional tool", cfg(true, grant(s1, Tool{Name: "send", RequireApproval: true, FreeWhen: free})), nil, toolKey{}, false},
-		{"free_when without require_approval runs unattended", cfg(true, grant(s1, Tool{Name: "send", FreeWhen: free})), nil, toolKey{s1, "send"}, true},
-		{"no knowledge", cfg(false, grant(s1, open("send"))), nil, toolKey{}, false},
-		{"grandfathered by a latest that read knowledge", cfg(true, grant(s1, open("send"))), cfg(true, grant(s1, open("send"))), toolKey{}, false},
-		{"a new unapproved tool next to a grandfathered one", cfg(true, grant(s1, open("send"), open("delete"))), cfg(true, grant(s1, open("send"))), toolKey{s1, "delete"}, true},
-		{"knowledge turned on over an existing unapproved tool", cfg(true, grant(s1, open("send"))), cfg(false, grant(s1, open("send"))), toolKey{s1, "send"}, true},
-		{"the same tool name on a new server id", cfg(true, grant(s2, open("send"))), cfg(true, grant(s1, open("send"))), toolKey{s2, "send"}, true},
-		{"a memory store over an unapproved tool", &Config{MemoryStoreID: uuid.New(), MCPServers: []MCPGrant{grant(s1, open("send"))}}, nil, toolKey{s1, "send"}, true},
-		{"first in grant order", cfg(true, grant(s1, Tool{Name: "a", RequireApproval: true}, open("b")), grant(s2, open("c"))), nil, toolKey{s1, "b"}, true},
+		{"knowledge and an unapproved tool", cfg(true, grant(s1, open("send"))), nil, toolKey{s1, "send"}, true, false, false},
+		{"knowledge and an approved tool", cfg(true, grant(s1, Tool{Name: "send", RequireApproval: true})), nil, toolKey{}, false, false, false},
+		{"knowledge and a conditional tool", cfg(true, grant(s1, Tool{Name: "send", RequireApproval: true, FreeWhen: free})), nil, toolKey{}, false, false, false},
+		{"free_when without require_approval runs unattended", cfg(true, grant(s1, Tool{Name: "send", FreeWhen: free})), nil, toolKey{s1, "send"}, true, false, false},
+		{"no knowledge", cfg(false, grant(s1, open("send"))), nil, toolKey{}, false, false, false},
+		{"grandfathered by a latest that read knowledge", cfg(true, grant(s1, open("send"))), cfg(true, grant(s1, open("send"))), toolKey{}, false, false, false},
+		{"a new unapproved tool next to a grandfathered one", cfg(true, grant(s1, open("send"), open("delete"))), cfg(true, grant(s1, open("send"))), toolKey{s1, "delete"}, true, false, false},
+		{"knowledge turned on over an existing unapproved tool", cfg(true, grant(s1, open("send"))), cfg(false, grant(s1, open("send"))), toolKey{s1, "send"}, true, false, false},
+		{"the same tool name on a new server id", cfg(true, grant(s2, open("send"))), cfg(true, grant(s1, open("send"))), toolKey{s2, "send"}, true, false, false},
+		{"a memory store over an unapproved tool", &Config{MemoryStoreID: uuid.New(), MCPServers: []MCPGrant{grant(s1, open("send"))}}, nil, toolKey{}, false, false, false},
+		{"a store that remembers API users over an unapproved tool", cfg(false, grant(s1, open("send"))), nil, toolKey{s1, "send"}, true, true, false},
+		{"grandfathered by a latest on a store that remembers API users", cfg(false, grant(s1, open("send"))), cfg(false, grant(s1, open("send"))), toolKey{}, false, true, true},
+		{"remember API users turned on over an existing unapproved tool", cfg(false, grant(s1, open("send"))), cfg(false, grant(s1, open("send"))), toolKey{s1, "send"}, true, true, false},
+		{"first in grant order", cfg(true, grant(s1, Tool{Name: "a", RequireApproval: true}, open("b")), grant(s2, open("c"))), nil, toolKey{s1, "b"}, true, false, false},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			got, found := newUnattendedTool(*c.draft, c.latest)
+			got, found := newUnattendedTool(*c.draft, c.draftAPI, c.latest, c.latestAPI)
 			assert.Equal(t, c.found, found)
 			assert.Equal(t, c.want, got)
 		})

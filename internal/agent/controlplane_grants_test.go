@@ -394,3 +394,25 @@ func TestAgentService_DanglingTranscriptionProviderRoundTripsToAFieldError(t *te
 	_, err = f.cp.UpdateAgentDraft(f.ctx, connect.NewRequest(req))
 	assert.Equal(t, "transcription_model", grantReason(t, err), "a model with no provider points the console at the field")
 }
+
+func TestAgentService_GetThenUpdateKeepsThePromptFields(t *testing.T) {
+	f := newCPGrants(t)
+	c := f.wire()
+	c.Identity, c.Persona = "A clerk.", "Warm."
+	_, err := f.draft(c)
+	require.NoError(t, err)
+	f.agent.Draft = f.store.Saved.Draft
+
+	got, err := f.cp.GetAgent(f.ctx, connect.NewRequest(&agentv1.GetAgentRequest{Id: f.agent.PublicID}))
+	require.NoError(t, err)
+	read := got.Msg.GetAgent().GetDraft()
+	assert.Equal(t, "A clerk.", read.GetIdentity())
+	assert.Equal(t, "Warm.", read.GetPersona())
+
+	read.Instructions = "Be very brief."
+	_, err = f.draft(read)
+	require.NoError(t, err)
+	assert.Equal(t, "A clerk.", f.store.Saved.Draft.Identity)
+	assert.Equal(t, "Warm.", f.store.Saved.Draft.Persona)
+	assert.Equal(t, "Be very brief.", f.store.Saved.Draft.Instructions)
+}

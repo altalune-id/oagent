@@ -183,7 +183,7 @@ func (r GrantReason) text() string {
 	case GrantTranscriptionModel:
 		return "names a transcription model this project's providers do not list"
 	case GrantUnapprovedTool:
-		return "grants a tool that runs without approval while the agent reads knowledge"
+		return "grants a tool that runs without approval while the agent reads knowledge or memory that API keys can write"
 	default:
 		return "is invalid"
 	}

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentConfig, AgentLimits } from './agentConfig';
+import type { AgentConfig, AgentLimits, PromptField } from './agentConfig';
 import type { ConfigureLinks } from './runtime';
 import type { FieldError as DraftFieldError } from './useAgentDraft';
 import type { AgentRuntimeConfig } from '~/stores/agentRuntime';
@@ -8,13 +8,16 @@ import type { McpServer } from '~/stores/mcpServers';
 import type { ModelProvider, ProviderModel } from '~/stores/modelProviders';
 import AppButton from '#base/components/ui/AppButton.vue';
 import FieldError from '#base/components/ui/FieldError.vue';
+import MarkdownEditor from '#base/components/ui/MarkdownEditor.vue';
 import Section from '#base/components/ui/Section.vue';
 import StatusLabel from '#base/components/ui/StatusLabel.vue';
+import { codePoints } from '#base/lib/format/text';
 import { ModelProviderKind } from '#gen/modelprovider/v1/modelprovider_pb';
 import { sourceState } from '~/components/knowledge/knowledge';
 import { useUnits } from '~/composables/useUnits';
 import { usdText } from '~/lib/money/usd';
 import { describedBy } from '~/lib/names/names';
+import { legacyPrompt, promptLimits } from './agentConfig';
 import KnowledgeTuningForm from './KnowledgeTuning.vue';
 import McpGrants from './McpGrants.vue';
 import { bindable, chosenModel, costCapError, helperCapError, parseDollars, parseDomains, readsPrivateData } from './runtime';
@@ -32,7 +35,7 @@ const { providers, servers, sources, searchReady, embeddings, links, retrieval =
   legacyModel?: string,
   disabled?: boolean,
   fieldError?: DraftFieldError | null,
-  memoryStores?: { id: string, name: string }[],
+  memoryStores?: { id: string, name: string, rememberApiUsers: boolean }[],
 }>();
 
 const config = defineModel<AgentConfig>({ required: true });
@@ -41,10 +44,10 @@ const costInvalid = defineModel<boolean>('costInvalid', { default: false });
 const { t, locale } = useI18n();
 const { money, count } = useUnits();
 const uid = useId();
-const ids = { count: `${uid}-count`, temperature: `${uid}-temp`, helper: `${uid}-helper`, provider: `${uid}-provider`, model: `${uid}-model`, tools: `${uid}-tools`, domains: `${uid}-domains`, steps: `${uid}-steps`, cost: `${uid}-cost`, memory: `${uid}-memory`, voice: `${uid}-voice` };
+const ids = { temperature: `${uid}-temp`, helper: `${uid}-helper`, provider: `${uid}-provider`, model: `${uid}-model`, tools: `${uid}-tools`, domains: `${uid}-domains`, steps: `${uid}-steps`, cost: `${uid}-cost`, memory: `${uid}-memory`, voice: `${uid}-voice` };
 
 const sections = computed(() => [
-  { id: 'configure-instructions', label: t('configure.instructions') },
+  { id: 'configure-instructions', label: t('configure.prompt') },
   { id: 'configure-model', label: t('configure.model') },
   { id: 'configure-voice', label: t('configure.voice') },
   { id: 'configure-tools', label: t('grants.title') },
@@ -52,6 +55,27 @@ const sections = computed(() => [
   { id: 'configure-memory', label: t('configure.memory_knowledge') },
   { id: 'configure-limits', label: t('limits.title') },
 ]);
+
+const editorLabels = computed(() => ({ write: t('editor.write'), preview: t('editor.preview'), done: t('common.done'), empty: t('editor.empty') }));
+const promptFields = computed(() => (Object.keys(promptLimits) as PromptField[]).map((key) => {
+  const label = t(`configure.${key}`);
+  const max = promptLimits[key];
+  return {
+    key,
+    label,
+    max,
+    rows: key === 'instructions' ? 6 as const : 3 as const,
+    hint: t(`configure.${key}_hint`),
+    placeholder: t(`configure.${key}_placeholder`),
+    expandLabel: t('editor.expand', { label }),
+    viewLabel: t('editor.view', { label }),
+    error: codePoints(config.value[key]) > max ? t('validation.too_long', { max }) : '',
+  };
+}));
+
+function setPrompt(key: PromptField, value: string) {
+  config.value = { ...config.value, [key]: value };
+}
 
 const chosen = computed(() => chosenModel(config.value, providers));
 const temperatureOff = computed(() => chosen.value.provider?.kind === ModelProviderKind.ANTHROPIC);
@@ -161,14 +185,17 @@ function toggleSource(id: string, on: boolean) {
 
     <form class="flex min-w-0 flex-col gap-4 p-4 lg:p-6" @submit.prevent>
       <fieldset class="contents" :disabled="disabled">
-        <Section id="configure-instructions" :title="t('configure.instructions')" class="scroll-mt-14">
-          <label class="flex flex-col gap-1">
-            <span class="flex items-center justify-between">
-              <span class="label text-ui text-base-content">{{ t('configure.instructions_label') }}</span>
-              <span :id="ids.count" class="text-xs tabular-nums text-base-content/70">{{ config.instructions.length }} / 32000</span>
-            </span>
-            <textarea v-model="config.instructions" maxlength="32000" class="textarea h-40 w-full text-ui leading-relaxed" :aria-describedby="ids.count" />
-          </label>
+        <Section id="configure-instructions" :title="t('configure.prompt')" :description="t('configure.prompt_hint')" class="scroll-mt-14">
+          <div class="flex flex-col gap-5">
+            <MarkdownEditor
+              v-for="f in promptFields" :key="f.key" :model-value="config[f.key]" :label="f.label" :hint="f.hint" :placeholder="f.placeholder"
+              :max="f.max" :rows="f.rows" :error="f.error" :labels="editorLabels" :expand-label="f.expandLabel" :view-label="f.viewLabel"
+              @update:model-value="setPrompt(f.key, $event)"
+            />
+            <p v-if="legacyPrompt(config)" class="text-ui text-base-content/70">
+              {{ t('configure.prompt_legacy') }}
+            </p>
+          </div>
         </Section>
 
         <Section id="configure-model" :title="t('configure.model')" :description="t('configure.model_hint')" class="scroll-mt-14">
@@ -312,7 +339,7 @@ function toggleSource(id: string, on: boolean) {
         </Section>
 
         <Section id="configure-tools" :title="t('grants.title')" :description="t('grants.hint')" class="scroll-mt-14">
-          <McpGrants v-model="config" :servers="servers" :disabled="disabled" :servers-link="links.servers" :field-error="fieldError" />
+          <McpGrants v-model="config" :servers="servers" :disabled="disabled" :servers-link="links.servers" :field-error="fieldError" :memory-stores="memoryStores" />
           <FieldError :id="ids.tools" :message="serverError('server', 'tool_name', 'legacy_tools')" />
           <div v-if="config.tools.length" class="flex flex-col gap-2 rounded-box border border-base-300 px-4 py-3">
             <h3 class="text-ui font-semibold">

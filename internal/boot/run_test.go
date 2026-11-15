@@ -56,6 +56,12 @@ func TestRunAgents_MapsThePinnedVersion(t *testing.T) {
 	assert.True(t, got.Legacy, "a version without a provider is legacy")
 	assert.Equal(t, int32(agent.RecommendedMaxSteps), got.MaxSteps, "an unset step cap runs with the Go recommended value, never 0")
 
+	sectioned := &agent.Version{ID: uuid.New(), AgentID: ag.ID, Config: agent.Config{Identity: "A clerk.", Instructions: "Be brief."}}
+	store.Published = []*agent.Version{sectioned}
+	got, err = a.Latest(ctx, ag.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "## Who you are\n\nA clerk.\n\n## Instructions\n\nBe brief.", got.Instructions, "the runtime gets the combined prompt")
+
 	store.Published = nil
 	got, err = a.Latest(ctx, ag.ID)
 	require.NoError(t, err)

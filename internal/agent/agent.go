@@ -28,6 +28,8 @@ const (
 	descMaxLen = 2000
 
 	maxInstructions = 32000
+	maxIdentity     = 4000
+	maxPersona      = 4000
 	maxModelLen     = 128
 	maxTools        = 64
 	maxGrants       = 16
@@ -68,6 +70,8 @@ type Agent struct {
 
 // Config is what an agent runs with; zero MaxSteps is the recommended value and zero MaxCostCents no limit.
 type Config struct {
+	Identity     string  `json:"identity,omitempty"`
+	Persona      string  `json:"persona,omitempty"`
 	Instructions string  `json:"instructions,omitempty"`
 	Model        string  `json:"model,omitempty"`
 	Temperature  float64 `json:"temperature,omitempty"`
@@ -107,8 +111,9 @@ type MCPGrant struct {
 	Tools    []Tool    `json:"tools,omitempty"`
 }
 
-func readsUntrusted(c Config) bool {
-	return len(c.KnowledgeSourceIDs) > 0 || c.MemoryStoreID != uuid.Nil
+// SECURITY: knowledge and a store that remembers named API users are untrusted: any project key can plant facts for any Oagent-User.
+func readsUntrusted(c Config, apiMemory bool) bool {
+	return len(c.KnowledgeSourceIDs) > 0 || apiMemory
 }
 
 type toolKey struct {
@@ -117,12 +122,12 @@ type toolKey struct {
 }
 
 // SECURITY: unattended = !RequireApproval; keep in step with run.approvalSpec.
-func newUnattendedTool(draft Config, latest *Config) (toolKey, bool) {
-	if !readsUntrusted(draft) {
+func newUnattendedTool(draft Config, draftAPIMemory bool, latest *Config, latestAPIMemory bool) (toolKey, bool) {
+	if !readsUntrusted(draft, draftAPIMemory) {
 		return toolKey{}, false
 	}
 	grandfathered := map[toolKey]bool{}
-	if latest != nil && readsUntrusted(*latest) {
+	if latest != nil && readsUntrusted(*latest, latestAPIMemory) {
 		for _, g := range latest.MCPServers {
 			for _, t := range g.Tools {
 				if !t.RequireApproval {
@@ -225,6 +230,10 @@ func (c Config) Validate() error {
 		return apperror.Validation([]apperror.Violation{{Field: "config." + field, Reason: reason}})
 	}
 	switch {
+	case utf8.RuneCountInString(c.Identity) > maxIdentity:
+		return invalid("identity", apperror.FieldTooLong)
+	case utf8.RuneCountInString(c.Persona) > maxPersona:
+		return invalid("persona", apperror.FieldTooLong)
 	case utf8.RuneCountInString(c.Instructions) > maxInstructions:
 		return invalid("instructions", apperror.FieldTooLong)
 	case len(c.Model) > maxModelLen:
@@ -338,9 +347,26 @@ func (c Config) validateGrants(invalid func(string, apperror.FieldReason) error)
 	return nil
 }
 
+// SystemPrompt combines identity, persona and instructions under headings; instructions alone are returned unchanged.
+func (c Config) SystemPrompt() string {
+	if strings.TrimSpace(c.Identity) == "" && strings.TrimSpace(c.Persona) == "" {
+		return c.Instructions
+	}
+	var parts []string
+	for _, p := range [...]struct{ heading, text string }{
+		{"## Who you are", c.Identity}, {"## Persona and style", c.Persona}, {"## Instructions", c.Instructions},
+	} {
+		if t := strings.TrimSpace(p.text); t != "" {
+			parts = append(parts, p.heading+"\n\n"+t)
+		}
+	}
+	return strings.Join(parts, "\n\n")
+}
+
 // Equal reports whether c and o run the same; a nil and an empty tool list are equal.
 func (c Config) Equal(o Config) bool {
-	return c.Instructions == o.Instructions && c.Model == o.Model && c.Temperature == o.Temperature &&
+	return c.Identity == o.Identity && c.Persona == o.Persona && c.Instructions == o.Instructions &&
+		c.Model == o.Model && c.Temperature == o.Temperature &&
 		c.MaxSteps == o.MaxSteps && c.MaxCostCents == o.MaxCostCents && slices.EqualFunc(c.Tools, o.Tools, Tool.Equal) &&
 		c.ProviderID == o.ProviderID && c.HelperModel == o.HelperModel &&
 		slices.EqualFunc(c.MCPServers, o.MCPServers, func(a, b MCPGrant) bool {
@@ -602,7 +628,8 @@ func versionToProto(v *Version, agentPublicID, createdBy string) *agentv1.AgentV
 
 func configToProto(c Config) *agentv1.AgentConfig {
 	out := &agentv1.AgentConfig{
-		Instructions: c.Instructions, Model: c.Model, Temperature: c.Temperature, MaxSteps: c.MaxSteps, MaxCostCents: c.MaxCostCents,
+		Identity: c.Identity, Persona: c.Persona, Instructions: c.Instructions,
+		Model: c.Model, Temperature: c.Temperature, MaxSteps: c.MaxSteps, MaxCostCents: c.MaxCostCents,
 		HelperModel: c.HelperModel, Tools: toolsToProto(c.Tools), KnowledgeTuning: tuningToProto(c.KnowledgeTuning),
 	}
 	for _, g := range c.MCPServers {
@@ -651,7 +678,8 @@ func toolsFromProto(tools []*agentv1.AgentTool) []Tool {
 
 func configFromProto(c *agentv1.AgentConfig) Config {
 	out := Config{
-		Instructions: c.GetInstructions(), Model: c.GetModel(), Temperature: c.GetTemperature(),
+		Identity: c.GetIdentity(), Persona: c.GetPersona(), Instructions: c.GetInstructions(),
+		Model: c.GetModel(), Temperature: c.GetTemperature(),
 		MaxSteps: c.GetMaxSteps(), MaxCostCents: c.GetMaxCostCents(), HelperModel: c.GetHelperModel(),
 		Tools: toolsFromProto(c.GetTools()), KnowledgeTuning: tuningFromProto(c.GetKnowledgeTuning()),
 	}

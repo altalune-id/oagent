@@ -6,7 +6,7 @@ import { nextTick } from 'vue';
 import { AgentDefaultsSchema } from '#gen/agent/v1/agent_pb';
 import { connectError, deferred, setClient, setKnownKeys } from '#test/nuxt-globals';
 import { useAgentsStore } from '~/stores/agents';
-import { changes, emptyConfig, fromWire, stateOf, toWire } from './agentConfig';
+import { changes, emptyConfig, fromWire, legacyPrompt, promptLimits, promptTooLong, stateOf, toWire } from './agentConfig';
 import { autosaveDelayMs, useAgentDraft } from './useAgentDraft';
 
 const usd = (cents: number) => `usd:${cents}`;
@@ -16,7 +16,7 @@ const provider = 'Pv6tQm2ZxR8wKp3VbNc4K';
 const server = 'Ms2bVn7QxK4pRt9KwZc3H';
 const names = { provider: (p: string) => (p === provider ? 'OpenRouter' : '?'), server: (x: string) => (x === server ? 'yasaku' : x) };
 type Wire = ReturnType<typeof toWire> & { providerMissing: boolean, tools: { name: string, requireApproval: boolean }[], mcpServers: { serverId: string, tools: { name: string, requireApproval: boolean }[], missing: boolean }[] };
-const liveWire: Wire = { instructions: 'Help.', providerId: provider, model: 'large-2', helperModel: '', temperature: 0.2, maxSteps: 12, maxCostCents: 10, mcpServers: [{ serverId: server, tools: [{ name: 'orders_lookup', requireApproval: false, freeWhen: [] }, { name: 'refunds_create', requireApproval: false, freeWhen: [] }], missing: false }], knowledgeSourceIds: [], knowledgeTuning: { topK: 0, maxTokens: 0 }, memoryStoreId: '', providerMissing: false, tools: [] };
+const liveWire: Wire = { identity: '', persona: '', instructions: 'Help.', providerId: provider, model: 'large-2', helperModel: '', temperature: 0.2, maxSteps: 12, maxCostCents: 10, mcpServers: [{ serverId: server, tools: [{ name: 'orders_lookup', requireApproval: false, freeWhen: [] }, { name: 'refunds_create', requireApproval: false, freeWhen: [] }], missing: false }], knowledgeSourceIds: [], knowledgeTuning: { topK: 0, maxTokens: 0 }, memoryStoreId: '', providerMissing: false, tools: [] };
 const draftWire: Wire = { ...liveWire, instructions: 'Help. Never promise a date.' };
 const live = fromWire(liveWire);
 const draft = fromWire(draftWire);
@@ -24,6 +24,26 @@ const wireAgent = (config: Wire = draftWire, extra = {}) => ({ id, draft: config
 const echo = (config: ReturnType<typeof toWire>) => wireAgent({ ...config, providerMissing: false, tools: [], mcpServers: config.mcpServers.map(g => ({ ...g, missing: false })) });
 
 describe('agentConfig', () => {
+  it('carries the three prompt fields both ways, reading an old draft without identity and persona as empty', () => {
+    const { identity: _i, persona: _p, ...old } = liveWire;
+    expect(fromWire(old as Wire)).toMatchObject({ identity: '', persona: '', instructions: 'Help.' });
+    const split = fromWire({ ...liveWire, identity: 'You help Acme.', persona: 'Brief.' });
+    expect(toWire(split)).toMatchObject({ identity: 'You help Acme.', persona: 'Brief.', instructions: 'Help.' });
+  });
+
+  it('flags a prompt that sits wholly in instructions', () => {
+    expect(legacyPrompt(live)).toBe(true);
+    expect(legacyPrompt({ ...live, identity: 'You help Acme.' })).toBe(false);
+    expect(legacyPrompt({ ...live, persona: 'Brief.' })).toBe(false);
+    expect(legacyPrompt({ ...live, instructions: '  ' })).toBe(false);
+  });
+
+  it('names the first prompt field over its limit, counting code points', () => {
+    expect(promptTooLong(live)).toBeUndefined();
+    expect(promptTooLong({ ...live, identity: '😀'.repeat(promptLimits.identity) })).toBeUndefined();
+    expect(promptTooLong({ ...live, instructions: 'x'.repeat(promptLimits.instructions + 1) })).toBe('instructions');
+  });
+
   it('reads an agent and its draft off the wire, with an empty draft when none is set', () => {
     expect(fromWire()).toEqual(emptyConfig());
     const s = stateOf(wireAgent());
@@ -98,6 +118,8 @@ describe('agentConfig', () => {
     expect(changes(live, live, usd, names)).toEqual([]);
     const next = {
       ...live,
+      identity: 'You help Acme.',
+      persona: 'Brief.',
       instructions: 'x',
       model: 'small-3',
       helperModel: 'tiny-1',
@@ -107,6 +129,8 @@ describe('agentConfig', () => {
       grants: [{ serverId: server, missing: false, tools: [{ name: 'refunds_create', requireApproval: true }, { name: 'search', requireApproval: false }, { name: 'audit', requireApproval: true }] }],
     };
     expect(changes(next, live, usd, names)).toEqual([
+      { key: 'configure.change_identity' },
+      { key: 'configure.change_persona' },
       { key: 'configure.change_instructions' },
       { key: 'configure.change_provider_model', params: { provider: 'OpenRouter', model: 'small-3' } },
       { key: 'configure.change_helper', params: { model: 'tiny-1' } },
@@ -214,6 +238,23 @@ describe('useAgentDraft', () => {
     expect(d.dirty.value).toBe(false);
     expect(await d.save()).toBe(true);
     expect(client.updateAgentDraft).toHaveBeenCalledOnce();
+  });
+
+  it('holds autosave and publish while a prompt field is over its limit, then saves once it fits', async () => {
+    const d = useAgentDraft(id, names);
+    await d.load();
+    d.config.value = { ...d.config.value, persona: '😀'.repeat(promptLimits.persona + 1) };
+    await vi.advanceTimersByTimeAsync(autosaveDelayMs);
+    expect(await d.save()).toBe(false);
+    expect(await d.publish()).toBeNull();
+    expect(client.updateAgentDraft).not.toHaveBeenCalled();
+    expect(client.publishAgent).not.toHaveBeenCalled();
+    expect(d.saveError.value).toBeNull();
+    expect(d.dirty.value).toBe(true);
+    d.config.value = { ...d.config.value, persona: '😀'.repeat(promptLimits.persona) };
+    await vi.advanceTimersByTimeAsync(autosaveDelayMs);
+    expect(client.updateAgentDraft).toHaveBeenCalledOnce();
+    expect(d.dirty.value).toBe(false);
   });
 
   it('keeps the edit and shows the refusal when saving fails', async () => {

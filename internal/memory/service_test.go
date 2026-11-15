@@ -349,6 +349,27 @@ func TestService_StoreUsable(t *testing.T) {
 	assert.Equal(t, 1, f.reported)
 }
 
+func TestService_RemembersAPIUsers(t *testing.T) {
+	f := newSvc(t)
+	c := f.cells[0]
+	ctx := admin(c)
+	got, err := f.svc.RemembersAPIUsers(ctx, c.Scope.StoreID)
+	require.NoError(t, err)
+	assert.False(t, got)
+	f.stores.byID[c.Scope.StoreID].RememberAPIUsers = true
+	got, err = f.svc.RemembersAPIUsers(ctx, c.Scope.StoreID)
+	require.NoError(t, err)
+	assert.True(t, got)
+	got, err = f.svc.RemembersAPIUsers(ctx, uuid.New())
+	require.NoError(t, err, "a gone store answers false")
+	assert.False(t, got)
+	assert.Zero(t, f.reported)
+	f.stores.err = errors.New("db down")
+	_, err = f.svc.RemembersAPIUsers(ctx, c.Scope.StoreID)
+	require.Error(t, err)
+	assert.Equal(t, 1, f.reported)
+}
+
 func TestService_LockStoreShared(t *testing.T) {
 	f := newSvc(t)
 	c := f.cells[0]

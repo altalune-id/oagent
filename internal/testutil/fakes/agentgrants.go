@@ -27,9 +27,10 @@ type AgentGrants struct {
 	Servers   map[uuid.UUID]GrantServer
 	// Sources maps a knowledge source to its project.
 	Sources map[uuid.UUID]uuid.UUID
-	// Stores maps a memory store to its project; DisabledStores are those whose backend is off.
+	// Stores maps a memory store to its project; DisabledStores are those whose backend is off; APIUserStores remember named API users.
 	Stores         map[uuid.UUID]uuid.UUID
 	DisabledStores map[uuid.UUID]bool
+	APIUserStores  map[uuid.UUID]bool
 	// Locked records each LockShared call's provider and server ids; LockedSources and LockedStores the other locks' ids.
 	Locked        [][]uuid.UUID
 	LockedSources [][]uuid.UUID
@@ -140,4 +141,9 @@ func (f *AgentGrants) LockStoreShared(ctx context.Context, id uuid.UUID) error {
 	}
 	f.LockedStores = append(f.LockedStores, id)
 	return nil
+}
+
+// RemembersAPIUsers implements agent.Memory.
+func (f *AgentGrants) RemembersAPIUsers(_ context.Context, id uuid.UUID) (bool, error) {
+	return f.APIUserStores[id], f.Err
 }

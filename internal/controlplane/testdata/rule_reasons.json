@@ -17,6 +17,8 @@
   {"rule": "user.name.max_len.200", "reason": "too_long", "param": "200"},
   {"rule": "agent.description.max_len.2000", "reason": "too_long", "param": "2000"},
   {"rule": "agent.instructions.max_len.32000", "reason": "too_long", "param": "32000"},
+  {"rule": "agent.identity.max_len.4000", "reason": "too_long", "param": "4000"},
+  {"rule": "agent.persona.max_len.4000", "reason": "too_long", "param": "4000"},
   {"rule": "agent.model.max_len.128", "reason": "too_long", "param": "128"},
   {"rule": "agent.helper_model.max_len.128", "reason": "too_long", "param": "128"},
   {"rule": "agent.transcription_model.model.max_len.128", "reason": "too_long", "param": "128"},

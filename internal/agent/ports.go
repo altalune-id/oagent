@@ -57,6 +57,7 @@ type Knowledge interface {
 type Memory interface {
 	StoreUsable(ctx context.Context, projectID, storeID uuid.UUID) error
 	LockStoreShared(ctx context.Context, id uuid.UUID) error
+	RemembersAPIUsers(ctx context.Context, id uuid.UUID) (bool, error)
 }
 
 // Locker share-locks a version's providers and servers until the unit of work ends; a gone one answers *InvalidGrantError.

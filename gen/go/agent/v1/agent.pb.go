@@ -505,7 +505,7 @@ func (x *McpGrant) GetMissing() bool {
 	return false
 }
 
-// AgentConfig is what an agent runs with; zero values mean the recommended value (max_steps, from GetAgent's defaults) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider's public id; provider_missing is output only; knowledge_source_ids are the knowledge sources searched before each turn, leaving out a deleted one, and knowledge_sources_missing is output only: how many bound sources no longer exist. knowledge_tuning shapes that search; unset fields use the recommended values. memory_store_id is the public id of the memory store the agent remembers people in, empty for none; memory_store_missing is output only: the bound store no longer exists.
+// AgentConfig is what an agent runs with; identity is who the agent is, persona its persona and style, and instructions the rules, combined server-side into one system prompt under headings; zero values mean the recommended value (max_steps, from GetAgent's defaults) or no limit (max_cost_cents), and tool names are unique. tools is the legacy list a new draft never sets; provider_id is the model provider's public id; provider_missing is output only; knowledge_source_ids are the knowledge sources searched before each turn, leaving out a deleted one, and knowledge_sources_missing is output only: how many bound sources no longer exist. knowledge_tuning shapes that search; unset fields use the recommended values. memory_store_id is the public id of the memory store the agent remembers people in, empty for none; memory_store_missing is output only: the bound store no longer exists.
 type AgentConfig struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
 	Instructions            string                 `protobuf:"bytes,1,opt,name=instructions,proto3" json:"instructions,omitempty"`
@@ -524,6 +524,8 @@ type AgentConfig struct {
 	MemoryStoreId           string                 `protobuf:"bytes,14,opt,name=memory_store_id,json=memoryStoreId,proto3" json:"memory_store_id,omitempty"`
 	MemoryStoreMissing      bool                   `protobuf:"varint,15,opt,name=memory_store_missing,json=memoryStoreMissing,proto3" json:"memory_store_missing,omitempty"`
 	TranscriptionModel      *TranscriptionModel    `protobuf:"bytes,16,opt,name=transcription_model,json=transcriptionModel,proto3" json:"transcription_model,omitempty"`
+	Identity                string                 `protobuf:"bytes,17,opt,name=identity,proto3" json:"identity,omitempty"`
+	Persona                 string                 `protobuf:"bytes,18,opt,name=persona,proto3" json:"persona,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -668,6 +670,20 @@ func (x *AgentConfig) GetTranscriptionModel() *TranscriptionModel {
 		return x.TranscriptionModel
 	}
 	return nil
+}
+
+func (x *AgentConfig) GetIdentity() string {
+	if x != nil {
+		return x.Identity
+	}
+	return ""
+}
+
+func (x *AgentConfig) GetPersona() string {
+	if x != nil {
+		return x.Persona
+	}
+	return ""
 }
 
 // TranscriptionModel turns the end user's voice notes into text with a speech-to-text model on any provider of the project; unset turns voice notes off, and provider_missing is set when the provider no longer resolves.
@@ -1728,8 +1744,7 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\tserver_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\bserverId\x12\x91\x01\n" +
 	"\x05tools\x18\x02 \x03(\v2\x13.agent.v1.AgentToolBf\xbaHc\xba\x01[\n" +
 	"\x18agent.grant_tools.unique\x1a?this.map(t, t.name).unique() ? '' : 'tool names must be unique'\x92\x01\x02\x10@R\x05tools\x12\x18\n" +
-	"\amissing\x18\x03 \x01(\bR\amissing\"\xe0\n" +
-	"\n" +
+	"\amissing\x18\x03 \x01(\bR\amissing\"\xdb\f\n" +
 	"\vAgentConfig\x12\x8c\x01\n" +
 	"\finstructions\x18\x01 \x01(\tBh\xbaHe\xba\x01b\n" +
 	" agent.instructions.max_len.32000\x1a>this.size() <= 32000 ? '' : 'must be at most 32000 characters'R\finstructions\x12\x88\x01\n" +
@@ -1754,7 +1769,11 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\x10knowledge_tuning\x18\r \x01(\v2\x19.agent.v1.KnowledgeTuningR\x0fknowledgeTuning\x121\n" +
 	"\x0fmemory_store_id\x18\x0e \x01(\tB\t\xbaH\x06r\x04\x88\xe42\x01R\rmemoryStoreId\x120\n" +
 	"\x14memory_store_missing\x18\x0f \x01(\bR\x12memoryStoreMissing\x12M\n" +
-	"\x13transcription_model\x18\x10 \x01(\v2\x1c.agent.v1.TranscriptionModelR\x12transcriptionModel\"\x8f\x02\n" +
+	"\x13transcription_model\x18\x10 \x01(\v2\x1c.agent.v1.TranscriptionModelR\x12transcriptionModel\x12}\n" +
+	"\bidentity\x18\x11 \x01(\tBa\xbaH^\xba\x01[\n" +
+	"\x1bagent.identity.max_len.4000\x1a<this.size() <= 4000 ? '' : 'must be at most 4000 characters'R\bidentity\x12z\n" +
+	"\apersona\x18\x12 \x01(\tB`\xbaH]\xba\x01Z\n" +
+	"\x1aagent.persona.max_len.4000\x1a<this.size() <= 4000 ? '' : 'must be at most 4000 characters'R\apersona\"\x8f\x02\n" +
 	"\x12TranscriptionModel\x12*\n" +
 	"\vprovider_id\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x88\xe42\x01R\n" +
 	"providerId\x12\xa1\x01\n" +
@@ -1826,7 +1845,7 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\bagent_id\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x88\xe42\x01R\aagentId\x12\x1f\n" +
 	"\x05limit\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\x05limit\"O\n" +
 	"\x19ListAgentVersionsResponse\x122\n" +
-	"\bversions\x18\x01 \x03(\v2\x16.agent.v1.AgentVersionR\bversions2\xaf\v\n" +
+	"\bversions\x18\x01 \x03(\v2\x16.agent.v1.AgentVersionR\bversions2\xb4\f\n" +
 	"\fAgentService\x12\xb1\x01\n" +
 	"\vCreateAgent\x12\x1c.agent.v1.CreateAgentRequest\x1a\x1d.agent.v1.CreateAgentResponse\"e\xca\xf3\x18a\n" +
 	"\fagent_create\x12JCreate an agent within a project, minting a slug when one is not supplied. \x01*\x03app\x12p\n" +
@@ -1840,9 +1859,9 @@ const file_agent_v1_agent_proto_rawDesc = "" +
 	"\vUpdateAgent\x12\x1c.agent.v1.UpdateAgentRequest\x1a\x1d.agent.v1.UpdateAgentResponse\"L\xca\xf3\x18H\n" +
 	"\fagent_update\x12'Update an agent's name and description.\x1a\x02id\x1a\x04name \x01*\x03app\x12\x83\x01\n" +
 	"\vDeleteAgent\x12\x1c.agent.v1.DeleteAgentRequest\x1a\x1d.agent.v1.DeleteAgentResponse\"7\xca\xf3\x183\n" +
-	"\fagent_delete\x12\x16Delete an agent by id.\x1a\x02id \x01*\x03app0\x01\x12\xa9\x02\n" +
-	"\x10UpdateAgentDraft\x12!.agent.v1.UpdateAgentDraftRequest\x1a\".agent.v1.UpdateAgentDraftResponse\"\xcd\x01\xca\xf3\x18\xc8\x01\n" +
-	"\x12agent_update_draft\x12\x9e\x01Replace an agent's draft configuration: instructions, model, temperature, tools, max steps and budget. The published version is unchanged until agent_publish.\x1a\x02id\x1a\x06config \x01*\x03app\x12\xe8\x01\n" +
+	"\fagent_delete\x12\x16Delete an agent by id.\x1a\x02id \x01*\x03app0\x01\x12\xae\x03\n" +
+	"\x10UpdateAgentDraft\x12!.agent.v1.UpdateAgentDraftRequest\x1a\".agent.v1.UpdateAgentDraftResponse\"\xd2\x02\xca\xf3\x18\xcd\x02\n" +
+	"\x12agent_update_draft\x12\xa3\x02Replace an agent's draft configuration: the prompt fields identity, persona and instructions, model, temperature, tools, max steps and budget. Replaces the whole configuration; send every field you keep, including identity and persona. The published version is unchanged until agent_publish.\x1a\x02id\x1a\x06config \x01*\x03app\x12\xe8\x01\n" +
 	"\fPublishAgent\x12\x1d.agent.v1.PublishAgentRequest\x1a\x1e.agent.v1.PublishAgentResponse\"\x98\x01\xca\xf3\x18\x93\x01\n" +
 	"\ragent_publish\x12wPublish an agent's draft as its next immutable version; an unchanged draft returns the latest version and creates none.\x1a\x02id \x01*\x03app\x12\xb8\x01\n" +
 	"\x11ListAgentVersions\x12\".agent.v1.ListAgentVersionsRequest\x1a#.agent.v1.ListAgentVersionsResponse\"Z\xca\xf3\x18V\n" +

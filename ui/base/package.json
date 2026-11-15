@@ -25,6 +25,7 @@
     "@pinia/nuxt": "^1.0.3",
     "@tailwindcss/vite": "catalog:",
     "daisyui": "catalog:",
+    "markdown-it": "catalog:",
     "nuxt": "^4.6.2",
     "pinia": "^4.1.0",
     "tailwindcss": "catalog:",
