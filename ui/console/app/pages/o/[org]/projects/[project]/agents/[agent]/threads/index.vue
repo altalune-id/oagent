@@ -113,8 +113,8 @@ useHead({ title: () => `${agent.value?.name ?? ''} · ${t('threads.title')} · O
               <AppButton size="sm" :to="`${base}/try`">
                 {{ t('try.title') }}
               </AppButton>
-              <AppButton variant="outline" size="sm" :to="`${base}/channels`">
-                {{ t('openwa.connect') }}
+              <AppButton variant="outline" size="sm" :to="`${base}/channels/whatsapp`">
+                {{ t('channels.connect_whatsapp') }}
               </AppButton>
             </template>
           </EmptyState>

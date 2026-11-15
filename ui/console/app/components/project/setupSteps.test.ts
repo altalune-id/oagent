@@ -16,7 +16,7 @@ describe('setupSteps', () => {
   it('points the agent steps at the first agent and marks the first gap as next', () => {
     const steps = setupSteps({ ...none, agentConfigured: true, base, agentSlug: 'yasaku-keuangan', providers: 2, mcpServers: 1 });
     expect(steps.map(s => s.state)).toEqual(['done', 'done', 'done', 'next', 'todo', 'todo']);
-    expect(steps.map(s => s.to.slice(base.length))).toEqual(['/settings/model-providers', '/settings/mcp-servers', '/agents/yasaku-keuangan', '/agents/yasaku-keuangan/try', '/agents/yasaku-keuangan', '/agents/yasaku-keuangan/channels']);
+    expect(steps.map(s => s.to.slice(base.length))).toEqual(['/settings/model-providers', '/settings/mcp-servers', '/agents/yasaku-keuangan', '/agents/yasaku-keuangan/try', '/agents/yasaku-keuangan', '/agents/yasaku-keuangan/channels/whatsapp']);
   });
 
   it('never counts later steps as done without a configured agent', () => {

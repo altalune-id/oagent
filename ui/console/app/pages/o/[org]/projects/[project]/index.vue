@@ -52,7 +52,7 @@ function progressOf(agent: Agent | undefined): SetupProgress {
     agentConfigured: !!agent.providerId,
     tried: !!threads.hasThreads[agent.id],
     published: !!agent.publishedVersion && !agent.unpublishedChanges,
-    whatsappConnected: channels.list(agent.id).some(c => c.status === 'connected'),
+    whatsappConnected: channels.connection(agent.id)?.status === 'connected',
   };
 }
 

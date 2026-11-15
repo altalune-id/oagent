@@ -536,7 +536,7 @@ describe('configure page', () => {
       const voice = w.get('#configure-voice');
       expect(voice.text()).toContain('configure.voice_hint|{"max_minutes":"4","max_size":"3 MiB","reply":"channels.reply_voice"}');
       const hrefs = voice.findAllComponents(RouterLinkStub).map(l => l.props('to'));
-      expect(hrefs).toEqual(expect.arrayContaining(['/o/acme/projects/web/agents/yasaku-keuangan/channels', '/o/acme/projects/web/settings/model-providers']));
+      expect(hrefs).toEqual(expect.arrayContaining(['/o/acme/projects/web/agents/yasaku-keuangan/channels/whatsapp', '/o/acme/projects/web/settings/model-providers']));
       await select.setValue(`${sttId}|whisper-1`);
       expect(voice.text()).toContain('configure.voice_price|{"price":"0.006"}');
       const hint = w.get(`#${select.attributes('aria-describedby')!.split(' ')[0]}`).element.textContent!.trim();

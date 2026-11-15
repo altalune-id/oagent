@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
+import type { VueWrapper } from '@vue/test-utils';
 import { create } from '@bufbuild/protobuf';
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
-import { flushPromises } from '@vue/test-utils';
+import { flushPromises, RouterLinkStub } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -12,7 +13,9 @@ import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { RunSchema, RunStatus } from '#gen/thread/v1/thread_pb';
 import { mountPage } from '#test/mount-page';
 import { runtimeConfig, setClient, setKnownKeys, setRoute } from '#test/nuxt-globals';
-import ChannelsPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/channels.vue';
+import ApiPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/channels/api.vue';
+import ChannelsIndex from '~/pages/o/[org]/projects/[project]/agents/[agent]/channels/index.vue';
+import ChannelsPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/channels/whatsapp.vue';
 import TryPage from '~/pages/o/[org]/projects/[project]/agents/[agent]/try.vue';
 import { useChannelsStore } from '~/stores/channels';
 import { useOrgsStore } from '~/stores/orgs';
@@ -234,8 +237,10 @@ describe('channels page', () => {
   const writer = ['agent:read', 'channel:read', 'channel:write'];
   const dialog = (w: Awaited<ReturnType<typeof mountPage>>) => w.findAll('dialog').find(d => (d.element as HTMLDialogElement).open)!;
   const dialogButton = (w: Awaited<ReturnType<typeof mountPage>>, text: string) => dialog(w).findAll('button').find(b => b.text() === text)!;
-  const channelsAt = (agent: Record<string, unknown>) => setRoute({ path: `/o/acme/projects/rumah/agents/${agent.slug}/channels`, params: { org: 'acme', project: 'rumah', agent: agent.slug as string } });
+  const channelsAt = (agent: Record<string, unknown>) => setRoute({ path: `/o/acme/projects/rumah/agents/${agent.slug}/channels/whatsapp`, params: { org: 'acme', project: 'rumah', agent: agent.slug as string } });
   const ofYasaku = (over: Partial<Parameters<typeof connectionPB>[0]> = {}) => connectionPB({ agentId: yasaku.id, ...over });
+
+  const media = (w: VueWrapper) => w.findAll('section').find(s => s.get('h2').text() === 'channels.media_title')!.findAll('dl > div').map(r => [r.get('dt').text(), ...r.findAll('dd span > span:not([aria-hidden])').map(x => x.text())].join(' '));
 
   async function page(agent: Record<string, unknown> = vision, permissions = writer, seedConnections: ReturnType<typeof connectionPB>[] = []) {
     seed(agent, permissions);
@@ -246,11 +251,21 @@ describe('channels page', () => {
     return { w, ...fake };
   }
 
+  async function apiPage() {
+    seed(vision, writer);
+    setRoute({ path: `/o/acme/projects/rumah/agents/${vision.slug}/channels/api`, params: { org: 'acme', project: 'rumah', agent: vision.slug as string } });
+    const w = await mountPage(ApiPage, { attachTo: document.body });
+    await flushPromises();
+    return { w };
+  }
+
   it('connects WhatsApp: before you start, then details and key, then the server\'s webhook URL, the pasted secret and a check', async () => {
     vi.useFakeTimers();
     const { w, client, set } = await page();
     expect(w.find('h1 + .badge').exists()).toBe(false);
-    expect(w.findAll('section h2').map(h => h.text())).toEqual(['openwa.title', 'channels.provider_whatsapp_business', 'apiaccess.title', 'widget.title']);
+    expect(w.get('h1').text()).toBe('channels.whatsapp');
+    expect(w.findAll('section h2').map(h => h.text())).toEqual(['channels.media_title', 'channels.connection', 'channels.provider_whatsapp_business']);
+    expect(w.findAll('section').find(s => s.get('h2').text() === 'channels.connection')!.get('.badge').text()).toBe('OpenWA');
     expect(w.text()).toContain('openwa.status_none');
     await button(w, 'openwa.connect').trigger('click');
     expect(dialog(w).get('li.step[aria-current="step"]').text()).toBe('openwa.step_before');
@@ -360,33 +375,35 @@ describe('channels page', () => {
     w.unmount();
   });
 
-  it('warns when the agent\'s model can\'t read photos, and not when it can', async () => {
+  it('shows whether photos reach the agent, naming the model either way', async () => {
     const plain = await page({ ...yasaku, draft: { ...draftConfig, providerId: 'Pv9pHs4YvT7kMq7WcXe2B', model: 'llama-3.3-70b-versatile' } });
-    expect(plain.w.text()).toContain('openwa.no_vision|{"model":"llama-3.3-70b-versatile"}');
+    expect(media(plain.w)[1]).toBe('channels.photos channels.off channels.photos_off_detail|{"model":"llama-3.3-70b-versatile"}');
+    expect(plain.w.findAllComponents(RouterLinkStub).find(l => l.text() === 'channels.pick_vision')!.props('to')).toBe('/o/acme/projects/rumah/agents/yasaku-keuangan#configure-model');
     plain.w.unmount();
     setActivePinia(createPinia());
     fakeRuntimeClients();
     const sees = await page(vision);
-    expect(sees.w.text()).not.toContain('openwa.no_vision');
+    expect(sees.w.text()).not.toContain('channels.pick_vision');
+    expect(media(sees.w)[1]).toMatch(/^channels\.photos channels\.on \S+$/);
     sees.w.unmount();
     setActivePinia(createPinia());
     fakeRuntimeClients();
     const none = await page({ ...yasaku, draft: { ...draftConfig, providerId: '', model: '' } });
-    expect(none.w.text()).not.toContain('openwa.no_vision');
+    expect(media(none.w)[1]).toBe('channels.photos channels.off');
     none.w.unmount();
   });
 
-  it('says on the WhatsApp section whether voice notes are transcribed, naming the set reply when they are off', async () => {
+  it('shows whether voice notes are transcribed, naming the set reply when off, and links them to Configure', async () => {
     const offPage = await page(vision);
-    expect(offPage.w.text()).toContain('openwa.voice_off|{"reply":"channels.reply_voice"}');
-    expect(offPage.w.text()).not.toContain('openwa.voice_on');
+    expect(media(offPage.w)[0]).toBe('configure.voice channels.off channels.voice_off_detail|{"reply":"channels.reply_voice"}');
+    const section = offPage.w.findAll('section').find(s => s.get('h2').text() === 'channels.media_title')!;
+    expect(section.findAllComponents(RouterLinkStub).map(l => l.props('to'))).toEqual(['/o/acme/projects/rumah/agents/yasaku-keuangan#configure-voice']);
+    expect(offPage.w.text()).not.toContain('channels.after_publish');
     offPage.w.unmount();
     setActivePinia(createPinia());
     fakeRuntimeClients();
     const onPage = await page({ ...yasaku, draft: { ...draftConfig, transcriptionModel: { providerId: 'Pv9pHs4YvT7kMq7WcXe2B', model: 'whisper-large-v3', providerMissing: false } } });
-    expect(onPage.w.text()).toContain('openwa.voice_on|{"model":"whisper-large-v3"}');
-    expect(onPage.w.text()).not.toContain('openwa.voice_after_publish');
-    expect(onPage.w.text()).not.toContain('openwa.voice_off');
+    expect(media(onPage.w)[0]).toBe('configure.voice channels.on whisper-large-v3');
     onPage.w.unmount();
   });
 
@@ -397,22 +414,36 @@ describe('channels page', () => {
     w.unmount();
   });
 
-  it('builds the API endpoint from the server-filled apiUrl, not from the webhook URL', async () => {
+  it('sends the old Channels address to the WhatsApp page, with or without a trailing slash', async () => {
+    const meta = vi.fn();
+    vi.stubGlobal('definePageMeta', meta);
+    (await mountPage(ChannelsIndex)).unmount();
+    const { redirect } = meta.mock.calls[0]![0] as { redirect: (to: { path: string }) => string };
+    expect(redirect({ path: '/o/acme/projects/rumah/agents/yasaku-keuangan/channels' })).toBe('/o/acme/projects/rumah/agents/yasaku-keuangan/channels/whatsapp');
+    expect(redirect({ path: '/o/acme/projects/rumah/agents/yasaku-keuangan/channels/' })).toBe('/o/acme/projects/rumah/agents/yasaku-keuangan/channels/whatsapp');
+  });
+
+  it('keeps the API on its own page, with the endpoint built from the server-filled apiUrl', async () => {
     runtimeConfig.public.apiUrl = '/oa/api';
-    const based = await page(vision, writer, [ofYasaku({ webhookUrl: 'https://elsewhere.example.id/hooks/openwa/Ch8fK2pQ7mXr9Lt4WvN3c' })]);
+    const whatsapp = await page(vision, writer, [ofYasaku()]);
+    expect(whatsapp.w.text()).not.toContain('/v1/agents/');
+    whatsapp.w.unmount();
+    setActivePinia(createPinia());
+    fakeRuntimeClients();
+    const based = await apiPage();
+    expect(based.w.get('h1').text()).toBe('channels.api');
     expect(based.w.text()).toContain(`${window.location.origin}/oa/api/v1/agents/${yasaku.id}/runs`);
-    expect(based.w.text()).not.toContain('elsewhere.example.id/api');
     based.w.unmount();
     setActivePinia(createPinia());
     fakeRuntimeClients();
     runtimeConfig.public.apiUrl = 'https://api.example.id/api/';
-    const absolute = await page(vision, writer, []);
+    const absolute = await apiPage();
     expect(absolute.w.text()).toContain(`https://api.example.id/api/v1/agents/${yasaku.id}/runs`);
     absolute.w.unmount();
     setActivePinia(createPinia());
     fakeRuntimeClients();
     runtimeConfig.public.apiUrl = '';
-    const none = await page(vision, writer, []);
+    const none = await apiPage();
     expect(none.w.text()).toContain(`${window.location.origin}/api/v1/agents/${yasaku.id}/runs`);
     none.w.unmount();
   });
@@ -445,10 +476,8 @@ describe('channels page', () => {
     setActivePinia(createPinia());
     fakeRuntimeClients();
     const draft = await page({ ...voiceOn, unpublishedChanges: true }, writer, [ofYasaku({ replyVoice: old })]);
-    expect(draft.w.text()).toContain('openwa.voice_after_publish');
-    const note = draft.w.findAll('p[role="note"]').find(p => p.text().includes('openwa.voice_after_publish'))!;
-    expect(note.element.textContent!.replace(/\s+/g, ' ').trim()).toBe('openwa.voice_on|{"model":"whisper-large-v3"} openwa.voice_after_publish configure.voice');
-    expect(note.element.textContent).toMatch(/openwa\.voice_after_publish\s+configure\.voice/);
+    expect(media(draft.w)[0]).toBe('configure.voice channels.on whisper-large-v3');
+    expect(draft.w.get('p[role="note"]').text()).toBe('channels.after_publish');
     expect(draft.w.text()).not.toContain('channels.voice_reply_old');
     draft.w.unmount();
   });

@@ -75,8 +75,18 @@ describe('agent sidebar', () => {
     await flushPromises();
     expect(w.get('nav > div').text()).toContain('agent.sidebar_version|{"n":12}');
     expect(w.get('nav > div').text()).not.toContain('legacy');
-    expect(pages!.findAll('li').map(li => li.text())).toEqual(['agent.configure', 'try.title', 'channels.title', 'threads.title', 'agent.runs']);
+    expect(pages!.findAll(':scope > li > a').map(a => a.text())).toEqual(['agent.configure', 'try.title', 'channels.title', 'threads.title', 'agent.runs']);
+    expect(pages!.findAll('li > ul a').map(a => a.text())).toEqual(['channels.whatsapp', 'channels.api']);
     expect(pages!.get('a.menu-active').text()).toBe('agent.configure');
+  });
+
+  it('opens Channels on WhatsApp and marks the open channel', async () => {
+    setRoute({ path: '/o/acme/projects/support/agents/refund-triage/channels/whatsapp', params: { org: 'acme', project: 'support', agent: 'refund-triage' } });
+    const w = await mountPage(AgentSidebar);
+    const pages = w.findAll('nav > ul')[1]!;
+    const channels = pages.findAll(':scope > li > a').find(a => a.text() === 'channels.title')!;
+    expect(channels.getComponent(RouterLinkStub).props('to')).toBe('/o/acme/projects/support/agents/refund-triage/channels/whatsapp');
+    expect(pages.get('a.menu-active').text()).toBe('channels.whatsapp');
   });
 
   it('opens a run as the icon rail and other agent pages in full', async () => {

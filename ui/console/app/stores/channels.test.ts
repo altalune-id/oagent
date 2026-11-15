@@ -86,6 +86,14 @@ describe('channels store', () => {
     expect(store.connection(agentId)).toBeUndefined();
   });
 
+  it('shows a connection under its provider\'s channel and leaves an unknown provider out of WhatsApp', async () => {
+    fakeChannelClient([connectionPB({ id: 'Cx1', provider: 'telegram' }), connectionPB()]);
+    const store = useChannelsStore();
+    await store.ensureLoaded(projectId, agentId);
+    expect(store.list(agentId).map(c => c.provider)).toEqual(['telegram', 'openwa']);
+    expect(store.connection(agentId)?.id).toBe('Ch8fK2pQ7mXr9Lt4WvN3c');
+  });
+
   it('falls back to the operator default for an empty set reply', async () => {
     fakeChannelClient([connectionPB({ replyVoice: '', approvalPrompt: '', approvalExpired: 'Sudah kedaluwarsa.' })]);
     const store = useChannelsStore();

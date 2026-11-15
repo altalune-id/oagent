@@ -10,6 +10,13 @@ export type WhatsAppStatus = 'waiting' | 'connected' | 'device_mismatch' | 'key_
 
 export type ChannelProvider = 'openwa';
 
+export type Channel = 'whatsapp';
+
+// providerChannels groups each connection provider under the channel the console shows it in; an unknown provider is in none.
+export const providerChannels: Record<ChannelProvider, Channel> = { openwa: 'whatsapp' };
+
+export const providerNames: Record<ChannelProvider, string> = { openwa: 'OpenWA' };
+
 export interface WhatsAppConnection {
   id: string;
   agentId: string;
@@ -72,7 +79,7 @@ export function toConnection(c: Connection): WhatsAppConnection {
   return {
     id: c.id,
     agentId: c.agentId,
-    provider: 'openwa',
+    provider: c.provider as ChannelProvider,
     enabled: c.enabled,
     status: statuses[c.status],
     baseUrl: c.baseUrl,
@@ -160,7 +167,7 @@ export const useChannelsStore = defineStore('channels', () => {
   }
 
   function connection(agentId: string): WhatsAppConnection | undefined {
-    return byAgent.value[agentId]?.find(c => c.provider === 'openwa');
+    return byAgent.value[agentId]?.find(c => providerChannels[c.provider] === 'whatsapp');
   }
 
   // replies gives a connection's set replies, with the operator defaults where a text was left empty.

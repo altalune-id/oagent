@@ -31,6 +31,7 @@ export function useNavCrumbs() {
     return slug ? agents.items.find(a => a.projectId === project.value?.id && a.slug === slug) ?? { slug, name: slug } : undefined;
   });
   const active = (groups: NavGroup[]) => groups.flatMap(g => g.items).find(i => i.active);
+  const pages = (groups: NavGroup[]) => groups.flatMap(g => g.items).flatMap(i => (i.children?.length ? i.children.map(c => ({ ...c, label: `${i.label} · ${c.label}` })) : [i]));
 
   const crumbs = computed<Crumb[]>(() => {
     if (!org.value) {
@@ -63,6 +64,10 @@ export function useNavCrumbs() {
     if (route.params.run) {
       return [...trail, { label: t('run.col_run') }];
     }
+    const sub = page?.children?.find(c => c.active);
+    if (page && sub) {
+      return [...trail, { label: page.label, to: page.to }, { label: sub.label }];
+    }
     return page ? [...trail, { label: page.label }] : trail;
   });
 
@@ -72,7 +77,7 @@ export function useNavCrumbs() {
       items.push(...projectNav.value.flatMap(g => g.items).map(i => ({ key: `project-${i.key}`, group: project.value!.name, label: i.label, to: i.to })));
     }
     if (agent.value) {
-      items.push(...agentNav.groups.value.flatMap(g => g.items).map(i => ({ key: `agent-${i.key}`, group: agent.value!.name, label: i.label, to: i.to })));
+      items.push(...pages(agentNav.groups.value).map(i => ({ key: `agent-${i.key}`, group: agent.value!.name, label: i.label, to: i.to })));
     }
     return items;
   });

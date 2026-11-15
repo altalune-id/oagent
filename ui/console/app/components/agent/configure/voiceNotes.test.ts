@@ -1,7 +1,7 @@
 import type { ModelProvider } from '~/stores/modelProviders';
 import { describe, expect, it } from 'vitest';
 import { ModelProviderKind } from '#gen/modelprovider/v1/modelprovider_pb';
-import { chatModelsOf, pickVoice, voiceChannelNotes, voiceConnectionHint, voiceHint, voiceOn, voiceOptions, voicePrice, voiceStale, voiceStaleLabel, voiceStaleOption, voiceValue } from './voiceNotes';
+import { chatModelsOf, pickVoice, voiceChannelNotes, voiceHint, voiceOn, voiceOptions, voicePrice, voiceStale, voiceStaleLabel, voiceStaleOption, voiceValue } from './voiceNotes';
 
 const zero = { inputMicros: 0n, outputMicros: 0n, cacheReadMicros: 0n, cacheWriteMicros: 0n };
 const provider = (id: string, name: string, models: ModelProvider['models'], kind = ModelProviderKind.OPENAI_COMPATIBLE): ModelProvider => ({ id, orgId: 'o', projectId: 'p', name, kind, baseUrl: 'https://x.test', keySet: true, models });
@@ -61,12 +61,12 @@ describe('voice note picker', () => {
     expect(chatModelsOf(models, { model: 'whisper-1', helperModel: 'embed' }).map(m => m.id)).toEqual(['whisper-1', 'llama', 'embed']);
   });
 
-  it('tells the WhatsApp page whether voice notes are transcribed, treating a deleted provider as off', () => {
-    const offHint = { key: 'openwa.voice_off', params: { reply: 'R' } };
-    expect(voiceConnectionHint(undefined, 'R')).toEqual(offHint);
-    expect(voiceConnectionHint(off, 'R')).toEqual(offHint);
-    expect(voiceConnectionHint({ providerId: '', model: 'whisper-1', providerMissing: true }, 'R')).toEqual(offHint);
-    expect(voiceConnectionHint({ providerId: 'PvOpenai', model: 'whisper-1', providerMissing: false }, 'R')).toEqual({ key: 'openwa.voice_on', params: { model: 'whisper-1' } });
+  it('tells a channel page whether voice notes are transcribed, treating a deleted provider as off', () => {
+    const offNotes = { on: false, model: '', afterPublish: false, staleReply: false };
+    expect(voiceChannelNotes(undefined, false, 'Custom.')).toEqual(offNotes);
+    expect(voiceChannelNotes(off, false, 'Custom.')).toEqual(offNotes);
+    expect(voiceChannelNotes({ providerId: '', model: 'whisper-1', providerMissing: true }, false, 'Custom.')).toEqual(offNotes);
+    expect(voiceChannelNotes({ providerId: 'PvOpenai', model: 'whisper-1', providerMissing: false }, false, 'Custom.')).toMatchObject({ on: true, model: 'whisper-1' });
   });
 
   it('labels a stale value: the bare model when its provider is gone, else model and provider name', () => {
@@ -82,12 +82,12 @@ describe('voice note picker', () => {
     expect(voiceOn(undefined)).toBe(false);
   });
 
-  it('qualifies the WhatsApp voice hint and hides the old-reply notice until the draft is published', () => {
+  it('waits for a publish and hides the old-reply notice until the draft is published', () => {
     const on = { providerId: 'PvOpenai', model: 'whisper-1', providerMissing: false };
     const old = 'Sorry, I can\'t listen to voice messages yet. Please type your message.';
-    expect(voiceChannelNotes(on, true, old, 'R')).toEqual({ hint: { key: 'openwa.voice_on', params: { model: 'whisper-1' } }, afterPublish: true, staleReply: false });
-    expect(voiceChannelNotes(on, false, old, 'R')).toEqual({ hint: { key: 'openwa.voice_on', params: { model: 'whisper-1' } }, afterPublish: false, staleReply: true });
-    expect(voiceChannelNotes(off, false, old, 'R')).toEqual({ hint: { key: 'openwa.voice_off', params: { reply: 'R' } }, afterPublish: false, staleReply: false });
-    expect(voiceChannelNotes(on, false, 'Custom.', 'R').staleReply).toBe(false);
+    expect(voiceChannelNotes(on, true, old)).toEqual({ on: true, model: 'whisper-1', afterPublish: true, staleReply: false });
+    expect(voiceChannelNotes(on, false, old)).toEqual({ on: true, model: 'whisper-1', afterPublish: false, staleReply: true });
+    expect(voiceChannelNotes(off, false, old)).toEqual({ on: false, model: '', afterPublish: false, staleReply: false });
+    expect(voiceChannelNotes(on, false, 'Custom.').staleReply).toBe(false);
   });
 });
