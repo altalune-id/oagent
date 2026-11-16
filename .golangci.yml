@@ -3,7 +3,7 @@ version: "2"
 # Run locally: make lint (pinned golangci-lint version, see GOLANGCI_VERSION in the Makefile).
 
 run:
-  timeout: 3m
+  timeout: 5m
   tests: true
   build-tags:
     - integration
