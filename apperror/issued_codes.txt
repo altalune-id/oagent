@@ -122,3 +122,8 @@ MEM003 MemoryStoreInvalid
 MEM004 MemoryStoreInUse
 MEM005 MemoryStoreAlreadyExists
 MEM006 MemoryStoreBackendOff
+WEB001 WebSearchProviderUnavailable
+WEB002 WebSearchSecretRequired
+WEB003 WebSecretsUnavailable
+WEB004 HTTPSecretNotFound
+WEB005 HTTPSecretLimitReached

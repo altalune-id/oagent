@@ -287,6 +287,9 @@
   "field.delivery_id": "ID pengiriman",
   "field.invite_id": "ID undangan",
   "field.key_id": "ID kunci",
+  "field.header": "Header",
+  "field.host": "Host",
+  "field.value": "Nilai",
   "field.kind": "Jenis kunci",
   "field.organization_id": "ID organisasi",
   "field.owner": "Pemilik kunci",
@@ -475,6 +478,11 @@
   "apperror.MEM004": "Penyimpanan memori ini dipakai oleh agen yang sudah diterbitkan",
   "apperror.MEM005": "Penyimpanan memori bernama {name} sudah ada",
   "apperror.MEM006": "Penyimpanan untuk memori ini dimatikan di server ini, jadi faktanya tidak bisa dijangkau",
+  "apperror.WEB001": "Penyedia pencarian {kind} belum tersedia; pilih yang lain",
+  "apperror.WEB002": "Kunci API wajib diisi untuk penyedia pencarian baru atau jenis yang berbeda",
+  "apperror.WEB003": "Rahasia tidak tersedia: server belum punya kunci enkripsi",
+  "apperror.WEB004": "Rahasia API tidak ditemukan",
+  "apperror.WEB005": "Proyek ini sudah mencapai batas {max} rahasia API",
   "scope.memory_read": "Lihat penyimpanan memori dan yang diingat agen tentang orang",
   "scope.memory_write": "Buat dan hapus penyimpanan memori, serta hapus yang diingat agen tentang orang"
 }

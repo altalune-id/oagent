@@ -41,6 +41,7 @@ import (
 	"altalune.id/oagent/internal/run"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/webhook"
+	"altalune.id/oagent/internal/webtool"
 	"altalune.id/oagent/mailer"
 	"altalune.id/oagent/sealer"
 )
@@ -65,6 +66,7 @@ type Services struct {
 	Webhooks           *webhook.Service
 	ModelProviders     *modelprovider.Service
 	ModelProviderStore modelprovider.Store
+	WebTools           *webtool.Service
 	MCPServers         *mcpserver.Service
 	Knowledge          *knowledge.Service
 	KnowledgeRetriever knowledge.Retriever
@@ -149,6 +151,8 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 	providerStore := modelprovider.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)
 	providers := configureModelProviders(modelprovider.NewService(providerStore, uow, k.Reporter.Unexpected).
 		WithSealer(sl).WithUsage(providerUsage{agents: agentStore}).WithProjects(projectOwners), cfg)
+	webToolStore := webtool.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)
+	webTools := webtool.NewService(webToolStore, k.Reporter.Unexpected).WithSealer(sl)
 	serverStore := mcpserver.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix)
 	servers := configureMCPServers(mcpserver.NewService(serverStore, uow, k.Reporter.Unexpected).
 		WithSealer(sl).WithUsage(serverUsage{agents: agentStore}).WithProjects(projectOwners), cfg, k.Log)
@@ -223,6 +227,7 @@ func buildServices(k kernel.Kernel, cfg config.Config) *Services {
 		Webhooks:           webhooks,
 		ModelProviders:     providers,
 		ModelProviderStore: providerStore,
+		WebTools:           webTools,
 		MCPServers:         servers,
 		EndUsers: enduser.NewService(enduser.NewStore(k.Pool, cfg.Postgres.Schema, cfg.Postgres.TablePrefix), uow, k.Reporter.Unexpected).
 			WithLogger(orDiscard(k.Log)).WithKeyHints(keyHints{keys: apiKeyStore}).WithMembers(memberNames{users: users}),

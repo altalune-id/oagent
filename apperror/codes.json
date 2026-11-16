@@ -122,5 +122,10 @@
   { "code": "MEM003", "name": "MemoryStoreInvalid", "kind": "invalid", "params": ["max"], "reasons": ["required", "too_long", "backend_disabled"] },
   { "code": "MEM004", "name": "MemoryStoreInUse", "kind": "failed_precondition", "params": [], "reasons": [] },
   { "code": "MEM005", "name": "MemoryStoreAlreadyExists", "kind": "already_exists", "params": ["name"], "reasons": [] },
-  { "code": "MEM006", "name": "MemoryStoreBackendOff", "kind": "failed_precondition", "params": [], "reasons": [] }
+  { "code": "MEM006", "name": "MemoryStoreBackendOff", "kind": "failed_precondition", "params": [], "reasons": [] },
+  { "code": "WEB001", "name": "WebSearchProviderUnavailable", "kind": "failed_precondition", "params": ["kind"], "reasons": [] },
+  { "code": "WEB002", "name": "WebSearchSecretRequired", "kind": "invalid", "params": [], "reasons": [] },
+  { "code": "WEB003", "name": "WebSecretsUnavailable", "kind": "failed_precondition", "params": [], "reasons": [] },
+  { "code": "WEB004", "name": "HTTPSecretNotFound", "kind": "not_found", "params": [], "reasons": [] },
+  { "code": "WEB005", "name": "HTTPSecretLimitReached", "kind": "resource_exhausted", "params": ["max"], "reasons": [] }
 ]

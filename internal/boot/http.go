@@ -67,6 +67,7 @@ func buildAPIHandler(
 		APIKeys:        svcs.APIKeys,
 		Webhooks:       svcs.Webhooks,
 		ModelProviders: svcs.ModelProviders,
+		WebTools:       svcs.WebTools,
 		MCPServers:     svcs.MCPServers,
 		Knowledge:      svcs.Knowledge,
 		Channels:       svcs.Channels,

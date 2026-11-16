@@ -287,6 +287,9 @@
   "field.delivery_id": "Delivery ID",
   "field.invite_id": "Invite ID",
   "field.key_id": "Key ID",
+  "field.header": "Header",
+  "field.host": "Host",
+  "field.value": "Value",
   "field.kind": "Key type",
   "field.organization_id": "Organization ID",
   "field.owner": "Key owner",
@@ -475,6 +478,11 @@
   "apperror.MEM004": "A published agent uses this memory store",
   "apperror.MEM005": "A memory store named {name} already exists",
   "apperror.MEM006": "This memory store's backend is turned off on this server, so its facts cannot be reached",
+  "apperror.WEB001": "The {kind} search provider is not available yet; pick another",
+  "apperror.WEB002": "An API key is required for a new search provider or a different kind",
+  "apperror.WEB003": "Secrets are unavailable: the server has no encryption key",
+  "apperror.WEB004": "API secret not found",
+  "apperror.WEB005": "This project already has the maximum of {max} API secrets",
   "scope.memory_read": "See memory stores and what agents remember about people",
   "scope.memory_write": "Create and delete memory stores, and delete what agents remember about people"
 }

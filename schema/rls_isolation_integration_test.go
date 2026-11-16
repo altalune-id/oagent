@@ -95,6 +95,12 @@ func rlsInserts() []rlsInsert {
 		{"knowledge_settings", func(s string) string {
 			return `INSERT INTO ` + s + `.knowledge_settings (project_id, org_id, provider_id, model, dims, updated_at) VALUES ($1, $2, $3, 'e', 768, $4)`
 		}, func(tn rlsTenant, _ string) []any { return []any{tn.project, tn.org, tn.provider, now} }},
+		{"web_search_providers", func(s string) string {
+			return `INSERT INTO ` + s + `.web_search_providers (project_id, org_id, kind, api_key_sealed, price_per_call_micros, created_at, updated_at) VALUES ($1, $2, 'brave', '\x01'::bytea, 0, $3, $3)`
+		}, func(tn rlsTenant, _ string) []any { return []any{tn.project, tn.org, now} }},
+		{"http_secrets", func(s string) string {
+			return `INSERT INTO ` + s + `.http_secrets (id, public_id, org_id, project_id, host, header, value_sealed, created_at, updated_at) VALUES ($1, $2, $3, $4, 'api.example.com', 'x-api-key', '\x01'::bytea, $5, $5)`
+		}, func(tn rlsTenant, _ string) []any { return []any{id(), "h" + id()[:12], tn.org, tn.project, now} }},
 		{"files", func(s string) string {
 			return `INSERT INTO ` + s + `.files (id, public_id, org_id, project_id, purpose, visibility, object_key, content_type, size_bytes, status, created_at, expires_at)
 				VALUES ($1, $2, $3, $4, 'knowledge', 'private', $5, 'application/pdf', 10, 'ready', $6, $6)`
@@ -313,7 +319,7 @@ func TestRLS_EveryOrgOwnedTableIsolatesTenants(t *testing.T) {
 			assert.Positive(t, before)
 		})
 	}
-	assert.Equal(t, 29, tables, "every org-owned table is covered")
+	assert.Equal(t, 31, tables, "every org-owned table is covered")
 }
 
 // SECURITY: a user-only scope reads its own memberships and orgs, but every write needs the org itself.

@@ -53,6 +53,8 @@ type Runs struct {
 	HelperPriceCacheWriteMicros postgres.ColumnInteger
 	TranscriptionSeconds        postgres.ColumnInteger
 	TranscriptionPriceMicros    postgres.ColumnInteger
+	WebSearchCalls              postgres.ColumnInteger
+	WebSearchPriceMicros        postgres.ColumnInteger
 
 	AllColumns postgres.ColumnList
 }
@@ -110,6 +112,8 @@ func NewRuns(schema, tablePrefix string) *Runs {
 		helperPriceCacheWriteMicros = postgres.IntegerColumn("helper_price_cache_write_micros")
 		transcriptionSeconds        = postgres.IntegerColumn("transcription_seconds")
 		transcriptionPriceMicros    = postgres.IntegerColumn("transcription_price_micros")
+		webSearchCalls              = postgres.IntegerColumn("web_search_calls")
+		webSearchPriceMicros        = postgres.IntegerColumn("web_search_price_micros")
 		all                         = postgres.ColumnList{
 			id, publicID, orgID, projectID, threadID, agentVersionID, status, idempotencyKey, attempt, inputTokens, outputTokens,
 			cacheReadTokens, cacheWriteTokens, usageEstimated, priceInputMicros, priceOutputMicros, priceCacheReadMicros,
@@ -118,7 +122,7 @@ func NewRuns(schema, tablePrefix string) *Runs {
 			knowledgeRetrieveCalls, knowledgeRetrieveMS, knowledgePassages, noReplyReason,
 			helperInputTokens, helperOutputTokens, helperCacheReadTokens, helperCacheWriteTokens,
 			helperPriceInputMicros, helperPriceOutputMicros, helperPriceCacheReadMicros, helperPriceCacheWriteMicros,
-			transcriptionSeconds, transcriptionPriceMicros,
+			transcriptionSeconds, transcriptionPriceMicros, webSearchCalls, webSearchPriceMicros,
 		}
 	)
 	return &Runs{
@@ -170,6 +174,8 @@ func NewRuns(schema, tablePrefix string) *Runs {
 		HelperPriceCacheWriteMicros: helperPriceCacheWriteMicros,
 		TranscriptionSeconds:        transcriptionSeconds,
 		TranscriptionPriceMicros:    transcriptionPriceMicros,
+		WebSearchCalls:              webSearchCalls,
+		WebSearchPriceMicros:        webSearchPriceMicros,
 		AllColumns:                  all,
 	}
 }

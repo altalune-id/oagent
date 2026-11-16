@@ -46,6 +46,7 @@ import (
 	"altalune.id/oagent/internal/run"
 	"altalune.id/oagent/internal/user"
 	"altalune.id/oagent/internal/webhook"
+	"altalune.id/oagent/internal/webtool"
 	"altalune.id/oagent/password"
 	"altalune.id/oagent/scope"
 )
@@ -258,6 +259,11 @@ func samples() []error {
 		&memory.InvalidStoreError{Reason: memory.StoreBackendDisabled},
 		&memory.StoreInUseError{},
 		&memory.StoreAlreadyExistsError{Name: "People"},
+		&webtool.ProviderUnavailableError{Kind: webtool.KindTavily},
+		&webtool.SecretRequiredError{},
+		&webtool.SecretsUnavailableError{},
+		&webtool.NotFoundError{},
+		&webtool.SecretLimitError{},
 		&memory.StoreBackendOffError{Backend: "mem0"},
 		&modelprovider.InUseError{Reason: modelprovider.InUseEmbeddingModel, Model: "a"},
 		&modelprovider.InUseError{Reason: modelprovider.InUseTranscriptionModel, Model: "a"},

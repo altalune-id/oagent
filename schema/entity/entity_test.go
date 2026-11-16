@@ -109,7 +109,18 @@ func TestBindings(t *testing.T) {
 				"helper_input_tokens", "helper_output_tokens", "helper_cache_read_tokens", "helper_cache_write_tokens",
 				"helper_price_input_micros", "helper_price_output_micros", "helper_price_cache_read_micros", "helper_price_cache_write_micros",
 				"transcription_seconds", "transcription_price_micros",
+				"web_search_calls", "web_search_price_micros",
 			},
+		},
+		{
+			"web_search_providers",
+			func(s, p string) binding { b := entity.NewWebSearchProviders(s, p); return binding{b, b.AllColumns} },
+			[]string{"project_id", "org_id", "kind", "api_key_sealed", "price_per_call_micros", "created_at", "updated_at"},
+		},
+		{
+			"http_secrets",
+			func(s, p string) binding { b := entity.NewHTTPSecrets(s, p); return binding{b, b.AllColumns} },
+			[]string{"id", "public_id", "org_id", "project_id", "host", "header", "value_sealed", "created_at", "updated_at"},
 		},
 		{
 			"memory_facts",
@@ -284,7 +295,8 @@ func TestBindings_EveryColumnFieldIsSet(t *testing.T) {
 		"thread_snapshots": entity.NewThreadSnapshots("s", ""), "end_users": entity.NewEndUsers("s", ""),
 		"end_user_identities": entity.NewEndUserIdentities("s", ""),
 		"channel_connections": entity.NewChannelConnections("s", ""), "ingest_deliveries": entity.NewIngestDeliveries("s", ""),
-		"approvals": entity.NewApprovals("s", ""),
+		"approvals":            entity.NewApprovals("s", ""),
+		"web_search_providers": entity.NewWebSearchProviders("s", ""), "http_secrets": entity.NewHTTPSecrets("s", ""),
 	} {
 		v := reflect.ValueOf(b).Elem()
 		for i := range v.NumField() {

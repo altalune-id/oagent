@@ -147,6 +147,12 @@ const (
 	CodeMemoryStoreInUse         Code = "MEM004"
 	CodeMemoryStoreAlreadyExists Code = "MEM005"
 	CodeMemoryStoreBackendOff    Code = "MEM006"
+
+	CodeWebSearchProviderUnavailable Code = "WEB001"
+	CodeWebSearchSecretRequired      Code = "WEB002"
+	CodeWebSecretsUnavailable        Code = "WEB003"
+	CodeHTTPSecretNotFound           Code = "WEB004"
+	CodeHTTPSecretLimitReached       Code = "WEB005"
 )
 
 var kinds = map[Code]Kind{
@@ -293,4 +299,10 @@ var kinds = map[Code]Kind{
 	CodeMemoryStoreInUse:         KindFailedPrecondition,
 	CodeMemoryStoreAlreadyExists: KindAlreadyExists,
 	CodeMemoryStoreBackendOff:    KindFailedPrecondition,
+
+	CodeWebSearchProviderUnavailable: KindFailedPrecondition,
+	CodeWebSearchSecretRequired:      KindInvalid,
+	CodeWebSecretsUnavailable:        KindFailedPrecondition,
+	CodeHTTPSecretNotFound:           KindNotFound,
+	CodeHTTPSecretLimitReached:       KindResourceExhausted,
 }

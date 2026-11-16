@@ -65,6 +65,8 @@ func fillProbe(msg *dynamicpb.Message) {
 			msg.Set(fd, protoreflect.ValueOfInt32(5000))
 		case fd.Kind() == protoreflect.Int64Kind && fd.Name() == "size_bytes":
 			msg.Set(fd, protoreflect.ValueOfInt64(100))
+		case fd.Kind() == protoreflect.Int64Kind && fd.Name() == "price_per_call_micros":
+			msg.Set(fd, protoreflect.ValueOfInt64(0))
 		case fd.IsList() && fd.Name() == "models":
 			list := msg.Mutable(fd).List()
 			model := list.NewElement()
@@ -80,6 +82,7 @@ var probeStrings = map[protoreflect.Name]string{
 	"signing_secret": "whsec_probe", "device_key": "owk_probe",
 	"email": "probe@example.com", "role": "member", "kind": "org",
 	"seed_url": "https://example.com/docs", "filename": "probe.pdf", "content_type": "application/pdf", "model": "m", "query": "probe",
+	"host": "api.example.com", "header": "x-probe", "value": "probe",
 }
 
 func (f *apiFixture) callForResponse(

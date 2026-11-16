@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package webtool.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "oagent/v1/rules.proto";
+
+option go_package = "altalune.id/oagent/gen/go/webtool/v1;webtoolv1";
+
+// WebToolService manages a project's web search provider and the HTTP secrets its agents' http_request calls attach. Every id is a public id; keys and secret values are write-only, and no RPC has an MCP tool.
+service WebToolService {
+  rpc GetWebSearchProvider(GetWebSearchProviderRequest) returns (GetWebSearchProviderResponse);
+  rpc SetWebSearchProvider(SetWebSearchProviderRequest) returns (SetWebSearchProviderResponse);
+  rpc DeleteWebSearchProvider(DeleteWebSearchProviderRequest) returns (DeleteWebSearchProviderResponse);
+  rpc ListHTTPSecrets(ListHTTPSecretsRequest) returns (ListHTTPSecretsResponse);
+  rpc SetHTTPSecret(SetHTTPSecretRequest) returns (SetHTTPSecretResponse);
+  rpc DeleteHTTPSecret(DeleteHTTPSecretRequest) returns (DeleteHTTPSecretResponse);
+}
+
+// WebSearchProviderKind is the search API a project's web_search calls.
+enum WebSearchProviderKind {
+  WEB_SEARCH_PROVIDER_KIND_UNSPECIFIED = 0;
+  WEB_SEARCH_PROVIDER_KIND_BRAVE = 1;
+  WEB_SEARCH_PROVIDER_KIND_EXA = 2;
+  WEB_SEARCH_PROVIDER_KIND_TAVILY = 3;
+}
+
+// WebSearchProvider is a project's search provider; key_set says whether a key is stored, and the key is never returned. price_per_call_micros is micro-USD per search call.
+message WebSearchProvider {
+  WebSearchProviderKind kind = 1;
+  bool key_set = 2;
+  int64 price_per_call_micros = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message GetWebSearchProviderRequest {
+  string project_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+}
+
+// GetWebSearchProviderResponse holds the project's provider, unset when none, and the kinds this deployment offers; a stored kind missing from available_kinds no longer searches.
+message GetWebSearchProviderResponse {
+  optional WebSearchProvider provider = 1;
+  repeated WebSearchProviderKind available_kinds = 2;
+}
+
+// SetWebSearchProviderRequest sets the project's provider; api_key is required when the project has none or the kind changes, and leaving it unset keeps the stored key.
+message SetWebSearchProviderRequest {
+  string project_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  WebSearchProviderKind kind = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  // api_key is write-only: it is sealed at rest and never returned.
+  optional string api_key = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
+  // price_per_call_micros is micro-USD per search call; 0 is free.
+  optional int64 price_per_call_micros = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int64.gte = 0
+  ];
+}
+
+message SetWebSearchProviderResponse {
+  WebSearchProvider provider = 1;
+}
+
+message DeleteWebSearchProviderRequest {
+  string project_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+}
+
+message DeleteWebSearchProviderResponse {}
+
+// HTTPSecret is a header value http_request attaches on calls to host; the value is never returned.
+message HTTPSecret {
+  string id = 1;
+  string host = 2;
+  string header = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message ListHTTPSecretsRequest {
+  string project_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+}
+
+message ListHTTPSecretsResponse {
+  repeated HTTPSecret secrets = 1;
+}
+
+// SetHTTPSecretRequest stores the value for a host and header of the project, replacing any stored one; the header name is stored lowercase.
+message SetHTTPSecretRequest {
+  string project_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+  string host = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).string.pattern = "^[a-z0-9.-]+$"
+  ];
+  string header = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,64}$"
+  ];
+  // value is write-only: it is sealed at rest and never returned.
+  string value = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 4096
+  ];
+}
+
+message SetHTTPSecretResponse {
+  HTTPSecret secret = 1;
+}
+
+message DeleteHTTPSecretRequest {
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.(oagent.v1.public_id) = true
+  ];
+}
+
+message DeleteHTTPSecretResponse {}
