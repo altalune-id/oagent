@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file agent/v1/agent.proto.
  */
 export const file_agent_v1_agent: GenFile = /*@__PURE__*/
-  fileDesc("ChRhZ2VudC92MS9hZ2VudC5wcm90bxIIYWdlbnQudjEioQMKBUFnZW50EgoKAmlkGAEgASgJEg4KBm9yZ19pZBgDIAEoCRISCgpwcm9qZWN0X2lkGAQgASgJEgwKBHNsdWcYBSABKAkSDAoEbmFtZRgGIAEoCRITCgtkZXNjcmlwdGlvbhgHIAEoCRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIkCgVkcmFmdBgKIAEoCzIVLmFnZW50LnYxLkFnZW50Q29uZmlnEhkKEXB1Ymxpc2hlZF92ZXJzaW9uGAsgASgFEjQKEGRyYWZ0X3VwZGF0ZWRfYXQYDCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhsKE3VucHVibGlzaGVkX2NoYW5nZXMYDSABKAgSMgoQZWZmZWN0aXZlX2NvbmZpZxgOIAEoCzIYLmFnZW50LnYxLkFnZW50RWZmZWN0aXZlSgQIAhADUglwdWJsaWNfaWQidwoOQWdlbnRFZmZlY3RpdmUSEQoJbWF4X3N0ZXBzGAEgASgFEhcKD2tub3dsZWRnZV90b3BfaxgCIAEoBRIbChNrbm93bGVkZ2VfbWluX3Njb3JlGAMgASgBEhwKFGtub3dsZWRnZV9tYXhfdG9rZW5zGAQgASgFIqgBCg1BZ2VudERlZmF1bHRzEhEKCW1heF9zdGVwcxgBIAEoBRIVCg1tYXhfbWF4X3N0ZXBzGAIgASgFEhcKD21heF90ZW1wZXJhdHVyZRgDIAEoARIWCg5tYXhfY29zdF9jZW50cxgEIAEoBRIeChZ2b2ljZV9ub3RlX21heF9zZWNvbmRzGAUgASgFEhwKFHZvaWNlX25vdGVfbWF4X2J5dGVzGAYgASgFIogBCglBZ2VudFRvb2wSKwoEbmFtZRgBIAEoCUIdukgachgyFl5bYS16QS1aMC05Xy4tXXsxLDY0fSQSGAoQcmVxdWlyZV9hcHByb3ZhbBgCIAEoCBI0CglmcmVlX3doZW4YAyADKAsyFy5hZ2VudC52MS5GcmVlQ29uZGl0aW9uQgi6SAWSAQIQCCJ1Cg1GcmVlQ29uZGl0aW9uEjEKA2FyZxgBIAEoCUIkukghch8yHV5bQS1aYS16X11bQS1aYS16MC05X117MCw2M30kEiEKBnZhbHVlcxgCIAMoCUIRukgOkgELEBAiB3IFEAEogAISDgoGYWJzZW50GAMgASgIIskBCghNY3BHcmFudBIfCglzZXJ2ZXJfaWQYASABKAlCDLpICcgBAXIEiOQyARKKAQoFdG9vbHMYAiADKAsyEy5hZ2VudC52MS5BZ2VudFRvb2xCZrpIY7oBWwoYYWdlbnQuZ3JhbnRfdG9vbHMudW5pcXVlGj90aGlzLm1hcCh0LCB0Lm5hbWUpLnVuaXF1ZSgpID8gJycgOiAndG9vbCBuYW1lcyBtdXN0IGJlIHVuaXF1ZSeSAQIQQBIPCgdtaXNzaW5nGAMgASgIItsKCgtBZ2VudENvbmZpZxJ+CgxpbnN0cnVjdGlvbnMYASABKAlCaLpIZboBYgogYWdlbnQuaW5zdHJ1Y3Rpb25zLm1heF9sZW4uMzIwMDAaPnRoaXMuc2l6ZSgpIDw9IDMyMDAwID8gJycgOiAnbXVzdCBiZSBhdCBtb3N0IDMyMDAwIGNoYXJhY3RlcnMnEoEBCgVtb2RlbBgCIAEoCUJyukhvugFVChdhZ2VudC5tb2RlbC5tYXhfbGVuLjEyOBo6dGhpcy5zaXplKCkgPD0gMTI4ID8gJycgOiAnbXVzdCBiZSBhdCBtb3N0IDEyOCBjaGFyYWN0ZXJzJ3IVMhNeW0EtWmEtejAtOS5fOi8tXSokEiwKC3RlbXBlcmF0dXJlGAMgASgBQhe6SBQSEhkAAAAAAAAAQCkAAAAAAAAAABIcCgltYXhfc3RlcHMYBCABKAVCCbpIBhoEGGQoABIjCg5tYXhfY29zdF9jZW50cxgFIAEoBUILukgIGgYYwIQ9KAAShAEKBXRvb2xzGAYgAygLMhMuYWdlbnQudjEuQWdlbnRUb29sQmC6SF26AVUKEmFnZW50LnRvb2xzLnVuaXF1ZRo/dGhpcy5tYXAodCwgdC5uYW1lKS51bmlxdWUoKSA/ICcnIDogJ3Rvb2wgbmFtZXMgbXVzdCBiZSB1bmlxdWUnkgECEEASHgoLcHJvdmlkZXJfaWQYByABKAlCCbpIBnIEiOQyARKPAQoMaGVscGVyX21vZGVsGAggASgJQnm6SHa6AVwKHmFnZW50LmhlbHBlcl9tb2RlbC5tYXhfbGVuLjEyOBo6dGhpcy5zaXplKCkgPD0gMTI4ID8gJycgOiAnbXVzdCBiZSBhdCBtb3N0IDEyOCBjaGFyYWN0ZXJzJ3IVMhNeW0EtWmEtejAtOS5fOi8tXSokEpQBCgttY3Bfc2VydmVycxgJIAMoCzISLmFnZW50LnYxLk1jcEdyYW50Qmu6SGi6AWAKGGFnZW50Lm1jcF9zZXJ2ZXJzLnVuaXF1ZRpEdGhpcy5tYXAoZywgZy5zZXJ2ZXJfaWQpLnVuaXF1ZSgpID8gJycgOiAnc2VydmVyIGlkcyBtdXN0IGJlIHVuaXF1ZSeSAQIQEBIYChBwcm92aWRlcl9taXNzaW5nGAogASgIEjAKFGtub3dsZWRnZV9zb3VyY2VfaWRzGAsgAygJQhK6SA+SAQwQEBgBIgZyBIjkMgESIQoZa25vd2xlZGdlX3NvdXJjZXNfbWlzc2luZxgMIAEoBRIzChBrbm93bGVkZ2VfdHVuaW5nGA0gASgLMhkuYWdlbnQudjEuS25vd2xlZGdlVHVuaW5nEiIKD21lbW9yeV9zdG9yZV9pZBgOIAEoCUIJukgGcgSI5DIBEhwKFG1lbW9yeV9zdG9yZV9taXNzaW5nGA8gASgIEjkKE3RyYW5zY3JpcHRpb25fbW9kZWwYECABKAsyHC5hZ2VudC52MS5UcmFuc2NyaXB0aW9uTW9kZWwScwoIaWRlbnRpdHkYESABKAlCYbpIXroBWwobYWdlbnQuaWRlbnRpdHkubWF4X2xlbi40MDAwGjx0aGlzLnNpemUoKSA8PSA0MDAwID8gJycgOiAnbXVzdCBiZSBhdCBtb3N0IDQwMDAgY2hhcmFjdGVycycScQoHcGVyc29uYRgSIAEoCUJgukhdugFaChphZ2VudC5wZXJzb25hLm1heF9sZW4uNDAwMBo8dGhpcy5zaXplKCkgPD0gNDAwMCA/ICcnIDogJ211c3QgYmUgYXQgbW9zdCA0MDAwIGNoYXJhY3RlcnMnIusBChJUcmFuc2NyaXB0aW9uTW9kZWwSHgoLcHJvdmlkZXJfaWQYASABKAlCCbpIBnIEiOQyARKaAQoFbW9kZWwYAiABKAlCigG6SIYBugFpCithZ2VudC50cmFuc2NyaXB0aW9uX21vZGVsLm1vZGVsLm1heF9sZW4uMTI4Gjp0aGlzLnNpemUoKSA8PSAxMjggPyAnJyA6ICdtdXN0IGJlIGF0IG1vc3QgMTI4IGNoYXJhY3RlcnMnyAEBchUyE15bQS1aYS16MC05Ll86Ly1dKyQSGAoQcHJvdmlkZXJfbWlzc2luZxgDIAEoCCLlAgoPS25vd2xlZGdlVHVuaW5nEn8KBXRvcF9rGAEgASgFQnC6SG26AWoKImFnZW50Lmtub3dsZWRnZV90dW5pbmcudG9wX2sucmFuZ2UaRHRoaXMgPT0gMCB8fCAodGhpcyA+PSAxICYmIHRoaXMgPD0gMTApID8gJycgOiAnbXVzdCBiZSAwIG9yIDEgdG8gMTAnEi8KCW1pbl9zY29yZRgCIAEoAUIXukgUEhIZAAAAAAAA8D8pAAAAAAAAAABIAIgBARKRAQoKbWF4X3Rva2VucxgDIAEoBUJ9ukh6ugF3CidhZ2VudC5rbm93bGVkZ2VfdHVuaW5nLm1heF90b2tlbnMucmFuZ2UaTHRoaXMgPT0gMCB8fCAodGhpcyA+PSA1MDAgJiYgdGhpcyA8PSA4MDAwKSA/ICcnIDogJ211c3QgYmUgMCBvciA1MDAgdG8gODAwMCdCDAoKX21pbl9zY29yZSLcAQoMQWdlbnRWZXJzaW9uEgoKAmlkGAEgASgJEhAKCGFnZW50X2lkGAIgASgJEg8KB3ZlcnNpb24YAyABKAUSJQoGY29uZmlnGAQgASgLMhUuYWdlbnQudjEuQWdlbnRDb25maWcSLgoKY3JlYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKY3JlYXRlZF9ieRgGIAEoCRIyChBlZmZlY3RpdmVfY29uZmlnGAcgASgLMhguYWdlbnQudjEuQWdlbnRFZmZlY3RpdmUijAIKEkNyZWF0ZUFnZW50UmVxdWVzdBIcCgZvcmdfaWQYASABKAlCDLpICcgBAXIEiOQyARIgCgpwcm9qZWN0X2lkGAIgASgJQgy6SAnIAQFyBIjkMgESFwoEc2x1ZxgDIAEoCUIJukgGcgSg5DIBEhoKBG5hbWUYBCABKAlCDLpICcgBAXIEkOQyARKAAQoLZGVzY3JpcHRpb24YBSABKAlCa7pIaLoBZQoeYWdlbnQuZGVzY3JpcHRpb24ubWF4X2xlbi4yMDAwGkN0aGlzLnRyaW0oKS5zaXplKCkgPD0gMjAwMCA/ICcnIDogJ211c3QgYmUgYXQgbW9zdCAyMDAwIGNoYXJhY3RlcnMnIjUKE0NyZWF0ZUFnZW50UmVzcG9uc2USHgoFYWdlbnQYASABKAsyDy5hZ2VudC52MS5BZ2VudCIrCg9HZXRBZ2VudFJlcXVlc3QSGAoCaWQYASABKAlCDLpICcgBAXIEiOQyASJdChBHZXRBZ2VudFJlc3BvbnNlEh4KBWFnZW50GAEgASgLMg8uYWdlbnQudjEuQWdlbnQSKQoIZGVmYXVsdHMYAiABKAsyFy5hZ2VudC52MS5BZ2VudERlZmF1bHRzIjUKEUxpc3RBZ2VudHNSZXF1ZXN0EiAKCnByb2plY3RfaWQYASABKAlCDLpICcgBAXIEiOQyASJgChJMaXN0QWdlbnRzUmVzcG9uc2USHwoGYWdlbnRzGAEgAygLMg8uYWdlbnQudjEuQWdlbnQSKQoIZGVmYXVsdHMYAiABKAsyFy5hZ2VudC52MS5BZ2VudERlZmF1bHRzIs0BChJVcGRhdGVBZ2VudFJlcXVlc3QSGAoCaWQYASABKAlCDLpICcgBAXIEiOQyARIaCgRuYW1lGAIgASgJQgy6SAnIAQFyBJDkMgESgAEKC2Rlc2NyaXB0aW9uGAMgASgJQmu6SGi6AWUKHmFnZW50LmRlc2NyaXB0aW9uLm1heF9sZW4uMjAwMBpDdGhpcy50cmltKCkuc2l6ZSgpIDw9IDIwMDAgPyAnJyA6ICdtdXN0IGJlIGF0IG1vc3QgMjAwMCBjaGFyYWN0ZXJzJyI1ChNVcGRhdGVBZ2VudFJlc3BvbnNlEh4KBWFnZW50GAEgASgLMg8uYWdlbnQudjEuQWdlbnQiLgoSRGVsZXRlQWdlbnRSZXF1ZXN0EhgKAmlkGAEgASgJQgy6SAnIAQFyBIjkMgEiFQoTRGVsZXRlQWdlbnRSZXNwb25zZSJiChdVcGRhdGVBZ2VudERyYWZ0UmVxdWVzdBIYCgJpZBgBIAEoCUIMukgJyAEBcgSI5DIBEi0KBmNvbmZpZxgCIAEoCzIVLmFnZW50LnYxLkFnZW50Q29uZmlnQga6SAPIAQEiOgoYVXBkYXRlQWdlbnREcmFmdFJlc3BvbnNlEh4KBWFnZW50GAEgASgLMg8uYWdlbnQudjEuQWdlbnQiLwoTUHVibGlzaEFnZW50UmVxdWVzdBIYCgJpZBgBIAEoCUIMukgJyAEBcgSI5DIBInAKFFB1Ymxpc2hBZ2VudFJlc3BvbnNlEh4KBWFnZW50GAEgASgLMg8uYWdlbnQudjEuQWdlbnQSJwoHdmVyc2lvbhgCIAEoCzIWLmFnZW50LnYxLkFnZW50VmVyc2lvbhIPCgdjcmVhdGVkGAMgASgIIlQKGExpc3RBZ2VudFZlcnNpb25zUmVxdWVzdBIeCghhZ2VudF9pZBgBIAEoCUIMukgJyAEBcgSI5DIBEhgKBWxpbWl0GAIgASgFQgm6SAYaBBhkKAAiRQoZTGlzdEFnZW50VmVyc2lvbnNSZXNwb25zZRIoCgh2ZXJzaW9ucxgBIAMoCzIWLmFnZW50LnYxLkFnZW50VmVyc2lvbjK0DAoMQWdlbnRTZXJ2aWNlErEBCgtDcmVhdGVBZ2VudBIcLmFnZW50LnYxLkNyZWF0ZUFnZW50UmVxdWVzdBodLmFnZW50LnYxLkNyZWF0ZUFnZW50UmVzcG9uc2UiZcrzGGEKDGFnZW50X2NyZWF0ZRJKQ3JlYXRlIGFuIGFnZW50IHdpdGhpbiBhIHByb2plY3QsIG1pbnRpbmcgYSBzbHVnIHdoZW4gb25lIGlzIG5vdCBzdXBwbGllZC4gASoDYXBwEnAKCEdldEFnZW50EhkuYWdlbnQudjEuR2V0QWdlbnRSZXF1ZXN0GhouYWdlbnQudjEuR2V0QWdlbnRSZXNwb25zZSItyvMYKQoJYWdlbnRfZ2V0EhNHZXQgYW4gYWdlbnQgYnkgaWQuGgJpZCoDYXBwEoUBCgpMaXN0QWdlbnRzEhsuYWdlbnQudjEuTGlzdEFnZW50c1JlcXVlc3QaHC5hZ2VudC52MS5MaXN0QWdlbnRzUmVzcG9uc2UiPMrzGDgKCmFnZW50X2xpc3QSGUxpc3QgYWdlbnRzIGluIGEgcHJvamVjdC4aCnByb2plY3RfaWQqA2FwcBKYAQoLVXBkYXRlQWdlbnQSHC5hZ2VudC52MS5VcGRhdGVBZ2VudFJlcXVlc3QaHS5hZ2VudC52MS5VcGRhdGVBZ2VudFJlc3BvbnNlIkzK8xhICgxhZ2VudF91cGRhdGUSJ1VwZGF0ZSBhbiBhZ2VudCdzIG5hbWUgYW5kIGRlc2NyaXB0aW9uLhoCaWQaBG5hbWUgASoDYXBwEoMBCgtEZWxldGVBZ2VudBIcLmFnZW50LnYxLkRlbGV0ZUFnZW50UmVxdWVzdBodLmFnZW50LnYxLkRlbGV0ZUFnZW50UmVzcG9uc2UiN8rzGDMKDGFnZW50X2RlbGV0ZRIWRGVsZXRlIGFuIGFnZW50IGJ5IGlkLhoCaWQgASoDYXBwMAESrgMKEFVwZGF0ZUFnZW50RHJhZnQSIS5hZ2VudC52MS5VcGRhdGVBZ2VudERyYWZ0UmVxdWVzdBoiLmFnZW50LnYxLlVwZGF0ZUFnZW50RHJhZnRSZXNwb25zZSLSAsrzGM0CChJhZ2VudF91cGRhdGVfZHJhZnQSowJSZXBsYWNlIGFuIGFnZW50J3MgZHJhZnQgY29uZmlndXJhdGlvbjogdGhlIHByb21wdCBmaWVsZHMgaWRlbnRpdHksIHBlcnNvbmEgYW5kIGluc3RydWN0aW9ucywgbW9kZWwsIHRlbXBlcmF0dXJlLCB0b29scywgbWF4IHN0ZXBzIGFuZCBidWRnZXQuIFJlcGxhY2VzIHRoZSB3aG9sZSBjb25maWd1cmF0aW9uOyBzZW5kIGV2ZXJ5IGZpZWxkIHlvdSBrZWVwLCBpbmNsdWRpbmcgaWRlbnRpdHkgYW5kIHBlcnNvbmEuIFRoZSBwdWJsaXNoZWQgdmVyc2lvbiBpcyB1bmNoYW5nZWQgdW50aWwgYWdlbnRfcHVibGlzaC4aAmlkGgZjb25maWcgASoDYXBwEugBCgxQdWJsaXNoQWdlbnQSHS5hZ2VudC52MS5QdWJsaXNoQWdlbnRSZXF1ZXN0Gh4uYWdlbnQudjEuUHVibGlzaEFnZW50UmVzcG9uc2UimAHK8xiTAQoNYWdlbnRfcHVibGlzaBJ3UHVibGlzaCBhbiBhZ2VudCdzIGRyYWZ0IGFzIGl0cyBuZXh0IGltbXV0YWJsZSB2ZXJzaW9uOyBhbiB1bmNoYW5nZWQgZHJhZnQgcmV0dXJucyB0aGUgbGF0ZXN0IHZlcnNpb24gYW5kIGNyZWF0ZXMgbm9uZS4aAmlkIAEqA2FwcBK4AQoRTGlzdEFnZW50VmVyc2lvbnMSIi5hZ2VudC52MS5MaXN0QWdlbnRWZXJzaW9uc1JlcXVlc3QaIy5hZ2VudC52MS5MaXN0QWdlbnRWZXJzaW9uc1Jlc3BvbnNlIlrK8xhWChJhZ2VudF92ZXJzaW9uX2xpc3QSMUxpc3QgYW4gYWdlbnQncyBwdWJsaXNoZWQgdmVyc2lvbnMsIG5ld2VzdCBmaXJzdC4aCGFnZW50X2lkKgNhcHBChwEKDGNvbS5hZ2VudC52MUIKQWdlbnRQcm90b1ABWiphbHRhbHVuZS5pZC9vYWdlbnQvZ2VuL2dvL2FnZW50L3YxO2FnZW50djGiAgNBWFiqAghBZ2VudC5WMcoCCEFnZW50XFYx4gIUQWdlbnRcVjFcR1BCTWV0YWRhdGHqAglBZ2VudDo6VjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mcp_v1_annotations, file_oagent_v1_rules]);
+  fileDesc("ChRhZ2VudC92MS9hZ2VudC5wcm90bxIIYWdlbnQudjEioQMKBUFnZW50EgoKAmlkGAEgASgJEg4KBm9yZ19pZBgDIAEoCRISCgpwcm9qZWN0X2lkGAQgASgJEgwKBHNsdWcYBSABKAkSDAoEbmFtZRgGIAEoCRITCgtkZXNjcmlwdGlvbhgHIAEoCRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIkCgVkcmFmdBgKIAEoCzIVLmFnZW50LnYxLkFnZW50Q29uZmlnEhkKEXB1Ymxpc2hlZF92ZXJzaW9uGAsgASgFEjQKEGRyYWZ0X3VwZGF0ZWRfYXQYDCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhsKE3VucHVibGlzaGVkX2NoYW5nZXMYDSABKAgSMgoQZWZmZWN0aXZlX2NvbmZpZxgOIAEoCzIYLmFnZW50LnYxLkFnZW50RWZmZWN0aXZlSgQIAhADUglwdWJsaWNfaWQidwoOQWdlbnRFZmZlY3RpdmUSEQoJbWF4X3N0ZXBzGAEgASgFEhcKD2tub3dsZWRnZV90b3BfaxgCIAEoBRIbChNrbm93bGVkZ2VfbWluX3Njb3JlGAMgASgBEhwKFGtub3dsZWRnZV9tYXhfdG9rZW5zGAQgASgFIqACCg1BZ2VudERlZmF1bHRzEhEKCW1heF9zdGVwcxgBIAEoBRIVCg1tYXhfbWF4X3N0ZXBzGAIgASgFEhcKD21heF90ZW1wZXJhdHVyZRgDIAEoARIWCg5tYXhfY29zdF9jZW50cxgEIAEoBRIeChZ2b2ljZV9ub3RlX21heF9zZWNvbmRzGAUgASgFEhwKFHZvaWNlX25vdGVfbWF4X2J5dGVzGAYgASgFEhYKDndlYl90aW1lb3V0X21zGAcgASgFEhoKEm1heF93ZWJfdGltZW91dF9tcxgIIAEoBRIeChZ3ZWJfbWF4X2NhbGxzX3Blcl90dXJuGAkgASgFEiIKGm1heF93ZWJfbWF4X2NhbGxzX3Blcl90dXJuGAogASgFIogBCglBZ2VudFRvb2wSKwoEbmFtZRgBIAEoCUIdukgachgyFl5bYS16QS1aMC05Xy4tXXsxLDY0fSQSGAoQcmVxdWlyZV9hcHByb3ZhbBgCIAEoCBI0CglmcmVlX3doZW4YAyADKAsyFy5hZ2VudC52MS5GcmVlQ29uZGl0aW9uQgi6SAWSAQIQCCJ1Cg1GcmVlQ29uZGl0aW9uEjEKA2FyZxgBIAEoCUIkukghch8yHV5bQS1aYS16X11bQS1aYS16MC05X117MCw2M30kEiEKBnZhbHVlcxgCIAMoCUIRukgOkgELEBAiB3IFEAEogAISDgoGYWJzZW50GAMgASgIIskBCghNY3BHcmFudBIfCglzZXJ2ZXJfaWQYASABKAlCDLpICcgBAXIEiOQyARKKAQoFdG9vbHMYAiADKAsyEy5hZ2VudC52MS5BZ2VudFRvb2xCZrpIY7oBWwoYYWdlbnQuZ3JhbnRfdG9vbHMudW5pcXVlGj90aGlzLm1hcCh0LCB0Lm5hbWUpLnVuaXF1ZSgpID8gJycgOiAndG9vbCBuYW1lcyBtdXN0IGJlIHVuaXF1ZSeSAQIQQBIPCgdtaXNzaW5nGAMgASgIIvwKCgtBZ2VudENvbmZpZxJ+CgxpbnN0cnVjdGlvbnMYASABKAlCaLpIZboBYgogYWdlbnQuaW5zdHJ1Y3Rpb25zLm1heF9sZW4uMzIwMDAaPnRoaXMuc2l6ZSgpIDw9IDMyMDAwID8gJycgOiAnbXVzdCBiZSBhdCBtb3N0IDMyMDAwIGNoYXJhY3RlcnMnEoEBCgVtb2RlbBgCIAEoCUJyukhvugFVChdhZ2VudC5tb2RlbC5tYXhfbGVuLjEyOBo6dGhpcy5zaXplKCkgPD0gMTI4ID8gJycgOiAnbXVzdCBiZSBhdCBtb3N0IDEyOCBjaGFyYWN0ZXJzJ3IVMhNeW0EtWmEtejAtOS5fOi8tXSokEiwKC3RlbXBlcmF0dXJlGAMgASgBQhe6SBQSEhkAAAAAAAAAQCkAAAAAAAAAABIcCgltYXhfc3RlcHMYBCABKAVCCbpIBhoEGGQoABIjCg5tYXhfY29zdF9jZW50cxgFIAEoBUILukgIGgYYwIQ9KAAShAEKBXRvb2xzGAYgAygLMhMuYWdlbnQudjEuQWdlbnRUb29sQmC6SF26AVUKEmFnZW50LnRvb2xzLnVuaXF1ZRo/dGhpcy5tYXAodCwgdC5uYW1lKS51bmlxdWUoKSA/ICcnIDogJ3Rvb2wgbmFtZXMgbXVzdCBiZSB1bmlxdWUnkgECEEASHgoLcHJvdmlkZXJfaWQYByABKAlCCbpIBnIEiOQyARKPAQoMaGVscGVyX21vZGVsGAggASgJQnm6SHa6AVwKHmFnZW50LmhlbHBlcl9tb2RlbC5tYXhfbGVuLjEyOBo6dGhpcy5zaXplKCkgPD0gMTI4ID8gJycgOiAnbXVzdCBiZSBhdCBtb3N0IDEyOCBjaGFyYWN0ZXJzJ3IVMhNeW0EtWmEtejAtOS5fOi8tXSokEpQBCgttY3Bfc2VydmVycxgJIAMoCzISLmFnZW50LnYxLk1jcEdyYW50Qmu6SGi6AWAKGGFnZW50Lm1jcF9zZXJ2ZXJzLnVuaXF1ZRpEdGhpcy5tYXAoZywgZy5zZXJ2ZXJfaWQpLnVuaXF1ZSgpID8gJycgOiAnc2VydmVyIGlkcyBtdXN0IGJlIHVuaXF1ZSeSAQIQEBIYChBwcm92aWRlcl9taXNzaW5nGAogASgIEjAKFGtub3dsZWRnZV9zb3VyY2VfaWRzGAsgAygJQhK6SA+SAQwQEBgBIgZyBIjkMgESIQoZa25vd2xlZGdlX3NvdXJjZXNfbWlzc2luZxgMIAEoBRIzChBrbm93bGVkZ2VfdHVuaW5nGA0gASgLMhkuYWdlbnQudjEuS25vd2xlZGdlVHVuaW5nEiIKD21lbW9yeV9zdG9yZV9pZBgOIAEoCUIJukgGcgSI5DIBEhwKFG1lbW9yeV9zdG9yZV9taXNzaW5nGA8gASgIEjkKE3RyYW5zY3JpcHRpb25fbW9kZWwYECABKAsyHC5hZ2VudC52MS5UcmFuc2NyaXB0aW9uTW9kZWwScwoIaWRlbnRpdHkYESABKAlCYbpIXroBWwobYWdlbnQuaWRlbnRpdHkubWF4X2xlbi40MDAwGjx0aGlzLnNpemUoKSA8PSA0MDAwID8gJycgOiAnbXVzdCBiZSBhdCBtb3N0IDQwMDAgY2hhcmFjdGVycycScQoHcGVyc29uYRgSIAEoCUJgukhdugFaChphZ2VudC5wZXJzb25hLm1heF9sZW4uNDAwMBo8dGhpcy5zaXplKCkgPD0gNDAwMCA/ICcnIDogJ211c3QgYmUgYXQgbW9zdCA0MDAwIGNoYXJhY3RlcnMnEh8KA3dlYhgTIAEoCzISLmFnZW50LnYxLldlYlRvb2xzIvoCCghXZWJUb29scxIOCgZzZWFyY2gYASABKAgSDQoFZmV0Y2gYAiABKAgSDAoEaHR0cBgDIAEoCBIwChNmZXRjaF9hbGxvd19kb21haW5zGAQgAygJQhO6SBCSAQ0QMhgBIgdyBRABGP0BEicKCmh0dHBfaG9zdHMYBSADKAlCE7pIEJIBDRAyGAEiB3IFEAEY/QESKwoPcmVxdWVzdF9oZWFkZXJzGAYgAygJQhK6SA+SAQwQFBgBIgZyBBABGEASkQEKCnRpbWVvdXRfbXMYByABKAVCfbpIeroBdwoaYWdlbnQud2ViLnRpbWVvdXRfbXMucmFuZ2UaWXRoaXMgPT0gMCB8fCAodGhpcyA+PSAxMDAwICYmIHRoaXMgPD0gMzAwMDApID8gJycgOiAnbXVzdCBiZSAwIG9yIGJldHdlZW4gMTAwMCBhbmQgMzAwMDAnEiUKEm1heF9jYWxsc19wZXJfdHVybhgIIAEoBUIJukgGGgQYMigAIusBChJUcmFuc2NyaXB0aW9uTW9kZWwSHgoLcHJvdmlkZXJfaWQYASABKAlCCbpIBnIEiOQyARKaAQoFbW9kZWwYAiABKAlCigG6SIYBugFpCithZ2VudC50cmFuc2NyaXB0aW9uX21vZGVsLm1vZGVsLm1heF9sZW4uMTI4Gjp0aGlzLnNpemUoKSA8PSAxMjggPyAnJyA6ICdtdXN0IGJlIGF0IG1vc3QgMTI4IGNoYXJhY3RlcnMnyAEBchUyE15bQS1aYS16MC05Ll86Ly1dKyQSGAoQcHJvdmlkZXJfbWlzc2luZxgDIAEoCCLlAgoPS25vd2xlZGdlVHVuaW5nEn8KBXRvcF9rGAEgASgFQnC6SG26AWoKImFnZW50Lmtub3dsZWRnZV90dW5pbmcudG9wX2sucmFuZ2UaRHRoaXMgPT0gMCB8fCAodGhpcyA+PSAxICYmIHRoaXMgPD0gMTApID8gJycgOiAnbXVzdCBiZSAwIG9yIDEgdG8gMTAnEi8KCW1pbl9zY29yZRgCIAEoAUIXukgUEhIZAAAAAAAA8D8pAAAAAAAAAABIAIgBARKRAQoKbWF4X3Rva2VucxgDIAEoBUJ9ukh6ugF3CidhZ2VudC5rbm93bGVkZ2VfdHVuaW5nLm1heF90b2tlbnMucmFuZ2UaTHRoaXMgPT0gMCB8fCAodGhpcyA+PSA1MDAgJiYgdGhpcyA8PSA4MDAwKSA/ICcnIDogJ211c3QgYmUgMCBvciA1MDAgdG8gODAwMCdCDAoKX21pbl9zY29yZSLcAQoMQWdlbnRWZXJzaW9uEgoKAmlkGAEgASgJEhAKCGFnZW50X2lkGAIgASgJEg8KB3ZlcnNpb24YAyABKAUSJQoGY29uZmlnGAQgASgLMhUuYWdlbnQudjEuQWdlbnRDb25maWcSLgoKY3JlYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKY3JlYXRlZF9ieRgGIAEoCRIyChBlZmZlY3RpdmVfY29uZmlnGAcgASgLMhguYWdlbnQudjEuQWdlbnRFZmZlY3RpdmUijAIKEkNyZWF0ZUFnZW50UmVxdWVzdBIcCgZvcmdfaWQYASABKAlCDLpICcgBAXIEiOQyARIgCgpwcm9qZWN0X2lkGAIgASgJQgy6SAnIAQFyBIjkMgESFwoEc2x1ZxgDIAEoCUIJukgGcgSg5DIBEhoKBG5hbWUYBCABKAlCDLpICcgBAXIEkOQyARKAAQoLZGVzY3JpcHRpb24YBSABKAlCa7pIaLoBZQoeYWdlbnQuZGVzY3JpcHRpb24ubWF4X2xlbi4yMDAwGkN0aGlzLnRyaW0oKS5zaXplKCkgPD0gMjAwMCA/ICcnIDogJ211c3QgYmUgYXQgbW9zdCAyMDAwIGNoYXJhY3RlcnMnIjUKE0NyZWF0ZUFnZW50UmVzcG9uc2USHgoFYWdlbnQYASABKAsyDy5hZ2VudC52MS5BZ2VudCIrCg9HZXRBZ2VudFJlcXVlc3QSGAoCaWQYASABKAlCDLpICcgBAXIEiOQyASJdChBHZXRBZ2VudFJlc3BvbnNlEh4KBWFnZW50GAEgASgLMg8uYWdlbnQudjEuQWdlbnQSKQoIZGVmYXVsdHMYAiABKAsyFy5hZ2VudC52MS5BZ2VudERlZmF1bHRzIjUKEUxpc3RBZ2VudHNSZXF1ZXN0EiAKCnByb2plY3RfaWQYASABKAlCDLpICcgBAXIEiOQyASJgChJMaXN0QWdlbnRzUmVzcG9uc2USHwoGYWdlbnRzGAEgAygLMg8uYWdlbnQudjEuQWdlbnQSKQoIZGVmYXVsdHMYAiABKAsyFy5hZ2VudC52MS5BZ2VudERlZmF1bHRzIs0BChJVcGRhdGVBZ2VudFJlcXVlc3QSGAoCaWQYASABKAlCDLpICcgBAXIEiOQyARIaCgRuYW1lGAIgASgJQgy6SAnIAQFyBJDkMgESgAEKC2Rlc2NyaXB0aW9uGAMgASgJQmu6SGi6AWUKHmFnZW50LmRlc2NyaXB0aW9uLm1heF9sZW4uMjAwMBpDdGhpcy50cmltKCkuc2l6ZSgpIDw9IDIwMDAgPyAnJyA6ICdtdXN0IGJlIGF0IG1vc3QgMjAwMCBjaGFyYWN0ZXJzJyI1ChNVcGRhdGVBZ2VudFJlc3BvbnNlEh4KBWFnZW50GAEgASgLMg8uYWdlbnQudjEuQWdlbnQiLgoSRGVsZXRlQWdlbnRSZXF1ZXN0EhgKAmlkGAEgASgJQgy6SAnIAQFyBIjkMgEiFQoTRGVsZXRlQWdlbnRSZXNwb25zZSJiChdVcGRhdGVBZ2VudERyYWZ0UmVxdWVzdBIYCgJpZBgBIAEoCUIMukgJyAEBcgSI5DIBEi0KBmNvbmZpZxgCIAEoCzIVLmFnZW50LnYxLkFnZW50Q29uZmlnQga6SAPIAQEiOgoYVXBkYXRlQWdlbnREcmFmdFJlc3BvbnNlEh4KBWFnZW50GAEgASgLMg8uYWdlbnQudjEuQWdlbnQiLwoTUHVibGlzaEFnZW50UmVxdWVzdBIYCgJpZBgBIAEoCUIMukgJyAEBcgSI5DIBInAKFFB1Ymxpc2hBZ2VudFJlc3BvbnNlEh4KBWFnZW50GAEgASgLMg8uYWdlbnQudjEuQWdlbnQSJwoHdmVyc2lvbhgCIAEoCzIWLmFnZW50LnYxLkFnZW50VmVyc2lvbhIPCgdjcmVhdGVkGAMgASgIIlQKGExpc3RBZ2VudFZlcnNpb25zUmVxdWVzdBIeCghhZ2VudF9pZBgBIAEoCUIMukgJyAEBcgSI5DIBEhgKBWxpbWl0GAIgASgFQgm6SAYaBBhkKAAiRQoZTGlzdEFnZW50VmVyc2lvbnNSZXNwb25zZRIoCgh2ZXJzaW9ucxgBIAMoCzIWLmFnZW50LnYxLkFnZW50VmVyc2lvbjK0DAoMQWdlbnRTZXJ2aWNlErEBCgtDcmVhdGVBZ2VudBIcLmFnZW50LnYxLkNyZWF0ZUFnZW50UmVxdWVzdBodLmFnZW50LnYxLkNyZWF0ZUFnZW50UmVzcG9uc2UiZcrzGGEKDGFnZW50X2NyZWF0ZRJKQ3JlYXRlIGFuIGFnZW50IHdpdGhpbiBhIHByb2plY3QsIG1pbnRpbmcgYSBzbHVnIHdoZW4gb25lIGlzIG5vdCBzdXBwbGllZC4gASoDYXBwEnAKCEdldEFnZW50EhkuYWdlbnQudjEuR2V0QWdlbnRSZXF1ZXN0GhouYWdlbnQudjEuR2V0QWdlbnRSZXNwb25zZSItyvMYKQoJYWdlbnRfZ2V0EhNHZXQgYW4gYWdlbnQgYnkgaWQuGgJpZCoDYXBwEoUBCgpMaXN0QWdlbnRzEhsuYWdlbnQudjEuTGlzdEFnZW50c1JlcXVlc3QaHC5hZ2VudC52MS5MaXN0QWdlbnRzUmVzcG9uc2UiPMrzGDgKCmFnZW50X2xpc3QSGUxpc3QgYWdlbnRzIGluIGEgcHJvamVjdC4aCnByb2plY3RfaWQqA2FwcBKYAQoLVXBkYXRlQWdlbnQSHC5hZ2VudC52MS5VcGRhdGVBZ2VudFJlcXVlc3QaHS5hZ2VudC52MS5VcGRhdGVBZ2VudFJlc3BvbnNlIkzK8xhICgxhZ2VudF91cGRhdGUSJ1VwZGF0ZSBhbiBhZ2VudCdzIG5hbWUgYW5kIGRlc2NyaXB0aW9uLhoCaWQaBG5hbWUgASoDYXBwEoMBCgtEZWxldGVBZ2VudBIcLmFnZW50LnYxLkRlbGV0ZUFnZW50UmVxdWVzdBodLmFnZW50LnYxLkRlbGV0ZUFnZW50UmVzcG9uc2UiN8rzGDMKDGFnZW50X2RlbGV0ZRIWRGVsZXRlIGFuIGFnZW50IGJ5IGlkLhoCaWQgASoDYXBwMAESrgMKEFVwZGF0ZUFnZW50RHJhZnQSIS5hZ2VudC52MS5VcGRhdGVBZ2VudERyYWZ0UmVxdWVzdBoiLmFnZW50LnYxLlVwZGF0ZUFnZW50RHJhZnRSZXNwb25zZSLSAsrzGM0CChJhZ2VudF91cGRhdGVfZHJhZnQSowJSZXBsYWNlIGFuIGFnZW50J3MgZHJhZnQgY29uZmlndXJhdGlvbjogdGhlIHByb21wdCBmaWVsZHMgaWRlbnRpdHksIHBlcnNvbmEgYW5kIGluc3RydWN0aW9ucywgbW9kZWwsIHRlbXBlcmF0dXJlLCB0b29scywgbWF4IHN0ZXBzIGFuZCBidWRnZXQuIFJlcGxhY2VzIHRoZSB3aG9sZSBjb25maWd1cmF0aW9uOyBzZW5kIGV2ZXJ5IGZpZWxkIHlvdSBrZWVwLCBpbmNsdWRpbmcgaWRlbnRpdHkgYW5kIHBlcnNvbmEuIFRoZSBwdWJsaXNoZWQgdmVyc2lvbiBpcyB1bmNoYW5nZWQgdW50aWwgYWdlbnRfcHVibGlzaC4aAmlkGgZjb25maWcgASoDYXBwEugBCgxQdWJsaXNoQWdlbnQSHS5hZ2VudC52MS5QdWJsaXNoQWdlbnRSZXF1ZXN0Gh4uYWdlbnQudjEuUHVibGlzaEFnZW50UmVzcG9uc2UimAHK8xiTAQoNYWdlbnRfcHVibGlzaBJ3UHVibGlzaCBhbiBhZ2VudCdzIGRyYWZ0IGFzIGl0cyBuZXh0IGltbXV0YWJsZSB2ZXJzaW9uOyBhbiB1bmNoYW5nZWQgZHJhZnQgcmV0dXJucyB0aGUgbGF0ZXN0IHZlcnNpb24gYW5kIGNyZWF0ZXMgbm9uZS4aAmlkIAEqA2FwcBK4AQoRTGlzdEFnZW50VmVyc2lvbnMSIi5hZ2VudC52MS5MaXN0QWdlbnRWZXJzaW9uc1JlcXVlc3QaIy5hZ2VudC52MS5MaXN0QWdlbnRWZXJzaW9uc1Jlc3BvbnNlIlrK8xhWChJhZ2VudF92ZXJzaW9uX2xpc3QSMUxpc3QgYW4gYWdlbnQncyBwdWJsaXNoZWQgdmVyc2lvbnMsIG5ld2VzdCBmaXJzdC4aCGFnZW50X2lkKgNhcHBChwEKDGNvbS5hZ2VudC52MUIKQWdlbnRQcm90b1ABWiphbHRhbHVuZS5pZC9vYWdlbnQvZ2VuL2dvL2FnZW50L3YxO2FnZW50djGiAgNBWFiqAghBZ2VudC5WMcoCCEFnZW50XFYx4gIUQWdlbnRcVjFcR1BCTWV0YWRhdGHqAglBZ2VudDo6VjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_timestamp, file_mcp_v1_annotations, file_oagent_v1_rules]);
 
 /**
  * @generated from message agent.v1.Agent
@@ -169,6 +169,26 @@ export type AgentDefaults = Message<"agent.v1.AgentDefaults"> & {
    * @generated from field: int32 voice_note_max_bytes = 6;
    */
   voiceNoteMaxBytes: number;
+
+  /**
+   * @generated from field: int32 web_timeout_ms = 7;
+   */
+  webTimeoutMs: number;
+
+  /**
+   * @generated from field: int32 max_web_timeout_ms = 8;
+   */
+  maxWebTimeoutMs: number;
+
+  /**
+   * @generated from field: int32 web_max_calls_per_turn = 9;
+   */
+  webMaxCallsPerTurn: number;
+
+  /**
+   * @generated from field: int32 max_web_max_calls_per_turn = 10;
+   */
+  maxWebMaxCallsPerTurn: number;
 };
 
 /**
@@ -360,6 +380,11 @@ export type AgentConfig = Message<"agent.v1.AgentConfig"> & {
    * @generated from field: string persona = 18;
    */
   persona: string;
+
+  /**
+   * @generated from field: agent.v1.WebTools web = 19;
+   */
+  web?: WebTools;
 };
 
 /**
@@ -368,6 +393,60 @@ export type AgentConfig = Message<"agent.v1.AgentConfig"> & {
  */
 export const AgentConfigSchema: GenMessage<AgentConfig> = /*@__PURE__*/
   messageDesc(file_agent_v1_agent, 6);
+
+/**
+ * WebTools turns on the built-in web tools: web_search uses the project's search provider; web_fetch reads pages of fetch_allow_domains, which publish requires when web_fetch is on; http_request calls http_hosts, sending only request_headers from the model and the project's HTTP secrets for the host. Hosts are lowercase; timeout_ms and max_calls_per_turn of 0 use the recommended values from GetAgent's defaults.
+ *
+ * @generated from message agent.v1.WebTools
+ */
+export type WebTools = Message<"agent.v1.WebTools"> & {
+  /**
+   * @generated from field: bool search = 1;
+   */
+  search: boolean;
+
+  /**
+   * @generated from field: bool fetch = 2;
+   */
+  fetch: boolean;
+
+  /**
+   * @generated from field: bool http = 3;
+   */
+  http: boolean;
+
+  /**
+   * @generated from field: repeated string fetch_allow_domains = 4;
+   */
+  fetchAllowDomains: string[];
+
+  /**
+   * @generated from field: repeated string http_hosts = 5;
+   */
+  httpHosts: string[];
+
+  /**
+   * @generated from field: repeated string request_headers = 6;
+   */
+  requestHeaders: string[];
+
+  /**
+   * @generated from field: int32 timeout_ms = 7;
+   */
+  timeoutMs: number;
+
+  /**
+   * @generated from field: int32 max_calls_per_turn = 8;
+   */
+  maxCallsPerTurn: number;
+};
+
+/**
+ * Describes the message agent.v1.WebTools.
+ * Use `create(WebToolsSchema)` to create a new message.
+ */
+export const WebToolsSchema: GenMessage<WebTools> = /*@__PURE__*/
+  messageDesc(file_agent_v1_agent, 7);
 
 /**
  * TranscriptionModel turns the end user's voice notes into text with a speech-to-text model on any provider of the project; unset turns voice notes off, and provider_missing is set when the provider no longer resolves.
@@ -396,7 +475,7 @@ export type TranscriptionModel = Message<"agent.v1.TranscriptionModel"> & {
  * Use `create(TranscriptionModelSchema)` to create a new message.
  */
 export const TranscriptionModelSchema: GenMessage<TranscriptionModel> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 7);
+  messageDesc(file_agent_v1_agent, 8);
 
 /**
  * KnowledgeTuning shapes the knowledge search before each turn. top_k is the passages per answer and max_tokens the knowledge budget, 0 meaning the recommended value; min_score is the minimum relevance, unset meaning the recommended value (0 is a valid setting). ListKnowledgeSources returns the recommended values.
@@ -425,7 +504,7 @@ export type KnowledgeTuning = Message<"agent.v1.KnowledgeTuning"> & {
  * Use `create(KnowledgeTuningSchema)` to create a new message.
  */
 export const KnowledgeTuningSchema: GenMessage<KnowledgeTuning> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 8);
+  messageDesc(file_agent_v1_agent, 9);
 
 /**
  * AgentVersion is an immutable published configuration; version is a display label, id the public id.
@@ -478,7 +557,7 @@ export type AgentVersion = Message<"agent.v1.AgentVersion"> & {
  * Use `create(AgentVersionSchema)` to create a new message.
  */
 export const AgentVersionSchema: GenMessage<AgentVersion> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 9);
+  messageDesc(file_agent_v1_agent, 10);
 
 /**
  * @generated from message agent.v1.CreateAgentRequest
@@ -515,7 +594,7 @@ export type CreateAgentRequest = Message<"agent.v1.CreateAgentRequest"> & {
  * Use `create(CreateAgentRequestSchema)` to create a new message.
  */
 export const CreateAgentRequestSchema: GenMessage<CreateAgentRequest> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 10);
+  messageDesc(file_agent_v1_agent, 11);
 
 /**
  * @generated from message agent.v1.CreateAgentResponse
@@ -532,7 +611,7 @@ export type CreateAgentResponse = Message<"agent.v1.CreateAgentResponse"> & {
  * Use `create(CreateAgentResponseSchema)` to create a new message.
  */
 export const CreateAgentResponseSchema: GenMessage<CreateAgentResponse> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 11);
+  messageDesc(file_agent_v1_agent, 12);
 
 /**
  * @generated from message agent.v1.GetAgentRequest
@@ -549,7 +628,7 @@ export type GetAgentRequest = Message<"agent.v1.GetAgentRequest"> & {
  * Use `create(GetAgentRequestSchema)` to create a new message.
  */
 export const GetAgentRequestSchema: GenMessage<GetAgentRequest> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 12);
+  messageDesc(file_agent_v1_agent, 13);
 
 /**
  * @generated from message agent.v1.GetAgentResponse
@@ -571,7 +650,7 @@ export type GetAgentResponse = Message<"agent.v1.GetAgentResponse"> & {
  * Use `create(GetAgentResponseSchema)` to create a new message.
  */
 export const GetAgentResponseSchema: GenMessage<GetAgentResponse> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 13);
+  messageDesc(file_agent_v1_agent, 14);
 
 /**
  * @generated from message agent.v1.ListAgentsRequest
@@ -588,7 +667,7 @@ export type ListAgentsRequest = Message<"agent.v1.ListAgentsRequest"> & {
  * Use `create(ListAgentsRequestSchema)` to create a new message.
  */
 export const ListAgentsRequestSchema: GenMessage<ListAgentsRequest> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 14);
+  messageDesc(file_agent_v1_agent, 15);
 
 /**
  * @generated from message agent.v1.ListAgentsResponse
@@ -610,7 +689,7 @@ export type ListAgentsResponse = Message<"agent.v1.ListAgentsResponse"> & {
  * Use `create(ListAgentsResponseSchema)` to create a new message.
  */
 export const ListAgentsResponseSchema: GenMessage<ListAgentsResponse> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 15);
+  messageDesc(file_agent_v1_agent, 16);
 
 /**
  * @generated from message agent.v1.UpdateAgentRequest
@@ -637,7 +716,7 @@ export type UpdateAgentRequest = Message<"agent.v1.UpdateAgentRequest"> & {
  * Use `create(UpdateAgentRequestSchema)` to create a new message.
  */
 export const UpdateAgentRequestSchema: GenMessage<UpdateAgentRequest> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 16);
+  messageDesc(file_agent_v1_agent, 17);
 
 /**
  * @generated from message agent.v1.UpdateAgentResponse
@@ -654,7 +733,7 @@ export type UpdateAgentResponse = Message<"agent.v1.UpdateAgentResponse"> & {
  * Use `create(UpdateAgentResponseSchema)` to create a new message.
  */
 export const UpdateAgentResponseSchema: GenMessage<UpdateAgentResponse> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 17);
+  messageDesc(file_agent_v1_agent, 18);
 
 /**
  * @generated from message agent.v1.DeleteAgentRequest
@@ -671,7 +750,7 @@ export type DeleteAgentRequest = Message<"agent.v1.DeleteAgentRequest"> & {
  * Use `create(DeleteAgentRequestSchema)` to create a new message.
  */
 export const DeleteAgentRequestSchema: GenMessage<DeleteAgentRequest> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 18);
+  messageDesc(file_agent_v1_agent, 19);
 
 /**
  * @generated from message agent.v1.DeleteAgentResponse
@@ -684,7 +763,7 @@ export type DeleteAgentResponse = Message<"agent.v1.DeleteAgentResponse"> & {
  * Use `create(DeleteAgentResponseSchema)` to create a new message.
  */
 export const DeleteAgentResponseSchema: GenMessage<DeleteAgentResponse> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 19);
+  messageDesc(file_agent_v1_agent, 20);
 
 /**
  * @generated from message agent.v1.UpdateAgentDraftRequest
@@ -706,7 +785,7 @@ export type UpdateAgentDraftRequest = Message<"agent.v1.UpdateAgentDraftRequest"
  * Use `create(UpdateAgentDraftRequestSchema)` to create a new message.
  */
 export const UpdateAgentDraftRequestSchema: GenMessage<UpdateAgentDraftRequest> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 20);
+  messageDesc(file_agent_v1_agent, 21);
 
 /**
  * @generated from message agent.v1.UpdateAgentDraftResponse
@@ -723,7 +802,7 @@ export type UpdateAgentDraftResponse = Message<"agent.v1.UpdateAgentDraftRespons
  * Use `create(UpdateAgentDraftResponseSchema)` to create a new message.
  */
 export const UpdateAgentDraftResponseSchema: GenMessage<UpdateAgentDraftResponse> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 21);
+  messageDesc(file_agent_v1_agent, 22);
 
 /**
  * @generated from message agent.v1.PublishAgentRequest
@@ -740,7 +819,7 @@ export type PublishAgentRequest = Message<"agent.v1.PublishAgentRequest"> & {
  * Use `create(PublishAgentRequestSchema)` to create a new message.
  */
 export const PublishAgentRequestSchema: GenMessage<PublishAgentRequest> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 22);
+  messageDesc(file_agent_v1_agent, 23);
 
 /**
  * @generated from message agent.v1.PublishAgentResponse
@@ -769,7 +848,7 @@ export type PublishAgentResponse = Message<"agent.v1.PublishAgentResponse"> & {
  * Use `create(PublishAgentResponseSchema)` to create a new message.
  */
 export const PublishAgentResponseSchema: GenMessage<PublishAgentResponse> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 23);
+  messageDesc(file_agent_v1_agent, 24);
 
 /**
  * ListAgentVersionsRequest lists an agent's versions newest first; limit 0 means the server default of 50, and the most is 100.
@@ -793,7 +872,7 @@ export type ListAgentVersionsRequest = Message<"agent.v1.ListAgentVersionsReques
  * Use `create(ListAgentVersionsRequestSchema)` to create a new message.
  */
 export const ListAgentVersionsRequestSchema: GenMessage<ListAgentVersionsRequest> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 24);
+  messageDesc(file_agent_v1_agent, 25);
 
 /**
  * @generated from message agent.v1.ListAgentVersionsResponse
@@ -810,7 +889,7 @@ export type ListAgentVersionsResponse = Message<"agent.v1.ListAgentVersionsRespo
  * Use `create(ListAgentVersionsResponseSchema)` to create a new message.
  */
 export const ListAgentVersionsResponseSchema: GenMessage<ListAgentVersionsResponse> = /*@__PURE__*/
-  messageDesc(file_agent_v1_agent, 25);
+  messageDesc(file_agent_v1_agent, 26);
 
 /**
  * AgentService manages agents. Every id is a public id.

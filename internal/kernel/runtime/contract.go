@@ -28,6 +28,41 @@ type TurnRequest struct {
 	Knowledge       []Passage         `json:"knowledge,omitempty"`
 	Memory          *MemoryRequest    `json:"memory,omitempty"`
 	Guardrails      *Guardrails       `json:"guardrails,omitempty"`
+	Web             *WebSpec          `json:"web,omitempty"`
+}
+
+// WebSpec turns on the built-in web tools a sub-object is present for. SECURITY: it carries the search key and secret values; never log it.
+type WebSpec struct {
+	TimeoutMs       int32          `json:"timeoutMs"`
+	MaxCallsPerTurn int32          `json:"maxCallsPerTurn"`
+	Search          *WebSearchSpec `json:"search,omitempty"`
+	Fetch           *WebFetchSpec  `json:"fetch,omitempty"`
+	HTTP            *WebHTTPSpec   `json:"http,omitempty"`
+}
+
+// WebSearchSpec names the search provider and its key.
+type WebSearchSpec struct {
+	Kind   string `json:"kind"`
+	APIKey string `json:"apiKey"`
+}
+
+// WebFetchSpec lists the hosts web_fetch may read; empty means any public host.
+type WebFetchSpec struct {
+	AllowDomains []string `json:"allowDomains"`
+}
+
+// WebHTTPSpec lists the hosts http_request may call, the headers the model may set and the secrets attached per host.
+type WebHTTPSpec struct {
+	Hosts          []string    `json:"hosts"`
+	RequestHeaders []string    `json:"requestHeaders"`
+	Secrets        []WebSecret `json:"secrets"`
+}
+
+// WebSecret is a header value sent only on calls to Host.
+type WebSecret struct {
+	Host   string `json:"host"`
+	Header string `json:"header"`
+	Value  string `json:"value"`
 }
 
 // MemoryRequest is a leg's recalled facts and how the runtime handles this leg's new memory; Facts is never nil.
@@ -259,6 +294,7 @@ type Budget struct {
 	RemainingMicros int64   `json:"remainingMicros"`
 	Prices          Prices  `json:"prices"`
 	HelperPrices    *Prices `json:"helperPrices,omitempty"`
+	WebSearchPrice  *int64  `json:"webSearchPrice,omitempty"`
 }
 
 // Prices are micro-USD per 1M tokens, per token class.
@@ -429,6 +465,7 @@ type Usage struct {
 	CacheWriteInputTokens int64        `json:"cacheWriteInputTokens"`
 	Estimated             bool         `json:"estimated"`
 	Helper                *HelperUsage `json:"helper,omitempty"`
+	WebSearchCalls        int64        `json:"webSearchCalls,omitempty"`
 }
 
 // HelperUsage is the tokens the agent's helper model used in a turn, counted like Usage.

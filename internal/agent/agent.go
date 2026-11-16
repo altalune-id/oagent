@@ -90,6 +90,8 @@ type Config struct {
 	MemoryStoreID uuid.UUID `json:"memory_store_id,omitzero"`
 	// TranscriptionModel turns the end user's voice notes into text; the zero value turns voice notes off.
 	TranscriptionModel TranscriptionModel `json:"transcription_model,omitzero"`
+	// Web is the agent's built-in web tools; the zero value turns them all off.
+	Web Web `json:"web,omitzero"`
 }
 
 // TranscriptionModel names a speech-to-text model, on any provider of the project.
@@ -111,9 +113,9 @@ type MCPGrant struct {
 	Tools    []Tool    `json:"tools,omitempty"`
 }
 
-// SECURITY: knowledge and a store that remembers named API users are untrusted: any project key can plant facts for any Oagent-User.
+// SECURITY: knowledge, a store that remembers named API users, and web tool results are untrusted: their content is not the person's.
 func readsUntrusted(c Config, apiMemory bool) bool {
-	return len(c.KnowledgeSourceIDs) > 0 || apiMemory
+	return len(c.KnowledgeSourceIDs) > 0 || apiMemory || c.Web.On()
 }
 
 type toolKey struct {
@@ -262,6 +264,9 @@ func (c Config) Validate() error {
 	if err := c.KnowledgeTuning.validate(invalid); err != nil {
 		return err
 	}
+	if err := c.Web.validate(invalid); err != nil {
+		return err
+	}
 	seen := make(map[string]bool, len(c.Tools))
 	for _, t := range c.Tools {
 		if !toolNameRe.MatchString(t.Name) {
@@ -372,7 +377,7 @@ func (c Config) Equal(o Config) bool {
 		slices.EqualFunc(c.MCPServers, o.MCPServers, func(a, b MCPGrant) bool {
 			return a.ServerID == b.ServerID && slices.EqualFunc(a.Tools, b.Tools, Tool.Equal)
 		}) && slices.Equal(c.KnowledgeSourceIDs, o.KnowledgeSourceIDs) && c.KnowledgeTuning.equal(o.KnowledgeTuning) &&
-		c.MemoryStoreID == o.MemoryStoreID && c.TranscriptionModel == o.TranscriptionModel
+		c.MemoryStoreID == o.MemoryStoreID && c.TranscriptionModel == o.TranscriptionModel && c.Web.equal(o.Web)
 }
 
 // SetDraft replaces the draft with a valid cfg edited at now; the published version is unchanged.
@@ -631,6 +636,7 @@ func configToProto(c Config) *agentv1.AgentConfig {
 		Identity: c.Identity, Persona: c.Persona, Instructions: c.Instructions,
 		Model: c.Model, Temperature: c.Temperature, MaxSteps: c.MaxSteps, MaxCostCents: c.MaxCostCents,
 		HelperModel: c.HelperModel, Tools: toolsToProto(c.Tools), KnowledgeTuning: tuningToProto(c.KnowledgeTuning),
+		Web: webToProto(c.Web),
 	}
 	for _, g := range c.MCPServers {
 		out.McpServers = append(out.McpServers, &agentv1.McpGrant{Tools: toolsToProto(g.Tools)})
@@ -682,6 +688,7 @@ func configFromProto(c *agentv1.AgentConfig) Config {
 		Model: c.GetModel(), Temperature: c.GetTemperature(),
 		MaxSteps: c.GetMaxSteps(), MaxCostCents: c.GetMaxCostCents(), HelperModel: c.GetHelperModel(),
 		Tools: toolsFromProto(c.GetTools()), KnowledgeTuning: tuningFromProto(c.GetKnowledgeTuning()),
+		Web: webFromProto(c.GetWeb()),
 	}
 	for _, g := range c.GetMcpServers() {
 		out.MCPServers = append(out.MCPServers, MCPGrant{Tools: toolsFromProto(g.GetTools())})

@@ -60,6 +60,7 @@ type Usage struct {
 	HelperCacheWriteTokens int64
 
 	TranscriptionSeconds int64
+	WebSearchCalls       int64
 }
 
 // Run is the aggregate root: one turn of an agent version on a thread.

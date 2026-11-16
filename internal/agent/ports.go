@@ -60,6 +60,11 @@ type Memory interface {
 	RemembersAPIUsers(ctx context.Context, id uuid.UUID) (bool, error)
 }
 
+// WebSearch says whether a project has a search provider its agents can search with.
+type WebSearch interface {
+	HasSearchProvider(ctx context.Context, projectID uuid.UUID) (bool, error)
+}
+
 // Locker share-locks a version's providers and servers until the unit of work ends; a gone one answers *InvalidGrantError.
 type Locker interface {
 	LockShared(ctx context.Context, providerIDs, serverIDs []uuid.UUID) error

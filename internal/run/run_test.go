@@ -339,3 +339,16 @@ func TestEmit_CarriesTranscriptionSeconds(t *testing.T) {
 	require.NotNil(t, p.CostMicros)
 	assert.Equal(t, int64(10+3_000), *p.CostMicros, "the event cost includes the transcription seconds")
 }
+
+func TestCost_WebSearchCallsOwnPrice(t *testing.T) {
+	p := &Prices{Input: new(int64(1_000_000)), WebSearch: new(int64(5_000))}
+	micros, priced := Cost(Usage{InputTokens: 10, WebSearchCalls: 3}, p)
+	require.True(t, priced)
+	assert.Equal(t, int64(10+15_000), micros, "each search call at the pinned price per call")
+
+	_, priced = Cost(Usage{WebSearchCalls: 1}, &Prices{Input: new(int64(1))})
+	assert.False(t, priced, "search calls with no search price leave the run unpriced")
+	micros, priced = Cost(Usage{WebSearchCalls: 2}, &Prices{WebSearch: new(int64(0))})
+	assert.True(t, priced, "a free provider is priced at 0")
+	assert.Zero(t, micros)
+}

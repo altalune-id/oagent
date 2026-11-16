@@ -29,6 +29,7 @@ type AgentStore struct {
 	Knowledge   map[uuid.UUID][]agent.Named
 	StoreInUse  bool
 	Memory      map[uuid.UUID][]agent.Named
+	WebSearch   []agent.Named
 }
 
 // SaveDraft implements agent.Store like Save.
@@ -188,6 +189,11 @@ func (f *AgentStore) MemoryStoreInUse(context.Context, uuid.UUID) (bool, error) 
 // MemoryUse implements agent.Store; Memory answers it.
 func (f *AgentStore) MemoryUse(context.Context, uuid.UUID) (map[uuid.UUID][]agent.Named, error) {
 	return f.Memory, f.Err
+}
+
+// WebSearchUse implements agent.Store; WebSearch answers it.
+func (f *AgentStore) WebSearchUse(context.Context, uuid.UUID) ([]agent.Named, error) {
+	return f.WebSearch, f.Err
 }
 
 // MCPServerInUse implements agent.Store; ServerInUse answers it.

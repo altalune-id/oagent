@@ -1040,3 +1040,31 @@ func (f *RunStore) HoldLease(ctx context.Context, token string, threadID uuid.UU
 	}
 	return nil
 }
+
+// RunWebTools is an in-memory run.WebKeys; SecretHosts records each Secrets call's hosts.
+type RunWebTools struct {
+	Search      run.WebSearchProvider
+	SearchErr   error
+	searchCalls int
+	Opened      []run.WebSecret
+	Unsealable  int
+	SecretsErr  error
+	SecretHosts [][]string
+}
+
+var _ run.WebKeys = (*RunWebTools)(nil)
+
+// SearchProvider implements run.WebKeys.
+func (f *RunWebTools) SearchProvider(context.Context, uuid.UUID) (run.WebSearchProvider, error) {
+	f.searchCalls++
+	return f.Search, f.SearchErr
+}
+
+// SearchCalls counts SearchProvider calls.
+func (f *RunWebTools) SearchCalls() int { return f.searchCalls }
+
+// Secrets implements run.WebKeys; it returns every configured secret, whatever the hosts, so callers must filter.
+func (f *RunWebTools) Secrets(_ context.Context, _ uuid.UUID, hosts []string) ([]run.WebSecret, int, error) {
+	f.SecretHosts = append(f.SecretHosts, hosts)
+	return f.Opened, f.Unsealable, f.SecretsErr
+}

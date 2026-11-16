@@ -381,6 +381,9 @@ func (s *AgentService) configFrom(ctx context.Context, a *Agent, in *agentv1.Age
 		}
 		cfg.MemoryStoreID = id
 	}
+	if err := mayBindWeb(ctx, a, cfg.Web); err != nil {
+		return Config{}, err
+	}
 	tm := in.GetTranscriptionModel()
 	if tm != nil && tm.GetProviderId() == "" {
 		return Config{}, &InvalidGrantError{Reason: GrantTranscriptionModel, Name: tm.GetModel()}
@@ -414,6 +417,22 @@ func widens(current, next MCPGrant) bool {
 		}
 	}
 	return false
+}
+
+// SECURITY: web search or an HTTP host new to the draft spends project-wide credentials, so it needs the whole project and provider:read.
+func mayBindWeb(ctx context.Context, a *Agent, w Web) error {
+	if authz.ReachWholeProject(ctx, a.OrgID, a.ProjectID) && authz.Allowed(session.PrincipalFrom(ctx), scope.ProviderRead) {
+		return nil
+	}
+	if w.Search && !a.Draft.Web.Search {
+		return &InvalidGrantError{Reason: GrantWebSearchProvider}
+	}
+	for _, h := range w.HTTPHosts {
+		if !slices.Contains(a.Draft.Web.HTTPHosts, h) {
+			return &InvalidGrantError{Reason: GrantHTTPHosts, Name: h}
+		}
+	}
+	return nil
 }
 
 // SECURITY: a reference new to the draft needs reach on it and its read scope, so an agent-scoped key cannot borrow project credentials.

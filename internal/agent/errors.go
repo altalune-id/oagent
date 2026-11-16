@@ -156,6 +156,9 @@ const (
 	GrantMemoryStore         GrantReason = "memory_store"
 	GrantMemoryStoreDisabled GrantReason = "memory_store_disabled"
 	GrantTranscriptionModel  GrantReason = "transcription_model"
+	GrantWebSearchProvider   GrantReason = "web_search_provider"
+	GrantHTTPHosts           GrantReason = "http_hosts"
+	GrantFetchAllowDomains   GrantReason = "fetch_allow_domains"
 )
 
 func (r GrantReason) text() string {
@@ -183,7 +186,13 @@ func (r GrantReason) text() string {
 	case GrantTranscriptionModel:
 		return "names a transcription model this project's providers do not list"
 	case GrantUnapprovedTool:
-		return "grants a tool that runs without approval while the agent reads knowledge or memory that API keys can write"
+		return "grants a tool that runs without approval while the agent reads knowledge, memory that API keys can write, or the web"
+	case GrantWebSearchProvider:
+		return "turns on web search in a project with no usable search provider"
+	case GrantHTTPHosts:
+		return "turns on http_request with no allowed hosts"
+	case GrantFetchAllowDomains:
+		return "turns on web_fetch with no allowed domains"
 	default:
 		return "is invalid"
 	}

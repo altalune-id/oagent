@@ -31,6 +31,7 @@ type Service struct {
 	locker     Locker
 	knowledge  Knowledge
 	memory     Memory
+	webSearch  WebSearch
 }
 
 // NewService builds a Service over store; a save and its event run as one unit of work on uow.
@@ -65,6 +66,12 @@ func (s *Service) WithMCPServers(m MCPServers) *Service {
 // WithMemory checks and locks a config's memory store with m; without it every store is unknown.
 func (s *Service) WithMemory(m Memory) *Service {
 	s.memory = m
+	return s
+}
+
+// WithWebSearch checks a config's web search against the project's provider with w; without it web search is refused.
+func (s *Service) WithWebSearch(w WebSearch) *Service {
+	s.webSearch = w
 	return s
 }
 
@@ -297,6 +304,9 @@ func (s *Service) publishable(ctx context.Context, a *Agent, latest *Version) er
 	if err != nil {
 		return err
 	}
+	if err := s.checkWeb(ctx, a.ProjectID, a.Draft.Web); err != nil {
+		return err
+	}
 	draftAPI, err := s.remembersAPIUsers(ctx, a.Draft)
 	if err != nil {
 		return err
@@ -364,6 +374,27 @@ func (s *Service) checkReferences(ctx context.Context, projectID uuid.UUID, cfg 
 		names[g.ServerID] = name
 	}
 	return names, nil
+}
+
+func (s *Service) checkWeb(ctx context.Context, projectID uuid.UUID, w Web) error {
+	switch {
+	case w.HTTP && len(w.HTTPHosts) == 0:
+		return &InvalidGrantError{Reason: GrantHTTPHosts}
+	case w.Fetch && len(w.FetchAllowDomains) == 0:
+		return &InvalidGrantError{Reason: GrantFetchAllowDomains}
+	case !w.Search:
+		return nil
+	case s.webSearch == nil:
+		return &InvalidGrantError{Reason: GrantWebSearchProvider}
+	}
+	ok, err := s.webSearch.HasSearchProvider(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return &InvalidGrantError{Reason: GrantWebSearchProvider}
+	}
+	return nil
 }
 
 func (s *Service) checkTranscriptionModel(ctx context.Context, projectID uuid.UUID, tm TranscriptionModel) error {

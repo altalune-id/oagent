@@ -3,6 +3,7 @@ package controlplane
 import (
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -232,6 +233,8 @@ func TestRequestRules_Accept(t *testing.T) {
 		{"reserved slug is the domain's", &orgv1.UpdateOrgRequest{Id: goodID, Name: "Acme", Slug: "new"}},
 		{"a free search provider", &webtoolv1.SetWebSearchProviderRequest{ProjectId: goodID, Kind: webtoolv1.WebSearchProviderKind_WEB_SEARCH_PROVIDER_KIND_BRAVE, PricePerCallMicros: proto.Int64(0)}},
 		{"tavily is the domain's", &webtoolv1.SetWebSearchProviderRequest{ProjectId: goodID, Kind: webtoolv1.WebSearchProviderKind_WEB_SEARCH_PROVIDER_KIND_TAVILY, ApiKey: new("k"), PricePerCallMicros: proto.Int64(5000)}},
+		{"web tools at their limits", webDraft(&agentv1.WebTools{TimeoutMs: 30000, MaxCallsPerTurn: 50, HttpHosts: hosts(50), RequestHeaders: hosts(20)})},
+		{"web tools with the recommended values", webDraft(&agentv1.WebTools{Search: true, TimeoutMs: 0})},
 		{"a secret for an authorization header", &webtoolv1.SetHTTPSecretRequest{ProjectId: goodID, Host: "api.example.com", Header: "Authorization", Value: strings.Repeat("v", 4096)}},
 	}
 	for _, tt := range accepted {
@@ -378,6 +381,12 @@ func TestRequestRules_Refuse(t *testing.T) {
 		{"4097-character auth value", withMCP(func(r *mcpserverv1.CreateMcpServerRequest) { r.AuthValue = strings.Repeat("v", 4097) }), "auth_value", apperror.FieldTooLong},
 		{"empty auth value on update", &mcpserverv1.UpdateMcpServerRequest{Id: goodID, Url: "https://e.com", AuthKind: mcpserverv1.McpServerAuthKind_MCP_SERVER_AUTH_KIND_BEARER, AuthValue: new(string), TimeoutMs: 5000}, "auth_value", apperror.FieldTooShort},
 		{"delivery id", &webhookv1.RetryWebhookDeliveryRequest{OrgId: goodID, ProjectId: goodID, Id: goodID, DeliveryId: "x"}, "delivery_id", apperror.FieldInvalidFormat},
+		{"web timeout below 1000", webDraft(&agentv1.WebTools{TimeoutMs: 999}), "config.web.timeout_ms", apperror.FieldInvalid},
+		{"web timeout above 30000", webDraft(&agentv1.WebTools{TimeoutMs: 30001}), "config.web.timeout_ms", apperror.FieldInvalid},
+		{"51 web calls per turn", webDraft(&agentv1.WebTools{MaxCallsPerTurn: 51}), "config.web.max_calls_per_turn", apperror.FieldInvalid},
+		{"51 http hosts", webDraft(&agentv1.WebTools{HttpHosts: hosts(51)}), "config.web.http_hosts", apperror.FieldTooMany},
+		{"21 request headers", webDraft(&agentv1.WebTools{RequestHeaders: hosts(21)}), "config.web.request_headers", apperror.FieldTooMany},
+		{"a duplicate fetch domain", webDraft(&agentv1.WebTools{FetchAllowDomains: []string{"a.example", "a.example"}}), "config.web.fetch_allow_domains", apperror.FieldInvalid},
 		{"search provider without a price", &webtoolv1.SetWebSearchProviderRequest{ProjectId: goodID, Kind: webtoolv1.WebSearchProviderKind_WEB_SEARCH_PROVIDER_KIND_BRAVE}, "price_per_call_micros", apperror.FieldRequired},
 		{"negative search price", &webtoolv1.SetWebSearchProviderRequest{ProjectId: goodID, Kind: webtoolv1.WebSearchProviderKind_WEB_SEARCH_PROVIDER_KIND_BRAVE, PricePerCallMicros: proto.Int64(-1)}, "price_per_call_micros", apperror.FieldInvalid},
 		{"unspecified search kind", &webtoolv1.SetWebSearchProviderRequest{ProjectId: goodID, PricePerCallMicros: proto.Int64(0)}, "kind", apperror.FieldRequired},
@@ -508,6 +517,18 @@ func TestEveryMessageRuleNamesAField(t *testing.T) {
 		}
 		assert.Empty(t, rules.GetOneof(), "%s: a message oneof rule has no single field to name; use a CEL rule", input.FullName())
 	}
+}
+
+func webDraft(w *agentv1.WebTools) *agentv1.UpdateAgentDraftRequest {
+	return &agentv1.UpdateAgentDraftRequest{Id: goodID, Config: &agentv1.AgentConfig{Web: w}}
+}
+
+func hosts(n int) []string {
+	out := make([]string, n)
+	for i := range out {
+		out[i] = "h" + strconv.Itoa(i) + ".example.com"
+	}
+	return out
 }
 
 func freeWhen(edit func([]*agentv1.FreeCondition) []*agentv1.FreeCondition) *agentv1.UpdateAgentDraftRequest {

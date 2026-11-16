@@ -13,6 +13,7 @@ import (
 	"altalune.id/oagent/internal/mcpserver"
 	"altalune.id/oagent/internal/memory"
 	"altalune.id/oagent/internal/modelprovider"
+	"altalune.id/oagent/internal/webtool"
 )
 
 // configureModelProviders allows http:// base URLs outside production (dev/self-hosted).
@@ -184,4 +185,22 @@ type serverUsage struct{ agents agent.Store }
 // ServerInUse implements mcpserver.Usage over the agents' latest published versions.
 func (u serverUsage) ServerInUse(ctx context.Context, serverID uuid.UUID) (bool, error) {
 	return u.agents.MCPServerInUse(ctx, serverID)
+}
+
+type grantWebSearch struct{ web *webtool.Service }
+
+func (g grantWebSearch) HasSearchProvider(ctx context.Context, projectID uuid.UUID) (bool, error) {
+	p, err := g.web.Provider(ctx, projectID)
+	return p != nil && p.Kind.Available(), err
+}
+
+type webSearchUsers struct{ agents agent.Store }
+
+func (u webSearchUsers) WebSearchUsers(ctx context.Context, projectID uuid.UUID) ([]webtool.UsedBy, error) {
+	named, err := u.agents.WebSearchUse(ctx, projectID)
+	out := make([]webtool.UsedBy, 0, len(named))
+	for _, n := range named {
+		out = append(out, webtool.UsedBy{AgentID: n.ID, PublicID: n.PublicID, Name: n.Name})
+	}
+	return out, err
 }

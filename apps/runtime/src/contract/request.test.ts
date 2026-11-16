@@ -296,9 +296,14 @@ describe('validateRequest', () => {
       expect(validateRequest({ ...golden('limit_reached.request.json'), web: noSearch }).ok).toBe(true);
     });
 
-    it.each(requests)('leaves web out of the golden %s', (name) => {
+    it.each(requests.filter(f => !f.startsWith('web_')))('leaves web out of the golden %s', (name) => {
       const result = validateRequest(golden(name));
       expect(result.ok && ('web' in result.request || 'webSearchPrice' in (result.request.limits.budget ?? {}))).toBe(false);
+    });
+
+    it('takes every web tool in the golden Go sends', () => {
+      const result = validateRequest(golden('web_tools.request.json'));
+      expect(result.ok && result.request.web && Object.keys(result.request.web).sort()).toEqual(['fetch', 'http', 'maxCallsPerTurn', 'search', 'timeoutMs']);
     });
   });
 

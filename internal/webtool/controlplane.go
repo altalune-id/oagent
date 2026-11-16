@@ -37,9 +37,20 @@ func (s *WebToolService) GetWebSearchProvider(
 	if err != nil {
 		return nil, err
 	}
-	out := &webtoolv1.GetWebSearchProviderResponse{AvailableKinds: availableKindsToProto()}
+	used, err := s.svc.SearchUsers(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	out := &webtoolv1.GetWebSearchProviderResponse{AvailableKinds: availableKindsToProto(), UsedBy: make([]*webtoolv1.UsedBy, 0, len(used))}
 	if p != nil {
 		out.Provider = providerToProto(p)
+	}
+	for _, u := range used {
+		// SECURITY: a resource-limited key sees only the agents it reaches.
+		if !authz.ReachResource(ctx, orgOf(ctx), projectID, u.AgentID) {
+			continue
+		}
+		out.UsedBy = append(out.UsedBy, &webtoolv1.UsedBy{Id: u.PublicID, Name: u.Name})
 	}
 	return connect.NewResponse(out), nil
 }
@@ -129,6 +140,11 @@ func (s *WebToolService) DeleteHTTPSecret(
 		return nil, err
 	}
 	return connect.NewResponse(&webtoolv1.DeleteHTTPSecretResponse{}), nil
+}
+
+func orgOf(ctx context.Context) uuid.UUID {
+	tc, _ := tenant.From(ctx)
+	return tc.OrgID
 }
 
 // SECURITY: an unknown or unreachable project answers the same not-found; a reached project scopes the call to its org.

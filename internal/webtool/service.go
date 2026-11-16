@@ -18,6 +18,7 @@ type Service struct {
 	store      Store
 	unexpected apperror.UnexpectedFunc
 	sealer     sealer.Sealer
+	users      Users
 }
 
 // OpenProvider is what a run needs to search: the kind, the opened key and the price per call.
@@ -41,6 +42,24 @@ func NewService(store Store, unexpected apperror.UnexpectedFunc) *Service {
 func (s *Service) WithSealer(sl sealer.Sealer) *Service {
 	s.sealer = sl
 	return s
+}
+
+// WithUsers names the agents that search with a project's provider through u; without it the list is empty.
+func (s *Service) WithUsers(u Users) *Service {
+	s.users = u
+	return s
+}
+
+// SearchUsers names the agents of a project whose latest published version has web search on.
+func (s *Service) SearchUsers(ctx context.Context, projectID uuid.UUID) ([]UsedBy, error) {
+	if s.users == nil {
+		return nil, nil
+	}
+	used, err := s.users.WebSearchUsers(ctx, projectID)
+	if err != nil {
+		return nil, s.errOrReport(ctx, "webtool: search users", err)
+	}
+	return used, nil
 }
 
 // Provider loads a project's search provider of the org on ctx; nil when it has none.
@@ -76,7 +95,7 @@ func (s *Service) SetProvider(ctx context.Context, projectID uuid.UUID, kind Kin
 		return nil, &SecretRequiredError{}
 	}
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	// shortcut: read and save are not one locked unit of work, so racing edits are last-write-wins; lock FOR UPDATE if they race.
+	// NOTE: read and save are not one locked unit of work, so two racing edits are last-write-wins.
 	p := &Provider{OrgID: tc.OrgID, ProjectID: projectID, Kind: kind, PricePerCallMicros: price, CreatedAt: now, UpdatedAt: now}
 	if old != nil {
 		p.APIKeySealed, p.CreatedAt = old.APIKeySealed, old.CreatedAt
@@ -122,7 +141,7 @@ func (s *Service) SetSecret(ctx context.Context, projectID uuid.UUID, host, head
 	if value == "" || strings.ContainsFunc(value, unicode.IsControl) {
 		return nil, apperror.Invalid("value", apperror.FieldInvalid)
 	}
-	// shortcut: two concurrent new keys can pass at 49, ending at 51; count inside the INSERT if it matters.
+	// NOTE: the cap is soft; two concurrent new keys at 49 can both land.
 	total, exists, err := s.store.SecretCount(ctx, projectID, sec.Host, sec.Header)
 	if err != nil {
 		return nil, s.errOrReport(ctx, "webtool: count secrets", err)
@@ -167,8 +186,11 @@ func (s *Service) OpenSearchKey(ctx context.Context, projectID uuid.UUID) (OpenP
 		return OpenProvider{}, &NotFoundError{}
 	}
 	key, err := openSearchKey(s.sealer, p.OrgID, p.ProjectID, p.APIKeySealed)
+	if err != nil && !IsSecretsUnavailableError(err) {
+		err = &SearchKeyUnsealableError{Cause: err}
+	}
 	if err != nil {
-		return OpenProvider{}, s.errOrReport(ctx, "webtool: open search key", err)
+		return OpenProvider{}, err
 	}
 	return OpenProvider{Kind: p.Kind, APIKey: key, PricePerCallMicros: p.PricePerCallMicros}, nil
 }

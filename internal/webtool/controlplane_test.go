@@ -392,3 +392,53 @@ func TestWebToolReach_LimitedKeyListsOnlyItsSecrets(t *testing.T) {
 	require.Len(t, list.Msg.GetSecrets(), 1, "a resource-limited key sees only the secrets it holds")
 	assert.Equal(t, mine.GetId(), list.Msg.GetSecrets()[0].GetId())
 }
+
+type usersPort struct {
+	used []webtool.UsedBy
+	err  error
+}
+
+func (u usersPort) WebSearchUsers(context.Context, uuid.UUID) ([]webtool.UsedBy, error) {
+	return u.used, u.err
+}
+
+func TestGetProvider_UsedBy(t *testing.T) {
+	f := newFixture(t)
+	f.svc.WithUsers(usersPort{used: []webtool.UsedBy{{AgentID: uuid.New(), PublicID: "agentpublicidagentpub", Name: "Support"}}})
+	res, err := f.cp.GetWebSearchProvider(f.ctx, connect.NewRequest(&webtoolv1.GetWebSearchProviderRequest{ProjectId: f.prjPub}))
+	require.NoError(t, err)
+	require.Len(t, res.Msg.GetUsedBy(), 1)
+	assert.Equal(t, "agentpublicidagentpub", res.Msg.GetUsedBy()[0].GetId())
+	assert.Equal(t, "Support", res.Msg.GetUsedBy()[0].GetName())
+
+	f.svc.WithUsers(usersPort{err: assert.AnError})
+	_, err = f.cp.GetWebSearchProvider(f.ctx, connect.NewRequest(&webtoolv1.GetWebSearchProviderRequest{ProjectId: f.prjPub}))
+	require.ErrorIs(t, err, assert.AnError)
+}
+
+func TestOpenSearchKey_UnsealableIsExpectedNotReported(t *testing.T) {
+	f := newFixture(t)
+	_, err := f.setProvider(brave, new(searchKey), 0)
+	require.NoError(t, err)
+	f.store.Providers[f.prj].APIKeySealed = []byte("garbage")
+	_, err = f.svc.OpenSearchKey(f.scoped(), f.prj)
+	require.Error(t, err)
+	assert.True(t, webtool.IsExpectedError(err), "a key that will not open is a known state, not an incident: %v", err)
+	assert.Empty(t, f.unexpected, "it never reaches the unexpected reporter")
+}
+
+func TestGetProvider_UsedByHidesAgentsOutOfReach(t *testing.T) {
+	f := newFixture(t)
+	mine, other := uuid.New(), uuid.New()
+	f.svc.WithUsers(usersPort{used: []webtool.UsedBy{
+		{AgentID: mine, PublicID: "mineagentpublicidmine", Name: "Mine"},
+		{AgentID: other, PublicID: "otheragentpublicidoth", Name: "Other"},
+	}})
+	f.ctx = session.PrincipalInto(context.Background(), session.Principal{
+		Source: session.SourceAPIKey, ActiveOrgID: f.org, ProjectIDs: []uuid.UUID{f.prj}, ResourceIDs: []uuid.UUID{mine},
+	})
+	res, err := f.cp.GetWebSearchProvider(f.ctx, connect.NewRequest(&webtoolv1.GetWebSearchProviderRequest{ProjectId: f.prjPub}))
+	require.NoError(t, err)
+	require.Len(t, res.Msg.GetUsedBy(), 1, "a resource-limited key sees only the agents it reaches")
+	assert.Equal(t, "mineagentpublicidmine", res.Msg.GetUsedBy()[0].GetId())
+}

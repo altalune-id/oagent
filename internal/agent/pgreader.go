@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -212,6 +213,24 @@ func (s *postgresStore) MemoryUse(ctx context.Context, projectID uuid.UUID) (map
 		}
 		return []uuid.UUID{c.MemoryStoreID}
 	})
+}
+
+// WebSearchUse names the agents of a project whose latest published version has web search on, by name.
+func (s *postgresStore) WebSearchUse(ctx context.Context, projectID uuid.UUID) ([]Named, error) {
+	use, err := s.usedBy(ctx, "WebSearchUse", s.webUse, projectID, func(c Config) []uuid.UUID {
+		if !c.Web.Search {
+			return nil
+		}
+		return []uuid.UUID{uuid.Nil}
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := use[uuid.Nil]
+	slices.SortFunc(out, func(a, b Named) int {
+		return cmp.Or(cmp.Compare(a.Name, b.Name), cmp.Compare(a.ID.String(), b.ID.String()))
+	})
+	return out, nil
 }
 
 func (s *postgresStore) usedBy(

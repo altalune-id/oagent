@@ -21,6 +21,7 @@ import (
 	"altalune.id/oagent/internal/modelprovider"
 	"altalune.id/oagent/internal/run"
 	"altalune.id/oagent/internal/testutil/fakes"
+	"altalune.id/oagent/internal/webtool"
 	"altalune.id/oagent/sealer"
 )
 
@@ -31,6 +32,7 @@ func TestRunAgents_MapsThePinnedVersion(t *testing.T) {
 		Instructions: "be brief", Model: "gpt-4o", Temperature: 0.3, MaxSteps: 7, MaxCostCents: 50, ProviderID: provider,
 		HelperModel: "mini", MemoryStoreID: memStore, TranscriptionModel: agent.TranscriptionModel{ProviderID: stt, Model: "whisper-1"},
 		MCPServers: []agent.MCPGrant{{ServerID: server, Tools: []agent.Tool{{Name: "a"}, {Name: "b", RequireApproval: true}}}},
+		Web:        agent.Web{Search: true, HTTP: true, HTTPHosts: []string{"api.example.com"}, RequestHeaders: []string{"X-V"}},
 	}}
 	store := &fakes.AgentStore{Agent: ag, Published: []*agent.Version{v}}
 	a := runAgents{store: store}
@@ -44,7 +46,11 @@ func TestRunAgents_MapsThePinnedVersion(t *testing.T) {
 		TranscriptionModel: run.TranscriptionModel{ProviderID: stt, Model: "whisper-1"},
 		MCPServers:         []run.MCPGrant{{ServerID: server, Tools: []run.ToolGrant{{Name: "a"}, {Name: "b", RequireApproval: true}}}},
 		Knowledge:          run.KnowledgeTuning{MaxBytes: knowledge.RecommendedMaxTokens * 4},
-	}, got)
+		Web: run.WebTools{
+			Search: true, HTTP: true, HTTPHosts: []string{"api.example.com"}, RequestHeaders: []string{"X-V"},
+			TimeoutMs: agent.RecommendedWebTimeoutMs, MaxCalls: agent.RecommendedWebMaxCallsPerTurn,
+		},
+	}, got, "web limits arrive effective, never 0")
 	latest, err := a.Latest(ctx, ag.ID)
 	require.NoError(t, err)
 	assert.Equal(t, got, latest)
@@ -225,4 +231,39 @@ func TestRunTranscriber_CallsTheProvider(t *testing.T) {
 	m.Provider = runtime.ProviderAnthropic
 	_, err = runTranscriber{allowPrivateHosts: true}.Transcribe(t.Context(), m, "whisper-1", []byte("OggS"), "audio/ogg")
 	assert.Error(t, err, "only an OpenAI-compatible provider transcribes")
+}
+
+func TestRunWebKeys_OpensTheProviderAndSecrets(t *testing.T) {
+	store := &fakes.WebToolStore{}
+	svc := webtool.NewService(store, nil).WithSealer(testSealer(t))
+	org, project := uuid.New(), uuid.New()
+	ctx := tenant.WithOrg(context.Background(), org)
+	keys := runWebKeys{web: svc}
+
+	_, err := keys.SearchProvider(ctx, project)
+	require.ErrorIs(t, err, run.ErrNoSearchProvider)
+
+	_, err = svc.SetProvider(ctx, project, webtool.KindExa, new("exa-key"), 4000)
+	require.NoError(t, err)
+	sp, err := keys.SearchProvider(ctx, project)
+	require.NoError(t, err)
+	assert.Equal(t, run.WebSearchProvider{Kind: "exa", APIKey: "exa-key", PricePerCallMicros: 4000}, sp)
+
+	store.Providers[project].APIKeySealed = []byte("garbage")
+	_, err = keys.SearchProvider(ctx, project)
+	require.ErrorIs(t, err, run.ErrSearchKeyUnsealable)
+
+	_, err = svc.SetSecret(ctx, project, "api.example.com", "x-api-key", "v1")
+	require.NoError(t, err)
+	got, unsealable, err := keys.Secrets(ctx, project, []string{"api.example.com"})
+	require.NoError(t, err)
+	assert.Zero(t, unsealable)
+	assert.Equal(t, []run.WebSecret{{Host: "api.example.com", Header: "x-api-key", Value: "v1"}}, got)
+
+	store.Err = assert.AnError
+	_, _, err = keys.Secrets(ctx, project, []string{"api.example.com"})
+	require.ErrorIs(t, err, assert.AnError)
+	_, err = keys.SearchProvider(ctx, project)
+	require.ErrorIs(t, err, assert.AnError)
+	assert.NotErrorIs(t, err, run.ErrNoSearchProvider)
 }
