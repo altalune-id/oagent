@@ -5,3 +5,11 @@ export function focusWhenShown(el: HTMLElement, frames = 10): void {
     requestAnimationFrame(() => focusWhenShown(el, frames - 1));
   }
 }
+
+// focusIfLost focuses el when focus has fallen back to the page body or sits on a control that became disabled.
+export function focusIfLost(el: HTMLElement | null | undefined): void {
+  const active = document.activeElement;
+  if (el && (!active || active === document.body || (active as HTMLInputElement).disabled === true)) {
+    focusWhenShown(el);
+  }
+}

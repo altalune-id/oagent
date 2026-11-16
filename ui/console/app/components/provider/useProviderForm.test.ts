@@ -34,6 +34,8 @@ describe('provider helpers', () => {
     expect(toPrices({ ...blank, input: '0.4' })).toEqual({ kind: 'invalid' });
     expect(toPrices({ ...blank, input: '0.02' }, true)).toEqual({ kind: 'priced', prices: { inputMicros: 20_000n, outputMicros: 0n, cacheReadMicros: 0n, cacheWriteMicros: 0n } });
     expect(toPrices({ ...blank, input: '0.4', output: '1', cacheRead: '-1' })).toEqual({ kind: 'invalid' });
+    expect(toPrices({ ...blank, input: '0,4', output: '1,6' }, false, ',')).toEqual({ kind: 'priced', prices: { inputMicros: 400_000n, outputMicros: 1_600_000n, cacheReadMicros: 0n, cacheWriteMicros: 0n } });
+    expect(toPrices({ ...blank, input: '0,4', output: '1,6' })).toEqual({ kind: 'invalid' });
   });
 });
 
@@ -74,6 +76,29 @@ describe('useProviderForm', () => {
     expect(form.urlV1.value).toBe(true);
     form.baseUrl.value = 'https://api.anthropic.com/v1beta';
     expect(form.urlV1.value).toBe(false);
+  });
+
+  it.each([
+    ['id-ID', '0,5', '2,00', '0,006', true],
+    ['en-US', '0.5', '2.00', '0.006', true],
+    ['en-US', '0,5', '2,00', '0,006', false],
+  ] as const)('reads %s prices typed as %s / %s / %s', async (locale, input, output, audioPrice, ok) => {
+    useI18n().locale.value = locale;
+    const base = useModelProvidersStore().items[0]!;
+    const withStt = { ...base, models: [...base.models, { id: 'whisper-1', vision: false, embedding: false, transcription: true, prices: { inputMicros: 0n, outputMicros: 0n, cacheReadMicros: 0n, cacheWriteMicros: 0n, audioMinuteMicros: 6_000n } }] };
+    clients.provider.updateModelProvider.mockResolvedValue({ modelProvider: providerPBs()[0] });
+    const form = useProviderForm(orgId, projectId);
+    form.show(withStt);
+    form.models.value[0]!.prices.input = input;
+    form.models.value[0]!.prices.output = output;
+    form.models.value.at(-1)!.audioPrice = audioPrice;
+    expect(await form.submit()).toBe(ok);
+    if (ok) {
+      const sent = clients.provider.updateModelProvider.mock.calls[0]![0].models;
+      expect(sent[0].prices).toMatchObject({ inputMicros: 500_000n, outputMicros: 2_000_000n });
+      expect(sent.at(-1).prices).toMatchObject({ audioMinuteMicros: 6_000n });
+    }
+    useI18n().locale.value = 'en-US';
   });
 
   it('keeps the stored kind on edit and sends it back', async () => {

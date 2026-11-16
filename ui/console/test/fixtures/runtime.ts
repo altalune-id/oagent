@@ -5,6 +5,7 @@ import { vi } from 'vitest';
 import { McpServerAuthKind, McpServerSchema, McpServerToolSchema } from '#gen/mcpserver/v1/mcpserver_pb';
 import { MemoryBackend, MemoryStoreSchema } from '#gen/memory/v1/memory_pb';
 import { ModelProviderKind, ModelProviderSchema } from '#gen/modelprovider/v1/modelprovider_pb';
+import { WebSearchProviderKind } from '#gen/webtool/v1/webtool_pb';
 import { setClient } from '#test/nuxt-globals';
 import { toMcpServer, toMcpTool } from '~/stores/mcpServers';
 import { toModelProvider } from '~/stores/modelProviders';
@@ -108,8 +109,13 @@ export function fakeRuntimeClients() {
   const memory = {
     listMemoryStores: vi.fn().mockResolvedValue({ stores: [create(MemoryStoreSchema, { id: memoryStoreId, projectId, name: 'People', backend: MemoryBackend.NATIVE })], enabledBackends: [MemoryBackend.NATIVE] }),
   };
+  const web = {
+    getWebSearchProvider: vi.fn().mockResolvedValue({ availableKinds: [WebSearchProviderKind.BRAVE, WebSearchProviderKind.EXA], usedBy: [] }),
+    listHTTPSecrets: vi.fn().mockResolvedValue({ secrets: [] }),
+  };
   setClient('$modelProviderClient', provider);
   setClient('$mcpServerClient', server);
   setClient('$memoryClient', memory);
-  return { provider, server, memory };
+  setClient('$webToolClient', web);
+  return { provider, server, memory, web };
 }

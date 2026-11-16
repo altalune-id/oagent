@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { focusWhenShown } from './focus';
+import { focusIfLost, focusWhenShown } from './focus';
 
 describe('focusWhenShown', () => {
   let frames: FrameRequestCallback[];
@@ -61,5 +61,36 @@ describe('focusWhenShown', () => {
     }
     expect(el.focus).toHaveBeenCalledTimes(4);
     expect(document.activeElement).not.toBe(el);
+  });
+});
+
+describe('focusIfLost', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('focuses the fallback only when focus fell back to the page body', () => {
+    const keep = document.createElement('button');
+    const fallback = document.createElement('button');
+    document.body.append(keep, fallback);
+    keep.focus();
+    focusIfLost(fallback);
+    expect(document.activeElement).toBe(keep);
+    keep.blur();
+    focusIfLost(fallback);
+    expect(document.activeElement).toBe(fallback);
+    fallback.blur();
+    focusIfLost(null);
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('treats focus on a control that became disabled as lost', () => {
+    const toggle = document.createElement('input');
+    const fallback = document.createElement('button');
+    document.body.append(toggle, fallback);
+    toggle.focus();
+    toggle.disabled = true;
+    focusIfLost(fallback);
+    expect(document.activeElement).toBe(fallback);
   });
 });

@@ -1,6 +1,6 @@
 import type { ApprovalRequest } from '~/stores/approvals';
 import { describe, expect, it } from 'vitest';
-import { decisionLabel, expiresIn, statusAt, viaLabel } from './decision';
+import { decisionLabel, expiresIn, statusAt, toolHeading, viaLabel } from './decision';
 
 const t = (key: string, params?: Record<string, unknown>) => (params ? `${key}|${JSON.stringify(params)}` : key);
 const time = () => '10:42';
@@ -36,5 +36,11 @@ describe('approval decisions', () => {
     expect(decisionLabel({ ...pending, status: 'approved', decidedVia: { channel: 'whatsapp' } }, t, time, now)).toBe('approvalcard.approved_plain · approvalcard.via_whatsapp');
     expect(decisionLabel({ ...pending, status: 'rejected' }, t, time, now)).toBe('approvalcard.rejected_plain');
     expect(decisionLabel(pending, t, time, now)).toBe('');
+  });
+
+  it('names the built-in web tools in a call heading, and leaves any other heading alone', () => {
+    expect(toolHeading('web_tools · http_request', 'Web tools')).toBe('Web tools · http_request');
+    expect(toolHeading('yasaku · record_expense', 'Web tools')).toBe('yasaku · record_expense');
+    expect(toolHeading('Simpan web_tools · x?', 'Web tools')).toBe('Simpan web_tools · x?');
   });
 });

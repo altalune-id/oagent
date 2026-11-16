@@ -26,6 +26,7 @@ export interface RunSummary {
   embeddingTokens?: number;
   helperTokens?: number;
   transcriptionSeconds?: number;
+  webSearchCalls?: number;
   retrieveCalls?: number;
   retrieveMs?: number;
   retrievePassages?: number;

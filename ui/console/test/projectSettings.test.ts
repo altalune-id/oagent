@@ -1,22 +1,23 @@
 // @vitest-environment happy-dom
 import { create } from '@bufbuild/protobuf';
-import { flushPromises } from '@vue/test-utils';
+import { timestampFromDate } from '@bufbuild/protobuf/wkt';
+import { flushPromises, RouterLinkStub } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { fakeRuntimeClients, providerPBs } from '~~/test/fixtures/runtime';
 import { WhoamiResponseSchema } from '#gen/auth/v1/auth_pb';
 import { ModelProviderKind, ModelProviderSchema } from '#gen/modelprovider/v1/modelprovider_pb';
+import { HTTPSecretSchema, WebSearchProviderKind, WebSearchProviderSchema } from '#gen/webtool/v1/webtool_pb';
 import { mountPage } from '#test/mount-page';
 import { connectError, setClient, setKnownKeys, setRoute } from '#test/nuxt-globals';
 import McpServersPage from '~/pages/o/[org]/projects/[project]/settings/mcp-servers.vue';
 import ProvidersPage from '~/pages/o/[org]/projects/[project]/settings/model-providers.vue';
-import WebSearchPage from '~/pages/o/[org]/projects/[project]/settings/web-search.vue';
+import WebToolsPage from '~/pages/o/[org]/projects/[project]/settings/web-tools.vue';
 import { secretRefusedCode, useMcpServersStore } from '~/stores/mcpServers';
 import { useModelProvidersStore } from '~/stores/modelProviders';
 import { useOrgsStore } from '~/stores/orgs';
 import { useProjectsStore } from '~/stores/projects';
-import { useWebSearchStore } from '~/stores/webSearch';
 
 const orgId = 'V3StGXR8Z5jdHj6BmyT2a';
 const projectId = 'x6MH9WPWjktMwCBKHy4pF';
@@ -290,19 +291,207 @@ describe('mcp server modal', () => {
   });
 });
 
-describe('web search page', () => {
-  it('saves a provider key and confirms removal naming the agents that use it', async () => {
-    seed();
-    const w = await mountPage(WebSearchPage, { attachTo: document.body });
-    expect(w.text()).toContain('websearch.none');
-    expect(w.findAll('input[type="radio"]')).toHaveLength(3);
-    await w.get('input[type="password"]').setValue('brv-1');
+describe('web tools page', () => {
+  const { BRAVE, EXA, TAVILY } = WebSearchProviderKind;
+  const at = timestampFromDate(new Date('2026-11-01T10:00:00Z'));
+  const secretPB = create(HTTPSecretSchema, { id: 'UxVy4UK3vmrHzPZ273hCA', host: 'api.example.com', header: 'x-api-key', updatedAt: at });
+
+  function webTools(over: { provider?: object, usedBy?: object[], secrets?: object[] } = {}) {
+    const client = {
+      getWebSearchProvider: vi.fn().mockResolvedValue({ provider: over.provider, availableKinds: [BRAVE, EXA], usedBy: over.usedBy ?? [] }),
+      listHTTPSecrets: vi.fn().mockResolvedValue({ secrets: over.secrets ?? [] }),
+      setWebSearchProvider: vi.fn(async (req: { kind: WebSearchProviderKind, pricePerCallMicros: bigint }) => ({ provider: create(WebSearchProviderSchema, { kind: req.kind, keySet: true, pricePerCallMicros: req.pricePerCallMicros, updatedAt: at }) })),
+      deleteWebSearchProvider: vi.fn().mockResolvedValue({}),
+      setHTTPSecret: vi.fn(async (req: { host: string, header: string }) => ({ secret: create(HTTPSecretSchema, { id: req.host === 'api.example.com' ? 'UxVy4UK3vmrHzPZ273hCA' : 'a6SkMeA9Zj2rjRmCXx2dM', host: req.host, header: req.header.toLowerCase(), updatedAt: at }) })),
+      deleteHTTPSecret: vi.fn().mockResolvedValue({}),
+    };
+    setClient('$webToolClient', client);
+    setClient('$agentClient', { listAgents: vi.fn().mockResolvedValue({ agents: [{ id: 'Ag7kLm2NpQ4rSt6UvWx8Y', projectId, slug: 'tagihan', name: 'Tagihan v2', description: '' }] }) });
+    return client;
+  }
+
+  async function mountWeb(permissions?: string[]) {
+    seed(permissions);
+    setRoute({ path: '/o/acme/projects/rumah/settings/web-tools', params: { org: 'acme', project: 'rumah' } });
+    return mountPage(WebToolsPage, { attachTo: document.body });
+  }
+
+  it('starts empty with Tavily marked coming soon and not selectable', async () => {
+    const client = webTools();
+    const w = await mountWeb();
+    expect(client.getWebSearchProvider).toHaveBeenCalledWith({ projectId });
+    expect(w.text()).toContain('webtools.no_provider');
+    expect(w.text()).toContain('webtools.secrets_empty');
+    expect(w.find('[role="note"]').exists()).toBe(false);
+    const radios = w.findAll('input[type="radio"]');
+    expect(radios.map(r => r.attributes('disabled') !== undefined)).toEqual([false, false, true]);
+    const badgeId = radios[2]!.attributes('aria-describedby')!;
+    expect(w.get(`#${badgeId}`).text()).toBe('webtools.coming_soon');
+    expect(w.text().match(/webtools\.coming_soon/g)).toHaveLength(1);
+    w.unmount();
+  });
+
+  it('saves a provider with its price and shows the key status', async () => {
+    const client = webTools();
+    const w = await mountWeb();
+    await w.get('input[type="password"]').setValue('bsa-1');
+    await w.get('input[inputmode="decimal"]').setValue('5');
     await w.get('form').trigger('submit');
-    expect(useWebSearchStore().setting.provider).toBe('brave');
-    expect(w.text()).toContain('websearch.key_set');
-    await button(w, 'websearch.remove').trigger('click');
     await flushPromises();
-    expect(w.text()).toContain('websearch.remove_body_used|{"agents":"Tagihan v2"}');
+    expect(client.setWebSearchProvider).toHaveBeenCalledWith({ projectId, kind: BRAVE, apiKey: 'bsa-1', pricePerCallMicros: 5000n });
+    expect(document.activeElement, 'the first save collapses the form and hands focus to Change').toBe(button(w, 'webtools.change').element);
+    expect(w.text()).toContain('webtools.key_set|{"provider":"webtools.brave"}');
+    expect(w.text()).toContain('webtools.summary|{"provider":"webtools.brave","price":"$5.00"}');
+    expect(w.findAll('input[type="radio"]'), 'a saved provider collapses to its summary').toHaveLength(0);
+    await button(w, 'webtools.change').trigger('click');
+    await flushPromises();
+    const radios = w.findAll('input[type="radio"]');
+    expect(document.activeElement).toBe(radios[0]!.element);
+    expect(w.find('section input[type="password"]').exists()).toBe(false);
+    await radios[1]!.setValue(true);
+    expect(w.find('section input[type="password"]').exists(), 'switching kinds needs a key').toBe(true);
+    (button(w, 'common.cancel').element as HTMLButtonElement).focus();
+    await button(w, 'common.cancel').trigger('click');
+    await flushPromises();
+    expect(w.findAll('input[type="radio"]')).toHaveLength(0);
+    expect(document.activeElement, 'Cancel hands focus to Change').toBe(button(w, 'webtools.change').element);
+    await button(w, 'providers.replace_key').trigger('click');
+    await flushPromises();
+    expect(document.activeElement).toBe(w.get('section input[type="password"]').element);
+    await w.get('section input[type="password"]').setValue('bsa-2');
+    await w.get('section form').trigger('submit');
+    await flushPromises();
+    expect(document.activeElement, 'saving a replaced key hands focus to Change').toBe(button(w, 'webtools.change').element);
+    w.unmount();
+  });
+
+  it('reads a stored kind that is no longer available as no provider', async () => {
+    webTools({ provider: create(WebSearchProviderSchema, { kind: TAVILY, keySet: true, pricePerCallMicros: 1000n }) });
+    const w = await mountWeb();
+    expect(w.text()).toContain('webtools.no_provider');
+    expect(w.text()).not.toContain('webtools.key_set');
+    expect((w.findAll('input[type="radio"]')[0]!.element as HTMLInputElement).checked).toBe(true);
+    w.unmount();
+  });
+
+  it('links the agents that use search, names them in the remove confirm, and removes', async () => {
+    const client = webTools({
+      provider: create(WebSearchProviderSchema, { kind: EXA, keySet: true, pricePerCallMicros: 8000n, updatedAt: at }),
+      usedBy: [{ id: 'Ag7kLm2NpQ4rSt6UvWx8Y', name: 'Tagihan v2' }, { id: 'Zz9yXw8VuT7sRq6PoN5mL', name: 'Gone' }],
+    });
+    const w = await mountWeb();
+    expect(w.find('[role="status"].alert-warning').exists()).toBe(false);
+    await button(w, 'webtools.change').trigger('click');
+    expect((w.get('input[inputmode="decimal"]').element as HTMLInputElement).value).toBe('8.00');
+    await button(w, 'common.cancel').trigger('click');
+    const used = w.get('[data-test="used-by"]');
+    expect(used.findAllComponents(RouterLinkStub)[0]!.classes()).toEqual(expect.arrayContaining(['min-h-6', 'inline-flex']));
+    expect(used.findAllComponents(RouterLinkStub).map(a => [a.text(), a.props('to')])).toEqual([['Tagihan v2', '/o/acme/projects/rumah/agents/tagihan']]);
+    expect(used.text()).toContain('Gone');
+    await button(w, 'webtools.remove').trigger('click');
+    await flushPromises();
+    const dialog = w.findAll('dialog').find(d => d.text().includes('webtools.remove_title'))!;
+    expect(dialog.text()).toContain('webtools.remove_body_used|{"agents":"Tagihan v2, Gone"}');
+    await dialog.findAll('button').find(b => b.text() === 'webtools.remove')!.trigger('click');
+    await flushPromises();
+    expect(client.deleteWebSearchProvider).toHaveBeenCalledWith({ projectId });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(document.activeElement, 'focus lands on the provider choice, not the page').toBe(w.findAll('input[type="radio"]')[0]!.element);
+    const warning = w.get('[role="status"].alert-warning');
+    expect(warning.text()).toContain('webtools.no_provider_used|{"agents":"Tagihan v2, Gone"}');
+    expect(warning.find('[data-icon="lucide:triangle-alert"]').exists()).toBe(true);
+    w.unmount();
+  });
+
+  it('loads the provider afresh on every visit, so Used by names every agent', async () => {
+    const client = webTools();
+    (await mountWeb()).unmount();
+    client.getWebSearchProvider.mockResolvedValue({ provider: create(WebSearchProviderSchema, { kind: BRAVE, keySet: true, pricePerCallMicros: 0n }), availableKinds: [BRAVE, EXA], usedBy: [{ id: 'Ag7kLm2NpQ4rSt6UvWx8Y', name: 'Tagihan v2' }] });
+    const w = await mountPage(WebToolsPage, { attachTo: document.body });
+    expect(client.getWebSearchProvider).toHaveBeenCalledTimes(2);
+    expect(w.get('[data-test="used-by"]').text()).toContain('Tagihan v2');
+    w.unmount();
+  });
+
+  it('lets an admin remove a stored provider whose kind is no longer available', async () => {
+    const client = webTools({ provider: create(WebSearchProviderSchema, { kind: TAVILY, keySet: true, pricePerCallMicros: 1000n }) });
+    const w = await mountWeb();
+    expect(w.text()).toContain('webtools.no_provider');
+    await button(w, 'webtools.remove').trigger('click');
+    await flushPromises();
+    const dialog = w.findAll('dialog').find(d => d.text().includes('webtools.remove_title'))!;
+    await dialog.findAll('button').find(b => b.text() === 'webtools.remove')!.trigger('click');
+    await flushPromises();
+    expect(client.deleteWebSearchProvider).toHaveBeenCalledWith({ projectId });
+    expect(w.findAll('button').some(b => b.text() === 'webtools.remove' && !b.element.closest('dialog'))).toBe(false);
+    w.unmount();
+  });
+
+  it('says no agent uses search when the list is empty', async () => {
+    webTools({ provider: create(WebSearchProviderSchema, { kind: BRAVE, keySet: true, pricePerCallMicros: 0n }) });
+    const w = await mountWeb();
+    expect(w.text()).toContain('webtools.used_by_none');
+    w.unmount();
+  });
+
+  it('shows read-only members the settings without controls', async () => {
+    webTools({ provider: create(WebSearchProviderSchema, { kind: BRAVE, keySet: true, pricePerCallMicros: 0n }), secrets: [secretPB] });
+    const w = await mountWeb(['project:read', 'provider:read']);
+    expect(w.text()).toContain('project.read_only');
+    expect(w.find('form').exists()).toBe(false);
+    expect(w.findAll('button').some(b => ['webtools.add_secret', 'webtools.remove', 'providers.replace_key'].includes(b.text()))).toBe(false);
+    expect(w.text()).toContain('api.example.com');
+    expect(w.findAll('tbody li button')).toHaveLength(0);
+    w.unmount();
+  });
+
+  it('adds, replaces and deletes an HTTP secret', async () => {
+    const client = webTools({ secrets: [secretPB] });
+    const w = await mountWeb();
+    const row = w.findAll('tbody tr')[0]!;
+    expect(row.text()).toContain('api.example.com');
+    expect(row.text()).toContain('x-api-key');
+    await button(w, 'webtools.add_secret').trigger('click');
+    let dialog = w.findAll('dialog').find(d => d.text().includes('webtools.secret_host'))!;
+    expect(dialog.get('input[type="password"]').attributes('autocomplete')).toBe('new-password');
+    expect(dialog.text()).toContain('webtools.host_punycode');
+    await dialog.get('input[placeholder="api.example.com"]').setValue('b.example.com');
+    await dialog.get('input[placeholder="X-Api-Key"]').setValue('Authorization');
+    await dialog.get('input[type="password"]').setValue('tok');
+    await dialog.findAll('button').find(b => b.text() === 'webtools.save_secret')!.trigger('click');
+    await flushPromises();
+    expect(client.setHTTPSecret).toHaveBeenCalledWith({ projectId, host: 'b.example.com', header: 'Authorization', value: 'tok' });
+    expect(w.findAll('tbody tr')).toHaveLength(2);
+
+    await w.findAll('tbody tr')[0]!.findAll('li button').find(b => b.text() === 'webtools.replace_value')!.trigger('click');
+    dialog = w.findAll('dialog').find(d => d.text().includes('webtools.secret_host'))!;
+    expect(dialog.get('input[placeholder="api.example.com"]').attributes('readonly')).toBeDefined();
+    await dialog.get('input[type="password"]').setValue('new');
+    await dialog.findAll('button').find(b => b.text() === 'webtools.save_secret')!.trigger('click');
+    await flushPromises();
+    expect(client.setHTTPSecret).toHaveBeenLastCalledWith({ projectId, host: 'api.example.com', header: 'x-api-key', value: 'new' });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(document.activeElement?.getAttribute('aria-haspopup'), 'Replace value returns focus to the row menu').toBe('true');
+    expect(document.activeElement?.textContent).toContain('webtools.actions_for|{"host":"api.example.com","header":"x-api-key"}');
+    await w.findAll('tbody tr')[1]!.findAll('li button').find(b => b.text() === 'webtools.replace_value')!.trigger('click');
+    dialog = w.findAll('dialog').find(d => d.text().includes('webtools.secret_host'))!;
+    await dialog.get('input[type="password"]').setValue('newer');
+    await dialog.findAll('button').find(b => b.text() === 'webtools.save_secret')!.trigger('click');
+    await flushPromises();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(document.activeElement?.textContent, 'focus returns to the replaced row, not the first').toContain('webtools.actions_for|{"host":"b.example.com","header":"authorization"}');
+
+    (document.activeElement as HTMLElement).blur();
+    await w.findAll('tbody tr')[0]!.findAll('li button').find(b => b.text() === 'common.delete')!.trigger('click');
+    await flushPromises();
+    const confirm = w.findAll('dialog').find(d => d.text().includes('webtools.delete_secret_body'))!;
+    expect(confirm.text()).toContain('webtools.delete_secret_body|{"header":"x-api-key","host":"api.example.com"}');
+    await confirm.findAll('button').find(b => b.text() === 'common.delete')!.trigger('click');
+    await flushPromises();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(document.activeElement, 'focus returns to Add secret').toBe(button(w, 'webtools.add_secret').element);
+    expect(client.deleteHTTPSecret).toHaveBeenCalledWith({ id: 'UxVy4UK3vmrHzPZ273hCA' });
+    expect(w.findAll('tbody tr')).toHaveLength(1);
     w.unmount();
   });
 });

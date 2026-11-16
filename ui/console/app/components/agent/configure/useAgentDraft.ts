@@ -15,8 +15,14 @@ export interface FieldError {
   message: string;
 }
 
-function fieldErrorOf(e: unknown, message: string): FieldError {
-  const { reason = '', name } = errorMeta(e);
+function fieldErrorOf(e: unknown, message: string): FieldError | null {
+  const { reason = '', name, field = '' } = errorMeta(e);
+  if (errorCode(e) === 'GEN004') {
+    return field.startsWith('config.web.') ? { reason: field, message } : null;
+  }
+  if (errorCode(e) !== 'AGT007') {
+    return null;
+  }
   return reason === 'unapproved_tool' ? { reason, name, message } : { reason, message };
 }
 
@@ -99,9 +105,7 @@ export function useAgentDraft(agentId: string, names: ChangeNames) {
       return true;
     } catch (e) {
       saveError.value = errorMessage(e, 'error.save_draft');
-      if (errorCode(e) === 'AGT007') {
-        fieldError.value = fieldErrorOf(e, saveError.value.message);
-      }
+      fieldError.value = fieldErrorOf(e, saveError.value.message);
       return false;
     } finally {
       saving.value = false;
@@ -179,9 +183,7 @@ export function useAgentDraft(agentId: string, names: ChangeNames) {
       return { created: res.created, version: res.version?.version ?? 0 };
     } catch (e) {
       publishError.value = errorMessage(e, 'error.publish_agent');
-      if (errorCode(e) === 'AGT007') {
-        fieldError.value = fieldErrorOf(e, publishError.value.message);
-      }
+      fieldError.value = fieldErrorOf(e, publishError.value.message);
       return null;
     } finally {
       publishing.value = false;

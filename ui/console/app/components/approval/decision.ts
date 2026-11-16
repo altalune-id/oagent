@@ -38,3 +38,8 @@ export function decisionLabel(a: ApprovalRequest, t: Translate, time: (d: Date) 
   const head = by ? t(status === 'approved' ? 'approvalcard.approved' : 'approvalcard.rejected', { by }) : t(status === 'approved' ? 'approvalcard.approved_plain' : 'approvalcard.rejected_plain');
   return [head, viaLabel(a.decidedVia, t), a.decidedAt ? time(a.decidedAt) : ''].filter(Boolean).join(' · ');
 }
+
+// toolHeading names the built-in web tools in a call heading; argument lines never go through it.
+export function toolHeading(title: string, webLabel: string): string {
+  return title.startsWith('web_tools · ') ? `${webLabel} · ${title.slice('web_tools · '.length)}` : title;
+}

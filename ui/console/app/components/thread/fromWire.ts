@@ -106,6 +106,7 @@ export function toRunSummary(r: RunPB, threadTitle: string): RunSummary {
     embeddingTokens: u ? Number(u.embeddingTokens) : 0,
     helperTokens: u ? Number(u.helperInputTokens + u.helperOutputTokens + u.helperCacheReadTokens + u.helperCacheWriteTokens) : 0,
     transcriptionSeconds: u ? Number(u.transcriptionSeconds) : 0,
+    webSearchCalls: u ? Number(u.webSearchCalls) : 0,
     retrieveCalls: r.knowledgeRetrieveCalls,
     retrieveMs: Number(r.knowledgeRetrieveMs),
     retrievePassages: r.knowledgePassages,

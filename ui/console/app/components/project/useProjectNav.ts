@@ -32,7 +32,7 @@ export function useProjectNav() {
         { key: 'settings', label: t('nav.general'), to: settings, icon: 'lucide:settings-2', active: route.path === settings },
         { key: 'model-providers', label: t('providers.title'), to: `${settings}/model-providers`, icon: 'lucide:cpu', active: route.path.startsWith(`${settings}/model-providers`) },
         { key: 'mcp-servers', label: t('mcpservers.title'), to: `${settings}/mcp-servers`, icon: 'lucide:plug', active: route.path.startsWith(`${settings}/mcp-servers`) },
-        { key: 'web-search', label: t('websearch.title'), to: `${settings}/web-search`, icon: 'lucide:search', active: route.path.startsWith(`${settings}/web-search`) },
+        { key: 'web-tools', label: t('webtools.title'), to: `${settings}/web-tools`, icon: 'lucide:globe', active: route.path.startsWith(`${settings}/web-tools`) },
       ],
     }];
   });

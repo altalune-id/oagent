@@ -36,7 +36,7 @@ describe('project sidebar', () => {
     const lists = w.findAll('nav > ul').map(ul => ul.findAll('li').map(li => li.text()));
     expect(lists).toEqual([
       ['nav.org_overview', 'nav.projects', 'members.title', 'apikeys.title', 'nav.org_settings'],
-      ['nav.overview', 'nav.agents', 'approvals.title1', 'endusers.title', 'knowledge.title', 'memorystores.title', 'webhooks.title', 'nav.project_settings', 'nav.general', 'providers.title', 'mcpservers.title', 'websearch.title'],
+      ['nav.overview', 'nav.agents', 'approvals.title1', 'endusers.title', 'knowledge.title', 'memorystores.title', 'webhooks.title', 'nav.project_settings', 'nav.general', 'providers.title', 'mcpservers.title', 'webtools.title'],
     ]);
     expect(w.get('nav > ul:last-child a.menu-active').text()).toBe('nav.agents');
     expect(w.get('[data-sidebar-footer]').text()).toContain('Sam Rivera');
