@@ -55,7 +55,7 @@ func TestMain(m *testing.M) {
 		}
 		os.Exit(0)
 	}
-	os.Exit(m.Run())
+	pgtest.Main(m)
 }
 
 func bagOfWords(text string) []float32 {

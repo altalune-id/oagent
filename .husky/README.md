@@ -1,16 +1,19 @@
 # Git hooks
 
 [husky](https://typicode.github.io/husky/) installs these hooks on `pnpm install` (the `prepare` script).
-They run the same checks as CI, so a hook that fails here would fail CI too.
+They run a fast subset of CI, so a hook that fails here would fail CI too.
 
-| Hook         | What runs                              | Fails when                                                                                                                                                                                                       |
-| ------------ | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pre-commit` | `lint-staged` on the staged files only | a staged `.go` file is not gofmt-formatted; ESLint can't fix a JS/TS/Vue/JSON/Markdown/CSS problem (it fixes and re-stages the rest); yamllint, hadolint, actionlint, shellcheck or `buf lint` reports a problem |
-| `pre-push`   | signed-commit check                    | an outgoing commit has no signature                                                                                                                                                                              |
-| `pre-push`   | `make lint`, `make comment-check`      | golangci-lint, ESLint, the config linters or comment-lint report a problem                                                                                                                                       |
-| `pre-push`   | `gen-config-example --check`           | `.env.reference` / `config.reference.yml` drifted from the config structs (`make config-examples`)                                                                                                               |
-| `pre-push`   | `go test -race -shuffle=on ./...`      | a unit test fails                                                                                                                                                                                                |
-| `pre-push`   | `buf breaking` against `origin/main`   | a proto change breaks the API (skipped when there is no `origin/main`)                                                                                                                                           |
+| Hook         | What runs                                        | Fails when                                                                                                                                                                                                       |
+| ------------ | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pre-commit` | `lint-staged` on the staged files only           | a staged `.go` file is not gofmt-formatted; ESLint can't fix a JS/TS/Vue/JSON/Markdown/CSS problem (it fixes and re-stages the rest); yamllint, hadolint, actionlint, shellcheck or `buf lint` reports a problem |
+| `pre-push`   | signed-commit check                              | an outgoing commit has no signature                                                                                                                                                                              |
+| `pre-push`   | `gofmt -l`, `make vet`                           | a tracked `.go` file is not gofmt-formatted; `go vet` (unit and integration files) reports a problem                                                                                                             |
+| `pre-push`   | `make lint-go` with `--new-from-rev=origin/main` | golangci-lint reports a problem in code changed since `origin/main`                                                                                                                                              |
+| `pre-push`   | `make comment-check`                             | comment-lint reports a problem                                                                                                                                                                                   |
+| `pre-push`   | `make config-check`                              | `.env.reference` / `config.reference.yml` drifted from the config structs (`make config-examples`)                                                                                                               |
+| `pre-push`   | `go test -race -shuffle=on`                      | a unit test fails in a Go package changed since `origin/main`; `PREPUSH_FULL=1` (or no `origin/main`) runs every package                                                                                         |
+
+CI runs everything else on every pull request: the full golangci-lint, ESLint, the config linters, `buf lint` and `buf breaking`.
 
 ## Node version
 
