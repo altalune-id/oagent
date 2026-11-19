@@ -76,15 +76,10 @@ func (s *EndUserService) GetEndUser(
 	ctx context.Context,
 	req *connect.Request[enduserv1.GetEndUserRequest],
 ) (*connect.Response[enduserv1.GetEndUserResponse], error) {
-	ref, err := s.users.Resolve(ctx, req.Msg.GetId())
-	// SECURITY: unknown and out-of-reach end users answer the same not-found; reach needs the whole project.
-	if IsNotFoundError(err) || (err == nil && !authz.ReachWholeProject(ctx, ref.OrgID, ref.ProjectID)) {
-		return nil, &NotFoundError{ID: req.Msg.GetId()}
-	}
+	ctx, ref, err := s.reachable(ctx, req.Msg.GetId())
 	if err != nil {
 		return nil, err
 	}
-	ctx = tenant.Into(ctx, tenant.Context{OrgID: ref.OrgID, ProjectID: ref.ProjectID})
 	e, err := s.users.Get(ctx, ref.ID)
 	if err != nil {
 		return nil, err
@@ -112,6 +107,33 @@ func (s *EndUserService) GetEndUser(
 		})
 	}
 	return connect.NewResponse(out), nil
+}
+
+// DeleteEndUser deletes an end user with everything kept about them.
+func (s *EndUserService) DeleteEndUser(
+	ctx context.Context,
+	req *connect.Request[enduserv1.DeleteEndUserRequest],
+) (*connect.Response[enduserv1.DeleteEndUserResponse], error) {
+	ctx, ref, err := s.reachable(ctx, req.Msg.GetId())
+	if err != nil {
+		return nil, err
+	}
+	if err := s.users.Delete(ctx, ref.ID); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&enduserv1.DeleteEndUserResponse{}), nil
+}
+
+// SECURITY: unknown and out-of-reach end users answer the same not-found; reach needs the whole project.
+func (s *EndUserService) reachable(ctx context.Context, publicID string) (context.Context, Ref, error) {
+	ref, err := s.users.Resolve(ctx, publicID)
+	if IsNotFoundError(err) || (err == nil && !authz.ReachWholeProject(ctx, ref.OrgID, ref.ProjectID)) {
+		return ctx, Ref{}, &NotFoundError{ID: publicID}
+	}
+	if err != nil {
+		return ctx, Ref{}, err
+	}
+	return tenant.Into(ctx, tenant.Context{OrgID: ref.OrgID, ProjectID: ref.ProjectID}), ref, nil
 }
 
 // SECURITY: a person shows as a display name and a kind with a masked hint; no identity value leaves the server.

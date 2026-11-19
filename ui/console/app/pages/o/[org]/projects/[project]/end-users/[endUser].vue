@@ -102,6 +102,20 @@ const clearing = confirmHandle<true>(async () => {
   toast.push('success', t('endusers.memories_cleared', { n }, n));
 }, e => e as ShownError);
 
+const canDelete = useCan('enduser:write');
+const typed = ref('');
+const deletingPerson = confirmHandle<true>(async () => {
+  const who = name.value;
+  if (!await store.remove(id.value)) {
+    throw store.actionError;
+  }
+  toast.push('success', t('endusers.deleted', { name: who }));
+  await navigateTo(list.value);
+}, e => e as ShownError);
+watch(() => deletingPerson.target.value, () => {
+  typed.value = '';
+});
+
 useHead({ title: () => `${name.value || t('endusers.title')} · ${t('endusers.title')} · OAgent` });
 </script>
 
@@ -121,7 +135,13 @@ useHead({ title: () => `${name.value || t('endusers.title')} · ${t('endusers.ti
     </template>
   </EmptyState>
   <div v-else class="flex flex-col gap-4">
-    <PageHeader :title="name" />
+    <PageHeader :title="name">
+      <template v-if="canDelete" #actions>
+        <AppButton variant="outline" size="sm" class="text-error" @click="deletingPerson.ask(true)">
+          {{ t('endusers.delete') }}
+        </AppButton>
+      </template>
+    </PageHeader>
 
     <Section :title="t('endusers.about')" :description="t('endusers.identities_desc')" flush>
       <KeyValue :items="facts" :copy-label="t('common.copy_label', { label: '{label}' })" />
@@ -225,5 +245,19 @@ useHead({ title: () => `${name.value || t('endusers.title')} · ${t('endusers.ti
       :confirm-label="t('endusers.memories_clear')"
       :cancel-label="t('common.cancel')"
     />
+    <ConfirmModal
+      v-if="canDelete"
+      :handle="deletingPerson"
+      :title="t('endusers.delete_title', { name })"
+      :body="t('endusers.delete_body')"
+      :confirm-label="t('common.delete')"
+      :cancel-label="t('common.cancel')"
+      :confirm-disabled="typed.trim().toLowerCase() !== t('endusers.delete_word')"
+    >
+      <label class="mt-3 flex flex-col gap-1">
+        <span class="label text-ui text-base-content">{{ t('endusers.delete_type', { word: t('endusers.delete_word') }) }}</span>
+        <input v-model="typed" data-field="delete-confirm" type="text" autocomplete="off" class="input input-sm w-full text-ui" :disabled="deletingPerson.busy.value">
+      </label>
+    </ConfirmModal>
   </div>
 </template>

@@ -91,3 +91,24 @@ func (s *postgresStore) SetDisplayName(ctx context.Context, id uuid.UUID, name s
 	}
 	return nil
 }
+
+// Delete removes an end user of the org on ctx; identities and native memory facts cascade.
+func (s *postgresStore) Delete(ctx context.Context, id uuid.UUID) error {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return err
+	}
+	t := s.users
+	stmt := t.DELETE().WHERE(t.ID.EQ(postgres.UUID(id)).AND(t.OrgID.EQ(postgres.UUID(tc.OrgID))))
+	var res sql.Result
+	if err := db.Write(ctx, s.pool, func(q qrm.DB) (err error) {
+		res, err = stmt.ExecContext(ctx, q)
+		return err
+	}); err != nil {
+		return fmt.Errorf("enduser.postgres: Delete: %w", err)
+	}
+	if n, err := res.RowsAffected(); err != nil || n == 0 {
+		return &NotFoundError{ID: id.String()}
+	}
+	return nil
+}

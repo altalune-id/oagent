@@ -804,3 +804,21 @@ func (s *Service) AgentVersion(ctx context.Context, versionID uuid.UUID) (number
 	}
 	return v.Version, v.Draft, nil
 }
+
+// ForgetEndUser erases what runs keep about endUserID, snapshots included, inside the caller's transaction.
+func (s *Service) ForgetEndUser(ctx context.Context, _, _, endUserID uuid.UUID) error {
+	touched, err := s.store.ForgetEndUser(ctx, endUserID)
+	if err != nil {
+		return err
+	}
+	if s.snaps == nil {
+		return nil
+	}
+	// SECURITY: a snapshot holds the runtime's copy of the transcript, so it goes with the words; the next turn rebuilds it from messages.
+	for _, id := range touched {
+		if err := s.snaps.Delete(ctx, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}

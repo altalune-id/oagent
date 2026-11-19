@@ -39,12 +39,16 @@ const (
 	// EndUserServiceGetEndUserProcedure is the fully-qualified name of the EndUserService's GetEndUser
 	// RPC.
 	EndUserServiceGetEndUserProcedure = "/enduser.v1.EndUserService/GetEndUser"
+	// EndUserServiceDeleteEndUserProcedure is the fully-qualified name of the EndUserService's
+	// DeleteEndUser RPC.
+	EndUserServiceDeleteEndUserProcedure = "/enduser.v1.EndUserService/DeleteEndUser"
 )
 
 // EndUserServiceClient is a client for the enduser.v1.EndUserService service.
 type EndUserServiceClient interface {
 	ListEndUsers(context.Context, *connect.Request[v1.ListEndUsersRequest]) (*connect.Response[v1.ListEndUsersResponse], error)
 	GetEndUser(context.Context, *connect.Request[v1.GetEndUserRequest]) (*connect.Response[v1.GetEndUserResponse], error)
+	DeleteEndUser(context.Context, *connect.Request[v1.DeleteEndUserRequest]) (*connect.Response[v1.DeleteEndUserResponse], error)
 }
 
 // NewEndUserServiceClient constructs a client for the enduser.v1.EndUserService service. By
@@ -70,13 +74,20 @@ func NewEndUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(endUserServiceMethods.ByName("GetEndUser")),
 			connect.WithClientOptions(opts...),
 		),
+		deleteEndUser: connect.NewClient[v1.DeleteEndUserRequest, v1.DeleteEndUserResponse](
+			httpClient,
+			baseURL+EndUserServiceDeleteEndUserProcedure,
+			connect.WithSchema(endUserServiceMethods.ByName("DeleteEndUser")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // endUserServiceClient implements EndUserServiceClient.
 type endUserServiceClient struct {
-	listEndUsers *connect.Client[v1.ListEndUsersRequest, v1.ListEndUsersResponse]
-	getEndUser   *connect.Client[v1.GetEndUserRequest, v1.GetEndUserResponse]
+	listEndUsers  *connect.Client[v1.ListEndUsersRequest, v1.ListEndUsersResponse]
+	getEndUser    *connect.Client[v1.GetEndUserRequest, v1.GetEndUserResponse]
+	deleteEndUser *connect.Client[v1.DeleteEndUserRequest, v1.DeleteEndUserResponse]
 }
 
 // ListEndUsers calls enduser.v1.EndUserService.ListEndUsers.
@@ -89,10 +100,16 @@ func (c *endUserServiceClient) GetEndUser(ctx context.Context, req *connect.Requ
 	return c.getEndUser.CallUnary(ctx, req)
 }
 
+// DeleteEndUser calls enduser.v1.EndUserService.DeleteEndUser.
+func (c *endUserServiceClient) DeleteEndUser(ctx context.Context, req *connect.Request[v1.DeleteEndUserRequest]) (*connect.Response[v1.DeleteEndUserResponse], error) {
+	return c.deleteEndUser.CallUnary(ctx, req)
+}
+
 // EndUserServiceHandler is an implementation of the enduser.v1.EndUserService service.
 type EndUserServiceHandler interface {
 	ListEndUsers(context.Context, *connect.Request[v1.ListEndUsersRequest]) (*connect.Response[v1.ListEndUsersResponse], error)
 	GetEndUser(context.Context, *connect.Request[v1.GetEndUserRequest]) (*connect.Response[v1.GetEndUserResponse], error)
+	DeleteEndUser(context.Context, *connect.Request[v1.DeleteEndUserRequest]) (*connect.Response[v1.DeleteEndUserResponse], error)
 }
 
 // NewEndUserServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -114,12 +131,20 @@ func NewEndUserServiceHandler(svc EndUserServiceHandler, opts ...connect.Handler
 		connect.WithSchema(endUserServiceMethods.ByName("GetEndUser")),
 		connect.WithHandlerOptions(opts...),
 	)
+	endUserServiceDeleteEndUserHandler := connect.NewUnaryHandler(
+		EndUserServiceDeleteEndUserProcedure,
+		svc.DeleteEndUser,
+		connect.WithSchema(endUserServiceMethods.ByName("DeleteEndUser")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/enduser.v1.EndUserService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case EndUserServiceListEndUsersProcedure:
 			endUserServiceListEndUsersHandler.ServeHTTP(w, r)
 		case EndUserServiceGetEndUserProcedure:
 			endUserServiceGetEndUserHandler.ServeHTTP(w, r)
+		case EndUserServiceDeleteEndUserProcedure:
+			endUserServiceDeleteEndUserHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -135,4 +160,8 @@ func (UnimplementedEndUserServiceHandler) ListEndUsers(context.Context, *connect
 
 func (UnimplementedEndUserServiceHandler) GetEndUser(context.Context, *connect.Request[v1.GetEndUserRequest]) (*connect.Response[v1.GetEndUserResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("enduser.v1.EndUserService.GetEndUser is not implemented"))
+}
+
+func (UnimplementedEndUserServiceHandler) DeleteEndUser(context.Context, *connect.Request[v1.DeleteEndUserRequest]) (*connect.Response[v1.DeleteEndUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("enduser.v1.EndUserService.DeleteEndUser is not implemented"))
 }

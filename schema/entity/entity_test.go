@@ -146,7 +146,7 @@ func TestBindings(t *testing.T) {
 			func(s, p string) binding { b := entity.NewMessages(s, p); return binding{b, b.AllColumns} },
 			[]string{
 				"id", "org_id", "project_id", "thread_id", "seq", "role", "body", "speaker_id", "status", "external_message_id", "run_id", "tool_call_id", "created_at", "request_hash",
-				"channel_time", "skip_reason",
+				"channel_time", "skip_reason", "deleted_at",
 			},
 		},
 		{

@@ -165,13 +165,14 @@ type messageRow struct {
 	RequestHash       []byte     `alias:"messages.request_hash"`
 	ChannelTime       *time.Time `alias:"messages.channel_time"`
 	SkipReason        *string    `alias:"messages.skip_reason"`
+	DeletedAt         *time.Time `alias:"messages.deleted_at"`
 }
 
 func (r *messageRow) toMessage() Message {
 	m := Message{
 		ID: r.ID, OrgID: r.OrgID, ProjectID: r.ProjectID, ThreadID: r.ThreadID, Seq: r.Seq, Role: Role(r.Role),
 		Body: json.RawMessage(r.Body), SpeakerID: r.SpeakerID, Status: MessageStatus(r.Status), RunID: r.RunID,
-		CreatedAt: r.CreatedAt.UTC(), RequestHash: r.RequestHash,
+		CreatedAt: r.CreatedAt.UTC(), RequestHash: r.RequestHash, Deleted: r.DeletedAt != nil,
 	}
 	if r.ExternalMessageID != nil {
 		m.ExternalMessageID = *r.ExternalMessageID

@@ -60,6 +60,8 @@ type RunStore struct {
 	Kinds map[uuid.UUID]string
 	// Activity holds each thread's last activity, for ListThreads; a missing thread reads as the zero time.
 	Activity map[uuid.UUID]time.Time
+	// Forgotten lists the end users ForgetEndUser was called for.
+	Forgotten []uuid.UUID
 }
 
 var _ run.Store = (*RunStore)(nil)
@@ -1067,4 +1069,26 @@ func (f *RunWebTools) SearchCalls() int { return f.searchCalls }
 func (f *RunWebTools) Secrets(_ context.Context, _ uuid.UUID, hosts []string) ([]run.WebSecret, int, error) {
 	f.SecretHosts = append(f.SecretHosts, hosts)
 	return f.Opened, f.Unsealable, f.SecretsErr
+}
+
+// ForgetEndUser implements run.Store: it records endUserID and returns the threads it owns or wrote in, and changes nothing else.
+func (f *RunStore) ForgetEndUser(_ context.Context, endUserID uuid.UUID) ([]uuid.UUID, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	f.Forgotten = append(f.Forgotten, endUserID)
+	var touched []uuid.UUID
+	for id, actor := range f.Actors {
+		if actor == endUserID {
+			touched = append(touched, id)
+		}
+	}
+	for _, m := range f.Messages {
+		if m.SpeakerID != nil && *m.SpeakerID == endUserID && !slices.Contains(touched, m.ThreadID) {
+			touched = append(touched, m.ThreadID)
+		}
+	}
+	return touched, nil
 }

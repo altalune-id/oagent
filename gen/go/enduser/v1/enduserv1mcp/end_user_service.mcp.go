@@ -22,9 +22,12 @@ const EndUserListToolName = "end_user_list"
 // EndUserGetToolName is the MCP tool name for EndUserService.GetEndUser.
 const EndUserGetToolName = "end_user_get"
 
+// EndUserDeleteToolName is the MCP tool name for EndUserService.DeleteEndUser.
+const EndUserDeleteToolName = "end_user_delete"
+
 // EndUserServiceToolNames returns every MCP tool name generated for EndUserService.
 func EndUserServiceToolNames() []string {
-	return []string{EndUserListToolName, EndUserGetToolName}
+	return []string{EndUserListToolName, EndUserGetToolName, EndUserDeleteToolName}
 }
 
 // RegisterEndUserServiceTools registers every MCP-annotated EndUserService method on reg, against h, under the permissions permissionsFor resolves for each RPC procedure; validate checks each decoded request.
@@ -84,6 +87,35 @@ func RegisterEndUserServiceTools(reg *mcp.Registry, h enduserv1connect.EndUserSe
 			body, err := protojson.Marshal(resp.Msg)
 			if err != nil {
 				return nil, fmt.Errorf("mcp: %s: encode result: %w", EndUserGetToolName, err)
+			}
+			return json.RawMessage(body), nil
+		},
+	}, h)
+	reg.Register(mcp.ToolSpec{
+		Name:        EndUserDeleteToolName,
+		Description: "Delete an end user and everything kept about them: identities, remembered facts in every memory store, and the threads they own with their messages and runs. Their messages in group threads keep their place but lose their text. This cannot be undone.",
+		Scopes:      permissionsFor(enduserv1connect.EndUserServiceDeleteEndUserProcedure),
+		Mutation:    true,
+		Destructive: true,
+		InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"string","minLength":1,"pattern":"^[abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789]{21}$"}},"required":["id"],"additionalProperties":false}`),
+		Handler: func(ctx context.Context, input json.RawMessage) (json.RawMessage, error) {
+			if len(input) == 0 {
+				input = json.RawMessage(`{}`)
+			}
+			var req v1.DeleteEndUserRequest
+			if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(input, &req); err != nil {
+				return nil, mcp.NewInvalidArgumentsError(EndUserDeleteToolName, err)
+			}
+			if err := validate(&req); err != nil {
+				return nil, err
+			}
+			resp, err := h.DeleteEndUser(ctx, connect.NewRequest(&req))
+			if err != nil {
+				return nil, err
+			}
+			body, err := protojson.Marshal(resp.Msg)
+			if err != nil {
+				return nil, fmt.Errorf("mcp: %s: encode result: %w", EndUserDeleteToolName, err)
 			}
 			return json.RawMessage(body), nil
 		},

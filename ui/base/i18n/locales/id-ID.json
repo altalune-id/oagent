@@ -494,5 +494,6 @@
   "apperror.WEB004": "Rahasia API tidak ditemukan",
   "apperror.WEB005": "Proyek ini sudah mencapai batas {max} rahasia API",
   "scope.memory_read": "Lihat penyimpanan memori dan yang diingat agen tentang orang",
-  "scope.memory_write": "Buat dan hapus penyimpanan memori, serta hapus yang diingat agen tentang orang"
+  "scope.memory_write": "Buat dan hapus penyimpanan memori, serta hapus yang diingat agen tentang orang",
+  "scope.enduser_write": "Hapus orang beserta semua yang disimpan tentang mereka"
 }

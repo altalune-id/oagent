@@ -494,5 +494,6 @@
   "apperror.WEB004": "API secret not found",
   "apperror.WEB005": "This project already has the maximum of {max} API secrets",
   "scope.memory_read": "See memory stores and what agents remember about people",
-  "scope.memory_write": "Create and delete memory stores, and delete what agents remember about people"
+  "scope.memory_write": "Create and delete memory stores, and delete what agents remember about people",
+  "scope.enduser_write": "Delete people and everything kept about them"
 }

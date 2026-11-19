@@ -27,6 +27,7 @@ type Service struct {
 	log        *slog.Logger
 	hints      KeyHints
 	members    Members
+	forgetters []Forgetter
 }
 
 // WithKeyHints labels an end user that is an API key by the key's hint.
@@ -38,6 +39,12 @@ func (s *Service) WithKeyHints(h KeyHints) *Service {
 // WithMembers labels an end user that is a member (console Try it or a personal key) by the member's name.
 func (s *Service) WithMembers(m Members) *Service {
 	s.members = m
+	return s
+}
+
+// WithForgetters erases what each of fs keeps about an end user when it is deleted.
+func (s *Service) WithForgetters(fs ...Forgetter) *Service {
+	s.forgetters = append(s.forgetters, fs...)
 	return s
 }
 
@@ -308,4 +315,31 @@ func (s *Service) Rememberable(ctx context.Context, id uuid.UUID) (MemoryClass, 
 		return MemoryNever, s.errOrReport(ctx, "enduser: rememberable", err)
 	}
 	return ClassOf(ids), nil
+}
+
+// Delete removes an end user of the org on ctx with everything kept about them, in one transaction.
+func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
+	err := s.uow.RunInTx(ctx, func(ctx context.Context) error {
+		e, err := s.store.ByID(ctx, id)
+		if err != nil {
+			return err
+		}
+		for _, f := range s.forgetters {
+			if err := f.ForgetEndUser(ctx, e.OrgID, e.ProjectID, e.ID); err != nil {
+				return err
+			}
+		}
+		return s.store.Delete(ctx, e.ID)
+	})
+	// NOTE: a forgetter's own domain error (a run in progress, a memory backend that is off) keeps its code.
+	if _, ok := errors.AsType[interface {
+		error
+		ToAppError() *apperror.AppError
+	}](err); ok {
+		return err
+	}
+	if err != nil {
+		return s.errOrReport(ctx, "enduser: delete", err)
+	}
+	return nil
 }

@@ -67,6 +67,11 @@ describe('thread wire mapping', () => {
     ]);
   });
 
+  it('shows the message of a deleted person as deleted, never their old label', () => {
+    const [said] = toItems([create(ThreadMessageSchema, { seq: 1n, role: 'user', deleted: true, speakerLabel: 'Sari', message: { content: '[message deleted]' } })], []);
+    expect(said).toMatchObject({ kind: 'user', deleted: true, speaker: 'endusers.deleted_person' });
+  });
+
   it('maps why a channel message was skipped, keeping an unknown reason as skipped', () => {
     expect(['', 'stale', 'sender_rate', 'quota'].map(skipReason)).toEqual([undefined, 'stale', 'sender_rate', 'other']);
     expect(toItems([create(ThreadMessageSchema, { seq: 1n, role: 'user', skipReason: 'stale', message: { content: 'late' } })], [])).toEqual([{ id: 0, kind: 'user', text: 'late', speaker: undefined, skipped: 'stale', at: new Date(0) }]);

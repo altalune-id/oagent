@@ -248,8 +248,10 @@ type ThreadMessage struct {
 	SpeakerDisplayName  string          `protobuf:"bytes,10,opt,name=speaker_display_name,json=speakerDisplayName,proto3" json:"speaker_display_name,omitempty"`
 	SpeakerIdentityKind v1.IdentityKind `protobuf:"varint,11,opt,name=speaker_identity_kind,json=speakerIdentityKind,proto3,enum=enduser.v1.IdentityKind" json:"speaker_identity_kind,omitempty"`
 	SpeakerIdentityHint string          `protobuf:"bytes,12,opt,name=speaker_identity_hint,json=speakerIdentityHint,proto3" json:"speaker_identity_hint,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// deleted is true once the speaker was deleted; the message keeps its place with no text.
+	Deleted       bool `protobuf:"varint,13,opt,name=deleted,proto3" json:"deleted,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ThreadMessage) Reset() {
@@ -364,6 +366,13 @@ func (x *ThreadMessage) GetSpeakerIdentityHint() string {
 		return x.SpeakerIdentityHint
 	}
 	return ""
+}
+
+func (x *ThreadMessage) GetDeleted() bool {
+	if x != nil {
+		return x.Deleted
+	}
+	return false
 }
 
 // Usage is a run's token usage by class; estimated is true when the provider did not report it.
@@ -1331,7 +1340,7 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\x15end_user_display_name\x18\n" +
 	" \x01(\tR\x12endUserDisplayName\x12M\n" +
 	"\x16end_user_identity_kind\x18\v \x01(\x0e2\x18.enduser.v1.IdentityKindR\x13endUserIdentityKind\x123\n" +
-	"\x16end_user_identity_hint\x18\f \x01(\tR\x13endUserIdentityHint\"\xee\x03\n" +
+	"\x16end_user_identity_hint\x18\f \x01(\tR\x13endUserIdentityHint\"\x88\x04\n" +
 	"\rThreadMessage\x12\x10\n" +
 	"\x03seq\x18\x01 \x01(\x03R\x03seq\x12\x12\n" +
 	"\x04role\x18\x02 \x01(\tR\x04role\x121\n" +
@@ -1348,7 +1357,8 @@ const file_thread_v1_thread_proto_rawDesc = "" +
 	"\x14speaker_display_name\x18\n" +
 	" \x01(\tR\x12speakerDisplayName\x12L\n" +
 	"\x15speaker_identity_kind\x18\v \x01(\x0e2\x18.enduser.v1.IdentityKindR\x13speakerIdentityKind\x122\n" +
-	"\x15speaker_identity_hint\x18\f \x01(\tR\x13speakerIdentityHint\"\xa7\x04\n" +
+	"\x15speaker_identity_hint\x18\f \x01(\tR\x13speakerIdentityHint\x12\x18\n" +
+	"\adeleted\x18\r \x01(\bR\adeleted\"\xa7\x04\n" +
 	"\x05Usage\x12!\n" +
 	"\finput_tokens\x18\x01 \x01(\x03R\vinputTokens\x12#\n" +
 	"\routput_tokens\x18\x02 \x01(\x03R\foutputTokens\x12*\n" +

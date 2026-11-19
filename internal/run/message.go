@@ -43,7 +43,9 @@ type Message struct {
 	RequestHash []byte
 	ChannelTime *time.Time
 	SkipReason  string
-	CreatedAt   time.Time
+	// Deleted marks a message whose speaker was deleted; its body holds only a placeholder.
+	Deleted   bool
+	CreatedAt time.Time
 }
 
 const (

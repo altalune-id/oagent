@@ -106,6 +106,8 @@ message ThreadMessage {
   string speaker_display_name = 10;
   enduser.v1.IdentityKind speaker_identity_kind = 11;
   string speaker_identity_hint = 12;
+  // deleted is true once the speaker was deleted; the message keeps its place with no text.
+  bool deleted = 13;
 }
 
 // Usage is a run's token usage by class; estimated is true when the provider did not report it.

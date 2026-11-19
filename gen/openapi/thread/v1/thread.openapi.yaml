@@ -844,6 +844,10 @@ components:
         speakerIdentityHint:
           type: string
           title: speaker_identity_hint
+        deleted:
+          type: boolean
+          title: deleted
+          description: deleted is true once the speaker was deleted; the message keeps its place with no text.
       title: ThreadMessage
       additionalProperties: false
       description: ThreadMessage is one stored AG-UI message; run_id is empty for a message no run has taken yet.
