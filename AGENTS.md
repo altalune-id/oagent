@@ -53,6 +53,16 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
 - Every RPC has an entry in the permission table (`internal/permission`) and protovalidate rules in its proto.
 - Only pre-sign-in pages (login, install, invite landing, legal) are templ pages. Everything signed-in goes in the console.
 
+**Go design**
+
+- **One `defaults.go` per domain** holds its defaults and ranges, the single home for recommended values; APIs return recommended and effective values, and an explicit "unset" uses optional fields or pointers.
+- **Small interfaces at the consumer:** each domain declares the ports it calls in its own `ports.go`.
+- **Errors are values:** typed `apperror` errors with a code, causes wrapped with `%w`, mapped to HTTP, RPC or MCP once at the edge; never branch on error strings.
+- **Share memory by communicating:** workers, consumers and the outbox pass work over channels or the queue and stop on context cancellation; mutexes for small caches only.
+- **Clear over clever:** explicit wiring in `internal/boot`, plain code in services, no reflection-driven helpers.
+- **A little copying over a little dependency:** check whether a few lines in-house would do before adding a module.
+- **Useful zero values:** unset config fields behave sensibly, or fail validation at load time.
+
 **Data**
 
 - Migrations upgrade a live database that is never reset: each applies to existing rows, with no data guards or SQL id generators. See [migration](docs/howto/migration.md).
@@ -79,12 +89,14 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
   - ESLint (`@antfu/eslint-config`) is the formatter too; run `pnpm lint:fix`.
   - Statements end with `;`. Interface fields end with `;`; inline object types use `,`.
   - No one-line `if`: always braces, on their own lines.
+  - TypeScript data shapes are `type X = { ... }`; `interface` only when the shape has a method or function field. `ts/consistent-type-definitions` is off for `apps/runtime/**/*.ts` only; widen that scoped override only with the owner's OK.
 - YAML: yamllint. Dockerfiles: hadolint. Workflows: actionlint. Shell: shellcheck. They run through `scripts/lint/tool.sh`: the installed binary, else Docker, else skipped with a note.
 - Comments:
   - The default is no comment.
   - Exported symbols get a one-sentence doc.
   - Keep only markers (`TODO`, `NOTE`, `SECURITY`…) or links. No rationale, history or section headers.
   - Never reference untracked files or IDs defined only in them.
+  - `make comment-check` checks Go files only; other file types follow `alt-go:alt-comment-discipline` by review.
 - Generated code (`gen/`, `*_templ.go`, `ui/base/gen/`) is never edited by hand.
 
 **Versions**
@@ -97,19 +109,23 @@ Fix the cause of a failing gate. Never skip a hook (`--no-verify`) or weaken a l
 
 - Conventional Commits, one line (`feat(scope): …`), template in `.gitmessage.txt`.
 - Every commit is signed (GPG or SSH). The pre-push hook refuses unsigned commits.
-- No AI attribution anywhere: no `Co-Authored-By` trailers, no "Generated with" lines, in commits, PRs, code or docs.
 - Playwright output stays in `.playwright-mcp/` (git-ignored); delete it after use.
 
 ## Agent skills
 
-Skills in `.agents/skills/` (each linked from `.claude/skills/`) and agents in `.agents/agents/` (each linked from `.claude/agents/`) are committed and carry the same conventions. The linters skip them:
+Shared skills and agents come from the `altalune` Claude Code plugin marketplace (`altalune-id/agent-plugins`), enabled in `.claude/settings.json`. Codex and opencode users run that repo's `install.sh`.
 
-- `oagent-go-convention`: build a change the oagent way.
+- `go:go`, `alt-go:alt-go-concurrency`, `alt-go:alt-go-proverb`, `alt-go:alt-comment-discipline`: Go and comment style.
+- `cobra-viper:cobra-viper`, `go-release:go-release`, `go-spec-reviewer:go-spec-reviewer`: CLI and config, releases, spec review.
+- `antfu-frontend:vue`, `antfu-frontend:pinia`, `antfu-frontend:vite`, `antfu-frontend:vitest`, `antfu-frontend:nuxt`: the console and the UI toolchain.
+- `daisyui:daisyui`: daisyUI 5 classes, colors and themes for the console and the sign-in pages.
+- Agent `alt-workflow:alt-go-reviewer`: an independent, read-only Go review or repo scorecard.
+- Agent `alt-oauth:alt-oauth-reviewer`: an independent, read-only OAuth / OIDC review.
+
+oagent's own skills live in `.agents/skills/` (each linked from `.claude/skills/`). They carry the same conventions; the linters skip them:
+
+- `oagent-go-convention`: build a change the oagent way, including the UI conventions.
 - `oagent-go-review`: review a change; it runs the gates.
-- `go`, `go-concurrency`, `go-proverb`, `comment-discipline`: Go and comment style.
-- `vue`, `pinia`, `vite`, `vitest`, `nuxt`, `eslint-config`: the console and the UI toolchain.
-- `daisyui`: daisyUI 5 classes, colors and themes for the console and the sign-in pages.
-- `cobra-viper`, `go-release`, `go-spec-reviewer`: CLI and config, releases, spec review.
-- Agent `go-expert-reviewer`: an independent, read-only scorecard of a Go repo (idioms, packaging and cycles, architecture, production readiness); it loads `go` and `go-proverb`.
+- `eslint-config`: the ESLint setup and the JS/TS style it enforces.
 
-A new skill or agent goes in `.agents/{skills,agents}/<name>` with a `.claude/{skills,agents}/<name>` link, in the same commit.
+A new repo skill or agent goes in `.agents/{skills,agents}/<name>` with a `.claude/{skills,agents}/<name>` link, in the same commit.
