@@ -27,4 +27,5 @@ type Writer interface {
 	Save(ctx context.Context, e *EndUser) error
 	AddIdentity(ctx context.Context, e *EndUser, id Identity) (added bool, err error)
 	SetDisplayName(ctx context.Context, id uuid.UUID, name string) error
+	Delete(ctx context.Context, id uuid.UUID) error
 }

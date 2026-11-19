@@ -131,11 +131,19 @@ func TestEndUserReach_WholeProjectOnly(t *testing.T) {
 		for _, id := range []string{w.sari.PublicID, w.sari.ID.String()} {
 			_, err = w.cp.GetEndUser(ctx, connect.NewRequest(&enduserv1.GetEndUserRequest{Id: id}))
 			assert.True(t, enduser.IsNotFoundError(err), "%s get %s: %v", name, id, err)
+			_, err = w.cp.DeleteEndUser(ctx, connect.NewRequest(&enduserv1.DeleteEndUserRequest{Id: id}))
+			assert.True(t, enduser.IsNotFoundError(err), "%s delete %s: %v", name, id, err)
 		}
 	}
+	_, err := w.cp.GetEndUser(person(w.org), connect.NewRequest(&enduserv1.GetEndUserRequest{Id: w.sari.PublicID}))
+	require.NoError(t, err, "an out-of-reach delete leaves the end user")
 	whole := session.PrincipalInto(context.Background(), session.Principal{Source: session.SourceAPIKey, ActiveOrgID: w.org, ProjectIDs: []uuid.UUID{w.project}})
-	_, err := w.cp.GetEndUser(whole, connect.NewRequest(&enduserv1.GetEndUserRequest{Id: w.sari.PublicID}))
+	_, err = w.cp.GetEndUser(whole, connect.NewRequest(&enduserv1.GetEndUserRequest{Id: w.sari.PublicID}))
 	assert.NoError(t, err, "a key that holds the whole project reads its end users")
+	_, err = w.cp.DeleteEndUser(whole, connect.NewRequest(&enduserv1.DeleteEndUserRequest{Id: w.sari.PublicID}))
+	require.NoError(t, err)
+	_, err = w.cp.GetEndUser(whole, connect.NewRequest(&enduserv1.GetEndUserRequest{Id: w.sari.PublicID}))
+	assert.True(t, enduser.IsNotFoundError(err), "a deleted end user is gone")
 }
 
 func TestListEndUsers_PagesAndRefusesAForeignToken(t *testing.T) {

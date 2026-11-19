@@ -5,6 +5,7 @@ import type { RunStatus, RunSummary, SkipReason, ThreadDetail, ThreadKind, Trans
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { IdentityKind } from '#gen/enduser/v1/enduser_pb';
 import { RunStatus as RunStatusPB } from '#gen/thread/v1/thread_pb';
+import { shownName } from '~/components/enduser/forget';
 import { personLabel } from '~/components/enduser/label';
 
 type Translate = (key: string, params?: Record<string, unknown>) => string;
@@ -198,7 +199,7 @@ export function toItems(messages: MessagePB[], runs: RunSummary[], t: Translate)
     const at = m.createdAt ? timestampDate(m.createdAt) : new Date(0);
     if (m.role === 'user') {
       const skipped = skipReason(m.skipReason);
-      out.push({ id: id++, kind: 'user', ...userContent(body), speaker: wireLabel({ displayName: m.speakerDisplayName, identityKind: m.speakerIdentityKind, identityHint: m.speakerIdentityHint }, m.speakerLabel, t) || undefined, ...(skipped ? { skipped } : {}), at });
+      out.push({ id: id++, kind: 'user', ...userContent(body), speaker: m.deleted ? shownName(undefined, true, t) : wireLabel({ displayName: m.speakerDisplayName, identityKind: m.speakerIdentityKind, identityHint: m.speakerIdentityHint }, m.speakerLabel, t) || undefined, ...(skipped ? { skipped } : {}), ...(m.deleted ? { deleted: true } : {}), at });
     } else if (m.role === 'assistant') {
       const said = text(body.content);
       if (said) {

@@ -2,6 +2,7 @@ package fakes
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"strings"
 
@@ -150,4 +151,19 @@ func (f *EndUserStore) List(_ context.Context, projectID uuid.UUID, _ string, _ 
 	}
 	slices.SortFunc(out, func(a, b *enduser.EndUser) int { return b.CreatedAt.Compare(a.CreatedAt) })
 	return out[:min(len(out), max(limit, 1))], nil
+}
+
+// Delete implements enduser.Store; the end user's identities go with it.
+func (f *EndUserStore) Delete(_ context.Context, id uuid.UUID) error {
+	if f.Err != nil {
+		return f.Err
+	}
+	if _, ok := f.Users[id]; !ok {
+		return &enduser.NotFoundError{ID: id.String()}
+	}
+	delete(f.Users, id)
+	for _, ids := range f.Identities {
+		maps.DeleteFunc(ids, func(_ enduser.Identity, owner uuid.UUID) bool { return owner == id })
+	}
+	return nil
 }

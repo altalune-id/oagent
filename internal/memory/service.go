@@ -256,3 +256,22 @@ func (s *Service) Clear(ctx context.Context, storeID, endUserID, agentID string)
 	}
 	return n, nil
 }
+
+// ForgetEndUser clears every fact any store of projectID keeps about endUserID, for every agent, inside the caller's transaction.
+func (s *Service) ForgetEndUser(ctx context.Context, orgID, projectID, endUserID uuid.UUID) error {
+	stores, err := s.stores.ListStores(ctx, projectID)
+	if err != nil {
+		return err
+	}
+	for _, store := range stores {
+		// SECURITY: a store whose backend is off can't be cleared, so the delete fails rather than leave its facts behind.
+		facts, err := s.driverFor(store)
+		if err != nil {
+			return err
+		}
+		if _, err := facts.Clear(ctx, Scope{OrgID: orgID, ProjectID: projectID, StoreID: store.ID, EndUserID: endUserID}); err != nil {
+			return err
+		}
+	}
+	return nil
+}

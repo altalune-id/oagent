@@ -65,7 +65,7 @@ func allProcedures() []string {
 
 func TestEveryRPCHasAPermission(t *testing.T) {
 	procs := allProcedures()
-	require.Len(t, procs, 103, "Org 4, Project 5, Agent 8, APIKey 3, Webhook 11, Auth 6, Member 4, Invite 7, ModelProvider 5, McpServer 6, Thread 6, Channel 7, EndUser 2, Approval 3, Knowledge 13, Memory 7, WebTool 6")
+	require.Len(t, procs, 104, "Org 4, Project 5, Agent 8, APIKey 3, Webhook 11, Auth 6, Member 4, Invite 7, ModelProvider 5, McpServer 6, Thread 6, Channel 7, EndUser 3, Approval 3, Knowledge 13, Memory 7, WebTool 6")
 	table := Table()
 	for _, proc := range procs {
 		perms := table[proc]
@@ -121,6 +121,7 @@ func TestPermissionTable_Spec15(t *testing.T) {
 		"/channel.v1.ChannelService/GetChannelSettings":              "channel:read",
 		"/enduser.v1.EndUserService/ListEndUsers":                    "thread:read",
 		"/enduser.v1.EndUserService/GetEndUser":                      "thread:read",
+		"/enduser.v1.EndUserService/DeleteEndUser":                   "enduser:write",
 		"/approval.v1.ApprovalService/ListApprovals":                 "thread:read",
 		"/approval.v1.ApprovalService/GetApproval":                   "thread:read",
 		"/approval.v1.ApprovalService/DecideApproval":                "approval:decide",

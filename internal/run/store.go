@@ -72,4 +72,6 @@ type Writer interface {
 	Settle(ctx context.Context, token string, r *Run, u Usage, final []Message) error
 	RequestCancel(ctx context.Context, threadID, runID uuid.UUID) error
 	Reclaim(ctx context.Context, threadID uuid.UUID) (bool, error)
+	// ForgetEndUser deletes the threads endUserID owns, blanks their messages elsewhere and returns every thread it touched.
+	ForgetEndUser(ctx context.Context, endUserID uuid.UUID) ([]uuid.UUID, error)
 }

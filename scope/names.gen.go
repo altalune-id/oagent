@@ -26,6 +26,7 @@ const (
 	KnowledgeWrite = "knowledge:write"
 	MemoryRead     = "memory:read"
 	MemoryWrite    = "memory:write"
+	EnduserWrite   = "enduser:write"
 	MemberRead     = "member:read"
 	MemberWrite    = "member:write"
 	ApikeyRead     = "apikey:read"

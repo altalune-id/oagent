@@ -39,7 +39,7 @@ function toThread(th: EndUserThreadPB): EndUserThread {
 
 const pageSize = 200;
 
-// useEndUsersStore reads a project's end users through EndUserService; it is read-only, and the name search runs on the server.
+// useEndUsersStore reads and deletes a project's end users through EndUserService; the name search runs on the server.
 export const useEndUsersStore = defineStore('endUsers', () => {
   const { $endUserClient: client } = useNuxtApp();
   const errorMessage = useErrorMessage();
@@ -92,5 +92,23 @@ export const useEndUsersStore = defineStore('endUsers', () => {
     }
   }
 
-  return { items, loading, error, load, ensureLoaded, detail, detailLoading, detailError, loadOne };
+  const actionError = ref<ShownError | null>(null);
+
+  // remove deletes a person with everything kept about them; false means it failed and actionError says why.
+  async function remove(id: string): Promise<boolean> {
+    actionError.value = null;
+    try {
+      await client.deleteEndUser({ id });
+    } catch (e) {
+      actionError.value = errorMessage(e, 'error.delete_end_user');
+      return false;
+    }
+    items.value = items.value.filter(u => u.id !== id);
+    if (detail.value?.user.id === id) {
+      detail.value = null;
+    }
+    return true;
+  }
+
+  return { items, loading, error, load, ensureLoaded, detail, detailLoading, detailError, loadOne, actionError, remove };
 });

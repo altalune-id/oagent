@@ -137,7 +137,7 @@ func (s *ThreadService) ListThreadMessages(
 	for _, msg := range msgs {
 		tm := &threadv1.ThreadMessage{
 			Seq: msg.Seq, Role: string(msg.Role), Message: bodyProto(msg.AGUIBody()), Status: string(msg.Status),
-			ToolCallId: msg.ToolCallID, CreatedAt: timestamppb.New(msg.CreatedAt), SkipReason: msg.SkipReason,
+			ToolCallId: msg.ToolCallID, CreatedAt: timestamppb.New(msg.CreatedAt), SkipReason: msg.SkipReason, Deleted: msg.Deleted,
 		}
 		if msg.RunID != nil {
 			if tm.RunId, err = s.runPublicID(ctx, runPubs, *msg.RunID); err != nil {

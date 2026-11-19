@@ -244,3 +244,53 @@ func TestName_AKeyActorShowsTheKeysHint(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, enduser.Name{Kind: enduser.KindAPIKey}, got, "a key that is gone shows only the kind")
 }
+
+type forgetter struct {
+	err error
+	got []uuid.UUID
+}
+
+func (f *forgetter) ForgetEndUser(_ context.Context, _, _, id uuid.UUID) error {
+	f.got = append(f.got, id)
+	return f.err
+}
+
+func TestDelete_ForgetsEverywhereThenRemoves(t *testing.T) {
+	f := newFixture(t)
+	e, err := f.svc.Upsert(f.ctx, f.projectID, phone)
+	require.NoError(t, err)
+	memory, threads := &forgetter{}, &forgetter{}
+	f.svc.WithForgetters(memory, threads)
+
+	require.NoError(t, f.svc.Delete(f.ctx, e.ID))
+	assert.Equal(t, []uuid.UUID{e.ID}, memory.got)
+	assert.Equal(t, []uuid.UUID{e.ID}, threads.got)
+	assert.Empty(t, f.store.Users)
+	assert.Empty(t, f.store.Identities[f.projectID], "identities go with the end user")
+	again, err := f.svc.Upsert(f.ctx, f.projectID, phone)
+	require.NoError(t, err)
+	assert.NotEqual(t, e.ID, again.ID, "the same number later is a new person")
+}
+
+func TestDelete_ForgetFailureKeepsTheEndUser(t *testing.T) {
+	f := newFixture(t)
+	e, err := f.svc.Upsert(f.ctx, f.projectID, phone)
+	require.NoError(t, err)
+	busy := &codedError{}
+	f.svc.WithForgetters(&forgetter{err: busy})
+	assert.Same(t, busy, f.svc.Delete(f.ctx, e.ID), "a forgetter's own coded error reaches the caller unchanged")
+	assert.Contains(t, f.store.Users, e.ID)
+
+	f.svc.WithForgetters(&forgetter{err: assert.AnError})
+	require.Error(t, f.svc.Delete(f.ctx, e.ID))
+	assert.Contains(t, f.store.Users, e.ID)
+	assert.True(t, enduser.IsNotFoundError(f.svc.Delete(f.ctx, uuid.New())), "an unknown end user")
+}
+
+type codedError struct{}
+
+func (*codedError) Error() string { return "busy" }
+
+func (e *codedError) ToAppError() *apperror.AppError {
+	return apperror.New(apperror.CodeRunInProgress, "busy").WithCause(e)
+}

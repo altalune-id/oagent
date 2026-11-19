@@ -515,3 +515,23 @@ func TestService_DeleteStore(t *testing.T) {
 	require.Error(t, f.svc.DeleteStore(c.Ctx, f.stores.byPub[f.storeB].ID))
 	assert.Equal(t, 1, f.reported)
 }
+
+func TestForgetEndUser_ClearsThePersonInEveryStoreOrNothing(t *testing.T) {
+	f := newSvc(t)
+	c := f.cells[0]
+	person := c.Scope.EndUserID
+	forget := func() error { return f.svc.ForgetEndUser(c.Ctx, c.Scope.OrgID, c.Scope.ProjectID, person) }
+	assert.True(t, memory.IsStoreBackendOffError(forget()), "a store whose backend is off can't be cleared, so the delete fails")
+
+	delete(f.stores.byID, f.stores.byPub[f.offStore].ID)
+	require.NoError(t, forget())
+	for _, cell := range []memorytest.Cell{c, f.cells[2], f.cells[4]} {
+		_, _, total, err := f.store.List(cell.Ctx, memory.Scope{OrgID: cell.Scope.OrgID, ProjectID: cell.Scope.ProjectID, StoreID: cell.Scope.StoreID, EndUserID: cell.Scope.EndUserID}, "", 10)
+		require.NoError(t, err)
+		if cell.Scope.EndUserID == person && cell.Scope.ProjectID == c.Scope.ProjectID {
+			assert.Zero(t, total, "the person's facts are gone")
+			continue
+		}
+		assert.Positive(t, total, "everyone else's facts stay")
+	}
+}

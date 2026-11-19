@@ -93,6 +93,7 @@ func Table() map[string][]string {
 		channelv1connect.ChannelServiceGetChannelSettingsProcedure:          {scope.ChannelRead},
 		enduserv1connect.EndUserServiceListEndUsersProcedure:                {scope.ThreadRead},
 		enduserv1connect.EndUserServiceGetEndUserProcedure:                  {scope.ThreadRead},
+		enduserv1connect.EndUserServiceDeleteEndUserProcedure:               {scope.EnduserWrite},
 		approvalv1connect.ApprovalServiceListApprovalsProcedure:             {scope.ThreadRead},
 		approvalv1connect.ApprovalServiceGetApprovalProcedure:               {scope.ThreadRead},
 		approvalv1connect.ApprovalServiceDecideApprovalProcedure:            {scope.ApprovalDecide},

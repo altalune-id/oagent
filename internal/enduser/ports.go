@@ -43,3 +43,8 @@ type Refs interface {
 	ProjectPublicID(ctx context.Context, id uuid.UUID) (string, error)
 	ResourcePublicID(ctx context.Context, orgID, id uuid.UUID) (publicID string, ok bool, err error)
 }
+
+// Forgetter erases what another domain keeps about an end user, inside the delete's transaction.
+type Forgetter interface {
+	ForgetEndUser(ctx context.Context, orgID, projectID, endUserID uuid.UUID) error
+}

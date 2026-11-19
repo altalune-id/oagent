@@ -22,6 +22,7 @@ type Messages struct {
 	RequestHash       postgres.ColumnBytea
 	ChannelTime       postgres.ColumnTimestampz
 	SkipReason        postgres.ColumnString
+	DeletedAt         postgres.ColumnTimestampz
 
 	AllColumns postgres.ColumnList
 }
@@ -48,9 +49,10 @@ func NewMessages(schema, tablePrefix string) *Messages {
 		requestHash       = postgres.ByteaColumn("request_hash")
 		channelTime       = postgres.TimestampzColumn("channel_time")
 		skipReason        = postgres.StringColumn("skip_reason")
+		deletedAt         = postgres.TimestampzColumn("deleted_at")
 		all               = postgres.ColumnList{
 			id, orgID, projectID, threadID, seq, role, body, speakerID, status, externalMessageID, runID, toolCallID, createdAt,
-			requestHash, channelTime, skipReason,
+			requestHash, channelTime, skipReason, deletedAt,
 		}
 	)
 	return &Messages{
@@ -71,6 +73,7 @@ func NewMessages(schema, tablePrefix string) *Messages {
 		RequestHash:       requestHash,
 		ChannelTime:       channelTime,
 		SkipReason:        skipReason,
+		DeletedAt:         deletedAt,
 		AllColumns:        all,
 	}
 }

@@ -2,6 +2,41 @@ openapi: 3.1.0
 info:
   title: enduser.v1
 paths:
+  /enduser.v1.EndUserService/DeleteEndUser:
+    post:
+      tags:
+        - enduser.v1.EndUserService
+      summary: DeleteEndUser
+      operationId: enduser.v1.EndUserService.DeleteEndUser
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/enduser.v1.DeleteEndUserRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/enduser.v1.DeleteEndUserResponse'
   /enduser.v1.EndUserService/GetEndUser:
     post:
       tags:
@@ -143,6 +178,22 @@ components:
           description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
       additionalProperties: true
       description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+    enduser.v1.DeleteEndUserRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: |
+            oagent.public_id = true
+      title: DeleteEndUserRequest
+      required:
+        - id
+      additionalProperties: false
+    enduser.v1.DeleteEndUserResponse:
+      type: object
+      title: DeleteEndUserResponse
+      additionalProperties: false
     enduser.v1.EndUser:
       type: object
       properties:
@@ -371,4 +422,4 @@ components:
 security: []
 tags:
   - name: enduser.v1.EndUserService
-    description: EndUserService reads the people who talk to a project's agents. Every id is a public id; a person shows as a display name and an identity kind with a masked hint, never a phone number, LID or key id.
+    description: EndUserService reads and deletes the people who talk to a project's agents. Every id is a public id; a person shows as a display name and an identity kind with a masked hint, never a phone number, LID or key id.

@@ -54,7 +54,7 @@ A driver is one `Backend` value, one package, one enabled flag, one migration th
 
 - [ ] `memorytest.Run` passes, and a mutation that drops any scope filter, the store filter included, fails it.
 - [ ] No fact text, user text or query is logged; counts and public ids only.
-- [ ] Erasure reaches the driver: deleting a store calls `ClearStore`, and a later `DeleteEndUser` must call `Clear` with the person's scope in each store and no agent.
+- [ ] Erasure reaches the driver: deleting a store calls `ClearStore`, and `DeleteEndUser` calls `Clear` with the person's scope in each store and no agent (`ForgetEndUser`).
 
 ## Reference code
 

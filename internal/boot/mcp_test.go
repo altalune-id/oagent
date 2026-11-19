@@ -289,6 +289,7 @@ func TestMCPTools_PermissionsComeFromTheTable(t *testing.T) {
 		channelv1mcp.ChannelConnectionDeleteToolName:    {scope.ChannelWrite},
 		enduserv1mcp.EndUserListToolName:                {scope.ThreadRead},
 		enduserv1mcp.EndUserGetToolName:                 {scope.ThreadRead},
+		enduserv1mcp.EndUserDeleteToolName:              {scope.EnduserWrite},
 		memoryv1mcp.MemoryListToolName:                  {scope.MemoryRead},
 		memoryv1mcp.MemoryDeleteToolName:                {scope.MemoryWrite},
 		memoryv1mcp.MemoryClearToolName:                 {scope.MemoryWrite},

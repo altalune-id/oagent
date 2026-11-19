@@ -21,6 +21,7 @@
   { "name": "knowledge:write", "level": "project", "labelKey": "scope.knowledge_write" },
   { "name": "memory:read", "level": "project", "labelKey": "scope.memory_read" },
   { "name": "memory:write", "level": "project", "labelKey": "scope.memory_write" },
+  { "name": "enduser:write", "level": "project", "labelKey": "scope.enduser_write" },
   { "name": "member:read", "level": "org", "labelKey": "scope.member_read" },
   { "name": "member:write", "level": "org", "labelKey": "scope.member_write", "holder": "person" },
   { "name": "apikey:read", "level": "org", "labelKey": "scope.apikey_read" },

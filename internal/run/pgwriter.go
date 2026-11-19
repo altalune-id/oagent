@@ -1021,3 +1021,52 @@ func (s *postgresStore) HoldLease(ctx context.Context, token string, threadID uu
 		return err
 	})
 }
+
+const deletedMessageText = "[message deleted]"
+
+// ForgetEndUser deletes the threads endUserID owns, blanks their messages elsewhere and returns every thread it touched.
+func (s *postgresStore) ForgetEndUser(ctx context.Context, endUserID uuid.UUID) ([]uuid.UUID, error) {
+	tc, err := tenant.From(ctx)
+	if err != nil {
+		return nil, err
+	}
+	t, m := s.threads, s.messages
+	org, person := postgres.UUID(tc.OrgID), postgres.UUID(endUserID)
+	owned := t.OrgID.EQ(org).AND(t.ActorEndUserID.EQ(person))
+	spoken := m.OrgID.EQ(org).AND(m.SpeakerID.EQ(person))
+	touched := postgres.SELECT(t.ID.AS("ref.id"), t.LeaseUntil.AS("ref.lease_until")).FROM(t).
+		WHERE(owned.OR(t.OrgID.EQ(org).AND(t.ID.IN(postgres.SELECT(m.ThreadID).FROM(m).WHERE(spoken))))).
+		FOR(postgres.UPDATE())
+	var rows []struct {
+		ID         uuid.UUID  `alias:"ref.id"`
+		LeaseUntil *time.Time `alias:"ref.lease_until"`
+	}
+	if err := db.Write(ctx, s.pool, func(q qrm.DB) error { return touched.QueryContext(ctx, q, &rows) }); err != nil && !db.IsNoRows(err) {
+		return nil, fmt.Errorf("run.postgres: ForgetEndUser: %w", err)
+	}
+	now := time.Now()
+	for _, r := range rows {
+		// SECURITY: a live turn would settle a fresh snapshot holding the person's words, so the delete waits for it.
+		if r.LeaseUntil != nil && r.LeaseUntil.After(now) {
+			return nil, &InProgressError{}
+		}
+	}
+	if _, err := s.exec(ctx, "ForgetEndUser", t.DELETE().WHERE(owned)); err != nil {
+		return nil, err
+	}
+	blank := m.UPDATE(m.Body, m.DeletedAt).
+		SET(
+			postgres.Raw("jsonb_build_object('id', body->'id', 'role', 'user', 'content', #text::text)",
+				postgres.RawArgs{"#text": deletedMessageText}),
+			postgres.TimestampzT(time.Now().UTC()),
+		).
+		WHERE(spoken.AND(m.DeletedAt.IS_NULL()))
+	if _, err := s.exec(ctx, "ForgetEndUser", blank); err != nil {
+		return nil, err
+	}
+	ids := make([]uuid.UUID, len(rows))
+	for i, r := range rows {
+		ids[i] = r.ID
+	}
+	return ids, nil
+}

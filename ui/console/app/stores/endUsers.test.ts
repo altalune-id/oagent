@@ -58,4 +58,21 @@ describe('useEndUsersStore on EndUserService', () => {
     await store.loadOne(sari.id);
     expect([store.detail, store.detailError?.message, store.detailLoading]).toEqual([null, 'error.load_end_users', false]);
   });
+  it('deletes a person from the list and the open page; a failure keeps them and says why', async () => {
+    setKnownKeys('error.delete_end_user');
+    const c = {
+      listEndUsers: vi.fn().mockResolvedValue({ endUsers: [sari, anon], nextPageToken: '' }),
+      getEndUser: vi.fn().mockResolvedValue({ endUser: sari, threads: [] }),
+      deleteEndUser: vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({}),
+    };
+    setClient('$endUserClient', c);
+    const store = useEndUsersStore();
+    await store.load(projectId);
+    await store.loadOne(sari.id);
+    expect(await store.remove(sari.id)).toBe(false);
+    expect([store.items.length, store.detail?.user.id, store.actionError?.message]).toEqual([2, sari.id, 'error.delete_end_user']);
+    expect(await store.remove(sari.id)).toBe(true);
+    expect(c.deleteEndUser).toHaveBeenLastCalledWith({ id: sari.id });
+    expect([store.items.map(u => u.id), store.detail, store.actionError]).toEqual([[anon.id], null, null]);
+  });
 });
