@@ -37,9 +37,35 @@ const (
 
 //nolint:gochecknoglobals // one server per test binary; every test gets its own schema on it.
 var server struct {
+	main bool
 	once sync.Once
+	ctr  testcontainers.Container
 	dsn  string
 	err  error
+}
+
+// Runner runs a test binary's tests and returns its exit code; *testing.M is one.
+type Runner interface {
+	Run() int
+}
+
+type wrapped struct{ next Runner }
+
+// Wrap returns a Runner that runs next, then removes the container New started; compose it as pgtest.Main(redistest.Wrap(m)).
+func Wrap(next Runner) Runner { return wrapped{next: next} }
+
+func (w wrapped) Run() int {
+	server.main = true
+	code := w.next.Run()
+	if err := testcontainers.TerminateContainer(server.ctr); err != nil {
+		fmt.Fprintf(os.Stderr, "pgtest: remove container: %v\n", err)
+	}
+	return code
+}
+
+// Main runs the tests, removes the container and its volumes, and exits with the tests' code; call it from TestMain.
+func Main(m Runner) {
+	os.Exit(Wrap(m).Run())
 }
 
 // Handle is one test's private schema on the shared Postgres server.
@@ -51,6 +77,9 @@ type Handle struct {
 // New returns a handle with a fresh schema; without TEST_PG_DSN it skips if no container starts, and fails under CI.
 func New(t *testing.T) *Handle {
 	t.Helper()
+	if !server.main {
+		t.Fatalf("pgtest: TestMain must call pgtest.Main(m), or pgtest.Main(redistest.Wrap(m)) when the package uses both")
+	}
 	dsn := os.Getenv(envDSN)
 	if dsn == "" {
 		server.once.Do(func() { server.dsn, server.err = startContainer(t) })
@@ -107,7 +136,7 @@ func Migrated(t *testing.T) (sqlDB *sql.DB, schemaName string) {
 	return sqlDB, h.Schema
 }
 
-// NOTE: Ryuk reaps the container when the binary exits; with Ryuk off (podman) the label sweep removes it on a later run.
+// NOTE: Main removes the container; the label sweep removes one left by a killed test binary.
 func startContainer(t *testing.T) (string, error) {
 	t.Helper()
 	sweepStale(t)
@@ -127,13 +156,15 @@ func startContainer(t *testing.T) (string, error) {
 		),
 	)
 	if err != nil {
+		_ = testcontainers.TerminateContainer(c)
 		return "", fmt.Errorf("start %s: %w", image, err)
 	}
 	dsn, err := c.ConnectionString(ctx, "sslmode=disable")
 	if err != nil {
-		_ = c.Terminate(context.Background())
+		_ = testcontainers.TerminateContainer(c)
 		return "", fmt.Errorf("connection string: %w", err)
 	}
+	server.ctr = c
 	return dsn, nil
 }
 

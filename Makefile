@@ -122,7 +122,7 @@ lint: lint-go lint-js lint-config ## run every linter
 
 .PHONY: lint-go
 lint-go: ## run golangci-lint (GOLANGCI_VERSION)
-	$(GOLANGCI) run --timeout=3m ./...
+	$(GOLANGCI) run --timeout=3m $(GOLANGCI_ARGS) ./...
 
 .PHONY: lint-js
 lint-js: ## run ESLint over ui/, docs and every JS/TS/Vue/JSON/Markdown/CSS file

@@ -60,7 +60,7 @@ Use this when a service needs a database verb its `Store` does not have. The `St
 5. **Raw SQL** only where go-jet has no builder. Mark it with a `NOTE:` naming what jet could not express (see `apikey.NewStore`). Bind values as parameters; never concatenate user input.
 6. **Fake** in `internal/testutil/fakes/<domain>.go`. `var _ agent.Store = (*AgentStore)(nil)` turns a missing method into a compile error. Copy the real predicate; never filter more strictly than the store does.
 7. **Unit test** in `postgres_test.go` (package `<domain>`, `go-sqlmock`): the row mapping, not-found and the error paths (`TestStore_QueryErrors`).
-8. **Integration test** in `postgres_integration_test.go` (`//go:build integration`, `pgtest.MigratedRLS(t)`: the service-role pool, so row-level security applies; seed other tenants through the admin handle), named `TestPostgres_<Behaviour>`: round trip, not found, constraints, order and scope, and that the verb joins a unit of work (`TestPostgres_AgentHonorsUnitOfWork`).
+8. **Integration test** in `postgres_integration_test.go` (`//go:build integration`, `pgtest.MigratedRLS(t)`: the service-role pool, so row-level security applies; seed other tenants through the admin handle), named `TestPostgres_<Behaviour>`: round trip, not found, constraints, order and scope, and that the verb joins a unit of work (`TestPostgres_AgentHonorsUnitOfWork`). The package's `main_integration_test.go` has `func TestMain(m *testing.M) { pgtest.Main(m) }` (`pgtest.Main(redistest.Wrap(m))` when it uses Redis too): it removes the container when the binary exits, and `pgtest.New` fails without it.
 9. **Gates.** `make check`, `make comment-check`, `make test-integration`, `make cover` (at least 85% for the package).
 
 ## Review
