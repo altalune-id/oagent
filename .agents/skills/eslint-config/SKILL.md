@@ -76,7 +76,7 @@ Style that follows from it:
 - **Single responsibility**: each file has one clear purpose; split a file when it handles too many concerns.
 - **Explicit imports**: oagent narrows Nuxt auto-imports (`components.dirs: []`, `imports.scan: false`); import components, stores and own composables from their files. Use the aliases already configured (`~`, `~~`, `@shared/*`); do not invent new ones.
 - **TypeScript**: extract complex inline types into a named `type` or `interface`; declare return types on exported functions when inference is not obvious.
-- **Comments**: explain why, not what; follow the comment-discipline skill.
+- **Comments**: explain why, not what; follow the `alt-go:alt-comment-discipline` skill.
 - **Tests (Vitest)**: `foo.ts` gets `foo.test.ts` in the same folder; use `describe`/`it` (not `test`), as the existing tests do.
 
 ## References

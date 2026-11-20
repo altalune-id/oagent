@@ -39,17 +39,17 @@ Then the skills, by what the diff touches:
 
 | Always | Read |
 | --- | --- |
-| `go` | core principles, interfaces, errors, testing |
-| `go-proverb` | the "In review, flag" lines |
-| `comment-discipline` | Keep, Delete, Traps |
+| `go:go` | core principles, interfaces, errors, testing |
+| `alt-go:alt-go-proverb` | the "In review, flag" lines |
+| `alt-go:alt-comment-discipline` | Keep, Delete, Traps |
 
 | Only if the diff touches | Read |
 | --- | --- |
-| a goroutine, channel, `select`, `sync`, `errgroup`, a worker | `go-concurrency` |
-| `cmd/` or `internal/cli/` | `cobra-viper` |
-| an exported symbol in a root package | `go-release` (breaking changes) |
-| `ui/console` | `vue`, `pinia`, `nuxt`, `vitest` |
-| ESLint, Vite or the UI build | `eslint-config`, `vite` |
+| a goroutine, channel, `select`, `sync`, `errgroup`, a worker | `alt-go:alt-go-concurrency` |
+| `cmd/` or `internal/cli/` | `cobra-viper:cobra-viper` |
+| an exported symbol in a root package | `go-release:go-release` (breaking changes) |
+| `ui/console` | `antfu-frontend:vue`, `antfu-frontend:pinia`, `antfu-frontend:nuxt`, `antfu-frontend:vitest`, the UI section of `oagent-go-convention` |
+| ESLint, Vite or the UI build | `eslint-config`, `antfu-frontend:vite` |
 
 ## 3. Review in four passes
 
