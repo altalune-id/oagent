@@ -35,8 +35,28 @@ if [ "$unverified" -gt 0 ]; then
   echo "note: $unverified signed commit(s) could not be verified on this machine (GPG key not in the keyring or no gpg.ssh.allowedSignersFile); see .husky/README.md"
 fi
 
-echo "→ make lint"
-make lint
+git fetch --quiet origin main 2>/dev/null || echo "warn: cannot fetch origin/main; using the local ref"
+has_main=
+git rev-parse --verify --quiet origin/main >/dev/null && has_main=1
+
+echo "→ gofmt -l"
+unformatted=$(git ls-files -z '*.go' | xargs -0 gofmt -l)
+if [ -n "$unformatted" ]; then
+  echo "gofmt: these files need formatting (make fmt):" >&2
+  echo "$unformatted" >&2
+  exit 1
+fi
+
+echo "→ make vet"
+make vet
+
+if [ -n "$has_main" ]; then
+  echo "→ golangci-lint (issues new since origin/main)"
+  make lint-go GOLANGCI_ARGS=--new-from-rev=origin/main
+else
+  echo "→ golangci-lint"
+  make lint-go
+fi
 
 echo "→ make comment-check"
 make comment-check
@@ -44,15 +64,31 @@ make comment-check
 echo "→ config examples match the config structs"
 make config-check
 
-echo "→ go test -race -shuffle=on ./..."
-env -u GOROOT GOTOOLCHAIN=auto go test -race -shuffle=on ./...
-
-echo "→ buf breaking against origin/main"
-git fetch --quiet origin main 2>/dev/null || true
-if git rev-parse --verify --quiet origin/main >/dev/null; then
-  pnpm exec buf breaking --against '.git#ref=refs/remotes/origin/main'
+if [ -n "${PREPUSH_FULL:-}" ] || [ -z "$has_main" ]; then
+  echo "→ go test -race -shuffle=on ./..."
+  env -u GOROOT GOTOOLCHAIN=auto go test -race -shuffle=on ./...
 else
-  echo "note: no origin/main; skipping buf breaking"
+  pkgs=$(git diff --name-only origin/main...HEAD | while IFS= read -r f; do
+    d=$(dirname "$f" | sed 's#^testdata\(/.*\)\{0,1\}$#.#; s#/testdata\(/.*\)\{0,1\}$##')
+    while [ "$d" != "." ]; do
+      if ls "$d"/*.go >/dev/null 2>&1; then
+        echo "./$d"
+        break
+      fi
+      d=$(dirname "$d")
+    done
+  done | sort -u)
+  if [ -n "$pkgs" ]; then
+    # shellcheck disable=SC2086 # pkgs is a word list
+    pkgs=$(env -u GOROOT GOTOOLCHAIN=auto go list -e -f '{{if or .GoFiles .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}' $pkgs)
+  fi
+  if [ -z "$pkgs" ]; then
+    echo "→ go test: no Go package changed vs origin/main; skipping (PREPUSH_FULL=1 runs every test)"
+  else
+    echo "→ go test -race -shuffle=on on packages changed vs origin/main (PREPUSH_FULL=1 runs every test)"
+    # shellcheck disable=SC2086 # pkgs is a word list
+    env -u GOROOT GOTOOLCHAIN=auto go test -race -shuffle=on $pkgs
+  fi
 fi
 
 echo "→ pre-push OK"
